@@ -1,0 +1,1478 @@
+{
+  "edges": [
+    {
+      "animated": false,
+      "id": "e0",
+      "source": "0",
+      "style": {
+        "animated": false,
+        "stroke": "#008800",
+        "strokeWidth": 3
+      },
+      "target": "1",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e1",
+      "label": "to Some(1)",
+      "labelBgStyle": {
+        "fill": "rgba(255, 255, 255, 0.8)",
+        "fillOpacity": 0.8
+      },
+      "labelShowBg": true,
+      "labelStyle": {
+        "backgroundColor": "rgba(255, 255, 255, 0.8)",
+        "borderRadius": "3px",
+        "fill": "#333333",
+        "fontFamily": "monospace",
+        "fontSize": "10px",
+        "padding": "2px 4px"
+      },
+      "source": "1",
+      "style": {
+        "animated": true,
+        "stroke": "#880088",
+        "strokeDasharray": "5,5",
+        "strokeWidth": 2
+      },
+      "target": "2",
+      "type": "smoothstep"
+    },
+    {
+      "animated": false,
+      "id": "e2",
+      "source": "2",
+      "style": {
+        "animated": false,
+        "stroke": "#666666",
+        "strokeWidth": 2
+      },
+      "target": "3",
+      "type": "smoothstep"
+    },
+    {
+      "animated": false,
+      "id": "e3",
+      "source": "3",
+      "style": {
+        "animated": false,
+        "stroke": "#666666",
+        "strokeWidth": 2
+      },
+      "target": "4",
+      "type": "smoothstep"
+    },
+    {
+      "animated": false,
+      "id": "e4",
+      "source": "4",
+      "style": {
+        "animated": false,
+        "stroke": "#008800",
+        "strokeWidth": 3
+      },
+      "target": "5",
+      "type": "smoothstep"
+    },
+    {
+      "animated": false,
+      "id": "e5",
+      "source": "5",
+      "style": {
+        "animated": false,
+        "stroke": "#666666",
+        "strokeWidth": 2
+      },
+      "target": "6",
+      "type": "smoothstep"
+    },
+    {
+      "animated": false,
+      "id": "e6",
+      "source": "6",
+      "style": {
+        "animated": false,
+        "stroke": "#666666",
+        "strokeWidth": 2
+      },
+      "target": "7",
+      "type": "smoothstep"
+    },
+    {
+      "animated": true,
+      "id": "e7",
+      "label": "to Some(0)",
+      "labelBgStyle": {
+        "fill": "rgba(255, 255, 255, 0.8)",
+        "fillOpacity": 0.8
+      },
+      "labelShowBg": true,
+      "labelStyle": {
+        "backgroundColor": "rgba(255, 255, 255, 0.8)",
+        "borderRadius": "3px",
+        "fill": "#333333",
+        "fontFamily": "monospace",
+        "fontSize": "10px",
+        "padding": "2px 4px"
+      },
+      "source": "7",
+      "style": {
+        "animated": true,
+        "stroke": "#880088",
+        "strokeDasharray": "5,5",
+        "strokeWidth": 2
+      },
+      "target": "8",
+      "type": "smoothstep"
+    },
+    {
+      "animated": false,
+      "id": "e8",
+      "source": "8",
+      "style": {
+        "animated": false,
+        "stroke": "#666666",
+        "strokeWidth": 2
+      },
+      "target": "9",
+      "type": "smoothstep"
+    }
+  ],
+  "hierarchyChoices": [
+    {
+      "hierarchy": [
+        {
+          "children": [],
+          "id": "loc_0",
+          "name": "hydro_test::cluster::chat::Clients"
+        },
+        {
+          "children": [],
+          "id": "loc_1",
+          "name": "hydro_test::cluster::chat::Server"
+        }
+      ],
+      "id": "location",
+      "name": "Location"
+    },
+    {
+      "hierarchy": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "id": "bt_3",
+                  "name": "broadcast_bincode"
+                }
+              ],
+              "id": "bt_6",
+              "name": "chat_server"
+            }
+          ],
+          "id": "bt_1",
+          "name": "examples/chat.rs"
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "id": "bt_5",
+                  "name": "chat_server"
+                }
+              ],
+              "id": "bt_2",
+              "name": "main"
+            }
+          ],
+          "id": "bt_4",
+          "name": "future/future.rs"
+        }
+      ],
+      "id": "backtrace",
+      "name": "Backtrace"
+    }
+  ],
+  "nodeAssignments": {
+    "backtrace": {
+      "0": "bt_5",
+      "1": "bt_5",
+      "2": "bt_5",
+      "3": "bt_5",
+      "4": "bt_5",
+      "5": "bt_5",
+      "6": "bt_3",
+      "7": "bt_3",
+      "8": "bt_5",
+      "9": "bt_5"
+    },
+    "location": {
+      "0": "loc_0",
+      "1": "loc_0",
+      "2": "loc_1",
+      "3": "loc_1",
+      "4": "loc_1",
+      "5": "loc_1",
+      "6": "loc_1",
+      "7": "loc_1",
+      "8": "loc_0",
+      "9": "loc_0"
+    }
+  },
+  "nodes": [
+    {
+      "data": {
+        "backtrace": [
+          {
+            "addr": 4295566647,
+            "filename": "/Users/jmh/code/hydro/hydro_lang/src/stream.rs",
+            "fn_name": "hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode",
+            "lineno": 2618
+          },
+          {
+            "addr": 4295592039,
+            "filename": "/Users/jmh/code/hydro/hydro_test/src/cluster/chat.rs",
+            "fn_name": "hydro_test::cluster::chat::chat_server",
+            "lineno": 42
+          },
+          {
+            "addr": 4295297531,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main::{{closure}}",
+            "lineno": 19
+          },
+          {
+            "addr": 4295168295,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+            "fn_name": "<core::pin::Pin<P> as core::future::future::Future>::poll",
+            "lineno": 124
+          },
+          {
+            "addr": 4295293923,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on::{{closure}}",
+            "lineno": 284
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::with_budget",
+            "lineno": 167
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::budget",
+            "lineno": 133
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on",
+            "lineno": 284
+          },
+          {
+            "addr": 4295296319,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/blocking.rs",
+            "fn_name": "tokio::runtime::context::blocking::BlockingRegionGuard::block_on",
+            "lineno": 66
+          },
+          {
+            "addr": 4295480163,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on::{{closure}}",
+            "lineno": 87
+          },
+          {
+            "addr": 4295427739,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+            "fn_name": "tokio::runtime::context::runtime::enter_runtime",
+            "lineno": 65
+          },
+          {
+            "addr": 4295479995,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on",
+            "lineno": 86
+          },
+          {
+            "addr": 4295558395,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on_inner",
+            "lineno": 358
+          },
+          {
+            "addr": 4295559131,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on",
+            "lineno": 328
+          },
+          {
+            "addr": 4295275699,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main",
+            "lineno": 42
+          },
+          {
+            "addr": 4295231487,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+            "fn_name": "core::ops::function::FnOnce::call_once",
+            "lineno": 250
+          }
+        ],
+        "expanded": false,
+        "fullLabel": "map(q!(| v | bincode :: serialize (& v) . unwrap () . into ()))",
+        "label": "map",
+        "locationId": 1,
+        "locationType": "Process",
+        "nodeType": "Transform",
+        "shortLabel": "map"
+      },
+      "id": "6",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "&:hover": {
+          "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+          "transform": "translateY(-2px)"
+        },
+        "border": "1px solid rgba(0, 0, 0, 0.1)",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "color": "#2d3748",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "13px",
+        "fontWeight": "500",
+        "padding": "12px 16px",
+        "transition": "all 0.2s ease-in-out"
+      },
+      "type": "default"
+    },
+    {
+      "data": {
+        "backtrace": [
+          {
+            "addr": 4295591899,
+            "filename": "/Users/jmh/code/hydro/hydro_test/src/cluster/chat.rs",
+            "fn_name": "hydro_test::cluster::chat::chat_server",
+            "lineno": 32
+          },
+          {
+            "addr": 4295297531,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main::{{closure}}",
+            "lineno": 19
+          },
+          {
+            "addr": 4295168295,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+            "fn_name": "<core::pin::Pin<P> as core::future::future::Future>::poll",
+            "lineno": 124
+          },
+          {
+            "addr": 4295293923,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on::{{closure}}",
+            "lineno": 284
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::with_budget",
+            "lineno": 167
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::budget",
+            "lineno": 133
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on",
+            "lineno": 284
+          },
+          {
+            "addr": 4295296319,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/blocking.rs",
+            "fn_name": "tokio::runtime::context::blocking::BlockingRegionGuard::block_on",
+            "lineno": 66
+          },
+          {
+            "addr": 4295480163,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on::{{closure}}",
+            "lineno": 87
+          },
+          {
+            "addr": 4295427739,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+            "fn_name": "tokio::runtime::context::runtime::enter_runtime",
+            "lineno": 65
+          },
+          {
+            "addr": 4295479995,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on",
+            "lineno": 86
+          },
+          {
+            "addr": 4295558395,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on_inner",
+            "lineno": 358
+          },
+          {
+            "addr": 4295559131,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on",
+            "lineno": 328
+          },
+          {
+            "addr": 4295275699,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main",
+            "lineno": 42
+          },
+          {
+            "addr": 4295231487,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+            "fn_name": "core::ops::function::FnOnce::call_once",
+            "lineno": 250
+          }
+        ],
+        "expanded": false,
+        "fullLabel": "tee [branch dataflow]",
+        "label": "tee",
+        "locationId": 1,
+        "locationType": "Process",
+        "nodeType": "Tee",
+        "shortLabel": "tee"
+      },
+      "id": "3",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "&:hover": {
+          "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+          "transform": "translateY(-2px)"
+        },
+        "border": "1px solid rgba(0, 0, 0, 0.1)",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "color": "#2d3748",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "13px",
+        "fontWeight": "500",
+        "padding": "12px 16px",
+        "transition": "all 0.2s ease-in-out"
+      },
+      "type": "default"
+    },
+    {
+      "data": {
+        "backtrace": [
+          {
+            "addr": 4295566667,
+            "filename": "/Users/jmh/code/hydro/hydro_lang/src/stream.rs",
+            "fn_name": "hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode",
+            "lineno": 2618
+          },
+          {
+            "addr": 4295592039,
+            "filename": "/Users/jmh/code/hydro/hydro_test/src/cluster/chat.rs",
+            "fn_name": "hydro_test::cluster::chat::chat_server",
+            "lineno": 42
+          },
+          {
+            "addr": 4295297531,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main::{{closure}}",
+            "lineno": 19
+          },
+          {
+            "addr": 4295168295,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+            "fn_name": "<core::pin::Pin<P> as core::future::future::Future>::poll",
+            "lineno": 124
+          },
+          {
+            "addr": 4295293923,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on::{{closure}}",
+            "lineno": 284
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::with_budget",
+            "lineno": 167
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::budget",
+            "lineno": 133
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on",
+            "lineno": 284
+          },
+          {
+            "addr": 4295296319,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/blocking.rs",
+            "fn_name": "tokio::runtime::context::blocking::BlockingRegionGuard::block_on",
+            "lineno": 66
+          },
+          {
+            "addr": 4295480163,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on::{{closure}}",
+            "lineno": 87
+          },
+          {
+            "addr": 4295427739,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+            "fn_name": "tokio::runtime::context::runtime::enter_runtime",
+            "lineno": 65
+          },
+          {
+            "addr": 4295479995,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on",
+            "lineno": 86
+          },
+          {
+            "addr": 4295558395,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on_inner",
+            "lineno": 358
+          },
+          {
+            "addr": 4295559131,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on",
+            "lineno": 328
+          },
+          {
+            "addr": 4295275699,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main",
+            "lineno": 42
+          },
+          {
+            "addr": 4295231487,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+            "fn_name": "core::ops::function::FnOnce::call_once",
+            "lineno": 250
+          }
+        ],
+        "expanded": false,
+        "fullLabel": "flatmap(q!(| v | { ids__free . iter () . map (move | id | (id . raw_id , v . clone ())) }))",
+        "label": "flatmap",
+        "locationId": 1,
+        "locationType": "Process",
+        "nodeType": "Transform",
+        "shortLabel": "flatmap"
+      },
+      "id": "7",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "&:hover": {
+          "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+          "transform": "translateY(-2px)"
+        },
+        "border": "1px solid rgba(0, 0, 0, 0.1)",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "color": "#2d3748",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "13px",
+        "fontWeight": "500",
+        "padding": "12px 16px",
+        "transition": "all 0.2s ease-in-out"
+      },
+      "type": "default"
+    },
+    {
+      "data": {
+        "backtrace": [
+          {
+            "addr": 4295592051,
+            "filename": "/Users/jmh/code/hydro/hydro_test/src/cluster/chat.rs",
+            "fn_name": "hydro_test::cluster::chat::chat_server",
+            "lineno": 42
+          },
+          {
+            "addr": 4295297531,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main::{{closure}}",
+            "lineno": 19
+          },
+          {
+            "addr": 4295168295,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+            "fn_name": "<core::pin::Pin<P> as core::future::future::Future>::poll",
+            "lineno": 124
+          },
+          {
+            "addr": 4295293923,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on::{{closure}}",
+            "lineno": 284
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::with_budget",
+            "lineno": 167
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::budget",
+            "lineno": 133
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on",
+            "lineno": 284
+          },
+          {
+            "addr": 4295296319,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/blocking.rs",
+            "fn_name": "tokio::runtime::context::blocking::BlockingRegionGuard::block_on",
+            "lineno": 66
+          },
+          {
+            "addr": 4295480163,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on::{{closure}}",
+            "lineno": 87
+          },
+          {
+            "addr": 4295427739,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+            "fn_name": "tokio::runtime::context::runtime::enter_runtime",
+            "lineno": 65
+          },
+          {
+            "addr": 4295479995,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on",
+            "lineno": 86
+          },
+          {
+            "addr": 4295558395,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on_inner",
+            "lineno": 358
+          },
+          {
+            "addr": 4295559131,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on",
+            "lineno": 328
+          },
+          {
+            "addr": 4295275699,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main",
+            "lineno": 42
+          },
+          {
+            "addr": 4295231487,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+            "fn_name": "core::ops::function::FnOnce::call_once",
+            "lineno": 250
+          }
+        ],
+        "expanded": false,
+        "fullLabel": "for_each(q!(| (id , msg) | println ! (\"From {}: {:}\" , id . raw_id , msg . content . color (crate :: __staged :: cluster :: chat :: hash_to_color (id . raw_id + 10)))))",
+        "label": "for_each",
+        "locationId": 0,
+        "locationType": "Cluster",
+        "nodeType": "Sink",
+        "shortLabel": "for_each"
+      },
+      "id": "9",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "&:hover": {
+          "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+          "transform": "translateY(-2px)"
+        },
+        "border": "1px solid rgba(0, 0, 0, 0.1)",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "color": "#2d3748",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "13px",
+        "fontWeight": "500",
+        "padding": "12px 16px",
+        "transition": "all 0.2s ease-in-out"
+      },
+      "type": "default"
+    },
+    {
+      "data": {
+        "backtrace": [
+          {
+            "addr": 4295591943,
+            "filename": "/Users/jmh/code/hydro/hydro_test/src/cluster/chat.rs",
+            "fn_name": "hydro_test::cluster::chat::chat_server",
+            "lineno": 32
+          },
+          {
+            "addr": 4295297531,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main::{{closure}}",
+            "lineno": 19
+          },
+          {
+            "addr": 4295168295,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+            "fn_name": "<core::pin::Pin<P> as core::future::future::Future>::poll",
+            "lineno": 124
+          },
+          {
+            "addr": 4295293923,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on::{{closure}}",
+            "lineno": 284
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::with_budget",
+            "lineno": 167
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::budget",
+            "lineno": 133
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on",
+            "lineno": 284
+          },
+          {
+            "addr": 4295296319,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/blocking.rs",
+            "fn_name": "tokio::runtime::context::blocking::BlockingRegionGuard::block_on",
+            "lineno": 66
+          },
+          {
+            "addr": 4295480163,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on::{{closure}}",
+            "lineno": 87
+          },
+          {
+            "addr": 4295427739,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+            "fn_name": "tokio::runtime::context::runtime::enter_runtime",
+            "lineno": 65
+          },
+          {
+            "addr": 4295479995,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on",
+            "lineno": 86
+          },
+          {
+            "addr": 4295558395,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on_inner",
+            "lineno": 358
+          },
+          {
+            "addr": 4295559131,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on",
+            "lineno": 328
+          },
+          {
+            "addr": 4295275699,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main",
+            "lineno": 42
+          },
+          {
+            "addr": 4295231487,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+            "fn_name": "core::ops::function::FnOnce::call_once",
+            "lineno": 250
+          }
+        ],
+        "expanded": false,
+        "fullLabel": "persist [state storage]",
+        "label": "persist",
+        "locationId": 1,
+        "locationType": "Process",
+        "nodeType": "Transform",
+        "shortLabel": "persist"
+      },
+      "id": "5",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "&:hover": {
+          "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+          "transform": "translateY(-2px)"
+        },
+        "border": "1px solid rgba(0, 0, 0, 0.1)",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "color": "#2d3748",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "13px",
+        "fontWeight": "500",
+        "padding": "12px 16px",
+        "transition": "all 0.2s ease-in-out"
+      },
+      "type": "default"
+    },
+    {
+      "data": {
+        "backtrace": [
+          {
+            "addr": 4295591883,
+            "filename": "/Users/jmh/code/hydro/hydro_test/src/cluster/chat.rs",
+            "fn_name": "hydro_test::cluster::chat::chat_server",
+            "lineno": 32
+          },
+          {
+            "addr": 4295297531,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main::{{closure}}",
+            "lineno": 19
+          },
+          {
+            "addr": 4295168295,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+            "fn_name": "<core::pin::Pin<P> as core::future::future::Future>::poll",
+            "lineno": 124
+          },
+          {
+            "addr": 4295293923,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on::{{closure}}",
+            "lineno": 284
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::with_budget",
+            "lineno": 167
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::budget",
+            "lineno": 133
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on",
+            "lineno": 284
+          },
+          {
+            "addr": 4295296319,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/blocking.rs",
+            "fn_name": "tokio::runtime::context::blocking::BlockingRegionGuard::block_on",
+            "lineno": 66
+          },
+          {
+            "addr": 4295480163,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on::{{closure}}",
+            "lineno": 87
+          },
+          {
+            "addr": 4295427739,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+            "fn_name": "tokio::runtime::context::runtime::enter_runtime",
+            "lineno": 65
+          },
+          {
+            "addr": 4295479995,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on",
+            "lineno": 86
+          },
+          {
+            "addr": 4295558395,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on_inner",
+            "lineno": 358
+          },
+          {
+            "addr": 4295559131,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on",
+            "lineno": 328
+          },
+          {
+            "addr": 4295275699,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main",
+            "lineno": 42
+          },
+          {
+            "addr": 4295231487,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+            "fn_name": "core::ops::function::FnOnce::call_once",
+            "lineno": 250
+          }
+        ],
+        "expanded": false,
+        "fullLabel": "network(ser + deser)",
+        "label": "network(recv)",
+        "locationId": 1,
+        "locationType": "Process",
+        "nodeType": "Network",
+        "shortLabel": "network(recv)"
+      },
+      "id": "2",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "&:hover": {
+          "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+          "transform": "translateY(-2px)"
+        },
+        "border": "1px solid rgba(0, 0, 0, 0.1)",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "color": "#2d3748",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "13px",
+        "fontWeight": "500",
+        "padding": "12px 16px",
+        "transition": "all 0.2s ease-in-out"
+      },
+      "type": "default"
+    },
+    {
+      "data": {
+        "backtrace": [
+          {
+            "addr": 4295591835,
+            "filename": "/Users/jmh/code/hydro/hydro_test/src/cluster/chat.rs",
+            "fn_name": "hydro_test::cluster::chat::chat_server",
+            "lineno": 32
+          },
+          {
+            "addr": 4295297531,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main::{{closure}}",
+            "lineno": 19
+          },
+          {
+            "addr": 4295168295,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+            "fn_name": "<core::pin::Pin<P> as core::future::future::Future>::poll",
+            "lineno": 124
+          },
+          {
+            "addr": 4295293923,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on::{{closure}}",
+            "lineno": 284
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::with_budget",
+            "lineno": 167
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::budget",
+            "lineno": 133
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on",
+            "lineno": 284
+          },
+          {
+            "addr": 4295296319,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/blocking.rs",
+            "fn_name": "tokio::runtime::context::blocking::BlockingRegionGuard::block_on",
+            "lineno": 66
+          },
+          {
+            "addr": 4295480163,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on::{{closure}}",
+            "lineno": 87
+          },
+          {
+            "addr": 4295427739,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+            "fn_name": "tokio::runtime::context::runtime::enter_runtime",
+            "lineno": 65
+          },
+          {
+            "addr": 4295479995,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on",
+            "lineno": 86
+          },
+          {
+            "addr": 4295558395,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on_inner",
+            "lineno": 358
+          },
+          {
+            "addr": 4295559131,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on",
+            "lineno": 328
+          },
+          {
+            "addr": 4295275699,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main",
+            "lineno": 42
+          },
+          {
+            "addr": 4295231487,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+            "fn_name": "core::ops::function::FnOnce::call_once",
+            "lineno": 250
+          }
+        ],
+        "expanded": false,
+        "fullLabel": "persist [state storage]",
+        "label": "persist",
+        "locationId": 0,
+        "locationType": "Cluster",
+        "nodeType": "Transform",
+        "shortLabel": "persist"
+      },
+      "id": "1",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "&:hover": {
+          "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+          "transform": "translateY(-2px)"
+        },
+        "border": "1px solid rgba(0, 0, 0, 0.1)",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "color": "#2d3748",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "13px",
+        "fontWeight": "500",
+        "padding": "12px 16px",
+        "transition": "all 0.2s ease-in-out"
+      },
+      "type": "default"
+    },
+    {
+      "data": {
+        "backtrace": [
+          {
+            "addr": 4295591943,
+            "filename": "/Users/jmh/code/hydro/hydro_test/src/cluster/chat.rs",
+            "fn_name": "hydro_test::cluster::chat::chat_server",
+            "lineno": 32
+          },
+          {
+            "addr": 4295297531,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main::{{closure}}",
+            "lineno": 19
+          },
+          {
+            "addr": 4295168295,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+            "fn_name": "<core::pin::Pin<P> as core::future::future::Future>::poll",
+            "lineno": 124
+          },
+          {
+            "addr": 4295293923,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on::{{closure}}",
+            "lineno": 284
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::with_budget",
+            "lineno": 167
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::budget",
+            "lineno": 133
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on",
+            "lineno": 284
+          },
+          {
+            "addr": 4295296319,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/blocking.rs",
+            "fn_name": "tokio::runtime::context::blocking::BlockingRegionGuard::block_on",
+            "lineno": 66
+          },
+          {
+            "addr": 4295480163,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on::{{closure}}",
+            "lineno": 87
+          },
+          {
+            "addr": 4295427739,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+            "fn_name": "tokio::runtime::context::runtime::enter_runtime",
+            "lineno": 65
+          },
+          {
+            "addr": 4295479995,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on",
+            "lineno": 86
+          },
+          {
+            "addr": 4295558395,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on_inner",
+            "lineno": 358
+          },
+          {
+            "addr": 4295559131,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on",
+            "lineno": 328
+          },
+          {
+            "addr": 4295275699,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main",
+            "lineno": 42
+          },
+          {
+            "addr": 4295231487,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+            "fn_name": "core::ops::function::FnOnce::call_once",
+            "lineno": 250
+          }
+        ],
+        "expanded": false,
+        "fullLabel": "inspect(q!(| (id , msg) | println ! (\"...forwarding chat {} from client #{}...\" , msg . content , id)))",
+        "label": "inspect",
+        "locationId": 1,
+        "locationType": "Process",
+        "nodeType": "Transform",
+        "shortLabel": "inspect"
+      },
+      "id": "4",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "&:hover": {
+          "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+          "transform": "translateY(-2px)"
+        },
+        "border": "1px solid rgba(0, 0, 0, 0.1)",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "color": "#2d3748",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "13px",
+        "fontWeight": "500",
+        "padding": "12px 16px",
+        "transition": "all 0.2s ease-in-out"
+      },
+      "type": "default"
+    },
+    {
+      "data": {
+        "backtrace": [
+          {
+            "addr": 4295592039,
+            "filename": "/Users/jmh/code/hydro/hydro_test/src/cluster/chat.rs",
+            "fn_name": "hydro_test::cluster::chat::chat_server",
+            "lineno": 42
+          },
+          {
+            "addr": 4295297531,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main::{{closure}}",
+            "lineno": 19
+          },
+          {
+            "addr": 4295168295,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+            "fn_name": "<core::pin::Pin<P> as core::future::future::Future>::poll",
+            "lineno": 124
+          },
+          {
+            "addr": 4295293923,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on::{{closure}}",
+            "lineno": 284
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::with_budget",
+            "lineno": 167
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::budget",
+            "lineno": 133
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on",
+            "lineno": 284
+          },
+          {
+            "addr": 4295296319,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/blocking.rs",
+            "fn_name": "tokio::runtime::context::blocking::BlockingRegionGuard::block_on",
+            "lineno": 66
+          },
+          {
+            "addr": 4295480163,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on::{{closure}}",
+            "lineno": 87
+          },
+          {
+            "addr": 4295427739,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+            "fn_name": "tokio::runtime::context::runtime::enter_runtime",
+            "lineno": 65
+          },
+          {
+            "addr": 4295479995,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on",
+            "lineno": 86
+          },
+          {
+            "addr": 4295558395,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on_inner",
+            "lineno": 358
+          },
+          {
+            "addr": 4295559131,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on",
+            "lineno": 328
+          },
+          {
+            "addr": 4295275699,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main",
+            "lineno": 42
+          },
+          {
+            "addr": 4295231487,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+            "fn_name": "core::ops::function::FnOnce::call_once",
+            "lineno": 250
+          }
+        ],
+        "expanded": false,
+        "fullLabel": "network(recv) [receive from network]",
+        "label": "network(recv)",
+        "locationId": 0,
+        "locationType": "Cluster",
+        "nodeType": "Network",
+        "shortLabel": "network(recv)"
+      },
+      "id": "8",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "&:hover": {
+          "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+          "transform": "translateY(-2px)"
+        },
+        "border": "1px solid rgba(0, 0, 0, 0.1)",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "color": "#2d3748",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "13px",
+        "fontWeight": "500",
+        "padding": "12px 16px",
+        "transition": "all 0.2s ease-in-out"
+      },
+      "type": "default"
+    },
+    {
+      "data": {
+        "backtrace": [
+          {
+            "addr": 4295591835,
+            "filename": "/Users/jmh/code/hydro/hydro_test/src/cluster/chat.rs",
+            "fn_name": "hydro_test::cluster::chat::chat_server",
+            "lineno": 32
+          },
+          {
+            "addr": 4295297531,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main::{{closure}}",
+            "lineno": 19
+          },
+          {
+            "addr": 4295168295,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+            "fn_name": "<core::pin::Pin<P> as core::future::future::Future>::poll",
+            "lineno": 124
+          },
+          {
+            "addr": 4295293923,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on::{{closure}}",
+            "lineno": 284
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::with_budget",
+            "lineno": 167
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+            "fn_name": "tokio::task::coop::budget",
+            "lineno": 133
+          },
+          {
+            "addr": 4295290939,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/park.rs",
+            "fn_name": "tokio::runtime::park::CachedParkThread::block_on",
+            "lineno": 284
+          },
+          {
+            "addr": 4295296319,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/blocking.rs",
+            "fn_name": "tokio::runtime::context::blocking::BlockingRegionGuard::block_on",
+            "lineno": 66
+          },
+          {
+            "addr": 4295480163,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on::{{closure}}",
+            "lineno": 87
+          },
+          {
+            "addr": 4295427739,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+            "fn_name": "tokio::runtime::context::runtime::enter_runtime",
+            "lineno": 65
+          },
+          {
+            "addr": 4295479995,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/multi_thread/mod.rs",
+            "fn_name": "tokio::runtime::scheduler::multi_thread::MultiThread::block_on",
+            "lineno": 86
+          },
+          {
+            "addr": 4295558395,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on_inner",
+            "lineno": 358
+          },
+          {
+            "addr": 4295559131,
+            "filename": "/Users/jmh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+            "fn_name": "tokio::runtime::runtime::Runtime::block_on",
+            "lineno": 328
+          },
+          {
+            "addr": 4295275699,
+            "filename": "/Users/jmh/code/hydro/hydro_test/examples/chat.rs",
+            "fn_name": "chat::main",
+            "lineno": 42
+          },
+          {
+            "addr": 4295231487,
+            "filename": "/Users/jmh/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+            "fn_name": "core::ops::function::FnOnce::call_once",
+            "lineno": 250
+          }
+        ],
+        "expanded": false,
+        "fullLabel": "source_iter(q!({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: chat :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < hydro_test :: __staged :: cluster :: chat :: Clients > :: from_raw (__hydro_lang_cluster_self_id_0) ; [ChatMsg { content : format ! (\"Hi, it's me! Client #{}!\" , CLUSTER_SELF_ID__free . raw_id) }] }))",
+        "label": "source_iter",
+        "locationId": 0,
+        "locationType": "Cluster",
+        "nodeType": "Source",
+        "shortLabel": "source_iter"
+      },
+      "id": "0",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "style": {
+        "&:hover": {
+          "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+          "transform": "translateY(-2px)"
+        },
+        "border": "1px solid rgba(0, 0, 0, 0.1)",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "color": "#2d3748",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        "fontSize": "13px",
+        "fontWeight": "500",
+        "padding": "12px 16px",
+        "transition": "all 0.2s ease-in-out"
+      },
+      "type": "default"
+    }
+  ]
+}

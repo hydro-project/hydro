@@ -1,0 +1,183 @@
+/**
+ * @fileoverview CSS styles for ReactFlow components
+ * 
+ * Custom styles for nodes, edges, and containers.
+ */
+
+/* ============ Node Styles ============ */
+
+.graph-standard-node {
+  transition: all 0.2s ease-in-out;
+}
+
+.graph-standard-node:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.graph-standard-node.selected {
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.5) !important;
+  border-color: #007bff !important;
+}
+
+.graph-standard-node.highlighted {
+  border-color: #ffc107 !important;
+  /* Removed background override to allow dynamic styling */
+}
+
+.graph-standard-node.default {
+  border-color: #6c757d;
+  /* No background - allow dynamic styling from nodeStyler */
+}
+
+.hydro-standard-node.error {
+  border-color: #dc3545 !important;
+  /* Removed background override to allow dynamic styling */
+}
+
+.hydro-standard-node.warning {
+  border-color: #fd7e14 !important;
+  /* Removed background override to allow dynamic styling */
+}
+
+/* ============ Container Styles ============ */
+
+.hydro-container-node {
+  transition: all 0.3s ease-in-out;
+  backdrop-filter: blur(2px);
+}
+
+.hydro-container-node:hover {
+  border-color: #007bff !important;
+  background: rgba(240, 242, 247, 0.9) !important;
+}
+
+.hydro-container-node.selected {
+  border-color: #007bff !important;
+  box-shadow: 0 0 12px rgba(0, 123, 255, 0.3);
+}
+
+.container-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.container-header:hover {
+  background: rgba(100, 116, 139, 0.15) !important;
+}
+
+/* ============ Edge Styles ============ */
+
+.react-flow__edge-path {
+  transition: all 0.2s ease-in-out;
+}
+
+.react-flow__edge-path:hover {
+  stroke-width: 3px !important;
+}
+
+.react-flow__edge-path.selected {
+  stroke: #007bff !important;
+  stroke-width: 3px !important;
+}
+
+.react-flow__edge-path.highlighted {
+  stroke: #ffc107 !important;
+  stroke-width: 2px !important;
+}
+
+.react-flow__edge-path.dashed {
+  stroke-dasharray: 5,5;
+}
+
+.react-flow__edge-path.thick {
+  stroke-width: 3px;
+}
+
+.react-flow__edge-path.warning {
+  stroke: #fd7e14 !important;
+}
+
+/* ============ Hyper Edge Styles ============ */
+
+.hyper-edge {
+  animation: hyperPulse 2s ease-in-out infinite;
+}
+
+.hyper-edge-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.8));
+}
+
+@keyframes hyperPulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ============ ReactFlow Background ============ */
+
+.react-flow__background {
+  opacity: 0.6;
+}
+
+/* ============ ReactFlow Controls ============ */
+
+.react-flow__controls {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.react-flow__controls-button {
+  background: transparent;
+  border: none;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.react-flow__controls-button:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+/* ============ MiniMap ============ */
+
+.react-flow__minimap {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ============ Panel ============ */
+
+.react-flow__panel {
+  margin: 10px;
+}
+
+/* ============ Utility Classes ============ */
+
+.hydro-flow {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* ============ Responsive Design ============ */
+
+@media (max-width: 768px) {
+  .hydro-standard-node {
+    font-size: 11px;
+  }
+  
+  .react-flow__controls {
+    scale: 0.8;
+  }
+  
+  .react-flow__minimap {
+    scale: 0.8;
+  }
+}
