@@ -25,8 +25,6 @@ function VisHomepageComponent() {
   const [originalJsonData, setOriginalJsonData] = React.useState(null); // Store original data for re-parsing
   const [visStateVersion, setVisStateVersion] = React.useState(0); // Track VisState mutations for re-rendering
   const [flowGraphKey, setFlowGraphKey] = React.useState(0); // Force fresh FlowGraph instance for resets
-  const [visStateVersion, setVisStateVersion] = React.useState(0); // Track VisState mutations for re-rendering
-  const [flowGraphKey, setFlowGraphKey] = React.useState(0); // Force fresh FlowGraph instance for resets
   
     // Layout and color states
   const [currentLayout, setCurrentLayout] = React.useState('mrtree');
@@ -154,8 +152,6 @@ function VisHomepageComponent() {
       
       // Use resetAll for clean initialization
       resetAll(jsonData);
-      // Use resetAll for clean initialization
-      resetAll(jsonData);
     } catch (err) {
       console.error('Error parsing JSON:', err);
       setError('Failed to parse JSON data: ' + err.message);
@@ -193,9 +189,6 @@ function VisHomepageComponent() {
     // Use resetAll for complete reinitialization
     resetAll(originalJsonData, groupingId);
   }, [originalJsonData, resetAll]);
-    // Use resetAll for complete reinitialization
-    resetAll(originalJsonData, groupingId);
-  }, [originalJsonData, resetAll]);
 
   // Handle container click for collapse/expand
   const handleNodeClick = React.useCallback((event, node) => {
@@ -222,8 +215,6 @@ function VisHomepageComponent() {
           
           // Notify React that VisState has changed
           setVisStateVersion(prev => prev + 1);
-          // Notify React that VisState has changed
-          setVisStateVersion(prev => prev + 1);
           
         } else {
           console.log(`[HomePage] ❌ Container ${node.id} not found in visualization state`);
@@ -241,8 +232,6 @@ function VisHomepageComponent() {
     setCurrentLayout(layout);
     console.log('[HomePage] 🔧 Layout changed to:', layout);
     
-    // The layoutConfig prop change will trigger re-layout automatically
-    // No need to force a complete re-render which breaks drag functionality
     // The layoutConfig prop change will trigger re-layout automatically
     // No need to force a complete re-render which breaks drag functionality
     
@@ -267,7 +256,6 @@ function VisHomepageComponent() {
       });
       
       setVisStateVersion(prev => prev + 1);
-      setVisStateVersion(prev => prev + 1);
       console.log('[HomePage] 📦 Collapsed all containers');
     } catch (error) {
       console.error('[HomePage] ❌ Error collapsing all containers:', error);
@@ -286,7 +274,6 @@ function VisHomepageComponent() {
       });
       
       setVisStateVersion(prev => prev + 1);
-      setVisStateVersion(prev => prev + 1);
       console.log('[HomePage] 📤 Expanded all containers');
     } catch (error) {
       console.error('[HomePage] ❌ Error expanding all containers:', error);
@@ -303,16 +290,11 @@ function VisHomepageComponent() {
     // TODO: This should call a method on FlowGraph directly instead of forcing re-render
     // For now, trigger a re-render as a workaround
     setVisStateVersion(prev => prev + 1);
-    // TODO: This should call a method on FlowGraph directly instead of forcing re-render
-    // For now, trigger a re-render as a workaround
-    setVisStateVersion(prev => prev + 1);
   }, []);
 
   const createSampleGraph = React.useCallback(() => {
     if (!createVisualizationState || !NODE_STYLES || !EDGE_STYLES) return;
     
-    // Create mock JSON data for sample graph
-    const sampleJsonData = {
     // Create mock JSON data for sample graph
     const sampleJsonData = {
       nodes: [
@@ -368,12 +350,6 @@ function VisHomepageComponent() {
           ]
         }
       ]
-    };
-    
-    // Store original data and use resetAll for clean initialization
-    setOriginalJsonData(sampleJsonData);
-    resetAll(sampleJsonData, 'sample_grouping');
-  }, [createVisualizationState, NODE_STYLES, EDGE_STYLES, resetAll]);
     };
     
     // Store original data and use resetAll for clean initialization
@@ -524,7 +500,6 @@ function VisHomepageComponent() {
                 setOriginalJsonData(null);
                 setError(null);
                 setFlowGraphKey(prev => prev + 1); // Fresh instance for next load
-                setFlowGraphKey(prev => prev + 1); // Fresh instance for next load
               }}
               style={{
                 padding: '6px 12px',
@@ -552,16 +527,12 @@ function VisHomepageComponent() {
           }}>
             {/* Main Graph Visualization */}
             {console.log('[HomePage] 🔑 Rendering FlowGraph with key:', flowGraphKey)}
-            {console.log('[HomePage] 🔑 Rendering FlowGraph with key:', flowGraphKey)}
             <FlowGraph 
-              key={flowGraphKey} // Force fresh instance for complete resets
-              reactFlowKey={flowGraphKey} // Force ReactFlow internal reset too
               key={flowGraphKey} // Force fresh instance for complete resets
               reactFlowKey={flowGraphKey} // Force ReactFlow internal reset too
               visualizationState={visualizationState}
               layoutConfig={{ algorithm: currentLayout }}
               metadata={parseMetadata}
-              visStateVersion={visStateVersion}
               visStateVersion={visStateVersion}
               eventHandlers={{
                 onNodeClick: handleNodeClick
