@@ -77,23 +77,8 @@ where
         _location_type: Option<&str>,
         _backtrace: Option<&crate::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
-        let class_str = match node_type {
-            HydroNodeType::Source => "sourceClass",
-            HydroNodeType::Transform => "transformClass",
-            HydroNodeType::Join => "joinClass",
-            HydroNodeType::Aggregation => "aggClass",
-            HydroNodeType::Network => "networkClass",
-            HydroNodeType::Sink => "sinkClass",
-            HydroNodeType::Tee => "teeClass",
-        };
-
-        let (lbracket, rbracket) = match node_type {
-            HydroNodeType::Source => ("[[", "]]"),
-            HydroNodeType::Sink => ("[/", "/]"),
-            HydroNodeType::Network => ("[[", "]]"),
-            HydroNodeType::Tee => ("(", ")"),
-            _ => ("[", "]"),
-        };
+        let class_str = super::render::node_type_utils::to_mermaid_class(node_type);
+        let (lbracket, rbracket) = super::render::node_type_utils::to_mermaid_shape(node_type);
 
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {

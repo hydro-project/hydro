@@ -1,1079 +1,123 @@
 main.js:1550 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
-FlowGraph.tsx:77 [FlowGraph] 🔄 Visualization state changed, updating...
-ELKBridge.ts:21 [ELKBridge] 🚀 Starting ELK layout from VisState
- [ELKBridge] 📋 Extracted from VisState: {visibleNodes: 10, visibleContainers: 2, totalEdges: 9, regularEdges: 9, hyperEdges: 0}
- [ELKBridge] 🔨 Building ELK graph with 10 nodes, 2 containers, 9 edges
- [ELKBridge] 🔍 Available nodes: (10) ['6', '3', '7', '9', '5', '2', '1', '4', '8', '0']
- [ELKBridge] 🔍 Available containers: (2) [{…}, {…}]
- [ELKBridge] 🔍 Container loc_0 has 4 children: (4) ['9', '1', '8', '0'] from container.children: (4) ['0', '1', '8', '9']
- [ELKBridge] 🔍 Container loc_1 has 6 children: (6) ['6', '3', '7', '5', '2', '4'] from container.children: (6) ['2', '3', '4', '5', '6', '7']
- [ELKBridge] 🔍 Found 0 top-level nodes: []
- [ELKBridge] 📊 Sending to ELK: {nodes: 2, edges: 9}
- [ELKBridge] ✅ ELK layout complete
- [ELKBridge] 📝 Applying ELK results back to VisState
- [ELKBridge] 🔍 ELK Result Structure: {
-  "id": "root",
-  "children": [
-    {
-      "id": "loc_0",
-      "width": 204,
-      "height": 324,
-      "children": [
-        {
-          "id": "9",
-          "width": 180,
-          "height": 60,
-          "$H": 279,
-          "x": 12,
-          "y": 92
-        },
-        {
-          "id": "1",
-          "width": 180,
-          "height": 60,
-          "$H": 281,
-          "x": 12,
-          "y": 252
-        },
-        {
-          "id": "8",
-          "width": 180,
-          "height": 60,
-          "$H": 283,
-          "x": 12,
-          "y": 12
-        },
-        {
-          "id": "0",
-          "width": 180,
-          "height": 60,
-          "$H": 285,
-          "x": 12,
-          "y": 172
-        }
-      ],
-      "layoutOptions": {
-        "elk.algorithm": "layered",
-        "elk.direction": "DOWN",
-        "elk.spacing.nodeNode": "75"
-      },
-      "$H": 277,
-      "x": 12,
-      "y": 12
-    },
-    {
-      "id": "loc_1",
-      "width": 204,
-      "height": 484,
-      "children": [
-        {
-          "id": "6",
-          "width": 180,
-          "height": 60,
-          "$H": 289,
-          "x": 12,
-          "y": 332
-        },
-        {
-          "id": "3",
-          "width": 180,
-          "height": 60,
-          "$H": 291,
-          "x": 12,
-          "y": 92
-        },
-        {
-          "id": "7",
-          "width": 180,
-          "height": 60,
-          "$H": 293,
-          "x": 12,
-          "y": 412
-        },
-        {
-          "id": "5",
-          "width": 180,
-          "height": 60,
-          "$H": 295,
-          "x": 12,
-          "y": 252
-        },
-        {
-          "id": "2",
-          "width": 180,
-          "height": 60,
-          "$H": 297,
-          "x": 12,
-          "y": 12
-        },
-        {
-          "id": "4",
-          "width": 180,
-          "height": 60,
-          "$H": 299,
-          "x": 12,
-          "y": 172
-        }
-      ],
-      "layoutOptions": {
-        "elk.algorithm": "layered",
-        "elk.direction": "DOWN",
-        "elk.spacing.nodeNode": "75"
-      },
-      "$H": 287,
-      "x": 236,
-      "y": 12
-    }
-  ],
-  "edges": [
-    {
-      "id": "e0",
-      "sources": [
-        "0"
-      ],
-      "targets": [
-        "1"
-      ],
-      "sections": [
-        {
-          "id": "e0_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 232
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 252
-          },
-          "incomingShape": "0",
-          "outgoingShape": "1"
-        }
-      ],
-      "container": "loc_0"
-    },
-    {
-      "id": "e1",
-      "sources": [
-        "1"
-      ],
-      "targets": [
-        "2"
-      ],
-      "container": "root"
-    },
-    {
-      "id": "e2",
-      "sources": [
-        "2"
-      ],
-      "targets": [
-        "3"
-      ],
-      "sections": [
-        {
-          "id": "e2_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 72
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 92
-          },
-          "incomingShape": "2",
-          "outgoingShape": "3"
-        }
-      ],
-      "container": "loc_1"
-    },
-    {
-      "id": "e3",
-      "sources": [
-        "3"
-      ],
-      "targets": [
-        "4"
-      ],
-      "sections": [
-        {
-          "id": "e3_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 152
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 172
-          },
-          "incomingShape": "3",
-          "outgoingShape": "4"
-        }
-      ],
-      "container": "loc_1"
-    },
-    {
-      "id": "e4",
-      "sources": [
-        "4"
-      ],
-      "targets": [
-        "5"
-      ],
-      "sections": [
-        {
-          "id": "e4_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 232
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 252
-          },
-          "incomingShape": "4",
-          "outgoingShape": "5"
-        }
-      ],
-      "container": "loc_1"
-    },
-    {
-      "id": "e5",
-      "sources": [
-        "5"
-      ],
-      "targets": [
-        "6"
-      ],
-      "sections": [
-        {
-          "id": "e5_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 312
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 332
-          },
-          "incomingShape": "5",
-          "outgoingShape": "6"
-        }
-      ],
-      "container": "loc_1"
-    },
-    {
-      "id": "e6",
-      "sources": [
-        "6"
-      ],
-      "targets": [
-        "7"
-      ],
-      "sections": [
-        {
-          "id": "e6_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 392
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 412
-          },
-          "incomingShape": "6",
-          "outgoingShape": "7"
-        }
-      ],
-      "container": "loc_1"
-    },
-    {
-      "id": "e7",
-      "sources": [
-        "7"
-      ],
-      "targets": [
-        "8"
-      ],
-      "container": "root"
-    },
-    {
-      "id": "e8",
-      "sources": [
-        "8"
-      ],
-      "targets": [
-        "9"
-      ],
-      "sections": [
-        {
-          "id": "e8_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 72
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 92
-          },
-          "incomingShape": "8",
-          "outgoingShape": "9"
-        }
-      ],
-      "container": "loc_0"
-    }
-  ],
-  "layoutOptions": {
-    "elk.algorithm": "layered",
-    "elk.direction": "DOWN",
-    "elk.spacing.nodeNode": "100",
-    "elk.spacing.edgeNode": "50"
-  },
-  "$H": 13,
-  "x": 0,
-  "y": 0,
-  "width": 452,
-  "height": 508
-}
- [VisState] 📏 Auto-updated expandedDimensions for loc_0: 204x324
- [ELKBridge] 📏 Updated container loc_0 layout: {"position":{"x":12,"y":12},"dimensions":{"width":204,"height":324}}
- [VisState] 📏 Auto-updated expandedDimensions for loc_1: 204x484
- [ELKBridge] 📏 Updated container loc_1 layout: {"position":{"x":236,"y":12},"dimensions":{"width":204,"height":484}}
- --- ELKBRIDGE_EDGE_PROCESSING_START ---
- [ELKBridge] 🔍 Processing 9 edges for sections
- [ELKBridge] 🔧 About to set layout for edge e0 with 1 sections
- [ELKBridge] 📍 Updated edge e0 with 1 sections
- [ELKBridge] 🔍 Debug: Edge e0 layout after update: {sections: Array(1)}
- [ELKBridge] 📍 Edge e1 has no sections (cross-container edge)
- [ELKBridge] 🔧 About to set layout for edge e2 with 1 sections
- [ELKBridge] 📍 Updated edge e2 with 1 sections
- [ELKBridge] 🔍 Debug: Edge e2 layout after update: {sections: Array(1)}
- [ELKBridge] 🔧 About to set layout for edge e3 with 1 sections
- [ELKBridge] 📍 Updated edge e3 with 1 sections
- [ELKBridge] 🔍 Debug: Edge e3 layout after update: {sections: Array(1)}
- [ELKBridge] 🔧 About to set layout for edge e4 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e4 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e4 layout after update: {sections: Array(1)}
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge e5 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e5 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e5 layout after update: {sections: Array(1)}
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge e6 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e6 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e6 layout after update: {sections: Array(1)}
-ELKBridge.ts:295 [ELKBridge] 📍 Edge e7 has no sections (cross-container edge)
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge e8 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e8 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e8 layout after update: {sections: Array(1)}
-ELKBridge.ts:269 --- ELKBRIDGE_EDGE_PROCESSING_END ---
-ELKBridge.ts:269 [ELKBridge] ✅ Applied all ELK results to VisState
-ReactFlowConverter.ts:21 [ReactFlowConverter] 🔄 Converting with bridge architecture...
-ReactFlowBridge.ts:63 [ReactFlowBridge] 🔄 Converting VisState to ReactFlow format
-ReactFlowBridge.ts:136 [ReactFlowBridge] 📦 Container loc_0: collapsed=false, ELK=(12, 12), ReactFlow=(12, 12), size=204x324
-ReactFlowBridge.ts:136 [ReactFlowBridge] 📦 Container loc_1: collapsed=false, ELK=(236, 12), ReactFlow=(236, 12), size=204x484
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 332) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 6: parent=loc_1, ELK=(12, 332), ReactFlow=(12, 332)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 92) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 3: parent=loc_1, ELK=(12, 92), ReactFlow=(12, 92)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 412) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 7: parent=loc_1, ELK=(12, 412), ReactFlow=(12, 412)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 92) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 9: parent=loc_0, ELK=(12, 92), ReactFlow=(12, 92)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 252) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 5: parent=loc_1, ELK=(12, 252), ReactFlow=(12, 252)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 12) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 2: parent=loc_1, ELK=(12, 12), ReactFlow=(12, 12)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 252) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 1: parent=loc_0, ELK=(12, 252), ReactFlow=(12, 252)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 172) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 4: parent=loc_1, ELK=(12, 172), ReactFlow=(12, 172)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 12) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 8: parent=loc_0, ELK=(12, 12), ReactFlow=(12, 12)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 172) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 0: parent=loc_0, ELK=(12, 172), ReactFlow=(12, 172)
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e0: {source: '0', target: '1', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e0: {id: 'e0', type: 'standard', source: '0', target: '1', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e1: {source: '1', target: '2', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e1: {id: 'e1', type: 'standard', source: '1', target: '2', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e2: {source: '2', target: '3', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e2: {id: 'e2', type: 'standard', source: '2', target: '3', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e3: {source: '3', target: '4', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e3: {id: 'e3', type: 'standard', source: '3', target: '4', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e4: {source: '4', target: '5', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e4: {id: 'e4', type: 'standard', source: '4', target: '5', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e5: {source: '5', target: '6', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e5: {id: 'e5', type: 'standard', source: '5', target: '6', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e6: {source: '6', target: '7', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e6: {id: 'e6', type: 'standard', source: '6', target: '7', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e7: {source: '7', target: '8', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e7: {id: 'e7', type: 'standard', source: '7', target: '8', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e8: {source: '8', target: '9', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e8: {id: 'e8', type: 'standard', source: '8', target: '9', markerEnd: {…}, …}
-ReactFlowBridge.ts:80 [ReactFlowBridge] ✅ Conversion complete: {nodes: 12, edges: 9, containers: 2, hyperEdges: 0}
-FlowGraph.tsx:95 [FlowGraph] ✅ Updated ReactFlow data: {nodes: 12, edges: 9}
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=204, data.height=324, using 204x324
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=204, data.height=484, using 204x484
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=204, data.height=324, using 204x324
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=204, data.height=484, using 204x484
-FlowGraph.tsx:164 [FlowGraph] 📝 Nodes changing: 12 changes
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=204, data.height=324, using 204x324
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=204, data.height=484, using 204x484
-FlowGraph.tsx:164 [FlowGraph] 📝 Nodes changing: 1 changes
- [FlowGraph] 🖱️ Node clicked: loc_0
- [HomePage] 🖱️ Node click received: loc_0, type: container
- [HomePage] 🖱️ Container loc_0 clicked, currently expanded
- [VisState] 📏 Auto-updated expandedDimensions for loc_0: 200x60
- [HomePage] ↙️ Collapsed container loc_0
- [FlowGraph] 🔄 Visualization state changed, updating...
- [ELKBridge] 🚀 Starting ELK layout from VisState
- [ELKBridge] 📋 Extracted from VisState: {visibleNodes: 7, visibleContainers: 1, totalEdges: 7, regularEdges: 7, hyperEdges: 0}
- [ELKBridge] 🔨 Building ELK graph with 7 nodes, 1 containers, 7 edges
- [ELKBridge] 🔍 Available nodes: (7) ['6', '3', '7', '5', '2', '4', 'loc_0']
- [ELKBridge] 🔍 Available containers: [{…}]
- [ELKBridge] 🔍 Container loc_1 has 6 children: (6) ['6', '3', '7', '5', '2', '4'] from container.children: (6) ['2', '3', '4', '5', '6', '7']
- [ELKBridge] 🔍 Found 1 top-level nodes: ['loc_0']
- [ELKBridge] 📊 Sending to ELK: {nodes: 2, edges: 7}
-ELKBridge.ts:32 [ELKBridge] ✅ ELK layout complete
-ELKBridge.ts:247 [ELKBridge] 📝 Applying ELK results back to VisState
-ELKBridge.ts:247 [ELKBridge] 🔍 ELK Result Structure: {
-  "id": "root",
-  "children": [
-    {
-      "id": "loc_1",
-      "width": 204,
-      "height": 484,
-      "children": [
-        {
-          "id": "6",
-          "width": 180,
-          "height": 60,
-          "$H": 415,
-          "x": 12,
-          "y": 332
-        },
-        {
-          "id": "3",
-          "width": 180,
-          "height": 60,
-          "$H": 417,
-          "x": 12,
-          "y": 92
-        },
-        {
-          "id": "7",
-          "width": 180,
-          "height": 60,
-          "$H": 419,
-          "x": 12,
-          "y": 412
-        },
-        {
-          "id": "5",
-          "width": 180,
-          "height": 60,
-          "$H": 421,
-          "x": 12,
-          "y": 252
-        },
-        {
-          "id": "2",
-          "width": 180,
-          "height": 60,
-          "$H": 423,
-          "x": 12,
-          "y": 12
-        },
-        {
-          "id": "4",
-          "width": 180,
-          "height": 60,
-          "$H": 425,
-          "x": 12,
-          "y": 172
-        }
-      ],
-      "layoutOptions": {
-        "elk.algorithm": "layered",
-        "elk.direction": "DOWN",
-        "elk.spacing.nodeNode": "75"
-      },
-      "$H": 413,
-      "x": 232,
-      "y": 12
-    },
-    {
-      "id": "loc_0",
-      "width": 200,
-      "height": 60,
-      "$H": 427,
-      "x": 12,
-      "y": 12
-    }
-  ],
-  "edges": [
-    {
-      "id": "e2",
-      "sources": [
-        "2"
-      ],
-      "targets": [
-        "3"
-      ],
-      "sections": [
-        {
-          "id": "e2_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 72
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 92
-          },
-          "incomingShape": "2",
-          "outgoingShape": "3"
-        }
-      ],
-      "container": "loc_1"
-    },
-    {
-      "id": "e3",
-      "sources": [
-        "3"
-      ],
-      "targets": [
-        "4"
-      ],
-      "sections": [
-        {
-          "id": "e3_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 152
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 172
-          },
-          "incomingShape": "3",
-          "outgoingShape": "4"
-        }
-      ],
-      "container": "loc_1"
-    },
-    {
-      "id": "e4",
-      "sources": [
-        "4"
-      ],
-      "targets": [
-        "5"
-      ],
-      "sections": [
-        {
-          "id": "e4_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 232
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 252
-          },
-          "incomingShape": "4",
-          "outgoingShape": "5"
-        }
-      ],
-      "container": "loc_1"
-    },
-    {
-      "id": "e5",
-      "sources": [
-        "5"
-      ],
-      "targets": [
-        "6"
-      ],
-      "sections": [
-        {
-          "id": "e5_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 312
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 332
-          },
-          "incomingShape": "5",
-          "outgoingShape": "6"
-        }
-      ],
-      "container": "loc_1"
-    },
-    {
-      "id": "e6",
-      "sources": [
-        "6"
-      ],
-      "targets": [
-        "7"
-      ],
-      "sections": [
-        {
-          "id": "e6_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 392
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 412
-          },
-          "incomingShape": "6",
-          "outgoingShape": "7"
-        }
-      ],
-      "container": "loc_1"
-    },
-    {
-      "id": "hyper_loc_0_to_2",
-      "sources": [
-        "loc_0"
-      ],
-      "targets": [
-        "2"
-      ],
-      "container": "root"
-    },
-    {
-      "id": "hyper_7_to_loc_0",
-      "sources": [
-        "7"
-      ],
-      "targets": [
-        "loc_0"
-      ],
-      "container": "root"
-    }
-  ],
-  "layoutOptions": {
-    "elk.algorithm": "layered",
-    "elk.direction": "DOWN",
-    "elk.spacing.nodeNode": "100",
-    "elk.spacing.edgeNode": "50"
-  },
-  "$H": 411,
-  "x": 0,
-  "y": 0,
-  "width": 448,
-  "height": 508
-}
-VisState.ts:1329 [VisState] 📏 Auto-updated expandedDimensions for loc_1: 204x484
-ELKBridge.ts:307 [ELKBridge] 📏 Updated container loc_1 layout: {"position":{"x":232,"y":12},"dimensions":{"width":204,"height":484}}
-VisState.ts:1329 [VisState] 📏 Auto-updated expandedDimensions for loc_0: 200x60
-ELKBridge.ts:269 --- ELKBRIDGE_EDGE_PROCESSING_START ---
-ELKBridge.ts:269 [ELKBridge] 🔍 Processing 7 edges for sections
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge e2 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e2 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e2 layout after update: {sections: Array(1)}
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge e3 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e3 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e3 layout after update: {sections: Array(1)}
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge e4 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e4 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e4 layout after update: {sections: Array(1)}
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge e5 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e5 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e5 layout after update: {sections: Array(1)}
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge e6 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e6 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e6 layout after update: {sections: Array(1)}
-ELKBridge.ts:295 [ELKBridge] 📍 Edge hyper_loc_0_to_2 has no sections (cross-container edge)
-ELKBridge.ts:295 [ELKBridge] 📍 Edge hyper_7_to_loc_0 has no sections (cross-container edge)
-ELKBridge.ts:269 --- ELKBRIDGE_EDGE_PROCESSING_END ---
-ELKBridge.ts:269 [ELKBridge] ✅ Applied all ELK results to VisState
-ReactFlowConverter.ts:21 [ReactFlowConverter] 🔄 Converting with bridge architecture...
-ReactFlowBridge.ts:63 [ReactFlowBridge] 🔄 Converting VisState to ReactFlow format
-ReactFlowBridge.ts:136 [ReactFlowBridge] 📦 Container loc_0: collapsed=true, ELK=(12, 12), ReactFlow=(12, 12), size=200x60
-ReactFlowBridge.ts:136 [ReactFlowBridge] 📦 Container loc_1: collapsed=false, ELK=(232, 12), ReactFlow=(232, 12), size=204x484
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 232, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 332) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 6: parent=loc_1, ELK=(12, 332), ReactFlow=(12, 332)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 232, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 92) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 3: parent=loc_1, ELK=(12, 92), ReactFlow=(12, 92)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 232, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 412) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 7: parent=loc_1, ELK=(12, 412), ReactFlow=(12, 412)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 232, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 252) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 5: parent=loc_1, ELK=(12, 252), ReactFlow=(12, 252)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 232, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 12) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 2: parent=loc_1, ELK=(12, 12), ReactFlow=(12, 12)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 232, y: 12, width: 204, height: 484}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 172) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 4: parent=loc_1, ELK=(12, 172), ReactFlow=(12, 172)
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e2: {source: '2', target: '3', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e2: {id: 'e2', type: 'standard', source: '2', target: '3', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e3: {source: '3', target: '4', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e3: {id: 'e3', type: 'standard', source: '3', target: '4', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e4: {source: '4', target: '5', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e4: {id: 'e4', type: 'standard', source: '4', target: '5', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e5: {source: '5', target: '6', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e5: {id: 'e5', type: 'standard', source: '5', target: '6', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e6: {source: '6', target: '7', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e6: {id: 'e6', type: 'standard', source: '6', target: '7', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge hyper_loc_0_to_2: {source: 'loc_0', target: '2', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge hyper_loc_0_to_2: {id: 'hyper_loc_0_to_2', type: 'standard', source: 'loc_0', target: '2', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge hyper_7_to_loc_0: {source: '7', target: 'loc_0', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge hyper_7_to_loc_0: {id: 'hyper_7_to_loc_0', type: 'standard', source: '7', target: 'loc_0', markerEnd: {…}, …}
-ReactFlowBridge.ts:80 [ReactFlowBridge] ✅ Conversion complete: {nodes: 8, edges: 7, containers: 2, hyperEdges: 0}
-FlowGraph.tsx:95 [FlowGraph] ✅ Updated ReactFlow data: {nodes: 8, edges: 7}
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=200, data.height=60, using 200x60
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=204, data.height=484, using 204x484
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=200, data.height=60, using 200x60
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=204, data.height=484, using 204x484
-FlowGraph.tsx:164 [FlowGraph] 📝 Nodes changing: 8 changes
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=200, data.height=60, using 200x60
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=204, data.height=484, using 204x484
-FlowGraph.tsx:164 [FlowGraph] 📝 Nodes changing: 1 changes
-FlowGraph.tsx:130 [FlowGraph] 🖱️ Node clicked: loc_1
-vis.js:158 [HomePage] 🖱️ Node click received: loc_1, type: container
-vis.js:167 [HomePage] 🖱️ Container loc_1 clicked, currently expanded
-VisState.ts:1329 [VisState] 📏 Auto-updated expandedDimensions for loc_1: 200x60
-vis.js:172 [HomePage] ↙️ Collapsed container loc_1
-FlowGraph.tsx:77 [FlowGraph] 🔄 Visualization state changed, updating...
-ELKBridge.ts:21 [ELKBridge] 🚀 Starting ELK layout from VisState
-ELKBridge.ts:113 [ELKBridge] 📋 Extracted from VisState: {visibleNodes: 2, visibleContainers: 0, totalEdges: 2, regularEdges: 2, hyperEdges: 0}
-ELKBridge.ts:173 [ELKBridge] 🔨 Building ELK graph with 2 nodes, 0 containers, 2 edges
-ELKBridge.ts:173 [ELKBridge] 🔍 Available nodes: (2) ['loc_0', 'loc_1']
-ELKBridge.ts:173 [ELKBridge] 🔍 Available containers: []
-ELKBridge.ts:214 [ELKBridge] 🔍 Found 2 top-level nodes: (2) ['loc_0', 'loc_1']
-ELKBridge.ts:32 [ELKBridge] 📊 Sending to ELK: {nodes: 2, edges: 2}
-ELKBridge.ts:32 [ELKBridge] ✅ ELK layout complete
-ELKBridge.ts:247 [ELKBridge] 📝 Applying ELK results back to VisState
-ELKBridge.ts:247 [ELKBridge] 🔍 ELK Result Structure: {
-  "id": "root",
-  "children": [
-    {
-      "id": "loc_0",
-      "width": 200,
-      "height": 60,
-      "$H": 473,
-      "x": 12,
-      "y": 92
-    },
-    {
-      "id": "loc_1",
-      "width": 200,
-      "height": 60,
-      "$H": 475,
-      "x": 12,
-      "y": 12
-    }
-  ],
-  "edges": [
-    {
-      "id": "hyper_loc_0_to_loc_1",
-      "sources": [
-        "loc_0"
-      ],
-      "targets": [
-        "loc_1"
-      ],
-      "sections": [
-        {
-          "id": "hyper_loc_0_to_loc_1_s0",
-          "startPoint": {
-            "x": 145.33333333333331,
-            "y": 92
-          },
-          "endPoint": {
-            "x": 145.33333333333331,
-            "y": 72
-          },
-          "incomingShape": "loc_0",
-          "outgoingShape": "loc_1"
-        }
-      ],
-      "container": "root"
-    },
-    {
-      "id": "hyper_loc_1_to_loc_0",
-      "sources": [
-        "loc_1"
-      ],
-      "targets": [
-        "loc_0"
-      ],
-      "sections": [
-        {
-          "id": "hyper_loc_1_to_loc_0_s0",
-          "startPoint": {
-            "x": 78.66666666666666,
-            "y": 72
-          },
-          "endPoint": {
-            "x": 78.66666666666666,
-            "y": 92
-          },
-          "incomingShape": "loc_1",
-          "outgoingShape": "loc_0"
-        }
-      ],
-      "container": "root"
-    }
-  ],
-  "layoutOptions": {
-    "elk.algorithm": "layered",
-    "elk.direction": "DOWN",
-    "elk.spacing.nodeNode": "100",
-    "elk.spacing.edgeNode": "50"
-  },
-  "$H": 471,
-  "x": 0,
-  "y": 0,
-  "width": 224,
-  "height": 164
-}
-VisState.ts:1329 [VisState] 📏 Auto-updated expandedDimensions for loc_0: 200x60
-VisState.ts:1329 [VisState] 📏 Auto-updated expandedDimensions for loc_1: 200x60
-ELKBridge.ts:269 --- ELKBRIDGE_EDGE_PROCESSING_START ---
-ELKBridge.ts:269 [ELKBridge] 🔍 Processing 2 edges for sections
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge hyper_loc_0_to_loc_1 with 1 sections
-VisualizationEngine.ts:229 [VisualizationEngine] ❌ Layout failed: Entity does not exist Error: Entity does not exist
-    at VisualizationState._validateEntity (VisState.ts:146:1)
-    at VisualizationState.setEdgeLayout (VisState.ts:1303:1)
-    at ELKBridge.updateEdgeFromELK (ELKBridge.ts:289:1)
-    at eval (ELKBridge.ts:269:1)
-    at Array.forEach (<anonymous>)
-    at ELKBridge.elkToVisState (ELKBridge.ts:269:1)
-    at ELKBridge.layoutVisState (ELKBridge.ts:42:1)
-    at async VisualizationEngine.runLayout (VisualizationEngine.ts:103:1)
-    at async handleStateChange (FlowGraph.tsx:86:1)
-handleError @ VisualizationEngine.ts:229
-runLayout @ VisualizationEngine.ts:103
-await in runLayout
-handleStateChange @ FlowGraph.tsx:86
-eval @ FlowGraph.tsx:113
-commitHookEffectListMount @ react-dom.development.js:23184
-commitPassiveMountOnFiber @ react-dom.development.js:24965
-commitPassiveMountEffects_complete @ react-dom.development.js:24925
-commitPassiveMountEffects_begin @ react-dom.development.js:24912
-commitPassiveMountEffects @ react-dom.development.js:24900
-flushPassiveEffectsImpl @ react-dom.development.js:27073
-flushPassiveEffects @ react-dom.development.js:27018
-commitRootImpl @ react-dom.development.js:26969
+vis.js:34 Loading visualizer-v4 components...
+vis.js:40 Loaded v4 module: Module {…}
+vis.js:45 ✅ All v4 components loaded successfully
+react-dom.development.js:15721 Uncaught TypeError: Class constructor VisualizationState cannot be invoked without 'new'
+    at basicStateReducer (react-dom.development.js:15721:41)
+    at updateReducer (react-dom.development.js:15845:22)
+    at updateState (react-dom.development.js:16185:10)
+    at Object.useState (react-dom.development.js:17096:16)
+    at Object.useState (react.development.js:1623:21)
+    at VisV4Component (vis.js:8:1)
+    at renderWithHooks (react-dom.development.js:15486:18)
+    at updateFunctionComponent (react-dom.development.js:19612:20)
+    at beginWork (react-dom.development.js:21635:16)
+    at HTMLUnknownElement.callCallback (react-dom.development.js:4164:14)
+basicStateReducer @ react-dom.development.js:15721
+updateReducer @ react-dom.development.js:15845
+updateState @ react-dom.development.js:16185
+useState @ react-dom.development.js:17096
+useState @ react.development.js:1623
+VisV4Component @ vis.js:8
+renderWithHooks @ react-dom.development.js:15486
+updateFunctionComponent @ react-dom.development.js:19612
+beginWork @ react-dom.development.js:21635
+callCallback @ react-dom.development.js:4164
+invokeGuardedCallbackDev @ react-dom.development.js:4213
+invokeGuardedCallback @ react-dom.development.js:4277
+beginWork$1 @ react-dom.development.js:27485
+performUnitOfWork @ react-dom.development.js:26594
+workLoopSync @ react-dom.development.js:26500
+renderRootSync @ react-dom.development.js:26468
+performConcurrentWorkOnRoot @ react-dom.development.js:25772
+workLoop @ scheduler.development.js:266
+flushWork @ scheduler.development.js:239
+performWorkUntilDeadline @ scheduler.development.js:533
+react-dom.development.js:15721 Uncaught TypeError: Class constructor VisualizationState cannot be invoked without 'new'
+    at basicStateReducer (react-dom.development.js:15721:41)
+    at updateReducer (react-dom.development.js:15845:22)
+    at updateState (react-dom.development.js:16185:10)
+    at Object.useState (react-dom.development.js:17096:16)
+    at Object.useState (react.development.js:1623:21)
+    at VisV4Component (vis.js:8:1)
+    at renderWithHooks (react-dom.development.js:15486:18)
+    at updateFunctionComponent (react-dom.development.js:19612:20)
+    at beginWork (react-dom.development.js:21635:16)
+    at HTMLUnknownElement.callCallback (react-dom.development.js:4164:14)
+basicStateReducer @ react-dom.development.js:15721
+updateReducer @ react-dom.development.js:15845
+updateState @ react-dom.development.js:16185
+useState @ react-dom.development.js:17096
+useState @ react.development.js:1623
+VisV4Component @ vis.js:8
+renderWithHooks @ react-dom.development.js:15486
+updateFunctionComponent @ react-dom.development.js:19612
+beginWork @ react-dom.development.js:21635
+callCallback @ react-dom.development.js:4164
+invokeGuardedCallbackDev @ react-dom.development.js:4213
+invokeGuardedCallback @ react-dom.development.js:4277
+beginWork$1 @ react-dom.development.js:27485
+performUnitOfWork @ react-dom.development.js:26594
+workLoopSync @ react-dom.development.js:26500
+renderRootSync @ react-dom.development.js:26468
+recoverFromConcurrentError @ react-dom.development.js:25884
+performConcurrentWorkOnRoot @ react-dom.development.js:25784
+workLoop @ scheduler.development.js:266
+flushWork @ scheduler.development.js:239
+performWorkUntilDeadline @ scheduler.development.js:533
+react-dom.development.js:18704 The above error occurred in the <VisV4Component> component:
+
+    at VisV4Component (webpack-internal:///./src/pages/vis.js:18:108)
+    at BrowserOnly (webpack-internal:///./node_modules/@docusaurus/core/lib/client/exports/BrowserOnly.js:16:23)
+    at main
+    at ErrorBoundary (webpack-internal:///./node_modules/@docusaurus/core/lib/client/exports/ErrorBoundary.js:16:269)
+    at div
+    at NavbarSecondaryMenuDisplayProvider (webpack-internal:///./node_modules/@docusaurus/theme-common/lib/contexts/navbarSecondaryMenu/display.js:21:318)
+    at NavbarMobileSidebarProvider (webpack-internal:///./node_modules/@docusaurus/theme-common/lib/contexts/navbarMobileSidebar.js:23:414)
+    at NavbarSecondaryMenuContentProvider (webpack-internal:///./node_modules/@docusaurus/theme-common/lib/contexts/navbarSecondaryMenu/content.js:16:157)
+    at NavbarProvider (webpack-internal:///./node_modules/@docusaurus/theme-common/lib/utils/navbarUtils.js:22:29)
+    at HtmlClassNameProvider (webpack-internal:///./node_modules/@docusaurus/theme-common/lib/utils/metadataUtils.js:29:46)
+    at PluginHtmlClassNameProvider (webpack-internal:///./node_modules/@docusaurus/theme-common/lib/utils/metadataUtils.js:32:42)
+    at DocsPreferredVersionContextProviderUnsafe (webpack-internal:///./node_modules/@docusaurus/plugin-content-docs/lib/client/docsPreferredVersion.js:32:382)
+    at DocsPreferredVersionContextProvider (webpack-internal:///./node_modules/@docusaurus/plugin-content-docs/lib/client/docsPreferredVersion.js:35:50)
+    at ScrollControllerProvider (webpack-internal:///./node_modules/@docusaurus/theme-common/lib/utils/scrollUtils.js:21:489)
+    at AnnouncementBarProvider (webpack-internal:///./node_modules/@docusaurus/theme-common/lib/contexts/announcementBar.js:26:450)
+    at ColorModeProvider (webpack-internal:///./node_modules/@docusaurus/theme-common/lib/contexts/colorMode.js:27:1246)
+    at eval (webpack-internal:///./node_modules/@docusaurus/theme-common/lib/utils/reactUtils.js:59:9)
+    at LayoutProvider (webpack-internal:///./node_modules/@docusaurus/theme-classic/lib/theme/Layout/Provider/index.js:20:651)
+    at Layout (webpack-internal:///./node_modules/@docusaurus/theme-classic/lib/theme/Layout/index.js:26:33)
+    at VisPage
+    at RouteContextProvider (webpack-internal:///./node_modules/@docusaurus/core/lib/client/routeContext.js:16:60)
+    at LoadableComponent (webpack-internal:///./node_modules/react-loadable/lib/index.js:138:32)
+    at Route (webpack-internal:///./node_modules/react-router/esm/react-router.js:648:29)
+    at Switch (webpack-internal:///./node_modules/react-router/esm/react-router.js:850:29)
+    at Route (webpack-internal:///./node_modules/react-router/esm/react-router.js:648:29)
+    at ClientLifecyclesDispatcher (webpack-internal:///./node_modules/@docusaurus/core/lib/client/ClientLifecyclesDispatcher.js:15:261)
+    at PendingNavigation (webpack-internal:///./node_modules/@docusaurus/core/lib/client/PendingNavigation.js:17:150)
+    at AppNavigation (webpack-internal:///./node_modules/@docusaurus/core/lib/client/App.js:29:252)
+    at Root (webpack-internal:///./node_modules/@docusaurus/core/lib/client/theme-fallback/Root/index.js:20:16)
+    at BrowserContextProvider (webpack-internal:///./node_modules/@docusaurus/core/lib/client/browserContext.js:21:127)
+    at DocusaurusContextProvider (webpack-internal:///./node_modules/@docusaurus/core/lib/client/docusaurusContext.js:21:496)
+    at ErrorBoundary (webpack-internal:///./node_modules/@docusaurus/core/lib/client/exports/ErrorBoundary.js:16:269)
+    at App
+    at Router (webpack-internal:///./node_modules/react-router/esm/react-router.js:267:30)
+    at BrowserRouter (webpack-internal:///./node_modules/react-router-dom/esm/react-router-dom.js:58:35)
+    at Router (webpack-internal:///./node_modules/@docusaurus/core/lib/client/clientEntry.js:18:21)
+    at r (webpack-internal:///./node_modules/react-helmet-async/lib/index.module.js:17:7350)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+logCapturedError @ react-dom.development.js:18704
+callback @ react-dom.development.js:18767
+callCallback @ react-dom.development.js:15036
+commitUpdateQueue @ react-dom.development.js:15057
+commitLayoutEffectOnFiber @ react-dom.development.js:23398
+commitLayoutMountEffects_complete @ react-dom.development.js:24722
+commitLayoutEffects_begin @ react-dom.development.js:24708
+commitLayoutEffects @ react-dom.development.js:24646
+commitRootImpl @ react-dom.development.js:26857
 commitRoot @ react-dom.development.js:26716
-performSyncWorkOnRoot @ react-dom.development.js:26151
-flushSyncCallbacks @ react-dom.development.js:12042
-eval @ react-dom.development.js:25685
-ReactFlowConverter.ts:21 [ReactFlowConverter] 🔄 Converting with bridge architecture...
-ReactFlowBridge.ts:63 [ReactFlowBridge] 🔄 Converting VisState to ReactFlow format
-ReactFlowBridge.ts:136 [ReactFlowBridge] 📦 Container loc_0: collapsed=true, ELK=(12, 92), ReactFlow=(12, 92), size=200x60
-ReactFlowBridge.ts:136 [ReactFlowBridge] 📦 Container loc_1: collapsed=true, ELK=(12, 12), ReactFlow=(12, 12), size=200x60
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge hyper_loc_0_to_loc_1: {source: 'loc_0', target: 'loc_1', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge hyper_loc_0_to_loc_1: {id: 'hyper_loc_0_to_loc_1', type: 'standard', source: 'loc_0', target: 'loc_1', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge hyper_loc_1_to_loc_0: {source: 'loc_1', target: 'loc_0', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge hyper_loc_1_to_loc_0: {id: 'hyper_loc_1_to_loc_0', type: 'standard', source: 'loc_1', target: 'loc_0', markerEnd: {…}, …}
-ReactFlowBridge.ts:80 [ReactFlowBridge] ✅ Conversion complete: {nodes: 2, edges: 2, containers: 2, hyperEdges: 0}
-FlowGraph.tsx:95 [FlowGraph] ✅ Updated ReactFlow data: {nodes: 2, edges: 2}
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=200, data.height=60, using 200x60
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=200, data.height=60, using 200x60
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=200, data.height=60, using 200x60
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=200, data.height=60, using 200x60
-FlowGraph.tsx:164 [FlowGraph] 📝 Nodes changing: 2 changes
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=200, data.height=60, using 200x60
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=200, data.height=60, using 200x60
-FlowGraph.tsx:164 [FlowGraph] 📝 Nodes changing: 1 changes
-FlowGraph.tsx:130 [FlowGraph] 🖱️ Node clicked: loc_0
-vis.js:158 [HomePage] 🖱️ Node click received: loc_0, type: container
-vis.js:167 [HomePage] 🖱️ Container loc_0 clicked, currently collapsed
-VisState.ts:1329 [VisState] 📏 Auto-updated expandedDimensions for loc_0: 200x60
-vis.js:172 [HomePage] ↗️ Expanded container loc_0
-FlowGraph.tsx:77 [FlowGraph] 🔄 Visualization state changed, updating...
-ELKBridge.ts:21 [ELKBridge] 🚀 Starting ELK layout from VisState
-ELKBridge.ts:113 [ELKBridge] 📋 Extracted from VisState: {visibleNodes: 5, visibleContainers: 1, totalEdges: 2, regularEdges: 2, hyperEdges: 0}
-ELKBridge.ts:173 [ELKBridge] 🔨 Building ELK graph with 5 nodes, 1 containers, 2 edges
-ELKBridge.ts:173 [ELKBridge] 🔍 Available nodes: (5) ['0', '1', '8', '9', 'loc_1']
-ELKBridge.ts:173 [ELKBridge] 🔍 Available containers: [{…}]
-ELKBridge.ts:190 [ELKBridge] 🔍 Container loc_0 has 4 children: (4) ['0', '1', '8', '9'] from container.children: (4) ['0', '1', '8', '9']
-ELKBridge.ts:214 [ELKBridge] 🔍 Found 1 top-level nodes: ['loc_1']
-ELKBridge.ts:32 [ELKBridge] 📊 Sending to ELK: {nodes: 2, edges: 2}
-ELKBridge.ts:32 [ELKBridge] ✅ ELK layout complete
-ELKBridge.ts:247 [ELKBridge] 📝 Applying ELK results back to VisState
-ELKBridge.ts:247 [ELKBridge] 🔍 ELK Result Structure: {
-  "id": "root",
-  "children": [
-    {
-      "id": "loc_0",
-      "width": 204,
-      "height": 324,
-      "children": [
-        {
-          "id": "0",
-          "width": 180,
-          "height": 60,
-          "$H": 496,
-          "x": 12,
-          "y": 12
-        },
-        {
-          "id": "1",
-          "width": 180,
-          "height": 60,
-          "$H": 498,
-          "x": 12,
-          "y": 92
-        },
-        {
-          "id": "8",
-          "width": 180,
-          "height": 60,
-          "$H": 500,
-          "x": 12,
-          "y": 172
-        },
-        {
-          "id": "9",
-          "width": 180,
-          "height": 60,
-          "$H": 502,
-          "x": 12,
-          "y": 252
-        }
-      ],
-      "layoutOptions": {
-        "elk.algorithm": "layered",
-        "elk.direction": "DOWN",
-        "elk.spacing.nodeNode": "75"
-      },
-      "$H": 494,
-      "x": 232,
-      "y": 12
-    },
-    {
-      "id": "loc_1",
-      "width": 200,
-      "height": 60,
-      "$H": 504,
-      "x": 12,
-      "y": 12
-    }
-  ],
-  "edges": [
-    {
-      "id": "e0",
-      "sources": [
-        "0"
-      ],
-      "targets": [
-        "1"
-      ],
-      "sections": [
-        {
-          "id": "e0_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 72
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 92
-          },
-          "incomingShape": "0",
-          "outgoingShape": "1"
-        }
-      ],
-      "container": "loc_0"
-    },
-    {
-      "id": "e8",
-      "sources": [
-        "8"
-      ],
-      "targets": [
-        "9"
-      ],
-      "sections": [
-        {
-          "id": "e8_s0",
-          "startPoint": {
-            "x": 102,
-            "y": 232
-          },
-          "endPoint": {
-            "x": 102,
-            "y": 252
-          },
-          "incomingShape": "8",
-          "outgoingShape": "9"
-        }
-      ],
-      "container": "loc_0"
-    }
-  ],
-  "layoutOptions": {
-    "elk.algorithm": "layered",
-    "elk.direction": "DOWN",
-    "elk.spacing.nodeNode": "100",
-    "elk.spacing.edgeNode": "50"
-  },
-  "$H": 492,
-  "x": 0,
-  "y": 0,
-  "width": 448,
-  "height": 348
-}
-VisState.ts:1329 [VisState] 📏 Auto-updated expandedDimensions for loc_0: 204x324
-ELKBridge.ts:307 [ELKBridge] 📏 Updated container loc_0 layout: {"position":{"x":232,"y":12},"dimensions":{"width":204,"height":324}}
-VisState.ts:1329 [VisState] 📏 Auto-updated expandedDimensions for loc_1: 200x60
-ELKBridge.ts:269 --- ELKBRIDGE_EDGE_PROCESSING_START ---
-ELKBridge.ts:269 [ELKBridge] 🔍 Processing 2 edges for sections
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge e0 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e0 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e0 layout after update: {sections: Array(1)}
-ELKBridge.ts:289 [ELKBridge] 🔧 About to set layout for edge e8 with 1 sections
-ELKBridge.ts:289 [ELKBridge] 📍 Updated edge e8 with 1 sections
-ELKBridge.ts:295 [ELKBridge] 🔍 Debug: Edge e8 layout after update: {sections: Array(1)}
-ELKBridge.ts:269 --- ELKBRIDGE_EDGE_PROCESSING_END ---
-ELKBridge.ts:269 [ELKBridge] ✅ Applied all ELK results to VisState
-ReactFlowConverter.ts:21 [ReactFlowConverter] 🔄 Converting with bridge architecture...
-ReactFlowBridge.ts:63 [ReactFlowBridge] 🔄 Converting VisState to ReactFlow format
-ReactFlowBridge.ts:136 [ReactFlowBridge] 📦 Container loc_0: collapsed=false, ELK=(232, 12), ReactFlow=(232, 12), size=204x324
-ReactFlowBridge.ts:136 [ReactFlowBridge] 📦 Container loc_1: collapsed=true, ELK=(12, 12), ReactFlow=(12, 12), size=200x60
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 232, y: 12, width: 204, height: 324}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 12) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 0: parent=loc_0, ELK=(12, 12), ReactFlow=(12, 12)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 232, y: 12, width: 204, height: 324}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 92) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 1: parent=loc_0, ELK=(12, 92), ReactFlow=(12, 92)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 232, y: 12, width: 204, height: 324}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 172) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 8: parent=loc_0, ELK=(12, 172), ReactFlow=(12, 172)
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 232, y: 12, width: 204, height: 324}
-CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 252) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 9: parent=loc_0, ELK=(12, 252), ReactFlow=(12, 252)
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e0: {source: '0', target: '1', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e0: {id: 'e0', type: 'standard', source: '0', target: '1', markerEnd: {…}, …}
-ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e8: {source: '8', target: '9', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e8: {id: 'e8', type: 'standard', source: '8', target: '9', markerEnd: {…}, …}
-ReactFlowBridge.ts:80 [ReactFlowBridge] ✅ Conversion complete: {nodes: 6, edges: 2, containers: 2, hyperEdges: 0}
-FlowGraph.tsx:95 [FlowGraph] ✅ Updated ReactFlow data: {nodes: 6, edges: 2}
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=204, data.height=324, using 204x324
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=200, data.height=60, using 200x60
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=204, data.height=324, using 204x324
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=200, data.height=60, using 200x60
-FlowGraph.tsx:164 [FlowGraph] 📝 Nodes changing: 6 changes
-nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=204, data.height=324, using 204x324
-nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=200, data.height=60, using 200x60
+finishConcurrentRender @ react-dom.development.js:25926
+performConcurrentWorkOnRoot @ react-dom.development.js:25843
+workLoop @ scheduler.development.js:266
+flushWork @ scheduler.development.js:239
+performWorkUntilDeadline @ scheduler.development.js:533

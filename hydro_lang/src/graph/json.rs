@@ -12,10 +12,7 @@ pub struct HydroJson<W> {
     nodes: Vec<serde_json::Value>,
     edges: Vec<serde_json::Value>,
     locations: HashMap<usize, (String, Vec<usize>)>, // location_id -> (label, node_ids)
-<<<<<<< HEAD
     node_locations: HashMap<usize, usize>, // node_id -> location_id
-=======
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
     edge_count: usize,
     config: super::render::HydroWriteConfig,
     // Type name mappings
@@ -38,10 +35,7 @@ impl<W> HydroJson<W> {
             nodes: Vec::new(),
             edges: Vec::new(),
             locations: HashMap::new(),
-<<<<<<< HEAD
             node_locations: HashMap::new(),
-=======
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
             edge_count: 0,
             config: config.clone(),
             process_names,
@@ -50,8 +44,38 @@ impl<W> HydroJson<W> {
         }
     }
 
+    /// Convert HydroNodeType to string representation
+    fn node_type_to_string(node_type: HydroNodeType) -> &'static str {
+        super::render::node_type_utils::to_string(node_type)
+    }
+
+    /// Get all node type definitions for JSON output
+    fn get_node_type_definitions() -> Vec<serde_json::Value> {
+        super::render::node_type_utils::all_types_with_strings()
+            .into_iter()
+            .enumerate()
+            .map(|(color_index, (_, type_str))| {
+                serde_json::json!({
+                    "id": type_str,
+                    "label": type_str,
+                    "colorIndex": color_index
+                })
+            })
+            .collect()
+    }
+
+    /// Get legend items for JSON output (simplified version of node type definitions)
+    fn get_legend_items() -> Vec<serde_json::Value> {
+        Self::get_node_type_definitions()
+            .into_iter()
+            .map(|def| serde_json::json!({
+                "type": def["id"],
+                "label": def["label"]
+            }))
+            .collect()
+    }
+
     fn node_type_to_style(&self, _node_type: HydroNodeType) -> serde_json::Value {
-<<<<<<< HEAD
         // No styling in backend - let the visualizer handle all presentation
         serde_json::json!({})
     }
@@ -74,58 +98,6 @@ impl<W> HydroJson<W> {
             _ => {
                 // All other edge types use default visualizer styling
             }
-=======
-        // Base template for all nodes with modern card styling
-        let base_style = serde_json::json!({
-            "color": "#2d3748",
-            "border": "1px solid rgba(0, 0, 0, 0.1)",
-            "borderRadius": "12px",
-            "padding": "12px 16px",
-            "fontSize": "13px",
-            "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-            "fontWeight": "500",
-            "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-            "transition": "all 0.2s ease-in-out"
-        });
-
-        // Store node type for the frontend ColorBrewer system to use
-        // The actual colors will be applied dynamically by the JavaScript based on the selected palette
-        let mut style = base_style;
-
-        // Add hover effect styling
-        style["&:hover"] = serde_json::json!({
-            "transform": "translateY(-2px)",
-            "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
-        });
-
-        style
-    }
-    fn edge_type_to_style(&self, edge_type: HydroEdgeType) -> serde_json::Value {
-        // Base template for all edges
-        let mut style = serde_json::json!({
-            "strokeWidth": 2,
-            "animated": false
-        });
-
-        // Apply type-specific overrides
-        match edge_type {
-            HydroEdgeType::Stream => {
-                style["stroke"] = serde_json::Value::String("#666666".to_string());
-            }
-            HydroEdgeType::Persistent => {
-                style["stroke"] = serde_json::Value::String("#008800".to_string());
-                style["strokeWidth"] = serde_json::Value::Number(serde_json::Number::from(3));
-            }
-            HydroEdgeType::Network => {
-                style["stroke"] = serde_json::Value::String("#880088".to_string());
-                style["strokeDasharray"] = serde_json::Value::String("5,5".to_string());
-                style["animated"] = serde_json::Value::Bool(true);
-            }
-            HydroEdgeType::Cycle => {
-                style["stroke"] = serde_json::Value::String("#ff0000".to_string());
-                style["animated"] = serde_json::Value::Bool(true);
-            }
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
         }
 
         style
@@ -152,10 +124,7 @@ where
         self.nodes.clear();
         self.edges.clear();
         self.locations.clear();
-<<<<<<< HEAD
         self.node_locations.clear();
-=======
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
         self.edge_count = 0;
         Ok(())
     }
@@ -257,15 +226,7 @@ where
                 "expanded": false,
                 "locationId": location_id,
                 "locationType": location_type,
-                "nodeType": match node_type {
-                    HydroNodeType::Source => "Source",
-                    HydroNodeType::Transform => "Transform",
-                    HydroNodeType::Join => "Join",
-                    HydroNodeType::Aggregation => "Aggregation",
-                    HydroNodeType::Network => "Network",
-                    HydroNodeType::Sink => "Sink",
-                    HydroNodeType::Tee => "Tee",
-                },
+                "nodeType": Self::node_type_to_string(node_type),
                 "backtrace": backtrace_json
             },
             "position": {
@@ -275,15 +236,12 @@ where
             "style": style
         });
         self.nodes.push(node);
-<<<<<<< HEAD
         
         // Track node location for cross-location edge detection
         if let Some(loc_id) = location_id {
             self.node_locations.insert(node_id, loc_id);
         }
         
-=======
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
         Ok(())
     }
 
@@ -294,7 +252,6 @@ where
         edge_type: HydroEdgeType,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
-<<<<<<< HEAD
         let mut style = self.edge_type_to_style(edge_type);
         let edge_id = format!("e{}", self.edge_count);
         self.edge_count += 1;
@@ -313,17 +270,10 @@ where
             style["isDashed"] = serde_json::Value::Bool(true);
         }
 
-=======
-        let style = self.edge_type_to_style(edge_type);
-        let edge_id = format!("e{}", self.edge_count);
-        self.edge_count += 1;
-
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
         let mut edge = serde_json::json!({
             "id": edge_id,
             "source": src_id.to_string(),
             "target": dst_id.to_string(),
-<<<<<<< HEAD
             "style": style
         });
 
@@ -332,39 +282,11 @@ where
             if let Some(style_obj) = edge["style"].as_object_mut() {
                 style_obj.insert("animated".to_string(), serde_json::Value::Bool(true));
             }
-=======
-            "style": style,
-            // ReactFlow v12: Use smoothstep for better automatic routing and connection point selection
-            "type": "smoothstep",
-            "animated": false
-        });
-
-        // Add animation for certain edge types
-        if matches!(edge_type, HydroEdgeType::Network | HydroEdgeType::Cycle) {
-            edge["animated"] = serde_json::Value::Bool(true);
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
         }
 
         if let Some(label_text) = label {
             edge["label"] = serde_json::Value::String(label_text.to_string());
-<<<<<<< HEAD
             // Remove label styling - let the visualizer handle it
-=======
-            edge["labelStyle"] = serde_json::json!({
-                "fontSize": "10px",
-                "fontFamily": "monospace",
-                "fill": "#333333",
-                "backgroundColor": "rgba(255, 255, 255, 0.8)",
-                "padding": "2px 4px",
-                "borderRadius": "3px"
-            });
-            // Center the label on the edge
-            edge["labelShowBg"] = serde_json::Value::Bool(true);
-            edge["labelBgStyle"] = serde_json::json!({
-                "fill": "rgba(255, 255, 255, 0.8)",
-                "fillOpacity": 0.8
-            });
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
         }
 
         self.edges.push(edge);
@@ -423,7 +345,6 @@ where
         // Apply automatic layout using a simple algorithm
         self.apply_layout();
 
-<<<<<<< HEAD
         // Create multiple hierarchy options
         let mut hierarchy_choices = Vec::new();
         let mut node_assignments_choices = serde_json::Map::new();
@@ -447,50 +368,24 @@ where
             }));
             node_assignments_choices.insert("backtrace".to_string(), serde_json::Value::Object(backtrace_assignments));
         }
-=======
-        // First, try to create backtrace-based hierarchy if available
-        let (hierarchy, node_assignments) = if self.has_backtrace_data() {
-            self.create_backtrace_hierarchy()
-        } else {
-            self.create_location_hierarchy()
-        };
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
 
         // Create the final JSON structure in the format expected by the visualizer
+        let node_type_definitions = Self::get_node_type_definitions();
+        let legend_items = Self::get_legend_items();
+
         let output = serde_json::json!({
             "nodes": self.nodes,
             "edges": self.edges,
-<<<<<<< HEAD
             "hierarchyChoices": hierarchy_choices,
             "nodeAssignments": node_assignments_choices,
             "nodeTypeConfig": {
-                "types": [
-                    { "id": "Source", "label": "Source", "colorIndex": 0 },
-                    { "id": "Transform", "label": "Transform", "colorIndex": 1 },
-                    { "id": "Sink", "label": "Sink", "colorIndex": 2 },
-                    { "id": "Network", "label": "Network", "colorIndex": 3 },
-                    { "id": "Aggregation", "label": "Aggregation", "colorIndex": 4 },
-                    { "id": "Join", "label": "Join", "colorIndex": 5 },
-                    { "id": "Tee", "label": "Tee", "colorIndex": 6 }
-                ],
+                "types": node_type_definitions,
                 "defaultType": "Transform"
             },
             "legend": {
                 "title": "Node Types",
-                "items": [
-                    { "type": "Source", "label": "Source" },
-                    { "type": "Transform", "label": "Transform" },
-                    { "type": "Sink", "label": "Sink" },
-                    { "type": "Network", "label": "Network" },
-                    { "type": "Aggregation", "label": "Aggregation" },
-                    { "type": "Join", "label": "Join" },
-                    { "type": "Tee", "label": "Tee" }
-                ]
+                "items": legend_items
             }
-=======
-            "hierarchy": hierarchy,
-            "nodeAssignments": node_assignments
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
         });
 
         write!(
@@ -526,7 +421,6 @@ impl<W> HydroJson<W> {
             })
             .collect();
 
-<<<<<<< HEAD
         // Create node assignments by reading locationId from each node's data
         // This is more reliable than using the write_node tracking which depends on HashMap iteration order
         let mut node_assignments = serde_json::Map::new();
@@ -537,15 +431,6 @@ impl<W> HydroJson<W> {
             ) {
                 let location_key = format!("loc_{}", location_id);
                 node_assignments.insert(node_id.to_string(), serde_json::Value::String(location_key));
-=======
-        // Create node assignments (mapping nodes to their locations)
-        let mut node_assignments = serde_json::Map::new();
-        for (location_id, (_, node_ids)) in &self.locations {
-            let location_key = format!("loc_{}", location_id);
-            for &node_id in node_ids {
-                let node_key = format!("n{}", node_id);
-                node_assignments.insert(node_key, serde_json::Value::String(location_key.clone()));
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
             }
         }
 
@@ -789,7 +674,9 @@ pub fn open_json_browser(
         ..Default::default()
     };
 
-    open_json_docs_browser(ir, config).map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+    // Use the centralized debug functionality instead of duplicating logic
+    super::debug::open_json_visualizer(ir, Some(config))
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }
 
 /// Save JSON to file using the consolidated debug utilities
@@ -824,102 +711,4 @@ pub fn open_browser(
     )
 }
 
-/// Open JSON visualization in the docs browser with URL-encoded data
-#[cfg(feature = "viz")]
-fn open_json_docs_browser(
-    ir: &[crate::ir::HydroLeaf],
-    config: super::render::HydroWriteConfig,
-) -> Result<(), std::io::Error> {
-    // Generate JSON
-    let json_content = super::render::render_hydro_ir_json(ir, &config);
 
-    // Base64 encode the JSON for URL parameter
-    let encoded_data = data_encoding::BASE64URL.encode(json_content.as_bytes());
-
-<<<<<<< HEAD
-    // URLs longer than ~2000 characters may fail in some browsers
-    // Use a conservative limit of 1800 characters for the base URL + encoded data
-    const MAX_SAFE_URL_LENGTH: usize = 1800;
-    let base_url_length = "https://hydro-project.github.io/hydro/visualizer#data=".len();
-    
-    if base_url_length + encoded_data.len() > MAX_SAFE_URL_LENGTH {
-        // Large graph - save to temp file and give instructions
-        let temp_file = save_json_to_temp(&json_content)?;
-        
-        println!("📊 Graph is too large for URL encoding ({} chars)", encoded_data.len());
-        println!("💾 Saved JSON to temporary file: {}", temp_file.display());
-        println!();
-        println!("🎯 To visualize this graph:");
-        println!("   1. Open https://hydro-project.github.io/hydro/visualizer");
-        println!("   2. Drag and drop the JSON file onto the visualizer");
-        println!("   3. Or use the file upload button in the visualizer");
-        println!();
-        println!("💡 Alternatively, you can copy the file path above and use it with your preferred method.");
-        
-        return Ok(());
-    }
-
-    // Small graph - use URL encoding as before
-=======
-    // Create the docs visualizer URL
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
-    let docs_url = format!(
-        "https://hydro-project.github.io/hydro/visualizer#data={}",
-        encoded_data
-    );
-
-    // For local development, use localhost instead
-    let local_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
-
-    // Try to open the local URL first (for development), fallback to docs URL
-    println!("Opening Hydro JSON visualization in browser...");
-
-    // First try localhost for development
-    match webbrowser::open(&local_url) {
-        Ok(_) => {
-            println!("Opened local visualizer: {}", local_url);
-            return Ok(());
-        }
-        Err(_) => {
-            // Local server not available, try docs URL
-            println!("Local server not available, opening docs visualizer...");
-        }
-    }
-
-    // Fallback to docs URL
-    match webbrowser::open(&docs_url) {
-        Ok(_) => {
-            println!("Opened docs visualizer: {}", docs_url);
-            Ok(())
-        }
-        Err(e) => {
-            eprintln!("Failed to open browser: {}", e);
-            eprintln!("You can manually open this URL: {}", docs_url);
-            Err(e)
-        }
-    }
-}
-<<<<<<< HEAD
-
-/// Save JSON content to a temporary file with a descriptive name
-fn save_json_to_temp(json_content: &str) -> Result<std::path::PathBuf, std::io::Error> {
-    use std::io::Write;
-    
-    // Create a descriptive filename with timestamp
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-    
-    let filename = format!("hydro_graph_{}.json", timestamp);
-    let temp_file = std::env::temp_dir().join(filename);
-    
-    // Write the JSON content to the temp file
-    let mut file = std::fs::File::create(&temp_file)?;
-    file.write_all(json_content.as_bytes())?;
-    file.flush()?;
-    
-    Ok(temp_file)
-}
-=======
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)

@@ -247,7 +247,10 @@ where
 fn print_debug_content(title: &str, content: &str) {
     println!("=== {} ===", title);
     println!("{}", content);
-    println!("=== END {} ===", title.split_whitespace().last().unwrap_or("CONTENT"));
+    println!(
+        "=== END {} ===",
+        title.split_whitespace().last().unwrap_or("CONTENT")
+    );
 }
 
 /// Helper function to print JSON debug information including backtrace verification.

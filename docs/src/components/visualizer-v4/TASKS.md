@@ -3,7 +3,8 @@ TASKS:
 - Review VisState API encapsulation
 - DRY, clean up, check encapsulation of any index structure modifications
 - write tests that check/maintain the statelessness of FlowGraph and the bridges.
-- write tests that check/maintain the statelessness of FlowGraph and the bridges.
+- Why are there .js and .js.map files in this folder?
+- Build Rust/TS loader for big files
 
 COMPLETED:
 ✅ Layout change menu functionality - all ELK algorithms supported (MRTree default)

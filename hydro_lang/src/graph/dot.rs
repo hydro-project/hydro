@@ -113,16 +113,7 @@ where
         let escaped_label = escape_dot(&display_label, "\\l");
         let label = format!("n{}", node_id);
 
-        let (shape_str, color_str) = match node_type {
-            // ColorBrewer Set3 palette colors (matching Mermaid and ReactFlow)
-            HydroNodeType::Source => ("ellipse", "\"#8dd3c7\""), // Light teal
-            HydroNodeType::Transform => ("box", "\"#ffffb3\""),  // Light yellow
-            HydroNodeType::Join => ("diamond", "\"#bebada\""),   // Light purple
-            HydroNodeType::Aggregation => ("house", "\"#fb8072\""), // Light red/salmon
-            HydroNodeType::Network => ("doubleoctagon", "\"#80b1d3\""), // Light blue
-            HydroNodeType::Sink => ("invhouse", "\"#fdb462\""),  // Light orange
-            HydroNodeType::Tee => ("terminator", "\"#b3de69\""), // Light green
-        };
+        let (shape_str, color_str) = super::render::node_type_utils::to_dot_style(node_type);
 
         write!(
             self.base.write,
