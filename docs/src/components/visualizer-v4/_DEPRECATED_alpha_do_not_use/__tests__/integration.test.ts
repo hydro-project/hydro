@@ -9,7 +9,11 @@ import assert from 'assert';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+<<<<<<< HEAD:docs/src/components/visualizer-v4/_DEPRECATED_alpha_do_not_use/__tests__/integration.test.ts
 import { parseGraphJSON, validateGraphJSON, getAvailableGroupings, ValidationResult } from '../core/JSONParser.js';
+=======
+import { parseHydroGraphJSON, validateHydroGraphJSON, getAvailableGroupings } from '../dist/JSONParser.js';
+>>>>>>> bddb2f97e (typescript port):docs/src/components/vis/__tests__/integration.test.js
 import { runFuzzTest, InvariantChecker } from './fuzzTest.js';
 import { VisualizationState } from '../core/VisState.js';
 

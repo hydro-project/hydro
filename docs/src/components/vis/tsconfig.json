@@ -3,7 +3,11 @@
     "target": "ES2020",
     "lib": ["ES2020", "DOM"],
     "module": "ES2020",
+<<<<<<< HEAD
     "moduleResolution": "Node",
+=======
+    "moduleResolution": "node",
+>>>>>>> bddb2f97e (typescript port)
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowJs": true,
@@ -23,6 +27,7 @@
     "noUncheckedIndexedAccess": false,
     "noImplicitOverride": false,
     "forceConsistentCasingInFileNames": true,
+<<<<<<< HEAD
     "skipLibCheck": true,
     "jsx": "react-jsx"
   },
@@ -30,13 +35,24 @@
     "**/*.ts",
     "**/*.tsx",
     "**/*.js",
+=======
+    "skipLibCheck": true
+  },
+  "include": [
+    "*.ts",
+    "*.js",
+>>>>>>> bddb2f97e (typescript port)
     "__tests__/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
+<<<<<<< HEAD
     "**/*.test.js",
     "**/*.d.ts",
     "_DEPRECATED_alpha_do_not_use/**"
+=======
+    "**/*.test.js"
+>>>>>>> bddb2f97e (typescript port)
   ]
 }
