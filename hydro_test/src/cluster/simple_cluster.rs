@@ -55,12 +55,13 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
 
     ids.cross_product(numbers)
         .map(q!(|(id, n)| (id, (id, n))))
-        .send_bincode(&cluster)
+        .demux_bincode(&cluster)
         .inspect(q!(move |n| println!(
             "cluster received: {:?} (self cluster id: {})",
             n, CLUSTER_SELF_ID
         )))
         .send_bincode(&process)
+        .entries()
         .for_each(q!(|(id, d)| println!("node received: ({}, {:?})", id, d)));
 
     (process, cluster)

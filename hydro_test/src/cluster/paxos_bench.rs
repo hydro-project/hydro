@@ -38,7 +38,7 @@ pub fn paxos_bench<'a>(
             paxos.with_client(clients, payloads, acceptor_checkpoint)
         };
 
-        let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_anonymous(replicas);
+        let sequenced_to_replicas = sequenced_payloads.broadcast_bincode(replicas).values();
 
         // Replicas
         let (replica_checkpoint, processed_payloads) =
@@ -53,6 +53,7 @@ pub fn paxos_bench<'a>(
 
             let a_checkpoint_largest_seqs = replica_checkpoint
                 .broadcast_bincode(&acceptors)
+                .entries()
                 .tick_batch(&checkpoint_tick)
                 .persist()
                 .reduce_keyed_commutative(q!(|curr_seq, seq| {
@@ -85,7 +86,8 @@ pub fn paxos_bench<'a>(
                 payload.value.0,
                 ((payload.key, payload.value.1), Ok(()))
             )))
-            .send_bincode_anonymous(clients);
+            .demux_bincode(clients)
+            .values();
 
         // we only mark a transaction as committed when all replicas have applied it
         collect_quorum::<_, _, _, ()>(
