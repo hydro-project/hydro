@@ -483,6 +483,17 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    pub fn fold_commutative<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedSingleton<K, A, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is commutative
+            self.assume_ordering::<TotalOrder>().fold(init, comb)
+        }
+    }
+
     pub fn reduce_commutative<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
@@ -499,6 +510,17 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    pub fn fold_idempotent<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedSingleton<K, A, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is idempotent
+            self.assume_retries::<ExactlyOnce>().fold(init, comb)
+        }
+    }
+
     pub fn reduce_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
@@ -506,6 +528,37 @@ where
         unsafe {
             // SAFETY: the combinator function is idempotent
             self.assume_retries::<ExactlyOnce>().reduce(comb)
+        }
+    }
+}
+
+impl<'a, K, V, L, B, O, R> KeyedStream<K, V, L, B, O, R>
+where
+    K: Eq + Hash,
+    L: Location<'a>,
+{
+    pub fn fold_commutative_idempotent<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedSingleton<K, A, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is idempotent
+            self.assume_ordering::<TotalOrder>()
+                .assume_retries::<ExactlyOnce>()
+                .fold(init, comb)
+        }
+    }
+
+    pub fn reduce_commutative_idempotent<F: Fn(&mut V, V) + 'a>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is idempotent
+            self.assume_ordering::<TotalOrder>()
+                .assume_retries::<ExactlyOnce>()
+                .reduce(comb)
         }
     }
 }

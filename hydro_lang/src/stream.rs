@@ -1816,6 +1816,7 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    #[deprecated = "use .into_keyed().fold(...) instead"]
     /// A special case of [`Stream::fold`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -1852,20 +1853,10 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) + 'a,
     {
-        let init = init.splice_fn0_ctx(&self.location).into();
-        let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
-
-        Stream::new(
-            self.location.clone(),
-            HydroNode::FoldKeyed {
-                init,
-                acc: comb,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, A)>(),
-            },
-        )
+        self.into_keyed().fold(init, comb).entries()
     }
 
+    #[deprecated = "use .into_keyed().reduce(...) instead"]
     /// A special case of [`Stream::reduce`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -1915,6 +1906,7 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    #[deprecated = "use .into_keyed().fold_commutative_idempotent(...) instead"]
     /// A special case of [`Stream::fold_commutative_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
     /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -1951,11 +1943,9 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is commutative and idempotent
-            self.assume_ordering().assume_retries()
-        }
-        .fold_keyed(init, comb)
+        self.into_keyed()
+            .fold_commutative_idempotent(init, comb)
+            .entries()
     }
 
     /// Given a stream of pairs `(K, V)`, produces a new stream of unique keys `K`.
@@ -1975,10 +1965,12 @@ where
     /// # }));
     /// ```
     pub fn keys(self) -> Stream<K, Tick<L>, Bounded, NoOrder, ExactlyOnce> {
-        self.fold_keyed_commutative_idempotent(q!(|| ()), q!(|_, _| {}))
-            .map(q!(|(k, _)| k))
+        self.into_keyed()
+            .fold_commutative_idempotent(q!(|| ()), q!(|_, _| {}))
+            .keys()
     }
 
+    #[deprecated = "use .into_keyed().reduce_commutative_idempotent(...) instead"]
     /// A special case of [`Stream::reduce_commutative_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
     /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -2012,11 +2004,9 @@ where
     where
         F: Fn(&mut V, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is commutative and idempotent
-            self.assume_ordering().assume_retries()
-        }
-        .reduce_keyed(comb)
+        self.into_keyed()
+            .reduce_commutative_idempotent(comb)
+            .entries()
     }
 }
 
@@ -2025,6 +2015,7 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    #[deprecated = "use .into_keyed().fold_commutative(...) instead"]
     /// A special case of [`Stream::fold_commutative`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -2060,13 +2051,10 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is commutative
-            self.assume_ordering()
-        }
-        .fold_keyed(init, comb)
+        self.into_keyed().fold_commutative(init, comb).entries()
     }
 
+    #[deprecated = "use .into_keyed().reduce_commutative(...) instead"]
     /// A special case of [`Stream::reduce_commutative`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -2099,11 +2087,7 @@ where
     where
         F: Fn(&mut V, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is commutative
-            self.assume_ordering()
-        }
-        .reduce_keyed(comb)
+        self.into_keyed().reduce_commutative(comb).entries()
     }
 }
 
@@ -2112,6 +2096,7 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    #[deprecated = "use .into_keyed().fold_idempotent(...) instead"]
     /// A special case of [`Stream::fold_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
     /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -2147,13 +2132,10 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is idempotent
-            self.assume_retries()
-        }
-        .fold_keyed(init, comb)
+        self.into_keyed().fold_idempotent(init, comb).entries()
     }
 
+    #[deprecated = "use .into_keyed().reduce_idempotent(...) instead"]
     /// A special case of [`Stream::reduce_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
     /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -2186,11 +2168,7 @@ where
     where
         F: Fn(&mut V, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is idempotent
-            self.assume_retries()
-        }
-        .reduce_keyed(comb)
+        self.into_keyed().reduce_idempotent(comb).entries()
     }
 }
 
