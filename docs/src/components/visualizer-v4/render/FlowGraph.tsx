@@ -260,9 +260,30 @@ export function FlowGraph({
         }}
       >
         <div style={{ textAlign: 'center', color: '#666' }}>
-          <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔄</div>
-          <div>Running layout...</div>
+          <div style={{ 
+            width: '40px',
+            height: '40px',
+            margin: '0 auto 16px',
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #3498db',
+            borderRadius: '50%',
+            animation: 'modernSpin 1s linear infinite'
+          }}></div>
+          <div style={{ fontSize: '18px', marginBottom: '8px' }}>
+            Processing Graph Layout...
+          </div>
+          <div style={{ fontSize: '14px', color: '#999' }}>
+            Large graphs may take a moment to compute
+          </div>
         </div>
+        <style>
+          {`
+            @keyframes modernSpin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}
+        </style>
       </div>
     );
   }
@@ -319,38 +340,40 @@ export function FlowGraph({
   // Main ReactFlow render
   return (
     <div className={className} style={{ height: '400px', ...style }}>
-      <ReactFlow
-        nodes={reactFlowData?.nodes || []}
-        edges={reactFlowData?.edges || []}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodeClick={onNodeClick}
-        onEdgeClick={onEdgeClick}
-        onNodeDrag={onNodeDrag}
-        onNodeDragStart={onNodeDragStart}
-        onNodeDragStop={onNodeDragStop}
-        onNodesChange={onNodesChange}
-        fitView={config.fitView !== false}
-        fitViewOptions={{ padding: 0.1, maxZoom: 1.2 }}
-        attributionPosition="bottom-left"
-        nodesDraggable={config.nodesDraggable !== false}
-        nodesConnectable={config.nodesConnectable !== false}
-        elementsSelectable={config.elementsSelectable !== false}
-        panOnDrag={config.enablePan !== false}
-        zoomOnScroll={config.enableZoom !== false}
-        minZoom={0.1}
-        maxZoom={2}
-      >
-        <Background color="#ccc" />
-        {config.enableControls !== false && <Controls />}
-        {config.enableMiniMap !== false && (
-          <MiniMap 
-            nodeColor="#666"
-            nodeStrokeWidth={2}
-            position="bottom-right"
-          />
-        )}
-      </ReactFlow>
+      <ReactFlowProvider>
+        <ReactFlow
+          nodes={reactFlowData?.nodes || []}
+          edges={reactFlowData?.edges || []}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
+          onNodeDrag={onNodeDrag}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDragStop={onNodeDragStop}
+          onNodesChange={onNodesChange}
+          fitView={config.fitView !== false}
+          fitViewOptions={{ padding: 0.1, maxZoom: 1.2 }}
+          attributionPosition="bottom-left"
+          nodesDraggable={config.nodesDraggable !== false}
+          nodesConnectable={config.nodesConnectable !== false}
+          elementsSelectable={config.elementsSelectable !== false}
+          panOnDrag={config.enablePan !== false}
+          zoomOnScroll={config.enableZoom !== false}
+          minZoom={0.1}
+          maxZoom={2}
+        >
+          <Background color="#ccc" />
+          {config.enableControls !== false && <Controls />}
+          {config.enableMiniMap !== false && (
+            <MiniMap 
+              nodeColor="#666"
+              nodeStrokeWidth={2}
+              position="bottom-right"
+            />
+          )}
+        </ReactFlow>
+      </ReactFlowProvider>
       
       {/* Loading overlay during updates */}
       {loading && (

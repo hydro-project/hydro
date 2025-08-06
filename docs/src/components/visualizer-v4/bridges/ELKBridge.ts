@@ -48,7 +48,10 @@ export class ELKBridge {
     // 2. Validate ELK input data
     this.validateELKInput(elkGraph);
     
-    // 3. Run ELK layout
+    // 3. Yield control to browser to show loading state
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
+    // 4. Run ELK layout (this is the potentially blocking operation)
     console.log(`[ELKBridge] 📊 Sending to ELK children count:`, elkGraph.children?.length);
     console.log(`[ELKBridge] 📊 ELK Graph structure:`, {
       id: elkGraph.id,
@@ -57,9 +60,14 @@ export class ELKBridge {
       edgesCount: elkGraph.edges?.length
     });
     
-    const elkResult = await this.elk.layout(elkGraph);    console.log('[ELKBridge] ✅ ELK layout complete');
+    console.log('[ELKBridge] ⏳ Running ELK layout - this may take a moment for large graphs...');
+    const elkResult = await this.elk.layout(elkGraph);
+    console.log('[ELKBridge] ✅ ELK layout complete');
     
-    // 4. Apply results back to VisState
+    // 5. Yield control again before applying results
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
+    // 6. Apply results back to VisState
     this.elkToVisState(elkResult, visState);
   }
 

@@ -33,6 +33,12 @@ function VisV4Component() {
   const [loading, setLoading] = React.useState(true);
   const [currentVisualizationState, setCurrentVisualizationState] = React.useState(null);
   const [graphData, setGraphData] = React.useState(null);
+  
+  // Force re-render counter when VisState internal state changes
+  const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+  
+  // Track if we're currently running a layout operation
+  const [isLayoutRunning, setIsLayoutRunning] = React.useState(false);
 
   // Load components on mount
   React.useEffect(() => {
@@ -225,6 +231,169 @@ function VisV4Component() {
     }
   }, [createVisualizationState, NODE_STYLES, EDGE_STYLES]);
 
+  // ============================
+  // EVENT HANDLERS
+  // ============================
+
+  // Node click handler - handles container collapse/expand
+  const handleNodeClick = React.useCallback(async (event, node) => {
+    if (!currentVisualizationState) return;
+    
+    console.log('🖱️ Node clicked:', node.id, node.type);
+    
+    // Check if this is a container node that can be collapsed/expanded
+    if (node.type === 'container') {
+      try {
+        setIsLayoutRunning(true);
+        
+        const container = currentVisualizationState.getContainer(node.id);
+        if (container) {
+          if (container.collapsed) {
+            console.log('📂 Expanding container:', node.id);
+            currentVisualizationState.expandContainer(node.id);
+          } else {
+            console.log('📁 Collapsing container:', node.id);
+            currentVisualizationState.collapseContainer(node.id);
+          }
+          
+          // Force component update to reflect changes
+          forceUpdate();
+          
+          console.log('✅ Container toggle complete');
+        }
+      } catch (err) {
+        console.error('❌ Error toggling container:', err);
+        setError(`Failed to toggle container: ${err.message}`);
+      } finally {
+        // Add a small delay to let the layout complete
+        setTimeout(() => setIsLayoutRunning(false), 1000);
+      }
+    }
+  }, [currentVisualizationState]);
+
+  // Pack all containers (collapse all)
+  const handlePackAll = React.useCallback(async () => {
+    if (!currentVisualizationState) return;
+    
+    console.log('📦 Packing all containers...');
+    setIsLayoutRunning(true);
+    
+    try {
+      const containers = currentVisualizationState.visibleContainers;
+      containers.forEach(container => {
+        if (!container.collapsed) {
+          currentVisualizationState.collapseContainer(container.id);
+        }
+      });
+      
+      // Force component update to reflect changes
+      forceUpdate();
+      
+      console.log('✅ All containers packed');
+    } catch (err) {
+      console.error('❌ Error packing containers:', err);
+      setError(`Failed to pack containers: ${err.message}`);
+    } finally {
+      // Add a delay to let the layout complete
+      setTimeout(() => setIsLayoutRunning(false), 1500);
+    }
+  }, [currentVisualizationState]);
+
+  // Unpack all containers (expand all)
+  const handleUnpackAll = React.useCallback(async () => {
+    if (!currentVisualizationState) return;
+    
+    console.log('📂 Unpacking all containers...');
+    setIsLayoutRunning(true);
+    
+    try {
+      const containers = currentVisualizationState.visibleContainers;
+      containers.forEach(container => {
+        if (container.collapsed) {
+          currentVisualizationState.expandContainer(container.id);
+        }
+      });
+      
+      // Force component update to reflect changes
+      forceUpdate();
+      
+      console.log('✅ All containers unpacked');
+    } catch (err) {
+      console.error('❌ Error unpacking containers:', err);
+      setError(`Failed to unpack containers: ${err.message}`);
+    } finally {
+      // Add a delay to let the layout complete
+      setTimeout(() => setIsLayoutRunning(false), 1500);
+    }
+  }, [currentVisualizationState]);
+
+  // Fit view handler
+  const handleFitView = React.useCallback(() => {
+    console.log('🎯 Fitting view...');
+    // For now, we'll toggle the fitView config which will trigger ReactFlow to fit
+    // This is a workaround - ideally we'd have a ref to call fitView() directly
+    setAutoFit(false);
+    setTimeout(() => setAutoFit(true), 100);
+    console.log('✅ View fit triggered');
+  }, []);
+
+  // Layout algorithm change handler
+  const handleLayoutAlgorithmChange = React.useCallback((newAlgorithm) => {
+    console.log('🔧 Layout algorithm changed to:', newAlgorithm);
+    setLayoutAlgorithm(newAlgorithm);
+    // Note: This will trigger a re-render which should cause FlowGraph to re-layout
+    // The actual layout change will be handled by FlowGraph's props change detection
+  }, []);
+
+  // Color palette change handler
+  const handleColorPaletteChange = React.useCallback((newPalette) => {
+    console.log('🎨 Color palette changed to:', newPalette);
+    setColorPalette(newPalette);
+    // Note: This will trigger a re-render which should update node colors
+  }, []);
+
+  // Grouping change handler - this will re-parse the data with the new grouping
+  const handleGroupingChange = React.useCallback((newGrouping) => {
+    if (!parseGraphJSON || !graphData || !createVisualizationState) return;
+    
+    console.log('🔄 Grouping changed to:', newGrouping);
+    setCurrentGrouping(newGrouping);
+    
+    try {
+      // Re-parse the original graph data with the new grouping
+      const parsedData = parseGraphJSON(graphData, newGrouping);
+      setCurrentVisualizationState(parsedData.state);
+      
+      console.log('✅ Graph re-parsed with new grouping');
+    } catch (err) {
+      console.error('❌ Error changing grouping:', err);
+      setError(`Failed to change grouping: ${err.message}`);
+    }
+  }, [parseGraphJSON, graphData, createVisualizationState]);
+
+  // Hierarchy tree toggle handler (for InfoPanel tree)
+  const handleHierarchyToggle = React.useCallback((containerId) => {
+    if (!currentVisualizationState) return;
+    
+    console.log('🌳 Hierarchy tree toggle:', containerId);
+    try {
+      const container = currentVisualizationState.getContainer(containerId);
+      if (container) {
+        if (container.collapsed) {
+          currentVisualizationState.expandContainer(containerId);
+        } else {
+          currentVisualizationState.collapseContainer(containerId);
+        }
+        
+        // Force component update to reflect changes
+        forceUpdate();
+      }
+    } catch (err) {
+      console.error('❌ Error toggling hierarchy:', err);
+      setError(`Failed to toggle hierarchy: ${err.message}`);
+    }
+  }, [currentVisualizationState]);
+
   // Render loading state
   if (loading) {
     return (
@@ -302,32 +471,21 @@ function VisV4Component() {
         )}
       </div>
 
-      {/* Controls and InfoPanel */}
+      {/* Controls */}
       {currentVisualizationState && LayoutControls && (
-        <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
-          <div style={{ flex: 1 }}>
-            <LayoutControls
-              visualizationState={currentVisualizationState}
-              currentLayout={layoutAlgorithm}
-              onLayoutChange={setLayoutAlgorithm}
-              colorPalette={colorPalette}
-              onPaletteChange={setColorPalette}
-              autoFit={autoFit}
-              onAutoFitToggle={setAutoFit}
-            />
-          </div>
-          <div style={{ flex: 2 }}>
-            {InfoPanel && (
-              <InfoPanel
-                visualizationState={currentVisualizationState}
-                legendData={graphData && graphData.legend ? graphData.legend : {}}
-                hierarchyChoices={Array.isArray(groupingOptions) ? groupingOptions : []}
-                currentGrouping={typeof currentGrouping === 'string' ? currentGrouping : null}
-                onGroupingChange={setCurrentGrouping}
-                colorPalette={colorPalette}
-              />
-            )}
-          </div>
+        <div style={{ marginBottom: '16px' }}>
+          <LayoutControls
+            visualizationState={currentVisualizationState}
+            currentLayout={layoutAlgorithm}
+            onLayoutChange={handleLayoutAlgorithmChange}
+            colorPalette={colorPalette}
+            onPaletteChange={handleColorPaletteChange}
+            autoFit={autoFit}
+            onAutoFitToggle={setAutoFit}
+            onCollapseAll={handlePackAll}
+            onExpandAll={handleUnpackAll}
+            onFitView={handleFitView}
+          />
         </div>
       )}
 
@@ -355,11 +513,20 @@ function VisV4Component() {
             height: '600px',
             border: '1px solid #ddd',
             borderRadius: '8px',
-            backgroundColor: 'white'
+            backgroundColor: 'white',
+            position: 'relative'
           }}>
             {FlowGraph && (
               <FlowGraph 
                 visualizationState={currentVisualizationState}
+                layoutConfig={{ algorithm: layoutAlgorithm }}
+                eventHandlers={{ 
+                  onNodeClick: handleNodeClick 
+                }}
+                config={{
+                  fitView: autoFit,
+                  colorPalette: colorPalette
+                }}
                 onLayoutComplete={() => console.log('Layout complete!')}
                 onError={(err) => {
                   console.error('Visualization error:', err);
@@ -367,6 +534,71 @@ function VisV4Component() {
                 }}
                 style={{ width: '100%', height: '100%' }}
               />
+            )}
+            
+            {/* InfoPanel overlay - positioned in upper left of canvas */}
+            {InfoPanel && currentVisualizationState && (
+              <div style={{
+                position: 'absolute',
+                top: '16px',
+                left: '16px',
+                zIndex: 1000,
+                maxWidth: '400px',
+                maxHeight: '500px'
+              }}>
+                <InfoPanel
+                  visualizationState={currentVisualizationState}
+                  legendData={graphData && graphData.legend ? graphData.legend : {}}
+                  hierarchyChoices={Array.isArray(groupingOptions) ? groupingOptions : []}
+                  currentGrouping={typeof currentGrouping === 'string' ? currentGrouping : null}
+                  onGroupingChange={handleGroupingChange}
+                  onToggleContainer={handleHierarchyToggle}
+                  colorPalette={colorPalette}
+                />
+              </div>
+            )}
+            
+            {/* Layout operation loading overlay */}
+            {isLayoutRunning && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 2000,
+                borderRadius: '8px'
+              }}>
+                <div style={{ textAlign: 'center', color: '#333' }}>
+                  <div style={{ 
+                    width: '32px',
+                    height: '32px',
+                    margin: '0 auto 12px',
+                    border: '3px solid #f3f3f3',
+                    borderTop: '3px solid #3498db',
+                    borderRadius: '50%',
+                    animation: 'canvasSpin 1s linear infinite'
+                  }}></div>
+                  <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>
+                    Updating Layout...
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    Complex graphs may take a moment
+                  </div>
+                </div>
+                <style>
+                  {`
+                    @keyframes canvasSpin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  `}
+                </style>
+              </div>
             )}
           </div>
           <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
