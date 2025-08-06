@@ -13,6 +13,18 @@ use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
 use crate::{Atomic, Bounded, Location, NoOrder, Stream, Tick, TotalOrder, Unbounded};
 
+/// Keyed Streams capture streaming elements of type `V` grouped by a key of type `K`,
+/// where the order of keys is non-deterministic but the order *within* each group may
+/// be deterministic.
+///
+/// Type Parameters:
+/// - `K`: the type of the key for each group
+/// - `V`: the type of the elements inside each group
+/// - `Loc`: the [`Location`] where the keyed stream is materialized
+/// - `Order`: tracks whether the elements within each group have deterministic order
+///   ([`TotalOrder`]) or not ([`NoOrder`])
+/// - `Retries`: tracks whether the elements within each group have deterministic cardinality
+///   ([`ExactlyOnce`]) or may have non-deterministic retries ([`crate::stream::AtLeastOnce`])
 pub struct KeyedStream<K, V, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
     pub(crate) underlying: Stream<(K, V), Loc, Bound, NoOrder, Retries>,
     pub(crate) _phantom_order: PhantomData<Order>,
@@ -220,6 +232,27 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
         }
     }
 
+    /// An operator that both filters and maps each value, with keys staying the same.
+    /// It yields only the items for which the supplied closure `f` returns `Some(value)`.
+    /// If you need access to the key, see [`KeyedStream::filter_map_with_key`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, "2"), (1, "hello"), (2, "4")]))
+    ///     .into_keyed()
+    ///     .filter_map(q!(|s| s.parse::<usize>().ok()))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2], 2: [4] }
+    /// # for w in vec![(1, 2), (2, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn filter_map<U, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
@@ -237,6 +270,27 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
         }
     }
 
+    /// An operator that both filters and maps each key-value pair. The resulting values are **not**
+    /// re-grouped even they are tuples; instead they will be grouped under the original key.
+    /// It yields only the items for which the supplied closure `f` returns `Some(value)`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, "2"), (1, "hello"), (2, "2")]))
+    ///     .into_keyed()
+    ///     .filter_map_with_key(q!(|(k, s)| s.parse::<usize>().ok().filter(|v| v == &k)))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 2: [2] }
+    /// # for w in vec![(2, 2)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn filter_map_with_key<U, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
@@ -436,6 +490,34 @@ where
         }
     }
 
+    /// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
+    ///
+    /// Each group must have a [`TotalOrder`] guarantee, which means that the `comb` closure is allowed
+    /// to depend on the order of elements in the group.
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`KeyedStream::reduce`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .fold(q!(|| 0), q!(|acc, x| *acc += x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, 5), (2, 7)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
+    /// # }));
+    /// ```
     pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
@@ -458,6 +540,30 @@ where
         }
     }
 
+    /// Like [`Stream::reduce`], aggregates the values in each group via the `comb` closure.
+    ///
+    /// Each group must have a [`TotalOrder`] guarantee, which means that the `comb` closure is allowed
+    /// to depend on the order of elements in the stream.
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch.reduce(q!(|acc, x| *acc += x)).entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, 5), (2, 7)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
+    /// # }));
+    /// ```
     pub fn reduce<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
@@ -483,6 +589,70 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    /// Like [`Stream::fold_commutative`], aggregates the values in each group via the `comb` closure.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`KeyedStream::reduce_commutative`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .fold_commutative(q!(|| 0), q!(|acc, x| *acc += x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, 5), (2, 7)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
+    /// # }));
+    /// ```
+    pub fn fold_commutative<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedSingleton<K, A, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is commutative
+            self.assume_ordering::<TotalOrder>().fold(init, comb)
+        }
+    }
+
+    /// Like [`Stream::reduce_commutative`], aggregates the values in each group via the `comb` closure.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold_commutative`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .reduce_commutative(q!(|acc, x| *acc += x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, 5), (2, 7)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
+    /// # }));
+    /// ```
     pub fn reduce_commutative<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
@@ -499,6 +669,70 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    /// Like [`Stream::fold_idempotent`], aggregates the values in each group via the `comb` closure.
+    ///
+    /// The `comb` closure must be **idempotent** as there may be non-deterministic duplicates.
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`KeyedStream::reduce_idempotent`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .fold_idempotent(q!(|| false), q!(|acc, x| *acc |= x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, false), (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # }));
+    /// ```
+    pub fn fold_idempotent<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedSingleton<K, A, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is idempotent
+            self.assume_retries::<ExactlyOnce>().fold(init, comb)
+        }
+    }
+
+    /// Like [`Stream::reduce_idempotent`], aggregates the values in each group via the `comb` closure.
+    ///
+    /// The `comb` closure must be **idempotent**, as there may be non-deterministic duplicates.
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold_idempotent`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .reduce_idempotent(q!(|acc, x| *acc |= x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, false), (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # }));
+    /// ```
     pub fn reduce_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
@@ -506,6 +740,92 @@ where
         unsafe {
             // SAFETY: the combinator function is idempotent
             self.assume_retries::<ExactlyOnce>().reduce(comb)
+        }
+    }
+}
+
+impl<'a, K, V, L, B, O, R> KeyedStream<K, V, L, B, O, R>
+where
+    K: Eq + Hash,
+    L: Location<'a>,
+{
+    /// Like [`Stream::fold_commutative_idempotent`], aggregates the values in each group via the `comb` closure.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed, and **idempotent**,
+    /// as there may be non-deterministic duplicates.
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`KeyedStream::reduce_commutative_idempotent`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .fold_commutative_idempotent(q!(|| false), q!(|acc, x| *acc |= x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, false), (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # }));
+    /// ```
+    pub fn fold_commutative_idempotent<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedSingleton<K, A, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is idempotent
+            self.assume_ordering::<TotalOrder>()
+                .assume_retries::<ExactlyOnce>()
+                .fold(init, comb)
+        }
+    }
+
+    /// Like [`Stream::reduce_commutative_idempotent`], aggregates the values in each group via the `comb` closure.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed, and **idempotent**,
+    /// as there may be non-deterministic duplicates.
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold_commutative_idempotent`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .reduce_commutative_idempotent(q!(|acc, x| *acc |= x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, false), (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # }));
+    /// ```
+    pub fn reduce_commutative_idempotent<F: Fn(&mut V, V) + 'a>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is idempotent
+            self.assume_ordering::<TotalOrder>()
+                .assume_retries::<ExactlyOnce>()
+                .reduce(comb)
         }
     }
 }

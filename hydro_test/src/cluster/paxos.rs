@@ -552,7 +552,8 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
     let p_p1b_highest_entries_and_count = accepted_logs
         .map(q!(|(_checkpoint, log)| log))
         .flatten_unordered() // Convert HashMap log back to stream
-        .fold_keyed_commutative::<(usize, Option<LogValue<P>>), _, _>(q!(|| (0, None)), q!(|curr_entry, new_entry| {
+        .into_keyed()
+        .fold_commutative::<(usize, Option<LogValue<P>>), _, _>(q!(|| (0, None)), q!(|curr_entry, new_entry| {
             if let Some(curr_entry_payload) = &mut curr_entry.1 {
                 let same_values = new_entry.value == curr_entry_payload.value;
                 let higher_ballot = new_entry.ballot > curr_entry_payload.ballot;
@@ -573,9 +574,10 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
                 *curr_entry = (1, Some(new_entry));
             }
         }))
-        .map(q!(|(slot, (count, entry))| (slot, (count, entry.unwrap()))));
+        .map(q!(|(count, entry)| (count, entry.unwrap())));
     let p_log_to_try_commit = p_p1b_highest_entries_and_count
         .clone()
+        .entries()
         .cross_singleton(p_ballot.clone())
         .cross_singleton(p_p1b_max_checkpoint.clone())
         .filter_map(q!(move |(((slot, (count, entry)), ballot), checkpoint)| {
@@ -588,13 +590,8 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
             }
             Some(((slot, ballot), entry.value))
         }));
-    let p_max_slot = p_p1b_highest_entries_and_count
-        .clone()
-        .map(q!(|(slot, _)| slot))
-        .max();
-    let p_proposed_slots = p_p1b_highest_entries_and_count
-        .clone()
-        .map(q!(|(slot, _)| slot));
+    let p_max_slot = p_p1b_highest_entries_and_count.clone().keys().max();
+    let p_proposed_slots = p_p1b_highest_entries_and_count.clone().keys();
     let p_log_holes = p_max_slot
         .clone()
         .zip(p_p1b_max_checkpoint)
