@@ -74,10 +74,10 @@ impl<'a, S> ForwardRef<'a, S>
 where
     S: CycleComplete<'a, ForwardRefMarker>,
 {
-    pub fn complete(mut self, stream: S) {
+    pub fn complete(mut self, stream: impl Into<S>) {
         self.completed = true;
         let ident = self.ident.clone();
-        S::complete(stream, ident, self.expected_location.clone())
+        S::complete(stream.into(), ident, self.expected_location.clone())
     }
 }
 
