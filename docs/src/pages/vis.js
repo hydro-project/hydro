@@ -39,6 +39,9 @@ function VisV4Component() {
   
   // Track if we're currently running a layout operation
   const [isLayoutRunning, setIsLayoutRunning] = React.useState(false);
+  
+  // Track if we're currently changing grouping (to prevent DropZone flicker)
+  const [isChangingGrouping, setIsChangingGrouping] = React.useState(false);
 
   // Load components on mount
   React.useEffect(() => {
@@ -357,6 +360,7 @@ function VisV4Component() {
     if (!parseGraphJSON || !graphData || !createVisualizationState) return;
     
     console.log('🔄 Grouping changed to:', newGrouping);
+    setIsChangingGrouping(true);
     setCurrentGrouping(newGrouping);
     
     try {
@@ -368,6 +372,9 @@ function VisV4Component() {
     } catch (err) {
       console.error('❌ Error changing grouping:', err);
       setError(`Failed to change grouping: ${err.message}`);
+    } finally {
+      // Clear the grouping change loading state
+      setTimeout(() => setIsChangingGrouping(false), 100);
     }
   }, [parseGraphJSON, graphData, createVisualizationState]);
 
@@ -489,7 +496,43 @@ function VisV4Component() {
         </div>
       )}
 
-      {!currentVisualizationState ? (
+      {isChangingGrouping ? (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '400px',
+          border: '1px solid #ddd',
+          borderRadius: '8px',
+          backgroundColor: 'white'
+        }}>
+          <div style={{ textAlign: 'center', color: '#666' }}>
+            <div style={{ 
+              width: '40px',
+              height: '40px',
+              margin: '0 auto 16px',
+              border: '4px solid #f3f3f3',
+              borderTop: '4px solid #3498db',
+              borderRadius: '50%',
+              animation: 'groupingSpin 1s linear infinite'
+            }}></div>
+            <div style={{ fontSize: '18px', marginBottom: '8px' }}>
+              Applying New Grouping...
+            </div>
+            <div style={{ fontSize: '14px', color: '#999' }}>
+              Restructuring the graph hierarchy
+            </div>
+          </div>
+          <style>
+            {`
+              @keyframes groupingSpin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}
+          </style>
+        </div>
+      ) : (!currentVisualizationState && !isChangingGrouping) ? (
         FileDropZone ? (
           <FileDropZone 
             onFileLoad={handleFileLoad}
