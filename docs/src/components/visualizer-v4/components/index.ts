@@ -11,7 +11,8 @@ export { Legend } from './Legend';
 export { HierarchyTree } from './HierarchyTree';
 export { GroupingControls } from './GroupingControls';
 export { CollapsibleSection } from './CollapsibleSection';
-export { DockablePanel, PANEL_POSITIONS } from './DockablePanel';
+export { DockablePanel } from './DockablePanel';
+export { PANEL_POSITIONS } from './types';
 
 // Types
 export type {

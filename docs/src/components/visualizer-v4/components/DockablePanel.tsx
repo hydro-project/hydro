@@ -9,6 +9,9 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { DockablePanelProps, PANEL_POSITIONS, PanelPosition } from './types';
 import { COMPONENT_COLORS, SIZES, SHADOWS } from '../shared/config';
 
+// Re-export PANEL_POSITIONS for convenience
+export { PANEL_POSITIONS } from './types';
+
 export function DockablePanel({
   id,
   title,
@@ -255,5 +258,3 @@ export function DockablePanel({
     </div>
   );
 }
-
-export { PANEL_POSITIONS };

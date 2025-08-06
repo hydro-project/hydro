@@ -21,6 +21,13 @@ function VisV4Component() {
   const [validateGraphJSON, setValidateGraphJSON] = React.useState(null);
   const [NODE_STYLES, setNodeStyles] = React.useState(null);
   const [EDGE_STYLES, setEdgeStyles] = React.useState(null);
+  const [InfoPanel, setInfoPanel] = React.useState(null);
+  const [LayoutControls, setLayoutControls] = React.useState(null);
+  const [groupingOptions, setGroupingOptions] = React.useState([]);
+  const [currentGrouping, setCurrentGrouping] = React.useState(null);
+  const [colorPalette, setColorPalette] = React.useState('Set3');
+  const [layoutAlgorithm, setLayoutAlgorithm] = React.useState('mrtree');
+  const [autoFit, setAutoFit] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [currentVisualizationState, setCurrentVisualizationState] = React.useState(null);
@@ -32,42 +39,52 @@ function VisV4Component() {
       try {
         console.log('Loading visualizer-v4 components...');
         
-        // Import individual v4 components (matching the working pattern from vis3)
-        const visStateModule = await import('../components/visualizer-v4/core/VisState.ts');
-        const FlowGraphModule = await import('../components/visualizer-v4/render/FlowGraph.tsx');
-        const constantsModule = await import('../components/visualizer-v4/core/constants.ts');
-        const parserModule = await import('../components/visualizer-v4/core/JSONParser.ts');
-        const layoutModule = await import('../components/visualizer-v4/layout/index.ts');
+        // Import v4 components with specific error handling for each
+        console.log('Loading VisState...');
+        const visStateModule = await import('@site/src/components/visualizer-v4/core/VisState.ts');
         
-        console.log('Loaded modules:', { visStateModule, FlowGraphModule, constantsModule, parserModule, layoutModule });
+        console.log('Loading FlowGraph...');
+        const FlowGraphModule = await import('@site/src/components/visualizer-v4/render/FlowGraph.tsx');
         
-        // Set up the imported components (following the working vis3 pattern)
+        console.log('Loading constants...');
+        const constantsModule = await import('@site/src/components/visualizer-v4/core/constants.ts');
+        
+        console.log('Loading JSONParser...');
+        const parserModule = await import('@site/src/components/visualizer-v4/core/JSONParser.ts');
+        
+        console.log('Loading layout...');
+        const layoutModule = await import('@site/src/components/visualizer-v4/layout/index.ts');
+        
+        console.log('Loading InfoPanel...');
+        const InfoPanelModule = await import('@site/src/components/visualizer-v4/components/InfoPanel.tsx');
+        
+        console.log('Loading LayoutControls...');
+        const LayoutControlsModule = await import('@site/src/components/visualizer-v4/components/LayoutControls.tsx');
         setCreateVisualizationState(() => visStateModule.createVisualizationState);
         setFlowGraph(() => FlowGraphModule.FlowGraph);
         setParseGraphJSON(() => parserModule.parseGraphJSON);
         setGetAvailableGroupings(() => parserModule.getAvailableGroupings);
         setValidateGraphJSON(() => parserModule.validateGraphJSON);
-        // Note: Don't store class constructors (ELKLayoutEngine, etc.) in React state
         setNodeStyles(constantsModule.NODE_STYLES);
         setEdgeStyles(constantsModule.EDGE_STYLES);
-        
-        console.log('✅ All v4 components loaded successfully');
+        setInfoPanel(() => InfoPanelModule.InfoPanel);
+        setLayoutControls(() => LayoutControlsModule.LayoutControls);
+        // Don't load grouping options here - wait until we have graph data
         setLoading(false);
         setError(null);
-        
       } catch (err) {
         console.error('❌ Failed to load visualizer-v4 components:', err);
         setError(`Failed to load v4 components: ${err.message}`);
         setLoading(false);
       }
     };
-
     loadComponents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle URL data parameter (for sharing graphs via URL)
   React.useEffect(() => {
-    if (!parseGraphJSON || !createVisualizationState || loading) return;
+    if (!parseGraphJSON || !createVisualizationState || !validateGraphJSON || !getAvailableGroupings || loading) return;
     
     const urlParams = new URLSearchParams(location.search);
     const dataParam = urlParams.get('data');
@@ -92,6 +109,15 @@ function VisV4Component() {
         setCurrentVisualizationState(parsedData.state);
         setGraphData(jsonData);
         
+        // Extract grouping options from the data
+        const groupings = getAvailableGroupings(jsonData);
+        setGroupingOptions(groupings);
+        
+        // Set default grouping if not set and groupings are available
+        if ((!currentGrouping || typeof currentGrouping !== 'string') && groupings.length > 0) {
+          setCurrentGrouping(groupings[0].id);
+        }
+        
         console.log('✅ Successfully loaded graph from URL');
         
       } catch (err) {
@@ -99,11 +125,11 @@ function VisV4Component() {
         setError(`Failed to load graph from URL: ${err.message}`);
       }
     }
-  }, [location.search, parseGraphJSON, validateGraphJSON, createVisualizationState, loading, currentVisualizationState]);
+  }, [location.search, parseGraphJSON, validateGraphJSON, getAvailableGroupings, createVisualizationState, loading, currentVisualizationState, currentGrouping]);
 
   // File upload handler
   const handleFileLoad = React.useCallback((jsonData) => {
-    if (!parseGraphJSON || !validateGraphJSON) {
+    if (!parseGraphJSON || !validateGraphJSON || !getAvailableGroupings) {
       setError('Components not loaded yet');
       return;
     }
@@ -118,9 +144,19 @@ function VisV4Component() {
       }
       
       // Parse the JSON
-        const parsedData = parseGraphJSON(jsonData);
-        setCurrentVisualizationState(parsedData.state);
-        setGraphData(jsonData);
+      const parsedData = parseGraphJSON(jsonData);
+      setCurrentVisualizationState(parsedData.state);
+      setGraphData(jsonData);
+      
+      // Extract grouping options from the data
+      const groupings = getAvailableGroupings(jsonData);
+      setGroupingOptions(groupings);
+      
+      // Set default grouping if not set and groupings are available
+      if ((!currentGrouping || typeof currentGrouping !== 'string') && groupings.length > 0) {
+        setCurrentGrouping(groupings[0].id);
+      }
+      
       setError(null);
       
       console.log('✅ File loaded successfully');
@@ -129,7 +165,7 @@ function VisV4Component() {
       console.error('❌ Error processing file:', err);
       setError(`Failed to process file: ${err.message}`);
     }
-  }, [parseGraphJSON, validateGraphJSON]);
+  }, [parseGraphJSON, validateGraphJSON, getAvailableGroupings, currentGrouping]);
 
   // Create test graph
   const createTestGraph = React.useCallback(() => {
@@ -238,7 +274,6 @@ function VisV4Component() {
         <p style={{ margin: '0 0 16px 0', color: '#666' }}>
           Latest version of the Hydro graph visualization system with enhanced architecture and performance.
         </p>
-        
         {!currentVisualizationState && (
           <div style={{ marginBottom: '24px' }}>
             <button 
@@ -260,6 +295,35 @@ function VisV4Component() {
           </div>
         )}
       </div>
+
+      {/* Controls and InfoPanel */}
+      {currentVisualizationState && LayoutControls && (
+        <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
+          <div style={{ flex: 1 }}>
+            <LayoutControls
+              visualizationState={currentVisualizationState}
+              currentLayout={layoutAlgorithm}
+              onLayoutChange={setLayoutAlgorithm}
+              colorPalette={colorPalette}
+              onPaletteChange={setColorPalette}
+              autoFit={autoFit}
+              onAutoFitToggle={setAutoFit}
+            />
+          </div>
+          <div style={{ flex: 2 }}>
+            {InfoPanel && (
+              <InfoPanel
+                visualizationState={currentVisualizationState}
+                legendData={graphData && graphData.legend ? graphData.legend : {}}
+                hierarchyChoices={Array.isArray(groupingOptions) ? groupingOptions : []}
+                currentGrouping={typeof currentGrouping === 'string' ? currentGrouping : null}
+                onGroupingChange={setCurrentGrouping}
+                colorPalette={colorPalette}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {!currentVisualizationState ? (
         <div style={{
@@ -318,7 +382,6 @@ function VisV4Component() {
               />
             )}
           </div>
-          
           <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button 
               onClick={() => {
@@ -337,7 +400,6 @@ function VisV4Component() {
             >
               Clear Graph
             </button>
-            
             {graphData && (
               <button 
                 onClick={() => {
@@ -360,7 +422,6 @@ function VisV4Component() {
                 Copy Share URL
               </button>
             )}
-            
             <span style={{ color: '#666', fontSize: '14px' }}>
               Powered by visualizer-v4 architecture
             </span>

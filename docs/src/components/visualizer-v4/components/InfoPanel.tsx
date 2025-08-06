@@ -7,7 +7,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { InfoPanelProps, HierarchyTreeNode, LegendData } from './types';
-import { DockablePanel, PANEL_POSITIONS } from './DockablePanel';
+import { PANEL_POSITIONS } from './types';
+import { DockablePanel } from './DockablePanel';
 import { CollapsibleSection } from './CollapsibleSection';
 import { GroupingControls } from './GroupingControls';
 import { HierarchyTree } from './HierarchyTree';
@@ -47,9 +48,12 @@ export function InfoPanel({
   };
 
   const effectiveLegendData = legendData || defaultLegendData;
+  
+  // Ensure hierarchyChoices is always an array
+  const safeHierarchyChoices = Array.isArray(hierarchyChoices) ? hierarchyChoices : [];
 
   // Get the current grouping name for the section title
-  const currentGroupingName = hierarchyChoices?.find(choice => choice.id === currentGrouping)?.name || 'Container';
+  const currentGroupingName = safeHierarchyChoices.find(choice => choice.id === currentGrouping)?.name || 'Container';
 
     // Build hierarchy tree structure from visualization state
   const hierarchyTree = useMemo((): HierarchyTreeNode[] => {
@@ -135,17 +139,17 @@ export function InfoPanel({
     >
       <div style={{ fontSize: '10px' }}>
         {/* Grouping & Hierarchy Section */}
-        {(hierarchyChoices.length > 0 || hierarchyTree.length > 0) && (
+        {(safeHierarchyChoices.length > 0 || hierarchyTree.length > 0) && (
           <CollapsibleSection
             title="Grouping & Hierarchy"
             isCollapsed={groupingCollapsed}
             onToggle={() => setGroupingCollapsed(!groupingCollapsed)}
           >
             {/* Grouping Controls */}
-            {hierarchyChoices.length > 0 && (
+            {safeHierarchyChoices.length > 0 && (
               <div style={{ marginBottom: '8px' }}>
                 <GroupingControls
-                  hierarchyChoices={hierarchyChoices}
+                  hierarchyChoices={safeHierarchyChoices}
                   currentGrouping={currentGrouping}
                   onGroupingChange={onGroupingChange}
                   compact={true}

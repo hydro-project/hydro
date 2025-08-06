@@ -10,3 +10,6 @@
 # Temporary debug files
 debug_*.js
 *.debug.js
+
+# Ignore source maps
+*.map
