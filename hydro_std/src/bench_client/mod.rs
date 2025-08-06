@@ -52,12 +52,12 @@ pub unsafe fn bench_client<'a, Client, Payload>(
     clients: &Cluster<'a, Client>,
     workload_generator: impl FnOnce(
         &Cluster<'a, Client>,
-        Stream<u32, Cluster<'a, Client>, Unbounded, NoOrder>,
+        Stream<(u32, Option<Payload>), Cluster<'a, Client>, Unbounded, NoOrder>,
     )
         -> Stream<(u32, Payload), Cluster<'a, Client>, Unbounded, NoOrder>,
     transaction_cycle: impl FnOnce(
         Stream<(u32, Payload), Cluster<'a, Client>, Unbounded>,
-    ) -> Stream<u32, Cluster<'a, Client>, Unbounded, NoOrder>,
+    ) -> Stream<(u32, Payload), Cluster<'a, Client>, Unbounded, NoOrder>,
     num_clients_per_node: usize,
 ) -> BenchResult<'a, Client>
 where
@@ -70,7 +70,9 @@ where
 
     let c_new_payloads_on_start = start_this_tick
         .clone()
-        .flat_map_ordered(q!(move |_| (0..num_clients_per_node as u32)));
+        .flat_map_ordered(q!(move |_| (0..num_clients_per_node as u32).map(move |virtual_id| {
+            (virtual_id, None)
+        })));
 
     let (c_to_proposers_complete_cycle, c_to_proposers) =
         clients.forward_ref::<Stream<_, _, _, TotalOrder>>();
@@ -82,7 +84,7 @@ where
         // will only affect when the next request for that key is emitted with respect to other
         // keys
         transaction_cycle(c_to_proposers).tick_batch(&client_tick)
-    };
+    }.map(q!(|(virtual_id, payload)| (virtual_id, Some(payload))));
 
     let c_new_payloads = workload_generator(
         clients,
@@ -107,7 +109,7 @@ where
         ));
     let c_updated_timers = c_received_quorum_payloads
         .clone()
-        .map(q!(|key| (key as usize, Instant::now())));
+        .map(q!(|(key, _payload)| (key as usize, Instant::now())));
     let c_new_timers = c_timers
         .clone() // Update c_timers in tick+1 so we can record differences during this tick (to track latency)
         .chain(c_new_timers_when_leader_elected)

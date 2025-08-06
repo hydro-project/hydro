@@ -28,7 +28,6 @@ pub fn two_pc_bench<'a>(
                     num_participants,
                     payloads.send_bincode(coordinator).entries(),
                 )
-                .map(q!(|(client_id, (key, _val))| (client_id, key)))
                 .demux_bincode(clients)
             },
             num_clients_per_node,
