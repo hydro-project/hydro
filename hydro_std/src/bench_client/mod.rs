@@ -57,7 +57,8 @@ pub unsafe fn bench_client<'a, Client, Payload>(
         -> Stream<(u32, Payload), Cluster<'a, Client>, Unbounded, NoOrder>,
     transaction_cycle: impl FnOnce(
         Stream<(u32, Payload), Cluster<'a, Client>, Unbounded>,
-    ) -> Stream<(u32, Payload), Cluster<'a, Client>, Unbounded, NoOrder>,
+    )
+        -> Stream<(u32, Payload), Cluster<'a, Client>, Unbounded, NoOrder>,
     num_clients_per_node: usize,
 ) -> BenchResult<'a, Client>
 where
@@ -68,11 +69,9 @@ where
     // Set up an initial set of payloads on the first tick
     let start_this_tick = client_tick.optional_first_tick(q!(()));
 
-    let c_new_payloads_on_start = start_this_tick
-        .clone()
-        .flat_map_ordered(q!(move |_| (0..num_clients_per_node as u32).map(move |virtual_id| {
-            (virtual_id, None)
-        })));
+    let c_new_payloads_on_start = start_this_tick.clone().flat_map_ordered(q!(move |_| (0
+        ..num_clients_per_node as u32)
+        .map(move |virtual_id| { (virtual_id, None) })));
 
     let (c_to_proposers_complete_cycle, c_to_proposers) =
         clients.forward_ref::<Stream<_, _, _, TotalOrder>>();
@@ -84,7 +83,8 @@ where
         // will only affect when the next request for that key is emitted with respect to other
         // keys
         transaction_cycle(c_to_proposers).tick_batch(&client_tick)
-    }.map(q!(|(virtual_id, payload)| (virtual_id, Some(payload))));
+    }
+    .map(q!(|(virtual_id, payload)| (virtual_id, Some(payload))));
 
     let c_new_payloads = workload_generator(
         clients,

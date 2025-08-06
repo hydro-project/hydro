@@ -83,7 +83,10 @@ pub fn paxos_bench<'a>(
         acceptor_checkpoint_complete.complete(a_checkpoint);
 
         let c_received_payloads = processed_payloads
-            .map(q!(|payload| (payload.value.0, ((payload.key, payload.value.1), Ok(())))))
+            .map(q!(|payload| (
+                payload.value.0,
+                ((payload.key, payload.value.1), Ok(()))
+            )))
             .demux_bincode(clients)
             .values();
 
@@ -114,15 +117,14 @@ pub fn inc_u32_workload_generator<'a, Client>(
     _client: &Cluster<'a, Client>,
     payload_request: Stream<(u32, Option<u32>), Cluster<'a, Client>, Unbounded, NoOrder>,
 ) -> Stream<(u32, u32), Cluster<'a, Client>, Unbounded, NoOrder> {
-    payload_request
-        .map(q!(move |(virtual_id, payload)| {
-            let value = if let Some(payload) = payload {
-                payload + 1
-            } else {
-                0
-            };
-            (virtual_id, value)
-        }))
+    payload_request.map(q!(move |(virtual_id, payload)| {
+        let value = if let Some(payload) = payload {
+            payload + 1
+        } else {
+            0
+        };
+        (virtual_id, value)
+    }))
 }
 
 #[cfg(test)]
