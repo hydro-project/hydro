@@ -14,7 +14,7 @@ use crate::ir::{HydroLeaf, HydroNode, TeeNode};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
 use crate::stream::{AtLeastOnce, ExactlyOnce};
-use crate::{Bounded, Optional, Stream, TotalOrder, Unbounded};
+use crate::{Bounded, NoOrder, Optional, Stream, TotalOrder, Unbounded};
 
 pub struct Singleton<Type, Loc, Bound> {
     pub(crate) location: Loc,
@@ -263,7 +263,7 @@ where
     pub fn flat_map_unordered<U, I, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
+    ) -> Stream<U, L, B, NoOrder, ExactlyOnce>
     where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
@@ -277,6 +277,20 @@ where
                 metadata: self.location.new_node_metadata::<U>(),
             },
         )
+    }
+
+    pub fn flatten_ordered<U>(self) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
+    where
+        T: IntoIterator<Item = U>,
+    {
+        self.flat_map_ordered(q!(|x| x))
+    }
+
+    pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder, ExactlyOnce>
+    where
+        T: IntoIterator<Item = U>,
+    {
+        self.flat_map_unordered(q!(|x| x))
     }
 
     pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>

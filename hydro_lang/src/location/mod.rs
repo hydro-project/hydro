@@ -295,7 +295,7 @@ pub trait Location<'a>: Clone {
         ExternalBytesPort<Many>,
         KeyedStream<u64, <Codec as Decoder>::Item, Self, Unbounded, TotalOrder, ExactlyOnce>,
         KeyedStream<u64, MembershipEvent, Self, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardRef<'a, KeyedStream<u64, T, Self, Unbounded, TotalOrder, ExactlyOnce>>,
+        ForwardRef<'a, KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>,
     )
     where
         Self: Sized + NoTick,
@@ -308,7 +308,7 @@ pub trait Location<'a>: Clone {
         };
 
         let (fwd_ref, to_sink) =
-            self.forward_ref::<KeyedStream<u64, T, Self, Unbounded, TotalOrder, ExactlyOnce>>();
+            self.forward_ref::<KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
         let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
@@ -407,7 +407,7 @@ pub trait Location<'a>: Clone {
         ExternalBincodeBidi<InT, OutT, Many>,
         KeyedStream<u64, InT, Self, Unbounded, TotalOrder, ExactlyOnce>,
         KeyedStream<u64, MembershipEvent, Self, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardRef<'a, KeyedStream<u64, OutT, Self, Unbounded, TotalOrder, ExactlyOnce>>,
+        ForwardRef<'a, KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
     )
     where
         Self: Sized + NoTick,
@@ -422,7 +422,7 @@ pub trait Location<'a>: Clone {
         let root = get_this_crate();
 
         let (fwd_ref, to_sink) =
-            self.forward_ref::<KeyedStream<u64, OutT, Self, Unbounded, TotalOrder, ExactlyOnce>>();
+            self.forward_ref::<KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
         let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
