@@ -4,6 +4,9 @@ use std::marker::PhantomData;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
+use crate::ir::HydroNode;
+use crate::keyed_optional::KeyedOptional;
+use crate::keyed_singleton::KeyedSingleton;
 use crate::location::{LocationId, NoTick};
 use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
@@ -399,6 +402,47 @@ where
                     .into()
             },
             _phantom_order: Default::default(),
+        }
+    }
+
+    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedSingleton<K, A, L, B> {
+        let init = init.splice_fn0_ctx(&self.underlying.location).into();
+        let comb = comb
+            .splice_fn2_borrow_mut_ctx(&self.underlying.location)
+            .into();
+
+        let out_ir = HydroNode::FoldKeyed {
+            init,
+            acc: comb,
+            input: Box::new(self.underlying.ir_node.into_inner()),
+            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+        };
+
+        KeyedSingleton {
+            underlying: Stream::new(self.underlying.location, out_ir),
+        }
+    }
+
+    pub fn reduce<F: Fn(&mut V, V) + 'a>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B> {
+        let f = comb
+            .splice_fn2_borrow_mut_ctx(&self.underlying.location)
+            .into();
+
+        let out_ir = HydroNode::ReduceKeyed {
+            f,
+            input: Box::new(self.underlying.ir_node.into_inner()),
+            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+        };
+
+        KeyedOptional {
+            underlying: Stream::new(self.underlying.location, out_ir),
         }
     }
 }
