@@ -54,17 +54,17 @@ pub fn paxos_bench<'a>(
             let a_checkpoint_largest_seqs = replica_checkpoint
                 .broadcast_bincode(&acceptors)
                 .entries()
-                .tick_batch(&checkpoint_tick)
-                .persist()
-                .reduce_keyed_commutative(q!(|curr_seq, seq| {
+                .into_keyed()
+                .reduce_commutative(q!(|curr_seq, seq| {
                     if seq > *curr_seq {
                         *curr_seq = seq;
                     }
-                }));
+                }))
+                .snapshot(&checkpoint_tick);
 
             let a_checkpoints_quorum_reached = a_checkpoint_largest_seqs
                 .clone()
-                .count()
+                .key_count()
                 .filter_map(q!(move |num_received| if num_received == f + 1 {
                     Some(true)
                 } else {
@@ -73,6 +73,7 @@ pub fn paxos_bench<'a>(
 
             // Find the smallest checkpoint seq that everyone agrees to
             a_checkpoint_largest_seqs
+                .entries()
                 .continue_if(a_checkpoints_quorum_reached)
                 .map(q!(|(_sender, seq)| seq))
                 .min()
