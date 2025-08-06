@@ -7,11 +7,24 @@ use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::location::{LocationId, NoTick};
 use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
-use crate::{Location, NoOrder, Stream, TotalOrder};
+use crate::{Bounded, Location, NoOrder, Stream, Tick, TotalOrder, Unbounded};
 
 pub struct KeyedStream<K, V, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
     pub(crate) underlying: Stream<(K, V), Loc, Bound, NoOrder, Retries>,
     pub(crate) _phantom_order: PhantomData<Order>,
+}
+
+impl<'a, K, V, L, B, R> From<KeyedStream<K, V, L, B, TotalOrder, R>>
+    for KeyedStream<K, V, L, B, NoOrder, R>
+where
+    L: Location<'a>,
+{
+    fn from(stream: KeyedStream<K, V, L, B, TotalOrder, R>) -> KeyedStream<K, V, L, B, NoOrder, R> {
+        KeyedStream {
+            underlying: stream.underlying,
+            _phantom_order: Default::default(),
+        }
+    }
 }
 
 impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound, Order, Retries> Clone
@@ -167,6 +180,44 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
                 move |(k, v)| {
                     let out = orig((k.clone(), v));
                     (k, out)
+                }
+            })),
+            _phantom_order: Default::default(),
+        }
+    }
+
+    pub fn filter_map<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedStream<K, U, L, B, O, R>
+    where
+        F: Fn(V) -> Option<U> + 'a,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        KeyedStream {
+            underlying: self.underlying.filter_map(q!({
+                let orig = f;
+                move |(k, v)| orig(v).map(|o| (k, o))
+            })),
+            _phantom_order: Default::default(),
+        }
+    }
+
+    pub fn filter_map_with_key<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedStream<K, U, L, B, O, R>
+    where
+        F: Fn((K, V)) -> Option<U> + 'a,
+        K: Clone,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        KeyedStream {
+            underlying: self.underlying.filter_map(q!({
+                let orig = f;
+                move |(k, v)| {
+                    let out = orig((k.clone(), v));
+                    out.map(|o| (k, o))
                 }
             })),
             _phantom_order: Default::default(),
@@ -347,6 +398,18 @@ where
                     .fold_keyed_early_stop(init, f)
                     .into()
             },
+            _phantom_order: Default::default(),
+        }
+    }
+}
+
+impl<'a, K, V, L, O, R> KeyedStream<K, V, Tick<L>, Bounded, O, R>
+where
+    L: Location<'a>,
+{
+    pub fn all_ticks(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
+        KeyedStream {
+            underlying: self.underlying.all_ticks(),
             _phantom_order: Default::default(),
         }
     }
