@@ -438,7 +438,7 @@ expression: "&ir"
                                         ),
                                     ),
                                     output_type: Some(
-                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                     ),
                                 },
                             },
@@ -791,7 +791,7 @@ expression: "&ir"
                                                                                         ),
                                                                                     ),
                                                                                     output_type: Some(
-                                                                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                                                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                                                                     ),
                                                                                 },
                                                                             },
@@ -1226,7 +1226,7 @@ expression: "&ir"
                                                                                                         ),
                                                                                                     ),
                                                                                                     output_type: Some(
-                                                                                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                                                                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                                                                                     ),
                                                                                                 },
                                                                                             },
@@ -1391,7 +1391,7 @@ expression: "&ir"
                                         ),
                                     ),
                                     output_type: Some(
-                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                     ),
                                 },
                             },
@@ -1808,7 +1808,7 @@ expression: "&ir"
                                                                                                                         ),
                                                                                                                     ),
                                                                                                                     output_type: Some(
-                                                                                                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                                                                                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                                                                                                     ),
                                                                                                                 },
                                                                                                             },
@@ -1973,7 +1973,7 @@ expression: "&ir"
                                                         ),
                                                     ),
                                                     output_type: Some(
-                                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                                     ),
                                                 },
                                             },
@@ -2486,7 +2486,7 @@ expression: "&ir"
                                                                                                                                     ),
                                                                                                                                 ),
                                                                                                                                 output_type: Some(
-                                                                                                                                    ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                                                                                                                    ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                                                                                                                 ),
                                                                                                                             },
                                                                                                                         },
@@ -2651,7 +2651,7 @@ expression: "&ir"
                                                                     ),
                                                                 ),
                                                                 output_type: Some(
-                                                                    ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                                                    ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                                                 ),
                                                             },
                                                         },
@@ -3161,7 +3161,7 @@ expression: "&ir"
                                                                                                                                                                                 ),
                                                                                                                                                                             ),
                                                                                                                                                                             output_type: Some(
-                                                                                                                                                                                ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                                                                                                                                                                ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                                                                                                                                                             ),
                                                                                                                                                                         },
                                                                                                                                                                     },
@@ -3326,7 +3326,7 @@ expression: "&ir"
                                                                                                                 ),
                                                                                                             ),
                                                                                                             output_type: Some(
-                                                                                                                ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                                                                                                ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                                                                                             ),
                                                                                                         },
                                                                                                     },
@@ -4008,7 +4008,7 @@ expression: "&ir"
                                                                                                                                                                                     ),
                                                                                                                                                                                 ),
                                                                                                                                                                                 output_type: Some(
-                                                                                                                                                                                    ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                                                                                                                                                                    ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                                                                                                                                                                 ),
                                                                                                                                                                             },
                                                                                                                                                                         },
@@ -4173,7 +4173,7 @@ expression: "&ir"
                                                                                                                     ),
                                                                                                                 ),
                                                                                                                 output_type: Some(
-                                                                                                                    ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                                                                                                    ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                                                                                                 ),
                                                                                                             },
                                                                                                         },

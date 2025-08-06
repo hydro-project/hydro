@@ -114,11 +114,13 @@ where
         .clone() // Update c_timers in tick+1 so we can record differences during this tick (to track latency)
         .chain(c_new_timers_when_leader_elected)
         .chain(c_updated_timers.clone())
-        .reduce_keyed_commutative(q!(|curr_time, new_time| {
+        .into_keyed()
+        .reduce_commutative(q!(|curr_time, new_time| {
             if new_time > *curr_time {
                 *curr_time = new_time;
             }
-        }));
+        }))
+        .entries();
     c_timers_complete_cycle.complete_next_tick(c_new_timers);
 
     let c_stats_output_timer = unsafe {
