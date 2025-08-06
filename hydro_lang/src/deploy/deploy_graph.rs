@@ -289,6 +289,10 @@ impl<'a> Deploy<'a> for HydroDeploy {
             &format!("__hydro_deploy_many_{}_sink", &shared_handle),
             Span::call_site(),
         );
+        let membership_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_membership", &shared_handle),
+            Span::call_site(),
+        );
 
         let root = get_this_crate();
 
@@ -304,6 +308,10 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
         extra_stmts.push(syn::parse_quote! {
             let #sink_ident = #connect_ident.sink;
+        });
+
+        extra_stmts.push(syn::parse_quote! {
+            let #membership_ident = #connect_ident.membership;
         });
 
         parse_quote!(#source_ident)

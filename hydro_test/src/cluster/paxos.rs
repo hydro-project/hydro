@@ -495,16 +495,18 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
     let p_received_quorum_of_p1bs = unsafe {
         // SAFETY: All the values for a quorum will be emitted in a single batch,
         // so we will not split up the quorum.
-        quorums.tick_batch()
+        quorums
+            .into_keyed()
+            .assume_ordering::<TotalOrder>() // we use `flatten_unordered` later
+            .fold(
+                q!(|| vec![]),
+                q!(|logs, log| {
+                    logs.push(log);
+                }),
+            )
+            .snapshot()
+            .entries()
     }
-    .persist()
-    .fold_keyed_commutative(
-        q!(|| vec![]),
-        q!(|logs, log| {
-            // even though this is non-commutative, we use `flatten_unordered` later
-            logs.push(log);
-        }),
-    )
     .max_by_key(q!(|t| t.0))
     .zip(p_ballot.clone())
     .filter_map(q!(

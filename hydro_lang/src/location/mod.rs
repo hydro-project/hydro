@@ -8,6 +8,7 @@ use proc_macro2::Span;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use stageleft::{QuotedWithContext, q, quote_type};
+use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 use super::builder::FlowState;
@@ -39,6 +40,12 @@ pub enum LocationId {
     Process(usize),
     Cluster(usize),
     Tick(usize, Box<LocationId>),
+}
+
+#[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
+pub enum MembershipEvent {
+    Joined,
+    Left,
 }
 
 impl LocationId {
@@ -287,7 +294,8 @@ pub trait Location<'a>: Clone {
     ) -> (
         ExternalBytesPort<Many>,
         KeyedStream<u64, <Codec as Decoder>::Item, Self, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardRef<'a, KeyedStream<u64, T, Self, Unbounded, TotalOrder, ExactlyOnce>>,
+        KeyedStream<u64, MembershipEvent, Self, Unbounded, TotalOrder, ExactlyOnce>,
+        ForwardRef<'a, KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>,
     )
     where
         Self: Sized + NoTick,
@@ -300,7 +308,7 @@ pub trait Location<'a>: Clone {
         };
 
         let (fwd_ref, to_sink) =
-            self.forward_ref::<KeyedStream<u64, T, Self, Unbounded, TotalOrder, ExactlyOnce>>();
+            self.forward_ref::<KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
         let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
@@ -342,6 +350,26 @@ pub trait Location<'a>: Clone {
             },
         );
 
+        let membership_stream_ident = syn::Ident::new(
+            &format!(
+                "__hydro_deploy_many_{}_{}_membership",
+                from.id, next_external_port_id
+            ),
+            Span::call_site(),
+        );
+        let membership_stream_expr: syn::Expr = parse_quote!(#membership_stream_ident);
+        let raw_membership_stream: Stream<(u64, bool), Self, Unbounded, NoOrder, ExactlyOnce> =
+            Stream::new(
+                self.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::Source {
+                        source: HydroSource::Stream(membership_stream_expr.into()),
+                        metadata: self.new_node_metadata::<(u64, bool)>(),
+                    }),
+                    metadata: self.new_node_metadata::<(u64, bool)>(),
+                },
+            );
+
         (
             ExternalBytesPort {
                 process_id: from.id,
@@ -355,6 +383,18 @@ pub trait Location<'a>: Clone {
                     .assume_ordering::<TotalOrder>()
                     .into_keyed()
             },
+            unsafe {
+                raw_membership_stream
+                    .assume_ordering::<TotalOrder>()
+                    .into_keyed()
+            }
+            .map(q!(|join| {
+                if join {
+                    MembershipEvent::Joined
+                } else {
+                    MembershipEvent::Left
+                }
+            })),
             fwd_ref,
         )
     }
@@ -366,7 +406,8 @@ pub trait Location<'a>: Clone {
     ) -> (
         ExternalBincodeBidi<InT, OutT, Many>,
         KeyedStream<u64, InT, Self, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardRef<'a, KeyedStream<u64, OutT, Self, Unbounded, TotalOrder, ExactlyOnce>>,
+        KeyedStream<u64, MembershipEvent, Self, Unbounded, TotalOrder, ExactlyOnce>,
+        ForwardRef<'a, KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
     )
     where
         Self: Sized + NoTick,
@@ -381,7 +422,7 @@ pub trait Location<'a>: Clone {
         let root = get_this_crate();
 
         let (fwd_ref, to_sink) =
-            self.forward_ref::<KeyedStream<u64, OutT, Self, Unbounded, TotalOrder, ExactlyOnce>>();
+            self.forward_ref::<KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
         let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
@@ -431,6 +472,26 @@ pub trait Location<'a>: Clone {
             },
         );
 
+        let membership_stream_ident = syn::Ident::new(
+            &format!(
+                "__hydro_deploy_many_{}_{}_membership",
+                from.id, next_external_port_id
+            ),
+            Span::call_site(),
+        );
+        let membership_stream_expr: syn::Expr = parse_quote!(#membership_stream_ident);
+        let raw_membership_stream: Stream<(u64, bool), Self, Unbounded, NoOrder, ExactlyOnce> =
+            Stream::new(
+                self.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::Source {
+                        source: HydroSource::Stream(membership_stream_expr.into()),
+                        metadata: self.new_node_metadata::<(u64, bool)>(),
+                    }),
+                    metadata: self.new_node_metadata::<(u64, bool)>(),
+                },
+            );
+
         (
             ExternalBincodeBidi {
                 process_id: from.id,
@@ -441,6 +502,18 @@ pub trait Location<'a>: Clone {
                 // SAFETY: order of messages is deterministic within each key due to TCP
                 raw_stream.assume_ordering::<TotalOrder>().into_keyed()
             },
+            unsafe {
+                raw_membership_stream
+                    .assume_ordering::<TotalOrder>()
+                    .into_keyed()
+            }
+            .map(q!(|join| {
+                if join {
+                    MembershipEvent::Joined
+                } else {
+                    MembershipEvent::Left
+                }
+            })),
             fwd_ref,
         )
     }
@@ -587,7 +660,8 @@ mod tests {
         let first_node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (in_port, input, complete_sink) = first_node.bidi_external_many_bincode(&external);
+        let (in_port, input, _membership, complete_sink) =
+            first_node.bidi_external_many_bincode(&external);
         let out = input.entries().send_bincode_external(&external);
         complete_sink.complete(first_node.source_iter::<(u64, ()), _>(q!([])).into_keyed());
 
@@ -621,7 +695,8 @@ mod tests {
         let first_node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (in_port, input, complete_sink) = first_node.bidi_external_many_bincode(&external);
+        let (in_port, input, _membership, complete_sink) =
+            first_node.bidi_external_many_bincode(&external);
         let out = input.entries().send_bincode_external(&external);
         complete_sink.complete(first_node.source_iter::<(u64, ()), _>(q!([])).into_keyed());
 
@@ -652,7 +727,7 @@ mod tests {
         let first_node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (in_port, input, complete_sink) = first_node
+        let (in_port, input, _membership, complete_sink) = first_node
             .bidi_external_many_bytes::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
         let out = input.entries().send_bincode_external(&external);
         complete_sink.complete(first_node.source_iter(q!([])).into_keyed());
@@ -692,7 +767,7 @@ mod tests {
         let first_node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (port, input, complete_sink) = first_node
+        let (port, input, _membership, complete_sink) = first_node
             .bidi_external_many_bytes::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
         complete_sink
             .complete(input.map(q!(|bytes| { bytes.into_iter().map(|x| x + 1).collect() })));
@@ -724,7 +799,8 @@ mod tests {
         let first_node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (port, input, complete_sink) = first_node.bidi_external_many_bincode(&external);
+        let (port, input, _membership, complete_sink) =
+            first_node.bidi_external_many_bincode(&external);
         complete_sink.complete(input.map(q!(|text: String| { text.to_uppercase() })));
 
         let nodes = flow

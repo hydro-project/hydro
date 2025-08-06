@@ -4,14 +4,31 @@ use std::marker::PhantomData;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
+use crate::ir::HydroNode;
+use crate::keyed_optional::KeyedOptional;
+use crate::keyed_singleton::KeyedSingleton;
+use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick};
 use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
-use crate::{Location, NoOrder, Stream, TotalOrder};
+use crate::{Atomic, Bounded, Location, NoOrder, Stream, Tick, TotalOrder, Unbounded};
 
 pub struct KeyedStream<K, V, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
     pub(crate) underlying: Stream<(K, V), Loc, Bound, NoOrder, Retries>,
     pub(crate) _phantom_order: PhantomData<Order>,
+}
+
+impl<'a, K, V, L, B, R> From<KeyedStream<K, V, L, B, TotalOrder, R>>
+    for KeyedStream<K, V, L, B, NoOrder, R>
+where
+    L: Location<'a>,
+{
+    fn from(stream: KeyedStream<K, V, L, B, TotalOrder, R>) -> KeyedStream<K, V, L, B, NoOrder, R> {
+        KeyedStream {
+            underlying: stream.underlying,
+            _phantom_order: Default::default(),
+        }
+    }
 }
 
 impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound, Order, Retries> Clone
@@ -46,6 +63,36 @@ where
 }
 
 impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
+    /// Explicitly "casts" the keyed stream to a type with a different ordering
+    /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
+    /// by the type-system.
+    ///
+    /// # Safety
+    /// This function is used as an escape hatch, and any mistakes in the
+    /// provided ordering guarantee will propagate into the guarantees
+    /// for the rest of the program.
+    pub unsafe fn assume_ordering<O2>(self) -> KeyedStream<K, V, L, B, O2, R> {
+        KeyedStream {
+            underlying: self.underlying,
+            _phantom_order: PhantomData,
+        }
+    }
+
+    /// Explicitly "casts" the keyed stream to a type with a different retries
+    /// guarantee for each group. Useful in unsafe code where the lack of retries cannot
+    /// be proven by the type-system.
+    ///
+    /// # Safety
+    /// This function is used as an escape hatch, and any mistakes in the
+    /// provided retries guarantee will propagate into the guarantees
+    /// for the rest of the program.
+    pub unsafe fn assume_retries<R2>(self) -> KeyedStream<K, V, L, B, O, R2> {
+        KeyedStream {
+            underlying: unsafe { self.underlying.assume_retries::<R2>() },
+            _phantom_order: PhantomData,
+        }
+    }
+
     /// Flattens the keyed stream into a single stream of key-value pairs, with non-deterministic
     /// element ordering.
     ///
@@ -167,6 +214,44 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
                 move |(k, v)| {
                     let out = orig((k.clone(), v));
                     (k, out)
+                }
+            })),
+            _phantom_order: Default::default(),
+        }
+    }
+
+    pub fn filter_map<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedStream<K, U, L, B, O, R>
+    where
+        F: Fn(V) -> Option<U> + 'a,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        KeyedStream {
+            underlying: self.underlying.filter_map(q!({
+                let orig = f;
+                move |(k, v)| orig(v).map(|o| (k, o))
+            })),
+            _phantom_order: Default::default(),
+        }
+    }
+
+    pub fn filter_map_with_key<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedStream<K, U, L, B, O, R>
+    where
+        F: Fn((K, V)) -> Option<U> + 'a,
+        K: Clone,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        KeyedStream {
+            underlying: self.underlying.filter_map(q!({
+                let orig = f;
+                move |(k, v)| {
+                    let out = orig((k.clone(), v));
+                    out.map(|o| (k, o))
                 }
             })),
             _phantom_order: Default::default(),
@@ -347,6 +432,133 @@ where
                     .fold_keyed_early_stop(init, f)
                     .into()
             },
+            _phantom_order: Default::default(),
+        }
+    }
+
+    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedSingleton<K, A, L, B> {
+        let init = init.splice_fn0_ctx(&self.underlying.location).into();
+        let comb = comb
+            .splice_fn2_borrow_mut_ctx(&self.underlying.location)
+            .into();
+
+        let out_ir = HydroNode::FoldKeyed {
+            init,
+            acc: comb,
+            input: Box::new(self.underlying.ir_node.into_inner()),
+            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+        };
+
+        KeyedSingleton {
+            underlying: Stream::new(self.underlying.location, out_ir),
+        }
+    }
+
+    pub fn reduce<F: Fn(&mut V, V) + 'a>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B> {
+        let f = comb
+            .splice_fn2_borrow_mut_ctx(&self.underlying.location)
+            .into();
+
+        let out_ir = HydroNode::ReduceKeyed {
+            f,
+            input: Box::new(self.underlying.ir_node.into_inner()),
+            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+        };
+
+        KeyedOptional {
+            underlying: Stream::new(self.underlying.location, out_ir),
+        }
+    }
+}
+
+impl<'a, K, V, L, B, O> KeyedStream<K, V, L, B, O, ExactlyOnce>
+where
+    K: Eq + Hash,
+    L: Location<'a>,
+{
+    pub fn reduce_commutative<F: Fn(&mut V, V) + 'a>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is commutative
+            self.assume_ordering::<TotalOrder>().reduce(comb)
+        }
+    }
+}
+
+impl<'a, K, V, L, B, R> KeyedStream<K, V, L, B, TotalOrder, R>
+where
+    K: Eq + Hash,
+    L: Location<'a>,
+{
+    pub fn reduce_idempotent<F: Fn(&mut V, V) + 'a>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is idempotent
+            self.assume_retries::<ExactlyOnce>().reduce(comb)
+        }
+    }
+}
+
+impl<'a, K, V, L, B, O, R> KeyedStream<K, V, L, B, O, R>
+where
+    L: Location<'a> + NoTick + NoAtomic,
+{
+    pub fn atomic(self, tick: &Tick<L>) -> KeyedStream<K, V, Atomic<L>, B, O, R> {
+        KeyedStream {
+            underlying: self.underlying.atomic(tick),
+            _phantom_order: Default::default(),
+        }
+    }
+
+    /// Given a tick, returns a keyed stream corresponding to a batch of elements segmented by
+    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input.
+    ///
+    /// # Safety
+    /// The batch boundaries are non-deterministic and may change across executions.
+    pub unsafe fn batch(self, tick: &Tick<L>) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+        unsafe { self.atomic(tick).batch() }
+    }
+}
+
+impl<'a, K, V, L, B, O, R> KeyedStream<K, V, Atomic<L>, B, O, R>
+where
+    L: Location<'a> + NoTick + NoAtomic,
+{
+    /// Returns a keyed stream corresponding to the latest batch of elements being atomically
+    /// processed. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input.
+    ///
+    /// # Safety
+    /// The batch boundaries are non-deterministic and may change across executions.
+    pub unsafe fn batch(self) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+        unsafe {
+            KeyedStream {
+                underlying: self.underlying.tick_batch(),
+                _phantom_order: Default::default(),
+            }
+        }
+    }
+}
+
+impl<'a, K, V, L, O, R> KeyedStream<K, V, Tick<L>, Bounded, O, R>
+where
+    L: Location<'a>,
+{
+    pub fn all_ticks(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
+        KeyedStream {
+            underlying: self.underlying.all_ticks(),
             _phantom_order: Default::default(),
         }
     }

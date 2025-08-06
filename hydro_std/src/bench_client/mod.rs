@@ -200,14 +200,11 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     let combined_latencies = unsafe {
         keyed_latencies
             .map(q!(|histogram| histogram.histogram.borrow().clone()))
-            .entries()
-            .tick_batch(&aggregator.tick())
-            .assume_ordering()
-            .persist()
-            .reduce_keyed_idempotent(q!(|combined, new| {
+            .batch(&aggregator.tick())
+            .reduce_idempotent(q!(|combined, new| {
                 *combined = new;
             }))
-            .map(q!(|(_id, histogram)| histogram))
+            .values()
             .reduce_commutative(q!(|combined, new| {
                 combined.add(new).unwrap();
             }))
@@ -237,14 +234,11 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
 
     let combined_throughputs = unsafe {
         keyed_throughputs
-            .entries()
-            .tick_batch(&aggregator.tick())
-            .assume_ordering()
-            .persist()
-            .reduce_keyed_idempotent(q!(|combined, new| {
+            .reduce_idempotent(q!(|combined, new| {
                 *combined = new;
             }))
-            .map(q!(|(_id, throughput)| throughput))
+            .snapshot(&aggregator.tick())
+            .values()
             .reduce_commutative(q!(|combined, new| {
                 combined.add(new);
             }))
