@@ -86,7 +86,7 @@ export function StandardNode({ id, data }: NodeProps) {
 }
 
 /**
- * Container node component
+ * Container node component with label positioned at bottom-right
  */
 export function ContainerNode({ id, data }: NodeProps) {
   // Use dimensions from ELK layout via ReactFlowBridge data
@@ -103,18 +103,49 @@ export function ContainerNode({ id, data }: NodeProps) {
         background: data.collapsed ? '#ffeb3b' : 'rgba(25, 118, 210, 0.1)',
         border: data.collapsed ? '2px solid #f57f17' : '2px solid #1976d2',
         borderRadius: '8px',
-        fontSize: '12px',
-        textAlign: 'center',
         width: `${width}px`,  // Use ELK-calculated width
-        height: `${height}px`, // Use ELK-calculated height
+        height: `${height}px`, // Use ELK-calculated height (now includes label space)
         position: 'relative',
         boxSizing: 'border-box' // Ensure padding is included in dimensions
       }}
     >
       {renderHandles()}
-      <strong>{String(data.label || id)}</strong>
+      
+      {/* Container label positioned at bottom-right */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '0px',  // Decreased from 12px to give more space from internal nodes
+          right: '12px',   // Keep horizontal spacing the same
+          fontSize: '12px',
+          fontWeight: 'bold',
+          color: data.collapsed ? '#f57f17' : '#1976d2',
+          maxWidth: `${Number(width) - 36}px`, // Ensure label doesn't overflow container (increased padding)
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          // Text shadow for better legibility over container background
+          textShadow: '1px 1px 2px rgba(255, 255, 255, 0.8), -1px -1px 2px rgba(255, 255, 255, 0.8), 1px -1px 2px rgba(255, 255, 255, 0.8), -1px 1px 2px rgba(255, 255, 255, 0.8)',
+          // Subtle drop shadow for the text element itself
+          filter: 'drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1))'
+        }}
+      >
+        {String(data.label || id)}
+      </div>
+      
+      {/* Collapsed indicator (if needed) */}
       {data.collapsed && (
-        <div style={{ fontSize: '10px', color: '#666', marginTop: '4px' }}>
+        <div style={{ 
+          position: 'absolute',
+          top: '8px',
+          left: '8px',
+          fontSize: '10px', 
+          color: '#666',
+          fontWeight: '500',
+          // Text shadow for legibility
+          textShadow: '1px 1px 1px rgba(255, 255, 255, 0.8), -1px -1px 1px rgba(255, 255, 255, 0.8)',
+          filter: 'drop-shadow(0px 1px 1px rgba(0, 0, 0, 0.1))'
+        }}>
           (collapsed)
         </div>
       )}

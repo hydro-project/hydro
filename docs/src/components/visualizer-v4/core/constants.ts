@@ -37,7 +37,12 @@ export const LAYOUT_CONSTANTS = {
   DEFAULT_NODE_HEIGHT: 60,
   DEFAULT_CONTAINER_PADDING: 20,
   MIN_CONTAINER_WIDTH: 200,
-  MIN_CONTAINER_HEIGHT: 150
+  MIN_CONTAINER_HEIGHT: 150,
+  
+  // Container label positioning and sizing
+  CONTAINER_LABEL_HEIGHT: 32,           // Height reserved for container labels (increased for more space)
+  CONTAINER_LABEL_PADDING: 12,          // Padding around container labels (increased for more space)
+  CONTAINER_LABEL_FONT_SIZE: 12,        // Font size for container labels
 } as const;
 
 // Export types

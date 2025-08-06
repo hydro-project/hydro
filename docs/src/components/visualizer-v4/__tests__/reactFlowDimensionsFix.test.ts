@@ -40,9 +40,10 @@ describe('ReactFlowBridge Dimensions Fix', () => {
     const initialContainer = initialContainers[0];
     console.log(`📏 Initial container dimensions: ${initialContainer.width}x${initialContainer.height} at (${initialContainer.x}, ${initialContainer.y})`);
     
-    // Initial dimensions should be default/empty since no layout has run
-    expect(initialContainer.width).toBe(0);
-    expect(initialContainer.height).toBe(0);
+    // Initial dimensions should be minimum dimensions from label-adjusted calculations
+    // (Our container label positioning provides minimum dimensions)
+    expect(initialContainer.width).toBe(200); // MIN_CONTAINER_WIDTH
+    expect(initialContainer.height).toBeGreaterThanOrEqual(150); // MIN_CONTAINER_HEIGHT + label space
 
     // 3. Run ELK layout to calculate proper dimensions
     await elkBridge.layoutVisState(visState);

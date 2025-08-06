@@ -4,6 +4,7 @@
     "lib": ["ES2020", "DOM"],
     "module": "ES2020",
     "moduleResolution": "Node",
+    "types": ["vitest/globals"],
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowJs": true,

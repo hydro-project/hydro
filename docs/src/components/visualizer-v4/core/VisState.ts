@@ -13,6 +13,7 @@ import {
   CreateEdgeProps,
   CreateContainerProps
 } from '../shared/types';
+import { LAYOUT_CONSTANTS } from './constants';
 import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand';
 
 // Constants for consistent string literals
@@ -454,6 +455,47 @@ export class VisualizationState implements ContainerHierarchyView {
   }
 
   /**
+   * Get container dimensions adjusted for label positioning.
+   * Automatically adds space for bottom-right labels to ensure they don't occlude content.
+   * 
+   * @param {string} id - The container ID
+   * @returns {{width: number, height: number}} Adjusted dimensions including label space
+   * @throws {Error} When container doesn't exist
+   * @example
+   * ```javascript
+   * // Container with 300x200 base dimensions
+   * state.setContainer('container1', { expandedDimensions: { width: 300, height: 200 } });
+   * const dims = state.getContainerAdjustedDimensions('container1'); 
+   * // Returns: { width: 300, height: 232 } (200 + 24 label height + 8 padding)
+   * ```
+   */
+  getContainerAdjustedDimensions(id: string): { width: number; height: number } {
+    this._validateRequiredString(id, 'Container ID');
+    
+    const container = this.getContainer(id);
+    this._validateEntity(container);
+
+    // Get base dimensions
+    const baseWidth = container.expandedDimensions?.width || LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH;
+    const baseHeight = container.expandedDimensions?.height || LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;
+
+    if (container.collapsed) {
+      // Collapsed containers need minimum height for label visibility
+      const minCollapsedHeight = LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + (LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING * 2);
+      return {
+        width: Math.max(baseWidth, LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH),
+        height: Math.max(baseHeight, minCollapsedHeight)
+      };
+    } else {
+      // Expanded containers get additional height for bottom-right label space
+      return {
+        width: baseWidth,
+        height: baseHeight + LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING
+      };
+    }
+  }
+
+  /**
    * Update a container's properties. More idiomatic than separate getters/setters.
    * @param {string} id - The container ID
    * @param {Partial<{collapsed: boolean, hidden: boolean, label: string}>} updates - Properties to update
@@ -644,9 +686,13 @@ export class VisualizationState implements ContainerHierarchyView {
 
   /**
    * Get all visible (non-hidden) containers with computed position/dimension properties
+   * Dimensions are automatically adjusted to accommodate bottom-right label positioning.
    */
   get visibleContainers() {
     return Array.from(this._visibleContainers.values()).map(container => {
+      // Get label-adjusted dimensions for this container
+      const adjustedDims = this.getContainerAdjustedDimensions(container.id);
+      
       // Create a computed view that exposes layout data as direct properties
       const computedContainer = {
         id: container.id,
@@ -656,10 +702,10 @@ export class VisualizationState implements ContainerHierarchyView {
         // Expose layout position as direct x, y properties
         x: container.layout?.position?.x ?? 0,
         y: container.layout?.position?.y ?? 0,
-        // Expose layout dimensions as direct width, height properties
-        // Priority: layout dimensions (from ELK) > expandedDimensions (internal) > default
-        width: container.layout?.dimensions?.width ?? container.expandedDimensions?.width ?? 0,
-        height: container.layout?.dimensions?.height ?? container.expandedDimensions?.height ?? 0,
+        // Use adjusted dimensions that include label space
+        // ELK layout dimensions take precedence if available, otherwise use adjusted base dimensions
+        width: container.layout?.dimensions?.width ?? adjustedDims.width,
+        height: container.layout?.dimensions?.height ?? adjustedDims.height,
         // Copy any other custom properties but exclude internal ones
         ...Object.fromEntries(
           Object.entries(container).filter(([key]) => 

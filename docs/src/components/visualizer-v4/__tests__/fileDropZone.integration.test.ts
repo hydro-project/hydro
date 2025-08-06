@@ -3,21 +3,28 @@
  * Tests that the component can be imported and used correctly
  */
 
+import { describe, test, expect } from 'vitest';
 import { FileDropZone } from '../index';
 
-// Test that FileDropZone is properly exported
-console.log('FileDropZone imported:', typeof FileDropZone);
+describe('FileDropZone Integration', () => {
+  test('should be importable from index', () => {
+    expect(FileDropZone).toBeDefined();
+    expect(typeof FileDropZone).toBe('function');
+  });
 
-// Test component props interface
-const testProps = {
-  onFileLoad: (data: any) => {
-    console.log('File loaded:', data);
-  },
-  hasData: false,
-  className: 'test-class'
-};
+  test('should have correct component interface', () => {
+    // Test component props interface
+    const testProps = {
+      onFileLoad: (data: any) => {
+        console.log('File loaded:', data);
+      },
+      hasData: false,
+      className: 'test-class'
+    };
 
-// This would be used in a React component:
-// <FileDropZone {...testProps} />
-
-export { FileDropZone };
+    // Verify props structure is valid
+    expect(testProps.onFileLoad).toBeInstanceOf(Function);
+    expect(typeof testProps.hasData).toBe('boolean');
+    expect(typeof testProps.className).toBe('string');
+  });
+});
