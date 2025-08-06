@@ -1481,7 +1481,9 @@ mod tests {
                 .broadcast_bincode(&cluster2)
                 .values()
                 .tick_batch(&cluster2.tick())
-                .reduce_keyed_commutative(q!(|acc, b| *acc += b))
+                .into_keyed()
+                .reduce_commutative(q!(|acc, b| *acc += b))
+                .entries()
                 .all_ticks()
                 .for_each(q!(|(a, b_sum)| {
                     println!("a: {}, b_sum: {}", a, b_sum);
@@ -1527,7 +1529,9 @@ mod tests {
                 .broadcast_bincode(&cluster2)
                 .values()
                 .tick_batch(&cluster2.tick())
-                .reduce_keyed_commutative(q!(|acc, b| *acc += b))
+                .into_keyed()
+                .reduce_commutative(q!(|acc, b| *acc += b))
+                .entries()
                 .all_ticks()
                 .for_each(q!(|(a, b_sum)| {
                     println!("a: {}, b_sum: {}", a, b_sum);
