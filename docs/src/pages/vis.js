@@ -23,6 +23,7 @@ function VisV4Component() {
   const [EDGE_STYLES, setEdgeStyles] = React.useState(null);
   const [InfoPanel, setInfoPanel] = React.useState(null);
   const [LayoutControls, setLayoutControls] = React.useState(null);
+  const [FileDropZone, setFileDropZone] = React.useState(null);
   const [groupingOptions, setGroupingOptions] = React.useState([]);
   const [currentGrouping, setCurrentGrouping] = React.useState(null);
   const [colorPalette, setColorPalette] = React.useState('Set3');
@@ -60,6 +61,10 @@ function VisV4Component() {
         
         console.log('Loading LayoutControls...');
         const LayoutControlsModule = await import('@site/src/components/visualizer-v4/components/LayoutControls.tsx');
+        
+        console.log('Loading FileDropZone...');
+        const FileDropZoneModule = await import('@site/src/components/visualizer-v4/components/FileDropZone.tsx');
+        
         setCreateVisualizationState(() => visStateModule.createVisualizationState);
         setFlowGraph(() => FlowGraphModule.FlowGraph);
         setParseGraphJSON(() => parserModule.parseGraphJSON);
@@ -69,6 +74,7 @@ function VisV4Component() {
         setEdgeStyles(constantsModule.EDGE_STYLES);
         setInfoPanel(() => InfoPanelModule.InfoPanel);
         setLayoutControls(() => LayoutControlsModule.LayoutControls);
+        setFileDropZone(() => FileDropZoneModule.FileDropZone);
         // Don't load grouping options here - wait until we have graph data
         setLoading(false);
         setError(null);
@@ -326,42 +332,23 @@ function VisV4Component() {
       )}
 
       {!currentVisualizationState ? (
-        <div style={{
-          border: '2px dashed #ccc',
-          borderRadius: '8px',
-          padding: '48px',
-          textAlign: 'center',
-          backgroundColor: '#fafafa'
-        }}>
-          <p style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#666' }}>
-            Drop a JSON file here or click to select
-          </p>
-          <input
-            type="file"
-            accept=".json"
-            onChange={(e) => {
-              const file = e.target.files[0];
-              if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                  try {
-                    const jsonData = JSON.parse(event.target.result);
-                    handleFileLoad(jsonData);
-                  } catch (err) {
-                    setError(`Failed to parse JSON file: ${err.message}`);
-                  }
-                };
-                reader.readAsText(file);
-              }
-            }}
-            style={{
-              padding: '12px',
-              fontSize: '16px',
-              border: '1px solid #ccc',
-              borderRadius: '4px'
-            }}
+        FileDropZone ? (
+          <FileDropZone 
+            onFileLoad={handleFileLoad}
+            hasData={!!currentVisualizationState}
+            className="vis-file-drop"
           />
-        </div>
+        ) : (
+          <div style={{
+            border: '2px dashed #ccc',
+            borderRadius: '8px',
+            padding: '48px',
+            textAlign: 'center',
+            backgroundColor: '#fafafa'
+          }}>
+            <p>Loading file upload component...</p>
+          </div>
+        )
       ) : (
         <div style={{ marginBottom: '24px' }}>
           <div style={{

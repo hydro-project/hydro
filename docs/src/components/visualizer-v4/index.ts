@@ -63,49 +63,36 @@ export type {
 
 export type { ReactFlowData } from './bridges/ReactFlowBridge';
 
-// ============ Frontend Components (adapted from visualizer v2) ============
+// ============ Frontend Components ============
 
 /**
- * Main visualizer component that integrates v2 frontend with v3 architecture
+ * File upload and drop zone component
  */
-export { Visualizer } from './v2-components/Visualizer';
-
-/**
- * React Flow integration components
- */
-export { ReactFlowInner } from './v2-components/ReactFlowInner';
-export { GraphCanvas } from './v2-components/GraphCanvas';
+export { FileDropZone } from './components/FileDropZone';
 
 /**
  * UI Control components
  */
-export { LayoutControls } from './v2-components/LayoutControls';
-export { InfoPanel } from './v2-components/InfoPanel';
-export { GroupingControls } from './v2-components/GroupingControls';
-export { Legend } from './v2-components/Legend';
+export { LayoutControls } from './components/LayoutControls';
+export { InfoPanel } from './components/InfoPanel';
+export { GroupingControls } from './components/GroupingControls';
+export { Legend } from './components/Legend';
 
 /**
- * Specialized node components
+ * Additional UI components
  */
-export { GroupNode } from './v2-components/GroupNode';
-
-// ============ Utilities (adapted from visualizer v2) ============
-
-/**
- * Layout and state management utilities
- */
-export * from './v2-utils/layout';
-export * from './v2-utils/reactFlowConfig';
-export * from './v2-utils/constants';
+export { HierarchyTree } from './components/HierarchyTree';
+export { CollapsibleSection } from './components/CollapsibleSection';
+export { DockablePanel } from './components/DockablePanel';
 
 // ============ Architecture Status ============
 
 /**
- * Integration status of v3 core/bridges with v2 frontend
+ * Integration status of v4 visualizer components
  */
 export const INTEGRATION_STATUS = {
   core_architecture: 'vis-v3',
-  frontend_logic: 'visualizer-v2',
+  components: 'v4-unified',
   state_management: 'VisState.ts (single source of truth)',
   bridges: 'stateless (ELK, ReactFlow, CoordinateTranslator)',
   integration_version: '4.0.0'

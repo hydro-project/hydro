@@ -77,15 +77,29 @@ const loadingStyles: React.CSSProperties = {
 export function FileDropZone({ onFileLoad, hasData = false, className }: FileDropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragCounter(prev => prev + 1);
+    setIsDragOver(true);
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(true);
+    e.stopPropagation();
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
+    setDragCounter(prev => {
+      const newCount = prev - 1;
+      if (newCount <= 0) {
+        setIsDragOver(false);
+        return 0;
+      }
+      return newCount;
+    });
   }, []);
 
   const processFile = useCallback(async (file: File) => {
@@ -118,7 +132,9 @@ export function FileDropZone({ onFileLoad, hasData = false, className }: FileDro
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
+    setDragCounter(0);
     
     const files = Array.from(e.dataTransfer.files);
     const jsonFile = files.find(file => file.name.endsWith('.json'));
@@ -162,6 +178,7 @@ export function FileDropZone({ onFileLoad, hasData = false, className }: FileDro
     <div 
       style={isDragOver ? dragOverStyles : dropZoneStyles}
       className={className}
+      onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
