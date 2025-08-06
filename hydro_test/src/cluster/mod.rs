@@ -1,4 +1,3 @@
-pub mod chat;
 pub mod compartmentalized_paxos;
 pub mod compute_pi;
 pub mod kv_replica;

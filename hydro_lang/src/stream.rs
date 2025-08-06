@@ -95,7 +95,7 @@ impl MinRetries<AtLeastOnce> for ExactlyOnce {
 /// - `Order`: the ordering of the stream, which is either [`TotalOrder`]
 ///   or [`NoOrder`] (default is [`TotalOrder`])
 pub struct Stream<Type, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
-    location: Loc,
+    pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
     _phantom: PhantomData<(Type, Loc, Bound, Order, Retries)>,
@@ -593,13 +593,13 @@ where
     /// # let expected = HashSet::from([('a', 1), ('b', 1), ('c', 1), ('a', 2), ('b', 2), ('c', 2), ('a', 3), ('b', 3), ('c', 3)]);
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
-    pub fn cross_product<O2>(
+    pub fn cross_product<T2, O2>(
         self,
-        other: Stream<O2, L, B, O, R>,
-    ) -> Stream<(T, O2), L, B, NoOrder, R>
+        other: Stream<T2, L, B, O2, R>,
+    ) -> Stream<(T, T2), L, B, NoOrder, R>
     where
         T: Clone,
-        O2: Clone,
+        T2: Clone,
     {
         check_matching_location(&self.location, &other.location);
 
@@ -608,7 +608,7 @@ where
             HydroNode::CrossProduct {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, O2)>(),
+                metadata: self.location.new_node_metadata::<(T, T2)>(),
             },
         )
     }
