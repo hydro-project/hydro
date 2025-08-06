@@ -219,7 +219,7 @@ export function LayoutControls({
           fontSize: '12px',
           color: '#6c757d'
         }}
-        title="Automatically fit view after layout changes"
+        title="Automatically fit view after layout changes, container expand/collapse, and node dragging"
       >
         <input 
           type="checkbox" 

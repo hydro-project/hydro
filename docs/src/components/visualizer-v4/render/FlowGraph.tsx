@@ -11,7 +11,7 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
-import { ReactFlow, Background, Controls, MiniMap, useReactFlow, ReactFlowProvider } from '@xyflow/react';
+import { ReactFlow, Background, Controls, MiniMap, useReactFlow, ReactFlowProvider, applyNodeChanges } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { createVisualizationEngine } from '../core/VisualizationEngine';
@@ -36,17 +36,37 @@ export interface FlowGraphRef {
   fitView: () => void;
 }
 
-export function FlowGraph({
+// Internal component that uses ReactFlow hooks
+const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   visualizationState,
   config = DEFAULT_RENDER_CONFIG,
   layoutConfig,
   eventHandlers,
   className,
   style
-}: FlowGraphProps): JSX.Element {
+}, ref) => {
   const [reactFlowData, setReactFlowData] = useState<ReactFlowData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // ReactFlow instance for programmatic control
+  const { fitView } = useReactFlow();
+  
+  // Expose fitView method through ref
+  useImperativeHandle(ref, () => ({
+    fitView: () => {
+      try {
+        fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
+        console.log('[FlowGraph] 🎯 Manual fit view called');
+      } catch (err) {
+        console.warn('[FlowGraph] ⚠️ Manual fit view failed:', err);
+      }
+    }
+  }));
+  
+  // Track the last fit operation to prevent excessive fits
+  const lastFitTimeRef = useRef<number>(0);
+  const autoFitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Store manual drag positions to preserve user positioning
   const [manualPositions, setManualPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
@@ -78,6 +98,15 @@ export function FlowGraph({
         }
         return node;
       })
+    };
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoFitTimeoutRef.current) {
+        clearTimeout(autoFitTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -150,6 +179,30 @@ export function FlowGraph({
           edges: dataWithManualPositions.edges.length
         });
         
+        // Auto-fit if enabled (with debouncing to prevent excessive fits)
+        if (config.fitView !== false) {
+          const now = Date.now();
+          const timeSinceLastFit = now - lastFitTimeRef.current;
+          
+          // Clear any existing timeout
+          if (autoFitTimeoutRef.current) {
+            clearTimeout(autoFitTimeoutRef.current);
+          }
+          
+          // Only fit if enough time has passed or this is a significant layout change
+          const shouldFit = timeSinceLastFit > 500; // Minimum 500ms between fits
+          
+          autoFitTimeoutRef.current = setTimeout(() => {
+            try {
+              fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
+              lastFitTimeRef.current = Date.now();
+              console.log('[FlowGraph] 🎯 Auto-fit applied');
+            } catch (err) {
+              console.warn('[FlowGraph] ⚠️ Auto-fit failed:', err);
+            }
+          }, shouldFit ? 100 : 300); // Short delay for immediate fits, longer for recent ones
+        }
+        
         // DEBUG: Log all container node data to find differences
         const containerNodes = dataWithManualPositions.nodes.filter(n => n.type === 'container');
         console.log('[FlowGraph] 🔍 CONTAINER NODES BEING PASSED TO REACTFLOW:');
@@ -210,30 +263,41 @@ export function FlowGraph({
   const onNodeDragStop = useCallback((event: any, node: any) => {
     // Store the manual position in VisualizationState
     visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
-  }, [visualizationState]);
+    
+    // Auto-fit if enabled (after a brief delay to let the position update settle)
+    if (config.fitView !== false) {
+      const now = Date.now();
+      const timeSinceLastFit = now - lastFitTimeRef.current;
+      
+      // Clear any existing timeout
+      if (autoFitTimeoutRef.current) {
+        clearTimeout(autoFitTimeoutRef.current);
+      }
+      
+      // Only auto-fit if enough time has passed since the last fit
+      if (timeSinceLastFit > 500) {
+        autoFitTimeoutRef.current = setTimeout(() => {
+          try {
+            fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
+            lastFitTimeRef.current = Date.now();
+            console.log('[FlowGraph] 🎯 Auto-fit applied after drag');
+          } catch (err) {
+            console.warn('[FlowGraph] ⚠️ Auto-fit after drag failed:', err);
+          }
+        }, 200); // Brief delay to let drag position settle
+      }
+    }
+  }, [visualizationState, config.fitView, fitView]);
 
   // Handle ReactFlow node changes (including drag position updates)
   const onNodesChange = useCallback((changes: any[]) => {
-    // Apply changes to current ReactFlow data
+    // Apply changes using ReactFlow's built-in function
     if (reactFlowData) {
       setReactFlowData(prev => {
         if (!prev) return prev;
         
-        const updatedNodes = prev.nodes.map(node => {
-          // Find position changes for this node
-          const positionChange = changes.find(change => 
-            change.id === node.id && change.type === 'position'
-          );
-          
-          if (positionChange && positionChange.position) {
-            return {
-              ...node,
-              position: positionChange.position
-            };
-          }
-          
-          return node;
-        });
+        // Use ReactFlow's built-in applyNodeChanges function
+        const updatedNodes = applyNodeChanges(changes, prev.nodes);
         
         return {
           ...prev,
@@ -340,19 +404,18 @@ export function FlowGraph({
   // Main ReactFlow render
   return (
     <div className={className} style={{ height: '400px', ...style }}>
-      <ReactFlowProvider>
-        <ReactFlow
-          nodes={reactFlowData?.nodes || []}
-          edges={reactFlowData?.edges || []}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodeClick={onNodeClick}
+      <ReactFlow
+        nodes={reactFlowData?.nodes || []}
+        edges={reactFlowData?.edges || []}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
           onNodeDrag={onNodeDrag}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onNodesChange={onNodesChange}
-          fitView={config.fitView !== false}
+          fitView={false}
           fitViewOptions={{ padding: 0.1, maxZoom: 1.2 }}
           attributionPosition="bottom-left"
           nodesDraggable={config.nodesDraggable !== false}
@@ -373,7 +436,6 @@ export function FlowGraph({
             />
           )}
         </ReactFlow>
-      </ReactFlowProvider>
       
       {/* Loading overlay during updates */}
       {loading && (
@@ -393,4 +455,28 @@ export function FlowGraph({
       )}
     </div>
   );
-}
+});
+
+FlowGraphInternal.displayName = 'FlowGraphInternal';
+
+// Main FlowGraph component that provides ReactFlow context
+export const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>((props, ref) => {
+  const flowGraphRef = useRef<FlowGraphRef>(null);
+  
+  // Expose fitView method through ref
+  useImperativeHandle(ref, () => ({
+    fitView: () => {
+      if (flowGraphRef.current) {
+        flowGraphRef.current.fitView();
+      }
+    }
+  }));
+
+  return (
+    <ReactFlowProvider>
+      <FlowGraphInternal ref={flowGraphRef} {...props} />
+    </ReactFlowProvider>
+  );
+});
+
+FlowGraph.displayName = 'FlowGraph';

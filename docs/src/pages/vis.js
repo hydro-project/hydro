@@ -42,6 +42,9 @@ function VisV4Component() {
   
   // Track if we're currently changing grouping (to prevent DropZone flicker)
   const [isChangingGrouping, setIsChangingGrouping] = React.useState(false);
+  
+  // Ref for FlowGraph to call fitView directly
+  const flowGraphRef = React.useRef(null);
 
   // Load components on mount
   React.useEffect(() => {
@@ -333,11 +336,15 @@ function VisV4Component() {
   // Fit view handler
   const handleFitView = React.useCallback(() => {
     console.log('🎯 Fitting view...');
-    // For now, we'll toggle the fitView config which will trigger ReactFlow to fit
-    // This is a workaround - ideally we'd have a ref to call fitView() directly
-    setAutoFit(false);
-    setTimeout(() => setAutoFit(true), 100);
-    console.log('✅ View fit triggered');
+    if (flowGraphRef.current && flowGraphRef.current.fitView) {
+      flowGraphRef.current.fitView();
+      console.log('✅ View fit called directly');
+    } else {
+      console.warn('⚠️ FlowGraph ref not available, using fallback method');
+      // Fallback to the old toggle method
+      setAutoFit(false);
+      setTimeout(() => setAutoFit(true), 100);
+    }
   }, []);
 
   // Layout algorithm change handler
@@ -561,6 +568,7 @@ function VisV4Component() {
           }}>
             {FlowGraph && (
               <FlowGraph 
+                ref={flowGraphRef}
                 visualizationState={currentVisualizationState}
                 layoutConfig={{ algorithm: layoutAlgorithm }}
                 eventHandlers={{ 

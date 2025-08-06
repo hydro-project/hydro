@@ -1,0 +1,4859 @@
+react-dom.development.js:29890 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+vis.js:50 Loading visualizer-v4 components...
+vis.js:56 Loading VisState...
+vis.js:56 Loading FlowGraph...
+vis.js:56 Loading constants...
+vis.js:56 Loading JSONParser...
+vis.js:56 Loading layout...
+vis.js:56 Loading InfoPanel...
+vis.js:56 Loading LayoutControls...
+vis.js:56 Loading FileDropZone...
+vis.js:149 Processing uploaded file: {edges: Array(9), hierarchyChoices: Array(2), nodeAssignments: {…}, nodes: Array(10)}
+vis.js:174 ✅ File loaded successfully
+FlowGraph.tsx:155 [FlowGraph] 🔄 Visualization state changed, updating...
+ELKBridge.ts:41 [ELKBridge] 🚀 Starting ELK layout from VisState
+ [ELKBridge] 📋 Extracted from VisState: {visibleNodes: 10, visibleContainers: 2, totalEdges: 9, regularEdges: 9, hyperEdges: 0}
+ [ELKBridge] 🔨 Building ELK graph with 10 nodes, 2 containers, 9 edges
+ [ELKBridge] 🔍 Available nodes: (10) ['6', '3', '7', '9', '5', '2', '1', '4', '8', '0']
+ [ELKBridge] 🔍 Available containers: (2) [{…}, {…}]
+ [ELKBridge] 🔍 Found 2 root containers: (2) ['loc_0', 'loc_1']
+ [ELKBridge] 🔍 Container loc_0 has 4 nodes and 0 containers: {nodes: Array(4), containers: Array(0), allChildren: Array(4)}
+ [ELKBridge] 🏗️ Built hierarchy for loc_0: {
+  "id": "loc_0",
+  "width": 400,
+  "height": 300,
+  "children": [
+    {
+      "id": "9",
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "1",
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "8",
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "0",
+      "width": 180,
+      "height": 60
+    }
+  ],
+  "layoutOptions": {
+    "elk.algorithm": "mrtree",
+    "elk.direction": "DOWN",
+    "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+    "elk.spacing.nodeNode": "75",
+    "elk.spacing.edgeNode": "0",
+    "elk.spacing.edgeEdge": "10",
+    "elk.spacing.componentComponent": "60",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "25"
+  }
+}
+ [ELKBridge] 🔍 Container loc_1 has 6 nodes and 0 containers: {nodes: Array(6), containers: Array(0), allChildren: Array(6)}
+ [ELKBridge] 🏗️ Built hierarchy for loc_1: {
+  "id": "loc_1",
+  "width": 400,
+  "height": 300,
+  "children": [
+    {
+      "id": "6",
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "3",
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "7",
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "5",
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "2",
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "4",
+      "width": 180,
+      "height": 60
+    }
+  ],
+  "layoutOptions": {
+    "elk.algorithm": "mrtree",
+    "elk.direction": "DOWN",
+    "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+    "elk.spacing.nodeNode": "75",
+    "elk.spacing.edgeNode": "0",
+    "elk.spacing.edgeEdge": "10",
+    "elk.spacing.componentComponent": "60",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "25"
+  }
+}
+ [ELKBridge] 🔍 Final elkNodes array length: 2
+ [ELKBridge] 🔍 Found 0 top-level nodes: []
+ [ELKBridge] 📊 Sending to ELK children count: 2
+ [ELKBridge] 📊 ELK Graph structure: {id: 'root', childrenCount: 2, childrenIds: Array(2), edgesCount: 9}
+ [ELKBridge] ⏳ Running ELK layout - this may take a moment for large graphs...
+ [ELKBridge] ✅ ELK layout complete
+ [ELKBridge] 📝 Applying ELK results back to VisState
+ [ELKBridge] 🔍 ELK Result Structure: {
+  "id": "root",
+  "children": [
+    {
+      "id": "loc_0",
+      "width": 220,
+      "height": 505,
+      "children": [
+        {
+          "id": "9",
+          "width": 180,
+          "height": 60,
+          "$H": 279,
+          "x": 110,
+          "y": 185
+        },
+        {
+          "id": "1",
+          "width": 180,
+          "height": 60,
+          "$H": 281,
+          "x": 110,
+          "y": 455
+        },
+        {
+          "id": "8",
+          "width": 180,
+          "height": 60,
+          "$H": 283,
+          "x": 110,
+          "y": 50
+        },
+        {
+          "id": "0",
+          "width": 180,
+          "height": 60,
+          "$H": 285,
+          "x": 110,
+          "y": 320
+        }
+      ],
+      "layoutOptions": {
+        "elk.algorithm": "mrtree",
+        "elk.direction": "DOWN",
+        "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+        "elk.spacing.nodeNode": "75",
+        "elk.spacing.edgeNode": "0",
+        "elk.spacing.edgeEdge": "10",
+        "elk.spacing.componentComponent": "60",
+        "elk.layered.spacing.nodeNodeBetweenLayers": "25"
+      },
+      "$H": 277,
+      "x": 130,
+      "y": 407.5
+    },
+    {
+      "id": "loc_1",
+      "width": 220,
+      "height": 775,
+      "children": [
+        {
+          "id": "6",
+          "width": 180,
+          "height": 60,
+          "$H": 289,
+          "x": 20,
+          "y": 560
+        },
+        {
+          "id": "3",
+          "width": 180,
+          "height": 60,
+          "$H": 291,
+          "x": 20,
+          "y": 155
+        },
+        {
+          "id": "7",
+          "width": 180,
+          "height": 60,
+          "$H": 293,
+          "x": 20,
+          "y": 695
+        },
+        {
+          "id": "5",
+          "width": 180,
+          "height": 60,
+          "$H": 295,
+          "x": 20,
+          "y": 425
+        },
+        {
+          "id": "2",
+          "width": 180,
+          "height": 60,
+          "$H": 297,
+          "x": 20,
+          "y": 20
+        },
+        {
+          "id": "4",
+          "width": 180,
+          "height": 60,
+          "$H": 299,
+          "x": 20,
+          "y": 290
+        }
+      ],
+      "layoutOptions": {
+        "elk.algorithm": "mrtree",
+        "elk.direction": "DOWN",
+        "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+        "elk.spacing.nodeNode": "75",
+        "elk.spacing.edgeNode": "0",
+        "elk.spacing.edgeEdge": "10",
+        "elk.spacing.componentComponent": "60",
+        "elk.layered.spacing.nodeNodeBetweenLayers": "25"
+      },
+      "$H": 287,
+      "x": 425,
+      "y": 407.5
+    }
+  ],
+  "edges": [
+    {
+      "id": "e0",
+      "sources": [
+        "0"
+      ],
+      "targets": [
+        "1"
+      ],
+      "sections": [
+        {
+          "id": "e0_s0",
+          "startPoint": {
+            "x": 200,
+            "y": 380
+          },
+          "endPoint": {
+            "x": 200,
+            "y": 455
+          },
+          "bendPoints": [
+            {
+              "x": 200,
+              "y": 380
+            }
+          ]
+        }
+      ],
+      "container": "loc_0"
+    },
+    {
+      "id": "e1",
+      "sources": [
+        "1"
+      ],
+      "targets": [
+        "2"
+      ],
+      "container": "root"
+    },
+    {
+      "id": "e2",
+      "sources": [
+        "2"
+      ],
+      "targets": [
+        "3"
+      ],
+      "sections": [
+        {
+          "id": "e2_s0",
+          "startPoint": {
+            "x": 110,
+            "y": 80
+          },
+          "endPoint": {
+            "x": 110,
+            "y": 155
+          },
+          "bendPoints": [
+            {
+              "x": 110,
+              "y": 80
+            }
+          ]
+        }
+      ],
+      "container": "loc_1"
+    },
+    {
+      "id": "e3",
+      "sources": [
+        "3"
+      ],
+      "targets": [
+        "4"
+      ],
+      "sections": [
+        {
+          "id": "e3_s0",
+          "startPoint": {
+            "x": 110,
+            "y": 215
+          },
+          "endPoint": {
+            "x": 110,
+            "y": 290
+          },
+          "bendPoints": [
+            {
+              "x": 110,
+              "y": 215
+            }
+          ]
+        }
+      ],
+      "container": "loc_1"
+    },
+    {
+      "id": "e4",
+      "sources": [
+        "4"
+      ],
+      "targets": [
+        "5"
+      ],
+      "sections": [
+        {
+          "id": "e4_s0",
+          "startPoint": {
+            "x": 110,
+            "y": 350
+          },
+          "endPoint": {
+            "x": 110,
+            "y": 425
+          },
+          "bendPoints": [
+            {
+              "x": 110,
+              "y": 350
+            }
+          ]
+        }
+      ],
+      "container": "loc_1"
+    },
+    {
+      "id": "e5",
+      "sources": [
+        "5"
+      ],
+      "targets": [
+        "6"
+      ],
+      "sections": [
+        {
+          "id": "e5_s0",
+          "startPoint": {
+            "x": 110,
+            "y": 485
+          },
+          "endPoint": {
+            "x": 110,
+            "y": 560
+          },
+          "bendPoints": [
+            {
+              "x": 110,
+              "y": 485
+            }
+          ]
+        }
+      ],
+      "container": "loc_1"
+    },
+    {
+      "id": "e6",
+      "sources": [
+        "6"
+      ],
+      "targets": [
+        "7"
+      ],
+      "sections": [
+        {
+          "id": "e6_s0",
+          "startPoint": {
+            "x": 110,
+            "y": 620
+          },
+          "endPoint": {
+            "x": 110,
+            "y": 695
+          },
+          "bendPoints": [
+            {
+              "x": 110,
+              "y": 620
+            }
+          ]
+        }
+      ],
+      "container": "loc_1"
+    },
+    {
+      "id": "e7",
+      "sources": [
+        "7"
+      ],
+      "targets": [
+        "8"
+      ],
+      "container": "root"
+    },
+    {
+      "id": "e8",
+      "sources": [
+        "8"
+      ],
+      "targets": [
+        "9"
+      ],
+      "sections": [
+        {
+          "id": "e8_s0",
+          "startPoint": {
+            "x": 200,
+            "y": 110
+          },
+          "endPoint": {
+            "x": 200,
+            "y": 185
+          },
+          "bendPoints": [
+            {
+              "x": 200,
+              "y": 110
+            }
+          ]
+        }
+      ],
+      "container": "loc_0"
+    }
+  ],
+  "layoutOptions": {
+    "elk.algorithm": "mrtree",
+    "elk.direction": "DOWN",
+    "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+    "elk.spacing.nodeNode": "75",
+    "elk.spacing.edgeNode": "0",
+    "elk.spacing.edgeEdge": "10",
+    "elk.spacing.componentComponent": "60",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "25"
+  },
+  "$H": 13,
+  "x": 0,
+  "y": 0,
+  "width": 555,
+  "height": 815
+}
+ [VisState] 📏 Auto-updated expandedDimensions for loc_0: 220x505
+ [ELKBridge] 📏 Updated container loc_0 layout: {"position":{"x":130,"y":407.5},"dimensions":{"width":220,"height":505}}
+ [ELKBridge] 🔧 Attempting to update node 9 with ELK coords (110, 185)
+ [ELKBridge] 📏 Calling setNodeLayout for 9 with: {position: {…}, dimensions: {…}}
+ [ELKBridge] ✅ Successfully updated node 9
+ [ELKBridge] 🔧 Attempting to update node 1 with ELK coords (110, 455)
+ [ELKBridge] 📏 Calling setNodeLayout for 1 with: {position: {…}, dimensions: {…}}
+ [ELKBridge] ✅ Successfully updated node 1
+ [ELKBridge] 🔧 Attempting to update node 8 with ELK coords (110, 50)
+ [ELKBridge] 📏 Calling setNodeLayout for 8 with: {position: {…}, dimensions: {…}}
+ [ELKBridge] ✅ Successfully updated node 8
+ [ELKBridge] 🔧 Attempting to update node 0 with ELK coords (110, 320)
+ [ELKBridge] 📏 Calling setNodeLayout for 0 with: {position: {…}, dimensions: {…}}
+ [ELKBridge] ✅ Successfully updated node 0
+ [VisState] 📏 Auto-updated expandedDimensions for loc_1: 220x775
+ [ELKBridge] 📏 Updated container loc_1 layout: {"position":{"x":425,"y":407.5},"dimensions":{"width":220,"height":775}}
+ [ELKBridge] 🔧 Attempting to update node 6 with ELK coords (20, 560)
+ [ELKBridge] 📏 Calling setNodeLayout for 6 with: {position: {…}, dimensions: {…}}
+ [ELKBridge] ✅ Successfully updated node 6
+ [ELKBridge] 🔧 Attempting to update node 3 with ELK coords (20, 155)
+ [ELKBridge] 📏 Calling setNodeLayout for 3 with: {position: {…}, dimensions: {…}}
+ [ELKBridge] ✅ Successfully updated node 3
+ [ELKBridge] 🔧 Attempting to update node 7 with ELK coords (20, 695)
+ [ELKBridge] 📏 Calling setNodeLayout for 7 with: {position: {…}, dimensions: {…}}
+ [ELKBridge] ✅ Successfully updated node 7
+ [ELKBridge] 🔧 Attempting to update node 5 with ELK coords (20, 425)
+ [ELKBridge] 📏 Calling setNodeLayout for 5 with: {position: {…}, dimensions: {…}}
+ [ELKBridge] ✅ Successfully updated node 5
+ [ELKBridge] 🔧 Attempting to update node 2 with ELK coords (20, 20)
+ [ELKBridge] 📏 Calling setNodeLayout for 2 with: {position: {…}, dimensions: {…}}
+ [ELKBridge] ✅ Successfully updated node 2
+ [ELKBridge] 🔧 Attempting to update node 4 with ELK coords (20, 290)
+ [ELKBridge] 📏 Calling setNodeLayout for 4 with: {position: {…}, dimensions: {…}}
+ [ELKBridge] ✅ Successfully updated node 4
+ --- ELKBRIDGE_EDGE_PROCESSING_START ---
+ [ELKBridge] 🔍 Processing 9 edges for sections
+ [ELKBridge] 🔧 About to set layout for edge e0 with 1 sections
+ [ELKBridge] 📍 Updated edge e0 with 1 sections
+ [ELKBridge] 🔍 Debug: Edge e0 layout after update: {sections: Array(1)}
+ [ELKBridge] 📍 Edge e1 has no sections (cross-container edge)
+ [ELKBridge] 🔧 About to set layout for edge e2 with 1 sections
+ [ELKBridge] 📍 Updated edge e2 with 1 sections
+ [ELKBridge] 🔍 Debug: Edge e2 layout after update: {sections: Array(1)}
+ [ELKBridge] 🔧 About to set layout for edge e3 with 1 sections
+ [ELKBridge] 📍 Updated edge e3 with 1 sections
+ [ELKBridge] 🔍 Debug: Edge e3 layout after update: {sections: Array(1)}
+ [ELKBridge] 🔧 About to set layout for edge e4 with 1 sections
+ [ELKBridge] 📍 Updated edge e4 with 1 sections
+ [ELKBridge] 🔍 Debug: Edge e4 layout after update: {sections: Array(1)}
+ [ELKBridge] 🔧 About to set layout for edge e5 with 1 sections
+ [ELKBridge] 📍 Updated edge e5 with 1 sections
+ [ELKBridge] 🔍 Debug: Edge e5 layout after update: {sections: Array(1)}
+ [ELKBridge] 🔧 About to set layout for edge e6 with 1 sections
+ [ELKBridge] 📍 Updated edge e6 with 1 sections
+ [ELKBridge] 🔍 Debug: Edge e6 layout after update: {sections: Array(1)}
+ELKBridge.ts:349 [ELKBridge] 📍 Edge e7 has no sections (cross-container edge)
+ELKBridge.ts:343 [ELKBridge] 🔧 About to set layout for edge e8 with 1 sections
+ELKBridge.ts:343 [ELKBridge] 📍 Updated edge e8 with 1 sections
+ELKBridge.ts:349 [ELKBridge] 🔍 Debug: Edge e8 layout after update: {sections: Array(1)}
+ELKBridge.ts:323 --- ELKBRIDGE_EDGE_PROCESSING_END ---
+ELKBridge.ts:323 [ELKBridge] ✅ Applied all ELK results to VisState
+ReactFlowConverter.ts:21 [ReactFlowConverter] 🔄 Converting with bridge architecture...
+ReactFlowBridge.ts:63 [ReactFlowBridge] 🔄 Converting VisState to ReactFlow format
+ReactFlowBridge.ts:129 [ReactFlowBridge] 📦 Container loc_0: collapsed=false, ELK=(130, 407.5), ReactFlow=(130, 407.5), size=220x505
+ReactFlowBridge.ts:129 [ReactFlowBridge] 📦 Container loc_1: collapsed=false, ELK=(425, 407.5), ReactFlow=(425, 407.5), size=220x775
+ReactFlowBridge.ts:172 [ReactFlowBridge] 🔍 Node 6 layout: {position: {…}, dimensions: {…}} raw node coords: {x: 20, y: 560}
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 425, y: 407.5, width: 220, height: 775}
+CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (20, 560) are already relative to container loc_1 - using as-is
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔘 Node 6: parent=loc_1, ELK=(20, 560), ReactFlow=(20, 560)
+ReactFlowBridge.ts:172 [ReactFlowBridge] 🔍 Node 3 layout: {position: {…}, dimensions: {…}} raw node coords: {x: 20, y: 155}
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 425, y: 407.5, width: 220, height: 775}
+CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (20, 155) are already relative to container loc_1 - using as-is
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔘 Node 3: parent=loc_1, ELK=(20, 155), ReactFlow=(20, 155)
+ReactFlowBridge.ts:172 [ReactFlowBridge] 🔍 Node 7 layout: {position: {…}, dimensions: {…}} raw node coords: {x: 20, y: 695}
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 425, y: 407.5, width: 220, height: 775}
+CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (20, 695) are already relative to container loc_1 - using as-is
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔘 Node 7: parent=loc_1, ELK=(20, 695), ReactFlow=(20, 695)
+ReactFlowBridge.ts:172 [ReactFlowBridge] 🔍 Node 9 layout: {position: {…}, dimensions: {…}} raw node coords: {x: 110, y: 185}
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 130, y: 407.5, width: 220, height: 505}
+CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (110, 185) are already relative to container loc_0 - using as-is
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔘 Node 9: parent=loc_0, ELK=(110, 185), ReactFlow=(110, 185)
+ReactFlowBridge.ts:172 [ReactFlowBridge] 🔍 Node 5 layout: {position: {…}, dimensions: {…}} raw node coords: {x: 20, y: 425}
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 425, y: 407.5, width: 220, height: 775}
+CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (20, 425) are already relative to container loc_1 - using as-is
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔘 Node 5: parent=loc_1, ELK=(20, 425), ReactFlow=(20, 425)
+ReactFlowBridge.ts:172 [ReactFlowBridge] 🔍 Node 2 layout: {position: {…}, dimensions: {…}} raw node coords: {x: 20, y: 20}
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 425, y: 407.5, width: 220, height: 775}
+CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (20, 20) are already relative to container loc_1 - using as-is
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔘 Node 2: parent=loc_1, ELK=(20, 20), ReactFlow=(20, 20)
+ReactFlowBridge.ts:172 [ReactFlowBridge] 🔍 Node 1 layout: {position: {…}, dimensions: {…}} raw node coords: {x: 110, y: 455}
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 130, y: 407.5, width: 220, height: 505}
+CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (110, 455) are already relative to container loc_0 - using as-is
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔘 Node 1: parent=loc_0, ELK=(110, 455), ReactFlow=(110, 455)
+ReactFlowBridge.ts:172 [ReactFlowBridge] 🔍 Node 4 layout: {position: {…}, dimensions: {…}} raw node coords: {x: 20, y: 290}
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 425, y: 407.5, width: 220, height: 775}
+CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (20, 290) are already relative to container loc_1 - using as-is
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔘 Node 4: parent=loc_1, ELK=(20, 290), ReactFlow=(20, 290)
+ReactFlowBridge.ts:172 [ReactFlowBridge] 🔍 Node 8 layout: {position: {…}, dimensions: {…}} raw node coords: {x: 110, y: 50}
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 130, y: 407.5, width: 220, height: 505}
+CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (110, 50) are already relative to container loc_0 - using as-is
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔘 Node 8: parent=loc_0, ELK=(110, 50), ReactFlow=(110, 50)
+ReactFlowBridge.ts:172 [ReactFlowBridge] 🔍 Node 0 layout: {position: {…}, dimensions: {…}} raw node coords: {x: 110, y: 320}
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 130, y: 407.5, width: 220, height: 505}
+CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (110, 320) are already relative to container loc_0 - using as-is
+ReactFlowBridge.ts:180 [ReactFlowBridge] 🔘 Node 0: parent=loc_0, ELK=(110, 320), ReactFlow=(110, 320)
+ReactFlowBridge.ts:223 [ReactFlowBridge] 🔍 Debug edge e0: {source: '0', target: '1', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:258 [ReactFlowBridge] ✅ Created ReactFlow edge e0: {id: 'e0', type: 'standard', source: '0', target: '1', markerEnd: {…}, …}
+ReactFlowBridge.ts:223 [ReactFlowBridge] 🔍 Debug edge e1: {source: '1', target: '2', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:258 [ReactFlowBridge] ✅ Created ReactFlow edge e1: {id: 'e1', type: 'standard', source: '1', target: '2', markerEnd: {…}, …}
+ReactFlowBridge.ts:223 [ReactFlowBridge] 🔍 Debug edge e2: {source: '2', target: '3', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:258 [ReactFlowBridge] ✅ Created ReactFlow edge e2: {id: 'e2', type: 'standard', source: '2', target: '3', markerEnd: {…}, …}
+ReactFlowBridge.ts:223 [ReactFlowBridge] 🔍 Debug edge e3: {source: '3', target: '4', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:258 [ReactFlowBridge] ✅ Created ReactFlow edge e3: {id: 'e3', type: 'standard', source: '3', target: '4', markerEnd: {…}, …}
+ReactFlowBridge.ts:223 [ReactFlowBridge] 🔍 Debug edge e4: {source: '4', target: '5', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:258 [ReactFlowBridge] ✅ Created ReactFlow edge e4: {id: 'e4', type: 'standard', source: '4', target: '5', markerEnd: {…}, …}
+ReactFlowBridge.ts:223 [ReactFlowBridge] 🔍 Debug edge e5: {source: '5', target: '6', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:258 [ReactFlowBridge] ✅ Created ReactFlow edge e5: {id: 'e5', type: 'standard', source: '5', target: '6', markerEnd: {…}, …}
+ReactFlowBridge.ts:223 [ReactFlowBridge] 🔍 Debug edge e6: {source: '6', target: '7', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:258 [ReactFlowBridge] ✅ Created ReactFlow edge e6: {id: 'e6', type: 'standard', source: '6', target: '7', markerEnd: {…}, …}
+ReactFlowBridge.ts:223 [ReactFlowBridge] 🔍 Debug edge e7: {source: '7', target: '8', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:258 [ReactFlowBridge] ✅ Created ReactFlow edge e7: {id: 'e7', type: 'standard', source: '7', target: '8', markerEnd: {…}, …}
+ReactFlowBridge.ts:223 [ReactFlowBridge] 🔍 Debug edge e8: {source: '8', target: '9', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:258 [ReactFlowBridge] ✅ Created ReactFlow edge e8: {id: 'e8', type: 'standard', source: '8', target: '9', markerEnd: {…}, …}
+FlowGraph.tsx:173 [FlowGraph] ✅ Updated ReactFlow data: {nodes: 12, edges: 9}
+FlowGraph.tsx:207 [FlowGraph] 🔍 CONTAINER NODES BEING PASSED TO REACTFLOW:
+FlowGraph.tsx:207 [FlowGraph] 📦 loc_0: {position: {…}, data: {…}, parentId: undefined}
+FlowGraph.tsx:207 [FlowGraph] 📦 loc_1: {position: {…}, data: {…}, parentId: undefined}
+nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=220, data.height=505, using 220x505
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_0: data.width=220, data.height=505, using 220x505
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+FlowGraph.tsx:195 [FlowGraph] 🎯 Auto-fit applied
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+eval @ index.js:2242
+call @ dispatch.js:61
+gesture @ drag.js:159
+mousemoved @ drag.js:82
+eval @ on.js:7
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+index.js:723 [React Flow]: It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs. Help: https://reactflow.dev/error#015
+devWarn @ index.js:723
+calculateNodePosition @ index.js:576
+updateNodes @ index.js:2122
+autoPan @ index.js:2168
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+requestAnimationFrame
+autoPan @ index.js:2171
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
+nodes.tsx:97 [ContainerNode] 📏 Container loc_1: data.width=220, data.height=775, using 220x775
