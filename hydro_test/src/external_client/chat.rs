@@ -1,10 +1,10 @@
-use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use colored::{Color, Colorize};
 use hydro_lang::keyed_stream::KeyedStream;
 use hydro_lang::location::MembershipEvent;
 use hydro_lang::*;
+use hydro_std::membership::track_membership;
 use palette::{FromColor, Hsv, Srgb};
 
 fn hash_to_color<T: Hash>(input: T) -> Color {
@@ -33,26 +33,14 @@ pub fn chat_server<'a, P>(
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded>,
     membership: KeyedStream<u64, MembershipEvent, Process<'a, P>, Unbounded>,
 ) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, NoOrder> {
-    let current_members = unsafe { membership.entries().assume_ordering::<TotalOrder>() }.fold(
-        q!(|| HashSet::new()),
-        q!(|set, (id, event)| {
-            match event {
-                MembershipEvent::Joined => {
-                    set.insert(id);
-                }
-                MembershipEvent::Left => {
-                    set.remove(&id);
-                }
-            }
-        }),
-    );
+    let current_members = track_membership(membership);
 
     let tick = process.tick();
 
     unsafe {
         current_members
-            .latest_tick(&tick)
-            .flatten_unordered()
+            .snapshot(&tick)
+            .keys()
             .cross_product(in_stream.entries().tick_batch(&tick))
             .into_keyed()
     }
