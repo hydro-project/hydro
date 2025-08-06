@@ -56,50 +56,48 @@
 <a href=#56 id=56 data-nosnippet>56</a>                <span class="kw">move </span>|new_leader_elected| {
 <a href=#57 id=57 data-nosnippet>57</a>                    <span class="kw">let </span>cur_leader_id = <span class="self">Self</span>::get_recipient_from_ballot(
 <a href=#58 id=58 data-nosnippet>58</a>                        new_leader_elected
-<a href=#59 id=59 data-nosnippet>59</a>                            .broadcast_bincode(clients)
-<a href=#60 id=60 data-nosnippet>60</a>                            .values()
-<a href=#61 id=61 data-nosnippet>61</a>                            .inspect(<span class="macro">q!</span>(|ballot| <span class="macro">println!</span>(
-<a href=#62 id=62 data-nosnippet>62</a>                                <span class="string">"Client notified that leader was elected: {:?}"</span>,
-<a href=#63 id=63 data-nosnippet>63</a>                                ballot
-<a href=#64 id=64 data-nosnippet>64</a>                            )))
-<a href=#65 id=65 data-nosnippet>65</a>                            .max(),
-<a href=#66 id=66 data-nosnippet>66</a>                    );
-<a href=#67 id=67 data-nosnippet>67</a>
-<a href=#68 id=68 data-nosnippet>68</a>                    <span class="kw">let </span>payloads_at_proposer = {
-<a href=#69 id=69 data-nosnippet>69</a>                        <span class="comment">// SAFETY: the risk here is that we send a batch of requests
-<a href=#70 id=70 data-nosnippet>70</a>                        // with a stale leader ID, but because the leader ID comes from the
-<a href=#71 id=71 data-nosnippet>71</a>                        // network there is no way to guarantee that it is up to date. This
-<a href=#72 id=72 data-nosnippet>72</a>                        // is documented non-determinism.
-<a href=#73 id=73 data-nosnippet>73</a>
-<a href=#74 id=74 data-nosnippet>74</a>                        </span><span class="kw">let </span>client_tick = clients.tick();
-<a href=#75 id=75 data-nosnippet>75</a>                        <span class="kw">let </span>payload_batch = payloads.tick_batch(<span class="kw-2">&amp;</span>client_tick);
-<a href=#76 id=76 data-nosnippet>76</a>
-<a href=#77 id=77 data-nosnippet>77</a>                        <span class="kw">let </span>latest_leader = cur_leader_id.latest_tick(<span class="kw-2">&amp;</span>client_tick);
-<a href=#78 id=78 data-nosnippet>78</a>
-<a href=#79 id=79 data-nosnippet>79</a>                        <span class="kw">let </span>(unsent_payloads_complete, unsent_payloads) =
-<a href=#80 id=80 data-nosnippet>80</a>                            client_tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TotalOrder&gt;&gt;();
-<a href=#81 id=81 data-nosnippet>81</a>
-<a href=#82 id=82 data-nosnippet>82</a>                        <span class="kw">let </span>all_payloads = unsent_payloads.chain(payload_batch);
-<a href=#83 id=83 data-nosnippet>83</a>
-<a href=#84 id=84 data-nosnippet>84</a>                        unsent_payloads_complete.complete_next_tick(
-<a href=#85 id=85 data-nosnippet>85</a>                            all_payloads.clone().continue_unless(latest_leader.clone()),
-<a href=#86 id=86 data-nosnippet>86</a>                        );
-<a href=#87 id=87 data-nosnippet>87</a>
-<a href=#88 id=88 data-nosnippet>88</a>                        all_payloads.cross_singleton(latest_leader).all_ticks()
-<a href=#89 id=89 data-nosnippet>89</a>                    }
-<a href=#90 id=90 data-nosnippet>90</a>                    .map(<span class="macro">q!</span>(<span class="kw">move </span>|(payload, leader_id)| (leader_id, payload)))
-<a href=#91 id=91 data-nosnippet>91</a>                    .demux_bincode(<span class="kw-2">&amp;</span>leaders)
-<a href=#92 id=92 data-nosnippet>92</a>                    .values();
-<a href=#93 id=93 data-nosnippet>93</a>
-<a href=#94 id=94 data-nosnippet>94</a>                    <span class="kw">let </span>payloads_at_proposer = {
-<a href=#95 id=95 data-nosnippet>95</a>                        <span class="comment">// SAFETY: documented non-determinism in interleaving of client payloads
-<a href=#96 id=96 data-nosnippet>96</a>                        </span>payloads_at_proposer.assume_ordering()
-<a href=#97 id=97 data-nosnippet>97</a>                    };
-<a href=#98 id=98 data-nosnippet>98</a>
-<a href=#99 id=99 data-nosnippet>99</a>                    payloads_at_proposer
-<a href=#100 id=100 data-nosnippet>100</a>                },
-<a href=#101 id=101 data-nosnippet>101</a>                checkpoints,
-<a href=#102 id=102 data-nosnippet>102</a>            )
-<a href=#103 id=103 data-nosnippet>103</a>        }
-<a href=#104 id=104 data-nosnippet>104</a>    }
-<a href=#105 id=105 data-nosnippet>105</a>}</code></pre></div></section></main></body></html>
+<a href=#59 id=59 data-nosnippet>59</a>                            .broadcast_bincode_anonymous(clients)
+<a href=#60 id=60 data-nosnippet>60</a>                            .inspect(<span class="macro">q!</span>(|ballot| <span class="macro">println!</span>(
+<a href=#61 id=61 data-nosnippet>61</a>                                <span class="string">"Client notified that leader was elected: {:?}"</span>,
+<a href=#62 id=62 data-nosnippet>62</a>                                ballot
+<a href=#63 id=63 data-nosnippet>63</a>                            )))
+<a href=#64 id=64 data-nosnippet>64</a>                            .max(),
+<a href=#65 id=65 data-nosnippet>65</a>                    );
+<a href=#66 id=66 data-nosnippet>66</a>
+<a href=#67 id=67 data-nosnippet>67</a>                    <span class="kw">let </span>payloads_at_proposer = {
+<a href=#68 id=68 data-nosnippet>68</a>                        <span class="comment">// SAFETY: the risk here is that we send a batch of requests
+<a href=#69 id=69 data-nosnippet>69</a>                        // with a stale leader ID, but because the leader ID comes from the
+<a href=#70 id=70 data-nosnippet>70</a>                        // network there is no way to guarantee that it is up to date. This
+<a href=#71 id=71 data-nosnippet>71</a>                        // is documented non-determinism.
+<a href=#72 id=72 data-nosnippet>72</a>
+<a href=#73 id=73 data-nosnippet>73</a>                        </span><span class="kw">let </span>client_tick = clients.tick();
+<a href=#74 id=74 data-nosnippet>74</a>                        <span class="kw">let </span>payload_batch = payloads.tick_batch(<span class="kw-2">&amp;</span>client_tick);
+<a href=#75 id=75 data-nosnippet>75</a>
+<a href=#76 id=76 data-nosnippet>76</a>                        <span class="kw">let </span>latest_leader = cur_leader_id.latest_tick(<span class="kw-2">&amp;</span>client_tick);
+<a href=#77 id=77 data-nosnippet>77</a>
+<a href=#78 id=78 data-nosnippet>78</a>                        <span class="kw">let </span>(unsent_payloads_complete, unsent_payloads) =
+<a href=#79 id=79 data-nosnippet>79</a>                            client_tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TotalOrder&gt;&gt;();
+<a href=#80 id=80 data-nosnippet>80</a>
+<a href=#81 id=81 data-nosnippet>81</a>                        <span class="kw">let </span>all_payloads = unsent_payloads.chain(payload_batch);
+<a href=#82 id=82 data-nosnippet>82</a>
+<a href=#83 id=83 data-nosnippet>83</a>                        unsent_payloads_complete.complete_next_tick(
+<a href=#84 id=84 data-nosnippet>84</a>                            all_payloads.clone().continue_unless(latest_leader.clone()),
+<a href=#85 id=85 data-nosnippet>85</a>                        );
+<a href=#86 id=86 data-nosnippet>86</a>
+<a href=#87 id=87 data-nosnippet>87</a>                        all_payloads.cross_singleton(latest_leader).all_ticks()
+<a href=#88 id=88 data-nosnippet>88</a>                    }
+<a href=#89 id=89 data-nosnippet>89</a>                    .map(<span class="macro">q!</span>(<span class="kw">move </span>|(payload, leader_id)| (leader_id, payload)))
+<a href=#90 id=90 data-nosnippet>90</a>                    .send_bincode_anonymous(<span class="kw-2">&amp;</span>leaders);
+<a href=#91 id=91 data-nosnippet>91</a>
+<a href=#92 id=92 data-nosnippet>92</a>                    <span class="kw">let </span>payloads_at_proposer = {
+<a href=#93 id=93 data-nosnippet>93</a>                        <span class="comment">// SAFETY: documented non-determinism in interleaving of client payloads
+<a href=#94 id=94 data-nosnippet>94</a>                        </span>payloads_at_proposer.assume_ordering()
+<a href=#95 id=95 data-nosnippet>95</a>                    };
+<a href=#96 id=96 data-nosnippet>96</a>
+<a href=#97 id=97 data-nosnippet>97</a>                    payloads_at_proposer
+<a href=#98 id=98 data-nosnippet>98</a>                },
+<a href=#99 id=99 data-nosnippet>99</a>                checkpoints,
+<a href=#100 id=100 data-nosnippet>100</a>            )
+<a href=#101 id=101 data-nosnippet>101</a>        }
+<a href=#102 id=102 data-nosnippet>102</a>    }
+<a href=#103 id=103 data-nosnippet>103</a>}</code></pre></div></section></main></body></html>

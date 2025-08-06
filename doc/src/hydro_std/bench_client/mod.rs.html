@@ -194,74 +194,75 @@
 <a href=#194 id=194 data-nosnippet>194</a>
 <a href=#195 id=195 data-nosnippet>195</a>    <span class="kw">let </span>combined_latencies = <span class="kw">unsafe </span>{
 <a href=#196 id=196 data-nosnippet>196</a>        keyed_latencies
-<a href=#197 id=197 data-nosnippet>197</a>            .map(<span class="macro">q!</span>(|histogram| histogram.histogram.borrow().clone()))
-<a href=#198 id=198 data-nosnippet>198</a>            .entries()
-<a href=#199 id=199 data-nosnippet>199</a>            .tick_batch(<span class="kw-2">&amp;</span>aggregator.tick())
-<a href=#200 id=200 data-nosnippet>200</a>            .assume_ordering()
-<a href=#201 id=201 data-nosnippet>201</a>            .persist()
-<a href=#202 id=202 data-nosnippet>202</a>            .reduce_keyed_idempotent(<span class="macro">q!</span>(|combined, new| {
-<a href=#203 id=203 data-nosnippet>203</a>                <span class="kw-2">*</span>combined = new;
-<a href=#204 id=204 data-nosnippet>204</a>            }))
-<a href=#205 id=205 data-nosnippet>205</a>            .map(<span class="macro">q!</span>(|(_id, histogram)| histogram))
-<a href=#206 id=206 data-nosnippet>206</a>            .reduce_commutative(<span class="macro">q!</span>(|combined, new| {
-<a href=#207 id=207 data-nosnippet>207</a>                combined.add(new).unwrap();
-<a href=#208 id=208 data-nosnippet>208</a>            }))
-<a href=#209 id=209 data-nosnippet>209</a>    }
-<a href=#210 id=210 data-nosnippet>210</a>    .latest();
-<a href=#211 id=211 data-nosnippet>211</a>
-<a href=#212 id=212 data-nosnippet>212</a>    <span class="kw">unsafe </span>{ combined_latencies.sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>))) }.for_each(<span class="macro">q!</span>(
-<a href=#213 id=213 data-nosnippet>213</a>        <span class="kw">move </span>|latencies| {
-<a href=#214 id=214 data-nosnippet>214</a>            <span class="macro">println!</span>(
-<a href=#215 id=215 data-nosnippet>215</a>                <span class="string">"Latency p50: {:.3} | p99 {:.3} ms | p999 {:.3} ms ({:} samples)"</span>,
-<a href=#216 id=216 data-nosnippet>216</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.5</span>)).as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0</span>,
-<a href=#217 id=217 data-nosnippet>217</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.99</span>)).as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0</span>,
-<a href=#218 id=218 data-nosnippet>218</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.999</span>)).as_micros() <span class="kw">as </span>f64
-<a href=#219 id=219 data-nosnippet>219</a>                    / <span class="number">1000.0</span>,
-<a href=#220 id=220 data-nosnippet>220</a>                latencies.len()
-<a href=#221 id=221 data-nosnippet>221</a>            );
-<a href=#222 id=222 data-nosnippet>222</a>        }
-<a href=#223 id=223 data-nosnippet>223</a>    ));
-<a href=#224 id=224 data-nosnippet>224</a>
-<a href=#225 id=225 data-nosnippet>225</a>    <span class="kw">let </span>keyed_throughputs = <span class="kw">unsafe </span>{
-<a href=#226 id=226 data-nosnippet>226</a>        <span class="comment">// SAFETY: intentional non-determinism
-<a href=#227 id=227 data-nosnippet>227</a>        </span>results
-<a href=#228 id=228 data-nosnippet>228</a>            .throughput
-<a href=#229 id=229 data-nosnippet>229</a>            .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)))
-<a href=#230 id=230 data-nosnippet>230</a>    }
-<a href=#231 id=231 data-nosnippet>231</a>    .send_bincode(aggregator);
-<a href=#232 id=232 data-nosnippet>232</a>
-<a href=#233 id=233 data-nosnippet>233</a>    <span class="kw">let </span>combined_throughputs = <span class="kw">unsafe </span>{
-<a href=#234 id=234 data-nosnippet>234</a>        keyed_throughputs
-<a href=#235 id=235 data-nosnippet>235</a>            .entries()
-<a href=#236 id=236 data-nosnippet>236</a>            .tick_batch(<span class="kw-2">&amp;</span>aggregator.tick())
-<a href=#237 id=237 data-nosnippet>237</a>            .assume_ordering()
-<a href=#238 id=238 data-nosnippet>238</a>            .persist()
-<a href=#239 id=239 data-nosnippet>239</a>            .reduce_keyed_idempotent(<span class="macro">q!</span>(|combined, new| {
-<a href=#240 id=240 data-nosnippet>240</a>                <span class="kw-2">*</span>combined = new;
-<a href=#241 id=241 data-nosnippet>241</a>            }))
-<a href=#242 id=242 data-nosnippet>242</a>            .map(<span class="macro">q!</span>(|(_id, throughput)| throughput))
-<a href=#243 id=243 data-nosnippet>243</a>            .reduce_commutative(<span class="macro">q!</span>(|combined, new| {
-<a href=#244 id=244 data-nosnippet>244</a>                combined.add(new);
-<a href=#245 id=245 data-nosnippet>245</a>            }))
-<a href=#246 id=246 data-nosnippet>246</a>    }
-<a href=#247 id=247 data-nosnippet>247</a>    .latest();
-<a href=#248 id=248 data-nosnippet>248</a>
-<a href=#249 id=249 data-nosnippet>249</a>    <span class="kw">let </span>client_members = clients.members();
-<a href=#250 id=250 data-nosnippet>250</a>    <span class="kw">unsafe </span>{ combined_throughputs.sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>))) }.for_each(<span class="macro">q!</span>(
-<a href=#251 id=251 data-nosnippet>251</a>        <span class="kw">move </span>|throughputs| {
-<a href=#252 id=252 data-nosnippet>252</a>            <span class="kw">if </span>throughputs.sample_count() &gt;= <span class="number">2 </span>{
-<a href=#253 id=253 data-nosnippet>253</a>                <span class="kw">let </span>num_client_machines = client_members.len();
-<a href=#254 id=254 data-nosnippet>254</a>                <span class="kw">let </span>mean = throughputs.sample_mean() * num_client_machines <span class="kw">as </span>f64;
-<a href=#255 id=255 data-nosnippet>255</a>
-<a href=#256 id=256 data-nosnippet>256</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>((lower, upper)) = throughputs.confidence_interval_99() {
-<a href=#257 id=257 data-nosnippet>257</a>                    <span class="macro">println!</span>(
-<a href=#258 id=258 data-nosnippet>258</a>                        <span class="string">"Throughput: {:.2} - {:.2} - {:.2} requests/s"</span>,
-<a href=#259 id=259 data-nosnippet>259</a>                        lower * num_client_machines <span class="kw">as </span>f64,
-<a href=#260 id=260 data-nosnippet>260</a>                        mean,
-<a href=#261 id=261 data-nosnippet>261</a>                        upper * num_client_machines <span class="kw">as </span>f64
-<a href=#262 id=262 data-nosnippet>262</a>                    );
-<a href=#263 id=263 data-nosnippet>263</a>                }
-<a href=#264 id=264 data-nosnippet>264</a>            }
-<a href=#265 id=265 data-nosnippet>265</a>        }
-<a href=#266 id=266 data-nosnippet>266</a>    ));
-<a href=#267 id=267 data-nosnippet>267</a>}</code></pre></div></section></main></body></html>
+<a href=#197 id=197 data-nosnippet>197</a>            .map(<span class="macro">q!</span>(|(id, histogram)| (
+<a href=#198 id=198 data-nosnippet>198</a>                id,
+<a href=#199 id=199 data-nosnippet>199</a>                histogram.histogram.borrow_mut().clone()
+<a href=#200 id=200 data-nosnippet>200</a>            )))
+<a href=#201 id=201 data-nosnippet>201</a>            .tick_batch(<span class="kw-2">&amp;</span>aggregator.tick())
+<a href=#202 id=202 data-nosnippet>202</a>            .assume_ordering()
+<a href=#203 id=203 data-nosnippet>203</a>            .persist()
+<a href=#204 id=204 data-nosnippet>204</a>            .reduce_keyed_idempotent(<span class="macro">q!</span>(|combined, new| {
+<a href=#205 id=205 data-nosnippet>205</a>                <span class="kw-2">*</span>combined = new;
+<a href=#206 id=206 data-nosnippet>206</a>            }))
+<a href=#207 id=207 data-nosnippet>207</a>            .map(<span class="macro">q!</span>(|(_id, histogram)| histogram))
+<a href=#208 id=208 data-nosnippet>208</a>            .reduce_commutative(<span class="macro">q!</span>(|combined, new| {
+<a href=#209 id=209 data-nosnippet>209</a>                combined.add(new).unwrap();
+<a href=#210 id=210 data-nosnippet>210</a>            }))
+<a href=#211 id=211 data-nosnippet>211</a>    }
+<a href=#212 id=212 data-nosnippet>212</a>    .latest();
+<a href=#213 id=213 data-nosnippet>213</a>
+<a href=#214 id=214 data-nosnippet>214</a>    <span class="kw">unsafe </span>{ combined_latencies.sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>))) }.for_each(<span class="macro">q!</span>(
+<a href=#215 id=215 data-nosnippet>215</a>        <span class="kw">move </span>|latencies| {
+<a href=#216 id=216 data-nosnippet>216</a>            <span class="macro">println!</span>(
+<a href=#217 id=217 data-nosnippet>217</a>                <span class="string">"Latency p50: {:.3} | p99 {:.3} ms | p999 {:.3} ms ({:} samples)"</span>,
+<a href=#218 id=218 data-nosnippet>218</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.5</span>)).as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0</span>,
+<a href=#219 id=219 data-nosnippet>219</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.99</span>)).as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0</span>,
+<a href=#220 id=220 data-nosnippet>220</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.999</span>)).as_micros() <span class="kw">as </span>f64
+<a href=#221 id=221 data-nosnippet>221</a>                    / <span class="number">1000.0</span>,
+<a href=#222 id=222 data-nosnippet>222</a>                latencies.len()
+<a href=#223 id=223 data-nosnippet>223</a>            );
+<a href=#224 id=224 data-nosnippet>224</a>        }
+<a href=#225 id=225 data-nosnippet>225</a>    ));
+<a href=#226 id=226 data-nosnippet>226</a>
+<a href=#227 id=227 data-nosnippet>227</a>    <span class="kw">let </span>keyed_throughputs = <span class="kw">unsafe </span>{
+<a href=#228 id=228 data-nosnippet>228</a>        <span class="comment">// SAFETY: intentional non-determinism
+<a href=#229 id=229 data-nosnippet>229</a>        </span>results
+<a href=#230 id=230 data-nosnippet>230</a>            .throughput
+<a href=#231 id=231 data-nosnippet>231</a>            .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)))
+<a href=#232 id=232 data-nosnippet>232</a>    }
+<a href=#233 id=233 data-nosnippet>233</a>    .send_bincode(aggregator);
+<a href=#234 id=234 data-nosnippet>234</a>
+<a href=#235 id=235 data-nosnippet>235</a>    <span class="kw">let </span>combined_throughputs = <span class="kw">unsafe </span>{
+<a href=#236 id=236 data-nosnippet>236</a>        keyed_throughputs
+<a href=#237 id=237 data-nosnippet>237</a>            .tick_batch(<span class="kw-2">&amp;</span>aggregator.tick())
+<a href=#238 id=238 data-nosnippet>238</a>            .assume_ordering()
+<a href=#239 id=239 data-nosnippet>239</a>            .persist()
+<a href=#240 id=240 data-nosnippet>240</a>            .reduce_keyed_idempotent(<span class="macro">q!</span>(|combined, new| {
+<a href=#241 id=241 data-nosnippet>241</a>                <span class="kw-2">*</span>combined = new;
+<a href=#242 id=242 data-nosnippet>242</a>            }))
+<a href=#243 id=243 data-nosnippet>243</a>            .map(<span class="macro">q!</span>(|(_id, throughput)| throughput))
+<a href=#244 id=244 data-nosnippet>244</a>            .reduce_commutative(<span class="macro">q!</span>(|combined, new| {
+<a href=#245 id=245 data-nosnippet>245</a>                combined.add(new);
+<a href=#246 id=246 data-nosnippet>246</a>            }))
+<a href=#247 id=247 data-nosnippet>247</a>    }
+<a href=#248 id=248 data-nosnippet>248</a>    .latest();
+<a href=#249 id=249 data-nosnippet>249</a>
+<a href=#250 id=250 data-nosnippet>250</a>    <span class="kw">let </span>client_members = clients.members();
+<a href=#251 id=251 data-nosnippet>251</a>    <span class="kw">unsafe </span>{ combined_throughputs.sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>))) }.for_each(<span class="macro">q!</span>(
+<a href=#252 id=252 data-nosnippet>252</a>        <span class="kw">move </span>|throughputs| {
+<a href=#253 id=253 data-nosnippet>253</a>            <span class="kw">if </span>throughputs.sample_count() &gt;= <span class="number">2 </span>{
+<a href=#254 id=254 data-nosnippet>254</a>                <span class="kw">let </span>num_client_machines = client_members.len();
+<a href=#255 id=255 data-nosnippet>255</a>                <span class="kw">let </span>mean = throughputs.sample_mean() * num_client_machines <span class="kw">as </span>f64;
+<a href=#256 id=256 data-nosnippet>256</a>
+<a href=#257 id=257 data-nosnippet>257</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>((lower, upper)) = throughputs.confidence_interval_99() {
+<a href=#258 id=258 data-nosnippet>258</a>                    <span class="macro">println!</span>(
+<a href=#259 id=259 data-nosnippet>259</a>                        <span class="string">"Throughput: {:.2} - {:.2} - {:.2} requests/s"</span>,
+<a href=#260 id=260 data-nosnippet>260</a>                        lower * num_client_machines <span class="kw">as </span>f64,
+<a href=#261 id=261 data-nosnippet>261</a>                        mean,
+<a href=#262 id=262 data-nosnippet>262</a>                        upper * num_client_machines <span class="kw">as </span>f64
+<a href=#263 id=263 data-nosnippet>263</a>                    );
+<a href=#264 id=264 data-nosnippet>264</a>                }
+<a href=#265 id=265 data-nosnippet>265</a>            }
+<a href=#266 id=266 data-nosnippet>266</a>        }
+<a href=#267 id=267 data-nosnippet>267</a>    ));
+<a href=#268 id=268 data-nosnippet>268</a>}</code></pre></div></section></main></body></html>
