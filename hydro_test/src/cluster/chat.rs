@@ -35,11 +35,12 @@ pub fn chat_server<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Server>, Cluster<
         }]))
         .send_bincode(&server)
         .clone()
-        .inspect(q!(|(id, msg)| println!(
+        .inspect_with_key(q!(|(id, msg)| println!(
             "...forwarding chat {} from client #{}...",
             msg.content, id
         )));
     client_requests
+        .entries()
         .broadcast_bincode(&clients)
         .for_each(q!(|(id, msg)| println!(
             "From {}: {:}",

@@ -32,7 +32,7 @@ On each cluster member, we will then do some work to transform the data (using `
 
 <CodeBlock language="rust" title="src/first_ten_cluster.rs">{getLines(firstTenClusterSrc, 10, 11)}</CodeBlock>
 
-Finally, we will send the data back to the leader. We achieve this using a variant of the APIs from before: `send_bincode_anonymous`. If we used `send_bincode`, we would get a stream of `(cluster ID, data)` tuples. Since it is a common pattern to ignore the IDs, `send_bincode_anonymous` is available as a helper.
+Finally, we will send the data back to the leader. To identify each sender, `send_bincode` emits a keyed stream with `ClusterId` keys. Here, we do not care about the sender, so we use `.values()` to interleave just the data.
 
 <CodeBlock language="rust" title="src/first_ten_cluster.rs">{getLines(firstTenClusterSrc, 12, 14)}</CodeBlock>
 

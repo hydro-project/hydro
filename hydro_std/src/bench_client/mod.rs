@@ -197,10 +197,8 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
 
     let combined_latencies = unsafe {
         keyed_latencies
-            .map(q!(|(id, histogram)| (
-                id,
-                histogram.histogram.borrow_mut().clone()
-            )))
+            .map(q!(|histogram| histogram.histogram.borrow().clone()))
+            .entries()
             .tick_batch(&aggregator.tick())
             .assume_ordering()
             .persist()
@@ -237,6 +235,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
 
     let combined_throughputs = unsafe {
         keyed_throughputs
+            .entries()
             .tick_batch(&aggregator.tick())
             .assume_ordering()
             .persist()

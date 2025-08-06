@@ -8,7 +8,7 @@ use hydro_lang::ir::{
     transform_bottom_up, traverse_dfir,
 };
 use hydro_lang::location::LocationId;
-use hydro_lang::stream::{deserialize_bincode_with_type, serialize_bincode_with_type};
+use hydro_lang::stream::networking::{deserialize_bincode_with_type, serialize_bincode_with_type};
 use proc_macro2::Span;
 use serde::{Deserialize, Serialize};
 use stageleft::quote_type;
@@ -290,7 +290,8 @@ mod tests {
         send_cluster
             .source_iter(q!(0..10))
             .map(q!(|a| a + 1))
-            .broadcast_bincode_anonymous(&recv_cluster)
+            .broadcast_bincode(&recv_cluster)
+            .values()
             .for_each(q!(|a| println!("Got it: {}", a)));
 
         let decoupled_cluster = builder.cluster::<()>();
