@@ -28,7 +28,7 @@ pub fn collect_quorum_with_response<
         responses.clone().tick_batch()
     });
 
-    let count_per_key = current_responses.clone().fold_keyed_commutative(
+    let count_per_key = current_responses.clone().into_keyed().fold_commutative(
         q!(move || (0, 0)),
         q!(move |accum, value| {
             if value.is_ok() {
@@ -39,23 +39,15 @@ pub fn collect_quorum_with_response<
         }),
     );
 
-    let not_reached_min_count =
-        count_per_key
-            .clone()
-            .filter_map(q!(move |(key, (success, _error))| if success < min {
-                Some(key)
-            } else {
-                None
-            }));
+    let not_reached_min_count = count_per_key
+        .clone()
+        .filter(q!(move |(success, _error)| success < &min))
+        .keys();
 
-    let reached_min_count =
-        count_per_key
-            .clone()
-            .filter_map(q!(move |(key, (success, _error))| if success >= min {
-                Some(key)
-            } else {
-                None
-            }));
+    let reached_min_count = count_per_key
+        .clone()
+        .filter(q!(move |(success, _error)| success >= &min))
+        .keys();
 
     let just_reached_quorum = if max == min {
         not_all_complete_cycle
@@ -65,14 +57,9 @@ pub fn collect_quorum_with_response<
     } else {
         let (min_but_not_max_complete_cycle, min_but_not_max) = tick.cycle();
 
-        let received_from_all =
-            count_per_key.filter_map(q!(
-                move |(key, (success, error))| if (success + error) >= max {
-                    Some(key)
-                } else {
-                    None
-                }
-            ));
+        let received_from_all = count_per_key
+            .filter(q!(move |(success, error)| (success + error) >= max))
+            .keys();
 
         min_but_not_max_complete_cycle
             .complete_next_tick(reached_min_count.filter_not_in(received_from_all.clone()));
@@ -117,7 +104,7 @@ pub fn collect_quorum<'a, L: Location<'a> + NoTick, Order, K: Clone + Eq + Hash,
         responses.clone().tick_batch()
     });
 
-    let count_per_key = current_responses.clone().fold_keyed_commutative(
+    let count_per_key = current_responses.clone().into_keyed().fold_commutative(
         q!(move || (0, 0)),
         q!(move |accum, value| {
             if value.is_ok() {
@@ -131,6 +118,7 @@ pub fn collect_quorum<'a, L: Location<'a> + NoTick, Order, K: Clone + Eq + Hash,
     let reached_min_count =
         count_per_key
             .clone()
+            .entries()
             .filter_map(q!(move |(key, (success, _error))| if success >= min {
                 Some(key)
             } else {
@@ -148,14 +136,9 @@ pub fn collect_quorum<'a, L: Location<'a> + NoTick, Order, K: Clone + Eq + Hash,
     } else {
         let (min_but_not_max_complete_cycle, min_but_not_max) = tick.cycle();
 
-        let received_from_all =
-            count_per_key.filter_map(q!(
-                move |(key, (success, error))| if (success + error) >= max {
-                    Some(key)
-                } else {
-                    None
-                }
-            ));
+        let received_from_all = count_per_key
+            .filter(q!(move |(success, error)| (success + error) >= max))
+            .keys();
 
         min_but_not_max_complete_cycle.complete_next_tick(
             reached_min_count

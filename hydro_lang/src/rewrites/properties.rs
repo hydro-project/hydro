@@ -105,7 +105,9 @@ mod tests {
                 .map(q!(|string: String| (string, ())))
                 .tick_batch(&tick)
         }
-        .fold_keyed(q!(|| 0), counter_func)
+        .into_keyed()
+        .fold(q!(|| 0), counter_func)
+        .entries()
         .all_ticks()
         .for_each(q!(|(string, count)| println!("{}: {}", string, count)));
 
