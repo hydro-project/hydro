@@ -82,10 +82,7 @@ pub fn paxos_bench<'a>(
         acceptor_checkpoint_complete.complete(a_checkpoint);
 
         let c_received_payloads = processed_payloads
-            .map(q!(|payload| (
-                payload.value.0,
-                (payload.key, Ok(()))
-            )))
+            .map(q!(|payload| (payload.value.0, (payload.key, Ok(())))))
             .demux_bincode(clients)
             .values();
 
