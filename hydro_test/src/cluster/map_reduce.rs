@@ -28,15 +28,17 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
     .send_bincode(&process)
     .values();
 
-    unsafe {
-        // SAFETY: addition is associative so we can batch reduce
-        batches
-            .tick_batch(&process.tick())
-            .persist()
-            .reduce_keyed_commutative(q!(|total, count| *total += count))
-    }
-    .all_ticks()
-    .for_each(q!(|(string, count)| println!("{}: {}", string, count)));
+    let reduced = batches
+        .into_keyed()
+        .reduce_commutative(q!(|total, count| *total += count));
+
+    unsafe { reduced.snapshot(&process.tick()).entries().all_ticks() }.for_each(q!(|(
+        string,
+        count,
+    )| println!(
+        "{}: {}",
+        string, count
+    )));
 
     (process, cluster)
 }
