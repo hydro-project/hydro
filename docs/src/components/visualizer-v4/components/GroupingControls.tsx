@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { Select } from 'antd';
 import { GroupingOption } from './types';
 import { COMPONENT_COLORS } from '../shared/config';
 
@@ -56,20 +57,14 @@ export function GroupingControls({
     );
   }
 
-  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    if (!disabled && onGroupingChange) {
-      onGroupingChange(event.target.value);
+  const handleChange = (value: string) => {
+    if (!disabled && onGroupingChange && value) {
+      onGroupingChange(value);
     }
   };
 
   const selectStyle: React.CSSProperties = {
     fontSize: compact ? '9px' : '10px',
-    padding: compact ? '2px 4px' : '4px 6px',
-    border: `1px solid ${COMPONENT_COLORS.BORDER_MEDIUM}`,
-    borderRadius: '3px',
-    backgroundColor: disabled ? COMPONENT_COLORS.BACKGROUND_SECONDARY : COMPONENT_COLORS.BACKGROUND_PRIMARY,
-    color: disabled ? COMPONENT_COLORS.TEXT_DISABLED : COMPONENT_COLORS.TEXT_PRIMARY,
-    cursor: disabled ? 'not-allowed' : 'pointer',
     width: '100%',
     maxWidth: compact ? '120px' : '180px',
   };
@@ -82,6 +77,12 @@ export function GroupingControls({
     display: 'block',
   };
 
+  // Create options for Ant Design Select
+  const selectOptions = hierarchyChoices.map(choice => ({
+    value: choice.id,
+    label: choice.name,
+  }));
+
   return (
     <div className={`grouping-controls ${className}`} style={style}>
       {!compact && (
@@ -90,24 +91,19 @@ export function GroupingControls({
         </label>
       )}
       
-      <select
-        value={currentGrouping || ''}
+      <Select
+        value={currentGrouping || undefined}
         onChange={handleChange}
         disabled={disabled}
+        placeholder="Select grouping..."
+        options={selectOptions}
+        size="small"
         style={selectStyle}
-        title={disabled ? 'Grouping controls are disabled' : 'Select a grouping method'}
-      >
-        {!currentGrouping && (
-          <option value="" disabled>
-            Select grouping...
-          </option>
-        )}
-        {hierarchyChoices.map(choice => (
-          <option key={choice.id} value={choice.id}>
-            {choice.name}
-          </option>
-        ))}
-      </select>
+        dropdownStyle={{
+          fontSize: compact ? '9px' : '10px',
+        }}
+        popupMatchSelectWidth={true}
+      />
     </div>
   );
 }

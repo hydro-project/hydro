@@ -1,10 +1,12 @@
 /**
  * @fileoverview HierarchyTree Component
  * 
- * Displays an interactive tree view of container hierarchy for navigation.
+ * Displays an interactive tree view of container hierarchy for navigation using Ant Design Tree.
  */
 
 import React, { useMemo } from 'react';
+import { Tree } from 'antd';
+import type { TreeDataNode } from 'antd';
 import { HierarchyTreeProps, HierarchyTreeNode } from './types';
 import { COMPONENT_COLORS } from '../shared/config';
 
@@ -26,140 +28,142 @@ export function HierarchyTree({
       return label;
     }
     
-    // Try to split on common delimiters and keep the end
-    const delimiters = ['::', '.', '_', '-'];
+    // Try to split on common delimiters and keep the meaningful part
+    const delimiters = ['::', '.', '_', '-', '/'];
     for (const delimiter of delimiters) {
       if (label.includes(delimiter)) {
         const parts = label.split(delimiter);
         const lastPart = parts[parts.length - 1];
-        if (lastPart.length <= maxLength) {
-          return `...${delimiter}${lastPart}`;
+        // If the last part is meaningful and fits, use it
+        if (lastPart.length > 2 && lastPart.length <= maxLength) {
+          return `…${delimiter}${lastPart}`;
+        }
+        // If there are multiple parts, try to keep 2 meaningful parts
+        if (parts.length > 1) {
+          const lastTwoParts = parts.slice(-2).join(delimiter);
+          if (lastTwoParts.length <= maxLength) {
+            return `…${lastTwoParts}`;
+          }
         }
       }
     }
     
-    // Fallback to simple truncation
-    return `...${label.slice(-maxLength + 3)}`;
-  };
-
-  // Count immediate leaf (non-container) children of a container
-  const countLeafChildren = (node: HierarchyTreeNode): number => {
-    // This would need to be passed from parent or calculated differently
-    // For now, we'll use the nodeCount from the tree structure
-    return Math.max(0, node.nodeCount - node.children.length);
-  };
-
-  // Recursive tree node component
-  const TreeNode: React.FC<{ node: HierarchyTreeNode; depth: number }> = ({ node, depth }) => {
-    const hasChildren = node.children && node.children.length > 0;
-    const leafChildrenCount = countLeafChildren(node);
-    const hasLeafChildren = leafChildrenCount > 0;
-    const indent = depth * 16;
-    
-    // Get the current collapsed state
-    const isCurrentlyCollapsed = collapsedContainers.has(node.id);
-    
-    // A container is collapsible if it has either child containers OR leaf children
-    const isCollapsible = hasChildren || hasLeafChildren;
-    
-    // Truncate the label for display but keep original for tooltip
-    const fullLabel = node.label;
-    const displayLabel = truncateLabel(fullLabel, maxLabelLength);
-    const showTooltip = fullLabel !== displayLabel;
-
-    const nodeStyle: React.CSSProperties = {
-      marginLeft: `${indent}px`,
-      cursor: isCollapsible ? 'pointer' : 'default',
-      padding: '2px 4px',
-      borderRadius: '2px',
-      fontSize: '10px',
-      display: 'flex',
-      alignItems: 'center',
-      transition: 'background-color 0.15s ease',
-    };
-
-    const toggleStyle: React.CSSProperties = {
-      marginRight: '6px',
-      fontSize: '9px',
-      color: isCollapsible ? COMPONENT_COLORS.TEXT_SECONDARY : COMPONENT_COLORS.TEXT_DISABLED,
-      width: '10px',
-      textAlign: 'center',
-    };
-
-    const labelStyle: React.CSSProperties = {
-      color: COMPONENT_COLORS.TEXT_PRIMARY,
-      flex: 1,
-    };
-
-    const countStyle: React.CSSProperties = {
-      color: COMPONENT_COLORS.TEXT_SECONDARY,
-      fontSize: '9px',
-      marginLeft: '4px',
-    };
-
-    const leafIndicatorStyle: React.CSSProperties = {
-      marginLeft: `${indent + 16}px`,
-      padding: '1px 4px',
-      fontSize: '9px',
-      color: COMPONENT_COLORS.TEXT_TERTIARY,
-      fontStyle: 'italic',
-      display: 'flex',
-      alignItems: 'center',
-    };
-
-    const handleClick = () => {
-      if (isCollapsible && onToggleContainer) {
-        onToggleContainer(node.id);
+    // Fallback: smart truncation from the end, keeping whole words when possible  
+    if (label.length > maxLength) {
+      const truncated = label.slice(0, maxLength - 1);
+      const lastSpaceIndex = truncated.lastIndexOf(' ');
+      if (lastSpaceIndex > maxLength * 0.7) { // Only break on word if it's not too short
+        return truncated.slice(0, lastSpaceIndex) + '…';
       }
-    };
+      return truncated + '…';
+    }
+    
+    return label;
+  };
 
-    return (
-      <div key={node.id}>
-        <div 
-          style={nodeStyle}
-          onClick={handleClick}
-          onMouseEnter={(e) => {
-            if (isCollapsible) {
-              e.currentTarget.style.backgroundColor = COMPONENT_COLORS.BUTTON_HOVER_BACKGROUND;
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}
-          title={showTooltip ? fullLabel : `Container: ${fullLabel}${isCollapsible ? ' (click to toggle)' : ''}`}
-        >
-          <span style={toggleStyle}>
-            {isCollapsible ? (isCurrentlyCollapsed ? '▶' : '▼') : '•'}
-          </span>
-          <span style={labelStyle}>{displayLabel}</span>
-          {showNodeCounts && (hasChildren || hasLeafChildren) && (
-            <span style={countStyle}>
-              ({hasChildren ? node.children.length : leafChildrenCount})
+  // Convert HierarchyTreeNode to Ant Design TreeDataNode format
+  const convertToTreeData = (nodes: HierarchyTreeNode[]): TreeDataNode[] => {
+    return nodes.map(node => {
+      const truncatedLabel = truncateLabel(node.label, maxLabelLength);
+      const leafChildrenCount = Math.max(0, node.nodeCount - (node.children?.length || 0));
+      const hasChildren = node.children && node.children.length > 0;
+      const hasLeafChildren = leafChildrenCount > 0;
+      
+      // Create display title with better formatting
+      let displayTitle: React.ReactNode = truncatedLabel;
+      if (showNodeCounts && (hasChildren || hasLeafChildren)) {
+        const count = hasChildren ? node.children.length : leafChildrenCount;
+        const countText = hasChildren ? `${count} containers` : `${count} nodes`;
+        displayTitle = (
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <span style={{ 
+              fontWeight: hasChildren ? '500' : '400',
+              color: COMPONENT_COLORS.TEXT_PRIMARY, // Same color for both container and leaf nodes
+              ...(hasLeafChildren && !hasChildren ? {
+                // Subtle gray background for leaf nodes instead of bullet
+                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                padding: '1px 4px',
+                borderRadius: '3px',
+                fontSize: '9px'
+              } : {})
+            }}>
+              {truncatedLabel}
             </span>
-          )}
-        </div>
-        
-        {/* Show nested container children when expanded */}
-        {hasChildren && !isCurrentlyCollapsed && (
-          <div>
-            {node.children.map(child => (
-              <TreeNode key={child.id} node={child} depth={depth + 1} />
-            ))}
-          </div>
-        )}
-        
-        {/* Show leaf children indicator when expanded */}
-        {hasLeafChildren && !isCurrentlyCollapsed && !hasChildren && (
-          <div 
-            style={leafIndicatorStyle}
-            title={`${leafChildrenCount} leaf node${leafChildrenCount !== 1 ? 's' : ''}`}
-          >
-            <span style={toggleStyle}>•</span>
-            <span>&lt;{leafChildrenCount} leaf node{leafChildrenCount !== 1 ? 's' : ''}&gt;</span>
-          </div>
-        )}
-      </div>
-    );
+            <span style={{ 
+              fontSize: '9px', 
+              color: COMPONENT_COLORS.TEXT_TERTIARY,
+              fontStyle: 'italic',
+              marginLeft: '8px',
+              opacity: 0.7
+            }}>
+              {countText}
+            </span>
+          </span>
+        );
+      } else {
+        // For nodes without counts, still apply leaf styling if needed
+        if (hasLeafChildren && !hasChildren) {
+          displayTitle = (
+            <span style={{
+              color: COMPONENT_COLORS.TEXT_PRIMARY,
+              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+              padding: '1px 4px',
+              borderRadius: '3px',
+              fontSize: '9px'
+            }}>
+              {truncatedLabel}
+            </span>
+          );
+        }
+      }
+
+      return {
+        key: node.id,
+        title: displayTitle,
+        children: hasChildren ? convertToTreeData(node.children) : undefined,
+        isLeaf: !hasChildren, // Explicitly mark leaf nodes
+        // Add custom properties for styling
+        data: {
+          originalLabel: node.label,
+          truncatedLabel,
+          nodeCount: node.nodeCount,
+          leafChildrenCount,
+          hasLeafChildren: hasLeafChildren && !hasChildren,
+          isContainer: hasChildren
+        }
+      };
+    });
+  };
+
+  // Convert collapsed containers Set to expanded keys array (Ant Design uses expanded, not collapsed)
+  const expandedKeys = useMemo(() => {
+    const allKeys: string[] = [];
+    
+    const collectKeys = (nodes: HierarchyTreeNode[]) => {
+      nodes.forEach(node => {
+        allKeys.push(node.id);
+        if (node.children) {
+          collectKeys(node.children);
+        }
+      });
+    };
+    
+    collectKeys(hierarchyTree || []);
+    
+    // Return keys that are NOT in collapsedContainers (i.e., expanded keys)
+    return allKeys.filter(key => !collapsedContainers.has(key));
+  }, [hierarchyTree, collapsedContainers]);
+
+  const treeData = useMemo(() => {
+    return convertToTreeData(hierarchyTree || []);
+  }, [hierarchyTree, maxLabelLength, showNodeCounts, truncateLabels]);
+
+  const handleExpand = (expandedKeys: React.Key[], info: any) => {
+    if (onToggleContainer && info.node) {
+      // Ant Design expansion is the opposite of our collapse state
+      const nodeKey = info.node.key as string;
+      onToggleContainer(nodeKey);
+    }
   };
 
   if (!hierarchyTree || hierarchyTree.length === 0) {
@@ -191,11 +195,28 @@ export function HierarchyTree({
         </div>
       )}
       
-      <div>
-        {hierarchyTree.map(node => (
-          <TreeNode key={node.id} node={node} depth={0} />
-        ))}
-      </div>
+      <Tree
+        treeData={treeData}
+        expandedKeys={expandedKeys}
+        onExpand={handleExpand}
+        showLine={{ 
+          showLeafIcon: false // No leaf icons, just clean lines
+        }}
+        showIcon={false}
+        blockNode
+        style={{
+          fontSize: '10px',
+          color: COMPONENT_COLORS.TEXT_PRIMARY,
+          backgroundColor: 'transparent'
+        }}
+        // Enhanced styling through CSS variables for better hierarchy
+        rootStyle={{
+          '--antd-tree-node-hover-bg': COMPONENT_COLORS.BUTTON_HOVER_BACKGROUND,
+          '--antd-tree-node-selected-bg': COMPONENT_COLORS.BUTTON_HOVER_BACKGROUND,
+          '--antd-tree-indent-size': '16px', // Reduce indent for better space usage
+          '--antd-tree-node-padding': '2px 4px', // Better padding
+        } as React.CSSProperties}
+      />
     </div>
   );
 }

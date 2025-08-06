@@ -393,14 +393,18 @@ function VisV4Component() {
     try {
       const container = currentVisualizationState.getContainer(containerId);
       if (container) {
-        if (container.collapsed) {
+        const wasCollapsed = container.collapsed;
+        if (wasCollapsed) {
           currentVisualizationState.expandContainer(containerId);
+          console.log('📂 Expanded container in tree:', containerId);
         } else {
           currentVisualizationState.collapseContainer(containerId);
+          console.log('📁 Collapsed container in tree:', containerId);
         }
         
         // Force component update to reflect changes
         forceUpdate();
+        console.log('🔄 Forced update after tree toggle');
       }
     } catch (err) {
       console.error('❌ Error toggling hierarchy:', err);
@@ -604,6 +608,9 @@ function VisV4Component() {
                   currentGrouping={typeof currentGrouping === 'string' ? currentGrouping : null}
                   onGroupingChange={handleGroupingChange}
                   onToggleContainer={handleHierarchyToggle}
+                  collapsedContainers={new Set(currentVisualizationState.visibleContainers
+                    .filter(container => container.collapsed)
+                    .map(container => container.id))}
                   colorPalette={colorPalette}
                 />
               </div>

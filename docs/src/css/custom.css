@@ -6,9 +6,20 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap");
+@import 'antd/dist/reset.css';
 
 body {
   font-family: 'Open Sans', sans-serif;
+}
+
+/* Fix Ant Design Tree spacing between widgets and labels */
+.ant-tree .ant-tree-switcher {
+  width: 16px !important;
+  margin-right: 0px !important;
+}
+
+.ant-tree .ant-tree-node-content-wrapper {
+  margin-left: 2px !important;
 }
 
 /* You can override the default Infima variables here. */
