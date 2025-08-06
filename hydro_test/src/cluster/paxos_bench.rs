@@ -100,9 +100,31 @@ pub fn paxos_bench<'a>(
         .end_atomic()
     };
 
-    let bench_results = unsafe { bench_client(clients, paxos_processor, num_clients_per_node) };
+    let bench_results = unsafe {
+        bench_client(
+            clients,
+            inc_u32_workload_generator,
+            paxos_processor,
+            num_clients_per_node,
+        )
+    };
 
     print_bench_results(bench_results, client_aggregator, clients);
+}
+
+/// Generates an incrementing u32 for each virtual client ID, starting at 0
+pub fn inc_u32_workload_generator<'a, Client>(
+    _client: &Cluster<'a, Client>,
+    payload_request: Stream<(u32, Option<u32>), Cluster<'a, Client>, Unbounded, NoOrder>,
+) -> Stream<(u32, u32), Cluster<'a, Client>, Unbounded, NoOrder> {
+    payload_request.map(q!(move |(virtual_id, payload)| {
+        let value = if let Some(payload) = payload {
+            payload + 1
+        } else {
+            0
+        };
+        (virtual_id, value)
+    }))
 }
 
 #[cfg(test)]

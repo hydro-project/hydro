@@ -2,6 +2,7 @@ use hydro_lang::*;
 use hydro_std::bench_client::{bench_client, print_bench_results};
 
 use super::two_pc::{Coordinator, Participant};
+use crate::cluster::paxos_bench::inc_u32_workload_generator;
 use crate::cluster::two_pc::two_pc;
 
 pub struct Client;
@@ -18,6 +19,7 @@ pub fn two_pc_bench<'a>(
     let bench_results = unsafe {
         bench_client(
             clients,
+            inc_u32_workload_generator,
             |payloads| {
                 // Send committed requests back to the original client
                 two_pc(
