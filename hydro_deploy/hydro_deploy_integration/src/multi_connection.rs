@@ -12,6 +12,7 @@ use tokio::net::TcpListener;
 #[cfg(unix)]
 use tokio::net::UnixListener;
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use crate::{AcceptedServer, BoundServer, Connected, Connection};
@@ -19,6 +20,7 @@ use crate::{AcceptedServer, BoundServer, Connected, Connection};
 pub struct ConnectedMultiConnection<I, O, C: Decoder<Item = I> + Encoder<O>> {
     pub source: MultiConnectionSource<I, O, C>,
     pub sink: MultiConnectionSink<O, C>,
+    pub membership: UnboundedReceiverStream<(u64, bool)>,
 }
 
 impl<
@@ -31,6 +33,7 @@ impl<
         match pipe {
             Connection::AsServer(AcceptedServer::MultiConnection(bound_server)) => {
                 let (new_sink_sender, new_sink_receiver) = mpsc::unbounded_channel();
+                let (membership_sender, membership_receiver) = mpsc::unbounded_channel();
 
                 let source = match *bound_server {
                     #[cfg(unix)]
@@ -42,6 +45,7 @@ impl<
                         active_connections: Vec::new(),
                         poll_cursor: 0,
                         new_sink_sender,
+                        membership_sender,
                         _phantom: Default::default(),
                     },
                     BoundServer::TcpPort(listener, _) => MultiConnectionSource {
@@ -54,6 +58,7 @@ impl<
                         active_connections: Vec::new(),
                         poll_cursor: 0,
                         new_sink_sender,
+                        membership_sender,
                         _phantom: Default::default(),
                     },
                     _ => panic!("MultiConnection only supports UnixSocket and TcpPort"),
@@ -65,7 +70,11 @@ impl<
                     _phantom: Default::default(),
                 };
 
-                ConnectedMultiConnection { source, sink }
+                ConnectedMultiConnection {
+                    source,
+                    sink,
+                    membership: UnboundedReceiverStream::new(membership_receiver),
+                }
             }
             _ => panic!("Cannot connect to a non-multi-connection pipe as a multi-connection"),
         }
@@ -88,6 +97,7 @@ pub struct MultiConnectionSource<I, O, C: Decoder<Item = I> + Encoder<O>> {
     /// Cursor for fair round-robin polling
     poll_cursor: usize,
     new_sink_sender: mpsc::UnboundedSender<(u64, DynEncodedSink<O, C>)>,
+    membership_sender: mpsc::UnboundedSender<(u64, bool)>,
     _phantom: PhantomData<(Box<O>, Box<C>)>,
 }
 
@@ -135,6 +145,7 @@ impl<
                             .push(Some((connection_id, boxed_stream)));
 
                         let _ = me.new_sink_sender.send((connection_id, boxed_sink));
+                        let _ = me.membership_sender.send((connection_id, true));
                     }
                     Poll::Ready(Err(e)) => {
                         if !me.active_connections.iter().any(|conn| conn.is_some()) {
@@ -174,6 +185,7 @@ impl<
                             .push(Some((connection_id, boxed_stream)));
 
                         let _ = me.new_sink_sender.send((connection_id, boxed_sink));
+                        let _ = me.membership_sender.send((connection_id, true));
                     }
                     Poll::Ready(Err(e)) => {
                         if !me.active_connections.iter().any(|conn| conn.is_some()) {
@@ -209,6 +221,7 @@ impl<
                     }
                     Poll::Ready(Some(Err(_))) | Poll::Ready(None) => {
                         // Mark connection as removed
+                        let _ = me.membership_sender.send((connection_id, false));
                         me.active_connections[me.poll_cursor] = None;
                     }
                     Poll::Pending => {}

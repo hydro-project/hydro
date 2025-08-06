@@ -20,10 +20,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let process = flow.process::<()>();
     let external = flow.external::<()>();
 
-    let (port, input, output_ref) =
+    let (port, input, membership, output_ref) =
         process.bidi_external_many_bytes::<_, _, LinesCodec>(&external, NetworkHint::Auto);
 
-    output_ref.complete(hydro_test::external_client::echo::echo_server(input));
+    output_ref.complete(hydro_test::external_client::echo::echo_server(
+        input, membership,
+    ));
 
     // Extract the IR BEFORE the builder is consumed by deployment methods
     let built = flow.finalize();
