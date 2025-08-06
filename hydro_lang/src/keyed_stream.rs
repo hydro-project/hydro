@@ -4,6 +4,9 @@ use std::marker::PhantomData;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
+use crate::ir::HydroNode;
+use crate::keyed_optional::KeyedOptional;
+use crate::keyed_singleton::KeyedSingleton;
 use crate::location::{LocationId, NoTick};
 use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
@@ -59,6 +62,13 @@ where
 }
 
 impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
+    pub unsafe fn assume_ordering<O2>(self) -> KeyedStream<K, V, L, B, O2, R> {
+        KeyedStream {
+            underlying: self.underlying,
+            _phantom_order: PhantomData,
+        }
+    }
+
     /// Flattens the keyed stream into a single stream of key-value pairs, with non-deterministic
     /// element ordering.
     ///
@@ -399,6 +409,63 @@ where
                     .into()
             },
             _phantom_order: Default::default(),
+        }
+    }
+
+    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedSingleton<K, A, L, B> {
+        let init = init.splice_fn0_ctx(&self.underlying.location).into();
+        let comb = comb
+            .splice_fn2_borrow_mut_ctx(&self.underlying.location)
+            .into();
+
+        let out_ir = HydroNode::FoldKeyed {
+            init,
+            acc: comb,
+            input: Box::new(self.underlying.ir_node.into_inner()),
+            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+        };
+
+        KeyedSingleton {
+            underlying: Stream::new(self.underlying.location, out_ir),
+        }
+    }
+
+    pub fn reduce<F: Fn(&mut V, V) + 'a>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B> {
+        let f = comb
+            .splice_fn2_borrow_mut_ctx(&self.underlying.location)
+            .into();
+
+        let out_ir = HydroNode::ReduceKeyed {
+            f,
+            input: Box::new(self.underlying.ir_node.into_inner()),
+            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+        };
+
+        KeyedOptional {
+            underlying: Stream::new(self.underlying.location, out_ir),
+        }
+    }
+}
+
+impl<'a, K, V, L, B, O> KeyedStream<K, V, L, B, O, ExactlyOnce>
+where
+    K: Eq + Hash,
+    L: Location<'a>,
+{
+    pub fn reduce_commutative<F: Fn(&mut V, V) + 'a>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B> {
+        unsafe {
+            // SAFETY: the combinator function is commutative
+            self.assume_ordering::<TotalOrder>().reduce(comb)
         }
     }
 }
