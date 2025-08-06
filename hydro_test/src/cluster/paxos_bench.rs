@@ -109,11 +109,11 @@ pub fn paxos_bench<'a>(
 /// Generates an incrementing u32 for each virtual client ID, starting at 0
 pub fn inc_u32_workload_generator<'a, Client>(
     client: &Cluster<'a, Client>,
-    virtual_clients: Stream<u32, Cluster<'a, Client>, Unbounded, NoOrder>,
+    payload_request: Stream<u32, Cluster<'a, Client>, Unbounded, NoOrder>,
 ) -> Stream<(u32, u32), Cluster<'a, Client>, Unbounded, NoOrder> {
     let client_tick = client.tick();
     unsafe {
-        virtual_clients
+        payload_request
             .map(q!(move |virtual_id| (virtual_id, 0)))
             .tick_batch(&client_tick)
     }
