@@ -1,0 +1,27 @@
+.container {
+  margin: 20px 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.controls {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.button {
+  margin: 0 10px;
+  padding: 8px 16px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.container svg {
+  width: 100%;
+  height: auto;
+}
