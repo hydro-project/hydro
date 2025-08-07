@@ -5,7 +5,7 @@
  * Handles nodes, edges, hierarchies, and grouping assignments.
  */
 import { VisualizationState } from './VisState';
-import { NodeStyle, EdgeStyle } from '../shared/constants';
+import { NodeStyle, EdgeStyle } from '../shared/config';
 export interface GroupingOption {
     id: string;
     name: string;

@@ -145,6 +145,7 @@ export interface RenderConfig {
   enableZoom?: boolean;
   enablePan?: boolean;
   enableSelection?: boolean;
+  colorPalette?: string;
 }
 
 export interface FlowGraphEventHandlers {

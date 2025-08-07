@@ -1,11 +1,63 @@
 /**
- * @fileoverview Basic configuration exports
+ * @fileoverview Unified Configuration and Constants
  * 
- * This is a simplified config file that imports what's needed from the current implementation.
+ * All configuration constants, styling, colors, typography, and layout settings
+ * for the visualizer-v4 system. This replaces the previous split between
+ * config.ts and constants.ts for better organization.
  */
 
-// For now, just re-export constants
-export * from './constants';
+// ============================================================================
+// STYLING CONSTANTS (from constants.ts)
+// ============================================================================
+
+// Node styling constants
+export const NODE_STYLES = {
+  DEFAULT: 'default',
+  HIGHLIGHTED: 'highlighted',
+  SELECTED: 'selected',
+  WARNING: 'warning',
+  ERROR: 'error'
+} as const;
+
+// Edge styling constants
+export const EDGE_STYLES = {
+  DEFAULT: 'default',
+  HIGHLIGHTED: 'highlighted',
+  DASHED: 'dashed',
+  THICK: 'thick',
+  WARNING: 'warning'
+} as const;
+
+// Container styling constants
+export const CONTAINER_STYLES = {
+  DEFAULT: 'default',
+  HIGHLIGHTED: 'highlighted',
+  SELECTED: 'selected',
+  MINIMIZED: 'minimized'
+} as const;
+
+// Layout constants
+export const LAYOUT_CONSTANTS = {
+  DEFAULT_NODE_WIDTH: 180,
+  DEFAULT_NODE_HEIGHT: 60,
+  DEFAULT_CONTAINER_PADDING: 20,
+  MIN_CONTAINER_WIDTH: 200,
+  MIN_CONTAINER_HEIGHT: 150,
+  
+  // Container label positioning and sizing
+  CONTAINER_LABEL_HEIGHT: 32,           // Height reserved for container labels
+  CONTAINER_LABEL_PADDING: 12,          // Padding around container labels
+  CONTAINER_LABEL_FONT_SIZE: 12,        // Font size for container labels
+} as const;
+
+// Type exports
+export type NodeStyle = typeof NODE_STYLES[keyof typeof NODE_STYLES];
+export type EdgeStyle = typeof EDGE_STYLES[keyof typeof EDGE_STYLES];
+export type ContainerStyle = typeof CONTAINER_STYLES[keyof typeof CONTAINER_STYLES];
+
+// ============================================================================
+// UI CONFIGURATION
+// ============================================================================
 
 // Additional exports expected by components
 export const COMPONENT_COLORS = {
@@ -32,6 +84,26 @@ export const COLOR_PALETTES = {
     { primary: '#bc80bd', secondary: '#ccebc5', name: 'Medium Purple' },
     { primary: '#ccebc5', secondary: '#ffed6f', name: 'Light Green' },
     { primary: '#ffed6f', secondary: '#8dd3c7', name: 'Light Yellow' },
+  ],
+  Pastel1: [
+    { primary: '#fbb4ae', secondary: '#b3cde3', name: 'Soft Red' },
+    { primary: '#b3cde3', secondary: '#ccebc5', name: 'Soft Blue' },
+    { primary: '#ccebc5', secondary: '#decbe4', name: 'Soft Green' },
+    { primary: '#decbe4', secondary: '#fed9a6', name: 'Soft Lavender' },
+    { primary: '#fed9a6', secondary: '#ffffcc', name: 'Soft Orange' },
+    { primary: '#ffffcc', secondary: '#e5d8bd', name: 'Soft Yellow' },
+    { primary: '#e5d8bd', secondary: '#fddaec', name: 'Soft Beige' },
+    { primary: '#fddaec', secondary: '#f2f2f2', name: 'Soft Pink' },
+  ],
+  Dark2: [
+    { primary: '#1b9e77', secondary: '#d95f02', name: 'Dark Teal' },
+    { primary: '#d95f02', secondary: '#7570b3', name: 'Dark Orange' },
+    { primary: '#7570b3', secondary: '#e7298a', name: 'Dark Purple' },
+    { primary: '#e7298a', secondary: '#66a61e', name: 'Dark Pink' },
+    { primary: '#66a61e', secondary: '#e6ab02', name: 'Dark Green' },
+    { primary: '#e6ab02', secondary: '#a6761d', name: 'Dark Gold' },
+    { primary: '#a6761d', secondary: '#666666', name: 'Dark Brown' },
+    { primary: '#666666', secondary: '#1b9e77', name: 'Dark Gray' },
   ]
 };
 
@@ -42,6 +114,28 @@ export const SIZES = {
   BORDER_RADIUS_DEFAULT: '6px',
   COLLAPSED_CONTAINER_WIDTH: 200,
   COLLAPSED_CONTAINER_HEIGHT: 100
+};
+
+// Typography and font size constants
+export const TYPOGRAPHY = {
+  // InfoPanel font sizes - increased from tiny sizes for better readability
+  INFOPANEL_BASE: '14px',           // Main InfoPanel content (was 10px)
+  INFOPANEL_TITLE: '16px',          // Section titles
+  INFOPANEL_HIERARCHY_NODE: '13px', // Hierarchy tree nodes (was 9-10px)
+  INFOPANEL_HIERARCHY_DETAILS: '12px', // Node details and counts (was 9px)
+  INFOPANEL_LEGEND: '13px',         // Legend items (was 10-11px)
+  
+  // General UI font sizes
+  UI_SMALL: '12px',
+  UI_MEDIUM: '14px',
+  UI_LARGE: '16px',
+  UI_HEADING: '18px',
+  
+  // Page-level typography
+  PAGE_TITLE: '24px',
+  PAGE_SUBTITLE: '14px',
+  BUTTON_SMALL: '14px',
+  BUTTON_MEDIUM: '16px'
 };
 
 export const SHADOWS = {

@@ -6,7 +6,7 @@
  */
 
 import { createVisualizationState, VisualizationState } from './VisState';
-import { NODE_STYLES, EDGE_STYLES, NodeStyle, EdgeStyle } from '../shared/constants';
+import { NODE_STYLES, EDGE_STYLES, NodeStyle, EdgeStyle } from '../shared/config';
 
 // ============ Type Definitions ============
 

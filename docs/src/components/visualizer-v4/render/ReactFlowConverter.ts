@@ -17,6 +17,13 @@ export class ReactFlowConverter {
   }
 
   /**
+   * Set the color palette for node styling
+   */
+  setColorPalette(palette: string): void {
+    this.bridge.setColorPalette(palette);
+  }
+
+  /**
    * Convert VisualizationState to ReactFlow format - SAME API as alpha
    */
   convert(visState: VisualizationState): ReactFlowData {

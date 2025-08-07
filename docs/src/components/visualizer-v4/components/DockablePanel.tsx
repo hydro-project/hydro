@@ -7,7 +7,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { DockablePanelProps, PANEL_POSITIONS, PanelPosition } from './types';
-import { COMPONENT_COLORS, SIZES, SHADOWS } from '../shared/config';
+import { COMPONENT_COLORS, SIZES, SHADOWS, TYPOGRAPHY } from '../shared/config';
 
 // Re-export PANEL_POSITIONS for convenience
 export { PANEL_POSITIONS } from './types';
@@ -196,7 +196,7 @@ export function DockablePanel({
           borderBottom: `1px solid ${COMPONENT_COLORS.BORDER_LIGHT}`,
           cursor: 'move',
           userSelect: 'none',
-          fontSize: '11px',
+          fontSize: TYPOGRAPHY.INFOPANEL_BASE,
           fontWeight: 'bold',
           color: COMPONENT_COLORS.TEXT_PRIMARY,
         }}
@@ -210,7 +210,7 @@ export function DockablePanel({
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              fontSize: '10px',
+              fontSize: TYPOGRAPHY.INFOPANEL_BASE,
               color: COMPONENT_COLORS.TEXT_SECONDARY,
               padding: '2px 4px',
               borderRadius: '2px',
@@ -230,7 +230,7 @@ export function DockablePanel({
           {isDocked && (
             <span
               style={{
-                fontSize: '8px',
+                fontSize: TYPOGRAPHY.UI_SMALL,
                 color: COMPONENT_COLORS.TEXT_DISABLED,
                 padding: '2px',
               }}
@@ -247,7 +247,7 @@ export function DockablePanel({
         <div
           style={{
             padding: '12px',
-            fontSize: '10px',
+            fontSize: TYPOGRAPHY.INFOPANEL_BASE,
             maxHeight: `${maxHeight - 40}px`,
             overflowY: 'auto',
           }}

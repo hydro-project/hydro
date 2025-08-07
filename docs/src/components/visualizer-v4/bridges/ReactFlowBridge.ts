@@ -57,6 +57,15 @@ export interface ReactFlowData {
 }
 
 export class ReactFlowBridge {
+  private colorPalette: string = 'Set3';
+
+  /**
+   * Set the color palette for node styling
+   */
+  setColorPalette(palette: string): void {
+    this.colorPalette = palette;
+  }
+
   /**
    * Convert positioned VisState data to ReactFlow format
    * Pure data transformation - no layout logic
@@ -202,6 +211,7 @@ export class ReactFlowBridge {
         data: {
           label: node.label || node.id,
           style: node.style || 'default',
+          colorPalette: this.colorPalette, // Pass the current color palette
           // Pass through any custom properties
           ...this.extractCustomProperties(node)
         },

@@ -13,7 +13,7 @@ import { CollapsibleSection } from './CollapsibleSection';
 import { GroupingControls } from './GroupingControls';
 import { HierarchyTree } from './HierarchyTree';
 import { Legend } from './Legend';
-import { COMPONENT_COLORS } from '../shared/config';
+import { COMPONENT_COLORS, TYPOGRAPHY } from '../shared/config';
 
 export function InfoPanel({
   visualizationState,
@@ -29,25 +29,41 @@ export function InfoPanel({
   className = '',
   style
 }: InfoPanelProps) {
-  const [legendCollapsed, setLegendCollapsed] = useState(true);
+  const [legendCollapsed, setLegendCollapsed] = useState(false); // Start expanded so users can see it
   const [hierarchyCollapsed, setHierarchyCollapsed] = useState(false);
   const [groupingCollapsed, setGroupingCollapsed] = useState(false);
 
   // Get default legend data if none provided
   const defaultLegendData: LegendData = {
     title: "Node Types",
-    items: [
-      { type: "Source", label: "Source" },
-      { type: "Transform", label: "Transform" },
-      { type: "Sink", label: "Sink" },
-      { type: "Network", label: "Network" },
-      { type: "Aggregation", label: "Aggregation" },
-      { type: "Join", label: "Join" },
-      { type: "Tee", label: "Tee" }
-    ]
+    items: []
   };
 
-  const effectiveLegendData = legendData || defaultLegendData;
+  // Generate legend data from actual node types in the visualization
+  const generateLegendFromState = (): LegendData => {
+    if (!visualizationState) return defaultLegendData;
+    
+    const nodeTypes = new Set<string>();
+    
+    // Collect all unique node types from visible nodes
+    visualizationState.visibleNodes.forEach(node => {
+      const nodeType = (node as any).nodeType || (node as any).style || 'default';
+      nodeTypes.add(nodeType);
+    });
+    
+    return {
+      title: "Node Types",
+      items: Array.from(nodeTypes).map(nodeType => ({
+        type: nodeType,
+        label: nodeType.charAt(0).toUpperCase() + nodeType.slice(1)
+      }))
+    };
+  };
+
+  // Ensure we always have valid legend data
+  const effectiveLegendData = (legendData && legendData.items && Array.isArray(legendData.items)) 
+    ? legendData 
+    : generateLegendFromState();
   
   // Ensure hierarchyChoices is always an array
   const safeHierarchyChoices = Array.isArray(hierarchyChoices) ? hierarchyChoices : [];
@@ -137,11 +153,11 @@ export function InfoPanel({
       className={className}
       style={style}
     >
-      <div style={{ fontSize: '10px' }}>
+      <div style={{ fontSize: TYPOGRAPHY.INFOPANEL_BASE }}> {/* Increased from 10px to 14px */}
         {/* Grouping & Hierarchy Section */}
         {(safeHierarchyChoices.length > 0 || hierarchyTree.length > 0) && (
           <CollapsibleSection
-            title="Grouping & Hierarchy"
+            title="Grouping"
             isCollapsed={groupingCollapsed}
             onToggle={() => setGroupingCollapsed(!groupingCollapsed)}
           >
@@ -184,30 +200,6 @@ export function InfoPanel({
             compact={true}
           />
         </CollapsibleSection>
-
-        {/* Graph Statistics */}
-        {visualizationState && (
-          <CollapsibleSection
-            title="Statistics"
-            isCollapsed={true}
-            onToggle={() => {}} // Could add state if needed
-          >
-            <div style={{ fontSize: '9px', color: COMPONENT_COLORS.TEXT_SECONDARY }}>
-              <div style={{ margin: '2px 0' }}>
-                Nodes: {visualizationState.visibleNodes.length}
-              </div>
-              <div style={{ margin: '2px 0' }}>
-                Edges: {visualizationState.visibleEdges.length}
-              </div>
-              <div style={{ margin: '2px 0' }}>
-                Containers: {visualizationState.visibleContainers.length}
-              </div>
-              <div style={{ margin: '2px 0' }}>
-                Collapsed: {collapsedContainers.size}
-              </div>
-            </div>
-          </CollapsibleSection>
-        )}
       </div>
     </DockablePanel>
   );

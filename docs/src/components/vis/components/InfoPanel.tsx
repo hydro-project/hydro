@@ -159,7 +159,7 @@ export function InfoPanel({
                 hierarchyTree={hierarchyTree}
                 collapsedContainers={collapsedContainers}
                 onToggleContainer={onToggleContainer}
-                title={`${currentGroupingName} Hierarchy`}
+                // title={`${currentGroupingName} Hierarchy`}
                 showNodeCounts={true}
                 truncateLabels={true}
                 maxLabelLength={15}

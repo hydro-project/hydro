@@ -13,7 +13,7 @@ import {
   CreateEdgeProps,
   CreateContainerProps
 } from '../shared/types';
-import { LAYOUT_CONSTANTS } from './constants';
+import { LAYOUT_CONSTANTS } from '../shared/config';
 import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand';
 
 // Constants for consistent string literals

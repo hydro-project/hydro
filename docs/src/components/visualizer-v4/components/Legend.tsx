@@ -8,6 +8,7 @@ import React from 'react';
 import { LegendProps } from './types';
 import { generateNodeColors } from '../shared/colorUtils';
 import { COLOR_PALETTES, COMPONENT_COLORS } from '../shared/config';
+import { TYPOGRAPHY } from '../shared/config';
 
 export function Legend({
   legendData,
@@ -18,6 +19,21 @@ export function Legend({
   className = '',
   style
 }: LegendProps) {
+  // Safety check for legendData and items
+  if (!legendData || !legendData.items || !Array.isArray(legendData.items)) {
+    return (
+      <div className={`legend-empty ${className}`} style={style}>
+        <span style={{ 
+          color: COMPONENT_COLORS.TEXT_DISABLED,
+          fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
+          fontStyle: 'italic'
+        }}>
+          No legend data available
+        </span>
+      </div>
+    );
+  }
+
   const displayTitle = title || legendData.title || 'Legend';
   const paletteKey = (colorPalette in COLOR_PALETTES) ? colorPalette as keyof typeof COLOR_PALETTES : 'Set3';
 
@@ -30,7 +46,7 @@ export function Legend({
     display: 'flex',
     alignItems: 'center',
     margin: compact ? '2px 0' : '3px 0',
-    fontSize: compact ? '9px' : '10px'
+    fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
   };
 
   const colorBoxStyle = (colors: any): React.CSSProperties => ({
@@ -51,7 +67,7 @@ export function Legend({
           fontWeight: 'bold',
           marginBottom: '6px',
           color: COMPONENT_COLORS.TEXT_PRIMARY,
-          fontSize: '11px'
+          fontSize: TYPOGRAPHY.UI_SMALL,
         }}>
           {displayTitle}
         </div>

@@ -151,6 +151,14 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
     }
   }, [layoutConfig]);
 
+  // Listen to config changes (including color palette)
+  useEffect(() => {
+    if (config && converter && config.colorPalette) {
+      console.log('[FlowGraph] 🎨 Color palette changed to:', config.colorPalette);
+      converter.setColorPalette(config.colorPalette);
+    }
+  }, [config?.colorPalette, converter]); // Only depend on the specific colorPalette value
+
   // Listen to visualization state changes
   useEffect(() => {
     const handleStateChange = async () => {
@@ -316,7 +324,9 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          height: '400px',
+          width: '100%',
+          height: '100%',
+          minHeight: '400px',
           background: '#f5f5f5',
           border: '1px solid #ddd',
           borderRadius: '8px',
@@ -361,7 +371,9 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          height: '400px',
+          width: '100%',
+          height: '100%',
+          minHeight: '400px',
           background: '#ffe6e6',
           border: '1px solid #ff9999',
           borderRadius: '8px',
@@ -386,7 +398,9 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          height: '400px',
+          width: '100%',
+          height: '100%',
+          minHeight: '400px',
           background: '#f9f9f9',
           border: '1px solid #ddd',
           borderRadius: '8px',
@@ -403,7 +417,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
 
   // Main ReactFlow render
   return (
-    <div className={className} style={{ height: '400px', ...style }}>
+    <div className={className} style={{ width: '100%', height: '100%', ...style }}>
       <ReactFlow
         nodes={reactFlowData?.nodes || []}
         edges={reactFlowData?.edges || []}

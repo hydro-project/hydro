@@ -12,8 +12,8 @@ export interface ExternalContainer {
  * Core TypeScript interfaces and types for the graph visualization system.
  * These types provide compile-time safety and better developer experience.
  */
-import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES } from './constants';
-export { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES } from './constants';
+import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES } from './config';
+export { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES } from './config';
 export type NodeStyle = typeof NODE_STYLES[keyof typeof NODE_STYLES];
 export type EdgeStyle = typeof EDGE_STYLES[keyof typeof EDGE_STYLES];
 export type ContainerStyle = typeof CONTAINER_STYLES[keyof typeof CONTAINER_STYLES];

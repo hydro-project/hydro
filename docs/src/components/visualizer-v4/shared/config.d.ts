@@ -3,7 +3,7 @@
  *
  * This is a simplified config file that imports what's needed from the current implementation.
  */
-export * from './constants';
+export * from './config';
 export declare const COMPONENT_COLORS: {
     BACKGROUND_PRIMARY: string;
     BACKGROUND_SECONDARY: string;

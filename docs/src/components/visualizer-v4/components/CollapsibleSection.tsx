@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { CollapsibleSectionProps } from './types';
-import { COMPONENT_COLORS } from '../shared/config';
+import { COMPONENT_COLORS, TYPOGRAPHY } from '../shared/config';
 
 export function CollapsibleSection({
   title,
@@ -34,7 +34,7 @@ export function CollapsibleSection({
     display: 'flex',
     alignItems: 'center',
     cursor: disabled ? 'default' : 'pointer',
-    fontSize: '11px',
+    fontSize: TYPOGRAPHY.UI_MEDIUM,
     fontWeight: 'bold',
     marginBottom: isCollapsed ? '0' : '6px',
     color: disabled ? COMPONENT_COLORS.TEXT_DISABLED : COMPONENT_COLORS.TEXT_PRIMARY,
@@ -67,7 +67,7 @@ export function CollapsibleSection({
         {showIcon && (
           <span style={{ 
             marginRight: '6px', 
-            fontSize: '10px',
+            fontSize: TYPOGRAPHY.UI_MEDIUM,
             color: disabled ? COMPONENT_COLORS.TEXT_DISABLED : COMPONENT_COLORS.TEXT_SECONDARY,
             transition: 'transform 0.15s ease',
             transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)'

@@ -12,6 +12,14 @@ import Layout from '@theme/Layout';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import { useLocation } from '@docusaurus/router';
 
+// Import typography constants
+const TYPOGRAPHY = {
+  PAGE_TITLE: '24px',
+  PAGE_SUBTITLE: '14px',
+  BUTTON_SMALL: '14px',
+  UI_SMALL: '12px'
+};
+
 function VisV4Component() {
   const location = useLocation();
   const [createVisualizationState, setCreateVisualizationState] = React.useState(null);
@@ -59,8 +67,8 @@ function VisV4Component() {
         console.log('Loading FlowGraph...');
         const FlowGraphModule = await import('@site/src/components/visualizer-v4/render/FlowGraph.tsx');
         
-        console.log('Loading constants...');
-        const constantsModule = await import('@site/src/components/visualizer-v4/core/constants.ts');
+        console.log('Loading shared config...');
+        const configModule = await import('@site/src/components/visualizer-v4/shared/config.ts');
         
         console.log('Loading JSONParser...');
         const parserModule = await import('@site/src/components/visualizer-v4/core/JSONParser.ts');
@@ -82,8 +90,8 @@ function VisV4Component() {
         setParseGraphJSON(() => parserModule.parseGraphJSON);
         setGetAvailableGroupings(() => parserModule.getAvailableGroupings);
         setValidateGraphJSON(() => parserModule.validateGraphJSON);
-        setNodeStyles(constantsModule.NODE_STYLES);
-        setEdgeStyles(constantsModule.EDGE_STYLES);
+        setNodeStyles(configModule.NODE_STYLES);
+        setEdgeStyles(configModule.EDGE_STYLES);
         setInfoPanel(() => InfoPanelModule.InfoPanel);
         setLayoutControls(() => LayoutControlsModule.LayoutControls);
         setFileDropZone(() => FileDropZoneModule.FileDropZone);
@@ -355,6 +363,75 @@ function VisV4Component() {
     // The actual layout change will be handled by FlowGraph's props change detection
   }, []);
 
+  // Dynamic canvas sizing based on window dimensions
+  const [canvasHeight, setCanvasHeight] = React.useState(600);
+  
+  React.useEffect(() => {
+    const updateCanvasSize = () => {
+      const windowHeight = window.innerHeight;
+      const windowWidth = window.innerWidth;
+      
+      console.log('🖥️ Window dimensions:', { width: windowWidth, height: windowHeight });
+      
+      // Calculate height based on window size - MUCH more aggressive
+      let newHeight = windowHeight - 80; // Almost fullscreen, leaving just 80px for header/controls
+      
+      // Much higher minimum heights - make it impressive!
+      const minHeight = 700;
+      newHeight = Math.max(newHeight, minHeight);
+      
+      console.log('📐 Calculated canvas height:', newHeight);
+      setCanvasHeight(newHeight);
+    };
+    
+    const handleResize = () => {
+      updateCanvasSize();
+      
+      // Also trigger auto-fit directly on resize if enabled
+      if (autoFit && currentVisualizationState) {
+        console.log('🎯 Window resized, triggering immediate auto-fit...');
+        setTimeout(() => {
+          if (flowGraphRef.current && flowGraphRef.current.fitView) {
+            console.log('✅ Calling fitView directly on resize');
+            flowGraphRef.current.fitView();
+          }
+        }, 300); // Delay to let canvas resize complete
+      }
+    };
+    
+    // Initial calculation
+    updateCanvasSize();
+    
+    // Update on window resize
+    window.addEventListener('resize', handleResize);
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, [autoFit, currentVisualizationState]);
+
+  // Auto-fit when canvas size changes (secondary trigger)
+  React.useEffect(() => {
+    if (autoFit && currentVisualizationState) {
+      console.log('🎯 Canvas height effect triggered, attempting auto-fit...', {
+        canvasHeight,
+        hasFlowGraphRef: !!flowGraphRef.current,
+        hasFitViewMethod: !!(flowGraphRef.current && flowGraphRef.current.fitView)
+      });
+      
+      // Add a delay to let the DOM update with the new size
+      setTimeout(() => {
+        if (flowGraphRef.current && flowGraphRef.current.fitView) {
+          console.log('✅ Calling fitView through ref (canvas height change)');
+          flowGraphRef.current.fitView();
+        } else {
+          console.log('⚠️ FlowGraph ref not available, using autoFit toggle fallback');
+          // Fallback: toggle autoFit to trigger re-fit
+          setAutoFit(false);
+          setTimeout(() => setAutoFit(true), 50);
+        }
+      }, 100);
+    }
+  }, [canvasHeight]); // Simplified dependencies
+
   // Color palette change handler
   const handleColorPaletteChange = React.useCallback((newPalette) => {
     console.log('🎨 Color palette changed to:', newPalette);
@@ -461,37 +538,43 @@ function VisV4Component() {
 
   // Render main interface
   return (
-    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ margin: '0 0 8px 0' }}>Graph Visualizer v4</h1>
-        <p style={{ margin: '0 0 16px 0', color: '#666' }}>
+    <div style={{ 
+      padding: '12px', // Reduced padding
+      maxWidth: 'none', // Remove max width constraint 
+      margin: '0',
+      width: '100vw', // Use full viewport width
+      minHeight: '100vh' // Use full viewport height
+    }}>
+      <div style={{ marginBottom: '16px' }}> {/* Reduced margin */}
+        <h1 style={{ margin: '0 0 4px 0', fontSize: TYPOGRAPHY.PAGE_TITLE }}>Graph Visualizer v4</h1> {/* Using constant */}
+        <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: TYPOGRAPHY.PAGE_SUBTITLE }}> {/* Using constant */}
           Latest version of the Hydro graph visualization system with enhanced architecture and performance.
         </p>
         {!currentVisualizationState && (
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '16px' }}> {/* Reduced margin */}
             <button 
               onClick={createTestGraph}
               style={{
-                padding: '12px 24px',
+                padding: '8px 16px', // Smaller button
                 backgroundColor: '#28a745',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer',
                 marginRight: '12px',
-                fontSize: '16px'
+                fontSize: TYPOGRAPHY.BUTTON_SMALL
               }}
             >
               Create Test Graph
             </button>
-            <span style={{ color: '#666' }}>or upload a JSON file below</span>
+            <span style={{ color: '#666', fontSize: TYPOGRAPHY.UI_SMALL }}>or upload a JSON file below</span>
           </div>
         )}
       </div>
 
       {/* Controls */}
       {currentVisualizationState && LayoutControls && (
-        <div style={{ marginBottom: '16px' }}>
+        <div style={{ marginBottom: '8px' }}> {/* Reduced margin */}
           <LayoutControls
             visualizationState={currentVisualizationState}
             currentLayout={layoutAlgorithm}
@@ -562,44 +645,26 @@ function VisV4Component() {
           </div>
         )
       ) : (
-        <div style={{ marginBottom: '24px' }}>
-          <div style={{
-            height: '600px',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            backgroundColor: 'white',
-            position: 'relative'
-          }}>
-            {FlowGraph && (
-              <FlowGraph 
-                ref={flowGraphRef}
-                visualizationState={currentVisualizationState}
-                layoutConfig={{ algorithm: layoutAlgorithm }}
-                eventHandlers={{ 
-                  onNodeClick: handleNodeClick 
-                }}
-                config={{
-                  fitView: autoFit,
-                  colorPalette: colorPalette
-                }}
-                onLayoutComplete={() => console.log('Layout complete!')}
-                onError={(err) => {
-                  console.error('Visualization error:', err);
-                  setError(`Visualization error: ${err.message}`);
-                }}
-                style={{ width: '100%', height: '100%' }}
-              />
-            )}
-            
-            {/* InfoPanel overlay - positioned in upper left of canvas */}
+        <div style={{ marginBottom: '8px' }}> {/* Reduced margin */}
+          <div 
+            style={{
+              width: '100%',
+              height: `${canvasHeight}px`,
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              backgroundColor: 'white',
+              position: 'relative',
+              display: 'flex' // Use flexbox layout
+            }}
+          >
+            {/* InfoPanel - fixed width sidebar */}
             {InfoPanel && currentVisualizationState && (
               <div style={{
-                position: 'absolute',
-                top: '16px',
-                left: '16px',
-                zIndex: 1000,
-                maxWidth: '400px',
-                maxHeight: '500px'
+                width: '300px',
+                height: '100%',
+                borderRight: '1px solid #eee',
+                overflow: 'auto',
+                flexShrink: 0
               }}>
                 <InfoPanel
                   visualizationState={currentVisualizationState}
@@ -615,6 +680,39 @@ function VisV4Component() {
                 />
               </div>
             )}
+            
+            {/* FlowGraph - takes remaining space */}
+            <div style={{ 
+              flex: 1,
+              height: '100%',
+              minHeight: `${canvasHeight}px`,
+              position: 'relative',
+              padding: '2%' // Add 2% border padding around the ReactFlow canvas
+            }}>
+              {FlowGraph && (
+                <FlowGraph 
+                  ref={flowGraphRef}
+                  visualizationState={currentVisualizationState}
+                  layoutConfig={{ algorithm: layoutAlgorithm }}
+                  eventHandlers={{ 
+                    onNodeClick: handleNodeClick 
+                  }}
+                  config={{
+                    fitView: autoFit,
+                    colorPalette: colorPalette
+                  }}
+                  onLayoutComplete={() => console.log('Layout complete!')}
+                  onError={(err) => {
+                    console.error('Visualization error:', err);
+                    setError(`Visualization error: ${err.message}`);
+                  }}
+                  style={{ 
+                    width: '100%', 
+                    height: '100%'
+                  }}
+                />
+              )}
+            </div>
             
             {/* Layout operation loading overlay */}
             {isLayoutRunning && (

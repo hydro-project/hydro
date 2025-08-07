@@ -7,7 +7,7 @@
 import React from 'react';
 import { Select } from 'antd';
 import { GroupingOption } from './types';
-import { COMPONENT_COLORS } from '../shared/config';
+import { COMPONENT_COLORS, TYPOGRAPHY } from '../shared/config';
 
 export interface GroupingControlsProps {
   hierarchyChoices?: GroupingOption[];
@@ -34,7 +34,7 @@ export function GroupingControls({
       <div className={`grouping-controls-empty ${className}`} style={style}>
         <span style={{ 
           color: COMPONENT_COLORS.TEXT_DISABLED,
-          fontSize: compact ? '9px' : '10px',
+          fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
           fontStyle: 'italic'
         }}>
           No grouping options available
@@ -48,7 +48,7 @@ export function GroupingControls({
       <div className={`grouping-controls-single ${className}`} style={style}>
         <span style={{ 
           color: COMPONENT_COLORS.TEXT_PRIMARY,
-          fontSize: compact ? '9px' : '10px',
+          fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
           fontWeight: 'bold'
         }}>
           Grouping: {hierarchyChoices[0].name}
@@ -64,13 +64,13 @@ export function GroupingControls({
   };
 
   const selectStyle: React.CSSProperties = {
-    fontSize: compact ? '9px' : '10px',
+    fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
     width: '100%',
     maxWidth: compact ? '120px' : '180px',
   };
 
   const labelStyle: React.CSSProperties = {
-    fontSize: compact ? '9px' : '10px',
+    fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
     fontWeight: 'bold',
     color: COMPONENT_COLORS.TEXT_PRIMARY,
     marginBottom: '4px',
@@ -99,8 +99,12 @@ export function GroupingControls({
         options={selectOptions}
         size="small"
         style={selectStyle}
-        dropdownStyle={{
-          fontSize: compact ? '9px' : '10px',
+        styles={{
+          popup: {
+            root: {
+              fontSize: compact ? '9px' : '10px',
+            }
+          }
         }}
         popupMatchSelectWidth={true}
       />

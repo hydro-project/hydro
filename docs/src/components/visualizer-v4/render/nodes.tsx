@@ -7,6 +7,7 @@
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { getHandleConfig, CONTINUOUS_HANDLE_STYLE } from './handleConfig';
+import { generateNodeColors } from '../shared/colorUtils';
 
 /**
  * Render handles based on current configuration
@@ -65,12 +66,17 @@ function renderHandles() {
  * Standard graph node component
  */
 export function StandardNode({ id, data }: NodeProps) {
+  // Get dynamic colors based on node type (preferred) or style as fallback
+  const nodeType = String(data.nodeType || data.style || 'default');
+  const colorPalette = String(data.colorPalette || 'Set3');
+  const colors = generateNodeColors([nodeType], colorPalette);
+  
   return (
     <div
       style={{
         padding: '12px 16px',
-        background: '#e3f2fd',
-        border: '1px solid #1976d2',
+        background: colors.primary,
+        border: `1px solid ${colors.border}`,
         borderRadius: '4px',
         fontSize: '12px',
         textAlign: 'center',

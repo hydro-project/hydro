@@ -8,6 +8,7 @@ import React, { useMemo } from 'react';
 import { Tree } from 'antd';
 import type { TreeDataNode } from 'antd';
 import { HierarchyTreeProps, HierarchyTreeNode } from './types';
+import { TYPOGRAPHY } from '../shared/config';
 import { COMPONENT_COLORS } from '../shared/config';
 
 export function HierarchyTree({
@@ -84,13 +85,13 @@ export function HierarchyTree({
                 backgroundColor: 'rgba(0, 0, 0, 0.04)',
                 padding: '1px 4px',
                 borderRadius: '3px',
-                fontSize: '9px'
+                fontSize: TYPOGRAPHY.INFOPANEL_HIERARCHY_DETAILS
               } : {})
             }}>
               {truncatedLabel}
             </span>
             <span style={{ 
-              fontSize: '9px', 
+              fontSize: TYPOGRAPHY.INFOPANEL_HIERARCHY_DETAILS, 
               color: COMPONENT_COLORS.TEXT_TERTIARY,
               fontStyle: 'italic',
               marginLeft: '8px',
@@ -109,7 +110,7 @@ export function HierarchyTree({
               backgroundColor: 'rgba(0, 0, 0, 0.04)',
               padding: '1px 4px',
               borderRadius: '3px',
-              fontSize: '9px'
+              fontSize: TYPOGRAPHY.INFOPANEL_HIERARCHY_DETAILS
             }}>
               {truncatedLabel}
             </span>
@@ -171,7 +172,7 @@ export function HierarchyTree({
       <div className={`hierarchy-tree-empty ${className}`} style={style}>
         <span style={{ 
           color: COMPONENT_COLORS.TEXT_DISABLED,
-          fontSize: '10px',
+          fontSize: TYPOGRAPHY.INFOPANEL_HIERARCHY_DETAILS,
           fontStyle: 'italic'
         }}>
           No hierarchy available
@@ -184,7 +185,7 @@ export function HierarchyTree({
     <div className={`hierarchy-tree ${className}`} style={style}>
       {title && (
         <div style={{
-          fontSize: '11px',
+          fontSize: TYPOGRAPHY.INFOPANEL_HIERARCHY_NODE,
           fontWeight: 'bold',
           color: COMPONENT_COLORS.TEXT_PRIMARY,
           marginBottom: '8px',
@@ -205,7 +206,7 @@ export function HierarchyTree({
         showIcon={false}
         blockNode
         style={{
-          fontSize: '10px',
+          fontSize: TYPOGRAPHY.INFOPANEL_HIERARCHY_NODE,
           color: COMPONENT_COLORS.TEXT_PRIMARY,
           backgroundColor: 'transparent'
         }}

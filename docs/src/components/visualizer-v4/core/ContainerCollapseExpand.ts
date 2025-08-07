@@ -6,7 +6,7 @@
  * ancestor lookup to find the current visible state of any node.
  */
 
-import { EDGE_STYLES } from '../shared/constants';
+import { EDGE_STYLES } from '../shared/config';
 import { SIZES } from '../shared/config';
 
 // Constants

@@ -5,6 +5,8 @@ TASKS:
 - Build Rust/TS loader for big files
 - Search in treeview
 - Graph Filtering/Focus
+- Centralize any stray constants
+- Put all relevant styling constant into a dockable config widget
 
 FIXS:
 - collapse all after initialization
