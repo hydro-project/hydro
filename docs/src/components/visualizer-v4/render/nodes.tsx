@@ -8,6 +8,8 @@ import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { getHandleConfig, CONTINUOUS_HANDLE_STYLE } from './handleConfig';
 import { generateNodeColors } from '../shared/colorUtils';
+import { COLLAPSED_CONTAINER_STYLES, EXPANDED_CONTAINER_STYLES } from '../shared/config';
+import { truncateLabel, generateContainerSummary } from '../shared/labelUtils';
 
 /**
  * Render handles based on current configuration
@@ -92,67 +94,100 @@ export function StandardNode({ id, data }: NodeProps) {
 }
 
 /**
- * Container node component with label positioned at bottom-right
+ * Container node component with professional styling and label truncation
  */
 export function ContainerNode({ id, data }: NodeProps) {
   // Use dimensions from ELK layout via ReactFlowBridge data
   const width = data.width || 180; // fallback to default
   const height = data.height || (data.collapsed ? 60 : 120); // fallback to default
   
+  const isCollapsed = data.collapsed || false;
+  
+  // Apply professional styling based on collapse state
+  const containerStyles = isCollapsed ? COLLAPSED_CONTAINER_STYLES : EXPANDED_CONTAINER_STYLES;
+  
+  // Truncate label using intelligent algorithm
+  const originalLabel = String(data.label || id);
+  const truncatedLabel = truncateLabel(originalLabel, containerStyles.LABEL_MAX_LENGTH || 20);
+  
+  // Generate summary for collapsed containers
+  const summary = isCollapsed && data.visState ? 
+    generateContainerSummary(data, data.visState) : null;
+  
   // Debug: Log container dimensions
-  console.log(`[ContainerNode] 📏 Container ${id}: data.width=${data.width}, data.height=${data.height}, using ${width}x${height}`);
+  console.log(`[ContainerNode] 📏 Container ${id}: data.width=${data.width}, data.height=${data.height}, using ${width}x${height}, collapsed=${isCollapsed}`);
   
   return (
     <div
       style={{
         padding: '16px',
-        background: data.collapsed ? '#ffeb3b' : 'rgba(25, 118, 210, 0.1)',
-        border: data.collapsed ? '2px solid #f57f17' : '2px solid #1976d2',
-        borderRadius: '8px',
+        background: containerStyles.BACKGROUND,
+        border: containerStyles.BORDER,
+        borderRadius: containerStyles.BORDER_RADIUS,
         width: `${width}px`,  // Use ELK-calculated width
-        height: `${height}px`, // Use ELK-calculated height (now includes label space)
+        height: `${height}px`, // Use ELK-calculated height
         position: 'relative',
-        boxSizing: 'border-box' // Ensure padding is included in dimensions
+        boxSizing: 'border-box', // Ensure padding is included in dimensions
+        boxShadow: isCollapsed ? containerStyles.BOX_SHADOW : undefined,
+        transition: 'background-color 0.2s ease, border-color 0.2s ease', // Smooth hover
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: isCollapsed ? 'center' : 'flex-end', // Center content for collapsed
+        alignItems: isCollapsed ? 'center' : 'flex-end', // Center for collapsed, bottom-right for expanded
       }}
     >
       {renderHandles()}
       
-      {/* Container label positioned at bottom-right */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '0px',  // Decreased from 12px to give more space from internal nodes
-          right: '12px',   // Keep horizontal spacing the same
-          fontSize: '12px',
-          fontWeight: 'bold',
-          color: data.collapsed ? '#f57f17' : '#1976d2',
-          maxWidth: `${Number(width) - 36}px`, // Ensure label doesn't overflow container (increased padding)
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          // Text shadow for better legibility over container background
-          textShadow: '1px 1px 2px rgba(255, 255, 255, 0.8), -1px -1px 2px rgba(255, 255, 255, 0.8), 1px -1px 2px rgba(255, 255, 255, 0.8), -1px 1px 2px rgba(255, 255, 255, 0.8)',
-          // Subtle drop shadow for the text element itself
-          filter: 'drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1))'
-        }}
-      >
-        {String(data.label || id)}
-      </div>
-      
-      {/* Collapsed indicator (if needed) */}
-      {data.collapsed && (
-        <div style={{ 
-          position: 'absolute',
-          top: '8px',
-          left: '8px',
-          fontSize: '10px', 
-          color: '#666',
-          fontWeight: '500',
-          // Text shadow for legibility
-          textShadow: '1px 1px 1px rgba(255, 255, 255, 0.8), -1px -1px 1px rgba(255, 255, 255, 0.8)',
-          filter: 'drop-shadow(0px 1px 1px rgba(0, 0, 0, 0.1))'
+      {isCollapsed ? (
+        // Collapsed container: centered layout with truncated label and summary
+        <div style={{
+          textAlign: 'center',
+          width: '100%'
         }}>
-          (collapsed)
+          <div style={{
+            fontSize: containerStyles.LABEL_FONT_SIZE,
+            fontWeight: containerStyles.LABEL_FONT_WEIGHT,
+            color: containerStyles.LABEL_COLOR,
+            marginBottom: summary ? '4px' : '0',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: `${Number(width) - 32}px`, // Account for padding
+          }}>
+            {truncatedLabel}
+          </div>
+          
+          {summary && (
+            <div style={{
+              fontSize: containerStyles.SUMMARY_FONT_SIZE,
+              fontWeight: containerStyles.SUMMARY_FONT_WEIGHT,
+              color: containerStyles.SUMMARY_COLOR,
+              fontStyle: 'italic'
+            }}>
+              {summary}
+            </div>
+          )}
+        </div>
+      ) : (
+        // Expanded container: label positioned at bottom-right (existing behavior)
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '12px',
+            right: '12px',
+            fontSize: containerStyles.LABEL_FONT_SIZE,
+            fontWeight: containerStyles.LABEL_FONT_WEIGHT,
+            color: containerStyles.LABEL_COLOR,
+            maxWidth: `${Number(width) - 36}px`, // Ensure label doesn't overflow container
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            // Text shadow for better legibility over container background
+            textShadow: '1px 1px 2px rgba(255, 255, 255, 0.8), -1px -1px 2px rgba(255, 255, 255, 0.8)',
+            filter: 'drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1))'
+          }}
+        >
+          {truncatedLabel}
         </div>
       )}
     </div>
