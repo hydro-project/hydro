@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["api","debug","dot","json","mermaid","render"]};
+window.SIDEBAR_ITEMS = {"mod":["api","debug","graphviz","mermaid","reactflow","render","template"]};
