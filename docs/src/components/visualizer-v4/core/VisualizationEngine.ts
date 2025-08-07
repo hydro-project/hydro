@@ -200,7 +200,19 @@ export class VisualizationEngine {
   onDataChanged(): void {
     this.log('📝 VisState data changed');
     this.updateState('initial');
-    this.scheduleLayout();
+    
+    // If smart collapse is enabled, apply it before scheduling layout
+    if (this.config.layoutConfig?.enableSmartCollapse) {
+      this.log('🧠 Smart collapse enabled, applying algorithm');
+      // Use setTimeout to allow state update to propagate
+      setTimeout(() => {
+        this.applySmartContainerCollapse().catch(error => {
+          this.handleError('Smart collapse failed', error);
+        });
+      }, 10);
+    } else {
+      this.scheduleLayout();
+    }
   }
 
   /**
@@ -215,6 +227,168 @@ export class VisualizationEngine {
    */
   removeStateListener(id: string): void {
     this.listeners.delete(id);
+  }
+
+  /**
+   * Smart container collapse algorithm - optimizes screen real estate usage
+   * by starting with all containers collapsed and iteratively expanding
+   * based on area and zoom impact
+   */
+  async applySmartContainerCollapse(): Promise<void> {
+    this.log('🧠 Applying smart container collapse algorithm');
+    
+    try {
+      // Step 1: Get all containers and sort by area (smallest first)
+      const containers = this.visState.visibleContainers;
+      
+      if (containers.length === 0) {
+        this.log('ℹ️ No containers found, skipping smart collapse');
+        return;
+      }
+
+      // Step 2: Start with all containers collapsed
+      this.log(`📦 Collapsing ${containers.length} containers initially`);
+      containers.forEach(container => {
+        this.visState.collapseContainer(container.id);
+      });
+
+      // Step 3: Calculate areas and sort (smallest first)
+      const containerAreas = containers.map(container => {
+        const area = this.calculateContainerArea(container);
+        return { container, area };
+      }).sort((a, b) => a.area - b.area);
+
+      this.log(`📊 Container areas calculated: ${containerAreas.map(ca => `${ca.container.id}=${ca.area}`).join(', ')}`);
+
+      // Step 4: Get initial zoom level with all collapsed
+      await this.runLayout();
+      const initialZoomLevel = await this.calculateZoomLevel();
+      this.log(`🔍 Initial zoom level (all collapsed): ${initialZoomLevel.toFixed(3)}`);
+
+      // Step 5: Iteratively expand containers starting with smallest
+      let expanded = 0;
+      const zoomThreshold = 0.7; // Don't let zoom go below 70% of initial
+      const minAcceptableZoom = initialZoomLevel * zoomThreshold;
+
+      for (const { container } of containerAreas) {
+        // Try expanding this container
+        this.visState.expandContainer(container.id);
+        
+        // Calculate new layout and zoom
+        await this.runLayout();
+        const newZoomLevel = await this.calculateZoomLevel();
+        
+        this.log(`🔍 After expanding ${container.id}: zoom=${newZoomLevel.toFixed(3)}, threshold=${minAcceptableZoom.toFixed(3)}`);
+        
+        // If zoom level drops too much, revert the expansion
+        if (newZoomLevel < minAcceptableZoom) {
+          this.log(`⚠️ Zoom level too low, reverting expansion of ${container.id}`);
+          this.visState.collapseContainer(container.id);
+          await this.runLayout(); // Restore previous layout
+        } else {
+          expanded++;
+          this.log(`✅ Kept expansion of ${container.id} (${expanded}/${containers.length})`);
+        }
+      }
+
+      this.log(`🎯 Smart collapse complete: ${expanded}/${containers.length} containers expanded`);
+      
+    } catch (error) {
+      this.handleError('Smart container collapse failed', error);
+    }
+  }
+
+  /**
+   * Calculate the area of a container based on its children
+   */
+  private calculateContainerArea(container: any): number {
+    // Use number of children as a proxy for area (smaller containers = fewer children)
+    const childCount = container.children ? container.children.size || container.children.length || 0 : 0;
+    
+    // Add a small base area to ensure containers with no children have non-zero area
+    return childCount + 1;
+  }
+
+  /**
+   * Calculate zoom level needed to fit all visible elements
+   */
+  private async calculateZoomLevel(): Promise<number> {
+    try {
+      // Get current bounds of all visible elements
+      const bounds = this.calculateVisibleElementsBounds();
+      
+      if (!bounds) {
+        return 1.0; // Default zoom if no bounds
+      }
+
+      // Assume a viewport size (this could be made configurable)
+      const viewportWidth = 1200;
+      const viewportHeight = 800;
+      const padding = 50;
+
+      // Calculate zoom to fit with padding
+      const zoomX = (viewportWidth - 2 * padding) / bounds.width;
+      const zoomY = (viewportHeight - 2 * padding) / bounds.height;
+      
+      // Use the smaller zoom to ensure everything fits
+      const zoom = Math.min(zoomX, zoomY, 1.0); // Cap at 1.0 for no zoom-in
+      
+      this.log(`📐 Calculated zoom: bounds=${bounds.width}x${bounds.height}, zoom=${zoom.toFixed(3)}`);
+      return zoom;
+      
+    } catch (error) {
+      this.log(`⚠️ Error calculating zoom level: ${error}`);
+      return 1.0; // Default zoom on error
+    }
+  }
+
+  /**
+   * Calculate bounding box of all visible elements
+   */
+  private calculateVisibleElementsBounds(): { x: number, y: number, width: number, height: number } | null {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let hasElements = false;
+
+    // Include visible nodes
+    const visibleNodes = this.visState.visibleNodes;
+    visibleNodes.forEach(node => {
+      if (node.x !== undefined && node.y !== undefined) {
+        const width = node.width || 180;
+        const height = node.height || 60;
+        
+        minX = Math.min(minX, node.x);
+        minY = Math.min(minY, node.y);
+        maxX = Math.max(maxX, node.x + width);
+        maxY = Math.max(maxY, node.y + height);
+        hasElements = true;
+      }
+    });
+
+    // Include visible containers
+    const visibleContainers = this.visState.visibleContainers;
+    visibleContainers.forEach(container => {
+      if (container.x !== undefined && container.y !== undefined) {
+        const width = container.width || 200;
+        const height = container.height || 100;
+        
+        minX = Math.min(minX, container.x);
+        minY = Math.min(minY, container.y);
+        maxX = Math.max(maxX, container.x + width);
+        maxY = Math.max(maxY, container.y + height);
+        hasElements = true;
+      }
+    });
+
+    if (!hasElements) {
+      return null;
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY
+    };
   }
 
   /**

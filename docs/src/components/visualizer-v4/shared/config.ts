@@ -116,6 +116,44 @@ export const SIZES = {
   COLLAPSED_CONTAINER_HEIGHT: 100
 };
 
+// Professional collapsed container styling (replacing debug colors)
+export const COLLAPSED_CONTAINER_STYLES = {
+  // Neutral, professional background that's distinguishable from node palette
+  BACKGROUND: 'rgba(248, 250, 252, 0.95)', // Very light blue-gray
+  BORDER: '2px solid #94a3b8', // Medium slate gray
+  BORDER_RADIUS: '8px',
+  
+  // Text styling
+  LABEL_COLOR: '#334155', // Dark slate for good contrast
+  LABEL_FONT_SIZE: '12px',
+  LABEL_FONT_WEIGHT: '600', // Semi-bold for visibility
+  LABEL_MAX_LENGTH: 20, // Characters before truncation
+  
+  // Summary text styling  
+  SUMMARY_COLOR: '#64748b', // Medium slate gray
+  SUMMARY_FONT_SIZE: '10px',
+  SUMMARY_FONT_WEIGHT: '500',
+  
+  // Shadow and elevation
+  BOX_SHADOW: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  
+  // Hover state
+  HOVER_BACKGROUND: 'rgba(241, 245, 249, 0.95)',
+  HOVER_BORDER: '2px solid #64748b'
+};
+
+// Expanded container styling for consistency
+export const EXPANDED_CONTAINER_STYLES = {
+  BACKGROUND: 'rgba(241, 245, 249, 0.3)', // Very light, subtle background
+  BORDER: '2px solid #cbd5e1', // Light slate gray
+  BORDER_RADIUS: '8px',
+  
+  // Label positioning
+  LABEL_COLOR: '#475569', // Darker slate for contrast
+  LABEL_FONT_SIZE: '12px',
+  LABEL_FONT_WEIGHT: '600'
+};
+
 // Typography and font size constants
 export const TYPOGRAPHY = {
   // InfoPanel font sizes - increased from tiny sizes for better readability

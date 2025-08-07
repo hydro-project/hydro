@@ -150,6 +150,9 @@ export class ReactFlowBridge {
           collapsed: container.collapsed || false,
           width,
           height,
+          // Pass visState reference for summary generation
+          visState,
+          children: container.children, // Pass children for summary calculation
           // Pass through any custom properties
           ...this.extractCustomProperties(container as any)
         },

@@ -37,6 +37,17 @@ export function createLayoutConfig(overrides: Partial<LayoutConfig>): LayoutConf
   return { ...DEFAULT_LAYOUT_CONFIG, ...overrides };
 }
 
+/**
+ * Create layout config with smart container collapse enabled
+ */
+export function createSmartCollapseLayoutConfig(overrides: Partial<LayoutConfig> = {}): LayoutConfig {
+  return { 
+    ...DEFAULT_LAYOUT_CONFIG, 
+    enableSmartCollapse: true,
+    ...overrides 
+  };
+}
+
 // Pre-defined configurations for compatibility
 export const LAYOUT_CONFIGS = {
   default: DEFAULT_LAYOUT_CONFIG,
