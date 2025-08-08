@@ -598,7 +598,7 @@ where
     /// let numbers = process
     ///     .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
     ///     .into_keyed();
-    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// let batch = unsafe { numbers.batch(&tick) };
     /// batch
     ///     .reduce_watermark(watermark, q!(|acc, x| *acc += x))
     ///     .entries()
@@ -610,15 +610,15 @@ where
     /// ```
     pub fn reduce_watermark<O, F>(
         self,
-        other: impl Into<Optional<O, L, Bounded>>,
+        other: impl Into<Optional<O, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedOptional<K, V, L, B>
     where
         O: Clone,
         F: Fn(&mut V, V) + 'a,
     {
-        let other: Optional<O, L, Bounded> = other.into();
-        check_matching_location(&self.underlying.location, &other.location);
+        let other: Optional<O, Tick<L::Root>, Bounded> = other.into();
+        check_matching_location(&self.underlying.location.root(), &other.location.outer());
         let f = comb
             .splice_fn2_borrow_mut_ctx(&self.underlying.location)
             .into();
@@ -730,7 +730,7 @@ where
     /// let numbers = process
     ///     .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
     ///     .into_keyed();
-    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// let batch = unsafe { numbers.batch(&tick) };
     /// batch
     ///     .reduce_watermark_commutative(watermark, q!(|acc, x| *acc += x))
     ///     .entries()
@@ -742,7 +742,7 @@ where
     /// ```
     pub fn reduce_watermark_commutative<O2, F>(
         self,
-        other: impl Into<Optional<O2, L, Bounded>>,
+        other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedOptional<K, V, L, B>
     where
@@ -862,10 +862,11 @@ where
     /// ```
     pub fn reduce_watermark_idempotent<O2, F>(
         self,
-        other: impl Into<Optional<O2, L, Bounded>>,
+        other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedOptional<K, V, L, B>
     where
+        L: NoTick,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
     {
@@ -977,7 +978,7 @@ where
     /// let numbers = process
     ///     .source_iter(q!([(0, false), (1, false), (2, false), (2, true)]))
     ///     .into_keyed();
-    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// let batch = unsafe { numbers.batch(&tick) };
     /// batch
     ///     .reduce_watermark_commutative_idempotent(watermark, q!(|acc, x| *acc |= x))
     ///     .entries()
@@ -989,10 +990,11 @@ where
     /// ```
     pub fn reduce_watermark_commutative_idempotent<O2, F>(
         self,
-        other: impl Into<Optional<O2, L, Bounded>>,
+        other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedOptional<K, V, L, B>
     where
+        L: NoTick,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
     {
@@ -1081,7 +1083,6 @@ mod tests {
 
         let sum = unsafe {
             node.source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
-                .tick_batch(&node_tick)
                 .into_keyed()
                 .reduce_watermark(
                     watermark,
@@ -1089,6 +1090,7 @@ mod tests {
                         *acc += v;
                     }),
                 )
+                .snapshot(&node_tick)
                 .entries()
         }
         .all_ticks()
@@ -1127,18 +1129,18 @@ mod tests {
             let tick_triggered_input = node
                 .source_iter(q!([(3, 103)]))
                 .tick_batch(&node_tick)
-                .continue_if(tick_trigger.clone().tick_batch(&node_tick).first());
+                .continue_if(tick_trigger.clone().tick_batch(&node_tick).first())
+                .all_ticks();
             node.source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
-                .tick_batch(&node_tick)
-                .chain(tick_triggered_input)
-                .persist()
+                .union(tick_triggered_input)
                 .into_keyed()
-                .reduce_watermark(
+                .reduce_watermark_commutative(
                     watermark,
                     q!(|acc, v| {
                         *acc += v;
                     }),
                 )
+                .snapshot(&node_tick)
                 .entries()
         }
         .all_ticks()

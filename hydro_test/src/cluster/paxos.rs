@@ -779,7 +779,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             }
         ));
     let a_log = a_p2as_to_place_in_log
-        .persist()
+        .all_ticks_atomic()
         .into_keyed()
         .reduce_watermark_commutative(
             a_checkpoint.clone(),
@@ -792,14 +792,18 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
                     };
                 }
             }),
-        )
-        .entries()
-        .fold_commutative(
-            q!(|| HashMap::new()),
-            q!(|map, (slot, entry)| {
-                map.insert(slot, entry);
-            }),
         );
+    let a_log_snapshot = unsafe {
+        // SAFETY: We need to know the current state of the log for p1b
+        a_log.snapshot()
+    }
+    .entries()
+    .fold_commutative(
+        q!(|| HashMap::new()),
+        q!(|map, (slot, entry)| {
+            map.insert(slot, entry);
+        }),
+    );
 
     let a_to_proposers_p2b = p_to_acceptors_p2a_batch
         .cross_singleton(a_max_ballot)
@@ -819,7 +823,10 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
         .values();
 
     (
-        a_checkpoint.into_singleton().zip(a_log).latest_atomic(),
+        a_checkpoint
+            .into_singleton()
+            .zip(a_log_snapshot)
+            .latest_atomic(),
         a_to_proposers_p2b,
     )
 }
