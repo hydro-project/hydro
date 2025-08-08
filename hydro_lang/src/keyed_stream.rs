@@ -850,7 +850,7 @@ where
     /// let numbers = process
     ///     .source_iter(q!([(0, false), (1, false), (2, false), (2, true)]))
     ///     .into_keyed();
-    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// let batch = unsafe { numbers.batch(&tick) };
     /// batch
     ///     .reduce_watermark_idempotent(watermark, q!(|acc, x| *acc |= x))
     ///     .entries()
@@ -866,7 +866,6 @@ where
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedOptional<K, V, L, B>
     where
-        L: NoTick,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
     {
@@ -994,7 +993,6 @@ where
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedOptional<K, V, L, B>
     where
-        L: NoTick,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
     {
