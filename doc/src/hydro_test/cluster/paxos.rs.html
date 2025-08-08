@@ -704,140 +704,129 @@
 <a href=#704 id=704 data-nosnippet>704</a>    )
 <a href=#705 id=705 data-nosnippet>705</a>}
 <a href=#706 id=706 data-nosnippet>706</a>
-<a href=#707 id=707 data-nosnippet>707</a><span class="attr">#[derive(Clone)]
-<a href=#708 id=708 data-nosnippet>708</a></span><span class="kw">pub enum </span>CheckpointOrP2a&lt;P, S&gt; {
-<a href=#709 id=709 data-nosnippet>709</a>    Checkpoint(usize),
-<a href=#710 id=710 data-nosnippet>710</a>    P2a(P2a&lt;P, S&gt;),
-<a href=#711 id=711 data-nosnippet>711</a>}
-<a href=#712 id=712 data-nosnippet>712</a>
-<a href=#713 id=713 data-nosnippet>713</a><span class="comment">// Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
-<a href=#714 id=714 data-nosnippet>714</a></span><span class="kw">pub fn </span>index_payloads&lt;<span class="lifetime">'a</span>, P: PaxosPayload&gt;(
-<a href=#715 id=715 data-nosnippet>715</a>    proposer_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;,
-<a href=#716 id=716 data-nosnippet>716</a>    p_max_slot: Optional&lt;usize, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
-<a href=#717 id=717 data-nosnippet>717</a>    c_to_proposers: Stream&lt;P, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
-<a href=#718 id=718 data-nosnippet>718</a>) -&gt; Stream&lt;(usize, P), Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt; {
-<a href=#719 id=719 data-nosnippet>719</a>    <span class="kw">let </span>(p_next_slot_complete_cycle, p_next_slot) =
-<a href=#720 id=720 data-nosnippet>720</a>        proposer_tick.cycle_with_initial::&lt;Singleton&lt;usize, <span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;(proposer_tick.singleton(<span class="macro">q!</span>(<span class="number">0</span>)));
-<a href=#721 id=721 data-nosnippet>721</a>    <span class="kw">let </span>p_next_slot_after_reconciling_p1bs = p_max_slot.map(<span class="macro">q!</span>(|max_slot| max_slot + <span class="number">1</span>));
-<a href=#722 id=722 data-nosnippet>722</a>
-<a href=#723 id=723 data-nosnippet>723</a>    <span class="kw">let </span>base_slot = p_next_slot_after_reconciling_p1bs.unwrap_or(p_next_slot);
-<a href=#724 id=724 data-nosnippet>724</a>
-<a href=#725 id=725 data-nosnippet>725</a>    <span class="kw">let </span>p_indexed_payloads = c_to_proposers
-<a href=#726 id=726 data-nosnippet>726</a>        .enumerate()
-<a href=#727 id=727 data-nosnippet>727</a>        .cross_singleton(base_slot.clone())
-<a href=#728 id=728 data-nosnippet>728</a>        .map(<span class="macro">q!</span>(|((index, payload), base_slot)| (
-<a href=#729 id=729 data-nosnippet>729</a>            base_slot + index,
-<a href=#730 id=730 data-nosnippet>730</a>            payload
-<a href=#731 id=731 data-nosnippet>731</a>        )));
-<a href=#732 id=732 data-nosnippet>732</a>
-<a href=#733 id=733 data-nosnippet>733</a>    <span class="kw">let </span>p_num_payloads = p_indexed_payloads.clone().count();
-<a href=#734 id=734 data-nosnippet>734</a>    <span class="kw">let </span>p_next_slot_after_sending_payloads =
-<a href=#735 id=735 data-nosnippet>735</a>        p_num_payloads
-<a href=#736 id=736 data-nosnippet>736</a>            .clone()
-<a href=#737 id=737 data-nosnippet>737</a>            .zip(base_slot)
-<a href=#738 id=738 data-nosnippet>738</a>            .map(<span class="macro">q!</span>(|(num_payloads, base_slot)| base_slot + num_payloads));
-<a href=#739 id=739 data-nosnippet>739</a>
-<a href=#740 id=740 data-nosnippet>740</a>    p_next_slot_complete_cycle.complete_next_tick(p_next_slot_after_sending_payloads);
-<a href=#741 id=741 data-nosnippet>741</a>    p_indexed_payloads
-<a href=#742 id=742 data-nosnippet>742</a>}
-<a href=#743 id=743 data-nosnippet>743</a>
-<a href=#744 id=744 data-nosnippet>744</a><span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"internal paxos code // TODO"</span>)]
-<a href=#745 id=745 data-nosnippet>745</a></span><span class="kw">pub fn </span>acceptor_p2&lt;<span class="lifetime">'a</span>, P: PaxosPayload, S: Clone&gt;(
-<a href=#746 id=746 data-nosnippet>746</a>    acceptor_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;,
-<a href=#747 id=747 data-nosnippet>747</a>    a_max_ballot: Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
-<a href=#748 id=748 data-nosnippet>748</a>    p_to_acceptors_p2a: Stream&lt;P2a&lt;P, S&gt;, Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;, Unbounded, NoOrder&gt;,
-<a href=#749 id=749 data-nosnippet>749</a>    a_checkpoint: Optional&lt;usize, Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;, Unbounded&gt;,
-<a href=#750 id=750 data-nosnippet>750</a>    proposers: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, S&gt;,
-<a href=#751 id=751 data-nosnippet>751</a>) -&gt; (
-<a href=#752 id=752 data-nosnippet>752</a>    Singleton&lt;
-<a href=#753 id=753 data-nosnippet>753</a>        (<span class="prelude-ty">Option</span>&lt;usize&gt;, HashMap&lt;usize, LogValue&lt;P&gt;&gt;),
-<a href=#754 id=754 data-nosnippet>754</a>        Atomic&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;,
-<a href=#755 id=755 data-nosnippet>755</a>        Unbounded,
-<a href=#756 id=756 data-nosnippet>756</a>    &gt;,
-<a href=#757 id=757 data-nosnippet>757</a>    Stream&lt;((usize, Ballot), <span class="prelude-ty">Result</span>&lt;(), Ballot&gt;), Cluster&lt;<span class="lifetime">'a</span>, S&gt;, Unbounded, NoOrder&gt;,
-<a href=#758 id=758 data-nosnippet>758</a>) {
-<a href=#759 id=759 data-nosnippet>759</a>    <span class="kw">let </span>p_to_acceptors_p2a_batch = <span class="kw">unsafe </span>{
-<a href=#760 id=760 data-nosnippet>760</a>        <span class="comment">// SAFETY: we use batches to ensure that the log is updated before sending
-<a href=#761 id=761 data-nosnippet>761</a>        // a confirmation to the proposer. Because we use `persist()` on these
-<a href=#762 id=762 data-nosnippet>762</a>        // messages before folding into the log, non-deterministic batch boundaries
-<a href=#763 id=763 data-nosnippet>763</a>        // will not affect the eventual log state.
-<a href=#764 id=764 data-nosnippet>764</a>        </span>p_to_acceptors_p2a.tick_batch(acceptor_tick)
+<a href=#707 id=707 data-nosnippet>707</a><span class="comment">// Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
+<a href=#708 id=708 data-nosnippet>708</a></span><span class="kw">pub fn </span>index_payloads&lt;<span class="lifetime">'a</span>, P: PaxosPayload&gt;(
+<a href=#709 id=709 data-nosnippet>709</a>    proposer_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;,
+<a href=#710 id=710 data-nosnippet>710</a>    p_max_slot: Optional&lt;usize, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
+<a href=#711 id=711 data-nosnippet>711</a>    c_to_proposers: Stream&lt;P, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
+<a href=#712 id=712 data-nosnippet>712</a>) -&gt; Stream&lt;(usize, P), Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt; {
+<a href=#713 id=713 data-nosnippet>713</a>    <span class="kw">let </span>(p_next_slot_complete_cycle, p_next_slot) =
+<a href=#714 id=714 data-nosnippet>714</a>        proposer_tick.cycle_with_initial::&lt;Singleton&lt;usize, <span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;(proposer_tick.singleton(<span class="macro">q!</span>(<span class="number">0</span>)));
+<a href=#715 id=715 data-nosnippet>715</a>    <span class="kw">let </span>p_next_slot_after_reconciling_p1bs = p_max_slot.map(<span class="macro">q!</span>(|max_slot| max_slot + <span class="number">1</span>));
+<a href=#716 id=716 data-nosnippet>716</a>
+<a href=#717 id=717 data-nosnippet>717</a>    <span class="kw">let </span>base_slot = p_next_slot_after_reconciling_p1bs.unwrap_or(p_next_slot);
+<a href=#718 id=718 data-nosnippet>718</a>
+<a href=#719 id=719 data-nosnippet>719</a>    <span class="kw">let </span>p_indexed_payloads = c_to_proposers
+<a href=#720 id=720 data-nosnippet>720</a>        .enumerate()
+<a href=#721 id=721 data-nosnippet>721</a>        .cross_singleton(base_slot.clone())
+<a href=#722 id=722 data-nosnippet>722</a>        .map(<span class="macro">q!</span>(|((index, payload), base_slot)| (
+<a href=#723 id=723 data-nosnippet>723</a>            base_slot + index,
+<a href=#724 id=724 data-nosnippet>724</a>            payload
+<a href=#725 id=725 data-nosnippet>725</a>        )));
+<a href=#726 id=726 data-nosnippet>726</a>
+<a href=#727 id=727 data-nosnippet>727</a>    <span class="kw">let </span>p_num_payloads = p_indexed_payloads.clone().count();
+<a href=#728 id=728 data-nosnippet>728</a>    <span class="kw">let </span>p_next_slot_after_sending_payloads =
+<a href=#729 id=729 data-nosnippet>729</a>        p_num_payloads
+<a href=#730 id=730 data-nosnippet>730</a>            .clone()
+<a href=#731 id=731 data-nosnippet>731</a>            .zip(base_slot)
+<a href=#732 id=732 data-nosnippet>732</a>            .map(<span class="macro">q!</span>(|(num_payloads, base_slot)| base_slot + num_payloads));
+<a href=#733 id=733 data-nosnippet>733</a>
+<a href=#734 id=734 data-nosnippet>734</a>    p_next_slot_complete_cycle.complete_next_tick(p_next_slot_after_sending_payloads);
+<a href=#735 id=735 data-nosnippet>735</a>    p_indexed_payloads
+<a href=#736 id=736 data-nosnippet>736</a>}
+<a href=#737 id=737 data-nosnippet>737</a>
+<a href=#738 id=738 data-nosnippet>738</a><span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"internal paxos code // TODO"</span>)]
+<a href=#739 id=739 data-nosnippet>739</a></span><span class="kw">pub fn </span>acceptor_p2&lt;<span class="lifetime">'a</span>, P: PaxosPayload, S: Clone&gt;(
+<a href=#740 id=740 data-nosnippet>740</a>    acceptor_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;,
+<a href=#741 id=741 data-nosnippet>741</a>    a_max_ballot: Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
+<a href=#742 id=742 data-nosnippet>742</a>    p_to_acceptors_p2a: Stream&lt;P2a&lt;P, S&gt;, Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;, Unbounded, NoOrder&gt;,
+<a href=#743 id=743 data-nosnippet>743</a>    a_checkpoint: Optional&lt;usize, Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;, Unbounded&gt;,
+<a href=#744 id=744 data-nosnippet>744</a>    proposers: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, S&gt;,
+<a href=#745 id=745 data-nosnippet>745</a>) -&gt; (
+<a href=#746 id=746 data-nosnippet>746</a>    Singleton&lt;
+<a href=#747 id=747 data-nosnippet>747</a>        (<span class="prelude-ty">Option</span>&lt;usize&gt;, HashMap&lt;usize, LogValue&lt;P&gt;&gt;),
+<a href=#748 id=748 data-nosnippet>748</a>        Atomic&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;,
+<a href=#749 id=749 data-nosnippet>749</a>        Unbounded,
+<a href=#750 id=750 data-nosnippet>750</a>    &gt;,
+<a href=#751 id=751 data-nosnippet>751</a>    Stream&lt;((usize, Ballot), <span class="prelude-ty">Result</span>&lt;(), Ballot&gt;), Cluster&lt;<span class="lifetime">'a</span>, S&gt;, Unbounded, NoOrder&gt;,
+<a href=#752 id=752 data-nosnippet>752</a>) {
+<a href=#753 id=753 data-nosnippet>753</a>    <span class="kw">let </span>p_to_acceptors_p2a_batch = <span class="kw">unsafe </span>{
+<a href=#754 id=754 data-nosnippet>754</a>        <span class="comment">// SAFETY: we use batches to ensure that the log is updated before sending
+<a href=#755 id=755 data-nosnippet>755</a>        // a confirmation to the proposer. Because we use `persist()` on these
+<a href=#756 id=756 data-nosnippet>756</a>        // messages before folding into the log, non-deterministic batch boundaries
+<a href=#757 id=757 data-nosnippet>757</a>        // will not affect the eventual log state.
+<a href=#758 id=758 data-nosnippet>758</a>        </span>p_to_acceptors_p2a.tick_batch(acceptor_tick)
+<a href=#759 id=759 data-nosnippet>759</a>    };
+<a href=#760 id=760 data-nosnippet>760</a>
+<a href=#761 id=761 data-nosnippet>761</a>    <span class="kw">let </span>a_checkpoint = <span class="kw">unsafe </span>{
+<a href=#762 id=762 data-nosnippet>762</a>        <span class="comment">// SAFETY: we can arbitrarily snapshot the checkpoint sequence number,
+<a href=#763 id=763 data-nosnippet>763</a>        // since a delayed garbage collection does not affect correctness
+<a href=#764 id=764 data-nosnippet>764</a>        </span>a_checkpoint.latest_tick(acceptor_tick)
 <a href=#765 id=765 data-nosnippet>765</a>    };
-<a href=#766 id=766 data-nosnippet>766</a>
-<a href=#767 id=767 data-nosnippet>767</a>    <span class="kw">let </span>a_new_checkpoint = <span class="kw">unsafe </span>{
-<a href=#768 id=768 data-nosnippet>768</a>        <span class="comment">// SAFETY: we can arbitrarily snapshot the checkpoint sequence number,
-<a href=#769 id=769 data-nosnippet>769</a>        // since a delayed garbage collection does not affect correctness
-<a href=#770 id=770 data-nosnippet>770</a>        </span>a_checkpoint.latest_tick(acceptor_tick)
-<a href=#771 id=771 data-nosnippet>771</a>    }
-<a href=#772 id=772 data-nosnippet>772</a>    .delta()
-<a href=#773 id=773 data-nosnippet>773</a>    .map(<span class="macro">q!</span>(|min_seq| CheckpointOrP2a::Checkpoint(min_seq)));
-<a href=#774 id=774 data-nosnippet>774</a>    <span class="comment">// .inspect(q!(|(min_seq, p2a): &amp;(i32, P2a)| println!("Acceptor new checkpoint: {:?}", min_seq)));
-<a href=#775 id=775 data-nosnippet>775</a>
-<a href=#776 id=776 data-nosnippet>776</a>    </span><span class="kw">let </span>a_p2as_to_place_in_log = p_to_acceptors_p2a_batch
-<a href=#777 id=777 data-nosnippet>777</a>        .clone()
-<a href=#778 id=778 data-nosnippet>778</a>        .cross_singleton(a_max_ballot.clone()) <span class="comment">// Don't consider p2as if the current ballot is higher
-<a href=#779 id=779 data-nosnippet>779</a>        </span>.filter_map(<span class="macro">q!</span>(|(p2a, max_ballot)|
-<a href=#780 id=780 data-nosnippet>780</a>            <span class="kw">if </span>p2a.ballot &gt;= max_ballot {
-<a href=#781 id=781 data-nosnippet>781</a>                <span class="prelude-val">Some</span>(CheckpointOrP2a::P2a(p2a))
-<a href=#782 id=782 data-nosnippet>782</a>            } <span class="kw">else </span>{
-<a href=#783 id=783 data-nosnippet>783</a>                <span class="prelude-val">None
-<a href=#784 id=784 data-nosnippet>784</a>            </span>}
-<a href=#785 id=785 data-nosnippet>785</a>        ));
-<a href=#786 id=786 data-nosnippet>786</a>    <span class="kw">let </span>a_log = a_p2as_to_place_in_log
-<a href=#787 id=787 data-nosnippet>787</a>        .chain(a_new_checkpoint.into_stream())
-<a href=#788 id=788 data-nosnippet>788</a>        .all_ticks_atomic()
-<a href=#789 id=789 data-nosnippet>789</a>        .fold_commutative(
-<a href=#790 id=790 data-nosnippet>790</a>            <span class="macro">q!</span>(|| (<span class="prelude-val">None</span>, HashMap::new())),
-<a href=#791 id=791 data-nosnippet>791</a>            <span class="macro">q!</span>(|(prev_checkpoint, log), checkpoint_or_p2a| {
-<a href=#792 id=792 data-nosnippet>792</a>                <span class="kw">match </span>checkpoint_or_p2a {
-<a href=#793 id=793 data-nosnippet>793</a>                    CheckpointOrP2a::Checkpoint(new_checkpoint) =&gt; {
-<a href=#794 id=794 data-nosnippet>794</a>                        <span class="kw">if </span>prev_checkpoint
-<a href=#795 id=795 data-nosnippet>795</a>                            .map(|prev| new_checkpoint &gt; prev)
-<a href=#796 id=796 data-nosnippet>796</a>                            .unwrap_or(<span class="bool-val">true</span>)
-<a href=#797 id=797 data-nosnippet>797</a>                        {
-<a href=#798 id=798 data-nosnippet>798</a>                            <span class="kw">for </span>slot <span class="kw">in </span>(prev_checkpoint.unwrap_or(<span class="number">0</span>))..new_checkpoint {
-<a href=#799 id=799 data-nosnippet>799</a>                                log.remove(<span class="kw-2">&amp;</span>slot);
-<a href=#800 id=800 data-nosnippet>800</a>                            }
-<a href=#801 id=801 data-nosnippet>801</a>
-<a href=#802 id=802 data-nosnippet>802</a>                            <span class="kw-2">*</span>prev_checkpoint = <span class="prelude-val">Some</span>(new_checkpoint);
-<a href=#803 id=803 data-nosnippet>803</a>                        }
-<a href=#804 id=804 data-nosnippet>804</a>                    }
-<a href=#805 id=805 data-nosnippet>805</a>                    CheckpointOrP2a::P2a(p2a) =&gt; {
-<a href=#806 id=806 data-nosnippet>806</a>                        <span class="comment">// This is a regular p2a message. Insert it into the log if it is not checkpointed and has a higher ballot than what was there before
-<a href=#807 id=807 data-nosnippet>807</a>                        </span><span class="kw">if </span>prev_checkpoint.map(|prev| p2a.slot &gt; prev).unwrap_or(<span class="bool-val">true</span>)
-<a href=#808 id=808 data-nosnippet>808</a>                            &amp;&amp; log
-<a href=#809 id=809 data-nosnippet>809</a>                                .get(<span class="kw-2">&amp;</span>p2a.slot)
-<a href=#810 id=810 data-nosnippet>810</a>                                .map(|prev_p2a: <span class="kw-2">&amp;</span>LogValue&lt;<span class="kw">_</span>&gt;| p2a.ballot &gt; prev_p2a.ballot)
-<a href=#811 id=811 data-nosnippet>811</a>                                .unwrap_or(<span class="bool-val">true</span>)
-<a href=#812 id=812 data-nosnippet>812</a>                        {
-<a href=#813 id=813 data-nosnippet>813</a>                            log.insert(
-<a href=#814 id=814 data-nosnippet>814</a>                                p2a.slot,
-<a href=#815 id=815 data-nosnippet>815</a>                                LogValue {
-<a href=#816 id=816 data-nosnippet>816</a>                                    ballot: p2a.ballot,
-<a href=#817 id=817 data-nosnippet>817</a>                                    value: p2a.value,
-<a href=#818 id=818 data-nosnippet>818</a>                                },
-<a href=#819 id=819 data-nosnippet>819</a>                            );
-<a href=#820 id=820 data-nosnippet>820</a>                        }
-<a href=#821 id=821 data-nosnippet>821</a>                    }
-<a href=#822 id=822 data-nosnippet>822</a>                }
-<a href=#823 id=823 data-nosnippet>823</a>            }),
-<a href=#824 id=824 data-nosnippet>824</a>        );
-<a href=#825 id=825 data-nosnippet>825</a>
-<a href=#826 id=826 data-nosnippet>826</a>    <span class="kw">let </span>a_to_proposers_p2b = p_to_acceptors_p2a_batch
-<a href=#827 id=827 data-nosnippet>827</a>        .cross_singleton(a_max_ballot)
-<a href=#828 id=828 data-nosnippet>828</a>        .map(<span class="macro">q!</span>(|(p2a, max_ballot)| (
-<a href=#829 id=829 data-nosnippet>829</a>            p2a.sender,
-<a href=#830 id=830 data-nosnippet>830</a>            (
-<a href=#831 id=831 data-nosnippet>831</a>                (p2a.slot, p2a.ballot),
-<a href=#832 id=832 data-nosnippet>832</a>                <span class="kw">if </span>p2a.ballot == max_ballot {
-<a href=#833 id=833 data-nosnippet>833</a>                    <span class="prelude-val">Ok</span>(())
-<a href=#834 id=834 data-nosnippet>834</a>                } <span class="kw">else </span>{
-<a href=#835 id=835 data-nosnippet>835</a>                    <span class="prelude-val">Err</span>(max_ballot)
-<a href=#836 id=836 data-nosnippet>836</a>                }
-<a href=#837 id=837 data-nosnippet>837</a>            )
-<a href=#838 id=838 data-nosnippet>838</a>        )))
-<a href=#839 id=839 data-nosnippet>839</a>        .all_ticks()
-<a href=#840 id=840 data-nosnippet>840</a>        .demux_bincode(proposers)
-<a href=#841 id=841 data-nosnippet>841</a>        .values();
-<a href=#842 id=842 data-nosnippet>842</a>    (a_log, a_to_proposers_p2b)
-<a href=#843 id=843 data-nosnippet>843</a>}</code></pre></div></section></main></body></html>
+<a href=#766 id=766 data-nosnippet>766</a>    <span class="comment">// .inspect(q!(|min_seq| println!("Acceptor new checkpoint: {:?}", min_seq)));
+<a href=#767 id=767 data-nosnippet>767</a>
+<a href=#768 id=768 data-nosnippet>768</a>    </span><span class="kw">let </span>a_p2as_to_place_in_log = p_to_acceptors_p2a_batch
+<a href=#769 id=769 data-nosnippet>769</a>        .clone()
+<a href=#770 id=770 data-nosnippet>770</a>        .cross_singleton(a_max_ballot.clone()) <span class="comment">// Don't consider p2as if the current ballot is higher
+<a href=#771 id=771 data-nosnippet>771</a>        </span>.filter_map(<span class="macro">q!</span>(|(p2a, max_ballot)|
+<a href=#772 id=772 data-nosnippet>772</a>            <span class="kw">if </span>p2a.ballot &gt;= max_ballot {
+<a href=#773 id=773 data-nosnippet>773</a>                <span class="prelude-val">Some</span>((p2a.slot, LogValue {
+<a href=#774 id=774 data-nosnippet>774</a>                    ballot: p2a.ballot,
+<a href=#775 id=775 data-nosnippet>775</a>                    value: p2a.value,
+<a href=#776 id=776 data-nosnippet>776</a>                }))
+<a href=#777 id=777 data-nosnippet>777</a>            } <span class="kw">else </span>{
+<a href=#778 id=778 data-nosnippet>778</a>                <span class="prelude-val">None
+<a href=#779 id=779 data-nosnippet>779</a>            </span>}
+<a href=#780 id=780 data-nosnippet>780</a>        ));
+<a href=#781 id=781 data-nosnippet>781</a>    <span class="kw">let </span>a_log = a_p2as_to_place_in_log
+<a href=#782 id=782 data-nosnippet>782</a>        .all_ticks_atomic()
+<a href=#783 id=783 data-nosnippet>783</a>        .into_keyed()
+<a href=#784 id=784 data-nosnippet>784</a>        .reduce_watermark_commutative(
+<a href=#785 id=785 data-nosnippet>785</a>            a_checkpoint.clone(),
+<a href=#786 id=786 data-nosnippet>786</a>            <span class="macro">q!</span>(|prev_entry, entry| {
+<a href=#787 id=787 data-nosnippet>787</a>                <span class="comment">// Insert p2a into the log if it has a higher ballot than what was there before
+<a href=#788 id=788 data-nosnippet>788</a>                </span><span class="kw">if </span>entry.ballot &gt; prev_entry.ballot {
+<a href=#789 id=789 data-nosnippet>789</a>                    <span class="kw-2">*</span>prev_entry = LogValue {
+<a href=#790 id=790 data-nosnippet>790</a>                        ballot: entry.ballot,
+<a href=#791 id=791 data-nosnippet>791</a>                        value: entry.value,
+<a href=#792 id=792 data-nosnippet>792</a>                    };
+<a href=#793 id=793 data-nosnippet>793</a>                }
+<a href=#794 id=794 data-nosnippet>794</a>            }),
+<a href=#795 id=795 data-nosnippet>795</a>        );
+<a href=#796 id=796 data-nosnippet>796</a>    <span class="kw">let </span>a_log_snapshot = <span class="kw">unsafe </span>{
+<a href=#797 id=797 data-nosnippet>797</a>        <span class="comment">// SAFETY: We need to know the current state of the log for p1b
+<a href=#798 id=798 data-nosnippet>798</a>        </span>a_log.snapshot()
+<a href=#799 id=799 data-nosnippet>799</a>    }
+<a href=#800 id=800 data-nosnippet>800</a>    .entries()
+<a href=#801 id=801 data-nosnippet>801</a>    .fold_commutative(
+<a href=#802 id=802 data-nosnippet>802</a>        <span class="macro">q!</span>(|| HashMap::new()),
+<a href=#803 id=803 data-nosnippet>803</a>        <span class="macro">q!</span>(|map, (slot, entry)| {
+<a href=#804 id=804 data-nosnippet>804</a>            map.insert(slot, entry);
+<a href=#805 id=805 data-nosnippet>805</a>        }),
+<a href=#806 id=806 data-nosnippet>806</a>    );
+<a href=#807 id=807 data-nosnippet>807</a>
+<a href=#808 id=808 data-nosnippet>808</a>    <span class="kw">let </span>a_to_proposers_p2b = p_to_acceptors_p2a_batch
+<a href=#809 id=809 data-nosnippet>809</a>        .cross_singleton(a_max_ballot)
+<a href=#810 id=810 data-nosnippet>810</a>        .map(<span class="macro">q!</span>(|(p2a, max_ballot)| (
+<a href=#811 id=811 data-nosnippet>811</a>            p2a.sender,
+<a href=#812 id=812 data-nosnippet>812</a>            (
+<a href=#813 id=813 data-nosnippet>813</a>                (p2a.slot, p2a.ballot),
+<a href=#814 id=814 data-nosnippet>814</a>                <span class="kw">if </span>p2a.ballot == max_ballot {
+<a href=#815 id=815 data-nosnippet>815</a>                    <span class="prelude-val">Ok</span>(())
+<a href=#816 id=816 data-nosnippet>816</a>                } <span class="kw">else </span>{
+<a href=#817 id=817 data-nosnippet>817</a>                    <span class="prelude-val">Err</span>(max_ballot)
+<a href=#818 id=818 data-nosnippet>818</a>                }
+<a href=#819 id=819 data-nosnippet>819</a>            )
+<a href=#820 id=820 data-nosnippet>820</a>        )))
+<a href=#821 id=821 data-nosnippet>821</a>        .all_ticks()
+<a href=#822 id=822 data-nosnippet>822</a>        .demux_bincode(proposers)
+<a href=#823 id=823 data-nosnippet>823</a>        .values();
+<a href=#824 id=824 data-nosnippet>824</a>
+<a href=#825 id=825 data-nosnippet>825</a>    (
+<a href=#826 id=826 data-nosnippet>826</a>        a_checkpoint
+<a href=#827 id=827 data-nosnippet>827</a>            .into_singleton()
+<a href=#828 id=828 data-nosnippet>828</a>            .zip(a_log_snapshot)
+<a href=#829 id=829 data-nosnippet>829</a>            .latest_atomic(),
+<a href=#830 id=830 data-nosnippet>830</a>        a_to_proposers_p2b,
+<a href=#831 id=831 data-nosnippet>831</a>    )
+<a href=#832 id=832 data-nosnippet>832</a>}</code></pre></div></section></main></body></html>
