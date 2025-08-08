@@ -23,7 +23,7 @@ Iterations
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="75" y1="146" x2="434" y2="146"/>
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="75" y1="121" x2="434" y2="121"/>
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="75" y1="96" x2="434" y2="96"/>
-<line opacity="0.2" stroke="#000000" stroke-width="1" x1="75" y1="71" x2="434" y2="71"/>
+<line opacity="0.2" stroke="#000000" stroke-width="1" x1="75" y1="72" x2="434" y2="72"/>
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="75" y1="47" x2="434" y2="47"/>
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="75" y1="22" x2="434" y2="22"/>
 <polyline fill="none" opacity="1" stroke="#000000" stroke-width="1" points="74,15 74,244 "/>
@@ -55,10 +55,10 @@ Iterations
 120.0
 </text>
 <polyline fill="none" opacity="1" stroke="#000000" stroke-width="1" points="69,96 74,96 "/>
-<text x="65" y="71" dy="0.5ex" text-anchor="end" font-family="sans-serif" font-size="9.67741935483871" opacity="1" fill="#000000">
+<text x="65" y="72" dy="0.5ex" text-anchor="end" font-family="sans-serif" font-size="9.67741935483871" opacity="1" fill="#000000">
 140.0
 </text>
-<polyline fill="none" opacity="1" stroke="#000000" stroke-width="1" points="69,71 74,71 "/>
+<polyline fill="none" opacity="1" stroke="#000000" stroke-width="1" points="69,72 74,72 "/>
 <text x="65" y="47" dy="0.5ex" text-anchor="end" font-family="sans-serif" font-size="9.67741935483871" opacity="1" fill="#000000">
 160.0
 </text>
@@ -113,7 +113,7 @@ Iterations
 </text>
 <polyline fill="none" opacity="1" stroke="#000000" stroke-width="1" points="434,245 434,250 "/>
 <polyline fill="none" opacity="1" stroke="#E31A1C" stroke-width="1" points="75,244 434,16 "/>
-<polygon opacity="0.25" fill="#E31A1C" points="75,244 434,16 434,15 "/>
+<polygon opacity="0.25" fill="#E31A1C" points="75,244 434,16 434,16 "/>
 <polyline fill="none" opacity="1" stroke="#1F78B4" stroke-width="1" points="75,244 434,15 "/>
 <polygon opacity="0.25" fill="#1F78B4" points="75,244 434,16 434,15 "/>
 </svg>
