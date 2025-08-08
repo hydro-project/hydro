@@ -79,6 +79,7 @@ export interface LayoutConfig {
   direction?: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
   spacing?: number;
   nodeSize?: { width: number; height: number };
+  enableSmartCollapse?: boolean;
 }
 
 export interface LayoutResult {

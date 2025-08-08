@@ -78,7 +78,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   const [converter] = useState(() => new ReactFlowConverter());
   const [engine] = useState(() => createVisualizationEngine(visualizationState, {
     autoLayout: true, // Always auto-layout for alpha compatibility
-    enableLogging: false,
+    enableLogging: true, // Enable logging to debug smart collapse
     layoutConfig: layoutConfig
   }));
 

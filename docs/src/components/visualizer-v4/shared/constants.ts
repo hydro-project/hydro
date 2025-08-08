@@ -40,6 +40,16 @@ export const LAYOUT_CONSTANTS = {
   MIN_CONTAINER_HEIGHT: 100
 } as const;
 
+// Smart collapse constants
+export const SMART_COLLAPSE_CONSTANTS = {
+  // Use 50% of viewport area as container budget (default value from requirements)
+  CONTAINER_AREA_BUDGET_RATIO: 0.5,
+  
+  // Fallback dimensions for containers without layout data
+  FALLBACK_CONTAINER_WIDTH: 200,
+  FALLBACK_CONTAINER_HEIGHT: 100
+} as const;
+
 // Type exports
 export type NodeStyle = typeof NODE_STYLES[keyof typeof NODE_STYLES];
 export type EdgeStyle = typeof EDGE_STYLES[keyof typeof EDGE_STYLES];

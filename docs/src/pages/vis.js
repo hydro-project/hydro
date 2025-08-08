@@ -693,7 +693,10 @@ function VisV4Component() {
                 <FlowGraph 
                   ref={flowGraphRef}
                   visualizationState={currentVisualizationState}
-                  layoutConfig={{ algorithm: layoutAlgorithm }}
+                  layoutConfig={{ 
+                    algorithm: layoutAlgorithm,
+                    enableSmartCollapse: true 
+                  }}
                   eventHandlers={{ 
                     onNodeClick: handleNodeClick 
                   }}
