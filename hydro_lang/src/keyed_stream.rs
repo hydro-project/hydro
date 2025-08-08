@@ -8,10 +8,10 @@ use crate::ir::HydroNode;
 use crate::keyed_optional::KeyedOptional;
 use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
-use crate::location::{LocationId, NoTick};
+use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
-use crate::{Atomic, Bounded, Location, NoOrder, Stream, Tick, TotalOrder, Unbounded};
+use crate::{Atomic, Bounded, Location, NoOrder, Optional, Stream, Tick, TotalOrder, Unbounded};
 
 /// Keyed Streams capture streaming elements of type `V` grouped by a key of type `K`,
 /// where the order of keys is non-deterministic but the order *within* each group may
@@ -582,6 +582,59 @@ where
             underlying: Stream::new(self.underlying.location, out_ir),
         }
     }
+
+    /// A special case of [`KeyedStream::reduce`] where tuples with keys less than the watermark are automatically deleted.
+    ///
+    /// Each group must have a [`TotalOrder`] guarantee, which means that the `comb` closure is allowed
+    /// to depend on the order of elements in the stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let watermark = tick.singleton(q!(1));
+    /// let numbers = process
+    ///     .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .reduce_watermark(watermark, q!(|acc, x| *acc += x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (2, 204)
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 204));
+    /// # }));
+    /// ```
+    pub fn reduce_watermark<O, F>(
+        self,
+        other: impl Into<Optional<O, Tick<L::Root>, Bounded>>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B>
+    where
+        O: Clone,
+        F: Fn(&mut V, V) + 'a,
+    {
+        let other: Optional<O, Tick<L::Root>, Bounded> = other.into();
+        check_matching_location(&self.underlying.location.root(), other.location.outer());
+        let f = comb
+            .splice_fn2_borrow_mut_ctx(&self.underlying.location)
+            .into();
+
+        let out_ir = Stream::new(
+            self.underlying.location.clone(),
+            HydroNode::ReduceKeyedWatermark {
+                f,
+                input: Box::new(self.underlying.ir_node.into_inner()),
+                watermark: Box::new(other.ir_node.into_inner()),
+                metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+            },
+        );
+
+        KeyedOptional { underlying: out_ir }
+    }
 }
 
 impl<'a, K, V, L, B, O> KeyedStream<K, V, L, B, O, ExactlyOnce>
@@ -662,6 +715,46 @@ where
             self.assume_ordering::<TotalOrder>().reduce(comb)
         }
     }
+
+    /// A special case of [`KeyedStream::reduce_commutative`] where tuples with keys less than the watermark are automatically deleted.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let watermark = tick.singleton(q!(1));
+    /// let numbers = process
+    ///     .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .reduce_watermark_commutative(watermark, q!(|acc, x| *acc += x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (2, 204)
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 204));
+    /// # }));
+    /// ```
+    pub fn reduce_watermark_commutative<O2, F>(
+        self,
+        other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B>
+    where
+        O2: Clone,
+        F: Fn(&mut V, V) + 'a,
+    {
+        unsafe {
+            // SAFETY: the combinator function is commutative
+            self.assume_ordering::<TotalOrder>()
+        }
+        .reduce_watermark(other, comb)
+    }
 }
 
 impl<'a, K, V, L, B, R> KeyedStream<K, V, L, B, TotalOrder, R>
@@ -741,6 +834,46 @@ where
             // SAFETY: the combinator function is idempotent
             self.assume_retries::<ExactlyOnce>().reduce(comb)
         }
+    }
+
+    /// A special case of [`KeyedStream::reduce_idempotent`] where tuples with keys less than the watermark are automatically deleted.
+    ///
+    /// The `comb` closure must be **idempotent**, as there may be non-deterministic duplicates.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let watermark = tick.singleton(q!(1));
+    /// let numbers = process
+    ///     .source_iter(q!([(0, false), (1, false), (2, false), (2, true)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .reduce_watermark_idempotent(watermark, q!(|acc, x| *acc |= x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # }));
+    /// ```
+    pub fn reduce_watermark_idempotent<O2, F>(
+        self,
+        other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B>
+    where
+        O2: Clone,
+        F: Fn(&mut V, V) + 'a,
+    {
+        unsafe {
+            // SAFETY: the combinator function is idempotent
+            self.assume_retries::<ExactlyOnce>()
+        }
+        .reduce_watermark(other, comb)
     }
 }
 
@@ -828,6 +961,48 @@ where
                 .reduce(comb)
         }
     }
+
+    /// A special case of [`Stream::reduce_keyed_commutative_idempotent`] where tuples with keys less than the watermark are automatically deleted.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed, and **idempotent**,
+    /// as there may be non-deterministic duplicates.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let watermark = tick.singleton(q!(1));
+    /// let numbers = process
+    ///     .source_iter(q!([(0, false), (1, false), (2, false), (2, true)]))
+    ///     .into_keyed();
+    /// let batch = unsafe { numbers.batch(&tick) };
+    /// batch
+    ///     .reduce_watermark_commutative_idempotent(watermark, q!(|acc, x| *acc |= x))
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # }));
+    /// ```
+    pub fn reduce_watermark_commutative_idempotent<O2, F>(
+        self,
+        other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedOptional<K, V, L, B>
+    where
+        O2: Clone,
+        F: Fn(&mut V, V) + 'a,
+    {
+        unsafe {
+            // SAFETY: the combinator function is commutative and idempotent
+            self.assume_ordering::<TotalOrder>()
+                .assume_retries::<ExactlyOnce>()
+        }
+        .reduce_watermark(other, comb)
+    }
 }
 
 impl<'a, K, V, L, B, O, R> KeyedStream<K, V, L, B, O, R>
@@ -881,5 +1056,111 @@ where
             underlying: self.underlying.all_ticks(),
             _phantom_order: Default::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::{SinkExt, StreamExt};
+    use hydro_deploy::Deployment;
+    use stageleft::q;
+
+    use crate::FlowBuilder;
+    use crate::location::Location;
+
+    #[tokio::test]
+    async fn reduce_watermark_filter() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let node_tick = node.tick();
+        let watermark = node_tick.singleton(q!(1));
+
+        let sum = unsafe {
+            node.source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+                .into_keyed()
+                .reduce_watermark(
+                    watermark,
+                    q!(|acc, v| {
+                        *acc += v;
+                    }),
+                )
+                .snapshot(&node_tick)
+                .entries()
+        }
+        .all_ticks()
+        .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut out = nodes.connect_source_bincode(sum).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(out.next().await.unwrap(), (2, 204));
+    }
+
+    #[tokio::test]
+    async fn reduce_watermark_garbage_collect() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+        let (tick_send, tick_trigger) = node.source_external_bincode(&external);
+
+        let node_tick = node.tick();
+        let (watermark_complete_cycle, watermark) =
+            node_tick.cycle_with_initial(node_tick.singleton(q!(1)));
+        let next_watermark = watermark.clone().map(q!(|v| v + 1));
+        watermark_complete_cycle.complete_next_tick(next_watermark);
+
+        let sum = unsafe {
+            let tick_triggered_input = node
+                .source_iter(q!([(3, 103)]))
+                .tick_batch(&node_tick)
+                .continue_if(tick_trigger.clone().tick_batch(&node_tick).first())
+                .all_ticks();
+            node.source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+                .union(tick_triggered_input)
+                .into_keyed()
+                .reduce_watermark_commutative(
+                    watermark,
+                    q!(|acc, v| {
+                        *acc += v;
+                    }),
+                )
+                .snapshot(&node_tick)
+                .entries()
+        }
+        .all_ticks()
+        .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_default_optimize()
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut tick_send = nodes.connect_sink_bincode(tick_send).await;
+        let mut out_recv = nodes.connect_source_bincode(sum).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(out_recv.next().await.unwrap(), (2, 204));
+
+        tick_send.send(()).await.unwrap();
+
+        assert_eq!(out_recv.next().await.unwrap(), (3, 103));
     }
 }

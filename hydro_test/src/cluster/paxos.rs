@@ -704,12 +704,6 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
     )
 }
 
-#[derive(Clone)]
-pub enum CheckpointOrP2a<P, S> {
-    Checkpoint(usize),
-    P2a(P2a<P, S>),
-}
-
 // Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
 pub fn index_payloads<'a, P: PaxosPayload>(
     proposer_tick: &Tick<Cluster<'a, Proposer>>,
@@ -764,64 +758,52 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
         p_to_acceptors_p2a.tick_batch(acceptor_tick)
     };
 
-    let a_new_checkpoint = unsafe {
+    let a_checkpoint = unsafe {
         // SAFETY: we can arbitrarily snapshot the checkpoint sequence number,
         // since a delayed garbage collection does not affect correctness
         a_checkpoint.latest_tick(acceptor_tick)
-    }
-    .delta()
-    .map(q!(|min_seq| CheckpointOrP2a::Checkpoint(min_seq)));
-    // .inspect(q!(|(min_seq, p2a): &(i32, P2a)| println!("Acceptor new checkpoint: {:?}", min_seq)));
+    };
+    // .inspect(q!(|min_seq| println!("Acceptor new checkpoint: {:?}", min_seq)));
 
     let a_p2as_to_place_in_log = p_to_acceptors_p2a_batch
         .clone()
         .cross_singleton(a_max_ballot.clone()) // Don't consider p2as if the current ballot is higher
         .filter_map(q!(|(p2a, max_ballot)|
             if p2a.ballot >= max_ballot {
-                Some(CheckpointOrP2a::P2a(p2a))
+                Some((p2a.slot, LogValue {
+                    ballot: p2a.ballot,
+                    value: p2a.value,
+                }))
             } else {
                 None
             }
         ));
     let a_log = a_p2as_to_place_in_log
-        .chain(a_new_checkpoint.into_stream())
         .all_ticks_atomic()
-        .fold_commutative(
-            q!(|| (None, HashMap::new())),
-            q!(|(prev_checkpoint, log), checkpoint_or_p2a| {
-                match checkpoint_or_p2a {
-                    CheckpointOrP2a::Checkpoint(new_checkpoint) => {
-                        if prev_checkpoint
-                            .map(|prev| new_checkpoint > prev)
-                            .unwrap_or(true)
-                        {
-                            for slot in (prev_checkpoint.unwrap_or(0))..new_checkpoint {
-                                log.remove(&slot);
-                            }
-
-                            *prev_checkpoint = Some(new_checkpoint);
-                        }
-                    }
-                    CheckpointOrP2a::P2a(p2a) => {
-                        // This is a regular p2a message. Insert it into the log if it is not checkpointed and has a higher ballot than what was there before
-                        if prev_checkpoint.map(|prev| p2a.slot > prev).unwrap_or(true)
-                            && log
-                                .get(&p2a.slot)
-                                .map(|prev_p2a: &LogValue<_>| p2a.ballot > prev_p2a.ballot)
-                                .unwrap_or(true)
-                        {
-                            log.insert(
-                                p2a.slot,
-                                LogValue {
-                                    ballot: p2a.ballot,
-                                    value: p2a.value,
-                                },
-                            );
-                        }
-                    }
+        .into_keyed()
+        .reduce_watermark_commutative(
+            a_checkpoint.clone(),
+            q!(|prev_entry, entry| {
+                // Insert p2a into the log if it has a higher ballot than what was there before
+                if entry.ballot > prev_entry.ballot {
+                    *prev_entry = LogValue {
+                        ballot: entry.ballot,
+                        value: entry.value,
+                    };
                 }
             }),
         );
+    let a_log_snapshot = unsafe {
+        // SAFETY: We need to know the current state of the log for p1b
+        a_log.snapshot()
+    }
+    .entries()
+    .fold_commutative(
+        q!(|| HashMap::new()),
+        q!(|map, (slot, entry)| {
+            map.insert(slot, entry);
+        }),
+    );
 
     let a_to_proposers_p2b = p_to_acceptors_p2a_batch
         .cross_singleton(a_max_ballot)
@@ -839,5 +821,12 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
         .all_ticks()
         .demux_bincode(proposers)
         .values();
-    (a_log, a_to_proposers_p2b)
+
+    (
+        a_checkpoint
+            .into_singleton()
+            .zip(a_log_snapshot)
+            .latest_atomic(),
+        a_to_proposers_p2b,
+    )
 }

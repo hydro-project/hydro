@@ -819,6 +819,46 @@ impl HydroNode {
                 )
             }
 
+            // Combination of join and transform
+            HydroNode::ReduceKeyedWatermark {
+                f,
+                input,
+                watermark,
+                metadata,
+            } => {
+                let input_id = input.build_graph_structure(structure, seen_tees, config);
+                let watermark_id = watermark.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let join_node_id = structure.add_node(
+                    NodeLabel::Static(extract_op_name(self.print_root())),
+                    HydroNodeType::Join,
+                    location_id,
+                );
+                structure.add_edge(
+                    input_id,
+                    join_node_id,
+                    HydroEdgeType::Stream,
+                    Some("input".to_string()),
+                );
+                structure.add_edge(
+                    watermark_id,
+                    join_node_id,
+                    HydroEdgeType::Stream,
+                    Some("watermark".to_string()),
+                );
+
+                let node_id = structure.add_node(
+                    NodeLabel::with_exprs(
+                        extract_op_name(self.print_root()).to_string(),
+                        vec![f.clone()],
+                    ),
+                    HydroNodeType::Aggregation,
+                    location_id,
+                );
+                structure.add_edge(join_node_id, node_id, HydroEdgeType::Stream, None);
+                node_id
+            }
+
             HydroNode::Network {
                 serialize_fn,
                 deserialize_fn,
