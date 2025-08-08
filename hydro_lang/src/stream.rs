@@ -1,27 +1,25 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::future::Future;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use bytes::Bytes;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 use tokio::time::Instant;
 
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
-use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
-use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
+use crate::ir::{HydroLeaf, HydroNode, TeeNode};
+use crate::keyed_stream::KeyedStream;
 use crate::location::tick::{Atomic, NoAtomic};
-use crate::location::{
-    CanSend, External, Location, LocationId, NoTick, Tick, check_matching_location,
-};
-use crate::staging_util::get_this_crate;
-use crate::{Bounded, Cluster, ClusterId, Optional, Singleton, Unbounded};
+use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
+use crate::manual_expr::ManualExpr;
+use crate::{Bounded, Optional, Singleton, Unbounded};
+
+pub mod networking;
 
 /// Marks the stream as being totally ordered, which means that there are
 /// no sources of non-determinism (other than intentional ones) that will
@@ -97,7 +95,7 @@ impl MinRetries<AtLeastOnce> for ExactlyOnce {
 /// - `Order`: the ordering of the stream, which is either [`TotalOrder`]
 ///   or [`NoOrder`] (default is [`TotalOrder`])
 pub struct Stream<Type, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
-    location: Loc,
+    pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
     _phantom: PhantomData<(Type, Loc, Bound, Order, Retries)>,
@@ -287,7 +285,7 @@ impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
-    /// Produces a stream based on invoking `f` on each element in order.
+    /// Produces a stream based on invoking `f` on each element.
     /// If you do not want to modify the stream and instead only want to view
     /// each item use [`Stream::inspect`] instead.
     ///
@@ -595,13 +593,13 @@ where
     /// # let expected = HashSet::from([('a', 1), ('b', 1), ('c', 1), ('a', 2), ('b', 2), ('c', 2), ('a', 3), ('b', 3), ('c', 3)]);
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
-    pub fn cross_product<O2>(
+    pub fn cross_product<T2, O2>(
         self,
-        other: Stream<O2, L, B, O, R>,
-    ) -> Stream<(T, O2), L, B, NoOrder, R>
+        other: Stream<T2, L, B, O2, R>,
+    ) -> Stream<(T, T2), L, B, NoOrder, R>
     where
         T: Clone,
-        O2: Clone,
+        T2: Clone,
     {
         check_matching_location(&self.location, &other.location);
 
@@ -610,7 +608,7 @@ where
             HydroNode::CrossProduct {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, O2)>(),
+                metadata: self.location.new_node_metadata::<(T, T2)>(),
             },
         )
     }
@@ -749,7 +747,6 @@ where
     /// for the rest of the program.
     ///
     /// # Example
-    /// # TODO: more sensible code after Shadaj merges
     /// ```rust
     /// # use hydro_lang::*;
     /// # use std::collections::HashSet;
@@ -1685,11 +1682,140 @@ where
     }
 }
 
+impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R> {
+    pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
+        KeyedStream {
+            underlying: unsafe { self.assume_ordering::<NoOrder>() },
+            _phantom_order: Default::default(),
+        }
+    }
+}
+
+impl<'a, K, V, L, B> Stream<(K, V), L, B, TotalOrder, ExactlyOnce>
+where
+    K: Eq + Hash,
+    L: Location<'a>,
+{
+    /// A special case of [`Stream::scan`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
+    /// in the second element are transformed via the `f` combinator.
+    ///
+    /// Unlike [`Stream::fold_keyed`] which only returns the final accumulated value, `scan` produces a new stream
+    /// containing all intermediate accumulated values paired with the key. The scan operation can also terminate
+    /// early by returning `None`.
+    ///
+    /// The function takes a mutable reference to the accumulator and the current element, and returns
+    /// an `Option<U>`. If the function returns `Some(value)`, `value` is emitted to the output stream.
+    /// If the function returns `None`, the stream is terminated and no more elements are processed.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(0, 1), (0, 2), (1, 3), (1, 4)]))
+    ///     .scan_keyed(
+    ///         q!(|| 0),
+    ///         q!(|acc, x| {
+    ///             *acc += x;
+    ///             Some(*acc)
+    ///         }),
+    ///     )
+    /// # }, |mut stream| async move {
+    /// // Output: (0, 1), (0, 3), (1, 3), (1, 7)
+    /// # for w in vec![(0, 1), (0, 3), (1, 3), (1, 7)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn scan_keyed<A, U, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> Stream<(K, U), L, B, TotalOrder, ExactlyOnce>
+    where
+        K: Clone,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, V) -> Option<U> + 'a,
+    {
+        let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        self.scan(
+            q!(|| HashMap::new()),
+            q!(move |acc, (k, v)| {
+                let existing_state = acc.entry(k.clone()).or_insert_with(&init);
+                if let Some(out) = f(existing_state, v) {
+                    Some(Some((k, out)))
+                } else {
+                    acc.remove(&k);
+                    Some(None)
+                }
+            }),
+        )
+        .flatten_ordered()
+    }
+
+    /// Like [`Stream::fold_keyed`], in the spirit of SQL's GROUP BY and aggregation constructs. But the aggregation
+    /// function returns a boolean, which when true indicates that the aggregated result is complete and can be
+    /// released to downstream computation. Unlike [`Stream::fold_keyed`], this means that even if the input stream
+    /// is [`Unbounded`], the outputs of the fold can be processed like normal stream elements.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(0, 2), (0, 3), (1, 3), (1, 6)]))
+    ///     .fold_keyed_early_stop(
+    ///         q!(|| 0),
+    ///         q!(|acc, x| {
+    ///             *acc += x;
+    ///             x % 2 == 0
+    ///         }),
+    ///     )
+    /// # }, |mut stream| async move {
+    /// // Output: (0, 2), (1, 9)
+    /// # for w in vec![(0, 2), (1, 9)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn fold_keyed_early_stop<A, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> Stream<(K, A), L, B, TotalOrder, ExactlyOnce>
+    where
+        K: Clone,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, V) -> bool + 'a,
+    {
+        let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        self.scan(
+            q!(|| HashMap::new()),
+            q!(move |acc, (k, v)| {
+                let existing_state = acc.entry(k.clone()).or_insert_with(&init);
+                if f(existing_state, v) {
+                    let out = acc.remove(&k).unwrap();
+                    Some(Some((k, out)))
+                } else {
+                    Some(None)
+                }
+            }),
+        )
+        .flatten_ordered()
+    }
+}
+
 impl<'a, K, V, L> Stream<(K, V), Tick<L>, Bounded, TotalOrder, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    #[deprecated = "use .into_keyed().fold(...) instead"]
     /// A special case of [`Stream::fold`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -1726,20 +1852,10 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) + 'a,
     {
-        let init = init.splice_fn0_ctx(&self.location).into();
-        let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
-
-        Stream::new(
-            self.location.clone(),
-            HydroNode::FoldKeyed {
-                init,
-                acc: comb,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, A)>(),
-            },
-        )
+        self.into_keyed().fold(init, comb).entries()
     }
 
+    #[deprecated = "use .into_keyed().reduce(...) instead"]
     /// A special case of [`Stream::reduce`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -1836,6 +1952,7 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    #[deprecated = "use .into_keyed().fold_commutative_idempotent(...) instead"]
     /// A special case of [`Stream::fold_commutative_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
     /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -1872,11 +1989,9 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is commutative and idempotent
-            self.assume_ordering().assume_retries()
-        }
-        .fold_keyed(init, comb)
+        self.into_keyed()
+            .fold_commutative_idempotent(init, comb)
+            .entries()
     }
 
     /// Given a stream of pairs `(K, V)`, produces a new stream of unique keys `K`.
@@ -1896,10 +2011,12 @@ where
     /// # }));
     /// ```
     pub fn keys(self) -> Stream<K, Tick<L>, Bounded, NoOrder, ExactlyOnce> {
-        self.fold_keyed_commutative_idempotent(q!(|| ()), q!(|_, _| {}))
-            .map(q!(|(k, _)| k))
+        self.into_keyed()
+            .fold_commutative_idempotent(q!(|| ()), q!(|_, _| {}))
+            .keys()
     }
 
+    #[deprecated = "use .into_keyed().reduce_commutative_idempotent(...) instead"]
     /// A special case of [`Stream::reduce_commutative_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
     /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -1933,11 +2050,9 @@ where
     where
         F: Fn(&mut V, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is commutative and idempotent
-            self.assume_ordering().assume_retries()
-        }
-        .reduce_keyed(comb)
+        self.into_keyed()
+            .reduce_commutative_idempotent(comb)
+            .entries()
     }
 
     /// A special case of [`Stream::reduce_keyed_commutative_idempotent`] where tuples with keys less than the watermark are automatically deleted.
@@ -1985,6 +2100,7 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    #[deprecated = "use .into_keyed().fold_commutative(...) instead"]
     /// A special case of [`Stream::fold_commutative`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -2020,13 +2136,10 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is commutative
-            self.assume_ordering()
-        }
-        .fold_keyed(init, comb)
+        self.into_keyed().fold_commutative(init, comb).entries()
     }
 
+    #[deprecated = "use .into_keyed().reduce_commutative(...) instead"]
     /// A special case of [`Stream::reduce_commutative`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -2059,11 +2172,7 @@ where
     where
         F: Fn(&mut V, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is commutative
-            self.assume_ordering()
-        }
-        .reduce_keyed(comb)
+        self.into_keyed().reduce_commutative(comb).entries()
     }
 
     /// A special case of [`Stream::reduce_keyed_commutative`] where tuples with keys less than the watermark are automatically deleted.
@@ -2110,6 +2219,7 @@ where
     K: Eq + Hash,
     L: Location<'a>,
 {
+    #[deprecated = "use .into_keyed().fold_idempotent(...) instead"]
     /// A special case of [`Stream::fold_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
     /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -2145,13 +2255,10 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is idempotent
-            self.assume_retries()
-        }
-        .fold_keyed(init, comb)
+        self.into_keyed().fold_idempotent(init, comb).entries()
     }
 
+    #[deprecated = "use .into_keyed().reduce_idempotent(...) instead"]
     /// A special case of [`Stream::reduce_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
     /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -2184,11 +2291,7 @@ where
     where
         F: Fn(&mut V, V) + 'a,
     {
-        unsafe {
-            // SAFETY: aggregation is idempotent
-            self.assume_retries()
-        }
-        .reduce_keyed(comb)
+        self.into_keyed().reduce_idempotent(comb).entries()
     }
 
     /// A special case of [`Stream::reduce_keyed_idempotent`] where tuples with keys less than the watermark are automatically deleted.
@@ -2528,395 +2631,6 @@ where
                 metadata: self.location.new_node_metadata::<T>(),
             },
         )
-    }
-}
-
-pub fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr {
-    let root = get_this_crate();
-
-    if is_demux {
-        parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::ClusterId<_>, #t_type), _>(
-                |(id, data)| {
-                    (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
-                }
-            )
-        }
-    } else {
-        parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#t_type, _>(
-                |data| {
-                    #root::runtime_support::bincode::serialize(&data).unwrap().into()
-                }
-            )
-        }
-    }
-}
-
-fn serialize_bincode<T: Serialize>(is_demux: bool) -> syn::Expr {
-    serialize_bincode_with_type(is_demux, &stageleft::quote_type::<T>())
-}
-
-pub fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type) -> syn::Expr {
-    let root = get_this_crate();
-
-    if let Some(c_type) = tagged {
-        parse_quote! {
-            |res| {
-                let (id, b) = res.unwrap();
-                (#root::ClusterId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
-            }
-        }
-    } else {
-        parse_quote! {
-            |res| {
-                #root::runtime_support::bincode::deserialize::<#t_type>(&res.unwrap()).unwrap()
-            }
-        }
-    }
-}
-
-pub(super) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type>) -> syn::Expr {
-    deserialize_bincode_with_type(tagged, &stageleft::quote_type::<T>())
-}
-
-impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
-where
-    L: Location<'a> + NoTick,
-{
-    #[expect(
-        clippy::type_complexity,
-        reason = "Complex signatures for CanSend trait"
-    )]
-    pub fn send_bincode<L2, CoreType>(
-        self,
-        other: &L2,
-    ) -> Stream<<L::Root as CanSend<'a, L2>>::Out<CoreType>, L2, Unbounded, O::Min, R>
-    where
-        L::Root: CanSend<'a, L2, In<CoreType> = T>,
-        L2: Location<'a>,
-        CoreType: Serialize + DeserializeOwned,
-        O: MinOrder<<L::Root as CanSend<'a, L2>>::OutStrongestOrder<O>>,
-    {
-        let serialize_pipeline = Some(serialize_bincode::<CoreType>(L::Root::is_demux()));
-
-        let deserialize_pipeline = Some(deserialize_bincode::<CoreType>(
-            L::Root::tagged_type().as_ref(),
-        ));
-
-        Stream::new(
-            other.clone(),
-            HydroNode::Network {
-                serialize_fn: serialize_pipeline.map(|e| e.into()),
-                instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<CoreType>(),
-            },
-        )
-    }
-
-    pub fn send_bincode_external<L2, CoreType>(
-        self,
-        other: &External<L2>,
-    ) -> ExternalBincodeStream<L::Out<CoreType>>
-    where
-        L: CanSend<'a, External<'a, L2>, In<CoreType> = T, Out<CoreType> = CoreType>,
-        L2: 'a,
-        CoreType: Serialize + DeserializeOwned,
-        // for now, we restirct Out<CoreType> to be CoreType, which means no tagged cluster -> external
-    {
-        let serialize_pipeline = Some(serialize_bincode::<CoreType>(L::is_demux()));
-
-        let mut flow_state_borrow = self.location.flow_state().borrow_mut();
-
-        let external_key = flow_state_borrow.next_external_out;
-        flow_state_borrow.next_external_out += 1;
-
-        let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
-
-        leaves.push(HydroLeaf::SendExternal {
-            to_external_id: other.id,
-            to_key: external_key,
-            to_many: false,
-            serialize_fn: serialize_pipeline.map(|e| e.into()),
-            instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(HydroNode::Unpersist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            }),
-        });
-
-        ExternalBincodeStream {
-            process_id: other.id,
-            port_id: external_key,
-            _phantom: PhantomData,
-        }
-    }
-
-    #[expect(
-        clippy::type_complexity,
-        reason = "Complex signatures for CanSend trait"
-    )]
-    pub fn send_bytes<L2>(
-        self,
-        other: &L2,
-    ) -> Stream<<L::Root as CanSend<'a, L2>>::Out<Bytes>, L2, Unbounded, O::Min, R>
-    where
-        L2: Location<'a>,
-        L::Root: CanSend<'a, L2, In<Bytes> = T>,
-        O: MinOrder<<L::Root as CanSend<'a, L2>>::OutStrongestOrder<O>>,
-    {
-        let root = get_this_crate();
-        Stream::new(
-            other.clone(),
-            HydroNode::Network {
-                serialize_fn: None,
-                instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: if let Some(c_type) = L::Root::tagged_type() {
-                    let expr: syn::Expr = parse_quote!(|(id, b)| (#root::ClusterId<#c_type>::from_raw(id), b.unwrap().freeze()));
-                    Some(expr.into())
-                } else {
-                    let expr: syn::Expr = parse_quote!(|b| b.unwrap().freeze());
-                    Some(expr.into())
-                },
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<Bytes>(),
-            },
-        )
-    }
-
-    pub fn send_bytes_external<L2>(self, other: &External<L2>) -> ExternalBytesPort
-    where
-        L2: 'a,
-        L::Root: CanSend<'a, External<'a, L2>, In<Bytes> = T, Out<Bytes> = Bytes>,
-    {
-        let mut flow_state_borrow = self.location.flow_state().borrow_mut();
-        let external_key = flow_state_borrow.next_external_out;
-        flow_state_borrow.next_external_out += 1;
-
-        let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
-
-        leaves.push(HydroLeaf::SendExternal {
-            to_external_id: other.id,
-            to_key: external_key,
-            to_many: false,
-            serialize_fn: None,
-            instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(HydroNode::Unpersist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            }),
-        });
-
-        ExternalBytesPort {
-            process_id: other.id,
-            port_id: external_key,
-            _phantom: Default::default(),
-        }
-    }
-
-    pub fn send_bincode_anonymous<L2, Tag, CoreType>(
-        self,
-        other: &L2,
-    ) -> Stream<CoreType, L2, Unbounded, O::Min, R>
-    where
-        L2: Location<'a>,
-        L::Root: CanSend<'a, L2, In<CoreType> = T, Out<CoreType> = (Tag, CoreType)>,
-        CoreType: Serialize + DeserializeOwned,
-        O: MinOrder<<L::Root as CanSend<'a, L2>>::OutStrongestOrder<O>>,
-    {
-        self.send_bincode::<L2, CoreType>(other).map(q!(|(_, b)| b))
-    }
-
-    pub fn send_bytes_anonymous<L2, Tag>(
-        self,
-        other: &L2,
-    ) -> Stream<Bytes, L2, Unbounded, O::Min, R>
-    where
-        L2: Location<'a>,
-        L::Root: CanSend<'a, L2, In<Bytes> = T, Out<Bytes> = (Tag, Bytes)>,
-        O: MinOrder<<L::Root as CanSend<'a, L2>>::OutStrongestOrder<O>>,
-    {
-        self.send_bytes::<L2>(other).map(q!(|(_, b)| b))
-    }
-
-    #[expect(clippy::type_complexity, reason = "ordering semantics for broadcast")]
-    pub fn broadcast_bincode<C2>(
-        self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<
-        <L::Root as CanSend<'a, Cluster<'a, C2>>>::Out<T>,
-        Cluster<'a, C2>,
-        Unbounded,
-        O::Min,
-        R,
-    >
-    where
-        C2: 'a,
-        L::Root: CanSend<'a, Cluster<'a, C2>, In<T> = (ClusterId<C2>, T)>,
-        T: Clone + Serialize + DeserializeOwned,
-        O: MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<O>>,
-    {
-        let ids = other.members();
-        self.flat_map_ordered(q!(|v| { ids.iter().map(move |id| (*id, v.clone())) }))
-            .send_bincode(other)
-    }
-
-    pub fn broadcast_bincode_anonymous<C2, Tag>(
-        self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<T, Cluster<'a, C2>, Unbounded, O::Min, R>
-    where
-        C2: 'a,
-        L::Root: CanSend<'a, Cluster<'a, C2>, In<T> = (ClusterId<C2>, T), Out<T> = (Tag, T)>,
-        T: Clone + Serialize + DeserializeOwned,
-        O: MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<O>>,
-    {
-        self.broadcast_bincode(other).map(q!(|(_, b)| b))
-    }
-
-    #[expect(clippy::type_complexity, reason = "ordering semantics for broadcast")]
-    pub fn broadcast_bytes<C2>(
-        self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<
-        <L::Root as CanSend<'a, Cluster<'a, C2>>>::Out<Bytes>,
-        Cluster<'a, C2>,
-        Unbounded,
-        O::Min,
-        R,
-    >
-    where
-        C2: 'a,
-        L::Root: CanSend<'a, Cluster<'a, C2>, In<Bytes> = (ClusterId<C2>, T)>,
-        T: Clone,
-        O: MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<O>>,
-    {
-        let ids = other.members();
-
-        self.flat_map_ordered(q!(|b| ids.iter().map(move |id| (
-            ::std::clone::Clone::clone(id),
-            ::std::clone::Clone::clone(&b)
-        ))))
-        .send_bytes(other)
-    }
-
-    pub fn broadcast_bytes_anonymous<C2, Tag>(
-        self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<Bytes, Cluster<'a, C2>, Unbounded, O::Min, R>
-    where
-        C2: 'a,
-        L::Root: CanSend<'a, Cluster<'a, C2>, In<Bytes> = (ClusterId<C2>, T), Out<Bytes> = (Tag, Bytes)>
-            + 'a,
-        T: Clone,
-        O: MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<O>>,
-    {
-        self.broadcast_bytes(other).map(q!(|(_, b)| b))
-    }
-}
-
-#[expect(clippy::type_complexity, reason = "ordering semantics for round-robin")]
-impl<'a, T, L, B> Stream<T, L, B, TotalOrder, ExactlyOnce>
-where
-    L: Location<'a> + NoTick,
-{
-    pub fn round_robin_bincode<C2>(
-        self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<
-        <L::Root as CanSend<'a, Cluster<'a, C2>>>::Out<T>,
-        Cluster<'a, C2>,
-        Unbounded,
-        <TotalOrder as MinOrder<
-            <L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<TotalOrder>,
-        >>::Min,
-        ExactlyOnce,
-    >
-    where
-        C2: 'a,
-        L::Root: CanSend<'a, Cluster<'a, C2>, In<T> = (ClusterId<C2>, T)>,
-        T: Clone + Serialize + DeserializeOwned,
-        TotalOrder:
-            MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<TotalOrder>>,
-    {
-        let ids = other.members();
-
-        self.enumerate()
-            .map(q!(|(i, w)| (ids[i % ids.len()], w)))
-            .send_bincode(other)
-    }
-
-    pub fn round_robin_bincode_anonymous<C2, Tag>(
-        self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<
-        T,
-        Cluster<'a, C2>,
-        Unbounded,
-        <TotalOrder as MinOrder<
-            <L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<TotalOrder>,
-        >>::Min,
-        ExactlyOnce,
-    >
-    where
-        C2: 'a,
-        L::Root: CanSend<'a, Cluster<'a, C2>, In<T> = (ClusterId<C2>, T), Out<T> = (Tag, T)> + 'a,
-        T: Clone + Serialize + DeserializeOwned,
-        TotalOrder:
-            MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<TotalOrder>>,
-    {
-        self.round_robin_bincode(other).map(q!(|(_, b)| b))
-    }
-
-    pub fn round_robin_bytes<C2>(
-        self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<
-        <L::Root as CanSend<'a, Cluster<'a, C2>>>::Out<Bytes>,
-        Cluster<'a, C2>,
-        Unbounded,
-        <TotalOrder as MinOrder<
-            <L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<TotalOrder>,
-        >>::Min,
-        ExactlyOnce,
-    >
-    where
-        C2: 'a,
-        L::Root: CanSend<'a, Cluster<'a, C2>, In<Bytes> = (ClusterId<C2>, T)> + 'a,
-        T: Clone,
-        TotalOrder:
-            MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<TotalOrder>>,
-    {
-        let ids = other.members();
-
-        self.enumerate()
-            .map(q!(|(i, w)| (ids[i % ids.len()], w)))
-            .send_bytes(other)
-    }
-
-    pub fn round_robin_bytes_anonymous<C2, Tag>(
-        self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<
-        Bytes,
-        Cluster<'a, C2>,
-        Unbounded,
-        <TotalOrder as MinOrder<
-            <L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<TotalOrder>,
-        >>::Min,
-        ExactlyOnce,
-    >
-    where
-        C2: 'a,
-        L::Root: CanSend<'a, Cluster<'a, C2>, In<Bytes> = (ClusterId<C2>, T), Out<Bytes> = (Tag, Bytes)>
-            + 'a,
-        T: Clone,
-        TotalOrder:
-            MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<TotalOrder>>,
-    {
-        self.round_robin_bytes(other).map(q!(|(_, b)| b))
     }
 }
 

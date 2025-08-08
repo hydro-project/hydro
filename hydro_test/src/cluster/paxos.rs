@@ -288,7 +288,8 @@ pub unsafe fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwne
         .then(p_ballot.clone())
         .all_ticks()
         .inspect(q!(|_| println!("Proposer leader expired, sending P1a")))
-        .broadcast_bincode_anonymous(acceptors);
+        .broadcast_bincode(acceptors)
+        .values();
 
     let (a_max_ballot, a_to_proposers_p1b) = acceptor_p1(
         acceptor_tick,
@@ -388,7 +389,8 @@ unsafe fn p_leader_heartbeat<'a>(
             .latest()
             .sample_every(q!(Duration::from_secs(i_am_leader_send_timeout)))
     }
-    .broadcast_bincode_anonymous(proposers);
+    .broadcast_bincode(proposers)
+    .values();
 
     let p_leader_expired = unsafe {
         // Delayed timeouts only affect which leader wins re-election. If the leadership flag
@@ -460,7 +462,8 @@ fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
                 )
             )))
             .all_ticks()
-            .send_bincode_anonymous(proposers),
+            .demux_bincode(proposers)
+            .values(),
     )
 }
 
@@ -492,16 +495,18 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
     let p_received_quorum_of_p1bs = unsafe {
         // SAFETY: All the values for a quorum will be emitted in a single batch,
         // so we will not split up the quorum.
-        quorums.tick_batch()
+        quorums
+            .into_keyed()
+            .assume_ordering::<TotalOrder>() // we use `flatten_unordered` later
+            .fold(
+                q!(|| vec![]),
+                q!(|logs, log| {
+                    logs.push(log);
+                }),
+            )
+            .snapshot()
+            .entries()
     }
-    .persist()
-    .fold_keyed_commutative(
-        q!(|| vec![]),
-        q!(|logs, log| {
-            // even though this is non-commutative, we use `flatten_unordered` later
-            logs.push(log);
-        }),
-    )
     .max_by_key(q!(|t| t.0))
     .zip(p_ballot.clone())
     .filter_map(q!(
@@ -547,7 +552,8 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
     let p_p1b_highest_entries_and_count = accepted_logs
         .map(q!(|(_checkpoint, log)| log))
         .flatten_unordered() // Convert HashMap log back to stream
-        .fold_keyed_commutative::<(usize, Option<LogValue<P>>), _, _>(q!(|| (0, None)), q!(|curr_entry, new_entry| {
+        .into_keyed()
+        .fold_commutative::<(usize, Option<LogValue<P>>), _, _>(q!(|| (0, None)), q!(|curr_entry, new_entry| {
             if let Some(curr_entry_payload) = &mut curr_entry.1 {
                 let same_values = new_entry.value == curr_entry_payload.value;
                 let higher_ballot = new_entry.ballot > curr_entry_payload.ballot;
@@ -568,9 +574,10 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
                 *curr_entry = (1, Some(new_entry));
             }
         }))
-        .map(q!(|(slot, (count, entry))| (slot, (count, entry.unwrap()))));
+        .map(q!(|(count, entry)| (count, entry.unwrap())));
     let p_log_to_try_commit = p_p1b_highest_entries_and_count
         .clone()
+        .entries()
         .cross_singleton(p_ballot.clone())
         .cross_singleton(p_p1b_max_checkpoint.clone())
         .filter_map(q!(move |(((slot, (count, entry)), ballot), checkpoint)| {
@@ -583,13 +590,8 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
             }
             Some(((slot, ballot), entry.value))
         }));
-    let p_max_slot = p_p1b_highest_entries_and_count
-        .clone()
-        .map(q!(|(slot, _)| slot))
-        .max();
-    let p_proposed_slots = p_p1b_highest_entries_and_count
-        .clone()
-        .map(q!(|(slot, _)| slot));
+    let p_max_slot = p_p1b_highest_entries_and_count.clone().keys().max();
+    let p_proposed_slots = p_p1b_highest_entries_and_count.clone().keys();
     let p_log_holes = p_max_slot
         .clone()
         .zip(p_p1b_max_checkpoint)
@@ -677,7 +679,8 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
                 slot,
                 value
             }))
-            .broadcast_bincode_anonymous(acceptors),
+            .broadcast_bincode(acceptors)
+            .values(),
         a_checkpoint,
         proposers,
     );
@@ -777,7 +780,8 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
         ));
     let a_log = a_p2as_to_place_in_log
         .persist()
-        .reduce_keyed_watermark_commutative(
+        .into_keyed()
+        .reduce_watermark_commutative(
             a_checkpoint.clone(),
             q!(|prev_entry, entry| {
                 // Insert p2a into the log if it has a higher ballot than what was there before
@@ -789,6 +793,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
                 }
             }),
         )
+        .entries()
         .fold_commutative(
             q!(|| HashMap::new()),
             q!(|map, (slot, entry)| {
@@ -810,7 +815,9 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             )
         )))
         .all_ticks()
-        .send_bincode_anonymous(proposers);
+        .demux_bincode(proposers)
+        .values();
+
     (
         a_checkpoint.into_singleton().zip(a_log).latest_atomic(),
         a_to_proposers_p2b,

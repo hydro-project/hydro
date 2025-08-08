@@ -26,7 +26,7 @@ let numbers = workers.source_iter(q!(vec![1, 2, 3, 4]));
 ```
 
 ## Networking
-When sending a live collection from a cluster to another location, **each** member of the cluster will send its local collection. On the receiver side, these collections will be joined together into a single stream of `(ID, Data)` tuples where the ID uniquely identifies which member of the cluster the data came from. For example, you can send a stream from the worker cluster to another process using the `send_bincode` method:
+When sending a live collection from a cluster to another location, **each** member of the cluster will send its local collection. On the receiver side, these collections will be joined together into a **keyed stream** of with `ID` keys and groups of  `Data` values where the ID uniquely identifies which member of the cluster the data came from. For example, you can send a stream from the worker cluster to another process using the `send_bincode` method:
 
 ```rust
 # use hydro_lang::*;
@@ -34,10 +34,11 @@ When sending a live collection from a cluster to another location, **each** memb
 # tokio_test::block_on(test_util::multi_location_test(|flow, process| {
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
-numbers.send_bincode(&process)
+numbers.send_bincode(&process) // KeyedStream<ClusterId<()>, i32, ...>
+# .entries()
 # }, |mut stream| async move {
 // if there are 4 members in the cluster, we should receive 4 elements
-// (ClusterId::<Worker>(0), 1), (ClusterId::<Worker>(1), 1), (ClusterId::<Worker>(2), 1), (ClusterId::<Worker>(3), 1)
+// { ClusterId::<Worker>(0): [1], ClusterId::<Worker>(1): [1], ClusterId::<Worker>(2): [1], ClusterId::<Worker>(3): [1] }
 # let mut results = Vec::new();
 # for w in 0..4 {
 #     results.push(format!("{:?}", stream.next().await.unwrap()));
@@ -49,7 +50,7 @@ numbers.send_bincode(&process)
 
 :::tip
 
-If you do not need to know _which_ member of the cluster the data came from, you can use the `send_bincode_anonymous` method instead, which will drop the IDs at the receiver:
+If you do not need to know _which_ member of the cluster the data came from, you can use the `values()` method on the keyed stream, which will drop the IDs at the receiver:
 
 ```rust
 # use hydro_lang::*;
@@ -57,7 +58,7 @@ If you do not need to know _which_ member of the cluster the data came from, you
 # tokio_test::block_on(test_util::multi_location_test(|flow, process| {
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
-numbers.send_bincode_anonymous(&process)
+numbers.send_bincode(&process).values()
 # }, |mut stream| async move {
 // if there are 4 members in the cluster, we should receive 4 elements
 // 1, 1, 1, 1
@@ -72,7 +73,7 @@ numbers.send_bincode_anonymous(&process)
 
 :::
 
-In the reverse direction, when sending a stream _to_ a cluster, the sender must prepare `(ID, Data)` tuples, where the ID uniquely identifies which member of the cluster the data is intended for. For example, we can send a stream from a process to the worker cluster using the `send_bincode` method:
+In the reverse direction, when sending a stream _to_ a cluster, the sender must prepare `(ID, Data)` tuples, where the ID uniquely identifies which member of the cluster the data is intended for. Then, we can send a stream from a process to the worker cluster using the `demux_bincode` method:
 
 ```rust
 # use hydro_lang::*;
@@ -83,10 +84,11 @@ In the reverse direction, when sending a stream _to_ a cluster, the sender must 
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
 let on_worker: Stream<_, Cluster<_>, _> = numbers
     .map(q!(|x| (ClusterId::from_raw(x), x)))
-    .send_bincode(&workers);
+    .demux_bincode(&workers);
 on_worker.send_bincode(&p2)
+# .entries()
 // if there are 4 members in the cluster, we should receive 4 elements
-// (ClusterId::<Worker>(0), 0), (ClusterId::<Worker>(1), 1), (ClusterId::<Worker>(2), 2), (ClusterId::<Worker>(3), 3)
+// { ClusterId::<Worker>(0): [0], ClusterId::<Worker>(1): [1], ClusterId::<Worker>(2): [2], ClusterId::<Worker>(3): [3] }
 # }, |mut stream| async move {
 # let mut results = Vec::new();
 # for w in 0..4 {
@@ -109,8 +111,9 @@ A common pattern in distributed systems is to broadcast data to all members of a
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
 let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast_bincode(&workers);
 on_worker.send_bincode(&p2)
+# .entries()
 // if there are 4 members in the cluster, we should receive 4 elements
-// (ClusterId::<Worker>(0), 123), (ClusterId::<Worker>(1), 123), (ClusterId::<Worker>(2), 123), (ClusterId::<Worker>(3), 123)
+// { ClusterId::<Worker>(0): [123], ClusterId::<Worker>(1): [123], ClusterId::<Worker>(2): [123, ClusterId::<Worker>(3): [123] }
 # }, |mut stream| async move {
 # let mut results = Vec::new();
 # for w in 0..4 {
@@ -166,7 +169,8 @@ let self_id_stream = workers.source_iter(q!([CLUSTER_SELF_ID]));
 self_id_stream
     .filter(q!(|x| x.raw_id % 2 == 0))
     .map(q!(|x| format!("hello from {}", x.raw_id)))
-    .send_bincode_anonymous(&process)
+    .send_bincode(&process)
+    .values()
 // if there are 4 members in the cluster, we should receive 2 elements
 // "hello from 0", "hello from 2"
 # }, |mut stream| async move {

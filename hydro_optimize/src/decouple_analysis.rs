@@ -451,11 +451,11 @@ pub(crate) fn decouple_analysis(
 
     for (op_id, inputs) in op_id_to_inputs {
         if let Some(op_var) = op_id_to_var.get(op_id) {
-            let op_value = solution.value(*op_var);
+            let op_value = solution.value(*op_var).round();
             let mut input_value = None;
             if let Some(input) = inputs.first() {
                 if let Some(input_var) = op_id_to_var.get(input) {
-                    input_value = Some(solution.value(*input_var));
+                    input_value = Some(solution.value(*input_var).round());
                 }
             };
 

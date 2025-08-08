@@ -4,12 +4,12 @@ expression: built.ir()
 ---
 [
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count) | println ! ("{}: {}" , string , count) }),
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count ,) | println ! ("{}: {}" , string , count) }),
         input: ReduceKeyed {
             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | total , count | * total += count }),
             input: Persist {
                 inner: Map {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , (std :: string :: String , i32)) , (std :: string :: String , i32) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , (std :: string :: String , i32)) , (std :: string :: String , i32) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_stream :: * ; | (_ , v) | v }),
                     input: Network {
                         serialize_fn: Some(
                             :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
@@ -34,7 +34,7 @@ expression: built.ir()
                                             | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& res . unwrap ()) . unwrap () },
                                         ),
                                         input: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , std :: string :: String) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , std :: string :: String) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker >] > (__hydro_lang_cluster_ids_1) } ; | (i , w) | (ids__free [i % ids__free . len ()] , w) }),
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , std :: string :: String) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , std :: string :: String) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker >] > (__hydro_lang_cluster_ids_1) } ; | (i , w) | (ids__free [i % ids__free . len ()] , w) }),
                                             input: Enumerate {
                                                 is_static: true,
                                                 input: Map {
@@ -105,7 +105,7 @@ expression: built.ir()
                                         ),
                                     ),
                                     output_type: Some(
-                                        (std :: string :: String , i32),
+                                        (std :: string :: String , ()),
                                     ),
                                 },
                             },
@@ -126,7 +126,7 @@ expression: built.ir()
                                 0,
                             ),
                             output_type: Some(
-                                (std :: string :: String , i32),
+                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , (std :: string :: String , i32)),
                             ),
                         },
                     },
@@ -140,11 +140,8 @@ expression: built.ir()
                     },
                 },
                 metadata: HydroIrMetadata {
-                    location_kind: Tick(
-                        1,
-                        Process(
-                            0,
-                        ),
+                    location_kind: Process(
+                        0,
                     ),
                     output_type: Some(
                         (std :: string :: String , i32),
@@ -152,11 +149,8 @@ expression: built.ir()
                 },
             },
             metadata: HydroIrMetadata {
-                location_kind: Tick(
-                    1,
-                    Process(
-                        0,
-                    ),
+                location_kind: Process(
+                    0,
                 ),
                 output_type: Some(
                     (std :: string :: String , i32),

@@ -168,7 +168,7 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
                 #rhs_borrow
                     .table
                     .iter()
-                    .filter_map(|(k, v2)| #lhs_borrow.table.get(k).map(|v1| (k.clone(), lattices::Pair::<#lhs_type, #rhs_type>::new_from(v1.clone(), v2.clone()))))
+                    .filter_map(|(k, v2)| #lhs_borrow.table.get(k).map(|v1| (k.clone(), #root::lattices::Pair::<#lhs_type, #rhs_type>::new_from(v1.clone(), v2.clone()))))
                     .map(|(key, p)| #root::lattices::map_union::MapUnionSingletonMap::new_from((key, p)))
             };
         };

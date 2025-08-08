@@ -40,7 +40,7 @@ expression: built.ir()
                     ),
                 ),
                 output_type: Some(
-                    (std :: string :: String , i32),
+                    (std :: string :: String , ()),
                 ),
             },
         },

@@ -241,18 +241,6 @@ pub trait ConnectedSource {
     fn into_source(self) -> Self::Stream;
 }
 
-pub trait ConnectedSourceSink {
-    type Output: Send;
-    type OutError;
-    type Stream: Stream<Item = Result<Self::Output, Self::OutError>> + Send + Sync;
-
-    type Input: Send;
-    type InError;
-    type Sink: Sink<Self::Input, Error = Self::InError> + Send + Sync;
-
-    fn into_source_sink(self) -> (Self::Stream, Self::Sink);
-}
-
 #[derive(Debug)]
 pub enum BoundServer {
     UnixSocket(UnixListener, TempDir),
@@ -475,6 +463,13 @@ pub struct ConnectedDirect {
     sink_only: Option<DynSink<Bytes>>,
 }
 
+impl ConnectedDirect {
+    pub fn into_source_sink(self) -> (SplitStream<DynStreamSink>, SplitSink<DynStreamSink, Bytes>) {
+        let (sink, stream) = self.stream_sink.unwrap().split();
+        (stream, sink)
+    }
+}
+
 impl Connected for ConnectedDirect {
     fn from_defn(pipe: Connection) -> Self {
         match pipe {
@@ -539,21 +534,6 @@ impl Connected for ConnectedDirect {
 
             Connection::AsServer(bound) => accept(bound),
         }
-    }
-}
-
-impl ConnectedSourceSink for ConnectedDirect {
-    type Input = Bytes;
-    type InError = io::Error;
-    type Sink = SplitSink<DynStreamSink, Bytes>;
-
-    type Output = BytesMut;
-    type OutError = io::Error;
-    type Stream = SplitStream<DynStreamSink>;
-
-    fn into_source_sink(self) -> (Self::Stream, Self::Sink) {
-        let (sink, stream) = self.stream_sink.unwrap().split();
-        (stream, sink)
     }
 }
 

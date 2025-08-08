@@ -820,7 +820,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2)
+            .broadcast_bincode(&cluster2)
+            .values()
             .map(q!(|(a, b)| (b, a + 2)))
             .for_each(q!(|(b, a2)| {
                 println!("b: {}, a+2: {}", b, a2);
@@ -828,7 +829,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // The operator being tested
         ]);
 
@@ -861,7 +862,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2)
+            .broadcast_bincode(&cluster2)
+            .values()
             .map(q!(|(a, b)| (b, a + 2)))
             .for_each(q!(|(b, a2)| {
                 println!("b: {}, a+2: {}", b, a2);
@@ -878,7 +880,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, (2, (3, 4)))]))
-            .broadcast_bincode_anonymous(&cluster2)
+            .broadcast_bincode(&cluster2)
+            .values()
             .map(q!(|(a, b)| (b.1, a, b.0 - a)))
             .map(q!(|(b1, _a, b0a)| (b0a, b1.0)))
             .for_each(q!(|(b0a, b10)| {
@@ -887,7 +890,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // map 1
             (5, BTreeSet::from([2])), // map 2
         ]);
@@ -936,7 +939,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2)
+            .broadcast_bincode(&cluster2)
+            .values()
             .filter_map(q!(|(a, b)| { if a > 1 { Some((b, a + 2)) } else { None } }))
             .for_each(q!(|(b, a2)| {
                 println!("b: {}, a+2: {}", b, a2);
@@ -944,7 +948,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // The operator being tested
         ]);
 
@@ -977,7 +981,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2)
+            .broadcast_bincode(&cluster2)
+            .values()
             .filter_map(q!(|(a, b)| {
                 if a > 1 {
                     Some((None, a + 2))
@@ -993,7 +998,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // The operator being tested
         ]);
 
@@ -1022,7 +1027,8 @@ mod tests {
         unsafe {
             cluster1
                 .source_iter(q!([(1, 2)]))
-                .broadcast_bincode_anonymous(&cluster2)
+                .broadcast_bincode(&cluster2)
+                .values()
                 .tick_batch(&cluster2.tick())
                 .delta()
                 .all_ticks()
@@ -1033,7 +1039,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // The operator being tested
         ]);
 
@@ -1062,7 +1068,8 @@ mod tests {
         unsafe {
             cluster1
                 .source_iter(q!([(1, 2)]))
-                .broadcast_bincode_anonymous(&cluster2)
+                .broadcast_bincode(&cluster2)
+                .values()
                 .tick_batch(&cluster2.tick())
                 .delta()
                 .all_ticks()
@@ -1082,7 +1089,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
@@ -1098,7 +1106,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // tee on the input
             (5, BTreeSet::from([2])), // stream2's map
             (6, BTreeSet::from([2])), // tee on the input
@@ -1153,7 +1161,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
@@ -1178,7 +1187,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
@@ -1194,7 +1204,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // tee on the input
             (5, BTreeSet::from([2])), // stream2's map
             (6, BTreeSet::from([2])), // tee on the input
@@ -1257,7 +1267,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
@@ -1282,7 +1293,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
@@ -1298,7 +1310,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // tee on the input
             (5, BTreeSet::from([2])), // stream2's map
             (6, BTreeSet::from([2])), // tee on the input
@@ -1373,7 +1385,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
@@ -1403,7 +1416,8 @@ mod tests {
         unsafe {
             cluster1
                 .source_iter(q!([(1, 2)]))
-                .broadcast_bincode_anonymous(&cluster2)
+                .broadcast_bincode(&cluster2)
+                .values()
                 .assume_ordering()
                 .enumerate()
                 .for_each(q!(|(i, (a, b))| {
@@ -1413,7 +1427,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // enumerate
         ]);
 
@@ -1445,7 +1459,8 @@ mod tests {
         unsafe {
             cluster1
                 .source_iter(q!([(1, 2)]))
-                .broadcast_bincode_anonymous(&cluster2)
+                .broadcast_bincode(&cluster2)
+                .values()
                 .assume_ordering()
                 .enumerate()
                 .for_each(q!(|(i, (a, b))| {
@@ -1465,9 +1480,12 @@ mod tests {
         unsafe {
             cluster1
                 .source_iter(q!([(1, 2)]))
-                .broadcast_bincode_anonymous(&cluster2)
+                .broadcast_bincode(&cluster2)
+                .values()
                 .tick_batch(&cluster2.tick())
-                .reduce_keyed_commutative(q!(|acc, b| *acc += b))
+                .into_keyed()
+                .reduce_commutative(q!(|acc, b| *acc += b))
+                .entries()
                 .all_ticks()
                 .for_each(q!(|(a, b_sum)| {
                     println!("a: {}, b_sum: {}", a, b_sum);
@@ -1476,7 +1494,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // reduce_keyed
         ]);
 
@@ -1510,9 +1528,12 @@ mod tests {
         unsafe {
             cluster1
                 .source_iter(q!([(1, 2)]))
-                .broadcast_bincode_anonymous(&cluster2)
+                .broadcast_bincode(&cluster2)
+                .values()
                 .tick_batch(&cluster2.tick())
-                .reduce_keyed_commutative(q!(|acc, b| *acc += b))
+                .into_keyed()
+                .reduce_commutative(q!(|acc, b| *acc += b))
+                .entries()
                 .all_ticks()
                 .for_each(q!(|(a, b_sum)| {
                     println!("a: {}, b_sum: {}", a, b_sum);
@@ -1534,7 +1555,8 @@ mod tests {
         unsafe {
             cluster1
                 .source_iter(q!([(1, 2)]))
-                .broadcast_bincode_anonymous(&cluster2)
+                .broadcast_bincode(&cluster2)
+                .values()
                 .tick_batch(&cluster2.tick())
                 .reduce_commutative(q!(|(acc_a, acc_b), (a, b)| {
                     *acc_a += a;
@@ -1548,7 +1570,7 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // reduce
         ]);
 
@@ -1576,7 +1598,8 @@ mod tests {
         unsafe {
             cluster1
                 .source_iter(q!([(1, 2)]))
-                .broadcast_bincode_anonymous(&cluster2)
+                .broadcast_bincode(&cluster2)
+                .values()
                 .tick_batch(&cluster2.tick())
                 .reduce_commutative(q!(|(acc_a, acc_b), (a, b)| {
                     *acc_a += a;
@@ -1599,7 +1622,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let cluster2_tick = cluster2.tick();
         let (complete_cycle, cycle) =
             cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
@@ -1662,7 +1686,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let cluster2_tick = cluster2.tick();
         let (complete_cycle, cycle) =
             cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
@@ -1689,7 +1714,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let cluster2_tick = cluster2.tick();
         let (complete_cycle1, cycle1) =
             cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
@@ -1785,7 +1811,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let cluster2_tick = cluster2.tick();
         let (complete_cycle1, cycle1) =
             cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
@@ -1819,7 +1846,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let tick = cluster2.tick();
         let stream1 = input.map(q!(|(a, b)| (b, a + 2)));
         let stream2 = cluster2.source_iter(q!([(3, 4)]));
@@ -1836,7 +1864,7 @@ mod tests {
         let expected_taint = BTreeMap::from([
             (0, BTreeSet::from([])),  // source_iter
             (3, BTreeSet::from([])),  // Network
-            (4, BTreeSet::from([3])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (4, BTreeSet::from([3])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (5, BTreeSet::from([3])), // map
             (6, BTreeSet::from([3])), // chain
         ]);
@@ -1872,7 +1900,8 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let tick = cluster2.tick();
         let stream1 = input.map(q!(|(a, b)| (b, a + 2)));
         let stream2 = cluster2.source_iter(q!([(3, 4)]));
@@ -1897,10 +1926,12 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let tick = cluster2.tick();
         unsafe {
             let stream1 = input1.map(q!(|(a, b)| (a * 2, b))).tick_batch(&tick);
@@ -1922,11 +1953,11 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),      // input2
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (4, BTreeSet::from([2])), // input2's map
             (5, BTreeSet::from([2])), // Tee(input2's map)
             (8, BTreeSet::from([])),  // input1
-            (9, BTreeSet::from([8])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (9, BTreeSet::from([8])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (10, BTreeSet::from([8])), // input1's map
             (11, BTreeSet::from([8])), // Tee(input1's map)
             (12, BTreeSet::from([2, 8])), // chain
@@ -1992,10 +2023,12 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let tick = cluster2.tick();
         unsafe {
             let stream1 = input1.map(q!(|(a, b)| (b, a * 2))).tick_batch(&tick);
@@ -2029,10 +2062,12 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let tick = cluster2.tick();
         unsafe {
             input1
@@ -2046,9 +2081,9 @@ mod tests {
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::new()),     // input1
-            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (3, BTreeSet::from([2])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (6, BTreeSet::new()),     // input2's map
-            (7, BTreeSet::from([6])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (7, BTreeSet::from([6])), /* The implicit map following Network, imposed by broadcast_bincode.values */
             (8, BTreeSet::from([2])), // Difference. Isn't tainted by anti-joined parent
         ]);
 
@@ -2078,10 +2113,12 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode_anonymous(&cluster2);
+            .broadcast_bincode(&cluster2)
+            .values();
         let tick = cluster2.tick();
         unsafe {
             input1

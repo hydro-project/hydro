@@ -1,38 +1,25 @@
-use std::collections::HashMap;
-
+use hydro_lang::keyed_stream::KeyedStream;
 use hydro_lang::*;
 
 pub fn http_hello_server<'a, P>(
-    in_stream: Stream<(u64, String), Process<'a, P>, Unbounded, TotalOrder>,
-) -> Stream<(u64, String), Process<'a, P>, Unbounded, TotalOrder> {
+    in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder>,
+) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder> {
     in_stream
-        .inspect(q!(|(id, line)| println!(
+        .inspect_with_key(q!(|(id, line)| println!(
             "Received line from client #{}: '{}'",
             id, line
         )))
-        .scan(
-            q!(|| HashMap::<u64, String>::new()),
-            q!(|acc, (id, line)| {
-                let buffer = acc.entry(id).or_default();
+        .fold_early_stop(
+            q!(|| String::new()),
+            q!(|buffer, line| {
                 buffer.push_str(&line);
                 buffer.push_str("\r\n");
 
                 // Check if this is an empty line (end of HTTP headers)
-                if line.trim().is_empty() {
-                    println!("Complete HTTP request received for connection #{}", id);
-
-                    // Return the raw complete request
-                    let raw_request = buffer.clone();
-                    acc.remove(&id);
-
-                    Some(Some((id, raw_request)))
-                } else {
-                    Some(None)
-                }
+                line.trim().is_empty()
             }),
         )
-        .flatten_ordered()
-        .map(q!(|(id, raw_request)| {
+        .map_with_key(q!(|(id, raw_request)| {
             let lines: Vec<&str> = raw_request.lines().collect();
 
             // Parse request line
@@ -91,9 +78,9 @@ pub fn http_hello_server<'a, P>(
                 html_content.len(),
                 html_content
             );
-            (id, response)
+            response
         }))
-        .inspect(q!(|(id, response)| println!(
+        .inspect_with_key(q!(|(id, response)| println!(
             "Sending HTTP response to client #{}: {} bytes",
             id,
             response.len()

@@ -12,13 +12,15 @@ use tokio::net::TcpListener;
 #[cfg(unix)]
 use tokio::net::UnixListener;
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
-use crate::{AcceptedServer, BoundServer, Connected, ConnectedSourceSink, Connection};
+use crate::{AcceptedServer, BoundServer, Connected, Connection};
 
 pub struct ConnectedMultiConnection<I, O, C: Decoder<Item = I> + Encoder<O>> {
-    source: MultiConnectionSource<I, O, C>,
-    sink: MultiConnectionSink<O, C>,
+    pub source: MultiConnectionSource<I, O, C>,
+    pub sink: MultiConnectionSink<O, C>,
+    pub membership: UnboundedReceiverStream<(u64, bool)>,
 }
 
 impl<
@@ -31,6 +33,7 @@ impl<
         match pipe {
             Connection::AsServer(AcceptedServer::MultiConnection(bound_server)) => {
                 let (new_sink_sender, new_sink_receiver) = mpsc::unbounded_channel();
+                let (membership_sender, membership_receiver) = mpsc::unbounded_channel();
 
                 let source = match *bound_server {
                     #[cfg(unix)]
@@ -39,8 +42,10 @@ impl<
                         tcp_listener: None,
                         _dir_holder: Some(dir),
                         next_connection_id: 0,
-                        active_connections: HashMap::new(),
+                        active_connections: Vec::new(),
+                        poll_cursor: 0,
                         new_sink_sender,
+                        membership_sender,
                         _phantom: Default::default(),
                     },
                     BoundServer::TcpPort(listener, _) => MultiConnectionSource {
@@ -50,8 +55,10 @@ impl<
                         #[cfg(unix)]
                         _dir_holder: None,
                         next_connection_id: 0,
-                        active_connections: HashMap::new(),
+                        active_connections: Vec::new(),
+                        poll_cursor: 0,
                         new_sink_sender,
+                        membership_sender,
                         _phantom: Default::default(),
                     },
                     _ => panic!("MultiConnection only supports UnixSocket and TcpPort"),
@@ -63,29 +70,14 @@ impl<
                     _phantom: Default::default(),
                 };
 
-                ConnectedMultiConnection { source, sink }
+                ConnectedMultiConnection {
+                    source,
+                    sink,
+                    membership: UnboundedReceiverStream::new(membership_receiver),
+                }
             }
             _ => panic!("Cannot connect to a non-multi-connection pipe as a multi-connection"),
         }
-    }
-}
-
-impl<
-    I: Send,
-    O: Send + Sync + 'static,
-    C: Decoder<Item = I> + Encoder<O> + Send + Sync + Default + 'static,
-> ConnectedSourceSink for ConnectedMultiConnection<I, O, C>
-{
-    type Output = (u64, I);
-    type OutError = <C as Decoder>::Error;
-    type Stream = MultiConnectionSource<I, O, C>;
-
-    type Input = (u64, O);
-    type InError = <C as Encoder<O>>::Error;
-    type Sink = MultiConnectionSink<O, C>;
-
-    fn into_source_sink(self) -> (Self::Stream, Self::Sink) {
-        (self.source, self.sink)
     }
 }
 
@@ -100,8 +92,12 @@ pub struct MultiConnectionSource<I, O, C: Decoder<Item = I> + Encoder<O>> {
     #[cfg(unix)]
     _dir_holder: Option<TempDir>, // keeps the folder containing the socket alive
     next_connection_id: u64,
-    active_connections: HashMap<u64, DynDecodedStream<I, C>>,
+    /// Ordered list for fair polling, will never be `None` at the beginning of a poll
+    active_connections: Vec<Option<(u64, DynDecodedStream<I, C>)>>,
+    /// Cursor for fair round-robin polling
+    poll_cursor: usize,
     new_sink_sender: mpsc::UnboundedSender<(u64, DynEncodedSink<O, C>)>,
+    membership_sender: mpsc::UnboundedSender<(u64, bool)>,
     _phantom: PhantomData<(Box<O>, Box<C>)>,
 }
 
@@ -145,12 +141,14 @@ impl<
                             Box<dyn Sink<O, Error = <C as Encoder<O>>::Error> + Send + Sync>,
                         > = Box::pin(sink.buffer(1024));
 
-                        me.active_connections.insert(connection_id, boxed_stream);
+                        me.active_connections
+                            .push(Some((connection_id, boxed_stream)));
 
                         let _ = me.new_sink_sender.send((connection_id, boxed_sink));
+                        let _ = me.membership_sender.send((connection_id, true));
                     }
                     Poll::Ready(Err(e)) => {
-                        if me.active_connections.is_empty() {
+                        if !me.active_connections.iter().any(|conn| conn.is_some()) {
                             return Poll::Ready(Some(Err(e.into())));
                         } else {
                             break;
@@ -183,12 +181,14 @@ impl<
                             Box<dyn Sink<O, Error = <C as Encoder<O>>::Error> + Send + Sync>,
                         > = Box::pin(sink.buffer(1024));
 
-                        me.active_connections.insert(connection_id, boxed_stream);
+                        me.active_connections
+                            .push(Some((connection_id, boxed_stream)));
 
                         let _ = me.new_sink_sender.send((connection_id, boxed_sink));
+                        let _ = me.membership_sender.send((connection_id, true));
                     }
                     Poll::Ready(Err(e)) => {
-                        if me.active_connections.is_empty() {
+                        if !me.active_connections.iter().any(|conn| conn.is_some()) {
                             return Poll::Ready(Some(Err(e.into())));
                         } else {
                             break;
@@ -201,25 +201,53 @@ impl<
             }
         }
 
-        // Poll all active connections for data
-        let mut connections_to_remove = Vec::new();
+        // Poll all active connections for data using fair round-robin cursor
         let mut out = Poll::Pending;
-        for (&connection_id, stream) in self.active_connections.iter_mut() {
-            match stream.as_mut().poll_next(cx) {
-                Poll::Ready(Some(Ok(data))) => {
-                    out = Poll::Ready(Some(Ok((connection_id, data))));
-                    break; // TODO(shadaj): this is unfair
+
+        if !me.active_connections.is_empty() {
+            let start_cursor = me.poll_cursor;
+
+            loop {
+                let (connection_id, stream) =
+                    me.active_connections[me.poll_cursor].as_mut().unwrap();
+                let connection_id = *connection_id; // Copy the ID before borrowing stream
+
+                match stream.as_mut().poll_next(cx) {
+                    Poll::Ready(Some(Ok(data))) => {
+                        out = Poll::Ready(Some(Ok((connection_id, data))));
+                        // Move cursor to next connection for next poll
+                        me.poll_cursor = (me.poll_cursor + 1) % me.active_connections.len();
+                        break;
+                    }
+                    Poll::Ready(Some(Err(_))) | Poll::Ready(None) => {
+                        // Mark connection as removed
+                        let _ = me.membership_sender.send((connection_id, false));
+                        me.active_connections[me.poll_cursor] = None;
+                    }
+                    Poll::Pending => {}
                 }
-                Poll::Ready(Some(Err(_))) | Poll::Ready(None) => {
-                    connections_to_remove.push(connection_id);
+
+                // Move to next connection
+                me.poll_cursor = (me.poll_cursor + 1) % me.active_connections.len();
+
+                // Check if we've completed a full round
+                if me.poll_cursor == start_cursor {
+                    break;
                 }
-                Poll::Pending => {}
             }
         }
 
-        for connection_id in connections_to_remove {
-            self.active_connections.remove(&connection_id);
-        }
+        // Clean up None entries and adjust cursor
+        let mut current_index = 0;
+        let original_cursor = me.poll_cursor;
+
+        me.active_connections.retain(|conn| {
+            if conn.is_none() && current_index < original_cursor {
+                me.poll_cursor -= 1;
+            }
+            current_index += 1;
+            conn.is_some()
+        });
 
         out
     }
