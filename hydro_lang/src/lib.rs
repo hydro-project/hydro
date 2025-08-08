@@ -36,6 +36,7 @@ pub use stream::{NoOrder, Stream, TotalOrder};
 pub mod keyed_optional;
 pub mod keyed_singleton;
 pub mod keyed_stream;
+pub use keyed_stream::KeyedStream;
 
 pub mod singleton;
 pub use singleton::Singleton;
