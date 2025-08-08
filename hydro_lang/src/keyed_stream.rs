@@ -618,7 +618,7 @@ where
         F: Fn(&mut V, V) + 'a,
     {
         let other: Optional<O, Tick<L::Root>, Bounded> = other.into();
-        check_matching_location(&self.underlying.location.root(), &other.location.outer());
+        check_matching_location(&self.underlying.location.root(), other.location.outer());
         let f = comb
             .splice_fn2_borrow_mut_ctx(&self.underlying.location)
             .into();
