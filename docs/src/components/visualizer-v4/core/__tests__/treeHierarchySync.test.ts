@@ -143,7 +143,7 @@ describe('TreeHierarchy/VisState Synchronization Tests', () => {
     });
 
     test('should detect hierarchy inconsistencies', () => {
-      // This test verifies our validation can catch sync issues
+      // This test verifies our assertion catches sync issues
       visState.setContainer('container1', {
         children: ['node1'],
         collapsed: false,
@@ -160,15 +160,19 @@ describe('TreeHierarchy/VisState Synchronization Tests', () => {
         // But don't update visibility properly (simulating the bug we're looking for)
       }
 
-      // Our validation should catch this inconsistency
-      const visibleNodes = visState.visibleNodes;
-      const containerCollapsed = visState.getContainer('container1')?.collapsed;
-      const nodeVisible = visibleNodes.some(n => n.id === 'node1');
-
-      // If container is collapsed, child nodes should not be visible
-      if (containerCollapsed && nodeVisible) {
-        // This would indicate a sync issue
-        expect(false).toBe(true); // Force test failure with descriptive message
+      // Our assertion should catch this inconsistency
+      if (process.env.NODE_ENV !== 'production') {
+        expect(() => {
+          visState.visibleNodes; // This should trigger our assertion
+        }).toThrow(/BUG: Node node1 is in _visibleNodes but its parent container container1 is collapsed/);
+      } else {
+        // In production, just check the inconsistency exists
+        const containerCollapsed = visState.getContainer('container1')?.collapsed;
+        const nodeVisible = visState.visibleNodes.some(n => n.id === 'node1');
+        
+        // If container is collapsed, child nodes should not be visible (this indicates the bug)
+        expect(containerCollapsed).toBe(true);
+        expect(nodeVisible).toBe(true); // This is the bug condition we're detecting
       }
     });
   });

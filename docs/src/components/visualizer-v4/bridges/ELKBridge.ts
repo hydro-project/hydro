@@ -8,6 +8,7 @@
  */
 
 import { VisualizationState } from '../core/VisState';
+import { ContainerPadding } from '../core/ContainerPadding';
 import type { 
   GraphNode, 
   GraphEdge, 
@@ -478,8 +479,15 @@ export class ELKBridge {
     
     if (elkNode.width !== undefined || elkNode.height !== undefined) {
       layoutUpdates.dimensions = {};
-      if (elkNode.width !== undefined) layoutUpdates.dimensions.width = elkNode.width;
-      if (elkNode.height !== undefined) layoutUpdates.dimensions.height = elkNode.height;
+      
+      // Apply container padding logic to ELK results
+      const elkWidth = elkNode.width || 0;
+      const elkHeight = elkNode.height || 0;
+      const container = visState.getContainer(elkNode.id);
+      const adjustedDims = ContainerPadding.adjustPostELKDimensions(elkWidth, elkHeight, container?.collapsed || false);
+      
+      layoutUpdates.dimensions.width = adjustedDims.width;
+      layoutUpdates.dimensions.height = adjustedDims.height;
     }
     
     if (Object.keys(layoutUpdates).length > 0) {

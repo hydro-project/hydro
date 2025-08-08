@@ -104,10 +104,10 @@ describe('Bridge Migration Validation', () => {
       // Verify: Should match original ELKBridge filtering logic
       const topLevelIds = topLevelNodes.map(n => n.id);
       
-      // Original logic: !this.isNodeInAnyContainer(node.id, containers) && !collapsedContainerIds.has(node.id)
+      // With our fix: nodes in collapsed containers are hidden, so only truly top-level nodes appear
       expect(topLevelIds).toContain('topLevel1'); // Not in any container
       expect(topLevelIds).toContain('topLevel2'); // Not in any container
-      expect(topLevelIds).toContain('inCollapsed'); // In collapsed container, so treated as top-level
+      expect(topLevelIds).not.toContain('inCollapsed'); // In collapsed container, so hidden (not top-level)
       expect(topLevelIds).not.toContain('inExpanded'); // In expanded container
       
       // Verify no collapsed containers themselves are included
@@ -261,8 +261,8 @@ describe('Bridge Migration Validation', () => {
       // ReactFlow would not map children of collapsed containers
       expect(parentMap.get('sharedNode')).toBeUndefined();
       
-      // ELK would see sharedNode as top-level (parent is collapsed)
-      expect(topLevelNodes.find(n => n.id === 'sharedNode')).toBeDefined();
+      // With our fix: sharedNode is hidden (in collapsed container), so not in top-level
+      expect(topLevelNodes.find(n => n.id === 'sharedNode')).toBeUndefined();
       
       // ReactFlow would get consistent handle information
       expect(edgeHandles.sourceHandle).toBe('out-port');

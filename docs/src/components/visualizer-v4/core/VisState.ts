@@ -18,6 +18,7 @@ import {
 } from '../shared/types';
 import { LAYOUT_CONSTANTS } from '../shared/config';
 import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand';
+import { ContainerPadding } from './ContainerPadding';
 
 // Constants for consistent string literals
 const HYPER_EDGE_PREFIX = 'hyper_';
@@ -478,38 +479,8 @@ export class VisualizationState implements ContainerHierarchyView {
     const container = this.getContainer(id);
     this._validateEntity(container);
 
-    // Get base dimensions
-    const baseWidth = container.expandedDimensions?.width || LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH;
-    const baseHeight = container.expandedDimensions?.height || LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;
-
-    let result: { width: number; height: number };
-
-    if (container.collapsed) {
-      // Collapsed containers get fixed small dimensions (ignore expanded dimensions)
-      const collapsedHeight = LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + (LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING * 2);
-      result = {
-        width: LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH,
-        height: Math.max(collapsedHeight, LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT)
-      };
-    } else {
-      // Expanded containers get additional height for bottom-right label space
-      const expandedHeight = baseHeight + LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING;
-      result = {
-        width: baseWidth,
-        height: Math.max(expandedHeight, LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT)
-      };
-    }
-
-    // CORE INVARIANT: Container dimensions must be consistent with collapse state
-    if (container.collapsed && (result.width > 300 || result.height > 200)) {
-      throw new Error(`Core invariant violation: Collapsed container ${id} has dimensions ${result.width}x${result.height} but collapsed containers must be small (≤300x200). This indicates a bug in getContainerAdjustedDimensions logic.`);
-    }
-    
-    if (!container.collapsed && (result.width < LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH || result.height < LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT)) {
-      throw new Error(`Core invariant violation: Expanded container ${id} has dimensions ${result.width}x${result.height} but expanded containers must be at least ${LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH}x${LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT}.`);
-    }
-
-    return result;
+    // Use the centralized padding logic
+    return ContainerPadding.getReactFlowDimensions(container);
   }
 
   /**
@@ -668,8 +639,23 @@ export class VisualizationState implements ContainerHierarchyView {
   
   /**
    * Get all visible (non-hidden) nodes with computed position/dimension properties
+   * CRITICAL: Should only contain nodes that are properly visible (not in collapsed containers)
    */
   get visibleNodes() {
+    // ASSERTION: Verify no children of collapsed containers leak through
+    if (process.env.NODE_ENV !== 'production') {
+      const visibleNodeIds = Array.from(this._visibleNodes.keys());
+      for (const nodeId of visibleNodeIds) {
+        const parentContainer = this.getNodeContainer(nodeId);
+        if (parentContainer) {
+          const container = this.getContainer(parentContainer);
+          if (container && container.collapsed) {
+            throw new Error(`BUG: Node ${nodeId} is in _visibleNodes but its parent container ${parentContainer} is collapsed! This should never happen - the business logic must ensure _visibleNodes is correctly maintained.`);
+          }
+        }
+      }
+    }
+
     return Array.from(this._visibleNodes.values()).map(node => {
       // Create a computed view that exposes layout data as direct properties
       const computedNode = {
@@ -1156,6 +1142,18 @@ export class VisualizationState implements ContainerHierarchyView {
     
     // Update container hierarchy using helper
     this._initializeContainerHierarchy(id, container.children);
+    
+    // CRITICAL: If container is created as collapsed, immediately hide its children
+    if (container.collapsed) {
+      // Hide all children of this collapsed container
+      const children = container.children || new Set();
+      for (const childId of children) {
+        const node = this.getGraphNode(childId);
+        if (node) {
+          this.updateNode(childId, { hidden: true });
+        }
+      }
+    }
     
     // Update collapse/expand engine edge index (containers affect edge routing)
     this.collapseExpandEngine.rebuildEdgeIndex();
@@ -1789,6 +1787,9 @@ declare module './VisState.js' {
     setContainerELKFixed(id: string, fixed: boolean): void;
     getContainerELKFixed(id: string): boolean | undefined;
     getContainersRequiringLayout(changedContainerId?: string): import('../shared/types').Container[];
+
+    // Bridge support methods
+    getContainerAdjustedDimensions(id: string): { width: number; height: number };
 
     // Manual position management methods
     setManualPosition(elementId: string, x: number, y: number): void;

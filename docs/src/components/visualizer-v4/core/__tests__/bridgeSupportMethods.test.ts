@@ -212,7 +212,7 @@ describe('VisualizationState Bridge Support Methods', () => {
       const topLevelIds = topLevelNodes.map(n => n.id);
       expect(topLevelIds).toContain('topLevel1');
       expect(topLevelIds).toContain('topLevel2');
-      expect(topLevelIds).toContain('insideCollapsed'); // Nodes in collapsed containers are top-level
+      expect(topLevelIds).not.toContain('insideCollapsed'); // Nodes in collapsed containers are hidden
       
       expect(topLevelIds).not.toContain('insideExpanded'); // In expanded container
       expect(topLevelIds).not.toContain('hidden'); // Hidden nodes are filtered by visibleNodes
@@ -434,7 +434,7 @@ describe('VisualizationState Bridge Support Methods', () => {
       
       const topLevelIds = topLevelNodes.map(n => n.id);
       expect(topLevelIds).toContain('topNode');
-      expect(topLevelIds).toContain('collapsedChild'); // Child of collapsed container is top-level
+      expect(topLevelIds).not.toContain('collapsedChild'); // Child of collapsed container is hidden
       expect(topLevelIds).not.toContain('childNode1'); // In expanded container
       expect(topLevelIds).not.toContain('childNode2'); // In expanded container
       

@@ -89,6 +89,13 @@ describe('ReactFlowBridge', () => {
         'node2': { position: { x: 300, y: 240 }, dimensions: { width: 180, height: 60 } }
       };
       return nodeLayoutMap[id] || null;
+    },
+    // Add the getContainerAdjustedDimensions method that the bridge expects
+    getContainerAdjustedDimensions: (id: string) => {
+      if (id === 'container1') {
+        return { width: 350, height: 250 };
+      }
+      return { width: 200, height: 150 }; // Default dimensions
     }
   });
 
@@ -206,6 +213,12 @@ describe('ReactFlowBridge', () => {
             return { position: { x: 170, y: 225 }, dimensions: { width: 100, height: 40 } };
           }
           return null;
+        },
+        getContainerAdjustedDimensions: (id: string) => {
+          if (id === 'parent_container') {
+            return { width: 200, height: 150 };
+          }
+          return { width: 200, height: 150 }; // Default dimensions
         }
       };
       
