@@ -1,0 +1,52 @@
+.container {
+  margin: 20px 0;
+  padding: 10px;
+  border: 3px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+[data-theme='dark'] {
+  .container {
+    background: #2a2a2a;
+  }
+}
+
+.controls {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.button {
+  margin: 0 10px;
+  padding: 8px 16px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.container svg {
+  width: 100%;
+  height: auto;
+}
+
+.container svg :global(.arrow-line) {
+  stroke: #666;
+}
+
+.container svg :global(.arrowhead) {
+  fill: #666;
+}
+
+[data-theme='dark'] {
+  .container svg :global(.arrow-line) {
+    stroke: white;
+  }
+  
+  .container svg :global(.arrowhead) {
+    fill: white;
+  }
+}
