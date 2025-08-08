@@ -1,0 +1,118 @@
+.container {
+  margin: 20px 0;
+  padding: 10px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+[data-theme='dark'] .container {
+  background: #1a1a1a;
+  border: 2px solid #a0a0a0;
+}
+
+.container > svg {
+  width: 100%;
+  height: auto;
+  padding: 15px;
+}
+
+.container > svg :global(.arrow-line) {
+  stroke: #666;
+}
+
+.container > svg :global(.arrowhead) {
+  fill: #666;
+}
+
+[data-theme='dark'] .container svg :global(.arrow-line) {
+  stroke: #eee;
+}
+  
+[data-theme='dark'] .container svg :global(.arrowhead) {
+  fill: #eee;
+}
+
+.controlsContainer {
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.playControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-theme='dark'] .playControls {
+  background: transparent;
+  border: 3px solid rgba(255, 255, 255, 0.8);
+}
+
+.playButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #0096FF 0%, #0FDBA2 100%);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.playButton:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.playIcon {
+  width: 100%;
+  height: auto;
+  margin-left: 2px; /* Slight offset to center the triangle visually */
+}
+
+.progressContainer {
+  flex: 1;
+  min-width: 120px;
+}
+
+.progressBar {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+[data-theme='dark'] .progressBar {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #0096FF 0%, #0FDBA2 100%);
+  border-radius: 2px;
+  position: relative;
+}
+
+.progressFill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 100%);
+  border-radius: 0 2px 2px 0;
+}
