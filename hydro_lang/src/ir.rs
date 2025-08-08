@@ -2317,18 +2317,6 @@ impl HydroNode {
                 let (input_ident, input_location_id) =
                     input.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                let input_type = *input.metadata().output_type.clone().unwrap().0;
-                let (key_type, value_type) = if let syn::Type::Tuple(tuple) = input_type {
-                    assert_eq!(
-                        tuple.elems.len(),
-                        2,
-                        "ReduceKeyedWatermark input must be a tuple of (key, value)."
-                    );
-                    (tuple.elems[0].clone(), tuple.elems[1].clone())
-                } else {
-                    panic!("ReduceKeyedWatermark input must be a tuple of (key, value).");
-                };
-
                 let (watermark_ident, watermark_location_id) =
                     watermark.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
@@ -2363,7 +2351,7 @@ impl HydroNode {
                                     -> [1]#chain_ident;
 
                                 #fold_ident = #chain_ident
-                                    -> fold::<#lifetime>(|| (::std::collections::HashMap::<#key_type, #value_type>::new(), None), {
+                                    -> fold::<#lifetime>(|| (::std::collections::HashMap::new(), None), {
                                         let __reduce_keyed_fn = #f;
                                         move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
                                             if let Some((k, v)) = opt_payload {
