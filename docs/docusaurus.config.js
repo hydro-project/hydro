@@ -148,7 +148,7 @@ const config = {
             "aria-label": "GitHub Repository"
           },
           {
-            href: "https://discord.gg/537CMYKQ",
+            href: "https://discord.gg/QXKwMNA6RS",
             position: "right",
             className: "header-discord-link",
             "aria-label": "Discord server",
