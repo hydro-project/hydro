@@ -28,7 +28,7 @@ describe('ChatJsonIntegration', () => {
       expect(testData!.metadata.nodeCount).toBeGreaterThan(0);
       expect(testData!.metadata.edgeCount).toBeGreaterThan(0);
       
-      console.log(`✅ Parsed chat.json: ${testData!.metadata.nodeCount} nodes, ${testData!.metadata.edgeCount} edges`);
+      // // console.log(((`✅ Parsed chat.json: ${testData!.metadata.nodeCount} nodes, ${testData!.metadata.edgeCount} edges`)));
     });
 
     it('should handle chat.json visualization with grouping', () => {
@@ -42,7 +42,7 @@ describe('ChatJsonIntegration', () => {
       const containers = testData!.state.visibleContainers;
       expect(Array.isArray(containers)).toBe(true);
       
-      console.log(`✅ Chat.json with grouping: ${containers.length} containers`);
+      // // console.log(((`✅ Chat.json with grouping: ${containers.length} containers`)));
     });
 
     it('should validate chat.json structure', () => {
@@ -60,7 +60,7 @@ describe('ChatJsonIntegration', () => {
       expect(firstNode.id).toBeDefined();
       expect(firstNode.data).toBeDefined();
       
-      console.log(`✅ Chat.json structure valid: ${testData!.rawData.nodes.length} nodes, ${testData!.rawData.edges.length} edges`);
+      // // console.log(((`✅ Chat.json structure valid: ${testData!.rawData.nodes.length} nodes, ${testData!.rawData.edges.length} edges`)));
     });
   });
 
@@ -79,7 +79,7 @@ describe('ChatJsonIntegration', () => {
       expect(parseTime).toBeLessThan(5000);
       expect(result.state).toBeDefined();
       
-      console.log(`✅ Chat.json parsed in ${parseTime.toFixed(2)}ms`);
+      // // console.log(((`✅ Chat.json parsed in ${parseTime.toFixed(2)}ms`)));
     });
 
     it('should maintain data integrity during parsing', () => {
@@ -98,7 +98,7 @@ describe('ChatJsonIntegration', () => {
         expect(edge.id).toBeDefined();
       }
       
-      console.log(`✅ Data integrity verified: ${edges.length} edges checked`);
+      // // console.log(((`✅ Data integrity verified: ${edges.length} edges checked`)));
     });
   });
 
@@ -113,7 +113,7 @@ describe('ChatJsonIntegration', () => {
       expect(groupings.length).toBeGreaterThan(0);
       
       // Log available groupings to see what we actually have
-      console.log(`✅ Available groupings: ${groupings.map(g => g.id).join(', ')}`);
+      // // console.log(((`✅ Available groupings: ${groupings.map(g => g.id).join(', ')}`)));
       
       // Check that we have some valid grouping options
       const groupingIds = groupings.map(g => g.id);
@@ -149,7 +149,7 @@ describe('ChatJsonIntegration', () => {
 
       // Check for the specific bug: edges should have valid sourceHandle/targetHandle
       for (const edge of reactFlowData.edges) {
-        console.log(`[Bug Test] Edge ${edge.id}: sourceHandle=${edge.sourceHandle}, targetHandle=${edge.targetHandle}`);
+        // // console.log(((`[Bug Test] Edge ${edge.id}: sourceHandle=${edge.sourceHandle}, targetHandle=${edge.targetHandle}`)));
         
         // The bug: these should NOT be null (causing the ReactFlow errors)
         // If they are null, ReactFlow can't create the edges
@@ -194,7 +194,7 @@ describe('ChatJsonIntegration', () => {
 
       for (const container of containers) {
         const layout = state.getContainerLayout(container.id);
-        console.log(`[Container Test] ${container.id}: layout=${JSON.stringify(layout)}`);
+        // // console.log(((`[Container Test] ${container.id}: layout=${JSON.stringify(layout)}`)));
         
         // Containers should have valid positions and dimensions
         if (layout?.position) {
@@ -225,7 +225,7 @@ describe('ChatJsonIntegration', () => {
 
       // Check for negative coordinates (bug seen in console: `(-224, 320)`)
       for (const node of reactFlowData.nodes) {
-        console.log(`[Node Position Test] ${node.id}: position=(${node.position.x}, ${node.position.y})`);
+        // // console.log(((`[Node Position Test] ${node.id}: position=(${node.position.x}, ${node.position.y})`)));
         
         // Look for the negative coordinate bug from console logs
         if (node.position.x < -200 || node.position.y < -200) {
@@ -264,7 +264,7 @@ describe('ChatJsonIntegration', () => {
         const edgeLayout = state.getEdgeLayout(edge.id);
         if (edgeLayout?.sections && edgeLayout.sections.length > 0) {
           edgesWithSections++;
-          console.log(`[Edge Sections] ${edge.id}: ${edgeLayout.sections.length} sections`);
+          // // console.log(((`[Edge Sections] ${edge.id}: ${edgeLayout.sections.length} sections`)));
           
           // Validate section structure
           for (const section of edgeLayout.sections) {
@@ -277,11 +277,11 @@ describe('ChatJsonIntegration', () => {
           }
         } else {
           crossContainerEdges++;
-          console.log(`[Cross-Container Edge] ${edge.id}: no sections (crosses containers)`);
+          // // console.log(((`[Cross-Container Edge] ${edge.id}: no sections (crosses containers)`)));
         }
       }
 
-      console.log(`✅ Edge analysis: ${edgesWithSections} with sections, ${crossContainerEdges} cross-container`);
+      // // console.log(((`✅ Edge analysis: ${edgesWithSections} with sections, ${crossContainerEdges} cross-container`)));
       
       // Based on current ELK behavior, all edges should have sections
       // Cross-container edges (e1, e7) now also get sections with bend points

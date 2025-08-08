@@ -89,7 +89,7 @@ import { FileDropZone } from 'visualizer-v4';
 
 function MyComponent() {
   const handleFileLoad = (data: any) => {
-    console.log('Loaded graph data:', data);
+    // // console.log((('Loaded graph data:', data)));
     // Process the loaded JSON data
   };
 

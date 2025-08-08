@@ -52,8 +52,8 @@ state
   });
 
 // Access the graph data
-console.log('Nodes:', state.visibleNodes);
-console.log('Edges:', state.visibleEdges);
+// // console.log((('Nodes:', state.visibleNodes)));
+// // console.log((('Edges:', state.visibleEdges)));
 ```
 
 ### 2. Add Containers (Grouping)
@@ -125,7 +125,7 @@ function InteractiveVisualization() {
   );
 
   const handleNodeClick = (nodeId: string) => {
-    console.log('Node clicked:', nodeId);
+    // // console.log((('Node clicked:', nodeId)));
     // Update node style on click
     state.updateNode(nodeId, { style: NODE_STYLES.SELECTED });
     setState(state); // Trigger re-render

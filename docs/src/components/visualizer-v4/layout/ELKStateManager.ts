@@ -291,7 +291,7 @@ class ContainmentValidator {
   private logValidationStart(): void {
     // Only log validation details in debug mode
     if (process.env.NODE_ENV === 'development') {
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} Checking containment relationships...`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} Checking containment relationships...`)));
     }
   }
 
@@ -299,16 +299,16 @@ class ContainmentValidator {
     if (this.violations.length > 0) {
       console.error(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.ERROR} Found ${this.violations.length} containment violations!`);
     } else if (process.env.NODE_ENV === 'development') {
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.SUCCESS} All containment relationships are valid`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.SUCCESS} All containment relationships are valid`)));
     }
   }
 
   private logContainerValidation(container: Container, containerNode: any, childNodes: any[]): void {
     // Only log detailed container validation in debug mode
     if (process.env.NODE_ENV === 'development') {
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.CONTAINER} Validating container ${container.id}:`);
-      console.log(`  Container bounds: (${containerNode.position?.x || 0}, ${containerNode.position?.y || 0}) ${containerNode.width}x${containerNode.height}`);
-      console.log(`  Child nodes: ${childNodes.length}`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.CONTAINER} Validating container ${container.id}:`)));
+      // // console.log(((`  Container bounds: (${containerNode.position?.x || 0}, ${containerNode.position?.y || 0}) ${containerNode.width}x${containerNode.height}`)));
+      // // console.log(((`  Child nodes: ${childNodes.length}`)));
     }
   }
 
@@ -321,7 +321,7 @@ class ContainmentValidator {
   }
 
   private logSuccess(message: string): void {
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.SUCCESS} ${message}`);
+    // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.SUCCESS} ${message}`)));
   }
 }
 
@@ -453,15 +453,15 @@ class ELKHierarchyBuilder {
     if (layoutDimensions) {
       elkNode.width = layoutDimensions.width;
       elkNode.height = layoutDimensions.height;
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} from VisState.layout: ${layoutDimensions.width}x${layoutDimensions.height} (collapsed=${container.collapsed})`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} from VisState.layout: ${layoutDimensions.width}x${layoutDimensions.height} (collapsed=${container.collapsed})`)));
     }
     // Fallback: check for direct dimensions property
     else if (container.dimensions) {
       elkNode.width = container.dimensions.width;
       elkNode.height = container.dimensions.height;
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} from VisState.dimensions: ${container.dimensions.width}x${container.dimensions.height} (collapsed=${container.collapsed})`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} from VisState.dimensions: ${container.dimensions.width}x${container.dimensions.height} (collapsed=${container.collapsed})`)));
     } else {
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} NO dimensions in VisState (collapsed=${container.collapsed}) - letting ELK calculate`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} NO dimensions in VisState (collapsed=${container.collapsed}) - letting ELK calculate`)));
     }
     // For expanded containers without explicit dimensions, let ELK calculate based on children
 
@@ -488,11 +488,11 @@ class ELKHierarchyBuilder {
     }));
     
     // Log what edges are being sent to ELK
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔥 BUILDING EDGES FOR ELK:`);
-    console.log(`  📊 Total edges: ${elkEdges.length}`);
+    // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔥 BUILDING EDGES FOR ELK:`)));
+    // // console.log(((`  📊 Total edges: ${elkEdges.length}`)));
     
     elkEdges.forEach(edge => {
-      console.log(`    🔗 EDGE ${edge.id}: ${edge.sources[0]} → ${edge.targets[0]}`);
+      // // console.log(((`    🔗 EDGE ${edge.id}: ${edge.sources[0]} → ${edge.targets[0]}`)));
     });
     
     return elkEdges;
@@ -618,7 +618,7 @@ export function createELKStateManager(): ELKStateManager {
     nodes: any[];
     edges: GraphEdge[];
   }> {
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.FULL_LAYOUT} Calculating expanded layout for dimension caching`);
+    // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.FULL_LAYOUT} Calculating expanded layout for dimension caching`)));
     
     logLayoutSummary(nodes, edges, containers);
 
@@ -636,7 +636,7 @@ export function createELKStateManager(): ELKStateManager {
       const layoutedNodes = positionApplicator.applyPositions(layoutResult.children || [], nodes, containers);
 
       // Validate containment relationships
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} CONTAINMENT VALIDATION:`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} CONTAINMENT VALIDATION:`)));
       const validationResult = validator.validateContainment(layoutedNodes, containers);
       
       if (!validationResult.isValid) {
@@ -678,16 +678,16 @@ export function createELKStateManager(): ELKStateManager {
     elkResult: any;
   }> {
     const isSelectiveLayout = changedContainerId !== undefined && changedContainerId !== null;
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${isSelectiveLayout ? '🔄 SELECTIVE' : '🏗️ FULL'}_LAYOUT: ${isSelectiveLayout ? `Changed: ${changedContainerId}` : 'All containers free'}`);
+    // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ${isSelectiveLayout ? '🔄 SELECTIVE' : '🏗️ FULL'}_LAYOUT: ${isSelectiveLayout ? `Changed: ${changedContainerId}` : 'All containers free'}`)));
     
     // For selective layout: Use full hierarchical layout with position fixing
     if (isSelectiveLayout && visualizationState) {
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} 📌 POSITION_FIXING: Setting up container fixed/free states in VisState`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 📌 POSITION_FIXING: Setting up container fixed/free states in VisState`)));
       
       // Use VisState method to set up position fixing - CENTRALIZED LOGIC
       const containersWithFixing = visualizationState.getContainersRequiringLayout(changedContainerId);
       
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🏗️ SELECTIVE_HIERARCHICAL_LAYOUT: Running full layout with position fixing`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🏗️ SELECTIVE_HIERARCHICAL_LAYOUT: Running full layout with position fixing`)));
       
       // Combine regular edges and hyperEdges for ELK layout
       // Ensure hyperEdges have the hidden property for type compatibility
@@ -734,13 +734,13 @@ export function createELKStateManager(): ELKStateManager {
       return { nodes: [], edges: [], elkResult: null };
     }
 
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} 🏗️ CONTAINER_LAYOUT: Building ELK graph from VisState data`);
+    // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🏗️ CONTAINER_LAYOUT: Building ELK graph from VisState data`)));
 
     // Create ELK nodes - ALL configuration comes from VisState
     const elkContainers = visibleContainers.map(container => {
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DEBUG: ${container.id}`);
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍   - collapsed: ${container.collapsed}`);
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍   - layout: ${JSON.stringify(container.layout)}`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DEBUG: ${container.id}`)));
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔍   - collapsed: ${container.collapsed}`)));
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔍   - layout: ${JSON.stringify(container.layout)}`)));
       
       // Get dimensions from VisState layout (handles collapsed/expanded automatically)
       const layout = container.layout || {};
@@ -749,7 +749,7 @@ export function createELKStateManager(): ELKStateManager {
         height: container.collapsed ? SIZES.COLLAPSED_CONTAINER_HEIGHT : (dimensionsCache?.get(container.id)?.height || 300)
       };
 
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍   - final dimensions: ${dimensions.width}x${dimensions.height}`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔍   - final dimensions: ${dimensions.width}x${dimensions.height}`)));
 
       // Get position from VisState layout
       const position = layout.position || { x: 0, y: 0 };
@@ -760,7 +760,7 @@ export function createELKStateManager(): ELKStateManager {
         ? createFixedPositionOptions(position.x, position.y)
         : createFreePositionOptions();
 
-      console.log(`${LOG_PREFIXES.STATE_MANAGER} 📦 CONTAINER: ${container.id} ${dimensions.width}x${dimensions.height} at (${position.x},${position.y}) ${elkFixed ? 'FIXED' : 'FREE'}`);
+      // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 📦 CONTAINER: ${container.id} ${dimensions.width}x${dimensions.height} at (${position.x},${position.y}) ${elkFixed ? 'FIXED' : 'FREE'}`)));
 
       return {
         id: container.id,
@@ -777,9 +777,9 @@ export function createELKStateManager(): ELKStateManager {
       edges: []
     };
 
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} 🚀 CONTAINER_LAYOUT: Running ELK with ${elkContainers.length} containers`);
+    // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🚀 CONTAINER_LAYOUT: Running ELK with ${elkContainers.length} containers`)));
     const layoutResult = await elk.layout(elkGraph);
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} ✅ CONTAINER_LAYOUT: ELK completed`);
+    // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ✅ CONTAINER_LAYOUT: ELK completed`)));
 
     return {
       nodes: [], // Container layout doesn't affect regular nodes
@@ -799,60 +799,60 @@ export function createELKStateManager(): ELKStateManager {
 function logLayoutSummary(nodes: GraphNode[], edges: GraphEdge[], containers: Container[]): void {
   // Only log summary in debug mode
   if (process.env.NODE_ENV === 'development') {
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.SUMMARY}`);
-    console.log(`  Nodes: ${nodes.length}`);
-    console.log(`  Containers: ${containers.length}`);
+    // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.SUMMARY}`)));
+    // // console.log(((`  Nodes: ${nodes.length}`)));
+    // // console.log(((`  Containers: ${containers.length}`)));
     containers.forEach(container => {
-      console.log(`    Container ${container.id}: ${container.children.size} children`);
+      // // console.log(((`    Container ${container.id}: ${container.children.size} children`)));
     });
-    console.log(`  Edges: ${edges.length}`);
+    // // console.log(((`  Edges: ${edges.length}`)));
   }
 }
 
 function logELKInput(elkGraph: ELKGraph): void {
   // Only log ELK input in debug mode
   if (process.env.NODE_ENV === 'development') {
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} ELK CONTAINER ${LOG_PREFIXES.INPUT}:`);
+    // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} ELK CONTAINER ${LOG_PREFIXES.INPUT}:`)));
     logELKContainerHierarchy(elkGraph.children, 0, LOG_PREFIXES.INPUT);
   }
 }
 
 function logELKOutput(layoutResult: any): void {
   // Always log ELK output for hyperedge debugging
-  console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} ELK CONTAINER ${LOG_PREFIXES.OUTPUT}:`);
+  // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} ELK CONTAINER ${LOG_PREFIXES.OUTPUT}:`)));
   if (layoutResult.children) {
     logELKContainerHierarchy(layoutResult.children, 0, LOG_PREFIXES.OUTPUT);
   }
   
   // FOCUSED HYPEREDGE LOGGING: Check for ELK edge routing information
-  console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔥 ELK EDGE ROUTING ANALYSIS:`);
+  // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔥 ELK EDGE ROUTING ANALYSIS:`)));
   if (layoutResult.edges && layoutResult.edges.length > 0) {
-    console.log(`  📊 Found ${layoutResult.edges.length} edges with routing info from ELK`);
+    // // console.log(((`  📊 Found ${layoutResult.edges.length} edges with routing info from ELK`)));
     layoutResult.edges.forEach((edge: any) => {
-      console.log(`    Edge ${edge.id}:`);
-      console.log(`      Sources: ${edge.sources || 'undefined'}`);
-      console.log(`      Targets: ${edge.targets || 'undefined'}`);
+      // // console.log(((`    Edge ${edge.id}:`)));
+      // // console.log(((`      Sources: ${edge.sources || 'undefined'}`)));
+      // // console.log(((`      Targets: ${edge.targets || 'undefined'}`)));
       
       if (edge.sections && edge.sections.length > 0) {
-        console.log(`      🛣️  Sections (${edge.sections.length}):`);
+        // // console.log(((`      🛣️  Sections (${edge.sections.length}):`)));
         edge.sections.forEach((section: any, i: number) => {
-          console.log(`        Section ${i}:`);
+          // // console.log(((`        Section ${i}:`)));
           if (section.startPoint) {
-            console.log(`          Start: (${section.startPoint.x}, ${section.startPoint.y})`);
+            // // console.log(((`          Start: (${section.startPoint.x}, ${section.startPoint.y})`)));
           }
           if (section.endPoint) {
-            console.log(`          End: (${section.endPoint.x}, ${section.endPoint.y})`);
+            // // console.log(((`          End: (${section.endPoint.x}, ${section.endPoint.y})`)));
           }
           if (section.bendPoints && section.bendPoints.length > 0) {
-            console.log(`          Bend points: ${section.bendPoints.map((bp: any) => `(${bp.x},${bp.y})`).join(', ')}`);
+            // // console.log(((`          Bend points: ${section.bendPoints.map((bp: any) => `(${bp.x},${bp.y})`).join(', ')}`)));
           }
         });
       } else {
-        console.log(`      ⚠️  No sections/routing info for edge ${edge.id}`);
+        // // console.log(((`      ⚠️  No sections/routing info for edge ${edge.id}`)));
       }
     });
   } else {
-    console.log(`  ⚠️  No edge routing information provided by ELK`);
+    // // console.log(((`  ⚠️  No edge routing information provided by ELK`)));
   }
 }
 
@@ -865,10 +865,10 @@ function logELKContainerHierarchy(nodes: any[], depth: number, type: string): vo
         ? `width=${node.width || 'undefined'}, height=${node.height || 'undefined'}`
         : `x=${node.x}, y=${node.y}, width=${node.width}, height=${node.height}`;
       
-      console.log(`${indent}${LOG_PREFIXES.CONTAINER} CONTAINER ${type} ${node.id}: children=${node.children.length}, ${dimensionInfo}`);
+      // // console.log(((`${indent}${LOG_PREFIXES.CONTAINER} CONTAINER ${type} ${node.id}: children=${node.children.length}, ${dimensionInfo}`)));
       
       if (type === LOG_PREFIXES.INPUT && node.layoutOptions) {
-        console.log(`${indent}   layoutOptions:`, node.layoutOptions);
+        // // console.log(((`${indent}   layoutOptions:`, node.layoutOptions)));
       }
       
       logELKContainerHierarchy(node.children, depth + 1, type);

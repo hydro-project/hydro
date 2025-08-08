@@ -67,13 +67,15 @@ export class ContainerCollapseExpandEngine {
     if (container.collapsed) return; // Already collapsed
 
     console.log(`[COLLAPSE] Starting collapse of container ${containerId}`);
+    const activeHyperEdges = Array.from(this.state.hyperEdges.values()).filter((he: any) => !he.hidden);
+    console.log(`[COLLAPSE] Before collapse - visible edges:`, this.state.visibleEdges.length, 'active hyperEdges:', activeHyperEdges.length);
 
     // 1. First, recursively collapse any child containers (bottom-up)
     this._collapseChildContainers(containerId);
 
     // 2. Find all edges that cross the container boundary BEFORE hiding children
     const crossingEdges = this._findCrossingEdges(containerId);
-    console.log(`[COLLAPSE] Found ${crossingEdges.length} crossing edges`);
+    // // console.log(((`[COLLAPSE] Found ${crossingEdges.length} crossing edges`)));
 
     // 3. Mark container as collapsed and hide children
     container.collapsed = true;
@@ -90,7 +92,7 @@ export class ContainerCollapseExpandEngine {
 
     // 4. Group crossing edges by external endpoint (using dynamic visible ancestor lookup)
     const edgeGroups = this._groupEdgesByCurrentExternalEndpoint(crossingEdges, containerId);
-    console.log(`[COLLAPSE] Grouped into ${edgeGroups.size} external endpoints`);
+    // // console.log(((`[COLLAPSE] Grouped into ${edgeGroups.size} external endpoints`)));
 
     // 6. Create hyperedges for each group
     this._createHyperedgesFromGroups(containerId, edgeGroups);
@@ -98,7 +100,9 @@ export class ContainerCollapseExpandEngine {
     // 7. Hide the original crossing edges
     this._hideCrossingEdges(crossingEdges);
 
-    console.log(`[COLLAPSE] Completed collapse of container ${containerId}`);
+    const activeHyperEdgesAfter = Array.from(this.state.hyperEdges.values()).filter((he: any) => !he.hidden);
+    // console.log((`[COLLAPSE] After collapse - visible edges:`, this.state.visibleEdges.length, 'active hyperEdges:', activeHyperEdgesAfter.length));
+    // console.log((`[COLLAPSE] Completed collapse of container ${containerId}`));
   }
 
   /**
@@ -114,7 +118,7 @@ export class ContainerCollapseExpandEngine {
     
     if (!container.collapsed) return; // Already expanded
 
-    console.log(`[EXPAND] Starting expansion of container ${containerId}`);
+    // // console.log(((`[EXPAND] Starting expansion of container ${containerId}`)));
 
     // 1. Mark container as expanded and show children
     container.collapsed = false;
@@ -122,7 +126,7 @@ export class ContainerCollapseExpandEngine {
 
     // 2. Find all hyperedges connected to this container
     const containerHyperedges = this._findContainerHyperedges(containerId);
-    console.log(`[EXPAND] Found ${containerHyperedges.length} hyperedges to process`);
+    // // console.log(((`[EXPAND] Found ${containerHyperedges.length} hyperedges to process`)));
 
     // 4. Process each hyperedge using the updated leaf mapping
     containerHyperedges.forEach(hyperEdge => {
@@ -132,17 +136,21 @@ export class ContainerCollapseExpandEngine {
     // 5. Then recursively expand any child containers (top-down)
     this._expandChildContainers(containerId);
 
-    console.log(`[EXPAND] Completed expansion of container ${containerId}`);
+    // // console.log(((`[EXPAND] Completed expansion of container ${containerId}`)));
   }
 
   // ============ Container State Management ============
 
   private _collapseChildContainers(containerId: string): void {
     const children = this.state.getContainerChildren(containerId);
+    console.log(`[COLLAPSE] Container ${containerId} has ${children.size} children:`, Array.from(children));
     for (const childId of children) {
       const childContainer = this.state.getContainer(childId);
       if (childContainer) {
+        console.log(`[COLLAPSE] Recursively collapsing child container ${childId}`);
         this.collapseContainer(childId); // Recursive collapse
+      } else {
+        console.log(`[COLLAPSE] Child ${childId} is not a container (probably a node)`);
       }
     }
   }
@@ -287,7 +295,7 @@ export class ContainerCollapseExpandEngine {
       });
     }
     
-    console.log(`[CREATE] Creating hyperedge ${hyperEdgeId} aggregating ${originalEndpoints.size} edges`);
+    // // console.log(((`[CREATE] Creating hyperedge ${hyperEdgeId} aggregating ${originalEndpoints.size} edges`)));
     
     this.state.setHyperEdge(hyperEdgeId, {
       source: sourceId,
@@ -323,12 +331,12 @@ export class ContainerCollapseExpandEngine {
    * Ground a hyperedge: convert it back to edges using current visible ancestors
    */
   private _groundHyperedgeWithLeafMapping(hyperEdge: any, expandingContainerId: string): void {
-    console.log(`[GROUND] Grounding hyperedge ${hyperEdge.id}: ${hyperEdge.source} → ${hyperEdge.target}`);
-    console.log(`[GROUND] HyperEdge has originalEndpoints:`, !!hyperEdge.originalEndpoints);
-    console.log(`[GROUND] OriginalEndpoints size:`, hyperEdge.originalEndpoints?.size || 0);
+    // // console.log(((`[GROUND] Grounding hyperedge ${hyperEdge.id}: ${hyperEdge.source} → ${hyperEdge.target}`)));
+    // // console.log(((`[GROUND] HyperEdge has originalEndpoints:`, !!hyperEdge.originalEndpoints)));
+    // // console.log(((`[GROUND] OriginalEndpoints size:`, hyperEdge.originalEndpoints?.size || 0)));
 
     if (!hyperEdge.originalEndpoints) {
-      console.log(`[GROUND] Warning: hyperedge ${hyperEdge.id} has no originalEndpoints`);
+      // // console.log(((`[GROUND] Warning: hyperedge ${hyperEdge.id} has no originalEndpoints`)));
       hyperEdge.hidden = true;
       return;
     }
@@ -337,20 +345,20 @@ export class ContainerCollapseExpandEngine {
 
     // For each original edge that was aggregated into this hyperedge
     for (const [edgeId, originalEndpoint] of hyperEdge.originalEndpoints) {
-      console.log(`[GROUND] Processing edge ${edgeId} with original endpoints:`, originalEndpoint);
+      // // console.log(((`[GROUND] Processing edge ${edgeId} with original endpoints:`, originalEndpoint)));
       
       // Try to find the original edge (could be regular edge or hyperedge)
       const originalEdge = this.state.getGraphEdge(edgeId);
       const originalHyperEdge = this.state.getHyperEdge(edgeId);
       
       if (!originalEdge && !originalHyperEdge) {
-        console.log(`[GROUND] Warning: original edge/hyperedge ${edgeId} not found in state`);
+        // // console.log(((`[GROUND] Warning: original edge/hyperedge ${edgeId} not found in state`)));
         continue;
       }
 
       // If this was originally a hyperedge, we need to recursively process it
       if (originalHyperEdge) {
-        console.log(`[GROUND] Found original hyperedge ${edgeId}, recursively processing its originalEndpoints`);
+        // // console.log(((`[GROUND] Found original hyperedge ${edgeId}, recursively processing its originalEndpoints`)));
         
         // Recursively process the original hyperedge's endpoints
         if (originalHyperEdge.originalEndpoints) {
@@ -369,13 +377,13 @@ export class ContainerCollapseExpandEngine {
 
     // Mark the parent hyperedge as processed
     hyperEdge.hidden = true;
-    console.log(`[GROUND] Marked hyperedge ${hyperEdge.id} as hidden. Processed any edges: ${anyEdgeProcessed}`);
+    // // console.log(((`[GROUND] Marked hyperedge ${hyperEdge.id} as hidden. Processed any edges: ${anyEdgeProcessed}`)));
   }
 
   private _processOriginalEndpoint(edgeId: string, originalEndpoint: OriginalEndpoint): void {
     const originalEdge = this.state.getGraphEdge(edgeId);
     if (!originalEdge) {
-      console.log(`[GROUND] Warning: cannot process edge ${edgeId} - not found in graphEdges`);
+      // // console.log(((`[GROUND] Warning: cannot process edge ${edgeId} - not found in graphEdges`)));
       return;
     }
 
@@ -383,23 +391,23 @@ export class ContainerCollapseExpandEngine {
     const currentSource = this._findCurrentVisibleAncestor(originalEndpoint.source);
     const currentTarget = this._findCurrentVisibleAncestor(originalEndpoint.target);
 
-    console.log(`[GROUND] Edge ${edgeId}: ${originalEndpoint.source}→${originalEndpoint.target} now ${currentSource}→${currentTarget}`);
-    console.log(`[GROUND] Edge ${edgeId} current state: hidden=${originalEdge.hidden}`);
+    // // console.log(((`[GROUND] Edge ${edgeId}: ${originalEndpoint.source}→${originalEndpoint.target} now ${currentSource}→${currentTarget}`)));
+    // // console.log(((`[GROUND] Edge ${edgeId} current state: hidden=${originalEdge.hidden}`)));
 
     // If both endpoints are visible leaf nodes, restore the original edge
     if (this._areBothVisibleLeafNodes(currentSource, currentTarget)) {
-      console.log(`[GROUND] Restoring original edge ${edgeId}`);
+      // // console.log(((`[GROUND] Restoring original edge ${edgeId}`)));
       this.state.updateEdge(edgeId, { hidden: false });
     } else {
       // At least one endpoint is a container - create intermediate hyperedge if valid
       if (this._shouldCreateIntermediateHyperedge(currentSource, currentTarget)) {
-        console.log(`[GROUND] Creating intermediate hyperedge for edge ${edgeId}: ${currentSource} → ${currentTarget}`);
+        // // console.log(((`[GROUND] Creating intermediate hyperedge for edge ${edgeId}: ${currentSource} → ${currentTarget}`)));
         this._createIntermediateHyperedge(edgeId, currentSource, currentTarget, originalEndpoint, originalEdge.style);
       } else {
-        console.log(`[GROUND] Leaving edge ${edgeId} hidden - will be restored when both endpoints are visible`);
-        console.log(`[GROUND] - currentSource ${currentSource} is visible leaf: ${this._areBothVisibleLeafNodes(currentSource, currentSource)}`);
-        console.log(`[GROUND] - currentTarget ${currentTarget} is visible leaf: ${this._areBothVisibleLeafNodes(currentTarget, currentTarget)}`);
-        console.log(`[GROUND] - shouldCreateIntermediateHyperedge returned: ${this._shouldCreateIntermediateHyperedge(currentSource, currentTarget)}`);
+        // // console.log(((`[GROUND] Leaving edge ${edgeId} hidden - will be restored when both endpoints are visible`)));
+        // // console.log(((`[GROUND] - currentSource ${currentSource} is visible leaf: ${this._areBothVisibleLeafNodes(currentSource, currentSource)}`)));
+        // // console.log(((`[GROUND] - currentTarget ${currentTarget} is visible leaf: ${this._areBothVisibleLeafNodes(currentTarget, currentTarget)}`)));
+        // // console.log(((`[GROUND] - shouldCreateIntermediateHyperedge returned: ${this._shouldCreateIntermediateHyperedge(currentSource, currentTarget)}`)));
       }
     }
   }
@@ -423,19 +431,19 @@ export class ContainerCollapseExpandEngine {
   private _createIntermediateHyperedge(edgeId: string, currentSource: string, currentTarget: string, originalEndpoint: OriginalEndpoint, style: string): void {
     const newHyperEdgeId = `${HYPER_EDGE_PREFIX}${currentSource}_to_${currentTarget}`;
     
-    console.log(`[GROUND] Creating intermediate hyperedge: ${newHyperEdgeId}`);
+    // // console.log(((`[GROUND] Creating intermediate hyperedge: ${newHyperEdgeId}`)));
     
     // Check if hyperedge already exists and merge if so
     const existingHyperEdge = this.state.getHyperEdge(newHyperEdgeId);
     if (existingHyperEdge) {
       // Add to existing hyperedge AND ensure it's visible
-      console.log(`[GROUND] Merging into existing hyperedge ${newHyperEdgeId}, current size: ${existingHyperEdge.originalEndpoints.size}, hidden: ${existingHyperEdge.hidden}`);
+      // // console.log(((`[GROUND] Merging into existing hyperedge ${newHyperEdgeId}, current size: ${existingHyperEdge.originalEndpoints.size}, hidden: ${existingHyperEdge.hidden}`)));
       existingHyperEdge.originalEndpoints.set(edgeId, originalEndpoint);
       existingHyperEdge.hidden = false; // CRITICAL FIX: Ensure it's visible
-      console.log(`[GROUND] After merge, size: ${existingHyperEdge.originalEndpoints.size}, hidden: ${existingHyperEdge.hidden}`);
+      // // console.log(((`[GROUND] After merge, size: ${existingHyperEdge.originalEndpoints.size}, hidden: ${existingHyperEdge.hidden}`)));
     } else {
       // Create new hyperedge
-      console.log(`[GROUND] Creating new hyperedge ${newHyperEdgeId}`);
+      // // console.log(((`[GROUND] Creating new hyperedge ${newHyperEdgeId}`)));
       const newOriginalEndpoints = new Map<string, OriginalEndpoint>();
       newOriginalEndpoints.set(edgeId, originalEndpoint);
       

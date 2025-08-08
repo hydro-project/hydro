@@ -20,6 +20,17 @@ const TYPOGRAPHY = {
   UI_SMALL: '12px'
 };
 
+// Helper function to calculate container depth in hierarchy
+function getContainerDepth(visState, containerId, depth = 0) {
+  const container = visState.getContainer(containerId);
+  if (!container) return depth;
+  
+  const parentId = visState.getNodeContainer(containerId);
+  if (!parentId) return depth;
+  
+  return getContainerDepth(visState, parentId, depth + 1);
+}
+
 function VisV4Component() {
   const location = useLocation();
   const [createVisualizationState, setCreateVisualizationState] = React.useState(null);
@@ -287,15 +298,36 @@ function VisV4Component() {
 
   // Pack all containers (collapse all)
   const handlePackAll = React.useCallback(async () => {
+    console.log('🔥 handlePackAll clicked!'); // Debug log
     if (!currentVisualizationState) return;
     
     console.log('📦 Packing all containers...');
     setIsLayoutRunning(true);
     
     try {
-      const containers = currentVisualizationState.visibleContainers;
-      containers.forEach(container => {
+      // Get ALL containers (not just visible ones) to ensure we collapse nested hierarchies
+      const allContainers = Array.from(currentVisualizationState.containers.values());
+      console.log(`📦 Found ${allContainers.length} total containers:`, allContainers.map(c => `${c.id}(collapsed:${c.collapsed})`));
+      
+      // Sort containers by depth (deepest first) for bottom-up collapse
+      const containersByDepth = allContainers
+        .filter(container => !container.collapsed)
+        .sort((a, b) => {
+          const depthA = getContainerDepth(currentVisualizationState, a.id);
+          const depthB = getContainerDepth(currentVisualizationState, b.id);
+          return depthB - depthA; // Deepest first
+        });
+      
+      console.log(`📦 Collapsing ${containersByDepth.length} containers in depth order:`);
+      containersByDepth.forEach(container => {
+        const depth = getContainerDepth(currentVisualizationState, container.id);
+        console.log(`  📦 ${container.id} at depth ${depth}`);
+      });
+      
+      // Collapse in depth order (deepest first)
+      containersByDepth.forEach(container => {
         if (!container.collapsed) {
+          console.log(`📦 Collapsing container ${container.id} at depth ${getContainerDepth(currentVisualizationState, container.id)}`);
           currentVisualizationState.collapseContainer(container.id);
         }
       });

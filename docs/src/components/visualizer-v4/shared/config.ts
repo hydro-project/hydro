@@ -176,7 +176,11 @@ export const ELK_LAYOUT_OPTIONS = {
   'elk.spacing.edgeNode': LAYOUT_SPACING.EDGE_TO_NODE.toString(),
   'elk.spacing.edgeEdge': LAYOUT_SPACING.EDGE_TO_EDGE.toString(),
   'elk.spacing.componentComponent': LAYOUT_SPACING.COMPONENT_TO_COMPONENT.toString(),
-  'elk.layered.spacing.nodeNodeBetweenLayers': '25'  // Match Visualizer layer separation
+  'elk.layered.spacing.nodeNodeBetweenLayers': '25',  // Match Visualizer layer separation
+  
+  // CRITICAL: Force ELK to respect container dimensions (prevents size explosion)
+  'elk.nodeSize.constraints': 'FIXED_SIZE',           // Don't resize containers to fit content
+  'elk.nodeSize.options': 'DEFAULT_MINIMUM_SIZE'      // Respect our specified dimensions
 };
 
 export type ELKAlgorithm = typeof ELK_ALGORITHMS[keyof typeof ELK_ALGORITHMS];

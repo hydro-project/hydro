@@ -16,7 +16,7 @@ describe('FileDropZone Integration', () => {
     // Test component props interface
     const testProps = {
       onFileLoad: (data: any) => {
-        console.log('File loaded:', data);
+        // // console.log((('File loaded:', data)));
       },
       hasData: false,
       className: 'test-class'

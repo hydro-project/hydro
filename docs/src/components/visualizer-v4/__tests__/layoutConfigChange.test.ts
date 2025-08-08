@@ -19,7 +19,7 @@ describe('Layout Configuration Changes', () => {
     const algorithms = ['mrtree', 'layered', 'force', 'stress', 'radial'] as const;
     
     for (const algorithm of algorithms) {
-      console.log(`Testing algorithm: ${algorithm}`);
+      // // console.log(((`Testing algorithm: ${algorithm}`)));
       
       const bridge = new ELKBridge({ algorithm });
       await bridge.layoutVisState(visState);
@@ -34,7 +34,7 @@ describe('Layout Configuration Changes', () => {
       expect(typeof node1Layout?.position?.x).toBe('number');
       expect(typeof node1Layout?.position?.y).toBe('number');
       
-      console.log(`✅ Algorithm ${algorithm} completed successfully`);
+      // // console.log(((`✅ Algorithm ${algorithm} completed successfully`)));
     }
   });
 
@@ -62,6 +62,6 @@ describe('Layout Configuration Changes', () => {
     expect(typeof newPosition?.x).toBe('number');
     expect(typeof newPosition?.y).toBe('number');
     
-    console.log('✅ Dynamic layout config update completed successfully');
+    // // console.log((('✅ Dynamic layout config update completed successfully')));
   });
 });

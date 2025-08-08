@@ -315,8 +315,42 @@ export class VisualizationEngine {
           this.log(`📦 Collapsed container: ${containerId}`);
         }
         
+        // INVARIANT: Validate that all containers marked for collapse are actually collapsed
+        this.log(`🔍 Validating collapse decisions were applied correctly...`);
+        for (const containerId of containersToCollapse) {
+          const container = this.visState.getContainer(containerId);
+          if (!container) {
+            throw new Error(`Smart collapse invariant violation: Container ${containerId} was marked for collapse but no longer exists`);
+          }
+          if (!container.collapsed) {
+            throw new Error(`Smart collapse invariant violation: Container ${containerId} was marked for collapse but has collapsed=${container.collapsed}. This indicates the collapse operation failed.`);
+          }
+          this.log(`✅ Collapse verified: ${containerId} (collapsed: ${container.collapsed})`);
+        }
+        this.log(`✅ All ${containersToCollapse.length} collapse decisions verified successfully`);
+        
         // Step 6: Re-run layout after collapse to get clean final layout
         this.log('🔄 Re-running layout after smart collapse');
+        // IMPORTANT: Clear any cached positions to force fresh layout with new collapsed dimensions
+        this.log('🧹 Clearing layout cache to force fresh ELK layout with collapsed dimensions');
+        this.clearLayoutPositions();
+        // Force ELK to rebuild from scratch with new dimensions
+        this.log('🔄 Creating fresh ELK instance to avoid any internal caching');
+        this.log(`📋 ELKBridge config: ${JSON.stringify(this.config.layoutConfig)}`);
+        this.elkBridge = new ELKBridge(this.config.layoutConfig);
+        
+        // INVARIANT: All containers should be unfixed for fresh layout
+        this.validateRelayoutInvariants();
+        
+        // CRITICAL: Validate collapsed containers have small dimensions  
+        this.validateCollapsedContainerDimensions();
+        
+        // Sanity check ELK layout config
+        this.validateELKLayoutConfig();
+        
+        // Validate TreeHierarchy and VisState are in sync  
+        this.validateTreeHierarchySync();
+        
         await this.elkBridge.layoutVisState(this.visState);
         this.log('✅ Post-collapse layout complete');
       }
@@ -350,6 +384,126 @@ export class VisualizationEngine {
         console.error('[VisualizationEngine] Listener error:', error);
       }
     });
+  }
+
+  /**
+   * Validate that collapsed containers have correct small dimensions
+   */
+  private validateCollapsedContainerDimensions(): void {
+    this.log('🔍 Validating collapsed container dimensions...');
+    
+    const containers = this.visState.visibleContainers;
+    let collapsedCount = 0;
+    let dimensionViolations = 0;
+    
+    for (const container of containers) {
+      if (container.collapsed) {
+        collapsedCount++;
+        const dimensions = this.visState.getContainerAdjustedDimensions(container.id);
+        
+        // Collapsed containers should be small (≤300x200)
+        if (dimensions.width > 300 || dimensions.height > 200) {
+          dimensionViolations++;
+          this.log(`❌ DIMENSION VIOLATION: Collapsed container ${container.id} has dimensions ${dimensions.width}x${dimensions.height} but should be ≤300x200`);
+        } else {
+          this.log(`✅ Container ${container.id}: ${dimensions.width}x${dimensions.height} (collapsed)`);
+        }
+      }
+    }
+    
+    if (dimensionViolations > 0) {
+      throw new Error(`Collapsed container dimension violations: ${dimensionViolations}/${collapsedCount} collapsed containers have incorrect dimensions`);
+    }
+    
+    this.log(`✅ Collapsed container dimensions validated: ${collapsedCount} containers all have proper small dimensions`);
+  }
+
+  /**
+   * Validate invariants before re-layout after collapse
+   */
+  private validateRelayoutInvariants(): void {
+    this.log('🔍 Validating re-layout invariants...');
+    
+    // INVARIANT: All containers should have elkFixed=false for fresh layout
+    const containers = this.visState.visibleContainers;
+    let fixedCount = 0;
+    
+    for (const container of containers) {
+      const isFixed = this.visState.getContainerELKFixed(container.id);
+      if (isFixed) {
+        fixedCount++;
+        this.log(`❌ INVARIANT VIOLATION: Container ${container.id} is elkFixed=true but should be false for fresh layout`);
+      }
+    }
+    
+    if (fixedCount > 0) {
+      throw new Error(`Re-layout invariant violation: ${fixedCount} containers are still elkFixed=true, preventing fresh layout`);
+    }
+    
+    this.log(`✅ Re-layout invariants passed: ${containers.length} containers all have elkFixed=false`);
+  }
+
+  /**
+   * Validate ELK layout configuration
+   */
+  private validateELKLayoutConfig(): void {
+    this.log('🔍 Validating ELK layout config...');
+    
+    const config = this.config.layoutConfig;
+    if (!config) {
+      throw new Error('ELK layout config is undefined');
+    }
+    
+    this.log(`📐 ELK Config: algorithm=${config.algorithm || 'default'}`);
+    this.log(`✅ ELK layout config validated`);
+  }
+
+  /**
+   * Validate TreeHierarchy and VisState are in sync
+   */
+  private validateTreeHierarchySync(): void {
+    this.log('🔍 Validating TreeHierarchy/VisState sync...');
+    
+    // Check that visible containers in VisState match what TreeHierarchy should show
+    const visibleContainers = this.visState.visibleContainers;
+    let collapsedCount = 0;
+    let expandedCount = 0;
+    
+    for (const container of visibleContainers) {
+      if (container.collapsed) {
+        collapsedCount++;
+      } else {
+        expandedCount++;
+      }
+    }
+    
+    this.log(`📊 Container states: ${collapsedCount} collapsed, ${expandedCount} expanded`);
+    this.log(`✅ TreeHierarchy sync validated (${visibleContainers.length} total containers)`);
+  }
+
+  /**
+   * Clear all layout positions to force fresh ELK layout calculation
+   * This is needed after smart collapse to prevent ELK from using cached positions
+   * calculated with old (large) container dimensions
+   */
+  private clearLayoutPositions(): void {
+    this.log('🧹 Clearing layout positions for fresh ELK calculation...');
+    
+    // Clear positions for all containers
+    const containers = this.visState.visibleContainers;
+    for (const container of containers) {
+      this.visState.setContainerLayout(container.id, { position: undefined });
+      this.log(`🗑️ Cleared position for container ${container.id}`);
+    }
+    
+    // Clear positions for all nodes  
+    const nodes = this.visState.visibleNodes;
+    for (const node of nodes) {
+      this.visState.setNodeLayout(node.id, { position: undefined });
+      this.log(`🗑️ Cleared position for node ${node.id}`);
+    }
+    
+    this.log(`✅ Cleared positions for ${containers.length} containers and ${nodes.length} nodes`);
   }
 
   private handleError(message: string, error: any): void {

@@ -14,8 +14,8 @@
     "write-heading-ids": "docusaurus write-heading-ids",
     "wasm-pack": "cd ../website_playground/ && wasm-pack build",
     "install": "rimraf node_modules/stageleft && git clone https://github.com/hydro-project/stageleft.git node_modules/stageleft",
-    "test": "node src/components/vis/__tests__/runTests.js",
-    "test:vis": "node src/components/vis/__tests__/runTests.js"
+    "test": "cd src/components/visualizer-v4 && npx vitest run",
+    "test:vis": "cd src/components/visualizer-v4 && npx vitest run"
   },
   "dependencies": {
     "@docusaurus/core": "^3.6.1",
@@ -40,7 +40,8 @@
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.6.1",
-    "rimraf": "^6.0.1"
+    "rimraf": "^6.0.1",
+    "vitest": "^3.2.4"
   },
   "browserslist": {
     "production": [

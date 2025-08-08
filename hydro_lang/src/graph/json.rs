@@ -369,7 +369,7 @@ where
             node_assignments_choices.insert("backtrace".to_string(), serde_json::Value::Object(backtrace_assignments));
         }
 
-        // Create the final JSON structure in the format expected by the visualizer
+          // Create the final JSON structure in the format expected by the visualizer
         let node_type_definitions = Self::get_node_type_definitions();
         let legend_items = Self::get_legend_items();
 

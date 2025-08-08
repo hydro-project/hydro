@@ -27,7 +27,7 @@ export class ReactFlowConverter {
    * Convert VisualizationState to ReactFlow format - SAME API as alpha
    */
   convert(visState: VisualizationState): ReactFlowData {
-    console.log('[ReactFlowConverter] 🔄 Converting with bridge architecture...');
+    // // console.log((('[ReactFlowConverter] 🔄 Converting with bridge architecture...')));
     return this.bridge.visStateToReactFlow(visState);
   }
 
@@ -35,7 +35,7 @@ export class ReactFlowConverter {
    * Legacy method for compatibility
    */
   convertNodes(nodes: any[]): any[] {
-    console.log('[ReactFlowConverter] ⚠️ convertNodes is deprecated, use convert() instead');
+    // // console.log((('[ReactFlowConverter] ⚠️ convertNodes is deprecated, use convert() instead')));
     return nodes.map(node => ({
       id: node.id,
       type: 'default',
@@ -48,7 +48,7 @@ export class ReactFlowConverter {
    * Legacy method for compatibility
    */
   convertEdges(edges: any[]): any[] {
-    console.log('[ReactFlowConverter] ⚠️ convertEdges is deprecated, use convert() instead');
+    // // console.log((('[ReactFlowConverter] ⚠️ convertEdges is deprecated, use convert() instead')));
     return edges.map(edge => ({
       id: edge.id,
       source: edge.source,

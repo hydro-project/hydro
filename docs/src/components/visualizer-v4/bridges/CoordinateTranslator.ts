@@ -66,7 +66,7 @@ export class CoordinateTranslator {
       y: elkCoords.y  // Already relative to parent container
     };
     
-    console.log(`[CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (${elkCoords.x}, ${elkCoords.y}) are already relative to container ${parentContainer.id} - using as-is`);
+    // // console.log(((`[CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (${elkCoords.x}, ${elkCoords.y}) are already relative to container ${parentContainer.id} - using as-is`)));
     
     return relativeCoords;
   }
@@ -101,7 +101,7 @@ export class CoordinateTranslator {
       y: reactFlowCoords.y + parentContainer.y
     };
     
-    console.log(`[CoordinateTranslator] ReactFlow→ELK: relative(${reactFlowCoords.x}, ${reactFlowCoords.y}) → absolute(${absoluteCoords.x}, ${absoluteCoords.y}) within container ${parentContainer.id}`);
+    // // console.log(((`[CoordinateTranslator] ReactFlow→ELK: relative(${reactFlowCoords.x}, ${reactFlowCoords.y}) → absolute(${absoluteCoords.x}, ${absoluteCoords.y}) within container ${parentContainer.id}`)));
     
     return absoluteCoords;
   }
@@ -157,7 +157,7 @@ export class CoordinateTranslator {
       return false;
     }
     
-    console.log('[CoordinateTranslator] ✅ Coordinate conversion validated successfully');
+    // // console.log((('[CoordinateTranslator] ✅ Coordinate conversion validated successfully')));
     return true;
   }
   

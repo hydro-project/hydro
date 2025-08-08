@@ -118,7 +118,7 @@ Visualize aggregated edges as special hyper-edges:
 ```typescript
 const eventHandlers = {
   onNodeClick: (event, node) => {
-    console.log('Clicked:', node.id);
+    // // console.log((('Clicked:', node.id)));
   },
   onNodeDoubleClick: (event, node) => {
     // Toggle container collapse
@@ -130,7 +130,7 @@ const eventHandlers = {
     }
   },
   onEdgeClick: (event, edge) => {
-    console.log('Edge clicked:', edge.id);
+    // // console.log((('Edge clicked:', edge.id)));
   }
 };
 

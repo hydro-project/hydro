@@ -6,12 +6,12 @@
 // import { runLayoutBoundaryTests } from './layoutBoundaries.test.js';
 
 async function main() {
-  console.log('🧪 Running Layout Boundary Tests Only...\n');
+  // // console.log((('🧪 Running Layout Boundary Tests Only...\n')));
   
   try {
     // await runLayoutBoundaryTests();
-    console.log('Layout boundary tests are temporarily disabled');
-    console.log('\n✅ Layout Boundary Tests Completed Successfully!\n');
+    // // console.log((('Layout boundary tests are temporarily disabled')));
+    // // console.log((('\n✅ Layout Boundary Tests Completed Successfully!\n')));
     process.exit(0);
   } catch (error) {
     console.error('\n❌ Layout Boundary Tests Failed:', error);

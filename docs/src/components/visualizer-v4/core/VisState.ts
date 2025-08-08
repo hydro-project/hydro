@@ -11,7 +11,10 @@ import {
   CONTAINER_STYLES,
   CreateNodeProps,
   CreateEdgeProps,
-  CreateContainerProps
+  CreateContainerProps,
+  GraphNode,
+  GraphEdge,
+  Container
 } from '../shared/types';
 import { LAYOUT_CONSTANTS } from '../shared/config';
 import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand';
@@ -60,8 +63,8 @@ export interface ContainerHierarchyView {
  *   .setContainer('c1', { children: ['n1', 'n2'] });
  * 
  * // Access data with TypeScript getters (no parentheses!)
- * console.log(state.visibleNodes);     // Array of visible nodes
- * console.log(state.expandedContainers); // Array of expanded containers
+ * // // console.log(((state.visibleNodes)));     // Array of visible nodes
+ * // // console.log(((state.expandedContainers))); // Array of expanded containers
  * 
  * // Update properties idiomatically  
  * state.updateNode('n1', { hidden: true, style: 'highlighted' });
@@ -479,20 +482,34 @@ export class VisualizationState implements ContainerHierarchyView {
     const baseWidth = container.expandedDimensions?.width || LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH;
     const baseHeight = container.expandedDimensions?.height || LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;
 
+    let result: { width: number; height: number };
+
     if (container.collapsed) {
-      // Collapsed containers need minimum height for label visibility
-      const minCollapsedHeight = LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + (LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING * 2);
-      return {
-        width: Math.max(baseWidth, LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH),
-        height: Math.max(baseHeight, minCollapsedHeight)
+      // Collapsed containers get fixed small dimensions (ignore expanded dimensions)
+      const collapsedHeight = LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + (LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING * 2);
+      result = {
+        width: LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH,
+        height: Math.max(collapsedHeight, LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT)
       };
     } else {
       // Expanded containers get additional height for bottom-right label space
-      return {
+      const expandedHeight = baseHeight + LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING;
+      result = {
         width: baseWidth,
-        height: baseHeight + LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING
+        height: Math.max(expandedHeight, LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT)
       };
     }
+
+    // CORE INVARIANT: Container dimensions must be consistent with collapse state
+    if (container.collapsed && (result.width > 300 || result.height > 200)) {
+      throw new Error(`Core invariant violation: Collapsed container ${id} has dimensions ${result.width}x${result.height} but collapsed containers must be small (≤300x200). This indicates a bug in getContainerAdjustedDimensions logic.`);
+    }
+    
+    if (!container.collapsed && (result.width < LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH || result.height < LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT)) {
+      throw new Error(`Core invariant violation: Expanded container ${id} has dimensions ${result.width}x${result.height} but expanded containers must be at least ${LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH}x${LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT}.`);
+    }
+
+    return result;
   }
 
   /**
@@ -750,6 +767,64 @@ export class VisualizationState implements ContainerHierarchyView {
   // ============ Invariant Validation ============
   
   /**
+   * Validate all internal data structure invariants
+   * @param {string} [context=''] - Optional context string for error messages
+   * @throws {Error} When any invariant is violated
+   */
+  validateAllInvariants(context: string = ''): void {
+    this.validateHyperedgeInvariants(context);
+    this.validateContainerVisibilityInvariant(context);
+    this.validateEdgeVisibilityInvariant(context);
+  }
+
+  /**
+   * Validate container visibility invariant: containers in _visibleContainers should not have collapsed ancestors
+   * @param {string} [context=''] - Optional context string for error messages
+   * @throws {Error} When container visibility invariant is violated
+   */
+  validateContainerVisibilityInvariant(context: string = ''): void {
+    const contextPrefix = context ? `${context}: ` : '';
+    
+    for (const [containerId, container] of this._visibleContainers) {
+      if (container.hidden) {
+        throw new Error(`${contextPrefix}Container visibility invariant violated: hidden container ${containerId} found in _visibleContainers`);
+      }
+      
+      if (this._hasCollapsedAncestor(containerId)) {
+        throw new Error(`${contextPrefix}Container visibility invariant violated: container ${containerId} has collapsed ancestor but is in _visibleContainers`);
+      }
+    }
+  }
+
+  /**
+   * Validate edge visibility invariant: edges adjacent to hidden nodes should be hidden
+   * @param {string} [context=''] - Optional context string for error messages
+   * @throws {Error} When edge visibility invariant is violated
+   */
+  validateEdgeVisibilityInvariant(context: string = ''): void {
+    const contextPrefix = context ? `${context}: ` : '';
+    
+    for (const [edgeId, edge] of this.graphEdges) {
+      const sourceNode = this.graphNodes.get(edge.source);
+      const targetNode = this.graphNodes.get(edge.target);
+      
+      // Skip edges that don't connect nodes (might connect containers)
+      if (!sourceNode || !targetNode) continue;
+      
+      const shouldBeHidden = sourceNode.hidden || targetNode.hidden;
+      const isVisible = this._visibleEdges.has(edgeId);
+      
+      if (shouldBeHidden && isVisible) {
+        throw new Error(`${contextPrefix}Edge visibility invariant violated: edge ${edgeId} connects hidden node(s) but is visible (source hidden: ${sourceNode.hidden}, target hidden: ${targetNode.hidden})`);
+      }
+      
+      if (!shouldBeHidden && !edge.hidden && !isVisible) {
+        throw new Error(`${contextPrefix}Edge visibility invariant violated: edge ${edgeId} connects visible nodes but is not visible`);
+      }
+    }
+  }
+  
+  /**
    * Validate all internal hyperedge invariants
    * @param {string} [context=''] - Optional context string for error messages
    * @throws {Error} When any hyperedge invariant is violated
@@ -767,31 +842,42 @@ export class VisualizationState implements ContainerHierarchyView {
     // Get visible nodes and containers for validation
     const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
     const visibleContainers = this.visibleContainers;
-    const collapsedContainerIds = new Set(
-      visibleContainers.filter(c => c.collapsed).map(c => c.id)
-    );
+    
+    // Get ALL collapsed containers (not just visible ones)
+    // This is important because containers can be collapsed but not visible due to collapsed ancestors
+    const allCollapsedContainerIds = new Set();
+    for (const [containerId, container] of this.containers) {
+      if (container.collapsed) {
+        allCollapsedContainerIds.add(containerId);
+      }
+    }
     
     for (const hyperEdge of activeHyperEdges) {
       // INVARIANT 1: HyperEdges must have at least one collapsed container endpoint
-      const sourceIsCollapsedContainer = collapsedContainerIds.has(hyperEdge.source);
-      const targetIsCollapsedContainer = collapsedContainerIds.has(hyperEdge.target);
+      const sourceIsCollapsedContainer = allCollapsedContainerIds.has(hyperEdge.source);
+      const targetIsCollapsedContainer = allCollapsedContainerIds.has(hyperEdge.target);
       
       if (!sourceIsCollapsedContainer && !targetIsCollapsedContainer) {
         throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: must have at least one collapsed container endpoint (source: ${hyperEdge.source}, target: ${hyperEdge.target})`);
       }
       
-      // INVARIANT 2: All hyperedge endpoints must be visible (either visible nodes or visible containers)
+      // INVARIANT 2: All hyperedge endpoints must be either:
+      // - Visible nodes, OR
+      // - Visible containers, OR 
+      // - Collapsed containers (even if not visible due to collapsed ancestors)
       const sourceIsVisibleNode = visibleNodeIds.has(hyperEdge.source);
       const targetIsVisibleNode = visibleNodeIds.has(hyperEdge.target);
       const sourceIsVisibleContainer = visibleContainers.some(c => c.id === hyperEdge.source);
       const targetIsVisibleContainer = visibleContainers.some(c => c.id === hyperEdge.target);
+      const sourceIsCollapsedContainerAny = allCollapsedContainerIds.has(hyperEdge.source);
+      const targetIsCollapsedContainerAny = allCollapsedContainerIds.has(hyperEdge.target);
       
-      if (!(sourceIsVisibleNode || sourceIsVisibleContainer)) {
-        throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: source ${hyperEdge.source} must be a visible node or container`);
+      if (!(sourceIsVisibleNode || sourceIsVisibleContainer || sourceIsCollapsedContainerAny)) {
+        throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: source ${hyperEdge.source} must be a visible node, visible container, or collapsed container`);
       }
       
-      if (!(targetIsVisibleNode || targetIsVisibleContainer)) {
-        throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: target ${hyperEdge.target} must be a visible node or container`);
+      if (!(targetIsVisibleNode || targetIsVisibleContainer || targetIsCollapsedContainerAny)) {
+        throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: target ${hyperEdge.target} must be a visible node, visible container, or collapsed container`);
       }
     }
     
@@ -813,8 +899,16 @@ export class VisualizationState implements ContainerHierarchyView {
   collapseContainer(containerId: string): void {
     this.collapseExpandEngine.collapseContainer(containerId);
     
-    // Validate hyperedge invariants after collapse operation
-    this.validateHyperedgeInvariants(`After collapsing container ${containerId}`);
+    // CRITICAL: Update hidden state of all descendant nodes when container is collapsed
+    this._updateDescendantNodesOnCollapse(containerId);
+    this._updateDescendantEdgesOnCollapse(containerId);
+    
+    // After collapse operation, refresh visibility for all containers
+    // This ensures visibility invariants are maintained after the collapse engine modifies container.collapsed
+    this._refreshAllContainerVisibility();
+    
+    // Validate all invariants after collapse operation
+    this.validateAllInvariants(`After collapsing container ${containerId}`);
   }
   
   /**
@@ -824,11 +918,189 @@ export class VisualizationState implements ContainerHierarchyView {
   expandContainer(containerId: string): void {
     this.collapseExpandEngine.expandContainer(containerId);
     
-    // Validate hyperedge invariants after expand operation
-    this.validateHyperedgeInvariants(`After expanding container ${containerId}`);
+    // CRITICAL: Update hidden state of all descendant nodes when container is expanded
+    this._updateDescendantNodesOnExpand(containerId);
+    this._updateDescendantEdgesOnExpand(containerId);
+    
+    // After expand operation, refresh visibility for all containers
+    // This ensures visibility invariants are maintained after the collapse engine modifies container.collapsed
+    this._refreshAllContainerVisibility();
+    
+    // Validate all invariants after expand operation
+    this.validateAllInvariants(`After expanding container ${containerId}`);
+  }
+
+  // ============ Bridge Support Methods (Business Logic) ============
+  
+  /**
+   * Get collapsed containers converted to nodes for layout engines
+   * This centralizes the business logic for how collapsed containers appear as nodes
+   */
+  getCollapsedContainersAsNodes(): GraphNode[] {
+    const nodes: GraphNode[] = [];
+    
+    this.visibleContainers.forEach(container => {
+      if (container.collapsed) {
+        const containerAsNode: GraphNode = {
+          id: container.id,
+          label: container.id, // Use id as label since containers don't have a name property
+          width: container.width || LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH,
+          height: container.height || LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT,
+          x: container.x || 0,
+          y: container.y || 0,
+          hidden: false,
+          style: 'default'
+        };
+        nodes.push(containerAsNode);
+      }
+    });
+    
+    return nodes;
+  }
+
+  /**
+   * Get parent-child relationship map for UI frameworks
+   * This centralizes the business logic for which containers can have visible children
+   */
+  getParentChildMap(): Map<string, string> {
+    const parentMap = new Map<string, string>();
+    
+    this.visibleContainers.forEach(container => {
+      if (!container.collapsed) {
+        // Only expanded containers can have children in UI frameworks
+        container.children.forEach(childId => {
+          parentMap.set(childId, container.id);
+        });
+      }
+    });
+    
+    return parentMap;
+  }
+
+  /**
+   * Get top-level nodes that don't belong to any container
+   * This centralizes the business logic for determining node hierarchy
+   */
+  getTopLevelNodes(): GraphNode[] {
+    const collapsedContainerIds = new Set(
+      this.visibleContainers.filter(c => c.collapsed).map(c => c.id)
+    );
+    
+    return this.visibleNodes.filter(node => {
+      // Node is top-level if:
+      // 1. It's not inside any expanded container
+      // 2. It's not a collapsed container (those are handled separately)
+      const parentContainer = this.getNodeContainer(node.id);
+      const isInExpandedContainer = parentContainer && 
+        this.visibleContainers.some(c => c.id === parentContainer && !c.collapsed);
+      
+      return !isInExpandedContainer && !collapsedContainerIds.has(node.id);
+    });
+  }
+
+  /**
+   * Get handle configuration for an edge
+   * This centralizes the business logic for edge handle assignments
+   */
+  getEdgeHandles(edgeId: string): { sourceHandle?: string; targetHandle?: string } {
+    const edge = this.getGraphEdge(edgeId);
+    if (!edge) return {};
+    
+    return {
+      sourceHandle: edge.sourceHandle || 'default-out',
+      targetHandle: edge.targetHandle || 'default-in'
+    };
+  }
+
+  /**
+   * Ensure all nodes and containers have valid dimensions
+   * This centralizes the business logic for default dimensions
+   */
+  validateAndFixDimensions(): void {
+    // Fix node dimensions
+    for (const [nodeId, node] of this.graphNodes) {
+      if (!node.width || node.width <= 0) {
+        node.width = LAYOUT_CONSTANTS.DEFAULT_NODE_WIDTH;
+      }
+      if (!node.height || node.height <= 0) {
+        node.height = LAYOUT_CONSTANTS.DEFAULT_NODE_HEIGHT;
+      }
+    }
+    
+    // Fix container dimensions
+    for (const [containerId, container] of this.containers) {
+      if (!container.width || container.width <= 0) {
+        container.width = LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH;
+      }
+      if (!container.height || container.height <= 0) {
+        container.height = LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;
+      }
+    }
   }
 
   // ============ Private Helper Methods ============
+  
+  /**
+   * Check if a container has any collapsed ancestor
+   * @param {string} containerId - The container to check
+   * @returns {boolean} True if any ancestor is collapsed
+   * @private
+   */
+  private _hasCollapsedAncestor(containerId: string): boolean {
+    const parentId = this.getNodeContainer(containerId);
+    if (!parentId) {
+      return false; // No parent, so no collapsed ancestor
+    }
+    
+    const parentContainer = this.getContainer(parentId);
+    if (!parentContainer) {
+      return false; // Parent is not a container
+    }
+    
+    if (parentContainer.collapsed) {
+      return true; // Direct parent is collapsed
+    }
+    
+    // Recursively check further up the hierarchy
+    return this._hasCollapsedAncestor(parentId);
+  }
+
+  /**
+   * Update visibility of all descendant containers when an ancestor's collapsed state changes
+   * @param {string} ancestorId - The container whose descendants need visibility updates
+   * @private
+   */
+  private _updateDescendantContainerVisibility(ancestorId: string): void {
+    const children = this.getContainerChildren(ancestorId);
+    
+    for (const childId of children) {
+      const childContainer = this.getContainer(childId);
+      if (childContainer) {
+        // Recursively update this child container's visibility
+        this._updateVisibleContainers(childId, childContainer);
+        
+        // Recursively update this child's descendants
+        this._updateDescendantContainerVisibility(childId);
+      }
+    }
+  }
+
+  /**
+   * Refresh visibility for all containers based on current collapsed state
+   * This is needed after collapse/expand operations that directly modify container.collapsed
+   * @private
+   */
+  private _refreshAllContainerVisibility(): void {
+    for (const [containerId, container] of this.containers) {
+      const shouldBeVisible = !container.hidden && !this._hasCollapsedAncestor(containerId);
+      
+      if (shouldBeVisible) {
+        this._visibleContainers.set(containerId, container);
+      } else {
+        this._visibleContainers.delete(containerId);
+      }
+    }
+  }
   
   // ============ Entity Creation Helpers ============
   
@@ -1163,7 +1435,217 @@ export class VisualizationState implements ContainerHierarchyView {
   }
 
   _updateVisibleNodes(id, node) {
-    this._updateVisibilityMap(this._visibleNodes, id, node);
+    // A node is visible only if it's not hidden AND not inside a collapsed container
+    const isInCollapsedContainer = this._isNodeInCollapsedContainer(id);
+    const shouldBeVisible = !node.hidden && !isInCollapsedContainer;
+    
+    if (shouldBeVisible) {
+      this._visibleNodes.set(id, node);
+    } else {
+      this._visibleNodes.delete(id);
+    }
+    
+    // When a node's visibility changes, update adjacent edges
+    if ('hidden' in node || node.hidden !== undefined) {
+      this._updateAdjacentEdgesVisibility(id, node.hidden);
+    }
+  }
+
+  /**
+   * Update visibility of edges adjacent to a node
+   * @param {string} nodeId - The node whose adjacent edges should be updated
+   * @param {boolean} nodeHidden - Whether the node is hidden
+   * @private
+   */
+  _updateAdjacentEdgesVisibility(nodeId: string, nodeHidden: boolean): void {
+    const adjacentEdgeIds = this.nodeToEdges.get(nodeId);
+    if (!adjacentEdgeIds) return;
+
+    for (const edgeId of adjacentEdgeIds) {
+      const edge = this.graphEdges.get(edgeId);
+      if (!edge) continue;
+
+      // An edge should be hidden if either endpoint is hidden
+      const sourceNode = this.graphNodes.get(edge.source);
+      const targetNode = this.graphNodes.get(edge.target);
+      
+      const shouldHideEdge = (sourceNode?.hidden) || (targetNode?.hidden);
+      
+      // Only update if visibility actually changed
+      if (edge.hidden !== shouldHideEdge) {
+        edge.hidden = shouldHideEdge;
+        this._updateVisibleEdges(edgeId, edge);
+      }
+    }
+  }
+
+  /**
+   * Update hidden state of all descendant nodes when a container is collapsed
+   */
+  _updateDescendantNodesOnCollapse(containerId) {
+    const container = this.containers.get(containerId);
+    if (!container) return;
+    
+    // Recursively find all descendant nodes and mark them as hidden
+    const allDescendantNodes = this._getAllDescendantNodes(containerId);
+    for (const nodeId of allDescendantNodes) {
+      const node = this.graphNodes.get(nodeId);
+      if (node && !node.hidden) {
+        node.hidden = true;
+        this._updateVisibleNodes(nodeId, node);
+      }
+    }
+    
+    // Also hide all descendant containers
+    const allDescendantContainers = this._getAllDescendantContainers(containerId);
+    for (const containerIdChild of allDescendantContainers) {
+      const childContainer = this.containers.get(containerIdChild);
+      if (childContainer && !childContainer.hidden) {
+        childContainer.hidden = true;
+        this._updateVisibleContainers(containerIdChild, childContainer);
+      }
+    }
+  }
+
+  /**
+   * Update hidden state of all descendant nodes when a container is expanded
+   */
+  _updateDescendantNodesOnExpand(containerId) {
+    const container = this.containers.get(containerId);
+    if (!container) return;
+    
+    // Only make direct children visible - let nested containers control their own children
+    for (const childId of container.children) {
+      const childNode = this.graphNodes.get(childId);
+      if (childNode) {
+        // Only unhide if the node is not in another collapsed container
+        const shouldBeVisible = !this._isNodeInCollapsedContainer(childId);
+        if (shouldBeVisible && childNode.hidden) {
+          childNode.hidden = false;
+          this._updateVisibleNodes(childId, childNode);
+        }
+      }
+      
+      // Also handle child containers
+      const childContainer = this.containers.get(childId);
+      if (childContainer) {
+        // Only unhide if the container is not in another collapsed container
+        const shouldBeVisible = !this._hasCollapsedAncestor(childId);
+        if (shouldBeVisible && childContainer.hidden) {
+          childContainer.hidden = false;
+          this._updateVisibleContainers(childId, childContainer);
+        }
+      }
+    }
+  }
+
+  /**
+   * Update hidden state of all descendant edges when a container is collapsed
+   */
+  _updateDescendantEdgesOnCollapse(containerId) {
+    // Find all edges that have endpoints inside the collapsed container
+    const allDescendantNodes = this._getAllDescendantNodes(containerId);
+    const descendantNodeSet = new Set(allDescendantNodes);
+    
+    for (const [edgeId, edge] of this.graphEdges) {
+      const sourceInContainer = descendantNodeSet.has(edge.source);
+      const targetInContainer = descendantNodeSet.has(edge.target);
+      
+      // Hide edge if at least one endpoint is in the collapsed container
+      if ((sourceInContainer || targetInContainer) && !edge.hidden) {
+        edge.hidden = true;
+        this._updateVisibleEdges(edgeId, edge);
+      }
+    }
+  }
+
+  /**
+   * Update hidden state of all descendant edges when a container is expanded
+   */
+  _updateDescendantEdgesOnExpand(containerId) {
+    const container = this.containers.get(containerId);
+    if (!container) return;
+    
+    // Re-evaluate all edges to see if they should become visible
+    for (const [edgeId, edge] of this.graphEdges) {
+      if (edge.hidden) {
+        const sourceNode = this.graphNodes.get(edge.source);
+        const targetNode = this.graphNodes.get(edge.target);
+        
+        // Edge should be visible if both endpoints are visible
+        const shouldBeVisible = sourceNode && !sourceNode.hidden && targetNode && !targetNode.hidden;
+        if (shouldBeVisible) {
+          edge.hidden = false;
+          this._updateVisibleEdges(edgeId, edge);
+        }
+      }
+    }
+  }
+
+  /**
+   * Get all descendant nodes of a container (recursively)
+   */
+  _getAllDescendantNodes(containerId) {
+    const result = [];
+    const container = this.containers.get(containerId);
+    if (!container) return result;
+    
+    for (const childId of container.children) {
+      const childContainer = this.containers.get(childId);
+      if (childContainer) {
+        // Child is a container - recurse into it
+        result.push(...this._getAllDescendantNodes(childId));
+      } else {
+        // Child is a node
+        result.push(childId);
+      }
+    }
+    
+    return result;
+  }
+
+  /**
+   * Get all descendant containers of a container (recursively)
+   */
+  _getAllDescendantContainers(containerId) {
+    const result = [];
+    const container = this.containers.get(containerId);
+    if (!container) return result;
+    
+    for (const childId of container.children) {
+      const childContainer = this.containers.get(childId);
+      if (childContainer) {
+        // Child is a container - add it and recurse
+        result.push(childId);
+        result.push(...this._getAllDescendantContainers(childId));
+      }
+    }
+    
+    return result;
+  }
+
+  /**
+   * Check if a node is inside a collapsed container (anywhere in the hierarchy)
+   */
+  _isNodeInCollapsedContainer(nodeId) {
+    // Check if this node is a direct child of any collapsed container
+    for (const [containerId, container] of this.containers) {
+      if (container.collapsed && container.children.has(nodeId)) {
+        return true;
+      }
+    }
+    
+    // Check if this node is inside any container that has a collapsed ancestor
+    for (const [containerId, container] of this.containers) {
+      if (container.children.has(nodeId)) {
+        // This node is in this container, check if the container has collapsed ancestors
+        if (this._hasCollapsedAncestor(containerId)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
   }
 
   _updateVisibleEdges(id, edge) {
@@ -1171,7 +1653,20 @@ export class VisualizationState implements ContainerHierarchyView {
   }
 
   _updateVisibleContainers(id, container) {
-    this._updateVisibilityMap(this._visibleContainers, id, container);
+    // A container is visible only if it's not hidden AND none of its ancestors are collapsed
+    const shouldBeVisible = !container.hidden && !this._hasCollapsedAncestor(id);
+    
+    if (shouldBeVisible) {
+      this._visibleContainers.set(id, container);
+    } else {
+      this._visibleContainers.delete(id);
+    }
+    
+    // When a container's collapsed state changes, update visibility of all descendants
+    // This must happen AFTER updating this container's visibility
+    if ('collapsed' in container || container.collapsed !== undefined) {
+      this._updateDescendantContainerVisibility(id);
+    }
   }
 
   _updateExpandedContainers(id, container) {
@@ -1258,7 +1753,7 @@ export class VisualizationState implements ContainerHierarchyView {
  *   .setGraphNode('node2', { label: 'My Second Node' })
  *   .setGraphEdge('edge1', { source: 'node1', target: 'node2' });
  * 
- * console.log(state.getGraphNode('node1')); // { id: 'node1', label: 'My First Node', ... }
+ * // // console.log(((state.getGraphNode('node1')))); // { id: 'node1', label: 'My First Node', ... }
  * ```
  */
 export function createVisualizationState() {
@@ -1397,7 +1892,7 @@ Object.assign(VisualizationState.prototype, {
           width: layout.dimensions.width ?? container.expandedDimensions.width,
           height: layout.dimensions.height ?? container.expandedDimensions.height
         };
-        console.log(`[VisState] 📏 Auto-updated expandedDimensions for ${id}: ${container.expandedDimensions.width}x${container.expandedDimensions.height}`);
+        // // console.log(((`[VisState] 📏 Auto-updated expandedDimensions for ${id}: ${container.expandedDimensions.width}x${container.expandedDimensions.height}`)));
       }
     }
   },
@@ -1412,7 +1907,8 @@ Object.assign(VisualizationState.prototype, {
   },
 
   getContainerELKFixed(id: string): boolean | undefined {
-    return this.getContainerLayout(id)?.elkFixed;
+    const layout = this.getContainerLayout(id);
+    return layout?.elkFixed ?? false; // Default to false if not set
   },
 
   // Get containers requiring layout with position fixing logic

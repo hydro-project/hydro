@@ -113,7 +113,7 @@ interface RawGraphData {
  * @example
  * ```javascript
  * const { state, metadata } = parseGraphJSON(graphData, 'myGrouping');
- * console.log('Parsed', metadata.nodeCount, 'nodes');
+ * // // console.log((('Parsed', metadata.nodeCount, 'nodes')));
  * ```
  */
 export function parseGraphJSON(
@@ -211,7 +211,7 @@ export function createGraphParser(options: ParserOptions = {}): { parse: (data: 
  * @example
  * ```javascript
  * const groupings = getAvailableGroupings(graphData);
- * console.log('Available groupings:', groupings.map(g => g.name));
+ * // // console.log((('Available groupings:', groupings.map(g => g.name))));
  * ```
  */
 export function getAvailableGroupings(jsonData: RawGraphData | string): GroupingOption[] {

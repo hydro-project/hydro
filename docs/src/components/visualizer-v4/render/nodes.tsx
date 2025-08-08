@@ -105,7 +105,7 @@ export function ContainerNode({ id, data }: NodeProps) {
   const nodeCount = Number(data.nodeCount || 0);
   
   // Debug: Log container dimensions
-  console.log(`[ContainerNode] 📏 Container ${id}: data.width=${data.width}, data.height=${data.height}, using ${width}x${height}`);
+  // // console.log(((`[ContainerNode] 📏 Container ${id}: data.width=${data.width}, data.height=${data.height}, using ${width}x${height}`)));
   
   // Generate professional colors based on palette for collapsed containers
   const generateContainerColors = (containerId: string, palette: string) => {

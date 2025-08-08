@@ -36,8 +36,8 @@ export interface ContainerHierarchyView {
  *   .setContainer('c1', { children: ['n1', 'n2'] });
  *
  * // Access data with TypeScript getters (no parentheses!)
- * console.log(state.visibleNodes);     // Array of visible nodes
- * console.log(state.expandedContainers); // Array of expanded containers
+ * // // console.log(((state.visibleNodes)));     // Array of visible nodes
+ * // // console.log(((state.expandedContainers))); // Array of expanded containers
  *
  * // Update properties idiomatically
  * state.updateNode('n1', { hidden: true, style: 'highlighted' });
@@ -490,7 +490,7 @@ export declare class VisualizationState implements ContainerHierarchyView {
  *   .setGraphNode('node2', { label: 'My Second Node' })
  *   .setGraphEdge('edge1', { source: 'node1', target: 'node2' });
  *
- * console.log(state.getGraphNode('node1')); // { id: 'node1', label: 'My First Node', ... }
+ * // // console.log(((state.getGraphNode('node1')))); // { id: 'node1', label: 'My First Node', ... }
  * ```
  */
 export declare function createVisualizationState(): VisualizationState;

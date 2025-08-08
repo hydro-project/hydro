@@ -9,5 +9,10 @@ TASKS:
 - Put all relevant styling constant into a dockable config widget
 
 FIXS:
-- ✅ node count on collapsed containers
-- ✅ left-truncate container names using shared utility
+- Here's what we get when I do a re-grouping of the paxos graph by backtrace. Do you see how the big purple container is too large? 
+
+One possible issue is that we only track 2 choices of dimensions for a container
+- fully expanded
+- fully collapsed
+
+Maybe we need to consider what happens to nodes higher in the hierarchy with collapse of nodes low in the hierarchy?

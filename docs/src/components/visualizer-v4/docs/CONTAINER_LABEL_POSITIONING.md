@@ -66,7 +66,7 @@ const state = createVisualizationState()
 
 // Get label-adjusted dimensions
 const dims = state.getContainerAdjustedDimensions('container1');
-console.log(dims); // { width: 300, height: 232 } (200 + 24 + 8)
+// // console.log(((dims))); // { width: 300, height: 232 } (200 + 24 + 8)
 ```
 
 ### For Layout Engines

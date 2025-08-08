@@ -216,7 +216,7 @@ class FuzzTester {
    * Run the fuzz test with the given grouping
    */
   async runTest(groupingId: string | null = null): Promise<void> {
-    console.log(`🎲 Running fuzz test on ${this.testName} with grouping: ${groupingId || 'default'}`);
+    // // console.log(((`🎲 Running fuzz test on ${this.testName} with grouping: ${groupingId || 'default'}`)));
     
     // Parse the data
     const result = parseGraphJSON(this.testData, groupingId);
@@ -225,11 +225,11 @@ class FuzzTester {
     
     const containers = state.visibleContainers;
     if (containers.length === 0) {
-      console.log(`⚠️  No containers found, skipping fuzz test for ${this.testName}`);
+      // // console.log(((`⚠️  No containers found, skipping fuzz test for ${this.testName}`)));
       return;
     }
     
-    console.log(`   📊 Initial state: ${state.visibleNodes.length} nodes, ${state.visibleEdges.length} edges, ${containers.length} containers`);
+    // // console.log(((`   📊 Initial state: ${state.visibleNodes.length} nodes, ${state.visibleEdges.length} edges, ${containers.length} containers`)));
     
     // Check initial invariants
     checker.checkAll('Initial state');
@@ -266,18 +266,18 @@ class FuzzTester {
       
       // Periodic progress update
       if ((iteration + 1) % 20 === 0) {
-        console.log(`   ⚡ Completed ${iteration + 1}/${FUZZ_ITERATIONS} iterations (${totalOperations} operations)`);
+        // // console.log(((`   ⚡ Completed ${iteration + 1}/${FUZZ_ITERATIONS} iterations (${totalOperations} operations)`)));
       }
     }
     
-    console.log(`✅ Fuzz test completed: ${totalOperations} operations, all invariants maintained`);
+    // // console.log(((`✅ Fuzz test completed: ${totalOperations} operations, all invariants maintained`)));
     
     // Final state summary
     const finalNodes = state.visibleNodes.length;
     const finalEdges = state.visibleEdges.length;
     const collapsedContainers = state.visibleContainers.filter(c => c.collapsed).length;
     
-    console.log(`   📈 Final state: ${finalNodes} visible nodes, ${finalEdges} visible edges, ${collapsedContainers} collapsed containers`);
+    // // console.log(((`   📈 Final state: ${finalNodes} visible nodes, ${finalEdges} visible edges, ${collapsedContainers} collapsed containers`)));
   }
   
   /**
@@ -341,14 +341,14 @@ class FuzzTester {
  * Load test data and run fuzz tests
  */
 async function runFuzzTests(): Promise<void> {
-  console.log('🧪 Starting Fuzz Testing Suite\n');
-  console.log('==============================\n');
+  // // console.log((('🧪 Starting Fuzz Testing Suite\n')));
+  // // console.log((('==============================\n')));
   
   const testFiles = ['chat.json', 'paxos.json'];
   
   for (const filename of testFiles) {
     try {
-      console.log(`📁 Loading ${filename}...`);
+      // // console.log(((`📁 Loading ${filename}...`)));
       
       const filePath = join(__dirname, '../test-data', filename);
       const jsonData = await readFile(filePath, 'utf-8');
@@ -360,18 +360,18 @@ async function runFuzzTests(): Promise<void> {
         continue;
       }
       
-      console.log(`✅ ${filename} loaded and validated (${validation.nodeCount} nodes, ${validation.edgeCount} edges)`);
+      // // console.log(((`✅ ${filename} loaded and validated (${validation.nodeCount} nodes, ${validation.edgeCount} edges)`)));
       
       // Parse to get available groupings
       const data = JSON.parse(jsonData);
       const groupings = data.hierarchyChoices || [];
       
       if (groupings.length === 0) {
-        console.log(`⚠️  No groupings found in ${filename}, testing with flat structure`);
+        // // console.log(((`⚠️  No groupings found in ${filename}, testing with flat structure`)));
         const tester = new FuzzTester(data, filename);
         await tester.runTest();
       } else {
-        console.log(`📊 Found ${groupings.length} groupings: ${groupings.map((g: any) => g.name).join(', ')}`);
+        // // console.log(((`📊 Found ${groupings.length} groupings: ${groupings.map((g: any) => g.name).join(', ')}`)));
         
         // Test each grouping
         for (const grouping of groupings) {
@@ -380,7 +380,7 @@ async function runFuzzTests(): Promise<void> {
         }
       }
       
-      console.log(''); // Blank line between files
+      // // console.log(((''))); // Blank line between files
       
     } catch (error: unknown) {
       console.error(`❌ Error testing ${filename}:`, error instanceof Error ? error.message : String(error));
@@ -388,7 +388,7 @@ async function runFuzzTests(): Promise<void> {
     }
   }
   
-  console.log('🎉 All fuzz tests completed successfully!');
+  // // console.log((('🎉 All fuzz tests completed successfully!')));
 }
 
 /**

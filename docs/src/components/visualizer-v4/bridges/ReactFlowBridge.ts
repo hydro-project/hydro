@@ -71,7 +71,7 @@ export class ReactFlowBridge {
    * Pure data transformation - no layout logic
    */
   visStateToReactFlow(visState: VisualizationState): ReactFlowData {
-    console.log('[ReactFlowBridge] 🔄 Converting VisState to ReactFlow format');
+    // // console.log((('[ReactFlowBridge] 🔄 Converting VisState to ReactFlow format')));
     
     const nodes: ReactFlowNode[] = [];
     const edges: ReactFlowEdge[] = [];
@@ -93,14 +93,16 @@ export class ReactFlowBridge {
 
   /**
    * Build parent-child relationship map
+   * NOTE: VisualizationState should provide this logic via getParentChildMap()
    */
   private buildParentMap(visState: VisualizationState): Map<string, string> {
     const parentMap = new Map<string, string>();
     
+    // TODO: Move this business logic to VisualizationState
     // Map nodes to their parent containers
     visState.visibleContainers.forEach(container => {
       if (!container.collapsed) {
-        // Only expanded containers can have children in ReactFlow
+        // BUSINESS LOGIC VIOLATION: VisualizationState should determine which containers can have children
         container.children.forEach(childId => {
           parentMap.set(childId, container.id);
         });
@@ -135,8 +137,10 @@ export class ReactFlowBridge {
       const position = CoordinateTranslator.elkToReactFlow(elkCoords, parentContainer);
       
       // Use computed dimensions from VisState (includes ELK-calculated sizes via expandedDimensions)
-      const width = container.width || (container.collapsed ? 200 : 400);
-      const height = container.height || (container.collapsed ? 100 : 300);
+      // IMPORTANT: Use VisualizationState API to get proper dimensions (handles collapsed containers)
+      const effectiveDimensions = visState.getContainerAdjustedDimensions(container.id);
+      const width = effectiveDimensions.width;
+      const height = effectiveDimensions.height;
       
       // Calculate node count for collapsed containers
       const nodeCount = container.collapsed ? 
@@ -185,7 +189,7 @@ export class ReactFlowBridge {
       
       // Get ELK coordinates from node layout (where ELKBridge stores them)
       const nodeLayout = visState.getNodeLayout(node.id);
-      console.log(`[ReactFlowBridge] 🔍 Node ${node.id} layout:`, nodeLayout, 'raw node coords:', { x: node.x, y: node.y });
+      // // console.log(((`[ReactFlowBridge] 🔍 Node ${node.id} layout:`, nodeLayout, 'raw node coords:', { x: node.x, y: node.y })));
       const elkCoords = {
         x: nodeLayout?.position?.x || node.x || 0,
         y: nodeLayout?.position?.y || node.y || 0
@@ -196,19 +200,19 @@ export class ReactFlowBridge {
         CoordinateTranslator.getContainerInfo(parentId, visState) : 
         undefined;
       
-      if (parentContainer) {
-        console.log(`[ReactFlowBridge] 🔍 Parent container ${parentId} info:`, {
-          id: parentContainer.id,
-          x: parentContainer.x,
-          y: parentContainer.y,
-          width: parentContainer.width,
-          height: parentContainer.height
-        });
-      }
+      // if (parentContainer) {
+      //   console.log(`[ReactFlowBridge] 🔍 Parent container ${parentId} info:`, {
+      //     id: parentContainer.id,
+      //     x: parentContainer.x,
+      //     y: parentContainer.y,
+      //     width: parentContainer.width,
+      //     height: parentContainer.height
+      //   });
+      // }
       
       const position = CoordinateTranslator.elkToReactFlow(elkCoords, parentContainer);
       
-      console.log(`[ReactFlowBridge] 🔘 Node ${node.id}: parent=${parentId || 'none'}, ELK=(${elkCoords.x}, ${elkCoords.y}), ReactFlow=(${position.x}, ${position.y})`);
+      // // console.log(((`[ReactFlowBridge] 🔘 Node ${node.id}: parent=${parentId || 'none'}, ELK=(${elkCoords.x}, ${elkCoords.y}), ReactFlow=(${position.x}, ${position.y})`)));
       
       const standardNode: ReactFlowNode = {
         id: node.id,
@@ -235,15 +239,15 @@ export class ReactFlowBridge {
    */
   private convertEdges(visState: VisualizationState, edges: ReactFlowEdge[]): void {
     visState.visibleEdges.forEach(edge => {
-      // Debug: log the actual edge data to see what we're getting
-      console.log(`[ReactFlowBridge] 🔍 Debug edge ${edge.id}:`, {
-        source: edge.source,
-        target: edge.target,
-        sourceHandle: edge.sourceHandle,
-        targetHandle: edge.targetHandle,
-        sourceHandleType: typeof edge.sourceHandle,
-        targetHandleType: typeof edge.targetHandle
-      });
+    //   // Debug: log the actual edge data to see what we're getting
+    //   console.log(`[ReactFlowBridge] 🔍 Debug edge ${edge.id}:`, {
+    //     source: edge.source,
+    //     target: edge.target,
+    //     sourceHandle: edge.sourceHandle,
+    //     targetHandle: edge.targetHandle,
+    //     sourceHandleType: typeof edge.sourceHandle,
+    //     targetHandleType: typeof edge.targetHandle
+    //   });
       
       const handleConfig = getHandleConfig();
       
@@ -263,15 +267,16 @@ export class ReactFlowBridge {
         }
       };
       
-      // Only add handle properties for discrete handle strategy
+      // Handle strategy should be determined by VisualizationState, not ReactFlowBridge
+      // TODO: Move handle logic to VisualizationState.getEdgeHandles(edgeId)
       if (!handleConfig.enableContinuousHandles) {
-        // For discrete handles, use specified handles or defaults
+        // BUSINESS LOGIC VIOLATION: VisualizationState should determine handle assignments
         reactFlowEdge.sourceHandle = edge.sourceHandle || 'default-out';
         reactFlowEdge.targetHandle = edge.targetHandle || 'default-in';
       }
       // For continuous handles, omit sourceHandle/targetHandle to let ReactFlow auto-connect
       
-      console.log(`[ReactFlowBridge] ✅ Created ReactFlow edge ${edge.id}:`, reactFlowEdge);
+      // // console.log(((`[ReactFlowBridge] ✅ Created ReactFlow edge ${edge.id}:`, reactFlowEdge)));
       
       edges.push(reactFlowEdge);
     });

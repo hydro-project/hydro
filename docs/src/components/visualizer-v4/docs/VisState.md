@@ -325,8 +325,8 @@ const state = createVisualizationState()
   });
 
 // Access visible elements for rendering
-console.log('Nodes to render:', state.visibleNodes);
-console.log('Edges to render:', state.visibleEdges);
+// // console.log((('Nodes to render:', state.visibleNodes)));
+// // console.log((('Edges to render:', state.visibleEdges)));
 ```
 
 ### Hierarchical Containers
@@ -345,7 +345,7 @@ state
 
 // Collapse container to hide children
 state.collapseContainer('cluster1');
-console.log('Expanded containers:', state.expandedContainers);
+// // console.log((('Expanded containers:', state.expandedContainers)));
 
 // Expand to show children again
 state.expandContainer('cluster1');
@@ -398,16 +398,16 @@ const containersForLayout = state.getContainersRequiringLayout('cluster1');
 ```typescript
 // Check hierarchy relationships
 const children = state.getContainerChildren('cluster1');
-console.log('Cluster1 children:', Array.from(children));
+// // console.log((('Cluster1 children:', Array.from(children))));
 
 const parent = state.getNodeContainer('node1');
-console.log('Node1 parent:', parent);
+// // console.log((('Node1 parent:', parent)));
 
 // Validate hierarchy constraints
 try {
   state.addContainerChild('cluster1', 'cluster2'); // Would create cycle
 } catch (error) {
-  console.log('Hierarchy constraint prevented cycle');
+  // // console.log((('Hierarchy constraint prevented cycle')));
 }
 ```
 

@@ -45,7 +45,7 @@ export function loadChatJsonTestData(grouping: string | null = null): TestDataRe
  */
 export function skipIfNoTestData(testData: TestDataResult | null, testName: string = 'test') {
   if (!testData) {
-    console.log(`⚠️  Skipping ${testName}: chat.json not available`);
+    // // console.log(((`⚠️  Skipping ${testName}: chat.json not available`)));
     return true;
   }
   return false;

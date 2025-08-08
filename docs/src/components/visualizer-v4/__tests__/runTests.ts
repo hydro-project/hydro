@@ -14,68 +14,68 @@
 // import { runLayoutBoundaryTests } from './layoutBoundaries.test.js';
 // import { runChatJsonIntegrationTests } from './chatJsonIntegration.test.js';
 
-console.log('🧪 Running Vis Component Test Suite\n');
-console.log('=====================================\n');
+// // console.log((('🧪 Running Vis Component Test Suite\n')));
+// // console.log((('=====================================\n')));
 
 async function runAllTests(): Promise<void> {
   let totalTests = 0;
   let passedTests = 0;
   
   try {
-    console.log('Tests are temporarily disabled during refactoring');
-    console.log('\n📊 Running Constants Tests...');
+    // // console.log((('Tests are temporarily disabled during refactoring')));
+    // // console.log((('\n📊 Running Constants Tests...')));
     // await runConstantsTests();
     passedTests++;
     totalTests++;
     
-    console.log('\n📈 Running VisualizationState Tests...');
+    // // console.log((('\n📈 Running VisualizationState Tests...')));
     // await runVisStateTests();
     passedTests++;
     totalTests++;
     
-    console.log('\n📄 Running JSONParser Tests...');
+    // // console.log((('\n📄 Running JSONParser Tests...')));
     // await runJSONParserTests();
     passedTests++;
     totalTests++;
     
-    console.log('\n🔄 Running Symmetric Inverse Tests...');
+    // // console.log((('\n🔄 Running Symmetric Inverse Tests...')));
     // await runSymmetricInverseTests();
     passedTests++;
     totalTests++;
     
-    console.log('\n🔗 Running Edge Index Encapsulation Tests...');
+    // // console.log((('\n🔗 Running Edge Index Encapsulation Tests...')));
     // await runEdgeIndexEncapsulationTests();
     passedTests++;
     totalTests++;
     
-    console.log('\n🧪 Running Simple Grounding Tests...');
+    // // console.log((('\n🧪 Running Simple Grounding Tests...')));
     // await runSimpleGroundingTests();
     passedTests++;
     totalTests++;
     
-    console.log('\n🌉 Running Bridge Tests...');
+    // // console.log((('\n🌉 Running Bridge Tests...')));
     // runAllBridgeTests();
     passedTests++;
     totalTests++;
     
-    console.log('\n📐 Running Layout Boundary Tests...');
+    // // console.log((('\n📐 Running Layout Boundary Tests...')));
     // await runLayoutBoundaryTests();
     passedTests++;
     totalTests++;
     
-    console.log('\n🗨️ Running Chat.json Integration Tests...');
+    // // console.log((('\n🗨️ Running Chat.json Integration Tests...')));
     // await runChatJsonIntegrationTests();
     passedTests++;
     totalTests++;
     
-    console.log('\n=====================================');
-    console.log(`🎉 Test Suite Complete: ${passedTests}/${totalTests} test modules passed`);
-    console.log('All visualization components are working correctly!');
-    console.log('✅ All symmetric function pairs verified as mathematical inverses!');
-    console.log('✅ All bridge components tested and working!');
-    console.log('✅ All layout boundary validations passed!');
-    console.log('✅ Chat.json integration tests completed!');
-    console.log('\n💡 To run fuzz tests separately: node __tests__/fuzzTest.js');
+    // // console.log((('\n=====================================')));
+    // // console.log(((`🎉 Test Suite Complete: ${passedTests}/${totalTests} test modules passed`)));
+    // // console.log((('All visualization components are working correctly!')));
+    // // console.log((('✅ All symmetric function pairs verified as mathematical inverses!')));
+    // // console.log((('✅ All bridge components tested and working!')));
+    // // console.log((('✅ All layout boundary validations passed!')));
+    // // console.log((('✅ Chat.json integration tests completed!')));
+    // // console.log((('\n💡 To run fuzz tests separately: node __tests__/fuzzTest.js')));
     
   } catch (error: unknown) {
     totalTests++;
