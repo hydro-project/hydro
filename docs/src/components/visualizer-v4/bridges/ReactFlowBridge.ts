@@ -136,9 +136,13 @@ export class ReactFlowBridge {
       
       // Use computed dimensions from VisState (includes ELK-calculated sizes via expandedDimensions)
       const width = container.width || (container.collapsed ? 200 : 400);
-      const height = container.height || (container.collapsed ? 60 : 300);
+      const height = container.height || (container.collapsed ? 100 : 300);
       
-      console.log(`[ReactFlowBridge] 📦 Container ${container.id}: collapsed=${container.collapsed}, ELK=(${elkCoords.x}, ${elkCoords.y}), ReactFlow=(${position.x}, ${position.y}), size=${width}x${height}`);
+      // Calculate node count for collapsed containers
+      const nodeCount = container.collapsed ? 
+        visState.getContainerChildren(container.id)?.size || 0 : 0;
+      
+      console.log(`[ReactFlowBridge] 📦 Container ${container.id}: collapsed=${container.collapsed}, ELK=(${elkCoords.x}, ${elkCoords.y}), ReactFlow=(${position.x}, ${position.y}), size=${width}x${height}, nodeCount=${nodeCount}`);
       
       const containerNode: ReactFlowNode = {
         id: container.id,
@@ -148,6 +152,8 @@ export class ReactFlowBridge {
           label: (container as any).data?.label || (container as any).label || container.id, // Use proper label like InfoPanel
           style: (container as any).style || 'default',
           collapsed: container.collapsed || false,
+          colorPalette: this.colorPalette, // Pass color palette for styling
+          nodeCount, // Number of child nodes for collapsed containers
           width,
           height,
           // Pass through any custom properties

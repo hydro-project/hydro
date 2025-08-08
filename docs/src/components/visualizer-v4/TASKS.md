@@ -9,5 +9,5 @@ TASKS:
 - Put all relevant styling constant into a dockable config widget
 
 FIXS:
-- collapse all after initialization
-- node count on collapsed containers
+- ✅ node count on collapsed containers
+- ✅ left-truncate container names using shared utility

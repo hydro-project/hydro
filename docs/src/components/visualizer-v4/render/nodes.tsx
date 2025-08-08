@@ -8,6 +8,7 @@ import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { getHandleConfig, CONTINUOUS_HANDLE_STYLE } from './handleConfig';
 import { generateNodeColors } from '../shared/colorUtils';
+import { truncateContainerName } from '../shared/textUtils';
 
 /**
  * Render handles based on current configuration
@@ -97,17 +98,128 @@ export function StandardNode({ id, data }: NodeProps) {
 export function ContainerNode({ id, data }: NodeProps) {
   // Use dimensions from ELK layout via ReactFlowBridge data
   const width = data.width || 180; // fallback to default
-  const height = data.height || (data.collapsed ? 60 : 120); // fallback to default
+  const height = data.height || (data.collapsed ? 100 : 120); // fallback to default, taller for collapsed
+  
+  // Get color palette and node count from data
+  const colorPalette = String(data.colorPalette || 'Set3');
+  const nodeCount = Number(data.nodeCount || 0);
   
   // Debug: Log container dimensions
   console.log(`[ContainerNode] 📏 Container ${id}: data.width=${data.width}, data.height=${data.height}, using ${width}x${height}`);
   
+  // Generate professional colors based on palette for collapsed containers
+  const generateContainerColors = (containerId: string, palette: string) => {
+    // Use a simple hash of the container ID to get consistent colors
+    const hash = containerId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    const colorPalettes: Record<string, string[]> = {
+      'Set3': ['#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3', '#fdb462', '#b3de69'],
+      'Pastel1': ['#fbb4ae', '#b3cde3', '#ccebc5', '#decbe4', '#fed9a6', '#ffffcc', '#e5d8bd'],
+      'Dark2': ['#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e', '#e6ab02', '#a6761d'],
+      'Set1': ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628'],
+      'Set2': ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f', '#e5c494']
+    };
+    
+    const colors = colorPalettes[palette] || colorPalettes['Set3'];
+    const baseColor = colors[hash % colors.length];
+    
+    // Create lighter background and darker border
+    const lighten = (color: string, factor: number) => {
+      const hex = color.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      
+      const newR = Math.floor(r + (255 - r) * factor);
+      const newG = Math.floor(g + (255 - g) * factor);
+      const newB = Math.floor(b + (255 - b) * factor);
+      
+      return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+    };
+    
+    const darken = (color: string, factor: number) => {
+      const hex = color.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      
+      const newR = Math.floor(r * (1 - factor));
+      const newG = Math.floor(g * (1 - factor));
+      const newB = Math.floor(b * (1 - factor));
+      
+      return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+    };
+    
+    return {
+      background: lighten(baseColor, 0.8), // Very light background
+      border: darken(baseColor, 0.2), // Darker border
+      text: darken(baseColor, 0.4) // Readable text color
+    };
+  };
+  
+  if (data.collapsed) {
+    // Professional collapsed container styling
+    const containerColors = generateContainerColors(id, colorPalette);
+    
+    return (
+      <div
+        style={{
+          width: `${width}px`,
+          height: `${height}px`,
+          background: containerColors.background,
+          border: `2px solid ${containerColors.border}`,
+          borderRadius: '8px',
+          position: 'relative',
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        {renderHandles()}
+        
+        {/* Container title - centered and truncated */}
+        <div
+          style={{
+            fontSize: '13px',
+            fontWeight: '600',
+            color: containerColors.text,
+            textAlign: 'center',
+            maxWidth: `${Number(width) - 16}px`,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            marginBottom: '4px'
+          }}
+        >
+          {truncateContainerName(String(data.label || id))}
+        </div>
+        
+        {/* Node count - smaller text below title */}
+        <div
+          style={{
+            fontSize: '11px',
+            color: containerColors.text,
+            opacity: 0.8,
+            textAlign: 'center'
+          }}
+        >
+          {nodeCount} node{nodeCount !== 1 ? 's' : ''}
+        </div>
+      </div>
+    );
+  }
+  
+  // Expanded container styling (unchanged)
   return (
     <div
       style={{
         padding: '16px',
-        background: data.collapsed ? '#ffeb3b' : 'rgba(25, 118, 210, 0.1)',
-        border: data.collapsed ? '2px solid #f57f17' : '2px solid #1976d2',
+        background: 'rgba(25, 118, 210, 0.1)',
+        border: '2px solid #1976d2',
         borderRadius: '8px',
         width: `${width}px`,  // Use ELK-calculated width
         height: `${height}px`, // Use ELK-calculated height (now includes label space)
@@ -125,7 +237,7 @@ export function ContainerNode({ id, data }: NodeProps) {
           right: '12px',   // Keep horizontal spacing the same
           fontSize: '12px',
           fontWeight: 'bold',
-          color: data.collapsed ? '#f57f17' : '#1976d2',
+          color: '#1976d2',
           maxWidth: `${Number(width) - 36}px`, // Ensure label doesn't overflow container (increased padding)
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -138,23 +250,6 @@ export function ContainerNode({ id, data }: NodeProps) {
       >
         {String(data.label || id)}
       </div>
-      
-      {/* Collapsed indicator (if needed) */}
-      {data.collapsed && (
-        <div style={{ 
-          position: 'absolute',
-          top: '8px',
-          left: '8px',
-          fontSize: '10px', 
-          color: '#666',
-          fontWeight: '500',
-          // Text shadow for legibility
-          textShadow: '1px 1px 1px rgba(255, 255, 255, 0.8), -1px -1px 1px rgba(255, 255, 255, 0.8)',
-          filter: 'drop-shadow(0px 1px 1px rgba(0, 0, 0, 0.1))'
-        }}>
-          (collapsed)
-        </div>
-      )}
     </div>
   );
 }
