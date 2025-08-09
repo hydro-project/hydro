@@ -555,7 +555,7 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
         state.setContainer(item.id, {
           label: item.name || item.id,
           children,
-          collapsed: false
+          collapsed: true // DEFAULT: Collapsed to prevent dimension explosion
         });
         containerCount++;
         

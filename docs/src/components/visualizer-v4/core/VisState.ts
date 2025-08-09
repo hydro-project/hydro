@@ -723,9 +723,27 @@ export class VisualizationState implements ContainerHierarchyView {
 
   /**
    * Get all expanded (non-collapsed) containers
+   * DIMENSION EXPLOSION PREVENTION: Automatically excludes containers with too many children
+   * to prevent ELK layout performance issues and massive spacing.
    */
   get expandedContainers() {
-    return Array.from(this._expandedContainers.values());
+    const MAX_CHILDREN_FOR_EXPANSION = 15; // Prevent bt_26-style dimension explosion
+    
+    return Array.from(this._expandedContainers.values()).filter(container => {
+      // Always respect explicitly collapsed containers
+      if (container.collapsed) {
+        return false;
+      }
+      
+      // Auto-collapse containers with too many children to prevent dimension explosion
+      const childCount = container.children ? container.children.size : 0;
+      if (childCount > MAX_CHILDREN_FOR_EXPANSION) {
+        console.log(`[VisState] 🛡️  Auto-collapsing container ${container.id} (${childCount} children > ${MAX_CHILDREN_FOR_EXPANSION}) to prevent dimension explosion`);
+        return false;
+      }
+      
+      return true;
+    });
   }
 
   /**

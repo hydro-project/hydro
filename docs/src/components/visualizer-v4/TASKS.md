@@ -9,10 +9,5 @@ TASKS:
 - Put all relevant styling constant into a dockable config widget
 
 FIXS:
-- Here's what we get when I do a re-grouping of the paxos graph by backtrace. Do you see how the big purple container is too large? 
-
-One possible issue is that we only track 2 choices of dimensions for a container
-- fully expanded
-- fully collapsed
-
-Maybe we need to consider what happens to nodes higher in the hierarchy with collapse of nodes low in the hierarchy?
+- ~~paxos-flipped init~~ ✅ **FIXED** - Added comprehensive dimension explosion prevention with auto-collapse logic
+- Edges are shifted north of nodes. Perhaps due to padding for the node labels?
