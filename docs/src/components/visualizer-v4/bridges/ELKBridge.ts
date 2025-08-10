@@ -42,13 +42,13 @@ export class ELKBridge {
    * Key insight: Include ALL visible edges (regular + hyper) with no distinction
    */
   async layoutVisState(visState: VisualizationState): Promise<void> {
-    // console.log('[ELKBridge] 🚀 Starting ELK layout from VisState');
+    console.log(`[ELKBridge] 🚀 Starting ELK layout from VisState`);
     
     // 1. Extract all visible data from VisState
     const elkGraph = this.visStateToELK(visState);
     
     // 2. Log ELK input for debugging spacing issues
-    this.logELKGraphStructure(elkGraph);
+    // this.logELKGraphStructure(elkGraph);
     
     // 3. Validate ELK input data
     this.validateELKInput(elkGraph);
@@ -80,7 +80,7 @@ export class ELKBridge {
       console.log(`[ELKBridge] 📊 Total edges: ${elkGraph.edges?.length || 0}`);
       
       // CRITICAL: Check if we're accidentally including children of collapsed containers
-      console.log('[ELKBridge] 🔍 Checking for children of collapsed containers...');
+      // console.log('[ELKBridge] 🔍 Checking for children of collapsed containers...');
       const leaks: string[] = [];
       for (const container of (elkGraph.children || [])) {
         // FIXED: Only check for leaks if container is marked as collapsed
@@ -100,33 +100,33 @@ export class ELKBridge {
         throw new Error(`ELK CONTAINER LEAKS DETECTED: ${leaks.length} collapsed containers have visible children. This violates the collapsed container invariant. Leaks: ${leaks.slice(0, 3).join('; ')}`);
       }
       
-      // Log sample container dimensions
-      const sampleContainers = (elkGraph.children || []).slice(0, 5);
-      console.log('[ELKBridge] 📦 Sample container dimensions:');
-      for (const container of sampleContainers) {
-        console.log(`[ELKBridge] 📦   ${container.id}: ${container.width}x${container.height}${container.x !== undefined ? ` pos=(${container.x},${container.y})` : ''}${container.children ? ` children=${container.children.length}` : ''}`);
-      }
+      // // Log sample container dimensions
+      // const sampleContainers = (elkGraph.children || []).slice(0, 5);
+      // console.log('[ELKBridge] 📦 Sample container dimensions:');
+      // for (const container of sampleContainers) {
+      //   console.log(`[ELKBridge] 📦   ${container.id}: ${container.width}x${container.height}${container.x !== undefined ? ` pos=(${container.x},${container.y})` : ''}${container.children ? ` children=${container.children.length}` : ''}`);
+      // }
     }
     
     const elkResult = await this.elk.layout(elkGraph);
     
-    // Debug: Log sample of output for large graphs
-    if ((elkResult.children?.length || 0) > 10) {
-      console.log('[ELKBridge] 📊 ELK Output for large graph:');
-      const sampleOutput = (elkResult.children || []).slice(0, 5);
-      for (const container of sampleOutput) {
-        console.log(`[ELKBridge] 📍   ${container.id}: pos=(${container.x},${container.y}) size=${container.width}x${container.height}`);
-      }
+    // // Debug: Log sample of output for large graphs
+    // if ((elkResult.children?.length || 0) > 10) {
+    //   console.log('[ELKBridge] 📊 ELK Output for large graph:');
+    //   const sampleOutput = (elkResult.children || []).slice(0, 5);
+    //   for (const container of sampleOutput) {
+    //     console.log(`[ELKBridge] 📍   ${container.id}: pos=(${container.x},${container.y}) size=${container.width}x${container.height}`);
+    //   }
       
-      // Check for suspiciously large coordinates
-      const largeCoords = (elkResult.children || []).filter(c => (c.y || 0) > 5000);
-      if (largeCoords.length > 0) {
-        console.log(`[ELKBridge] ⚠️  WARNING: ${largeCoords.length} containers have Y > 5000:`);
-        for (const container of largeCoords.slice(0, 3)) {
-          console.log(`[ELKBridge] ⚠️    ${container.id}: Y=${container.y}`);
-        }
-      }
-    }
+    //   // Check for suspiciously large coordinates
+    //   const largeCoords = (elkResult.children || []).filter(c => (c.y || 0) > 5000);
+    //   if (largeCoords.length > 0) {
+    //     console.log(`[ELKBridge] ⚠️  WARNING: ${largeCoords.length} containers have Y > 5000:`);
+    //     for (const container of largeCoords.slice(0, 3)) {
+    //       console.log(`[ELKBridge] ⚠️    ${container.id}: Y=${container.y}`);
+    //     }
+    //   }
+    // }
     // console.log(('[ELKBridge] ✅ ELK layout complete'));
     
     // 5. Yield control again before applying results
@@ -302,6 +302,16 @@ export class ELKBridge {
           hidden: false,
           style: 'default' // VisualizationState should determine style
         };
+        
+        // DEBUG: Log dimensions being passed to ELK for collapsed containers
+        console.log(`[ELKBridge] 📦 Collapsed container ${container.id} dimensions:`, {
+          width: containerAsNode.width,
+          height: containerAsNode.height,
+          originalWidth: container.width,
+          originalHeight: container.height,
+          expandedDimensions: container.expandedDimensions
+        });
+        
         nodes.push(containerAsNode);
       }
     });
@@ -392,7 +402,7 @@ export class ELKBridge {
       const containerWidth = effectiveDimensions.width;
       const containerHeight = effectiveDimensions.height;
       
-      console.log(`[ELKBridge] 📐 Container ${container.id} dimensions: ${containerWidth}x${containerHeight} (collapsed: ${container.collapsed})`);
+      // console.log(`[ELKBridge] 📐 Container ${container.id} dimensions: ${containerWidth}x${containerHeight} (collapsed: ${container.collapsed})`);
 
       return {
         id: container.id,

@@ -542,7 +542,7 @@ class VisualizationStateInvariantValidator {
           type: 'POSITIONED_CONTAINER_HIDDEN',
           message: `Container ${containerId} has layout position but is hidden - might indicate stale layout data`,
           entityId: containerId,
-          severity: 'warning'
+          severity: 'error'
         });
       }
     }
@@ -1497,10 +1497,14 @@ export class VisualizationState implements ContainerHierarchyView {
       const childNode = this._collections.graphNodes.get(childId);
       const childContainer = this._collections.containers.get(childId);
       if (childNode) {
-        console.log(`[DEBUG]   Child node ${childId}: hidden=${childNode.hidden}, inVisibleNodes=${this._collections._visibleNodes.has(childId)}`);
+        if (!childNode.hidden) {
+          throw new Error(`Child node ${childId} is not hidden`);
+        }
       }
       if (childContainer) {
-        console.log(`[DEBUG]   Child container ${childId}: hidden=${childContainer.hidden}, inVisibleContainers=${this._collections._visibleContainers.has(childId)}`);
+        if (!childContainer.hidden) {
+          throw new Error(`Child container ${childId} is not hidden`);
+        }
       }
     }
     
@@ -2178,6 +2182,14 @@ export class VisualizationState implements ContainerHierarchyView {
         childContainer.collapsed = true; // Must be collapsed  
         childContainer.hidden = true;   // Must be hidden
         
+        // CRITICAL: Clear layout positions to prevent stale layout data invariant violations
+        // When a container is hidden during smart collapse, it should not retain old layout positions
+        childContainer.x = undefined;
+        childContainer.y = undefined;
+        if (childContainer.layout) {
+          childContainer.layout.position = undefined;
+        }
+        
         // Update visibility caches
         this._updateContainerVisibilityCaches(childId, childContainer);
       } else {
@@ -2186,6 +2198,13 @@ export class VisualizationState implements ContainerHierarchyView {
         if (node) {
           node.hidden = true;
           this._collections._visibleNodes.delete(childId);
+          
+          // CRITICAL: Clear layout positions for hidden nodes too
+          node.x = undefined;
+          node.y = undefined;
+          if (node.layout) {
+            node.layout.position = undefined;
+          }
           
           // Cascade to connected edges
           this._cascadeNodeVisibilityToEdges(childId, false);

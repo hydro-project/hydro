@@ -280,8 +280,7 @@ export class VisualizationEngine {
         const height = (container as any).height || LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;
         const area = width * height;
         
-        this.log(`📏 Container ${container.id} area calculation: ${width}x${height} = ${area}`);
-        this.log(`📋 Container ${container.id} raw properties: width=${(container as any).width}, height=${(container as any).height}, collapsed=${(container as any).collapsed}`);
+        this.log(`📏 Container ${container.id} area calculation: ${width}x${height} = ${area}, collapsed=${(container as any).collapsed}`);
         
         return {
           container,
@@ -508,14 +507,14 @@ export class VisualizationEngine {
   private clearLayoutPositions(): void {
     this.log('🧹 Clearing layout positions for fresh ELK calculation...');
     
-    // Clear positions for all containers
+    // Clear positions for all visible containers
     const containers = this.visState.visibleContainers;
     for (const container of containers) {
       this.visState.setContainerLayout(container.id, { position: undefined });
       this.log(`🗑️ Cleared position for container ${container.id}`);
     }
     
-    // Clear positions for all nodes  
+    // Clear positions for all visible nodes  
     const nodes = this.visState.visibleNodes;
     for (const node of nodes) {
       this.visState.setNodeLayout(node.id, { position: undefined });
