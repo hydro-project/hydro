@@ -723,15 +723,69 @@ describe('Container Operations', () => {
     });
 
     // TODO: Add more comprehensive tests when methods are available
-    it.skip('should test node visibility operations', () => {
-      // This would test hide/show operations when they become available
-      expect(true).toBe(true);
+    it('should test node visibility operations', () => {
+      // Create a simple graph with a node and test visibility operations
+      const state = createVisualizationState();
+      
+      // Add a node
+      state.setGraphNode('testNode', { 
+        label: 'Test Node',
+        style: 'default',
+        hidden: false
+      });
+      
+      // Node should be visible by default
+      expect(state.visibleNodes.some(n => n.id === 'testNode')).toBe(true);
+      
+      // Test hiding the node
+      state.setNodeVisibility('testNode', false);
+      expect(state.visibleNodes.some(n => n.id === 'testNode')).toBe(false);
+      
+      // Test showing the node again
+      state.setNodeVisibility('testNode', true);
+      expect(state.visibleNodes.some(n => n.id === 'testNode')).toBe(true);
     });
 
-    it.skip('should verify all operation pairs are true inverses', () => {
-      // This would test that applying operation A followed by operation B 
-      // returns the system to exactly the original state for all symmetric pairs
-      expect(true).toBe(true);
+    it('should verify all operation pairs are true inverses', () => {
+      // Test that applying operation A followed by operation B 
+      // returns the system to exactly the original state for symmetric pairs
+      const state = createVisualizationState();
+      
+      // Set up a container with some nodes
+      state.setContainer('container1', { 
+        label: 'Container 1', 
+        collapsed: false,
+        position: { x: 0, y: 0 },
+        dimensions: { width: 400, height: 300 }
+      });
+      
+      state.setGraphNode('node1', { label: 'Node 1', style: 'default', hidden: false });
+      state.setGraphNode('node2', { label: 'Node 2', style: 'default', hidden: false });
+      
+      // Capture original state
+      const originalVisibleNodes = state.visibleNodes.length;
+      const originalVisibleContainers = state.visibleContainers.length;
+      const originalContainer = state.getContainer('container1');
+      
+      // Test collapse/expand inverse operation
+      state.collapseContainer('container1');
+      expect(state.getContainer('container1')?.collapsed).toBe(true);
+      
+      state.expandContainer('container1');
+      expect(state.getContainer('container1')?.collapsed).toBe(false);
+      
+      // Verify state is exactly the same as original
+      expect(state.visibleNodes.length).toBe(originalVisibleNodes);
+      expect(state.visibleContainers.length).toBe(originalVisibleContainers);
+      expect(state.getContainer('container1')?.collapsed).toBe(originalContainer?.collapsed);
+      
+      // Test hide/show node inverse operation
+      state.setNodeVisibility('node1', false);
+      expect(state.visibleNodes.some(n => n.id === 'node1')).toBe(false);
+      
+      state.setNodeVisibility('node1', true);
+      expect(state.visibleNodes.some(n => n.id === 'node1')).toBe(true);
+      expect(state.visibleNodes.length).toBe(originalVisibleNodes);
     });
   });
 });

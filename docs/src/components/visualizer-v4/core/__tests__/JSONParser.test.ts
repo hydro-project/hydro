@@ -196,14 +196,73 @@ describe('JSONParser', () => {
     });
 
     // TODO: Add more comprehensive integration tests
-    it.skip('should handle large graph data efficiently', () => {
-      // This would test performance with large datasets
-      expect(true).toBe(true);
+    it('should handle large graph data efficiently', () => {
+      // Test performance with moderately large dataset (not massive to avoid timeouts)
+      const largeGraphData = {
+        nodes: Array.from({ length: 100 }, (_, i) => ({
+          id: `node_${i}`,
+          data: { label: `Node ${i}` },
+          position: { x: i * 10, y: i * 10 }
+        })),
+        edges: Array.from({ length: 150 }, (_, i) => ({
+          id: `edge_${i}`,
+          source: `node_${i % 100}`,
+          target: `node_${(i + 1) % 100}`,
+          data: { label: `Edge ${i}` }
+        }))
+      };
+
+      const startTime = performance.now();
+      const result = parseGraphJSON(largeGraphData, 'large_test');
+      const endTime = performance.now();
+      
+      // Should complete in reasonable time (less than 1 second)
+      expect(endTime - startTime).toBeLessThan(1000);
+      
+      // Should parse correctly
+      expect(result.metadata.nodeCount).toBe(100);
+      expect(result.metadata.edgeCount).toBe(150);
+      expect(result.state.visibleNodes.length).toBe(100);
+      expect(result.state.visibleEdges.length).toBe(150);
     });
 
-    it.skip('should preserve edge relationships correctly', () => {
-      // This would test that edges maintain correct source/target relationships
-      expect(true).toBe(true);
+    it('should preserve edge relationships correctly', () => {
+      // Test that edges maintain correct source/target relationships after parsing
+      const testData = {
+        nodes: [
+          { id: "A", data: { label: "Node A" }, position: { x: 0, y: 0 } },
+          { id: "B", data: { label: "Node B" }, position: { x: 100, y: 0 } },
+          { id: "C", data: { label: "Node C" }, position: { x: 50, y: 100 } }
+        ],
+        edges: [
+          { id: "e1", source: "A", target: "B", data: { label: "A to B" } },
+          { id: "e2", source: "B", target: "C", data: { label: "B to C" } },
+          { id: "e3", source: "C", target: "A", data: { label: "C to A" } }
+        ]
+      };
+
+      const result = parseGraphJSON(testData, 'relationship_test');
+      
+      // All edges should be present
+      expect(result.state.visibleEdges.length).toBe(3);
+      
+      // Check each edge relationship
+      const edges = result.state.visibleEdges;
+      const e1 = edges.find(e => e.id === "e1");
+      const e2 = edges.find(e => e.id === "e2");
+      const e3 = edges.find(e => e.id === "e3");
+      
+      expect(e1).toBeDefined();
+      expect(e1?.source).toBe("A");
+      expect(e1?.target).toBe("B");
+      
+      expect(e2).toBeDefined();
+      expect(e2?.source).toBe("B");
+      expect(e2?.target).toBe("C");
+      
+      expect(e3).toBeDefined();
+      expect(e3?.source).toBe("C");
+      expect(e3?.target).toBe("A");
     });
   });
 });

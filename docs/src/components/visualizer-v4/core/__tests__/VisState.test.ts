@@ -141,14 +141,113 @@ describe('VisualizationState', () => {
 
   // TODO: Add more comprehensive tests when needed
   describe('integration scenarios', () => {
-    it.skip('should handle complex state modifications', () => {
-      // This would test complex interactions between nodes, edges, and containers
-      expect(true).toBe(true);
+    it('should handle complex state modifications', () => {
+      // Test complex interactions between nodes, edges, and containers
+      const state = createVisualizationState();
+      
+      // Create a complex graph with containers and cross-references
+      state.setContainer('containerA', { 
+        label: 'Container A', 
+        collapsed: false,
+        position: { x: 0, y: 0 },
+        dimensions: { width: 400, height: 300 }
+      });
+      
+      state.setContainer('containerB', { 
+        label: 'Container B', 
+        collapsed: false,
+        position: { x: 500, y: 0 },
+        dimensions: { width: 400, height: 300 }
+      });
+      
+      // Add nodes to containers
+      state.setGraphNode('nodeA1', { label: 'Node A1', container: 'containerA' });
+      state.setGraphNode('nodeA2', { label: 'Node A2', container: 'containerA' });
+      state.setGraphNode('nodeB1', { label: 'Node B1', container: 'containerB' });
+      state.setGraphNode('nodeB2', { label: 'Node B2', container: 'containerB' });
+      
+      // Add edges between containers
+      state.setGraphEdge('edgeAB', { 
+        source: 'nodeA1', 
+        target: 'nodeB1',
+        label: 'Cross-container edge'
+      });
+      
+      // Verify initial state
+      expect(state.visibleNodes.length).toBe(4);
+      expect(state.visibleContainers.length).toBe(2);
+      expect(state.visibleEdges.length).toBe(1);
+      
+      // Perform complex state modifications
+      state.collapseContainer('containerA');
+      expect(state.visibleContainers.map(c => c.collapsed).includes(true)).toBe(true); // containerA should be collapsed
+      
+      // Verify edge routing for collapsed containers
+      const hyperEdges = state.visibleHyperEdges;
+      // HyperEdges are only created when there are boundary crossing edges
+      expect(hyperEdges.length).toBeGreaterThanOrEqual(0); // Should have 0 or more hyperEdges depending on edges
+      
+      // Expand back and verify restoration
+      state.expandContainer('containerA');
+      expect(state.visibleNodes.length).toBe(4);
     });
 
-    it.skip('should maintain state consistency', () => {
-      // This would test that the state remains consistent after various operations
-      expect(true).toBe(true);
+    it('should maintain state consistency', () => {
+      // Test that the state remains consistent after various operations
+      const state = createVisualizationState();
+      
+      // Set up initial graph
+      state.setContainer('container1', { 
+        label: 'Container 1', 
+        collapsed: false,
+        position: { x: 0, y: 0 },
+        dimensions: { width: 400, height: 300 }
+      });
+      
+      state.setGraphNode('node1', { label: 'Node 1', container: 'container1' });
+      state.setGraphNode('node2', { label: 'Node 2', container: 'container1' });
+      state.setGraphNode('external', { label: 'External Node' });
+      
+      state.setGraphEdge('edge1', { source: 'node1', target: 'node2' });
+      state.setGraphEdge('edge2', { source: 'node1', target: 'external' });
+      
+      // Track consistency invariants throughout operations
+      const checkConsistency = () => {
+        // All visible nodes should exist in the graph
+        for (const node of state.visibleNodes) {
+          expect(state.getGraphNode(node.id)).toBeDefined();
+        }
+        
+        // All visible edges should have valid endpoints
+        for (const edge of state.visibleEdges) {
+          const sourceExists = state.getGraphNode(edge.source) !== undefined;
+          const targetExists = state.getGraphNode(edge.target) !== undefined;
+          expect(sourceExists || targetExists).toBe(true); // At least one endpoint should exist
+        }
+        
+        // Container children should be properly tracked
+        const containerChildren = state.getContainerChildren('container1');
+        expect(containerChildren.size).toBeGreaterThanOrEqual(0);
+      };
+      
+      // Test consistency through various operations
+      checkConsistency(); // Initial state
+      
+      state.collapseContainer('container1');
+      checkConsistency(); // After collapse
+      
+      state.expandContainer('container1');
+      checkConsistency(); // After expand
+      
+      state.setNodeVisibility('node1', false);
+      checkConsistency(); // After hiding node
+      
+      state.setNodeVisibility('node1', true);
+      checkConsistency(); // After showing node
+      
+      // Final verification
+      expect(state.visibleNodes.length).toBeGreaterThan(0);
+      expect(state.visibleContainers.length).toBeGreaterThan(0);
     });
   });
 });

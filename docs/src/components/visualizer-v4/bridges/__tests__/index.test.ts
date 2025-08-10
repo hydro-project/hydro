@@ -18,7 +18,7 @@ describe('Bridge Test Runner (Legacy)', () => {
     expect(true).toBe(true);
   });
 
-  it.skip('Legacy bridge runner is no longer needed', () => {
+  it('Legacy bridge runner is no longer needed', () => {
     // All bridge functionality is now tested via individual Vitest files
     // with proper TypeScript support and modern testing practices
     expect(true).toBe(true);
