@@ -409,7 +409,7 @@ export class ELKBridge {
         width: containerWidth,
         height: containerHeight,
         children: elkChildren,
-        layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm)
+        layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm, nodes.length)
       };
     };
     
@@ -456,7 +456,7 @@ export class ELKBridge {
       id: 'root',
       children: elkNodes,
       edges: elkEdges,
-      layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm)
+      layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm, nodes.length)
     };
   }
 

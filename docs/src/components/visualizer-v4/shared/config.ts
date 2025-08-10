@@ -173,16 +173,22 @@ export const ELK_ALGORITHMS = {
 };
 
 export const LAYOUT_SPACING = {
-  // Updated to match working Visualizer spacing values
-  NODE_NODE: 75,                    // Increased for better node separation
+  // Base spacing values for normal-sized graphs
+  NODE_NODE: 50,                    // Reduced from 75 for better performance on large graphs
   NODE_EDGE: 10,                    // Keep edge spacing tight
   EDGE_EDGE: 10,                    // Keep edge spacing tight
-  NODE_TO_NODE_NORMAL: 75,          // Match Visualizer: better readability
+  NODE_TO_NODE_NORMAL: 50,          // Reduced from 75 for better performance on large graphs
   EDGE_TO_EDGE: 10,                 // Keep edge spacing tight
   EDGE_TO_NODE: 0,                  // Match Visualizer: no extra edge-node gap
-  COMPONENT_TO_COMPONENT: 60,       // Match Visualizer: better component separation
+  COMPONENT_TO_COMPONENT: 40,       // Reduced from 60 for better performance on large graphs
   ROOT_PADDING: 20,                 // Keep root padding minimal
-  CONTAINER_PADDING: 60             // Match Visualizer: proper breathing room in containers
+  CONTAINER_PADDING: 40,            // Reduced from 60 for better performance on large graphs
+  
+  // Compact spacing for large graphs (>200 nodes)
+  LARGE_GRAPH_NODE_NODE: 25,        // Very compact spacing for large graphs
+  LARGE_GRAPH_COMPONENT_COMPONENT: 20, // Very compact component spacing
+  LARGE_GRAPH_CONTAINER_PADDING: 15,   // Very compact container padding
+  LARGE_GRAPH_THRESHOLD: 200        // Node count threshold for large graph spacing
 };
 
 export const ELK_LAYOUT_OPTIONS = {
@@ -202,10 +208,33 @@ export const ELK_LAYOUT_OPTIONS = {
 
 export type ELKAlgorithm = typeof ELK_ALGORITHMS[keyof typeof ELK_ALGORITHMS];
 
-export function getELKLayoutOptions(algorithm: ELKAlgorithm = ELK_ALGORITHMS.MRTREE) {
+/**
+ * Get appropriate spacing values based on graph size
+ */
+function getSpacingForGraphSize(nodeCount: number) {
+  if (nodeCount >= LAYOUT_SPACING.LARGE_GRAPH_THRESHOLD) {
+    return {
+      nodeNode: LAYOUT_SPACING.LARGE_GRAPH_NODE_NODE,
+      componentComponent: LAYOUT_SPACING.LARGE_GRAPH_COMPONENT_COMPONENT,
+      containerPadding: LAYOUT_SPACING.LARGE_GRAPH_CONTAINER_PADDING
+    };
+  }
+  return {
+    nodeNode: LAYOUT_SPACING.NODE_TO_NODE_NORMAL,
+    componentComponent: LAYOUT_SPACING.COMPONENT_TO_COMPONENT,
+    containerPadding: LAYOUT_SPACING.CONTAINER_PADDING
+  };
+}
+
+export function getELKLayoutOptions(algorithm: ELKAlgorithm = ELK_ALGORITHMS.MRTREE, nodeCount: number = 0) {
+  const spacing = getSpacingForGraphSize(nodeCount);
+  
   return {
     ...ELK_LAYOUT_OPTIONS,
-    'elk.algorithm': algorithm
+    'elk.algorithm': algorithm,
+    'elk.spacing.nodeNode': spacing.nodeNode.toString(),
+    'elk.spacing.componentComponent': spacing.componentComponent.toString(),
+    // Note: Container padding is handled by the bridge, not directly by ELK
   };
 }
 

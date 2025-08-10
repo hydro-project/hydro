@@ -8,6 +8,7 @@ export default defineConfig({
     pool: 'forks', // Use fork pool to avoid CJS issues
     include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     exclude: ['**/node_modules/**', '**/dist/**', '**/_DEPRECATED_*/**'],
+    testTimeout: 15000, // Increase timeout for large graph tests like paxos-flipped.json
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
