@@ -331,6 +331,19 @@ export class VisualizationEngine {
         
         for (const containerId of containersToCollapse) {
           try {
+            // CRITICAL: Check if container is already collapsed before attempting collapse
+            // During recursive collapse, parent containers may have already collapsed their children
+            const container = this.visState.getContainer(containerId);
+            if (!container) {
+              this.log(`⚠️ Container ${containerId} no longer exists, skipping`);
+              continue;
+            }
+            
+            if (container.collapsed) {
+              this.log(`⚠️ Container ${containerId} is already collapsed, skipping`);
+              continue;
+            }
+            
             // Use collapseContainer which handles all the mechanics atomically:
             // - Collapsing the container and its children
             // - Creating hyperEdges for crossing edges  
@@ -507,21 +520,10 @@ export class VisualizationEngine {
   private clearLayoutPositions(): void {
     this.log('🧹 Clearing layout positions for fresh ELK calculation...');
     
-    // Clear positions for all visible containers
-    const containers = this.visState.visibleContainers;
-    for (const container of containers) {
-      this.visState.setContainerLayout(container.id, { position: undefined });
-      this.log(`🗑️ Cleared position for container ${container.id}`);
-    }
+    // Use VisState's public method to clear all layout positions
+    this.visState.clearLayoutPositions();
     
-    // Clear positions for all visible nodes  
-    const nodes = this.visState.visibleNodes;
-    for (const node of nodes) {
-      this.visState.setNodeLayout(node.id, { position: undefined });
-      this.log(`🗑️ Cleared position for node ${node.id}`);
-    }
-    
-    this.log(`✅ Cleared positions for ${containers.length} containers and ${nodes.length} nodes`);
+    this.log(`✅ Cleared layout positions for all containers and nodes`);
   }
 
   private handleError(message: string, error: any): void {

@@ -1148,6 +1148,25 @@ export class VisualizationState implements ContainerHierarchyView {
   }
   
   /**
+   * Clear all layout positions to force fresh ELK layout calculation
+   * This is needed after smart collapse to prevent ELK from using cached positions
+   * calculated with old (large) container dimensions
+   */
+  clearLayoutPositions(): void {
+    // Clear positions for all visible containers
+    const containers = this._collections.containers;
+    for (const container of containers) {
+      this.setContainerLayout(container.id, { position: undefined });
+    }
+    
+    // CRITICAL: Clear positions for ALL nodes (both visible and hidden)
+    // Hidden nodes can have stale layout positions that cause invariant violations
+    for (const [nodeId, node] of this._collections.graphNodes) {
+      this.setNodeLayout(nodeId, { position: undefined });
+    }
+  }
+  
+  /**
    * Collapse a container (legacy compatibility method)
    * This will be replaced by setContainerState in the future
    */
