@@ -168,7 +168,7 @@
 <a href=#168 id=168 data-nosnippet>168</a>                </span>#rhs_borrow
 <a href=#169 id=169 data-nosnippet>169</a>                    .table
 <a href=#170 id=170 data-nosnippet>170</a>                    .iter()
-<a href=#171 id=171 data-nosnippet>171</a>                    .filter_map(|(k, v2)| #lhs_borrow.table.get(k).map(|v1| (k.clone(), #root::lattices::Pair::&lt;#lhs_type, #rhs_type&gt;::new_from(v1.clone(), v2.clone()))))
+<a href=#171 id=171 data-nosnippet>171</a>                    .filter_map(|(k, v2)| #lhs_borrow.table.get(k).map(|v1| (k.clone(), lattices::Pair::&lt;#lhs_type, #rhs_type&gt;::new_from(v1.clone(), v2.clone()))))
 <a href=#172 id=172 data-nosnippet>172</a>                    .map(|(key, p)| #root::lattices::map_union::MapUnionSingletonMap::new_from((key, p)))
 <a href=#173 id=173 data-nosnippet>173</a>            };
 <a href=#174 id=174 data-nosnippet>174</a>        };

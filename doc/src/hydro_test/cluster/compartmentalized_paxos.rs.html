@@ -257,67 +257,63 @@
 <a href=#257 id=257 data-nosnippet>257</a>            ((slot, ballot), payload)
 <a href=#258 id=258 data-nosnippet>258</a>        ))))
 <a href=#259 id=259 data-nosnippet>259</a>        .all_ticks()
-<a href=#260 id=260 data-nosnippet>260</a>        .demux_bincode(proxy_leaders)
-<a href=#261 id=261 data-nosnippet>261</a>        .values();
-<a href=#262 id=262 data-nosnippet>262</a>
-<a href=#263 id=263 data-nosnippet>263</a>    <span class="comment">// Send to a specific acceptor row
-<a href=#264 id=264 data-nosnippet>264</a>    </span><span class="kw">let </span>num_acceptor_rows = config.acceptor_grid_rows;
-<a href=#265 id=265 data-nosnippet>265</a>    <span class="kw">let </span>num_acceptor_cols = config.acceptor_grid_cols;
-<a href=#266 id=266 data-nosnippet>266</a>    <span class="kw">let </span>pl_to_acceptors_p2a_thrifty = p_to_proxy_leaders_p2a
-<a href=#267 id=267 data-nosnippet>267</a>        .clone()
-<a href=#268 id=268 data-nosnippet>268</a>        .flat_map_unordered(<span class="macro">q!</span>(<span class="kw">move </span>|((slot, ballot), payload)| {
-<a href=#269 id=269 data-nosnippet>269</a>            <span class="kw">let </span>row = slot % num_acceptor_rows;
-<a href=#270 id=270 data-nosnippet>270</a>            <span class="kw">let </span><span class="kw-2">mut </span>p2as = Vec::new();
-<a href=#271 id=271 data-nosnippet>271</a>            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_acceptor_cols {
-<a href=#272 id=272 data-nosnippet>272</a>                p2as.push((
-<a href=#273 id=273 data-nosnippet>273</a>                    ClusterId::&lt;Acceptor&gt;::from_raw((row * num_acceptor_cols + i) <span class="kw">as </span>u32),
-<a href=#274 id=274 data-nosnippet>274</a>                    P2a {
-<a href=#275 id=275 data-nosnippet>275</a>                        sender: ClusterId::&lt;ProxyLeader&gt;::from_raw(
-<a href=#276 id=276 data-nosnippet>276</a>                            (slot % num_proxy_leaders) <span class="kw">as </span>u32,
-<a href=#277 id=277 data-nosnippet>277</a>                        ),
-<a href=#278 id=278 data-nosnippet>278</a>                        slot,
-<a href=#279 id=279 data-nosnippet>279</a>                        ballot,
-<a href=#280 id=280 data-nosnippet>280</a>                        value: payload.clone(),
-<a href=#281 id=281 data-nosnippet>281</a>                    },
-<a href=#282 id=282 data-nosnippet>282</a>                ));
-<a href=#283 id=283 data-nosnippet>283</a>            }
-<a href=#284 id=284 data-nosnippet>284</a>            p2as
-<a href=#285 id=285 data-nosnippet>285</a>        }))
-<a href=#286 id=286 data-nosnippet>286</a>        .demux_bincode(acceptors)
-<a href=#287 id=287 data-nosnippet>287</a>        .values();
-<a href=#288 id=288 data-nosnippet>288</a>
-<a href=#289 id=289 data-nosnippet>289</a>    <span class="kw">let </span>(a_log, a_to_proxy_leaders_p2b) = acceptor_p2(
-<a href=#290 id=290 data-nosnippet>290</a>        acceptor_tick,
-<a href=#291 id=291 data-nosnippet>291</a>        a_max_ballot.clone(),
-<a href=#292 id=292 data-nosnippet>292</a>        pl_to_acceptors_p2a_thrifty,
-<a href=#293 id=293 data-nosnippet>293</a>        a_checkpoint,
-<a href=#294 id=294 data-nosnippet>294</a>        proxy_leaders,
-<a href=#295 id=295 data-nosnippet>295</a>    );
-<a href=#296 id=296 data-nosnippet>296</a>
-<a href=#297 id=297 data-nosnippet>297</a>    <span class="comment">// TODO: This is a liveness problem if any node in the thrifty quorum fails
-<a href=#298 id=298 data-nosnippet>298</a>    // Need special operator for per-value timeout detection
-<a href=#299 id=299 data-nosnippet>299</a>    </span><span class="kw">let </span>(quorums, fails) = collect_quorum(
-<a href=#300 id=300 data-nosnippet>300</a>        a_to_proxy_leaders_p2b.atomic(proxy_leader_tick),
-<a href=#301 id=301 data-nosnippet>301</a>        config.acceptor_grid_cols,
-<a href=#302 id=302 data-nosnippet>302</a>        config.acceptor_grid_cols,
-<a href=#303 id=303 data-nosnippet>303</a>    );
-<a href=#304 id=304 data-nosnippet>304</a>
-<a href=#305 id=305 data-nosnippet>305</a>    <span class="kw">let </span>pl_to_replicas = join_responses(proxy_leader_tick, quorums.map(<span class="macro">q!</span>(|k| (k, ()))), <span class="kw">unsafe </span>{
-<a href=#306 id=306 data-nosnippet>306</a>        p_to_proxy_leaders_p2a.tick_batch(proxy_leader_tick)
-<a href=#307 id=307 data-nosnippet>307</a>    });
-<a href=#308 id=308 data-nosnippet>308</a>
-<a href=#309 id=309 data-nosnippet>309</a>    <span class="kw">let </span>pl_failed_p2b_to_proposer = fails
-<a href=#310 id=310 data-nosnippet>310</a>        .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| (ballot.proposer_id, ballot)))
-<a href=#311 id=311 data-nosnippet>311</a>        .inspect(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| <span class="macro">println!</span>(<span class="string">"Failed P2b: {:?}"</span>, ballot)))
-<a href=#312 id=312 data-nosnippet>312</a>        .end_atomic()
-<a href=#313 id=313 data-nosnippet>313</a>        .demux_bincode(proposers)
-<a href=#314 id=314 data-nosnippet>314</a>        .values();
-<a href=#315 id=315 data-nosnippet>315</a>
-<a href=#316 id=316 data-nosnippet>316</a>    (
-<a href=#317 id=317 data-nosnippet>317</a>        pl_to_replicas
-<a href=#318 id=318 data-nosnippet>318</a>            .map(<span class="macro">q!</span>(|((slot, _ballot), (value, <span class="kw">_</span>))| (slot, value)))
-<a href=#319 id=319 data-nosnippet>319</a>            .end_atomic(),
-<a href=#320 id=320 data-nosnippet>320</a>        a_log,
-<a href=#321 id=321 data-nosnippet>321</a>        pl_failed_p2b_to_proposer,
-<a href=#322 id=322 data-nosnippet>322</a>    )
-<a href=#323 id=323 data-nosnippet>323</a>}</code></pre></div></section></main></body></html>
+<a href=#260 id=260 data-nosnippet>260</a>        .send_bincode_anonymous(proxy_leaders);
+<a href=#261 id=261 data-nosnippet>261</a>
+<a href=#262 id=262 data-nosnippet>262</a>    <span class="comment">// Send to a specific acceptor row
+<a href=#263 id=263 data-nosnippet>263</a>    </span><span class="kw">let </span>num_acceptor_rows = config.acceptor_grid_rows;
+<a href=#264 id=264 data-nosnippet>264</a>    <span class="kw">let </span>num_acceptor_cols = config.acceptor_grid_cols;
+<a href=#265 id=265 data-nosnippet>265</a>    <span class="kw">let </span>pl_to_acceptors_p2a_thrifty = p_to_proxy_leaders_p2a
+<a href=#266 id=266 data-nosnippet>266</a>        .clone()
+<a href=#267 id=267 data-nosnippet>267</a>        .flat_map_unordered(<span class="macro">q!</span>(<span class="kw">move </span>|((slot, ballot), payload)| {
+<a href=#268 id=268 data-nosnippet>268</a>            <span class="kw">let </span>row = slot % num_acceptor_rows;
+<a href=#269 id=269 data-nosnippet>269</a>            <span class="kw">let </span><span class="kw-2">mut </span>p2as = Vec::new();
+<a href=#270 id=270 data-nosnippet>270</a>            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_acceptor_cols {
+<a href=#271 id=271 data-nosnippet>271</a>                p2as.push((
+<a href=#272 id=272 data-nosnippet>272</a>                    ClusterId::&lt;Acceptor&gt;::from_raw((row * num_acceptor_cols + i) <span class="kw">as </span>u32),
+<a href=#273 id=273 data-nosnippet>273</a>                    P2a {
+<a href=#274 id=274 data-nosnippet>274</a>                        sender: ClusterId::&lt;ProxyLeader&gt;::from_raw(
+<a href=#275 id=275 data-nosnippet>275</a>                            (slot % num_proxy_leaders) <span class="kw">as </span>u32,
+<a href=#276 id=276 data-nosnippet>276</a>                        ),
+<a href=#277 id=277 data-nosnippet>277</a>                        slot,
+<a href=#278 id=278 data-nosnippet>278</a>                        ballot,
+<a href=#279 id=279 data-nosnippet>279</a>                        value: payload.clone(),
+<a href=#280 id=280 data-nosnippet>280</a>                    },
+<a href=#281 id=281 data-nosnippet>281</a>                ));
+<a href=#282 id=282 data-nosnippet>282</a>            }
+<a href=#283 id=283 data-nosnippet>283</a>            p2as
+<a href=#284 id=284 data-nosnippet>284</a>        }))
+<a href=#285 id=285 data-nosnippet>285</a>        .send_bincode_anonymous(acceptors);
+<a href=#286 id=286 data-nosnippet>286</a>
+<a href=#287 id=287 data-nosnippet>287</a>    <span class="kw">let </span>(a_log, a_to_proxy_leaders_p2b) = acceptor_p2(
+<a href=#288 id=288 data-nosnippet>288</a>        acceptor_tick,
+<a href=#289 id=289 data-nosnippet>289</a>        a_max_ballot.clone(),
+<a href=#290 id=290 data-nosnippet>290</a>        pl_to_acceptors_p2a_thrifty,
+<a href=#291 id=291 data-nosnippet>291</a>        a_checkpoint,
+<a href=#292 id=292 data-nosnippet>292</a>        proxy_leaders,
+<a href=#293 id=293 data-nosnippet>293</a>    );
+<a href=#294 id=294 data-nosnippet>294</a>
+<a href=#295 id=295 data-nosnippet>295</a>    <span class="comment">// TODO: This is a liveness problem if any node in the thrifty quorum fails
+<a href=#296 id=296 data-nosnippet>296</a>    // Need special operator for per-value timeout detection
+<a href=#297 id=297 data-nosnippet>297</a>    </span><span class="kw">let </span>(quorums, fails) = collect_quorum(
+<a href=#298 id=298 data-nosnippet>298</a>        a_to_proxy_leaders_p2b.atomic(proxy_leader_tick),
+<a href=#299 id=299 data-nosnippet>299</a>        config.acceptor_grid_cols,
+<a href=#300 id=300 data-nosnippet>300</a>        config.acceptor_grid_cols,
+<a href=#301 id=301 data-nosnippet>301</a>    );
+<a href=#302 id=302 data-nosnippet>302</a>
+<a href=#303 id=303 data-nosnippet>303</a>    <span class="kw">let </span>pl_to_replicas = join_responses(proxy_leader_tick, quorums.map(<span class="macro">q!</span>(|k| (k, ()))), <span class="kw">unsafe </span>{
+<a href=#304 id=304 data-nosnippet>304</a>        p_to_proxy_leaders_p2a.tick_batch(proxy_leader_tick)
+<a href=#305 id=305 data-nosnippet>305</a>    });
+<a href=#306 id=306 data-nosnippet>306</a>
+<a href=#307 id=307 data-nosnippet>307</a>    <span class="kw">let </span>pl_failed_p2b_to_proposer = fails
+<a href=#308 id=308 data-nosnippet>308</a>        .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| (ballot.proposer_id, ballot)))
+<a href=#309 id=309 data-nosnippet>309</a>        .inspect(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| <span class="macro">println!</span>(<span class="string">"Failed P2b: {:?}"</span>, ballot)))
+<a href=#310 id=310 data-nosnippet>310</a>        .send_bincode_anonymous(proposers);
+<a href=#311 id=311 data-nosnippet>311</a>
+<a href=#312 id=312 data-nosnippet>312</a>    (
+<a href=#313 id=313 data-nosnippet>313</a>        pl_to_replicas
+<a href=#314 id=314 data-nosnippet>314</a>            .map(<span class="macro">q!</span>(|((slot, _ballot), (value, <span class="kw">_</span>))| (slot, value)))
+<a href=#315 id=315 data-nosnippet>315</a>            .end_atomic(),
+<a href=#316 id=316 data-nosnippet>316</a>        a_log,
+<a href=#317 id=317 data-nosnippet>317</a>        pl_failed_p2b_to_proposer,
+<a href=#318 id=318 data-nosnippet>318</a>    )
+<a href=#319 id=319 data-nosnippet>319</a>}</code></pre></div></section></main></body></html>
