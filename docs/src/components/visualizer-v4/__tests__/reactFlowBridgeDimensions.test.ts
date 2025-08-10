@@ -71,15 +71,16 @@ describe('ReactFlowBridge Dimensions Fix', () => {
     const reactFlowContainer = containerNodes[0];
     // // console.log(((`📏 ReactFlow container dimensions: ${reactFlowContainer.data.width}x${reactFlowContainer.data.height} at (${reactFlowContainer.position.x}, ${reactFlowContainer.position.y})`)));
 
-    // ReactFlow should receive the same dimensions that ELK calculated
-    expect(reactFlowContainer.data.width).toBe(elkContainer.width);
-    expect(reactFlowContainer.data.height).toBe(elkContainer.height);
+    // ReactFlow should receive the same dimensions that are used for layout
+    const expectedDimensions = visState.getContainerAdjustedDimensions(elkContainer.id);
+    expect(reactFlowContainer.data.width).toBe(expectedDimensions.width);
+    expect(reactFlowContainer.data.height).toBe(expectedDimensions.height);
     expect(reactFlowContainer.position.x).toBe(elkContainer.x);
     expect(reactFlowContainer.position.y).toBe(elkContainer.y);
 
     // 7. Verify style dimensions match data dimensions
-    expect(reactFlowContainer.style?.width).toBe(elkContainer.width);
-    expect(reactFlowContainer.style?.height).toBe(elkContainer.height);
+    expect(reactFlowContainer.style?.width).toBe(expectedDimensions.width);
+    expect(reactFlowContainer.style?.height).toBe(expectedDimensions.height);
 
     // // console.log((('✅ All dimension checks passed - ReactFlowBridge correctly uses ELK-calculated dimensions!')));
     // // console.log((('=== Test Complete ===\n')));
@@ -127,9 +128,10 @@ describe('ReactFlowBridge Dimensions Fix', () => {
     // Verify ReactFlow containers match VisState containers
     for (const reactFlowContainer of reactFlowContainers) {
       const visStateContainer = visStateContainers.find(c => c.id === reactFlowContainer.id)!;
+      const expectedDimensions = visState.getContainerAdjustedDimensions(visStateContainer.id);
       
-      expect(reactFlowContainer.data.width).toBe(visStateContainer.width);
-      expect(reactFlowContainer.data.height).toBe(visStateContainer.height);
+      expect(reactFlowContainer.data.width).toBe(expectedDimensions.width);
+      expect(reactFlowContainer.data.height).toBe(expectedDimensions.height);
       expect(reactFlowContainer.position.x).toBe(visStateContainer.x);
       expect(reactFlowContainer.position.y).toBe(visStateContainer.y);
 

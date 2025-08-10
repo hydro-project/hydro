@@ -358,7 +358,7 @@ where
         }));
         node_assignments_choices.insert("location".to_string(), serde_json::Value::Object(location_assignments));
 
-        // Add backtrace-based hierarchy if available
+       // Add backtrace-based hierarchy if available
         if self.has_backtrace_data() {
             let (backtrace_hierarchy, backtrace_assignments) = self.create_backtrace_hierarchy();
             hierarchy_choices.push(serde_json::json!({

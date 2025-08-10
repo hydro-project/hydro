@@ -255,11 +255,14 @@ describe('ELKBridge Container Hierarchy', () => {
       
       // Before layout, check container dimensions
       const containers = state.expandedContainers;
-      const initialDimensions = containers.map(c => ({
-        id: c.id,
-        width: c.expandedDimensions.width,
-        height: c.expandedDimensions.height
-      }));
+      const initialDimensions = containers.map(c => {
+        const dims = state.getContainerAdjustedDimensions(c.id);
+        return {
+          id: c.id,
+          width: dims.width,
+          height: dims.height
+        };
+      });
       
       await elkBridge.layoutVisState(state);
       

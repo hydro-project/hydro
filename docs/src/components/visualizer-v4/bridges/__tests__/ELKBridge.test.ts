@@ -105,10 +105,11 @@ describe('ELKBridge', () => {
       const bridge = new ELKBridge();
       const state = createVisualizationState();
       
-      // Add container
+      // Add container with children
       state.setContainer('container1', {
         style: 'default',
-        collapsed: false
+        collapsed: false,
+        children: ['child1', 'child2']
       });
       
       // Add nodes to container
@@ -160,10 +161,11 @@ describe('ELKBridge', () => {
       const state = createVisualizationState();
       
       // Create hierarchical structure similar to chat.json
-      // Add parent container
+      // Add parent container with children
       state.setContainer('parent_container', {
         style: 'default',
-        collapsed: false
+        collapsed: false,
+        children: ['child1', 'child2', 'child3']
       });
       
       // Add child nodes that should be inside the container

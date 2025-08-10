@@ -26,10 +26,10 @@ export { createVisualizationState } from './core/VisState';
 /**
  * Pre-defined styling constants and types
  */
-export { NODE_STYLES } from './core/constants';
-export { EDGE_STYLES } from './core/constants';
-export { CONTAINER_STYLES } from './core/constants';
-export { LAYOUT_CONSTANTS } from './core/constants';
+export { NODE_STYLES } from './shared/config';
+export { EDGE_STYLES } from './shared/config';
+export { CONTAINER_STYLES } from './shared/config';
+export { LAYOUT_CONSTANTS } from './shared/config';
 export type { NodeStyle, EdgeStyle, ContainerStyle, Dimensions, GraphNode, GraphEdge, Container, HyperEdge, CreateNodeProps, CreateEdgeProps, CreateContainerProps } from './core/types';
 /**
  * Parse graph JSON data - SAME API, now with bridge architecture!

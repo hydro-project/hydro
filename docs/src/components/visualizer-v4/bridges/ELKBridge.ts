@@ -8,7 +8,6 @@
  */
 
 import { VisualizationState } from '../core/VisState';
-import { ContainerPadding } from '../core/ContainerPadding';
 import type { 
   GraphNode, 
   GraphEdge, 
@@ -82,11 +81,23 @@ export class ELKBridge {
       
       // CRITICAL: Check if we're accidentally including children of collapsed containers
       console.log('[ELKBridge] 🔍 Checking for children of collapsed containers...');
+      const leaks: string[] = [];
       for (const container of (elkGraph.children || [])) {
-        if (container.children && container.children.length > 0) {
-          console.log(`[ELKBridge] ⚠️  LEAK: Container ${container.id} has ${container.children.length} children but should be collapsed!`);
+        // FIXED: Only check for leaks if container is marked as collapsed
+        // Expanded containers (collapsed=false) are SUPPOSED to have children!
+        // Check the original container state from visState
+        const originalContainer = visState.getContainer(container.id);
+        if (originalContainer?.collapsed && container.children && container.children.length > 0) {
+          const leakMsg = `Container ${container.id} has ${container.children.length} children but should be collapsed!`;
+          console.log(`[ELKBridge] ⚠️  LEAK: ${leakMsg}`);
           console.log(`[ELKBridge] ⚠️    Children: ${container.children.map(c => c.id).slice(0, 3).join(', ')}${container.children.length > 3 ? '...' : ''}`);
+          leaks.push(leakMsg);
         }
+      }
+      
+      // In test environments, throw an error if we have leaks
+      if (leaks.length > 0 && (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true')) {
+        throw new Error(`ELK CONTAINER LEAKS DETECTED: ${leaks.length} collapsed containers have visible children. This violates the collapsed container invariant. Leaks: ${leaks.slice(0, 3).join('; ')}`);
       }
       
       // Log sample container dimensions
@@ -196,7 +207,36 @@ export class ELKBridge {
       }
     });
     
-    // Validate each edge has required properties
+    // Get all valid node IDs from the ELK graph for edge validation
+    const allValidNodeIds = new Set<string>();
+    const collectNodeIds = (elkNode: ElkNode) => {
+      allValidNodeIds.add(elkNode.id);
+      elkNode.children?.forEach(collectNodeIds);
+    };
+    elkGraph.children?.forEach(collectNodeIds);
+    
+    // STRICT VALIDATION: Throw error for edges with invalid endpoints instead of silently filtering
+    // This forces VisualizationState to provide clean, valid data
+    elkGraph.edges?.forEach(edge => {
+      const hasValidSource = edge.sources?.some(sourceId => allValidNodeIds.has(sourceId));
+      const hasValidTarget = edge.targets?.some(targetId => allValidNodeIds.has(targetId));
+      
+      if (!hasValidSource || !hasValidTarget) {
+        const sourceIds = edge.sources?.join(', ') || 'none';
+        const targetIds = edge.targets?.join(', ') || 'none';
+        const availableNodes = Array.from(allValidNodeIds).slice(0, 10).join(', ') + (allValidNodeIds.size > 10 ? '...' : '');
+        
+        throw new Error(
+          `ELKBridge received edge ${edge.id} with invalid endpoints!\n` +
+          `Sources: [${sourceIds}] (valid: ${hasValidSource})\n` +
+          `Targets: [${targetIds}] (valid: ${hasValidTarget})\n` +
+          `Available nodes: ${availableNodes}\n` +
+          `This indicates a bug in VisualizationState - it should not send edges that reference non-existent nodes.`
+        );
+      }
+    });
+    
+    // Validate each remaining edge has required properties
     elkGraph.edges.forEach(edge => {
       if (!edge.id) {
         throw new Error(`ELK edge missing ID: ${JSON.stringify(edge)}`);
@@ -222,7 +262,7 @@ export class ELKBridge {
     
     // Extract ALL edges via the unified visibleEdges interface
     // This now includes hyperedges transparently - ELK doesn't need to know the difference
-    const allEdges = visState.visibleEdges;
+    const allEdges = Array.from(visState.visibleEdges);
     
     // console.log('[ELKBridge] 📋 Extracted from VisState:', {
     //   visibleNodes: visibleNodes.length,
@@ -275,8 +315,18 @@ export class ELKBridge {
   private extractVisibleContainers(visState: VisualizationState): Container[] {
     const containers: Container[] = [];
     
-    const expandedContainers = visState.expandedContainers;
-    containers.push(...expandedContainers);
+    // CRITICAL ARCHITECTURAL FIX: Use visibleContainers (includes collapsed) not expandedContainers (excludes collapsed)
+    // RULE: Bridges should only see the public visible interface, not internal state like expandedContainers
+    // According to our rules: collapsed containers should appear in ELK, hidden containers should not
+    const visibleContainers = visState.visibleContainers;
+    
+    // Convert computed views back to raw Container objects
+    for (const computedContainer of visibleContainers) {
+      const rawContainer = visState.getContainer(computedContainer.id);
+      if (rawContainer) {
+        containers.push(rawContainer);
+      }
+    }
     
     return containers;
   }
@@ -301,7 +351,7 @@ export class ELKBridge {
     const rootContainers = containers.filter(container => {
       // Check if this container has a parent that's also a container
       const hasContainerParent = containers.some(otherContainer => 
-        otherContainer.children.has(container.id)
+        otherContainer.children && otherContainer.children.has(container.id)
       );
       return !hasContainerParent;
     });
@@ -480,14 +530,9 @@ export class ELKBridge {
     if (elkNode.width !== undefined || elkNode.height !== undefined) {
       layoutUpdates.dimensions = {};
       
-      // Apply container padding logic to ELK results
-      const elkWidth = elkNode.width || 0;
-      const elkHeight = elkNode.height || 0;
-      const container = visState.getContainer(elkNode.id);
-      const adjustedDims = ContainerPadding.adjustPostELKDimensions(elkWidth, elkHeight, container?.collapsed || false);
-      
-      layoutUpdates.dimensions.width = adjustedDims.width;
-      layoutUpdates.dimensions.height = adjustedDims.height;
+      // Bridge is just a format translator - pass through ELK dimensions as-is
+      if (elkNode.width !== undefined) layoutUpdates.dimensions.width = elkNode.width;
+      if (elkNode.height !== undefined) layoutUpdates.dimensions.height = elkNode.height;
     }
     
     if (Object.keys(layoutUpdates).length > 0) {

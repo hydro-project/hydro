@@ -48,6 +48,23 @@ export const LAYOUT_CONSTANTS = {
   CONTAINER_LABEL_HEIGHT: 32,           // Height reserved for container labels
   CONTAINER_LABEL_PADDING: 12,          // Padding around container labels
   CONTAINER_LABEL_FONT_SIZE: 12,        // Font size for container labels
+  
+  // Validation and warning thresholds
+  MAX_HYPEREDGE_WARNINGS: 10,           // Maximum hyperEdge warnings before summary
+  
+  // Large container detection thresholds (derived from base constants)
+  get LARGE_CONTAINER_WIDTH_THRESHOLD() { 
+    return this.MIN_CONTAINER_WIDTH * 1.5; // 300 (1.5x minimum width)
+  },
+  get LARGE_CONTAINER_HEIGHT_THRESHOLD() { 
+    return this.MIN_CONTAINER_HEIGHT + this.CONTAINER_LABEL_HEIGHT; // 182 (min height + label)
+  },
+} as const;
+
+// HyperEdge constants
+export const HYPEREDGE_CONSTANTS = {
+  PREFIX: 'hyper_',                     // Prefix for hyperEdge IDs
+  SEPARATOR: '_to_',                    // Separator for hyperEdge naming
 } as const;
 
 // Type exports

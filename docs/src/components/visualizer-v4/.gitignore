@@ -13,3 +13,6 @@ debug_*.js
 
 # Ignore source maps
 *.map
+
+# Test output files
+test-results.xml

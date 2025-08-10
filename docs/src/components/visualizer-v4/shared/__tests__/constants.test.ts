@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from '../constants';
+import { describe, test, expect } from 'vitest';
+import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from '../config';
 
 describe('Constants', () => {
   describe('NODE_STYLES', () => {

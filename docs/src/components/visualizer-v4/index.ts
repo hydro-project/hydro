@@ -44,8 +44,7 @@ export type { VisualizationEngineConfig } from './core/VisualizationEngine';
 
 // ============ Types and Constants ============
 
-export { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES } from './shared/constants';
-export { LAYOUT_CONSTANTS } from './core/constants';
+export { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from './shared/config';
 
 export type {
   NodeStyle,
