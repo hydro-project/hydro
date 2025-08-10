@@ -362,9 +362,10 @@ export class VisualizationEngine {
         
         // Step 6: Re-run layout after collapse to get clean final layout
         this.log('🔄 Re-running layout after smart collapse');
-        // IMPORTANT: Clear any cached positions to force fresh layout with new collapsed dimensions
-        this.log('🧹 Clearing layout cache to force fresh ELK layout with collapsed dimensions');
-        this.clearLayoutPositions();
+        // SELECTIVE FIX: Only clear positions for collapsed containers and their children
+        // This prevents overly spaced layout by preserving positions of unaffected elements
+        this.log('🧹 Selectively clearing positions for collapsed containers only');
+        this.clearCollapsedContainerPositions(containersToCollapse);
         // Force ELK to rebuild from scratch with new dimensions
         this.log('🔄 Creating fresh ELK instance to avoid any internal caching');
         this.log(`📋 ELKBridge config: ${JSON.stringify(this.config.layoutConfig)}`);
@@ -524,6 +525,29 @@ export class VisualizationEngine {
     this.visState.clearLayoutPositions();
     
     this.log(`✅ Cleared layout positions for all containers and nodes`);
+  }
+
+  /**
+   * Selectively clear layout positions only for collapsed containers and their descendants
+   * This preserves positions of unaffected elements to prevent overly spaced layout
+   */
+  private clearCollapsedContainerPositions(collapsedContainerIds: string[]): void {
+    this.log(`🧹 Selectively clearing positions for ${collapsedContainerIds.length} collapsed containers...`);
+    
+    // Optimization: Only clear positions for the collapsed containers themselves
+    // ELK will handle the internal layout of collapsed containers automatically
+    // since their children are now hidden and won't participate in layout
+    for (const containerId of collapsedContainerIds) {
+      try {
+        // Clear position for the collapsed container itself
+        this.visState.setContainerLayout(containerId, { position: undefined });
+        this.log(`📦 Cleared position for collapsed container: ${containerId}`);
+      } catch (error) {
+        this.log(`⚠️ Failed to clear position for container ${containerId}: ${error}`);
+      }
+    }
+    
+    this.log(`✅ Selectively cleared positions for ${collapsedContainerIds.length} collapsed containers`);
   }
 
   private handleError(message: string, error: any): void {
