@@ -118,14 +118,14 @@ describe('ELK Dimension Explosion Bug - Regression Tests', () => {
       const visibleNodes = visState.visibleNodes;
       expect(visibleNodes).toHaveLength(0);
 
-      // All collapsed containers should be visible as nodes (since none are nested in expanded containers)
+      // Only the outer collapsed container should be visible as a node
+      // (inner containers are hidden because their parent is collapsed)
       const collapsedAsNodes = visState.getCollapsedContainersAsNodes();
-      expect(collapsedAsNodes).toHaveLength(3); // All 3 containers are collapsed
+      expect(collapsedAsNodes).toHaveLength(1); // Only outer_container visible
       
       const collapsedIds = collapsedAsNodes.map(n => n.id);
       expect(collapsedIds).toContain('outer_container');
-      expect(collapsedIds).toContain('inner_container_1');
-      expect(collapsedIds).toContain('inner_container_2');
+      // inner_container_1 and inner_container_2 should NOT be visible because they're hidden
 
       // No expanded containers should exist
       const expandedContainers = visState.expandedContainers;

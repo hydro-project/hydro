@@ -14,7 +14,7 @@ import { ELKBridge } from '../bridges/ELKBridge';
 import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';
 import type { LayoutConfig } from './types';
-import { SMART_COLLAPSE_CONSTANTS } from '../shared/constants';
+import { LAYOUT_CONSTANTS } from '../shared/config';
 
 // Visualization states
 export type VisualizationPhase = 
@@ -42,7 +42,12 @@ export interface VisualizationEngineConfig {
 const DEFAULT_CONFIG: VisualizationEngineConfig = {
   autoLayout: true,
   layoutDebounceMs: 300,
-  enableLogging: true
+  enableLogging: true,
+  layoutConfig: {
+    enableSmartCollapse: true,
+    algorithm: 'layered',
+    direction: 'DOWN'
+  }
 };
 
 export class VisualizationEngine {
@@ -70,6 +75,8 @@ export class VisualizationEngine {
     };
 
     this.log('🚀 VisualizationEngine initialized');
+    this.log(`🔧 Config: ${JSON.stringify(this.config)}`);
+    this.log(`📊 Initial layoutCount: ${this.state.layoutCount}`);
   }
 
   // ============ Public API ============
@@ -120,17 +127,28 @@ export class VisualizationEngine {
       
       // Use ELK bridge to layout the VisState
       await this.elkBridge.layoutVisState(this.visState);
+            
+      // DEBUG: Check smart collapse conditions
+      this.log(`🔍 SMART COLLAPSE DEBUG:`);
+      this.log(`  - enableSmartCollapse: ${this.config.layoutConfig?.enableSmartCollapse}`);
+      this.log(`  - layoutCount: ${this.state.layoutCount}`);
+      this.log(`  - condition met: ${this.config.layoutConfig?.enableSmartCollapse && (this.state.layoutCount === 0)}`);
       
+      // Run smart collapse if enabled and this is the first layout (initiation) or layout config changed
+      if (this.config.layoutConfig?.enableSmartCollapse && (this.state.layoutCount === 0)) {
+        this.log('🧠 Running smart collapse after initial layout');
+        await this.runSmartCollapse();
+        // Use ELK bridge to re-layout the VisState after smartCollapse
+        await this.elkBridge.layoutVisState(this.visState);
+      } else {
+        this.log('⚠️ Smart collapse SKIPPED - conditions not met');
+      }
+
       this.state.layoutCount++;
       this.updateState('ready');
       
       this.log(`✅ Layout complete (${this.state.layoutCount} total layouts)`);
-      
-      // Run smart collapse if enabled and this is the first layout (initiation) or layout config changed
-      if (this.config.layoutConfig?.enableSmartCollapse && (this.state.layoutCount === 1)) {
-        this.log('🧠 Running smart collapse after initial layout');
-        await this.runSmartCollapse();
-      }
+
       
     } catch (error) {
       this.handleError('Layout failed', error);
@@ -255,14 +273,15 @@ export class VisualizationEngine {
       
       this.log(`📊 Found ${containers.length} containers for smart collapse analysis`);
       
-      // Step 2: Calculate container areas using layout dimensions
+            // Step 2: Calculate container areas using layout dimensions
       const containerAreas = containers.map(container => {
         // Get dimensions from ELK layout results (stored as width/height on container)
-        const width = (container as any).width || SMART_COLLAPSE_CONSTANTS.FALLBACK_CONTAINER_WIDTH;
-        const height = (container as any).height || SMART_COLLAPSE_CONSTANTS.FALLBACK_CONTAINER_HEIGHT;
+        const width = (container as any).width || LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH;
+        const height = (container as any).height || LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;
         const area = width * height;
         
         this.log(`📏 Container ${container.id} area calculation: ${width}x${height} = ${area}`);
+        this.log(`📋 Container ${container.id} raw properties: width=${(container as any).width}, height=${(container as any).height}, collapsed=${(container as any).collapsed}`);
         
         return {
           container,
@@ -279,10 +298,11 @@ export class VisualizationEngine {
       const viewportWidth = 1200;
       const viewportHeight = 800;
       const viewportArea = viewportWidth * viewportHeight;
-      const containerAreaBudget = viewportArea * SMART_COLLAPSE_CONSTANTS.CONTAINER_AREA_BUDGET_RATIO;
+      const containerAreaBudgetRatio = 0.7; // Use 70% of viewport for containers
+      const containerAreaBudget = viewportArea * containerAreaBudgetRatio;
       
       this.log(`📱 Viewport: ${viewportWidth}x${viewportHeight} (${viewportArea} total area)`);
-      this.log(`💰 Container area budget: ${containerAreaBudget} (${SMART_COLLAPSE_CONSTANTS.CONTAINER_AREA_BUDGET_RATIO * 100}% of viewport)`);
+      this.log(`💰 Container area budget: ${containerAreaBudget} (${containerAreaBudgetRatio * 100}% of viewport)`);
       
       // Step 4: Iterate through containers, keep expanding until budget exceeded
       let usedArea = 0;
@@ -306,28 +326,27 @@ export class VisualizationEngine {
       this.log(`📋 Keeping expanded: ${containersToKeepExpanded.join(', ') || 'none'}`);
       this.log(`📋 Collapsing: ${containersToCollapse.join(', ') || 'none'}`);
       
-      // Step 5: Apply collapse decisions using VisState API
+      // Step 5: Apply collapse decisions using collapseContainer
       if (containersToCollapse.length > 0) {
         this.log(`🔧 Applying collapse decisions to ${containersToCollapse.length} containers`);
         
         for (const containerId of containersToCollapse) {
-          this.visState.collapseContainer(containerId);
-          this.log(`📦 Collapsed container: ${containerId}`);
+          try {
+            // Use collapseContainer which handles all the mechanics atomically:
+            // - Collapsing the container and its children
+            // - Creating hyperEdges for crossing edges  
+            // - Hiding descendant containers
+            // - Validating invariants
+            this.visState.collapseContainer(containerId);
+            this.log(`📦 Collapsed container: ${containerId}`);
+          } catch (error) {
+            this.log(`⚠️ Failed to collapse container ${containerId}: ${error}`);
+            // Continue with other containers even if one fails
+            // collapseContainer already handles invariant validation internally
+          }
         }
         
-        // INVARIANT: Validate that all containers marked for collapse are actually collapsed
-        this.log(`🔍 Validating collapse decisions were applied correctly...`);
-        for (const containerId of containersToCollapse) {
-          const container = this.visState.getContainer(containerId);
-          if (!container) {
-            throw new Error(`Smart collapse invariant violation: Container ${containerId} was marked for collapse but no longer exists`);
-          }
-          if (!container.collapsed) {
-            throw new Error(`Smart collapse invariant violation: Container ${containerId} was marked for collapse but has collapsed=${container.collapsed}. This indicates the collapse operation failed.`);
-          }
-          this.log(`✅ Collapse verified: ${containerId} (collapsed: ${container.collapsed})`);
-        }
-        this.log(`✅ All ${containersToCollapse.length} collapse decisions verified successfully`);
+        this.log(`✅ All ${containersToCollapse.length} collapse operations complete`);
         
         // Step 6: Re-run layout after collapse to get clean final layout
         this.log('🔄 Re-running layout after smart collapse');

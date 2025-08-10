@@ -23,6 +23,7 @@ export interface ParseResult {
     edgeCount: number;
     containerCount: number;
     availableGroupings: GroupingOption[];
+    styleConfig?: Record<string, any>;
     nodeTypeConfig?: {
       defaultType?: string;
       types?: Array<{
@@ -54,8 +55,7 @@ export interface ParserOptions {
 interface RawNode {
   id: string;
   label?: string;
-  style?: string;
-  hidden?: boolean;
+  semanticTags?: string[];
   [key: string]: any;
 }
 
@@ -63,8 +63,7 @@ interface RawEdge {
   id: string;
   source: string;
   target: string;
-  style?: string;
-  hidden?: boolean;
+  semanticTags?: string[];
   [key: string]: any;
 }
 
@@ -92,6 +91,10 @@ interface RawGraphData {
   hierarchies?: RawHierarchy[];
   hierarchyChoices?: RawHierarchyChoice[];
   nodeAssignments?: Record<string, Record<string, string>>;
+  styleConfig?: {
+    edgeStyles?: Record<string, any>;
+    nodeStyles?: Record<string, any>;
+  };
   nodeTypeConfig?: {
     defaultType?: string;
     types?: Array<{
@@ -156,6 +159,7 @@ export function parseGraphJSON(
       selectedGrouping: grouping,
       containerCount,
       availableGroupings: getAvailableGroupings(data),
+      styleConfig: data.styleConfig || {}, // Include style configuration
       nodeTypeConfig: metadata.nodeTypeConfig
     }
   };
@@ -265,6 +269,88 @@ export function validateGraphJSON(jsonData: RawGraphData | string): ValidationRe
     if (!data || typeof data !== 'object') {
       errors.push('Data must be an object');
       return { isValid: false, errors, warnings, nodeCount: 0, edgeCount: 0, hierarchyCount: 0 };
+    }
+    
+    // 🔥 VALIDATE: JSON must NOT contain mutable state fields
+    // These fields represent UI state and should be managed by VisualizationState only
+    const forbiddenFields = ['collapsed', 'hidden', 'style'];
+    const allowedSemanticFields = ['semanticTags']; // Allow semantic tags for styling configuration
+    
+    // Check nodes for forbidden fields
+    if (Array.isArray(data.nodes)) {
+      for (let i = 0; i < data.nodes.length; i++) {
+        const node = data.nodes[i];
+        if (node) {
+          for (const forbiddenField of forbiddenFields) {
+            if (forbiddenField in node) {
+              errors.push(`Node '${node.id || `at index ${i}`}' contains forbidden mutable state field '${forbiddenField}'. JSON should only contain immutable graph structure.`);
+            }
+          }
+          // Validate semanticTags if present
+          if ('semanticTags' in node && !Array.isArray(node.semanticTags)) {
+            errors.push(`Node '${node.id || `at index ${i}`}' has invalid semanticTags - must be an array of strings.`);
+          }
+        }
+      }
+    }
+    
+    // Check edges for forbidden fields
+    if (Array.isArray(data.edges)) {
+      for (let i = 0; i < data.edges.length; i++) {
+        const edge = data.edges[i];
+        if (edge) {
+          for (const forbiddenField of forbiddenFields) {
+            if (forbiddenField in edge) {
+              errors.push(`Edge '${edge.id || `at index ${i}`}' contains forbidden mutable state field '${forbiddenField}'. JSON should only contain immutable graph structure.`);
+            }
+          }
+          // Validate semanticTags if present
+          if ('semanticTags' in edge && !Array.isArray(edge.semanticTags)) {
+            errors.push(`Edge '${edge.id || `at index ${i}`}' has invalid semanticTags - must be an array of strings.`);
+          }
+        }
+      }
+    }
+    
+    // Check hierarchies for forbidden fields
+    if (data.hierarchies) {
+      for (const hierarchy of data.hierarchies) {
+        if (hierarchy.groups) {
+          // Old format: check if groups contain forbidden fields
+          for (const [containerId, nodeIds] of Object.entries(hierarchy.groups)) {
+            // Groups in old format are just arrays, but check if accidentally object with state
+            if (typeof nodeIds === 'object' && !Array.isArray(nodeIds)) {
+              for (const forbiddenField of forbiddenFields) {
+                if (forbiddenField in nodeIds) {
+                  errors.push(`Container '${containerId}' in hierarchy '${hierarchy.id}' contains forbidden mutable state field '${forbiddenField}'. JSON should only contain immutable graph structure.`);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Check hierarchyChoices for forbidden fields
+    if (data.hierarchyChoices) {
+      for (const choice of data.hierarchyChoices) {
+        if (choice.hierarchy) {
+          // Recursively check hierarchy items
+          function validateHierarchyItems(items: any[], hierarchyId: string): void {
+            for (const item of items) {
+              for (const forbiddenField of forbiddenFields) {
+                if (forbiddenField in item) {
+                  errors.push(`Container '${item.id}' in hierarchy '${hierarchyId}' contains forbidden mutable state field '${forbiddenField}'. JSON should only contain immutable graph structure.`);
+                }
+              }
+              if (item.children && Array.isArray(item.children)) {
+                validateHierarchyItems(item.children, hierarchyId);
+              }
+            }
+          }
+          validateHierarchyItems(choice.hierarchy, choice.id);
+        }
+      }
     }
     
     // Validate nodes
@@ -406,10 +492,7 @@ function selectGrouping(data: RawGraphData, selectedGrouping: string | null): st
 function parseNodes(nodes: RawNode[], state: VisualizationState): void {
   for (const rawNode of nodes) {
     try {
-      // Map raw style to our constants
-      const style = mapStyleConstant(rawNode.style, NODE_STYLES, NODE_STYLES.DEFAULT) as NodeStyle;
-      
-      const { id, label, hidden, style: rawStyle, ...otherProps } = rawNode;
+      const { id, label, semanticTags, ...otherProps } = rawNode;
       
       // Extract label with priority: explicit label > data.name > data.label > id
       let nodeLabel = label;
@@ -423,9 +506,11 @@ function parseNodes(nodes: RawNode[], state: VisualizationState): void {
       
       state.setGraphNode(id, {
         label: nodeLabel || id,
-        style,
-        hidden: !!hidden,
+        style: NODE_STYLES.DEFAULT, // Default style - will be applied by bridge based on semanticTags
+        // ✅ All nodes start visible - VisualizationState manages visibility
+        hidden: false,
         nodeType,
+        semanticTags: semanticTags || [],
         ...otherProps
       });
     } catch (error) {
@@ -437,28 +522,15 @@ function parseNodes(nodes: RawNode[], state: VisualizationState): void {
 function parseEdges(edges: RawEdge[], state: VisualizationState): void {
   for (const rawEdge of edges) {
     try {
-      // Determine edge style from raw style data
-      let style: EdgeStyle;
-      if (typeof rawEdge.style === 'string') {
-        style = mapStyleConstant(rawEdge.style, EDGE_STYLES, EDGE_STYLES.DEFAULT) as EdgeStyle;
-      } else if (rawEdge.style && typeof rawEdge.style === 'object') {
-        style = detectEdgeStyleFromObject(rawEdge.style) as EdgeStyle;
-      } else {
-        style = EDGE_STYLES.DEFAULT as EdgeStyle;
-      }
-      
-      // Handle animated edges - they should be highlighted
-      if (rawEdge.animated) {
-        style = EDGE_STYLES.HIGHLIGHTED as EdgeStyle;
-      }
-      
-      const { id, source, target, hidden, style: rawStyle, ...otherProps } = rawEdge;
+      const { id, source, target, semanticTags, ...otherProps } = rawEdge;
       
       state.setGraphEdge(id, {
         source,
         target,
-        style,
-        hidden: !!hidden,
+        style: EDGE_STYLES.DEFAULT, // Default style - will be applied by bridge based on semanticTags
+        // ✅ All edges start visible - VisualizationState manages visibility
+        hidden: false,
+        semanticTags: semanticTags || [],
         ...otherProps
       });
     } catch (error) {
@@ -555,7 +627,7 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
         state.setContainer(item.id, {
           label: item.name || item.id,
           children,
-          collapsed: true // DEFAULT: Collapsed to prevent dimension explosion
+          collapsed: false
         });
         containerCount++;
         

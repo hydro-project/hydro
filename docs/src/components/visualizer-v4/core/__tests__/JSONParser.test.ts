@@ -11,7 +11,7 @@ import {
   getAvailableGroupings,
   validateGraphJSON 
 } from '../JSONParser';
-import { NODE_STYLES, EDGE_STYLES } from '../../shared/constants';
+import { NODE_STYLES, EDGE_STYLES } from '../../shared/config';
 import type { ParseResult, ValidationResult, GroupingOption } from '../JSONParser';
 
 describe('JSONParser', () => {

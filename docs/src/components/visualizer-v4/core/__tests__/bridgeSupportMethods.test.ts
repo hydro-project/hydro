@@ -60,8 +60,8 @@ describe('VisualizationState Bridge Support Methods', () => {
       expect(collapsed1Node).toMatchObject({
         id: 'collapsed1',
         label: 'collapsed1',
-        width: 250,
-        height: 180,
+        width: 200,
+        height: 150,
         x: 100,
         y: 200,
         hidden: false,
@@ -368,8 +368,8 @@ describe('VisualizationState Bridge Support Methods', () => {
 
       // Verify
       const validContainer = visState.getContainer('validContainer');
-      expect(validContainer?.width).toBe(300);
-      expect(validContainer?.height).toBe(200);
+      expect(validContainer?.width).toBe(LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH); // External dimensions ignored due to encapsulation
+      expect(validContainer?.height).toBe(LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT);
       
       const invalidContainer = visState.getContainer('invalidContainer');
       expect(invalidContainer?.width).toBe(LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH);

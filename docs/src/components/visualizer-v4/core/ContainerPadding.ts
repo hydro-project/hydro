@@ -5,7 +5,7 @@
  * This centralizes the decision of whether to tell ELK about padding or handle it in the bridge layer.
  */
 
-import { LAYOUT_CONSTANTS } from './constants';
+import { LAYOUT_CONSTANTS } from '../shared/config';
 
 /**
  * Container padding configuration and utilities

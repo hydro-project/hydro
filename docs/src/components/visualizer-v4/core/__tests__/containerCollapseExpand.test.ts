@@ -184,7 +184,7 @@ describe('Container Collapse/Expand Tests', () => {
     expect(state.visibleNodes.length).toBe(1); // Just external (outer container is collapsed)
     
     // Check for hyperEdges (should have connection from outer to external)
-    const hyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+    const hyperEdges = state.visibleHyperEdges;
     expect(hyperEdges.length).toBe(1);
     
     // Expand and verify restoration
@@ -194,7 +194,7 @@ describe('Container Collapse/Expand Tests', () => {
     expect(state.visibleNodes.length).toBe(3); // innerNode1, innerNode2, external (inner container is expanded by default)
     expect(state.visibleEdges.length).toBe(2);
     
-    const finalHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+    const finalHyperEdges = state.visibleHyperEdges;
     expect(finalHyperEdges.length).toBe(0);
     
     // // console.log((('✓ Nested container grounding test passed')));
