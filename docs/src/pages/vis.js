@@ -12,14 +12,6 @@ import Layout from '@theme/Layout';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import { useLocation } from '@docusaurus/router';
 
-// Import typography constants
-const TYPOGRAPHY = {
-  PAGE_TITLE: '24px',
-  PAGE_SUBTITLE: '14px',
-  BUTTON_SMALL: '14px',
-  UI_SMALL: '12px'
-};
-
 function VisV4Component() {
   const location = useLocation();
   const [createVisualizationState, setCreateVisualizationState] = React.useState(null);
@@ -31,7 +23,6 @@ function VisV4Component() {
   const [EDGE_STYLES, setEdgeStyles] = React.useState(null);
   const [InfoPanel, setInfoPanel] = React.useState(null);
   const [LayoutControls, setLayoutControls] = React.useState(null);
-  const [FileDropZone, setFileDropZone] = React.useState(null);
   const [groupingOptions, setGroupingOptions] = React.useState([]);
   const [currentGrouping, setCurrentGrouping] = React.useState(null);
   const [colorPalette, setColorPalette] = React.useState('Set3');
@@ -41,18 +32,6 @@ function VisV4Component() {
   const [loading, setLoading] = React.useState(true);
   const [currentVisualizationState, setCurrentVisualizationState] = React.useState(null);
   const [graphData, setGraphData] = React.useState(null);
-  
-  // Force re-render counter when VisState internal state changes
-  const [, forceUpdate] = React.useReducer(x => x + 1, 0);
-  
-  // Track if we're currently running a layout operation
-  const [isLayoutRunning, setIsLayoutRunning] = React.useState(false);
-  
-  // Track if we're currently changing grouping (to prevent DropZone flicker)
-  const [isChangingGrouping, setIsChangingGrouping] = React.useState(false);
-  
-  // Ref for FlowGraph to call fitView directly
-  const flowGraphRef = React.useRef(null);
 
   // Load components on mount
   React.useEffect(() => {
@@ -67,8 +46,8 @@ function VisV4Component() {
         console.log('Loading FlowGraph...');
         const FlowGraphModule = await import('@site/src/components/visualizer-v4/render/FlowGraph.tsx');
         
-        console.log('Loading shared config...');
-        const configModule = await import('@site/src/components/visualizer-v4/shared/config.ts');
+        console.log('Loading constants...');
+        const constantsModule = await import('@site/src/components/visualizer-v4/core/constants.ts');
         
         console.log('Loading JSONParser...');
         const parserModule = await import('@site/src/components/visualizer-v4/core/JSONParser.ts');
@@ -81,21 +60,25 @@ function VisV4Component() {
         
         console.log('Loading LayoutControls...');
         const LayoutControlsModule = await import('@site/src/components/visualizer-v4/components/LayoutControls.tsx');
-        
-        console.log('Loading FileDropZone...');
-        const FileDropZoneModule = await import('@site/src/components/visualizer-v4/components/FileDropZone.tsx');
-        
         setCreateVisualizationState(() => visStateModule.createVisualizationState);
         setFlowGraph(() => FlowGraphModule.FlowGraph);
         setParseGraphJSON(() => parserModule.parseGraphJSON);
         setGetAvailableGroupings(() => parserModule.getAvailableGroupings);
         setValidateGraphJSON(() => parserModule.validateGraphJSON);
-        setNodeStyles(configModule.NODE_STYLES);
-        setEdgeStyles(configModule.EDGE_STYLES);
+        setNodeStyles(constantsModule.NODE_STYLES);
+        setEdgeStyles(constantsModule.EDGE_STYLES);
         setInfoPanel(() => InfoPanelModule.InfoPanel);
         setLayoutControls(() => LayoutControlsModule.LayoutControls);
-        setFileDropZone(() => FileDropZoneModule.FileDropZone);
-        // Don't load grouping options here - wait until we have graph data
+        // Load grouping options if available
+        let groupings = [];
+        if (parserModule.getAvailableGroupings) {
+          groupings = parserModule.getAvailableGroupings();
+          setGroupingOptions(groupings);
+        }
+        // Set default grouping if not set
+        if ((!currentGrouping || typeof currentGrouping !== 'string') && groupings.length > 0) {
+          setCurrentGrouping(groupings[0].id);
+        }
         setLoading(false);
         setError(null);
       } catch (err) {
@@ -110,7 +93,7 @@ function VisV4Component() {
 
   // Handle URL data parameter (for sharing graphs via URL)
   React.useEffect(() => {
-    if (!parseGraphJSON || !createVisualizationState || !validateGraphJSON || !getAvailableGroupings || loading) return;
+    if (!parseGraphJSON || !createVisualizationState || loading) return;
     
     const urlParams = new URLSearchParams(location.search);
     const dataParam = urlParams.get('data');
@@ -135,15 +118,6 @@ function VisV4Component() {
         setCurrentVisualizationState(parsedData.state);
         setGraphData(jsonData);
         
-        // Extract grouping options from the data
-        const groupings = getAvailableGroupings(jsonData);
-        setGroupingOptions(groupings);
-        
-        // Set default grouping if not set and groupings are available
-        if ((!currentGrouping || typeof currentGrouping !== 'string') && groupings.length > 0) {
-          setCurrentGrouping(groupings[0].id);
-        }
-        
         console.log('✅ Successfully loaded graph from URL');
         
       } catch (err) {
@@ -151,11 +125,11 @@ function VisV4Component() {
         setError(`Failed to load graph from URL: ${err.message}`);
       }
     }
-  }, [location.search, parseGraphJSON, validateGraphJSON, getAvailableGroupings, createVisualizationState, loading, currentVisualizationState, currentGrouping]);
+  }, [location.search, parseGraphJSON, validateGraphJSON, createVisualizationState, loading, currentVisualizationState]);
 
   // File upload handler
   const handleFileLoad = React.useCallback((jsonData) => {
-    if (!parseGraphJSON || !validateGraphJSON || !getAvailableGroupings) {
+    if (!parseGraphJSON || !validateGraphJSON) {
       setError('Components not loaded yet');
       return;
     }
@@ -170,19 +144,9 @@ function VisV4Component() {
       }
       
       // Parse the JSON
-      const parsedData = parseGraphJSON(jsonData);
-      setCurrentVisualizationState(parsedData.state);
-      setGraphData(jsonData);
-      
-      // Extract grouping options from the data
-      const groupings = getAvailableGroupings(jsonData);
-      setGroupingOptions(groupings);
-      
-      // Set default grouping if not set and groupings are available
-      if ((!currentGrouping || typeof currentGrouping !== 'string') && groupings.length > 0) {
-        setCurrentGrouping(groupings[0].id);
-      }
-      
+        const parsedData = parseGraphJSON(jsonData);
+        setCurrentVisualizationState(parsedData.state);
+        setGraphData(jsonData);
       setError(null);
       
       console.log('✅ File loaded successfully');
@@ -191,7 +155,7 @@ function VisV4Component() {
       console.error('❌ Error processing file:', err);
       setError(`Failed to process file: ${err.message}`);
     }
-  }, [parseGraphJSON, validateGraphJSON, getAvailableGroupings, currentGrouping]);
+  }, [parseGraphJSON, validateGraphJSON]);
 
   // Create test graph
   const createTestGraph = React.useCallback(() => {
@@ -245,250 +209,6 @@ function VisV4Component() {
     }
   }, [createVisualizationState, NODE_STYLES, EDGE_STYLES]);
 
-  // ============================
-  // EVENT HANDLERS
-  // ============================
-
-  // Node click handler - handles container collapse/expand
-  const handleNodeClick = React.useCallback(async (event, node) => {
-    if (!currentVisualizationState) return;
-    
-    console.log('🖱️ Node clicked:', node.id, node.type);
-    
-    // Check if this is a container node that can be collapsed/expanded
-    if (node.type === 'container') {
-      try {
-        setIsLayoutRunning(true);
-        
-        const container = currentVisualizationState.getContainer(node.id);
-        if (container) {
-          if (container.collapsed) {
-            console.log('📂 Expanding container:', node.id);
-            currentVisualizationState.expandContainer(node.id);
-          } else {
-            console.log('📁 Collapsing container:', node.id);
-            currentVisualizationState.collapseContainer(node.id);
-          }
-          
-          // Force component update to reflect changes
-          forceUpdate();
-          
-          console.log('✅ Container toggle complete');
-        }
-      } catch (err) {
-        console.error('❌ Error toggling container:', err);
-        setError(`Failed to toggle container: ${err.message}`);
-      } finally {
-        // Add a small delay to let the layout complete
-        setTimeout(() => setIsLayoutRunning(false), 1000);
-      }
-    }
-  }, [currentVisualizationState]);
-
-  // Pack all containers (collapse all)
-  const handlePackAll = React.useCallback(async () => {
-    if (!currentVisualizationState) return;
-    
-    console.log('📦 Packing all containers...');
-    setIsLayoutRunning(true);
-    
-    try {
-      const containers = currentVisualizationState.visibleContainers;
-      containers.forEach(container => {
-        if (!container.collapsed) {
-          currentVisualizationState.collapseContainer(container.id);
-        }
-      });
-      
-      // Force component update to reflect changes
-      forceUpdate();
-      
-      console.log('✅ All containers packed');
-    } catch (err) {
-      console.error('❌ Error packing containers:', err);
-      setError(`Failed to pack containers: ${err.message}`);
-    } finally {
-      // Add a delay to let the layout complete
-      setTimeout(() => setIsLayoutRunning(false), 1500);
-    }
-  }, [currentVisualizationState]);
-
-  // Unpack all containers (expand all)
-  const handleUnpackAll = React.useCallback(async () => {
-    if (!currentVisualizationState) return;
-    
-    console.log('📂 Unpacking all containers...');
-    setIsLayoutRunning(true);
-    
-    try {
-      const containers = currentVisualizationState.visibleContainers;
-      containers.forEach(container => {
-        if (container.collapsed) {
-          currentVisualizationState.expandContainer(container.id);
-        }
-      });
-      
-      // Force component update to reflect changes
-      forceUpdate();
-      
-      console.log('✅ All containers unpacked');
-    } catch (err) {
-      console.error('❌ Error unpacking containers:', err);
-      setError(`Failed to unpack containers: ${err.message}`);
-    } finally {
-      // Add a delay to let the layout complete
-      setTimeout(() => setIsLayoutRunning(false), 1500);
-    }
-  }, [currentVisualizationState]);
-
-  // Fit view handler
-  const handleFitView = React.useCallback(() => {
-    console.log('🎯 Fitting view...');
-    if (flowGraphRef.current && flowGraphRef.current.fitView) {
-      flowGraphRef.current.fitView();
-      console.log('✅ View fit called directly');
-    } else {
-      console.warn('⚠️ FlowGraph ref not available, using fallback method');
-      // Fallback to the old toggle method
-      setAutoFit(false);
-      setTimeout(() => setAutoFit(true), 100);
-    }
-  }, []);
-
-  // Layout algorithm change handler
-  const handleLayoutAlgorithmChange = React.useCallback((newAlgorithm) => {
-    console.log('🔧 Layout algorithm changed to:', newAlgorithm);
-    setLayoutAlgorithm(newAlgorithm);
-    // Note: This will trigger a re-render which should cause FlowGraph to re-layout
-    // The actual layout change will be handled by FlowGraph's props change detection
-  }, []);
-
-  // Dynamic canvas sizing based on window dimensions
-  const [canvasHeight, setCanvasHeight] = React.useState(600);
-  
-  React.useEffect(() => {
-    const updateCanvasSize = () => {
-      const windowHeight = window.innerHeight;
-      const windowWidth = window.innerWidth;
-      
-      console.log('🖥️ Window dimensions:', { width: windowWidth, height: windowHeight });
-      
-      // Calculate height based on window size - MUCH more aggressive
-      let newHeight = windowHeight - 80; // Almost fullscreen, leaving just 80px for header/controls
-      
-      // Much higher minimum heights - make it impressive!
-      const minHeight = 700;
-      newHeight = Math.max(newHeight, minHeight);
-      
-      console.log('📐 Calculated canvas height:', newHeight);
-      setCanvasHeight(newHeight);
-    };
-    
-    const handleResize = () => {
-      updateCanvasSize();
-      
-      // Also trigger auto-fit directly on resize if enabled
-      if (autoFit && currentVisualizationState) {
-        console.log('🎯 Window resized, triggering immediate auto-fit...');
-        setTimeout(() => {
-          if (flowGraphRef.current && flowGraphRef.current.fitView) {
-            console.log('✅ Calling fitView directly on resize');
-            flowGraphRef.current.fitView();
-          }
-        }, 300); // Delay to let canvas resize complete
-      }
-    };
-    
-    // Initial calculation
-    updateCanvasSize();
-    
-    // Update on window resize
-    window.addEventListener('resize', handleResize);
-    
-    return () => window.removeEventListener('resize', handleResize);
-  }, [autoFit, currentVisualizationState]);
-
-  // Auto-fit when canvas size changes (secondary trigger)
-  React.useEffect(() => {
-    if (autoFit && currentVisualizationState) {
-      console.log('🎯 Canvas height effect triggered, attempting auto-fit...', {
-        canvasHeight,
-        hasFlowGraphRef: !!flowGraphRef.current,
-        hasFitViewMethod: !!(flowGraphRef.current && flowGraphRef.current.fitView)
-      });
-      
-      // Add a delay to let the DOM update with the new size
-      setTimeout(() => {
-        if (flowGraphRef.current && flowGraphRef.current.fitView) {
-          console.log('✅ Calling fitView through ref (canvas height change)');
-          flowGraphRef.current.fitView();
-        } else {
-          console.log('⚠️ FlowGraph ref not available, using autoFit toggle fallback');
-          // Fallback: toggle autoFit to trigger re-fit
-          setAutoFit(false);
-          setTimeout(() => setAutoFit(true), 50);
-        }
-      }, 100);
-    }
-  }, [canvasHeight]); // Simplified dependencies
-
-  // Color palette change handler
-  const handleColorPaletteChange = React.useCallback((newPalette) => {
-    console.log('🎨 Color palette changed to:', newPalette);
-    setColorPalette(newPalette);
-    // Note: This will trigger a re-render which should update node colors
-  }, []);
-
-  // Grouping change handler - this will re-parse the data with the new grouping
-  const handleGroupingChange = React.useCallback((newGrouping) => {
-    if (!parseGraphJSON || !graphData || !createVisualizationState) return;
-    
-    console.log('🔄 Grouping changed to:', newGrouping);
-    setIsChangingGrouping(true);
-    setCurrentGrouping(newGrouping);
-    
-    try {
-      // Re-parse the original graph data with the new grouping
-      const parsedData = parseGraphJSON(graphData, newGrouping);
-      setCurrentVisualizationState(parsedData.state);
-      
-      console.log('✅ Graph re-parsed with new grouping');
-    } catch (err) {
-      console.error('❌ Error changing grouping:', err);
-      setError(`Failed to change grouping: ${err.message}`);
-    } finally {
-      // Clear the grouping change loading state
-      setTimeout(() => setIsChangingGrouping(false), 100);
-    }
-  }, [parseGraphJSON, graphData, createVisualizationState]);
-
-  // Hierarchy tree toggle handler (for InfoPanel tree)
-  const handleHierarchyToggle = React.useCallback((containerId) => {
-    if (!currentVisualizationState) return;
-    
-    console.log('🌳 Hierarchy tree toggle:', containerId);
-    try {
-      const container = currentVisualizationState.getContainer(containerId);
-      if (container) {
-        const wasCollapsed = container.collapsed;
-        if (wasCollapsed) {
-          currentVisualizationState.expandContainer(containerId);
-          console.log('📂 Expanded container in tree:', containerId);
-        } else {
-          currentVisualizationState.collapseContainer(containerId);
-          console.log('📁 Collapsed container in tree:', containerId);
-        }
-        
-        // Force component update to reflect changes
-        forceUpdate();
-        console.log('🔄 Forced update after tree toggle');
-      }
-    } catch (err) {
-      console.error('❌ Error toggling hierarchy:', err);
-      setError(`Failed to toggle hierarchy: ${err.message}`);
-    }
-  }, [currentVisualizationState]);
-
   // Render loading state
   if (loading) {
     return (
@@ -538,223 +258,118 @@ function VisV4Component() {
 
   // Render main interface
   return (
-    <div style={{ 
-      padding: '12px', // Reduced padding
-      maxWidth: 'none', // Remove max width constraint 
-      margin: '0',
-      width: '100vw', // Use full viewport width
-      minHeight: '100vh' // Use full viewport height
-    }}>
-      <div style={{ marginBottom: '16px' }}> {/* Reduced margin */}
-        <h1 style={{ margin: '0 0 4px 0', fontSize: TYPOGRAPHY.PAGE_TITLE }}>Graph Visualizer v4</h1> {/* Using constant */}
-        <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: TYPOGRAPHY.PAGE_SUBTITLE }}> {/* Using constant */}
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ marginBottom: '24px' }}>
+        <h1 style={{ margin: '0 0 8px 0' }}>Graph Visualizer v4</h1>
+        <p style={{ margin: '0 0 16px 0', color: '#666' }}>
           Latest version of the Hydro graph visualization system with enhanced architecture and performance.
         </p>
         {!currentVisualizationState && (
-          <div style={{ marginBottom: '16px' }}> {/* Reduced margin */}
+          <div style={{ marginBottom: '24px' }}>
             <button 
               onClick={createTestGraph}
               style={{
-                padding: '8px 16px', // Smaller button
+                padding: '12px 24px',
                 backgroundColor: '#28a745',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer',
                 marginRight: '12px',
-                fontSize: TYPOGRAPHY.BUTTON_SMALL
+                fontSize: '16px'
               }}
             >
               Create Test Graph
             </button>
-            <span style={{ color: '#666', fontSize: TYPOGRAPHY.UI_SMALL }}>or upload a JSON file below</span>
+            <span style={{ color: '#666' }}>or upload a JSON file below</span>
           </div>
         )}
       </div>
 
-      {/* Controls */}
+      {/* Controls and InfoPanel */}
       {currentVisualizationState && LayoutControls && (
-        <div style={{ marginBottom: '8px' }}> {/* Reduced margin */}
-          <LayoutControls
-            visualizationState={currentVisualizationState}
-            currentLayout={layoutAlgorithm}
-            onLayoutChange={handleLayoutAlgorithmChange}
-            colorPalette={colorPalette}
-            onPaletteChange={handleColorPaletteChange}
-            autoFit={autoFit}
-            onAutoFitToggle={setAutoFit}
-            onCollapseAll={handlePackAll}
-            onExpandAll={handleUnpackAll}
-            onFitView={handleFitView}
-          />
+        <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
+          <div style={{ flex: 1 }}>
+            <LayoutControls
+              visualizationState={currentVisualizationState}
+              currentLayout={layoutAlgorithm}
+              onLayoutChange={setLayoutAlgorithm}
+              colorPalette={colorPalette}
+              onPaletteChange={setColorPalette}
+              autoFit={autoFit}
+              onAutoFitToggle={setAutoFit}
+            />
+          </div>
+          <div style={{ flex: 2 }}>
+            {InfoPanel && (
+              <InfoPanel
+                visualizationState={currentVisualizationState}
+                legendData={graphData && graphData.legend ? graphData.legend : {}}
+                hierarchyChoices={Array.isArray(groupingOptions) ? groupingOptions : []}
+                currentGrouping={typeof currentGrouping === 'string' ? currentGrouping : null}
+                onGroupingChange={setCurrentGrouping}
+                colorPalette={colorPalette}
+              />
+            )}
+          </div>
         </div>
       )}
 
-      {isChangingGrouping ? (
+      {!currentVisualizationState ? (
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '400px',
-          border: '1px solid #ddd',
+          border: '2px dashed #ccc',
           borderRadius: '8px',
-          backgroundColor: 'white'
+          padding: '48px',
+          textAlign: 'center',
+          backgroundColor: '#fafafa'
         }}>
-          <div style={{ textAlign: 'center', color: '#666' }}>
-            <div style={{ 
-              width: '40px',
-              height: '40px',
-              margin: '0 auto 16px',
-              border: '4px solid #f3f3f3',
-              borderTop: '4px solid #3498db',
-              borderRadius: '50%',
-              animation: 'groupingSpin 1s linear infinite'
-            }}></div>
-            <div style={{ fontSize: '18px', marginBottom: '8px' }}>
-              Applying New Grouping...
-            </div>
-            <div style={{ fontSize: '14px', color: '#999' }}>
-              Restructuring the graph hierarchy
-            </div>
-          </div>
-          <style>
-            {`
-              @keyframes groupingSpin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
+          <p style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#666' }}>
+            Drop a JSON file here or click to select
+          </p>
+          <input
+            type="file"
+            accept=".json"
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  try {
+                    const jsonData = JSON.parse(event.target.result);
+                    handleFileLoad(jsonData);
+                  } catch (err) {
+                    setError(`Failed to parse JSON file: ${err.message}`);
+                  }
+                };
+                reader.readAsText(file);
               }
-            `}
-          </style>
-        </div>
-      ) : (!currentVisualizationState && !isChangingGrouping) ? (
-        FileDropZone ? (
-          <FileDropZone 
-            onFileLoad={handleFileLoad}
-            hasData={!!currentVisualizationState}
-            className="vis-file-drop"
-          />
-        ) : (
-          <div style={{
-            border: '2px dashed #ccc',
-            borderRadius: '8px',
-            padding: '48px',
-            textAlign: 'center',
-            backgroundColor: '#fafafa'
-          }}>
-            <p>Loading file upload component...</p>
-          </div>
-        )
-      ) : (
-        <div style={{ marginBottom: '8px' }}> {/* Reduced margin */}
-          <div 
-            style={{
-              width: '100%',
-              height: `${canvasHeight}px`,
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              backgroundColor: 'white',
-              position: 'relative',
-              display: 'flex' // Use flexbox layout
             }}
-          >
-            {/* InfoPanel - fixed width sidebar */}
-            {InfoPanel && currentVisualizationState && (
-              <div style={{
-                width: '300px',
-                height: '100%',
-                borderRight: '1px solid #eee',
-                overflow: 'auto',
-                flexShrink: 0
-              }}>
-                <InfoPanel
-                  visualizationState={currentVisualizationState}
-                  legendData={graphData && graphData.legend ? graphData.legend : {}}
-                  hierarchyChoices={Array.isArray(groupingOptions) ? groupingOptions : []}
-                  currentGrouping={typeof currentGrouping === 'string' ? currentGrouping : null}
-                  onGroupingChange={handleGroupingChange}
-                  onToggleContainer={handleHierarchyToggle}
-                  collapsedContainers={new Set(currentVisualizationState.visibleContainers
-                    .filter(container => container.collapsed)
-                    .map(container => container.id))}
-                  colorPalette={colorPalette}
-                />
-              </div>
-            )}
-            
-            {/* FlowGraph - takes remaining space */}
-            <div style={{ 
-              flex: 1,
-              height: '100%',
-              minHeight: `${canvasHeight}px`,
-              position: 'relative',
-              padding: '2%' // Add 2% border padding around the ReactFlow canvas
-            }}>
-              {FlowGraph && (
-                <FlowGraph 
-                  ref={flowGraphRef}
-                  visualizationState={currentVisualizationState}
-                  layoutConfig={{ algorithm: layoutAlgorithm }}
-                  eventHandlers={{ 
-                    onNodeClick: handleNodeClick 
-                  }}
-                  config={{
-                    fitView: autoFit,
-                    colorPalette: colorPalette
-                  }}
-                  onLayoutComplete={() => console.log('Layout complete!')}
-                  onError={(err) => {
-                    console.error('Visualization error:', err);
-                    setError(`Visualization error: ${err.message}`);
-                  }}
-                  style={{ 
-                    width: '100%', 
-                    height: '100%'
-                  }}
-                />
-              )}
-            </div>
-            
-            {/* Layout operation loading overlay */}
-            {isLayoutRunning && (
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 2000,
-                borderRadius: '8px'
-              }}>
-                <div style={{ textAlign: 'center', color: '#333' }}>
-                  <div style={{ 
-                    width: '32px',
-                    height: '32px',
-                    margin: '0 auto 12px',
-                    border: '3px solid #f3f3f3',
-                    borderTop: '3px solid #3498db',
-                    borderRadius: '50%',
-                    animation: 'canvasSpin 1s linear infinite'
-                  }}></div>
-                  <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>
-                    Updating Layout...
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#666' }}>
-                    Complex graphs may take a moment
-                  </div>
-                </div>
-                <style>
-                  {`
-                    @keyframes canvasSpin {
-                      0% { transform: rotate(0deg); }
-                      100% { transform: rotate(360deg); }
-                    }
-                  `}
-                </style>
-              </div>
+            style={{
+              padding: '12px',
+              fontSize: '16px',
+              border: '1px solid #ccc',
+              borderRadius: '4px'
+            }}
+          />
+        </div>
+      ) : (
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{
+            height: '600px',
+            border: '1px solid #ddd',
+            borderRadius: '8px',
+            backgroundColor: 'white'
+          }}>
+            {FlowGraph && (
+              <FlowGraph 
+                visualizationState={currentVisualizationState}
+                onLayoutComplete={() => console.log('Layout complete!')}
+                onError={(err) => {
+                  console.error('Visualization error:', err);
+                  setError(`Visualization error: ${err.message}`);
+                }}
+                style={{ width: '100%', height: '100%' }}
+              />
             )}
           </div>
           <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
