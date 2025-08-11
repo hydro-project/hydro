@@ -105,7 +105,7 @@
 <a href=#105 id=105 data-nosnippet>105</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#106 id=106 data-nosnippet>106</a>            <span class="kw">let </span>#state_ident = {
 <a href=#107 id=107 data-nosnippet>107</a>                <span class="kw">let </span>data_struct: #lattice_type = (#factory_fn)();
-<a href=#108 id=108 data-nosnippet>108</a>                <span class="macro">::std::debug_assert!</span>(#root::lattices::IsBot::is_bot(<span class="kw-2">&amp;</span>data_struct));
+<a href=#108 id=108 data-nosnippet>108</a>                <span class="macro">::std::debug_assert!</span>(::lattices::IsBot::is_bot(<span class="kw-2">&amp;</span>data_struct));
 <a href=#109 id=109 data-nosnippet>109</a>                #df_ident.add_state(::std::cell::RefCell::new(data_struct))
 <a href=#110 id=110 data-nosnippet>110</a>            };
 <a href=#111 id=111 data-nosnippet>111</a>        };
