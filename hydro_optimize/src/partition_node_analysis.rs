@@ -323,8 +323,8 @@ fn input_dependency_analysis_node(
         }
         // Only the key is preserved
         HydroNode::ReduceKeyed { .. }
-        | HydroNode::FoldKeyed { .. } => {
-            assert_eq!(parent_ids.len(), 1, "Node {:?} has the wrong number of parents.", node);
+        | HydroNode::FoldKeyed { .. }
+        | HydroNode::ReduceKeyedWatermark { .. } => {
             for input_id in input_taint_entry.iter() {
                 if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
                     if let Some(parent_dependency) = parent_dependencies_on_input.get(&0) {
@@ -545,7 +545,9 @@ fn partitioning_constraint_analysis_node(
                     }
                 }
             }
-            HydroNode::ReduceKeyed { .. } | HydroNode::FoldKeyed { .. } => {
+            HydroNode::ReduceKeyed { .. }
+            | HydroNode::FoldKeyed { .. }
+            | HydroNode::ReduceKeyedWatermark { .. } => {
                 // Can only partition on the key. The key's inherited dependencies are already in input_dependencies for this node
                 if let Some((inputs, dependencies)) = get_inputs_and_dependencies(
                     input_taint,
@@ -748,7 +750,7 @@ mod tests {
     use hydro_lang::ir::deep_clone;
     use hydro_lang::location::LocationId;
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
-    use hydro_lang::{Bounded, FlowBuilder, Location, NoOrder, Stream};
+    use hydro_lang::{Bounded, FlowBuilder, Location, NoOrder, Stream, local_nondet};
     use stageleft::q;
 
     use crate::partition_node_analysis::{
@@ -1022,18 +1024,16 @@ mod tests {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
         let cluster2 = builder.cluster::<()>();
-        unsafe {
-            cluster1
-                .source_iter(q!([(1, 2)]))
-                .broadcast_bincode(&cluster2)
-                .values()
-                .tick_batch(&cluster2.tick())
-                .delta()
-                .all_ticks()
-                .for_each(q!(|(a, b)| {
-                    println!("a: {}, b: {}", a, b);
-                }));
-        }
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode(&cluster2)
+            .values()
+            .batch(&cluster2.tick(), local_nondet!("test"))
+            .delta()
+            .all_ticks()
+            .for_each(q!(|(a, b)| {
+                println!("a: {}, b: {}", a, b);
+            }));
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
@@ -1063,18 +1063,16 @@ mod tests {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
         let cluster2 = builder.cluster::<()>();
-        unsafe {
-            cluster1
-                .source_iter(q!([(1, 2)]))
-                .broadcast_bincode(&cluster2)
-                .values()
-                .tick_batch(&cluster2.tick())
-                .delta()
-                .all_ticks()
-                .for_each(q!(|(a, b)| {
-                    println!("a: {}, b: {}", a, b);
-                }));
-        }
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode(&cluster2)
+            .values()
+            .batch(&cluster2.tick(), local_nondet!("test"))
+            .delta()
+            .all_ticks()
+            .for_each(q!(|(a, b)| {
+                println!("a: {}, b: {}", a, b);
+            }));
 
         let expected_partitionings = Some(Vec::new()); // No partitioning constraints
         test_input_partitionable(builder, cluster2.id(), expected_partitionings);
@@ -1092,15 +1090,13 @@ mod tests {
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
-        unsafe {
-            stream2
-                .tick_batch(&tick)
-                .chain(stream1.tick_batch(&tick))
-                .all_ticks()
-                .for_each(q!(|((x, b1), y)| {
-                    println!("x: {}, b.1: {}, y: {}", x, b1, y);
-                }));
-        }
+        stream2
+            .batch(&tick, local_nondet!("test"))
+            .chain(stream1.batch(&tick, local_nondet!("test")))
+            .all_ticks()
+            .for_each(q!(|((x, b1), y)| {
+                println!("x: {}, b.1: {}, y: {}", x, b1, y);
+            }));
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
@@ -1164,15 +1160,13 @@ mod tests {
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
-        unsafe {
-            stream2
-                .tick_batch(&tick)
-                .chain(stream1.tick_batch(&tick))
-                .all_ticks()
-                .for_each(q!(|((x, b1), y)| {
-                    println!("x: {}, b.1: {}, y: {}", x, b1, y);
-                }));
-        }
+        stream2
+            .batch(&tick, local_nondet!("test"))
+            .chain(stream1.batch(&tick, local_nondet!("test")))
+            .all_ticks()
+            .for_each(q!(|((x, b1), y)| {
+                println!("x: {}, b.1: {}, y: {}", x, b1, y);
+            }));
 
         let expected_partitionings = Some(Vec::new()); // No partitioning constraints
         test_input_partitionable(builder, cluster2.id(), expected_partitionings);
@@ -1190,15 +1184,13 @@ mod tests {
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
-        unsafe {
-            stream2
-                .tick_batch(&tick)
-                .cross_product(stream1.tick_batch(&tick))
-                .all_ticks()
-                .for_each(q!(|(((b1, b1_again), a3), (b, a2))| {
-                    println!("((({}, {}), {}), ({:?}, {}))", b1, b1_again, a3, b, a2);
-                }));
-        }
+        stream2
+            .batch(&tick, local_nondet!("test"))
+            .cross_product(stream1.batch(&tick, local_nondet!("test")))
+            .all_ticks()
+            .for_each(q!(|(((b1, b1_again), a3), (b, a2))| {
+                println!("((({}, {}), {}), ({:?}, {}))", b1, b1_again, a3, b, a2);
+            }));
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
@@ -1270,15 +1262,13 @@ mod tests {
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
-        unsafe {
-            stream2
-                .tick_batch(&tick)
-                .cross_product(stream1.tick_batch(&tick))
-                .all_ticks()
-                .for_each(q!(|(((b1, b1_again), a3), (b, a2))| {
-                    println!("((({}, {}), {}), ({:?}, {}))", b1, b1_again, a3, b, a2);
-                }));
-        }
+        stream2
+            .batch(&tick, local_nondet!("test"))
+            .cross_product(stream1.batch(&tick, local_nondet!("test")))
+            .all_ticks()
+            .for_each(q!(|(((b1, b1_again), a3), (b, a2))| {
+                println!("((({}, {}), {}), ({:?}, {}))", b1, b1_again, a3, b, a2);
+            }));
 
         let expected_partitionings = None;
         test_input_partitionable(builder, cluster2.id(), expected_partitionings);
@@ -1296,15 +1286,13 @@ mod tests {
         let stream1 = input.clone().map(q!(|(a, b)| (b, a)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
-        unsafe {
-            stream2
-                .tick_batch(&tick)
-                .join(stream1.tick_batch(&tick))
-                .all_ticks()
-                .for_each(q!(|((b1, b1_again), (a3, a))| {
-                    println!("(({}, {}), {}, {})", b1, b1_again, a3, a);
-                }));
-        }
+        stream2
+            .batch(&tick, local_nondet!("test"))
+            .join(stream1.batch(&tick, local_nondet!("test")))
+            .all_ticks()
+            .for_each(q!(|((b1, b1_again), (a3, a))| {
+                println!("(({}, {}), {}, {})", b1, b1_again, a3, a);
+            }));
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
@@ -1388,15 +1376,13 @@ mod tests {
         let stream1 = input.clone().map(q!(|(a, b)| (b, a)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
         let tick = cluster2.tick();
-        unsafe {
-            stream2
-                .tick_batch(&tick)
-                .join(stream1.tick_batch(&tick))
-                .all_ticks()
-                .for_each(q!(|((b1, b1_again), (a3, a))| {
-                    println!("(({}, {}), {}, {})", b1, b1_again, a3, a);
-                }));
-        }
+        stream2
+            .batch(&tick, local_nondet!("test"))
+            .join(stream1.batch(&tick, local_nondet!("test")))
+            .all_ticks()
+            .for_each(q!(|((b1, b1_again), (a3, a))| {
+                println!("(({}, {}), {}, {})", b1, b1_again, a3, a);
+            }));
 
         // Can either partition on b.0 or b.1, since the join is only successful when both b.0=b.1 or b.1=b.1
         let expected_partitionings = Some(vec![
@@ -1411,17 +1397,15 @@ mod tests {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
         let cluster2 = builder.cluster::<()>();
-        unsafe {
-            cluster1
-                .source_iter(q!([(1, 2)]))
-                .broadcast_bincode(&cluster2)
-                .values()
-                .assume_ordering()
-                .enumerate()
-                .for_each(q!(|(i, (a, b))| {
-                    println!("i: {}, a: {}, b: {}", i, a, b);
-                }));
-        }
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode(&cluster2)
+            .values()
+            .assume_ordering(local_nondet!("test"))
+            .enumerate()
+            .for_each(q!(|(i, (a, b))| {
+                println!("i: {}, a: {}, b: {}", i, a, b);
+            }));
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
@@ -1454,17 +1438,15 @@ mod tests {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
         let cluster2 = builder.cluster::<()>();
-        unsafe {
-            cluster1
-                .source_iter(q!([(1, 2)]))
-                .broadcast_bincode(&cluster2)
-                .values()
-                .assume_ordering()
-                .enumerate()
-                .for_each(q!(|(i, (a, b))| {
-                    println!("i: {}, a: {}, b: {}", i, a, b);
-                }));
-        }
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode(&cluster2)
+            .values()
+            .assume_ordering(local_nondet!("test"))
+            .enumerate()
+            .for_each(q!(|(i, (a, b))| {
+                println!("i: {}, a: {}, b: {}", i, a, b);
+            }));
 
         let expected_partitionings = None;
         test_input_partitionable(builder, cluster2.id(), expected_partitionings);
@@ -1475,20 +1457,18 @@ mod tests {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
         let cluster2 = builder.cluster::<()>();
-        unsafe {
-            cluster1
-                .source_iter(q!([(1, 2)]))
-                .broadcast_bincode(&cluster2)
-                .values()
-                .tick_batch(&cluster2.tick())
-                .into_keyed()
-                .reduce_commutative(q!(|acc, b| *acc += b))
-                .entries()
-                .all_ticks()
-                .for_each(q!(|(a, b_sum)| {
-                    println!("a: {}, b_sum: {}", a, b_sum);
-                }));
-        }
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode(&cluster2)
+            .values()
+            .batch(&cluster2.tick(), local_nondet!("test"))
+            .into_keyed()
+            .reduce_commutative(q!(|acc, b| *acc += b))
+            .entries()
+            .all_ticks()
+            .for_each(q!(|(a, b_sum)| {
+                println!("a: {}, b_sum: {}", a, b_sum);
+            }));
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
@@ -1523,20 +1503,18 @@ mod tests {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
         let cluster2 = builder.cluster::<()>();
-        unsafe {
-            cluster1
-                .source_iter(q!([(1, 2)]))
-                .broadcast_bincode(&cluster2)
-                .values()
-                .tick_batch(&cluster2.tick())
-                .into_keyed()
-                .reduce_commutative(q!(|acc, b| *acc += b))
-                .entries()
-                .all_ticks()
-                .for_each(q!(|(a, b_sum)| {
-                    println!("a: {}, b_sum: {}", a, b_sum);
-                }));
-        }
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode(&cluster2)
+            .values()
+            .batch(&cluster2.tick(), local_nondet!("test"))
+            .into_keyed()
+            .reduce_commutative(q!(|acc, b| *acc += b))
+            .entries()
+            .all_ticks()
+            .for_each(q!(|(a, b_sum)| {
+                println!("a: {}, b_sum: {}", a, b_sum);
+            }));
 
         let expected_partitionings = Some(vec![BTreeMap::from([(
             2,
@@ -1550,21 +1528,19 @@ mod tests {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
         let cluster2 = builder.cluster::<()>();
-        unsafe {
-            cluster1
-                .source_iter(q!([(1, 2)]))
-                .broadcast_bincode(&cluster2)
-                .values()
-                .tick_batch(&cluster2.tick())
-                .reduce_commutative(q!(|(acc_a, acc_b), (a, b)| {
-                    *acc_a += a;
-                    *acc_b += b;
-                }))
-                .all_ticks()
-                .for_each(q!(|(a_sum, b_sum)| {
-                    println!("a_sum: {}, b_sum: {}", a_sum, b_sum);
-                }));
-        }
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode(&cluster2)
+            .values()
+            .batch(&cluster2.tick(), local_nondet!("test"))
+            .reduce_commutative(q!(|(acc_a, acc_b), (a, b)| {
+                *acc_a += a;
+                *acc_b += b;
+            }))
+            .all_ticks()
+            .for_each(q!(|(a_sum, b_sum)| {
+                println!("a_sum: {}, b_sum: {}", a_sum, b_sum);
+            }));
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),  // Network
@@ -1593,21 +1569,19 @@ mod tests {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
         let cluster2 = builder.cluster::<()>();
-        unsafe {
-            cluster1
-                .source_iter(q!([(1, 2)]))
-                .broadcast_bincode(&cluster2)
-                .values()
-                .tick_batch(&cluster2.tick())
-                .reduce_commutative(q!(|(acc_a, acc_b), (a, b)| {
-                    *acc_a += a;
-                    *acc_b += b;
-                }))
-                .all_ticks()
-                .for_each(q!(|(a_sum, b_sum)| {
-                    println!("a_sum: {}, b_sum: {}", a_sum, b_sum);
-                }));
-        }
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode(&cluster2)
+            .values()
+            .batch(&cluster2.tick(), local_nondet!("test"))
+            .reduce_commutative(q!(|(acc_a, acc_b), (a, b)| {
+                *acc_a += a;
+                *acc_b += b;
+            }))
+            .all_ticks()
+            .for_each(q!(|(a_sum, b_sum)| {
+                println!("a_sum: {}, b_sum: {}", a_sum, b_sum);
+            }));
 
         let expected_partitionings = None;
         test_input_partitionable(builder, cluster2.id(), expected_partitionings);
@@ -1629,10 +1603,10 @@ mod tests {
             .clone()
             .filter(q!(|(a, _b)| *a > 2))
             .map(q!(|(a, b)| (a, b + 2)));
-        unsafe {
-            complete_cycle
-                .complete_next_tick(prev_tick_input.chain(input.tick_batch(&cluster2_tick)));
-        }
+        complete_cycle.complete_next_tick(
+            prev_tick_input.chain(input.batch(&cluster2_tick, local_nondet!("test"))),
+        );
+
         cycle.all_ticks().for_each(q!(|(a, b)| {
             println!("a: {}, b: {}", a, b);
         }));
@@ -1693,10 +1667,10 @@ mod tests {
             .clone()
             .filter(q!(|(a, _b)| *a > 2))
             .map(q!(|(a, b)| (a, b + 2)));
-        unsafe {
-            complete_cycle
-                .complete_next_tick(prev_tick_input.chain(input.tick_batch(&cluster2_tick)));
-        }
+        complete_cycle.complete_next_tick(
+            prev_tick_input.chain(input.batch(&cluster2_tick, local_nondet!("test"))),
+        );
+
         cycle.all_ticks().for_each(q!(|(a, b)| {
             println!("a: {}, b: {}", a, b);
         }));
@@ -1719,8 +1693,8 @@ mod tests {
             cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
         let (complete_cycle2, cycle2) =
             cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
-        let chained = unsafe {
-            cycle1.join(input.tick_batch(&cluster2_tick))
+        let chained = {
+            cycle1.join(input.batch(&cluster2_tick, local_nondet!("test")))
                 .map(q!(|(_, (b1,b2))| (b1,b2))) // Both values are influenced by the join with cycle2_out
                 .chain(cycle2)
         };
@@ -1816,8 +1790,8 @@ mod tests {
             cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
         let (complete_cycle2, cycle2) =
             cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
-        let chained = unsafe {
-            cycle1.join(input.tick_batch(&cluster2_tick))
+        let chained = {
+            cycle1.join(input.batch(&cluster2_tick, local_nondet!("test")))
                 .map(q!(|(_, (b1,b2))| (b1,b2))) // Both values are influenced by the join with cycle2_out
                 .chain(cycle2)
         };
@@ -1849,15 +1823,13 @@ mod tests {
         let tick = cluster2.tick();
         let stream1 = input.map(q!(|(a, b)| (b, a + 2)));
         let stream2 = cluster2.source_iter(q!([(3, 4)]));
-        unsafe {
-            stream2
-                .tick_batch(&tick)
-                .chain(stream1.tick_batch(&tick))
-                .all_ticks()
-                .for_each(q!(|_| {
-                    println!("No dependencies");
-                }));
-        }
+        stream2
+            .batch(&tick, local_nondet!("test"))
+            .chain(stream1.batch(&tick, local_nondet!("test")))
+            .all_ticks()
+            .for_each(q!(|_| {
+                println!("No dependencies");
+            }));
 
         let expected_taint = BTreeMap::from([
             (0, BTreeSet::from([])),  // source_iter
@@ -1903,15 +1875,13 @@ mod tests {
         let tick = cluster2.tick();
         let stream1 = input.map(q!(|(a, b)| (b, a + 2)));
         let stream2 = cluster2.source_iter(q!([(3, 4)]));
-        unsafe {
-            stream2
-                .tick_batch(&tick)
-                .chain(stream1.tick_batch(&tick))
-                .all_ticks()
-                .for_each(q!(|_| {
-                    println!("No dependencies");
-                }));
-        }
+        stream2
+            .batch(&tick, local_nondet!("test"))
+            .chain(stream1.batch(&tick, local_nondet!("test")))
+            .all_ticks()
+            .for_each(q!(|_| {
+                println!("No dependencies");
+            }));
 
         let expected_partitionings = Some(Vec::new());
         test_input_partitionable(builder, cluster2.id(), expected_partitionings);
@@ -1931,23 +1901,25 @@ mod tests {
             .broadcast_bincode(&cluster2)
             .values();
         let tick = cluster2.tick();
-        unsafe {
-            let stream1 = input1.map(q!(|(a, b)| (a * 2, b))).tick_batch(&tick);
-            let stream2 = input2.map(q!(|(a, b)| (-a, b))).tick_batch(&tick);
-            stream2
-                .clone()
-                .chain(stream1.clone())
-                .all_ticks()
-                .for_each(q!(|_| {
-                    println!("Dependent on both input1.b and input2.b");
-                }));
-            stream2
-                .join(stream1)
-                .all_ticks()
-                .for_each(q!(|(_, (b1, b2))| {
-                    println!("b from input 1: {}, b from input 2: {}", b1, b2);
-                }));
-        }
+        let stream1 = input1
+            .map(q!(|(a, b)| (a * 2, b)))
+            .batch(&tick, local_nondet!("test"));
+        let stream2 = input2
+            .map(q!(|(a, b)| (-a, b)))
+            .batch(&tick, local_nondet!("test"));
+        stream2
+            .clone()
+            .chain(stream1.clone())
+            .all_ticks()
+            .for_each(q!(|_| {
+                println!("Dependent on both input1.b and input2.b");
+            }));
+        stream2
+            .join(stream1)
+            .all_ticks()
+            .for_each(q!(|(_, (b1, b2))| {
+                println!("b from input 1: {}, b from input 2: {}", b1, b2);
+            }));
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::from([])),      // input2
@@ -2028,23 +2000,25 @@ mod tests {
             .broadcast_bincode(&cluster2)
             .values();
         let tick = cluster2.tick();
-        unsafe {
-            let stream1 = input1.map(q!(|(a, b)| (b, a * 2))).tick_batch(&tick);
-            let stream2 = input2.map(q!(|(a, b)| (b, -a))).tick_batch(&tick);
-            stream2
-                .clone()
-                .chain(stream1.clone())
-                .all_ticks()
-                .for_each(q!(|_| {
-                    println!("Dependent on both input1.b and input2.b");
-                }));
-            stream2
-                .join(stream1)
-                .all_ticks()
-                .for_each(q!(|(_, (a1, a2))| {
-                    println!("a*2 from input 1: {}, -a from input 2: {}", a1, a2);
-                }));
-        }
+        let stream1 = input1
+            .map(q!(|(a, b)| (b, a * 2)))
+            .batch(&tick, local_nondet!("test"));
+        let stream2 = input2
+            .map(q!(|(a, b)| (b, -a)))
+            .batch(&tick, local_nondet!("test"));
+        stream2
+            .clone()
+            .chain(stream1.clone())
+            .all_ticks()
+            .for_each(q!(|_| {
+                println!("Dependent on both input1.b and input2.b");
+            }));
+        stream2
+            .join(stream1)
+            .all_ticks()
+            .for_each(q!(|(_, (a1, a2))| {
+                println!("a*2 from input 1: {}, -a from input 2: {}", a1, a2);
+            }));
 
         let expected_partitioning = Some(vec![BTreeMap::from([
             (2, vec!["1".to_string(), "1".to_string()]),
@@ -2067,15 +2041,13 @@ mod tests {
             .broadcast_bincode(&cluster2)
             .values();
         let tick = cluster2.tick();
-        unsafe {
-            input1
-                .tick_batch(&tick)
-                .filter_not_in(input2.tick_batch(&tick))
-        }
-        .all_ticks()
-        .for_each(q!(|(a, b)| {
-            println!("a: {}, b: {}", a, b);
-        }));
+        input1
+            .batch(&tick, local_nondet!("test"))
+            .filter_not_in(input2.batch(&tick, local_nondet!("test")))
+            .all_ticks()
+            .for_each(q!(|(a, b)| {
+                println!("a: {}, b: {}", a, b);
+            }));
 
         let expected_taint = BTreeMap::from([
             (2, BTreeSet::new()),     // input1
@@ -2118,15 +2090,13 @@ mod tests {
             .broadcast_bincode(&cluster2)
             .values();
         let tick = cluster2.tick();
-        unsafe {
-            input1
-                .tick_batch(&tick)
-                .filter_not_in(input2.tick_batch(&tick))
-        }
-        .all_ticks()
-        .for_each(q!(|(a, b)| {
-            println!("a: {}, b: {}", a, b);
-        }));
+        input1
+            .batch(&tick, local_nondet!("test"))
+            .filter_not_in(input2.batch(&tick, local_nondet!("test")))
+            .all_ticks()
+            .for_each(q!(|(a, b)| {
+                println!("a: {}, b: {}", a, b);
+            }));
 
         let expected_partitionings = Some(vec![BTreeMap::from([
             (2, vec!["1".to_string()]),

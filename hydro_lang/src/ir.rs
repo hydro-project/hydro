@@ -1147,6 +1147,12 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+    ReduceKeyedWatermark {
+        f: DebugExpr,
+        input: Box<HydroNode>,
+        watermark: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
 
     Network {
         serialize_fn: Option<DebugExpr>,
@@ -1257,6 +1263,13 @@ impl HydroNode {
             HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } => {
                 transform(pos.as_mut(), seen_tees);
                 transform(neg.as_mut(), seen_tees);
+            }
+
+            HydroNode::ReduceKeyedWatermark {
+                input, watermark, ..
+            } => {
+                transform(input.as_mut(), seen_tees);
+                transform(watermark.as_mut(), seen_tees);
             }
 
             HydroNode::Map { input, .. }
@@ -1455,6 +1468,17 @@ impl HydroNode {
                 init: init.clone(),
                 acc: acc.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::ReduceKeyedWatermark {
+                f,
+                input,
+                watermark,
+                metadata,
+            } => HydroNode::ReduceKeyedWatermark {
+                f: f.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+                watermark: Box::new(watermark.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
             HydroNode::Reduce { f, input, metadata } => HydroNode::Reduce {
@@ -2277,6 +2301,101 @@ impl HydroNode {
                 (fold_ident, input_location_id)
             }
 
+            HydroNode::ReduceKeyedWatermark {
+                f,
+                input,
+                watermark,
+                ..
+            } => {
+                let (input, lifetime) =
+                    if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
+                        (input, quote!('static))
+                    } else {
+                        (input, quote!('tick))
+                    };
+
+                let (input_ident, input_location_id) =
+                    input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let (watermark_ident, watermark_location_id) =
+                    watermark.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let chain_ident = syn::Ident::new(
+                    &format!("reduce_keyed_watermark_chain_{}", *next_stmt_id),
+                    Span::call_site(),
+                );
+
+                let fold_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        assert_eq!(
+                            input_location_id, watermark_location_id,
+                            "ReduceKeyedWatermark inputs must be in the same location"
+                        );
+
+                        let builder = graph_builders.entry(input_location_id).or_default();
+                        // 1. Don't allow any values to be added to the map if the key <=the watermark
+                        // 2. If the entry didn't exist in the BTreeMap, add it. Otherwise, call f.
+                        //    If the watermark changed, delete all BTreeMap entries with a key < the watermark.
+                        // 3. Convert the BTreeMap back into a stream of (k, v)
+                        builder.add_dfir(
+                            parse_quote! {
+                                #chain_ident = chain();
+                                #input_ident
+                                    -> map(|x| (Some(x), None))
+                                    -> [0]#chain_ident;
+                                #watermark_ident
+                                    -> map(|watermark| (None, Some(watermark)))
+                                    -> [1]#chain_ident;
+
+                                #fold_ident = #chain_ident
+                                    -> fold::<#lifetime>(|| (::std::collections::HashMap::new(), None), {
+                                        let __reduce_keyed_fn = #f;
+                                        move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
+                                            if let Some((k, v)) = opt_payload {
+                                                if let Some(curr_watermark) = *opt_curr_watermark {
+                                                    if k <= curr_watermark {
+                                                        return;
+                                                    }
+                                                }
+                                                match map.entry(k) {
+                                                    ::std::collections::hash_map::Entry::Vacant(e) => {
+                                                        e.insert(v);
+                                                    }
+                                                    ::std::collections::hash_map::Entry::Occupied(mut e) => {
+                                                        __reduce_keyed_fn(e.get_mut(), v);
+                                                    }
+                                                }
+                                            } else {
+                                                let watermark = opt_watermark.unwrap();
+                                                if let Some(curr_watermark) = *opt_curr_watermark {
+                                                    if watermark <= curr_watermark {
+                                                        return;
+                                                    }
+                                                }
+                                                *opt_curr_watermark = opt_watermark;
+                                                map.retain(|k, _| *k > watermark);
+                                            }
+                                        }
+                                    })
+                                    -> flat_map(|(map, _curr_watermark)| map);
+                            },
+                            None,
+                            Some(&next_stmt_id.to_string()),
+                        );
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                (fold_ident, input_location_id)
+            }
+
             HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } => {
                 let operator: syn::Ident = if matches!(self, HydroNode::Reduce { .. }) {
                     parse_quote!(reduce)
@@ -2514,7 +2633,8 @@ impl HydroNode {
             | HydroNode::FilterMap { f, .. }
             | HydroNode::Inspect { f, .. }
             | HydroNode::Reduce { f, .. }
-            | HydroNode::ReduceKeyed { f, .. } => {
+            | HydroNode::ReduceKeyed { f, .. }
+            | HydroNode::ReduceKeyedWatermark { f, .. } => {
                 transform(f);
             }
             HydroNode::Fold { init, acc, .. }
@@ -2579,6 +2699,7 @@ impl HydroNode {
             HydroNode::FoldKeyed { metadata, .. } => metadata,
             HydroNode::Reduce { metadata, .. } => metadata,
             HydroNode::ReduceKeyed { metadata, .. } => metadata,
+            HydroNode::ReduceKeyedWatermark { metadata, .. } => metadata,
             HydroNode::ExternalInput { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
@@ -2618,6 +2739,7 @@ impl HydroNode {
             HydroNode::FoldKeyed { metadata, .. } => metadata,
             HydroNode::Reduce { metadata, .. } => metadata,
             HydroNode::ReduceKeyed { metadata, .. } => metadata,
+            HydroNode::ReduceKeyedWatermark { metadata, .. } => metadata,
             HydroNode::ExternalInput { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
@@ -2678,6 +2800,14 @@ impl HydroNode {
                     vec![input.metadata()]
                 }
             }
+            HydroNode::ReduceKeyedWatermark { input, watermark, .. } => {
+                // Skip persist before fold/reduce
+                if let HydroNode::Persist { inner, .. } = input.as_ref() {
+                    vec![inner.metadata(), watermark.metadata()]
+                } else {
+                    vec![input.metadata(), watermark.metadata()]
+                }
+            }
         }
     }
 
@@ -2734,6 +2864,7 @@ impl HydroNode {
             HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),
             HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
             HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),
+            HydroNode::ReduceKeyedWatermark { f, .. } => format!("ReduceKeyedWatermark({:?})", f),
             HydroNode::Network { .. } => "Network()".to_string(),
             HydroNode::ExternalInput { .. } => "ExternalInput()".to_string(),
             HydroNode::Counter { tag, duration, .. } => {
