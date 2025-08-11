@@ -5,6 +5,7 @@ use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick};
 use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
+use crate::unsafety::NonDet;
 use crate::{Atomic, Bounded, Location, NoOrder, Singleton, Stream, Tick, Unbounded};
 
 pub struct KeyedOptional<K, V, Loc, Bound> {
@@ -120,8 +121,8 @@ where
     /// Because this picks a snapshot of each optional whose value is continuously changing,
     /// the output optional has a non-deterministic value since each snapshot can be at an
     /// arbitrary point in time.
-    pub unsafe fn snapshot(self, tick: &Tick<L>) -> KeyedOptional<K, V, Tick<L>, Bounded> {
-        unsafe { self.atomic(tick).snapshot() }
+    pub fn snapshot(self, tick: &Tick<L>, nondet: NonDet) -> KeyedOptional<K, V, Tick<L>, Bounded> {
+        self.atomic(tick).snapshot(nondet)
     }
 }
 
@@ -136,7 +137,7 @@ where
     /// Because this picks a snapshot of each optional whose value is continuously changing,
     /// the output optional has a non-deterministic value since each snapshot can be at an
     /// arbitrary point in time.
-    pub unsafe fn snapshot(self) -> KeyedOptional<K, V, Tick<L>, Bounded> {
+    pub fn snapshot(self, _nondet: NonDet) -> KeyedOptional<K, V, Tick<L>, Bounded> {
         KeyedOptional {
             underlying: Stream::new(
                 self.underlying.location.tick,

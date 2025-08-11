@@ -17,6 +17,35 @@
             }
         }
     },
+    "highlight.regexes": {
+        "(local_nondet\\!?)": [
+            {
+              "color": "#ff0000",
+              "fontWeight": "bold"
+            }
+        ],
+        "(partial_exposed_nondet\\!?)": [
+            {
+              "color": "#ff0000",
+              "fontWeight": "bold"
+            }
+        ],
+        "(_?nondet[a-zA-Z_]*)": {
+            "regexFlags": "g",
+            "decorations": [
+                {
+                "color": "#ff0000",
+                "fontWeight": "bold"
+                }
+            ]
+        },
+        "(nondet\\!)\\(": [
+            {
+              "color": "#ff0000",
+              "fontWeight": "bold"
+            }
+        ]
+    },
     "files.watcherExclude": {
         "**/target": true
     },
