@@ -519,7 +519,7 @@ where
     /// being atomically processed. The snapshot at tick `t + 1` is guaranteed to include
     /// at least all relevant data that contributed to the snapshot at tick `t`.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Because this picks a snapshot of a optional whose value is continuously changing,
     /// the output optional has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
@@ -550,7 +550,7 @@ where
     /// as of that tick. The snapshot at tick `t + 1` is guaranteed to include at least all
     /// relevant data that contributed to the snapshot at tick `t`.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Because this picks a snapshot of a optional whose value is continuously changing,
     /// the output optional has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
@@ -561,7 +561,7 @@ where
     /// Eagerly samples the optional as fast as possible, returning a stream of snapshots
     /// with order corresponding to increasing prefixes of data contributing to the optional.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// At runtime, the optional will be arbitrarily sampled as fast as possible, but due
     /// to non-deterministic batching and arrival of inputs, the output stream is
     /// non-deterministic.
@@ -578,7 +578,7 @@ where
     /// represent the value of the optional given some prefix of the streams leading up to
     /// it.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// The output stream is non-deterministic in which elements are sampled, since this
     /// is controlled by a clock.
     pub fn sample_every(

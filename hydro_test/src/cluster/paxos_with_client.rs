@@ -25,7 +25,7 @@ pub trait PaxosLike<'a>: Sized {
         ballot: Optional<Self::Ballot, L, Unbounded>,
     ) -> Optional<ClusterId<Self::PaxosIn>, L, Unbounded>;
 
-    /// # Safety
+    /// # Non-Determinism
     /// During leader-reelection, the latest known leader may be stale, which may
     /// result in non-deterministic dropping of payloads.
     #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
@@ -39,7 +39,7 @@ pub trait PaxosLike<'a>: Sized {
         nondet_commit: NonDet,
     ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder>;
 
-    /// # Safety
+    /// # Non-Determinism
     /// During leader-reelection, the latest known leader may be stale, which may
     /// result in non-deterministic dropping of payloads. Also, payloads across
     /// clients will be arbitrarily interleaved as they arrive at the leader.

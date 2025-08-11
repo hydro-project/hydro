@@ -92,7 +92,7 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
 /// and a stream of sequenced payloads with an index and optional payload (in the case of
 /// holes in the log).
 ///
-/// # Safety
+/// # Non-Determinism
 /// When the leader is stable, the algorithm will commit incoming payloads to the leader
 /// in deterministic order. However, when the leader is changing, payloads may be
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because

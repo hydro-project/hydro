@@ -742,7 +742,7 @@ where
     /// guarantee. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
@@ -783,7 +783,7 @@ where
     /// guarantee. Useful in unsafe code where the lack of retries cannot
     /// be proven by the type-system.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
@@ -2167,7 +2167,7 @@ where
     /// processed. These batches are guaranteed to be contiguous across ticks and preserve
     /// the order of the input.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
     pub fn batch(self, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
         Stream::new(
@@ -2241,7 +2241,7 @@ where
     /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
     /// the order of the input.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
     pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
         self.atomic(tick).batch(nondet)
@@ -2252,7 +2252,7 @@ where
     /// as the input, but with arbitrary elements skipped between samples. There is also
     /// no guarantee on the exact timing of the samples.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// The output stream is non-deterministic in which elements are sampled, since this
     /// is controlled by a clock.
     pub fn sample_every(
@@ -2272,7 +2272,7 @@ where
     /// Given a timeout duration, returns an [`Optional`]  which will have a value if the
     /// stream has not emitted a value since that duration.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Timeout relies on non-deterministic sampling of the stream, so depending on when
     /// samples take place, timeouts may be non-deterministically generated or missed,
     /// and the notification of the timeout may be delayed as well. There is also no

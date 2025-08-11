@@ -114,7 +114,7 @@ where
     /// Given a tick, returns a keyed singleton with a entries consisting of keys with
     /// snapshots of the value singleton.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Because this picks a snapshot of each singleton whose value is continuously changing,
     /// the output singleton has a non-deterministic value since each snapshot can be at an
     /// arbitrary point in time.
@@ -134,7 +134,7 @@ where
     /// Returns a keyed singleton with a entries consisting of keys with snapshots of the value
     /// singleton being atomically processed.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Because this picks a snapshot of each singleton whose value is continuously changing,
     /// each output singleton has a non-deterministic value since each snapshot can be at an
     /// arbitrary point in time.

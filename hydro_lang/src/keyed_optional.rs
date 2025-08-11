@@ -117,7 +117,7 @@ where
     /// Given a tick, returns a keyed optional with a entries consisting of keys with
     /// snapshots of the value optional.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Because this picks a snapshot of each optional whose value is continuously changing,
     /// the output optional has a non-deterministic value since each snapshot can be at an
     /// arbitrary point in time.
@@ -133,7 +133,7 @@ where
     /// Returns a keyed optional with a entries consisting of keys with snapshots of the value
     /// optional being atomically processed.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Because this picks a snapshot of each optional whose value is continuously changing,
     /// the output optional has a non-deterministic value since each snapshot can be at an
     /// arbitrary point in time.

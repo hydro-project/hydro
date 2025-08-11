@@ -80,7 +80,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
@@ -95,7 +95,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     /// guarantee for each group. Useful in unsafe code where the lack of retries cannot
     /// be proven by the type-system.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
@@ -1037,7 +1037,7 @@ where
     /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
     /// the order of the input.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
     pub fn batch(
         self,
@@ -1056,7 +1056,7 @@ where
     /// processed. These batches are guaranteed to be contiguous across ticks and preserve
     /// the order of the input.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
     pub fn batch(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
         KeyedStream {

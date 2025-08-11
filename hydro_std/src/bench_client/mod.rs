@@ -46,7 +46,7 @@ pub struct BenchResult<'a, Client> {
 /// * `workload_generator` - Generates a payload `P` for each virtual client
 /// * `transaction_cycle` - Processes the payloads and returns after processing
 ///
-/// # Safety
+/// # Non-Determinism
 /// This function uses non-deterministic time-based samples, and also updates results
 /// at non-deterministic points in time.
 pub fn bench_client<'a, Client, Payload>(
