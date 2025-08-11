@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 
 use hdrhistogram::Histogram;
 use hdrhistogram::serialization::{Deserializer, Serializer, V2Serializer};
+use hydro_lang::unsafety::NonDet;
 use hydro_lang::*;
 use serde::{Deserialize, Serialize};
 
@@ -45,10 +46,10 @@ pub struct BenchResult<'a, Client> {
 /// * `workload_generator` - Generates a payload `P` for each virtual client
 /// * `transaction_cycle` - Processes the payloads and returns after processing
 ///
-/// # Safety
+/// # Non-Determinism
 /// This function uses non-deterministic time-based samples, and also updates results
 /// at non-deterministic points in time.
-pub unsafe fn bench_client<'a, Client, Payload>(
+pub fn bench_client<'a, Client, Payload>(
     clients: &Cluster<'a, Client>,
     workload_generator: impl FnOnce(
         &Cluster<'a, Client>,
@@ -60,6 +61,7 @@ pub unsafe fn bench_client<'a, Client, Payload>(
     )
         -> Stream<(u32, Payload), Cluster<'a, Client>, Unbounded, NoOrder>,
     num_clients_per_node: usize,
+    nondet_sampling: NonDet,
 ) -> BenchResult<'a, Client>
 where
     Payload: Clone,
@@ -77,13 +79,11 @@ where
         clients.forward_ref::<Stream<_, _, _, TotalOrder>>();
 
     // Whenever all replicas confirm that a payload was committed, send another payload
-    let c_received_quorum_payloads = unsafe {
-        // SAFETY: because the transaction processor is required to handle arbitrary reordering
-        // across *different* keys, we are safe because delaying a transaction result for a key
-        // will only affect when the next request for that key is emitted with respect to other
-        // keys
-        transaction_cycle(c_to_proposers).tick_batch(&client_tick)
-    }
+    let c_received_quorum_payloads = transaction_cycle(c_to_proposers).batch(&client_tick, local_nondet("
+            because the transaction processor is required to handle arbitrary reordering
+            across *different* keys, we are safe because delaying a transaction result for a key
+            will only affect when the next request for that key is emitted with respect to other keys
+        "))
     .map(q!(|(virtual_id, payload)| (virtual_id, Some(payload))));
 
     let c_new_payloads = workload_generator(
@@ -92,12 +92,15 @@ where
             .chain(c_received_quorum_payloads.clone())
             .all_ticks(),
     );
-    c_to_proposers_complete_cycle.complete(unsafe {
-        // SAFETY: we don't send a new write for the same key until the previous one is committed,
-        // so this contains only a single write per key, and we don't care about order
-        // across keys
-        c_new_payloads.assume_ordering::<TotalOrder>()
-    });
+    c_to_proposers_complete_cycle.complete(c_new_payloads.assume_ordering::<TotalOrder>(
+        local_nondet(
+            "
+            we don't send a new write for the same key until the previous one is committed,
+            so this contains only a single write per key, and we don't care about order
+            across keys
+        ",
+        ),
+    ));
 
     // Track statistics
     let (c_timers_complete_cycle, c_timers) =
@@ -123,13 +126,10 @@ where
         .entries();
     c_timers_complete_cycle.complete_next_tick(c_new_timers);
 
-    let c_stats_output_timer = unsafe {
-        // SAFETY: intentionally sampling statistics
-        clients
-            .source_interval(q!(Duration::from_secs(1)))
-            .tick_batch(&client_tick)
-    }
-    .first();
+    let c_stats_output_timer = clients
+        .source_interval(q!(Duration::from_secs(1)), nondet_sampling)
+        .batch(&client_tick, nondet_sampling)
+        .first();
 
     let c_latencies = c_timers
         .join(c_updated_timers)
@@ -185,36 +185,33 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     results: BenchResult<'a, Client>,
     aggregator: &Process<'a, Aggregator>,
     clients: &Cluster<'a, Client>,
+    nondet_sampling: NonDet,
 ) {
-    let keyed_latencies = unsafe {
-        // SAFETY: intentional non-determinism
-        results
-            .latency_histogram
-            .sample_every(q!(Duration::from_millis(1000)))
-    }
-    .map(q!(|latencies| {
-        SerializableHistogramWrapper {
-            histogram: latencies,
-        }
-    }))
-    .send_bincode(aggregator);
+    let keyed_latencies = results
+        .latency_histogram
+        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .map(q!(|latencies| {
+            SerializableHistogramWrapper {
+                histogram: latencies,
+            }
+        }))
+        .send_bincode(aggregator);
 
-    let combined_latencies = unsafe {
-        keyed_latencies
-            .map(q!(|histogram| histogram.histogram.borrow().clone()))
-            .batch(&aggregator.tick())
-            .reduce_idempotent(q!(|combined, new| {
-                *combined = new;
-            }))
-            .values()
-            .reduce_commutative(q!(|combined, new| {
-                combined.add(new).unwrap();
-            }))
-    }
-    .latest();
+    let combined_latencies = keyed_latencies
+        .map(q!(|histogram| histogram.histogram.borrow().clone()))
+        .batch(&aggregator.tick(), nondet_sampling)
+        .reduce_idempotent(q!(|combined, new| {
+            *combined = new;
+        }))
+        .values()
+        .reduce_commutative(q!(|combined, new| {
+            combined.add(new).unwrap();
+        }))
+        .latest();
 
-    unsafe { combined_latencies.sample_every(q!(Duration::from_millis(1000))) }.for_each(q!(
-        move |latencies| {
+    combined_latencies
+        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .for_each(q!(move |latencies| {
             println!(
                 "Latency p50: {:.3} | p99 {:.3} ms | p999 {:.3} ms ({:} samples)",
                 Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64 / 1000.0,
@@ -223,33 +220,28 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
                     / 1000.0,
                 latencies.len()
             );
-        }
-    ));
+        }));
 
-    let keyed_throughputs = unsafe {
-        // SAFETY: intentional non-determinism
-        results
-            .throughput
-            .sample_every(q!(Duration::from_millis(1000)))
-    }
-    .send_bincode(aggregator);
+    let keyed_throughputs = results
+        .throughput
+        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .send_bincode(aggregator);
 
-    let combined_throughputs = unsafe {
-        keyed_throughputs
-            .reduce_idempotent(q!(|combined, new| {
-                *combined = new;
-            }))
-            .snapshot(&aggregator.tick())
-            .values()
-            .reduce_commutative(q!(|combined, new| {
-                combined.add(new);
-            }))
-    }
-    .latest();
+    let combined_throughputs = keyed_throughputs
+        .reduce_idempotent(q!(|combined, new| {
+            *combined = new;
+        }))
+        .snapshot(&aggregator.tick(), nondet_sampling)
+        .values()
+        .reduce_commutative(q!(|combined, new| {
+            combined.add(new);
+        }))
+        .latest();
 
     let client_members = clients.members();
-    unsafe { combined_throughputs.sample_every(q!(Duration::from_millis(1000))) }.for_each(q!(
-        move |throughputs| {
+    combined_throughputs
+        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .for_each(q!(move |throughputs| {
             if throughputs.sample_count() >= 2 {
                 let num_client_machines = client_members.len();
                 let mean = throughputs.sample_mean() * num_client_machines as f64;
@@ -263,6 +255,5 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
                     );
                 }
             }
-        }
-    ));
+        }));
 }
