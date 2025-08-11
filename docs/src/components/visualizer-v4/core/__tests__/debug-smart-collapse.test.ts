@@ -16,7 +16,7 @@ describe('Debug Smart Collapse', () => {
       autoLayout: true,
       layoutConfig: {
         enableSmartCollapse: true,
-        algorithm: 'layered',
+        algorithm: 'mrtree',
         direction: 'DOWN'
       }
     });

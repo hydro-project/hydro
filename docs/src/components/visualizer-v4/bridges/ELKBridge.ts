@@ -26,7 +26,7 @@ export class ELKBridge {
 
   constructor(layoutConfig: LayoutConfig = {}) {
     this.elk = new ELK(); // ✅ Create fresh ELK instance for each ELKBridge
-    this.layoutConfig = { algorithm: 'layered', ...layoutConfig };
+    this.layoutConfig = { algorithm: 'mrtree', ...layoutConfig };
     console.log(`[ELKBridge] 🆕 Created fresh ELK instance: ${this.elk.constructor.name} (${Date.now()})`);
   }
 
@@ -44,11 +44,22 @@ export class ELKBridge {
   async layoutVisState(visState: VisualizationState): Promise<void> {
     console.log(`[ELKBridge] 🚀 Starting ELK layout from VisState`);
     
+    // CRITICAL FIX: Clear any existing edge routing before layout
+    // This ensures fresh edge routes that match new container positions
+    console.log(`[ELKBridge] 🧹 Clearing existing edge routing to prevent coordinate system mismatch`);
+    visState.visibleEdges.forEach(edge => {
+      try {
+        visState.setEdgeLayout(edge.id, { sections: [] });
+      } catch (error) {
+        // Edge might not exist anymore, ignore
+      }
+    });
+    
     // 1. Extract all visible data from VisState
     const elkGraph = this.visStateToELK(visState);
     
     // 2. Log ELK input for debugging spacing issues
-    // this.logELKGraphStructure(elkGraph);
+    this.logELKGraphStructure(elkGraph);
     
     // 3. Validate ELK input data
     this.validateELKInput(elkGraph);
@@ -110,14 +121,48 @@ export class ELKBridge {
     
     const elkResult = await this.elk.layout(elkGraph);
     
-    // // Debug: Log sample of output for large graphs
-    // if ((elkResult.children?.length || 0) > 10) {
-    //   console.log('[ELKBridge] 📊 ELK Output for large graph:');
-    //   const sampleOutput = (elkResult.children || []).slice(0, 5);
-    //   for (const container of sampleOutput) {
-    //     console.log(`[ELKBridge] 📍   ${container.id}: pos=(${container.x},${container.y}) size=${container.width}x${container.height}`);
-    //   }
-      
+    // Debug: Log ELK output to compare with our working standalone test
+    console.log('[ELKBridge] 🎯 ELK Output Results:');
+    const elkOutputContainers = (elkResult.children || []);
+    for (const container of elkOutputContainers) {
+      console.log(`[ELKBridge] 📍 ${container.id}: pos=(${container.x},${container.y}) size=${container.width}x${container.height}`);
+    }
+    
+    // Debug: Log edge routing information from ELK
+    console.log('[ELKBridge] 🔗 ELK Edge Results:');
+    const elkOutputEdges = (elkResult.edges || []);
+    if (elkOutputEdges.length > 0) {
+      console.log(`[ELKBridge] 📊 Total edges from ELK: ${elkOutputEdges.length}`);
+      elkOutputEdges.slice(0, 5).forEach(edge => {
+        if (edge.sections && edge.sections.length > 0) {
+          const firstSection = edge.sections[0];
+          const lastSection = edge.sections[edge.sections.length - 1];
+          console.log(`[ELKBridge] 🔗 Edge ${edge.id}: ${edge.sections.length} sections, start=(${firstSection.startPoint?.x},${firstSection.startPoint?.y}), end=(${lastSection.endPoint?.x},${lastSection.endPoint?.y})`);
+        } else {
+          console.log(`[ELKBridge] 🔗 Edge ${edge.id}: no sections (cross-hierarchy edge)`);
+        }
+      });
+      if (elkOutputEdges.length > 5) {
+        console.log(`[ELKBridge] 🔗 ... and ${elkOutputEdges.length - 5} more edges`);
+      }
+    } else {
+      console.log('[ELKBridge] ⚠️ No edges in ELK result!');
+    }
+    
+    // Calculate actual spacing from ELK results
+    const sortedByX = elkOutputContainers
+      .filter(c => c.x !== undefined)
+      .sort((a, b) => (a.x || 0) - (b.x || 0));
+    
+    if (sortedByX.length > 1) {
+      const gaps = [];
+      for (let i = 1; i < sortedByX.length; i++) {
+        const gap = (sortedByX[i].x || 0) - ((sortedByX[i-1].x || 0) + (sortedByX[i-1].width || 0));
+        gaps.push(gap);
+      }
+      const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+      console.log(`[ELKBridge] 📐 Actual ELK spacing: avg=${avgGap.toFixed(1)}px, range=${Math.min(...gaps)}-${Math.max(...gaps)}px`);
+    }
     //   // Check for suspiciously large coordinates
     //   const largeCoords = (elkResult.children || []).filter(c => (c.y || 0) > 5000);
     //   if (largeCoords.length > 0) {
@@ -150,18 +195,22 @@ export class ELKBridge {
     
     if (containersWithPositions.length > 0) {
       console.log(`[ELKBridge] ⚠️  Found ${containersWithPositions.length} containers with existing positions:`);
-      for (const container of containersWithPositions.slice(0, 3)) { // Log first 3
+      for (const container of containersWithPositions) { // Log ALL containers with positions!
         console.log(`[ELKBridge] 📍 ${container.id}: position=(${container.x}, ${container.y}), size=${container.width}x${container.height}`);
       }
     } else {
       console.log('[ELKBridge] ✅ No existing positions in ELK input (good for fresh layout)');
     }
     
-    // Log a sample of container dimensions
-    const containers = (elkGraph.children || []).slice(0, 3);
+    // Log ALL container dimensions to see if there are inconsistencies
+    const containers = (elkGraph.children || []);
+    console.log(`[ELKBridge] 📦 All container dimensions:`);
     for (const container of containers) {
       console.log(`[ELKBridge] 📦 ${container.id}: ${container.width}x${container.height}`);
     }
+    
+    // CRITICAL: Log the exact layout options being sent
+    console.log(`[ELKBridge] ⚙️  Layout options:`, JSON.stringify(elkGraph.layoutOptions, null, 2));
   }
 
   /**
@@ -284,6 +333,15 @@ export class ELKBridge {
     
     // Add visible regular nodes using the correct VisState API
     const visibleNodes = visState.visibleNodes;
+    
+    // SAFETY CHECK: Verify that visibleNodes excludes hidden nodes
+    const hiddenNodesInVisible = visibleNodes.filter(n => n.hidden === true);
+    if (hiddenNodesInVisible.length > 0) {
+      console.error(`[ELKBridge] 🚨 CRITICAL: Found ${hiddenNodesInVisible.length} hidden nodes in visibleNodes:`, 
+        hiddenNodesInVisible.map(n => n.id));
+      throw new Error(`ELKBridge received hidden nodes from VisState.visibleNodes - this violates the hiding contract`);
+    }
+    
     nodes.push(...visibleNodes);
     
     // Add collapsed containers as nodes - VisualizationState should provide these pre-converted
@@ -303,6 +361,12 @@ export class ELKBridge {
           style: 'default' // VisualizationState should determine style
         };
         
+        // SAFETY CHECK: Ensure collapsed container is not hidden
+        if (container.hidden) {
+          console.error(`[ELKBridge] 🚨 CRITICAL: Collapsed container ${container.id} is hidden but was included in visibleContainers`);
+          throw new Error(`ELKBridge contract violation: hidden collapsed container ${container.id} should not be converted to node`);
+        }
+        
         // DEBUG: Log dimensions being passed to ELK for collapsed containers
         console.log(`[ELKBridge] 📦 Collapsed container ${container.id} dimensions:`, {
           width: containerAsNode.width,
@@ -315,6 +379,8 @@ export class ELKBridge {
         nodes.push(containerAsNode);
       }
     });
+    
+    console.log(`[ELKBridge] ✅ Filtered nodes for ELK: ${nodes.length} visible (${visibleNodes.length} regular nodes + ${visibleContainers.filter(c => c.collapsed).length} collapsed containers as nodes), 0 hidden`);
     
     return nodes;
   }
@@ -330,13 +396,29 @@ export class ELKBridge {
     // According to our rules: collapsed containers should appear in ELK, hidden containers should not
     const visibleContainers = visState.visibleContainers;
     
+    // SAFETY CHECK: Verify that visibleContainers excludes hidden containers
+    // This is a defensive check to ensure our dependency on VisState's filtering is correct
+    const hiddenContainersInVisible = visibleContainers.filter(c => c.hidden === true);
+    if (hiddenContainersInVisible.length > 0) {
+      console.error(`[ELKBridge] 🚨 CRITICAL: Found ${hiddenContainersInVisible.length} hidden containers in visibleContainers:`, 
+        hiddenContainersInVisible.map(c => c.id));
+      throw new Error(`ELKBridge received hidden containers from VisState.visibleContainers - this violates the hiding contract`);
+    }
+    
     // Convert computed views back to raw Container objects
     for (const computedContainer of visibleContainers) {
       const rawContainer = visState.getContainer(computedContainer.id);
       if (rawContainer) {
+        // Double-check: ensure the raw container is also not hidden
+        if (rawContainer.hidden) {
+          console.error(`[ELKBridge] 🚨 CRITICAL: Raw container ${rawContainer.id} is hidden but was in visibleContainers`);
+          throw new Error(`ELKBridge contract violation: hidden container ${rawContainer.id} should not be in visibleContainers`);
+        }
         containers.push(rawContainer);
       }
     }
+    
+    console.log(`[ELKBridge] ✅ Filtered containers for ELK: ${containers.length} visible (${containers.filter(c => c.collapsed).length} collapsed, ${containers.filter(c => !c.collapsed).length} expanded), 0 hidden`);
     
     return containers;
   }
@@ -472,24 +554,102 @@ export class ELKBridge {
       return;
     }
     
+    // CRITICAL FIX: Calculate global layout offset and normalize coordinates
+    // ELK sometimes positions the entire layout at a large offset, we want to normalize it to start near (0,0)
+    const topLevelContainers = elkResult.children || [];
+    let minX = Infinity;
+    let minY = Infinity;
+    
+    // Find the minimum coordinates across all top-level elements
+    for (const container of topLevelContainers) {
+      if (container.x !== undefined && container.x < minX) minX = container.x;
+      if (container.y !== undefined && container.y < minY) minY = container.y;
+    }
+    
+    // Calculate offset to bring layout back to origin area
+    const offsetX = minX === Infinity ? 0 : -minX + 50; // Add 50px margin from origin
+    const offsetY = minY === Infinity ? 0 : -minY + 50;
+    
+    console.log(`[ELKBridge] 🎯 Global layout offset correction: (${offsetX.toFixed(1)}, ${offsetY.toFixed(1)})`);
+    console.log(`[ELKBridge] 🎯   Original bounds: min=(${minX.toFixed(1)}, ${minY.toFixed(1)})`);
+    console.log(`[ELKBridge] 🎯   Will normalize to: min=(${(minX + offsetX).toFixed(1)}, ${(minY + offsetY).toFixed(1)})`);
+    
+    // Apply offset to all containers
+    topLevelContainers.forEach(container => {
+      if (container.x !== undefined) container.x += offsetX;
+      if (container.y !== undefined) container.y += offsetY;
+      
+      // Recursively apply offset to all children
+      this.applyOffsetToChildren(container, offsetX, offsetY);
+    });
+    
+    console.log(`[ELKBridge] 🎯 After offset correction:`);
+    for (const container of topLevelContainers.slice(0, 3)) {
+      console.log(`[ELKBridge] 🎯   ${container.id}: pos=(${container.x},${container.y})`);
+    }
+    
     // Apply positions to containers and nodes
     elkResult.children.forEach(elkNode => {
+      // CRITICAL FIX: Check if this ID exists as a container in VisState first
+      // Collapsed containers appear as nodes (no children) in ELK but are containers in VisState
+      try {
+        // Try to get as container first
+        const container = visState.getContainer(elkNode.id);
+        if (container) {
+          console.log(`[ELKBridge] 🏗️ Found ${elkNode.id} as container in VisState, using updateContainerFromELK`);
+          
+          // DEBUG: Check if this container ID also exists in graphNodes (it shouldn't!)
+          try {
+            const nodeVersion = visState.getGraphNode(elkNode.id);
+            if (nodeVersion) {
+              console.warn(`[ELKBridge] ⚠️ BUG: Container ${elkNode.id} also exists in graphNodes collection! This is a data integrity issue.`);
+            }
+          } catch (e) {
+            console.log(`[ELKBridge] ✅ Good: Container ${elkNode.id} NOT found in graphNodes collection`);
+          }
+          
+          this.updateContainerFromELK(elkNode, visState);
+          return;
+        }
+      } catch (e) {
+        // Not a container, continue to node logic
+      }
+      
+      // Original logic as fallback
       if (elkNode.children && elkNode.children.length > 0) {
-        // This is a container
+        // This is a container with children in ELK
+        console.log(`[ELKBridge] 🏗️ Found ${elkNode.id} as container with children in ELK, using updateContainerFromELK`);
         this.updateContainerFromELK(elkNode, visState);
       } else {
-        // This is a top-level node (or collapsed container)
+        // This is a regular node
+        console.log(`[ELKBridge] 🔷 Found ${elkNode.id} as node, using updateNodeFromELK`);
         this.updateNodeFromELK(elkNode, visState);
       }
     });
     
-    // Apply edge routing information
+    // Apply edge routing information (now with corrected coordinates)
     // // console.log((('--- ELKBRIDGE_EDGE_PROCESSING_START ---')));
     const allEdges = elkResult.edges || [];
     if (allEdges.length > 0) {
       // // console.log(((`[ELKBridge] 🔍 Processing ${allEdges.length} edges for sections`)));
+      
+      // HYPOTHESIS: Edge coordinates from ELK might be relative to containers, not absolute
+      // Let's try NOT applying the global offset to edges and see if they align properly
       allEdges.forEach(elkEdge => {
-        this.updateEdgeFromELK(elkEdge, visState);
+        console.log(`[ELKBridge] 🔧 Processing edge ${elkEdge.id}: has ${elkEdge.sections?.length || 0} sections`);
+        
+        if (elkEdge.sections) {
+          elkEdge.sections.forEach(section => {
+            if (section.startPoint) {
+              console.log(`[ELKBridge] 🔧   Keeping original startPoint: (${section.startPoint.x}, ${section.startPoint.y})`);
+            }
+            if (section.endPoint) {
+              console.log(`[ELKBridge] 🔧   Keeping original endPoint: (${section.endPoint.x}, ${section.endPoint.y})`);
+            }
+            // DO NOT apply global offset to edge coordinates - they might be relative
+          });
+        }
+        this.updateEdgeFromELK(elkEdge, visState, new Map());
       });
     } else {
       // // console.log((('[ELKBridge] ⚠️ No edges array in ELK result')));
@@ -500,24 +660,73 @@ export class ELKBridge {
   }
   
   /**
+   * Recursively apply coordinate offset to all children in hierarchy
+   */
+  private applyOffsetToChildren(elkNode: ElkNode, offsetX: number, offsetY: number): void {
+    if (elkNode.children) {
+      elkNode.children.forEach(child => {
+        if (child.x !== undefined) child.x += offsetX;
+        if (child.y !== undefined) child.y += offsetY;
+        this.applyOffsetToChildren(child, offsetX, offsetY);
+      });
+    }
+  }
+  
+  /**
    * Update edge routing information from ELK result
    */
-  private updateEdgeFromELK(elkEdge: ElkEdge, visState: VisualizationState): void {
+  private updateEdgeFromELK(elkEdge: ElkEdge, visState: VisualizationState, containerPositions: Map<string, { x: number; y: number }>): void {
     // Use VisState's proper layout method instead of direct property access
     if (elkEdge.sections && elkEdge.sections.length > 0) {
       // // console.log(((`[ELKBridge] 🔧 About to set layout for edge ${elkEdge.id} with ${elkEdge.sections.length} sections`)));
       
-      // Check if the edge still exists in VisState before trying to update it
+      // Check if this is a hyperedge (connects to collapsed containers)
+      const isHyperedge = elkEdge.id.startsWith('hyper_');
+      
+      // Get the source and target containers to determine coordinate offset
       try {
-        visState.setEdgeLayout(elkEdge.id, { sections: elkEdge.sections });
-        // // console.log(((`[ELKBridge] 📍 Updated edge ${elkEdge.id} with ${elkEdge.sections.length} sections`)));
-        
-        // Debug: Try to read back the edge to see if it was set
         const edge = visState.getGraphEdge(elkEdge.id);
-        // // console.log(((`[ELKBridge] 🔍 Debug: Edge ${elkEdge.id} layout after update:`, edge?.layout)));
+        if (!edge) {
+          console.log(`[ELKBridge] ⚠️ Edge ${elkEdge.id} not found in VisState, skipping`);
+          return;
+        }
+        
+        // For hyperedges, we need to clear any existing routing and let ReactFlow handle it
+        // because the ELK coordinates are based on the expanded container layout,
+        // but hyperedges connect to collapsed containers with different positions
+        if (isHyperedge) {
+          console.log(`[ELKBridge] 🔗 Clearing routing for hyperedge ${elkEdge.id} - letting ReactFlow handle automatic routing`);
+          visState.setEdgeLayout(elkEdge.id, { sections: [] });
+          return;
+        }
+        
+        // For regular edges, apply coordinates as before
+        const transformedSections = elkEdge.sections.map(section => ({
+          ...section,
+          startPoint: section.startPoint ? {
+            x: section.startPoint.x,
+            y: section.startPoint.y
+          } : undefined,
+          endPoint: section.endPoint ? {
+            x: section.endPoint.x,
+            y: section.endPoint.y
+          } : undefined,
+          bendPoints: section.bendPoints?.map(point => ({
+            x: point.x,
+            y: point.y
+          })) || []
+        }));
+        
+        console.log(`[ELKBridge] � Edge ${elkEdge.id} coordinate transformation:`);
+        console.log(`[ELKBridge] 🔗   Original: start=(${elkEdge.sections[0].startPoint?.x},${elkEdge.sections[0].startPoint?.y}), end=(${elkEdge.sections[elkEdge.sections.length-1].endPoint?.x},${elkEdge.sections[elkEdge.sections.length-1].endPoint?.y})`);
+        console.log(`[ELKBridge] 🔗   Transformed: start=(${transformedSections[0].startPoint?.x},${transformedSections[0].startPoint?.y}), end=(${transformedSections[transformedSections.length-1].endPoint?.x},${transformedSections[transformedSections.length-1].endPoint?.y})`);
+        
+        visState.setEdgeLayout(elkEdge.id, { sections: transformedSections });
+        // // console.log(((`[ELKBridge] � Updated edge ${elkEdge.id} with ${transformedSections.length} transformed sections`)));
+        
       } catch (error) {
         // Edge no longer exists in VisState (probably filtered out as hyperedge)
-        // console.log((`[ELKBridge] ⚠️ Skipping layout update for edge ${elkEdge.id} - edge no longer exists in VisState:`, error.message));
+        console.log(`[ELKBridge] ⚠️ Skipping layout update for edge ${elkEdge.id} - edge no longer exists in VisState: ${error.message}`);
       }
     } else {
       // // console.log(((`[ELKBridge] 📍 Edge ${elkEdge.id} has no sections (cross-container edge)`)));
@@ -585,7 +794,7 @@ export class ELKBridge {
       }
       
       if (Object.keys(layoutUpdates).length > 0) {
-        // // console.log(((`[ELKBridge] 📏 Calling setNodeLayout for ${elkNode.id} with:`, layoutUpdates)));
+        console.log(`[ELKBridge] � Setting node layout for ${elkNode.id}: ELK=(${elkNode.x}, ${elkNode.y}) -> calling setNodeLayout with:`, layoutUpdates);
         visState.setNodeLayout(elkNode.id, layoutUpdates);
         // // console.log(((`[ELKBridge] ✅ Successfully updated node ${elkNode.id}`)));
       }
@@ -609,6 +818,7 @@ export class ELKBridge {
         }
         
         if (Object.keys(layoutUpdates).length > 0) {
+          console.log(`[ELKBridge] 🔧 Setting container layout for ${elkNode.id}: ELK=(${elkNode.x}, ${elkNode.y}) -> calling setContainerLayout with:`, layoutUpdates);
           visState.setContainerLayout(elkNode.id, layoutUpdates);
         }
         return;

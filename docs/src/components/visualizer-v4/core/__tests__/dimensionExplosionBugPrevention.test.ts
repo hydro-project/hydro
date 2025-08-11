@@ -18,7 +18,7 @@
         enableLogging: true,
         layoutConfig: {
           enableSmartCollapse: true,
-          algorithm: 'layered',
+          algorithm: 'mrtree',
           direction: 'DOWN'
         }
       });
@@ -157,7 +157,7 @@ describe('ELK Dimension Explosion Bug Prevention (Regression Tests)', () => {
         enableLogging: true,
         layoutConfig: {
           enableSmartCollapse: true, // Enable automatic dimension explosion prevention
-          algorithm: 'layered',
+          algorithm: 'mrtree',
           direction: 'DOWN'
         }
       });
@@ -364,7 +364,7 @@ describe('ELK Dimension Explosion Bug Prevention (Regression Tests)', () => {
         enableLogging: true,
         layoutConfig: {
           enableSmartCollapse: true, // Enable automatic dimension explosion prevention
-          algorithm: 'layered',
+          algorithm: 'mrtree',
           direction: 'DOWN'
         }
       });

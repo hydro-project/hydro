@@ -96,6 +96,26 @@ describe('ReactFlowBridge', () => {
         return { width: 350, height: 250 };
       }
       return { width: 200, height: 150 }; // Default dimensions
+    },
+    // Add the getGraphEdge method that the bridge expects
+    getGraphEdge: (id: string) => {
+      const edgeLayoutMap = {
+        'edge1': { 
+          id: 'edge1', 
+          source: 'node1', 
+          target: 'node2', 
+          style: 'default',
+          layout: { sections: [{ startPoint: { x: 300, y: 210 }, endPoint: { x: 450, y: 130 } }] }
+        },
+        'hyper1': { 
+          id: 'hyper1', 
+          source: 'container1', 
+          target: 'node2', 
+          style: 'default',
+          layout: { sections: [{ startPoint: { x: 400, y: 200 }, endPoint: { x: 450, y: 130 } }] }
+        }
+      };
+      return edgeLayoutMap[id] || null;
     }
   });
 

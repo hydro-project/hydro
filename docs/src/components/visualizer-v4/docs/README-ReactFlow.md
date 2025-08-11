@@ -67,7 +67,7 @@ The system uses ELK.js for automatic graph layout with multiple algorithm option
 
 ```typescript
 const layoutConfig = {
-  algorithm: 'layered',
+  algorithm: 'mrtree',
   direction: 'DOWN',
   spacing: {
     nodeNode: 50,

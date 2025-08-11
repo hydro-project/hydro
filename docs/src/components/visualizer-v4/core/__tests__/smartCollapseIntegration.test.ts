@@ -21,7 +21,7 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       autoLayout: true,
       layoutConfig: {
         enableSmartCollapse: true,
-        algorithm: 'layered',
+        algorithm: 'mrtree',
         direction: 'DOWN'
       }
     });

@@ -86,7 +86,18 @@ export class ReactFlowBridge {
     this.convertNodes(visState, nodes, parentMap);
     
     // Convert all edges to ReactFlow edges (now includes hyperedges transparently)
+    console.log(`[ReactFlowBridge] 🔗 Converting ${visState.visibleEdges.length} edges to ReactFlow format...`);
     this.convertEdges(visState, edges);
+    console.log(`[ReactFlowBridge] ✅ Converted ${edges.length} ReactFlow edges`);
+    
+    // Debug: Sample a few edges to see their state
+    if (edges.length > 0) {
+      console.log('[ReactFlowBridge] 🔍 Sample edge conversion results:');
+      edges.slice(0, 3).forEach(edge => {
+        const visEdge = visState.getGraphEdge(edge.id);
+        console.log(`[ReactFlowBridge] 🔗 Edge ${edge.id}: source=${edge.source}, target=${edge.target}, hasLayout=${!!visEdge?.layout}, sections=${visEdge?.layout?.sections?.length || 0}`);
+      });
+    }
     
     return { nodes, edges };
   }
@@ -264,8 +275,69 @@ export class ReactFlowBridge {
         },
         data: {
           style: edge.style || 'default'
-        }
+        } as any
       };
+      
+      // Check if this edge has layout/routing information from ELK
+      if (edge.layout && edge.layout.sections && edge.layout.sections.length > 0) {
+        console.log(`[ReactFlowBridge] 🔗 Edge ${edge.id} has ${edge.layout.sections.length} routing sections`);
+        
+        // Transform edge coordinates from container-relative to absolute coordinates
+        const transformedSections = edge.layout.sections.map((section, i) => {
+          const startPoint = section.startPoint;
+          const endPoint = section.endPoint;
+          const bendPoints = section.bendPoints || [];
+          
+          // Get source and target container positions to transform coordinates
+          let sourceOffset = { x: 0, y: 0 };
+          let targetOffset = { x: 0, y: 0 };
+          
+          // For edges between containers, we need to offset by container positions
+          try {
+            const sourceContainer = visState.getContainer(edge.source);
+            if (sourceContainer && sourceContainer.x !== undefined && sourceContainer.y !== undefined) {
+              sourceOffset = { x: sourceContainer.x, y: sourceContainer.y };
+            }
+          } catch (e) {
+            // Source is not a container, check if it's a node inside a container
+            // For now, use zero offset
+          }
+          
+          try {
+            const targetContainer = visState.getContainer(edge.target);
+            if (targetContainer && targetContainer.x !== undefined && targetContainer.y !== undefined) {
+              targetOffset = { x: targetContainer.x, y: targetContainer.y };
+            }
+          } catch (e) {
+            // Target is not a container
+          }
+          
+          // Transform the section coordinates
+          const transformedSection = {
+            ...section,
+            startPoint: startPoint ? {
+              x: startPoint.x + sourceOffset.x,
+              y: startPoint.y + sourceOffset.y
+            } : undefined,
+            endPoint: endPoint ? {
+              x: endPoint.x + targetOffset.x,
+              y: endPoint.y + targetOffset.y
+            } : undefined,
+            bendPoints: bendPoints.map(point => ({
+              x: point.x + sourceOffset.x, // Use source offset for bend points
+              y: point.y + sourceOffset.y
+            }))
+          };
+          
+          console.log(`[ReactFlowBridge] 📍 Section ${i} transformed: start=(${transformedSection.startPoint?.x},${transformedSection.startPoint?.y}), end=(${transformedSection.endPoint?.x},${transformedSection.endPoint?.y})`);
+          return transformedSection;
+        });
+        
+        // Store transformed routing in ReactFlow edge data for custom edge renderer
+        (reactFlowEdge.data as any).routing = transformedSections;
+      } else {
+        console.log(`[ReactFlowBridge] 🔗 Edge ${edge.id} has no routing sections - will use automatic ReactFlow routing`);
+      }
       
       // Handle strategy should be determined by VisualizationState, not ReactFlowBridge
       // TODO: Move handle logic to VisualizationState.getEdgeHandles(edgeId)

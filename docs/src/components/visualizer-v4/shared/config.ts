@@ -189,6 +189,12 @@ export const ELK_LAYOUT_OPTIONS = {
   'elk.algorithm': 'mrtree',
   'elk.direction': 'DOWN',
   'elk.hierarchyHandling': 'INCLUDE_CHILDREN',    // Added: maintain visual hierarchy
+  
+  // MRTREE-specific spacing properties (the generic ones don't work with mrtree!)
+  'elk.mrtree.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL.toString(),
+  'elk.mrtree.spacing.levelSeparation': LAYOUT_SPACING.COMPONENT_TO_COMPONENT.toString(),
+  
+  // Generic spacing as fallback
   'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL.toString(),
   'elk.spacing.edgeNode': LAYOUT_SPACING.EDGE_TO_NODE.toString(),
   'elk.spacing.edgeEdge': LAYOUT_SPACING.EDGE_TO_EDGE.toString(),

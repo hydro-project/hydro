@@ -107,7 +107,7 @@ function MyVisualization() {
     <div style={{ height: '400px', width: '600px' }}>
       <FlowGraph 
         visualizationState={state}
-        layoutConfig={{ algorithm: 'layered' }}
+        layoutConfig={{ algorithm: 'mrtree' }}
         renderConfig={{ enableMiniMap: true }}
       />
     </div>

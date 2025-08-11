@@ -45,7 +45,7 @@ const DEFAULT_CONFIG: VisualizationEngineConfig = {
   enableLogging: true,
   layoutConfig: {
     enableSmartCollapse: true,
-    algorithm: 'layered',
+    algorithm: 'mrtree',
     direction: 'DOWN'
   }
 };

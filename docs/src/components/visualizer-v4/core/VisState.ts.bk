@@ -1480,27 +1480,19 @@ export class VisualizationState implements ContainerHierarchyView {
   private _handleContainerCollapse(containerId: string): void {
     console.log(`[DEBUG] Starting collapse for container ${containerId}`);
     
-    // 1. Recurse bottom-up
-    const children = this.getContainerChildren(containerId);
-    for (const childId of children) {
-      const childContainer = this._collections.containers.get(childId);
-      if (childContainer) {
-        this._handleContainerCollapse(childId);
-      }
-    }
-
-    // Now everything below us is collapsed. Don't mark children hidden until we find crossing edges
-
-    // 2. Find crossing edges
+    // 1. Find crossing edges BEFORE hiding descendants
     const crossingEdges = this.getCrossingEdges(containerId);
     console.log(`[COLLAPSE] Found ${crossingEdges.length} crossing edges for container ${containerId}`);
+    
+    // 2. Hide all descendants
+    console.log(`[DEBUG] About to hide descendants of ${containerId}`);
+    this._hideAllDescendants(containerId);
+    console.log(`[DEBUG] After hiding descendants, visible nodes: ${this._collections._visibleNodes.size}, visible containers: ${this._collections._visibleContainers.size}`);
 
-    // 3. Hide children
-    for (const childId of children) {
-      this._hideChild(childId); 
-    }
+    assert(this._collections._visibleContainers.has(containerId), 
+           `Container ${containerId} should still be visible after hiding descendants during collapse`);
 
-    // 4. Create hyperEdges to replace crossing edges
+    // 3. Create hyperEdges to replace crossing edges
     const hyperEdges = this._prepareHyperedges(containerId, crossingEdges);
     console.log(`[COLLAPSE] Creating ${hyperEdges.length} hyperEdges for container ${containerId}`);
     
@@ -1519,7 +1511,7 @@ export class VisualizationState implements ContainerHierarchyView {
       this._collections.nodeToEdges.set(hyperEdge.target, targetEdges);
     }
     
-    // 5. Hide the original crossing edges
+    // 4. Hide the original crossing edges
     console.log(`[DEBUG] About to hide ${crossingEdges.length} crossing edges`);
     for (const edge of crossingEdges) {
       if (edge.id.startsWith(HYPEREDGE_CONSTANTS.PREFIX)) {
@@ -1536,7 +1528,90 @@ export class VisualizationState implements ContainerHierarchyView {
       }
     }
     
-    // 6. CRITICAL FIX: Update existing hyperEdges that now have invalid endpoints
+    // 5. CRITICAL FIX: Update existing hyperEdges that now have invalid endpoints
+    // This is the missing piece that causes hyperEdges to connect to hidden entities
+    console.log(`[DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of ${containerId}`);
+    this._updateInvalidatedHyperEdges(containerId);
+    
+    // HYPOTHESIS 1 TEST: Are descendants properly hidden?
+    console.log(`[DEBUG] Post-collapse visibility check for ${containerId}:`);
+    const children = this.getContainerChildren(containerId);
+    for (const childId of children) {
+      const childNode = this._collections.graphNodes.get(childId);
+      const childContainer = this._collections.containers.get(childId);
+      if (childNode) {
+        if (!childNode.hidden) {
+          throw new Error(`Child node ${childId} is not hidden`);
+        }
+      }
+      if (childContainer) {
+        if (!childContainer.hidden) {
+          throw new Error(`Child container ${childId} is not hidden`);
+        }
+      }
+    }
+    
+    // HYPOTHESIS 2 TEST: Check ELK visibility cache state
+    console.log(`[DEBUG] Final visibility state: visibleNodes=${this._collections._visibleNodes.size}, visibleContainers=${this._collections._visibleContainers.size}, hyperEdges=${this._collections.hyperEdges.size}`);
+    
+    // Validate hyperEdge endpoints and routing after all updates
+    this._validateHyperEdgeEndpoints();
+    this._validateHyperEdgeLifting();
+  }
+
+  private _newHandleContainerCollapse(containerId: string): void {
+    console.log(`[DEBUG] Starting collapse for container ${containerId}`);
+    
+    // 1. Recurse bottom-up
+    const children = this.getContainerChildren(containerId);
+    for (const childId of children) {
+      this._handleContainerCollapse(childId);
+      this._hideChild(childId);
+    }
+
+    // Now everything below us is collapsed and hidden.
+
+    // 2. Find crossing edges
+    const crossingEdges = this.getCrossingEdges(containerId);
+    console.log(`[COLLAPSE] Found ${crossingEdges.length} crossing edges for container ${containerId}`);
+    
+    // 3. Create hyperEdges to replace crossing edges
+    const hyperEdges = this._prepareHyperedges(containerId, crossingEdges);
+    console.log(`[COLLAPSE] Creating ${hyperEdges.length} hyperEdges for container ${containerId}`);
+    
+    for (const hyperEdge of hyperEdges) {
+      console.log(`[DEBUG] Creating hyperEdge: ${hyperEdge.id} (${hyperEdge.source} -> ${hyperEdge.target})`);
+      // Create hyperEdge using internal API (not the removed setHyperEdge)
+      this._collections.hyperEdges.set(hyperEdge.id, hyperEdge);
+      
+      // Update node-to-edges mapping for hyperEdges
+      const sourceEdges = this._collections.nodeToEdges.get(hyperEdge.source) || new Set();
+      sourceEdges.add(hyperEdge.id);
+      this._collections.nodeToEdges.set(hyperEdge.source, sourceEdges);
+      
+      const targetEdges = this._collections.nodeToEdges.get(hyperEdge.target) || new Set();
+      targetEdges.add(hyperEdge.id);
+      this._collections.nodeToEdges.set(hyperEdge.target, targetEdges);
+    }
+    
+    // 4. Hide the original crossing edges
+    console.log(`[DEBUG] About to hide ${crossingEdges.length} crossing edges`);
+    for (const edge of crossingEdges) {
+      if (edge.id.startsWith(HYPEREDGE_CONSTANTS.PREFIX)) {
+        // HYPOTHESIS 3 TEST: Is this breaking encapsulation?
+        console.log(`[DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: ${edge.id}`);
+        // For hyperEdges, simply delete
+        this._collections.hyperEdges.delete(edge.id);
+        // edge.hidden = true;
+      } else {
+        console.log(`[DEBUG] Hiding regular edge: ${edge.id}`);
+        // For regular edges, update the hidden flag
+        edge.hidden = true;
+        this._collections._visibleEdges.delete(edge.id);
+      }
+    }
+    
+    // 5. CRITICAL FIX: Update existing hyperEdges that now have invalid endpoints
     // This is the missing piece that causes hyperEdges to connect to hidden entities
     console.log(`[DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of ${containerId}`);
     this._updateInvalidatedHyperEdges(containerId);
