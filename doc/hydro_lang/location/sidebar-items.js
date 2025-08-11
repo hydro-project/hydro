@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LocationId","NetworkHint"],"fn":["check_matching_location"],"mod":["can_send","cluster","external_process","process","tick"],"trait":["Location"]};
+window.SIDEBAR_ITEMS = {"enum":["LocationId","MembershipEvent","NetworkHint"],"fn":["check_matching_location"],"mod":["cluster","external_process","process","tick"],"trait":["Location"]};
