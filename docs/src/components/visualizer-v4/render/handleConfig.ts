@@ -65,8 +65,9 @@ export const HANDLE_STRATEGIES = {
 
 /**
  * Current handle strategy - easily changeable
+ * FIXED: Using discrete handles for proper edge connection
  */
-export const CURRENT_HANDLE_STRATEGY: HandleStrategy = 'continuous';
+export const CURRENT_HANDLE_STRATEGY: HandleStrategy = 'discrete';
 
 /**
  * Get the current handle configuration

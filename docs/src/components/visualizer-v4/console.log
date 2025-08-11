@@ -1,895 +1,144 @@
- [DEBUG] After hiding descendants, visible nodes: 28, visible containers: 80
- [COLLAPSE] Creating 6 hyperEdges for container bt_150
- [DEBUG] Creating hyperEdge: hyper_bt_150_to_bt_29 (bt_150 -> bt_29)
- [DEBUG] Creating hyperEdge: hyper_bt_150_to_bt_17 (bt_150 -> bt_17)
- [DEBUG] Creating hyperEdge: hyper_bt_187_to_bt_150 (bt_187 -> bt_150)
- [DEBUG] Creating hyperEdge: hyper_bt_48_to_bt_150 (bt_48 -> bt_150)
- [DEBUG] Creating hyperEdge: hyper_bt_150_to_bt_25 (bt_150 -> bt_25)
- [DEBUG] Creating hyperEdge: hyper_bt_150_to_bt_11 (bt_150 -> bt_11)
- [DEBUG] About to hide 8 crossing edges
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_376_to_bt_29
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_424_to_bt_17
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_bt_187_to_430
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_bt_48_to_376
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_379_to_bt_25
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_388_to_bt_25
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_394_to_bt_25
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_437_to_bt_11
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_150
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_150
- [HYPEREDGE_LIFTING] Completed lifting: 0 updated, 0 deleted
- [DEBUG] Post-collapse visibility check for bt_150:
- [DEBUG] Final visibility state: visibleNodes=28, visibleContainers=80, hyperEdges=154
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_150
- [DEBUG] Starting collapse for container bt_86
- [COLLAPSE] Found 0 crossing edges for container bt_86
- [DEBUG] About to hide descendants of bt_86
- [DEBUG] After hiding descendants, visible nodes: 28, visible containers: 78
- [COLLAPSE] Creating 0 hyperEdges for container bt_86
- [DEBUG] About to hide 0 crossing edges
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_86
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_86
- [HYPEREDGE_LIFTING] Target bt_38 is hidden, lifting to ancestor bt_86
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_155_to_bt_38 to hyper_bt_155_to_bt_86 (bt_155 -> bt_86)
- [HYPEREDGE_LIFTING] Source bt_38 is hidden, lifting to ancestor bt_86
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_38_to_bt_155 to hyper_bt_86_to_bt_155 (bt_86 -> bt_155)
- [HYPEREDGE_LIFTING] Source bt_38 is hidden, lifting to ancestor bt_86
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_38_to_bt_11 to hyper_bt_86_to_bt_11 (bt_86 -> bt_11)
- [HYPEREDGE_LIFTING] Source bt_150 is hidden, lifting to ancestor bt_86
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_150_to_bt_29 to hyper_bt_86_to_bt_29 (bt_86 -> bt_29)
- [HYPEREDGE_LIFTING] Source bt_150 is hidden, lifting to ancestor bt_86
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_150_to_bt_17 to hyper_bt_86_to_bt_17 (bt_86 -> bt_17)
- [HYPEREDGE_LIFTING] Target bt_150 is hidden, lifting to ancestor bt_86
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_187_to_bt_150 to hyper_bt_187_to_bt_86 (bt_187 -> bt_86)
- [HYPEREDGE_LIFTING] Target bt_150 is hidden, lifting to ancestor bt_86
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_48_to_bt_150 to hyper_bt_48_to_bt_86 (bt_48 -> bt_86)
- [HYPEREDGE_LIFTING] Source bt_150 is hidden, lifting to ancestor bt_86
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_150_to_bt_25 to hyper_bt_86_to_bt_25 (bt_86 -> bt_25)
- [HYPEREDGE_LIFTING] Source bt_150 is hidden, lifting to ancestor bt_86
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_150_to_bt_11 to hyper_bt_86_to_bt_11 (bt_86 -> bt_11)
- [HYPEREDGE_LIFTING] Completed lifting: 9 updated, 0 deleted
- [DEBUG] Post-collapse visibility check for bt_86:
- [DEBUG] Final visibility state: visibleNodes=28, visibleContainers=78, hyperEdges=153
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_86
- [DEBUG] Starting collapse for container bt_55
- [COLLAPSE] Found 12 crossing edges for container bt_55
- [DEBUG] About to hide descendants of bt_55
- [DEBUG] After hiding descendants, visible nodes: 1, visible containers: 78
- [COLLAPSE] Creating 6 hyperEdges for container bt_55
- [DEBUG] Creating hyperEdge: hyper_bt_79_to_bt_55 (bt_79 -> bt_55)
- [DEBUG] Creating hyperEdge: hyper_bt_55_to_bt_3 (bt_55 -> bt_3)
- [DEBUG] Creating hyperEdge: hyper_bt_55_to_bt_31 (bt_55 -> bt_31)
- [DEBUG] Creating hyperEdge: hyper_bt_63_to_bt_55 (bt_63 -> bt_55)
- [DEBUG] Creating hyperEdge: hyper_bt_55_to_bt_63 (bt_55 -> bt_63)
- [DEBUG] Creating hyperEdge: hyper_bt_55_to_bt_25 (bt_55 -> bt_25)
- [DEBUG] About to hide 12 crossing edges
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_bt_79_to_297
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_341_to_bt_3
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_330_to_bt_31
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_317_to_bt_31
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_326_to_bt_31
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_338_to_bt_31
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_bt_63_to_311
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_bt_63_to_299
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_bt_63_to_330
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_334_to_bt_63
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_bt_63_to_336
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_358_to_bt_25
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_55
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_55
- [HYPEREDGE_LIFTING] Completed lifting: 0 updated, 0 deleted
- [DEBUG] Post-collapse visibility check for bt_55:
- [DEBUG] Final visibility state: visibleNodes=1, visibleContainers=78, hyperEdges=147
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_55
- [DEBUG] Starting collapse for container bt_37
- [COLLAPSE] Found 0 crossing edges for container bt_37
- [DEBUG] About to hide descendants of bt_37
- [DEBUG] After hiding descendants, visible nodes: 1, visible containers: 77
- [COLLAPSE] Creating 0 hyperEdges for container bt_37
- [DEBUG] About to hide 0 crossing edges
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_37
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_37
- [HYPEREDGE_LIFTING] Target bt_86 is hidden, lifting to ancestor bt_37
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_155_to_bt_86 to hyper_bt_155_to_bt_37 (bt_155 -> bt_37)
- [HYPEREDGE_LIFTING] Source bt_86 is hidden, lifting to ancestor bt_37
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_86_to_bt_155 to hyper_bt_37_to_bt_155 (bt_37 -> bt_155)
- [HYPEREDGE_LIFTING] Source bt_86 is hidden, lifting to ancestor bt_37
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_86_to_bt_11 to hyper_bt_37_to_bt_11 (bt_37 -> bt_11)
- [HYPEREDGE_LIFTING] Source bt_86 is hidden, lifting to ancestor bt_37
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_86_to_bt_29 to hyper_bt_37_to_bt_29 (bt_37 -> bt_29)
- [HYPEREDGE_LIFTING] Source bt_86 is hidden, lifting to ancestor bt_37
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_86_to_bt_17 to hyper_bt_37_to_bt_17 (bt_37 -> bt_17)
- [HYPEREDGE_LIFTING] Target bt_86 is hidden, lifting to ancestor bt_37
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_187_to_bt_86 to hyper_bt_187_to_bt_37 (bt_187 -> bt_37)
- [HYPEREDGE_LIFTING] Target bt_86 is hidden, lifting to ancestor bt_37
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_48_to_bt_86 to hyper_bt_48_to_bt_37 (bt_48 -> bt_37)
- [HYPEREDGE_LIFTING] Source bt_86 is hidden, lifting to ancestor bt_37
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_86_to_bt_25 to hyper_bt_37_to_bt_25 (bt_37 -> bt_25)
- [HYPEREDGE_LIFTING] Completed lifting: 8 updated, 0 deleted
- [DEBUG] Post-collapse visibility check for bt_37:
- [DEBUG] Final visibility state: visibleNodes=1, visibleContainers=77, hyperEdges=147
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_37
- [DEBUG] Starting collapse for container bt_153
- [COLLAPSE] Found 0 crossing edges for container bt_153
- [DEBUG] About to hide descendants of bt_153
- [DEBUG] After hiding descendants, visible nodes: 1, visible containers: 69
- [COLLAPSE] Creating 0 hyperEdges for container bt_153
- [DEBUG] About to hide 0 crossing edges
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_153
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_153
- [HYPEREDGE_LIFTING] Source bt_178 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_178_to_bt_36 to hyper_bt_153_to_bt_36 (bt_153 -> bt_36)
- [HYPEREDGE_LIFTING] Source bt_178 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Target bt_124 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_178_to_bt_124 - would create self-loop bt_153 -> bt_153
- [HYPEREDGE_LIFTING] Source bt_178 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_178_to_bt_183 to hyper_bt_153_to_bt_183 (bt_153 -> bt_183)
- [HYPEREDGE_LIFTING] Target bt_45 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_41_to_bt_45 to hyper_bt_41_to_bt_153 (bt_41 -> bt_153)
- [HYPEREDGE_LIFTING] Source bt_45 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_45_to_bt_51 to hyper_bt_153_to_bt_51 (bt_153 -> bt_51)
- [HYPEREDGE_LIFTING] Source bt_49 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Target bt_178 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_49_to_bt_178 - would create self-loop bt_153 -> bt_153
- [HYPEREDGE_LIFTING] Source bt_49 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Target bt_45 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_49_to_bt_45 - would create self-loop bt_153 -> bt_153
- [HYPEREDGE_LIFTING] Target bt_16 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_46_to_bt_16 to hyper_bt_46_to_bt_153 (bt_46 -> bt_153)
- [HYPEREDGE_LIFTING] Source bt_178 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_178_to_bt_50 to hyper_bt_153_to_bt_50 (bt_153 -> bt_50)
- [HYPEREDGE_LIFTING] Source bt_83 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Target bt_124 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_83_to_bt_124 - would create self-loop bt_153 -> bt_153
- [HYPEREDGE_LIFTING] Source bt_16 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Target bt_130 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_16_to_bt_130 - would create self-loop bt_153 -> bt_153
- [HYPEREDGE_LIFTING] Target bt_130 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_41_to_bt_130 to hyper_bt_41_to_bt_153 (bt_41 -> bt_153)
- [HYPEREDGE_LIFTING] Target bt_130 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_51_to_bt_130 to hyper_bt_51_to_bt_153 (bt_51 -> bt_153)
- [HYPEREDGE_LIFTING] Source bt_130 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_130_to_bt_51 to hyper_bt_153_to_bt_51 (bt_153 -> bt_51)
- [HYPEREDGE_LIFTING] Target bt_130 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_128_to_bt_130 to hyper_bt_128_to_bt_153 (bt_128 -> bt_153)
- [HYPEREDGE_LIFTING] Source bt_130 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_130_to_bt_128 to hyper_bt_153_to_bt_128 (bt_153 -> bt_128)
- [HYPEREDGE_LIFTING] Source bt_58 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_58_to_bt_140 to hyper_bt_153_to_bt_140 (bt_153 -> bt_140)
- [HYPEREDGE_LIFTING] Source bt_58 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_58_to_bt_174 to hyper_bt_153_to_bt_174 (bt_153 -> bt_174)
- [HYPEREDGE_LIFTING] Target bt_58 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_168_to_bt_58 to hyper_bt_168_to_bt_153 (bt_168 -> bt_153)
- [HYPEREDGE_LIFTING] Source bt_58 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Target bt_83 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_58_to_bt_83 - would create self-loop bt_153 -> bt_153
- [HYPEREDGE_LIFTING] Source bt_178 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_178_to_bt_23 to hyper_bt_153_to_bt_23 (bt_153 -> bt_23)
- [HYPEREDGE_LIFTING] Target bt_178 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_23_to_bt_178 to hyper_bt_23_to_bt_153 (bt_23 -> bt_153)
- [HYPEREDGE_LIFTING] Source bt_58 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_58_to_bt_23 to hyper_bt_153_to_bt_23 (bt_153 -> bt_23)
- [HYPEREDGE_LIFTING] Source bt_130 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_130_to_bt_18 to hyper_bt_153_to_bt_18 (bt_153 -> bt_18)
- [HYPEREDGE_LIFTING] Target bt_124 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_95_to_bt_124 to hyper_bt_95_to_bt_153 (bt_95 -> bt_153)
- [HYPEREDGE_LIFTING] Target bt_58 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_95_to_bt_58 to hyper_bt_95_to_bt_153 (bt_95 -> bt_153)
- [HYPEREDGE_LIFTING] Target bt_178 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_75_to_bt_178 to hyper_bt_75_to_bt_153 (bt_75 -> bt_153)
- [HYPEREDGE_LIFTING] Source bt_58 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_58_to_bt_149 to hyper_bt_153_to_bt_149 (bt_153 -> bt_149)
- [HYPEREDGE_LIFTING] Source bt_83 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_83_to_bt_22 to hyper_bt_153_to_bt_22 (bt_153 -> bt_22)
- [HYPEREDGE_LIFTING] Target bt_83 is hidden, lifting to ancestor bt_153
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_22_to_bt_83 to hyper_bt_22_to_bt_153 (bt_22 -> bt_153)
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_178_to_bt_124
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_49_to_bt_178
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_49_to_bt_45
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_83_to_bt_124
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_16_to_bt_130
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_58_to_bt_83
- [HYPEREDGE_LIFTING] Completed lifting: 24 updated, 6 deleted
- [DEBUG] Post-collapse visibility check for bt_153:
- [DEBUG] Final visibility state: visibleNodes=1, visibleContainers=69, hyperEdges=137
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_153
- [DEBUG] Starting collapse for container bt_27
- [COLLAPSE] Found 2 crossing edges for container bt_27
- [DEBUG] About to hide descendants of bt_27
- [DEBUG] After hiding descendants, visible nodes: 0, visible containers: 63
- [COLLAPSE] Creating 2 hyperEdges for container bt_27
- [DEBUG] Creating hyperEdge: hyper_bt_183_to_bt_27 (bt_183 -> bt_27)
- [DEBUG] Creating hyperEdge: hyper_bt_27_to_bt_27 (bt_27 -> bt_27)
- [DEBUG] About to hide 2 crossing edges
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_bt_183_to_148
- [DEBUG] [ENCAPSULATION BREACH] Directly deleting hyperEdge: hyper_148_to_bt_182
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_27
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_27
- [HYPEREDGE_LIFTING] Target bt_144 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_19_to_bt_144 to hyper_bt_19_to_bt_27 (bt_19 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Target bt_144 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_174_to_bt_144 - would create self-loop bt_27 -> bt_27
- [HYPEREDGE_LIFTING] Source bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_174_to_bt_161 to hyper_bt_27_to_bt_161 (bt_27 -> bt_161)
- [HYPEREDGE_LIFTING] Target bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_87_to_bt_174 to hyper_bt_87_to_bt_27 (bt_87 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_174_to_bt_87 to hyper_bt_27_to_bt_87 (bt_27 -> bt_87)
- [HYPEREDGE_LIFTING] Source bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_174_to_bt_46 to hyper_bt_27_to_bt_46 (bt_27 -> bt_46)
- [HYPEREDGE_LIFTING] Source bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_174_to_bt_184 to hyper_bt_27_to_bt_184 (bt_27 -> bt_184)
- [HYPEREDGE_LIFTING] Target bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_184_to_bt_174 to hyper_bt_184_to_bt_27 (bt_184 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_175 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_175_to_bt_106 to hyper_bt_27_to_bt_106 (bt_27 -> bt_106)
- [HYPEREDGE_LIFTING] Target bt_175 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_119_to_bt_175 to hyper_bt_119_to_bt_27 (bt_119 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_175 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_175_to_bt_119 to hyper_bt_27_to_bt_119 (bt_27 -> bt_119)
- [HYPEREDGE_LIFTING] Target bt_95 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_51_to_bt_95 to hyper_bt_51_to_bt_27 (bt_51 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_95 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_95_to_bt_87 to hyper_bt_27_to_bt_87 (bt_27 -> bt_87)
- [HYPEREDGE_LIFTING] Source bt_95 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_95_to_bt_182 to hyper_bt_27_to_bt_182 (bt_27 -> bt_182)
- [HYPEREDGE_LIFTING] Target bt_95 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_128_to_bt_95 to hyper_bt_128_to_bt_27 (bt_128 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_95 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_95_to_bt_46 to hyper_bt_27_to_bt_46 (bt_27 -> bt_46)
- [HYPEREDGE_LIFTING] Target bt_95 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_23_to_bt_95 to hyper_bt_23_to_bt_27 (bt_23 -> bt_27)
- [HYPEREDGE_LIFTING] Target bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_4_to_bt_174 to hyper_bt_4_to_bt_27 (bt_4 -> bt_27)
- [HYPEREDGE_LIFTING] Target bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_74_to_bt_174 to hyper_bt_74_to_bt_27 (bt_74 -> bt_27)
- [HYPEREDGE_LIFTING] Target bt_175 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_25_to_bt_175 to hyper_bt_25_to_bt_27 (bt_25 -> bt_27)
- [HYPEREDGE_LIFTING] Target bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_149_to_bt_174 to hyper_bt_149_to_bt_27 (bt_149 -> bt_27)
- [HYPEREDGE_LIFTING] Target bt_95 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_22_to_bt_95 to hyper_bt_22_to_bt_27 (bt_22 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_95 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_95_to_bt_22 to hyper_bt_27_to_bt_22 (bt_27 -> bt_22)
- [HYPEREDGE_LIFTING] Source bt_175 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_175_to_bt_109 to hyper_bt_27_to_bt_109 (bt_27 -> bt_109)
- [HYPEREDGE_LIFTING] Source bt_95 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_95_to_bt_109 to hyper_bt_27_to_bt_109 (bt_27 -> bt_109)
- [HYPEREDGE_LIFTING] Source bt_41 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_41_to_bt_153 to hyper_bt_27_to_bt_153 (bt_27 -> bt_153)
- [HYPEREDGE_LIFTING] Target bt_174 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_153_to_bt_174 to hyper_bt_153_to_bt_27 (bt_153 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_95 is hidden, lifting to ancestor bt_27
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_95_to_bt_153 to hyper_bt_27_to_bt_153 (bt_27 -> bt_153)
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_174_to_bt_144
- [HYPEREDGE_LIFTING] Completed lifting: 27 updated, 1 deleted
- [DEBUG] Post-collapse visibility check for bt_27:
- [DEBUG] Final visibility state: visibleNodes=0, visibleContainers=63, hyperEdges=132
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_27
- [DEBUG] Starting collapse for container bt_103
- [COLLAPSE] Found 0 crossing edges for container bt_103
- [DEBUG] About to hide descendants of bt_103
- [DEBUG] After hiding descendants, visible nodes: 0, visible containers: 56
- [COLLAPSE] Creating 0 hyperEdges for container bt_103
- [DEBUG] About to hide 0 crossing edges
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_103
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_103
- [HYPEREDGE_LIFTING] Source bt_108 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Target bt_108 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_108_to_bt_108 - would create self-loop bt_103 -> bt_103
- [HYPEREDGE_LIFTING] Source bt_113 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Target bt_113 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_113_to_bt_113 - would create self-loop bt_103 -> bt_103
- [HYPEREDGE_LIFTING] Source bt_161 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_161_to_bt_79 to hyper_bt_103_to_bt_79 (bt_103 -> bt_79)
- [HYPEREDGE_LIFTING] Source bt_114 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Target bt_114 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_114_to_bt_114 - would create self-loop bt_103 -> bt_103
- [HYPEREDGE_LIFTING] Target bt_114 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_12_to_bt_114 to hyper_bt_12_to_bt_103 (bt_12 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_114 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_48_to_bt_114 to hyper_bt_48_to_bt_103 (bt_48 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_63 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_31_to_bt_63 to hyper_bt_31_to_bt_103 (bt_31 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_63 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_82_to_bt_63 to hyper_bt_82_to_bt_103 (bt_82 -> bt_103)
- [HYPEREDGE_LIFTING] Source bt_63 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_63_to_bt_82 to hyper_bt_103_to_bt_82 (bt_103 -> bt_82)
- [HYPEREDGE_LIFTING] Source bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Target bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_25_to_bt_25 - would create self-loop bt_103 -> bt_103
- [HYPEREDGE_LIFTING] Target bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_53_to_bt_25 to hyper_bt_53_to_bt_103 (bt_53 -> bt_103)
- [HYPEREDGE_LIFTING] Source bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_25_to_bt_8 to hyper_bt_103_to_bt_8 (bt_103 -> bt_8)
- [HYPEREDGE_LIFTING] Target bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_65_to_bt_25 to hyper_bt_65_to_bt_103 (bt_65 -> bt_103)
- [HYPEREDGE_LIFTING] Source bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_25_to_bt_65 to hyper_bt_103_to_bt_65 (bt_103 -> bt_65)
- [HYPEREDGE_LIFTING] Source bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Target bt_108 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_25_to_bt_108 - would create self-loop bt_103 -> bt_103
- [HYPEREDGE_LIFTING] Source bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Target bt_113 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_25_to_bt_113 - would create self-loop bt_103 -> bt_103
- [HYPEREDGE_LIFTING] Target bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_3_to_bt_25 to hyper_bt_3_to_bt_103 (bt_3 -> bt_103)
- [HYPEREDGE_LIFTING] Source bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_25_to_bt_14 to hyper_bt_103_to_bt_14 (bt_103 -> bt_14)
- [HYPEREDGE_LIFTING] Target bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_136_to_bt_25 to hyper_bt_136_to_bt_103 (bt_136 -> bt_103)
- [HYPEREDGE_LIFTING] Source bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_25_to_bt_136 to hyper_bt_103_to_bt_136 (bt_103 -> bt_136)
- [HYPEREDGE_LIFTING] Target bt_155 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_11_to_bt_155 to hyper_bt_11_to_bt_103 (bt_11 -> bt_103)
- [HYPEREDGE_LIFTING] Source bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_25_to_bt_11 to hyper_bt_103_to_bt_11 (bt_103 -> bt_11)
- [HYPEREDGE_LIFTING] Source bt_63 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_63_to_bt_55 to hyper_bt_103_to_bt_55 (bt_103 -> bt_55)
- [HYPEREDGE_LIFTING] Target bt_63 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_55_to_bt_63 to hyper_bt_55_to_bt_103 (bt_55 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_55_to_bt_25 to hyper_bt_55_to_bt_103 (bt_55 -> bt_103)
- [HYPEREDGE_LIFTING] Source bt_155 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_155_to_bt_37 to hyper_bt_103_to_bt_37 (bt_103 -> bt_37)
- [HYPEREDGE_LIFTING] Target bt_155 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_37_to_bt_155 to hyper_bt_37_to_bt_103 (bt_37 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_37_to_bt_25 to hyper_bt_37_to_bt_103 (bt_37 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_161 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_27_to_bt_161 to hyper_bt_27_to_bt_103 (bt_27 -> bt_103)
- [HYPEREDGE_LIFTING] Source bt_25 is hidden, lifting to ancestor bt_103
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_25_to_bt_27 to hyper_bt_103_to_bt_27 (bt_103 -> bt_27)
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_108_to_bt_108
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_113_to_bt_113
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_114_to_bt_114
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_25_to_bt_25
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_25_to_bt_108
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_25_to_bt_113
- [HYPEREDGE_LIFTING] Completed lifting: 24 updated, 6 deleted
- [DEBUG] Post-collapse visibility check for bt_103:
- [DEBUG] Final visibility state: visibleNodes=0, visibleContainers=56, hyperEdges=124
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_103
- [DEBUG] Starting collapse for container bt_39
- [COLLAPSE] Found 0 crossing edges for container bt_39
- [DEBUG] About to hide descendants of bt_39
- [DEBUG] After hiding descendants, visible nodes: 0, visible containers: 47
- [COLLAPSE] Creating 0 hyperEdges for container bt_39
- [DEBUG] About to hide 0 crossing edges
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_39
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_39
- [HYPEREDGE_LIFTING] Source bt_14 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Target bt_48 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_14_to_bt_48 - would create self-loop bt_39 -> bt_39
- [HYPEREDGE_LIFTING] Source bt_48 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_48_to_bt_12 to hyper_bt_39_to_bt_12 (bt_39 -> bt_12)
- [HYPEREDGE_LIFTING] Source bt_56 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_56_to_bt_18 to hyper_bt_39_to_bt_18 (bt_39 -> bt_18)
- [HYPEREDGE_LIFTING] Source bt_79 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Target bt_55 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_79_to_bt_55 - would create self-loop bt_39 -> bt_39
- [HYPEREDGE_LIFTING] Source bt_55 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Target bt_3 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_55_to_bt_3 - would create self-loop bt_39 -> bt_39
- [HYPEREDGE_LIFTING] Source bt_55 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_55_to_bt_31 to hyper_bt_39_to_bt_31 (bt_39 -> bt_31)
- [HYPEREDGE_LIFTING] Source bt_48 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_48_to_bt_37 to hyper_bt_39_to_bt_37 (bt_39 -> bt_37)
- [HYPEREDGE_LIFTING] Target bt_79 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_103_to_bt_79 to hyper_bt_103_to_bt_39 (bt_103 -> bt_39)
- [HYPEREDGE_LIFTING] Source bt_48 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_48_to_bt_103 to hyper_bt_39_to_bt_103 (bt_39 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_8 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_103_to_bt_8 to hyper_bt_103_to_bt_39 (bt_103 -> bt_39)
- [HYPEREDGE_LIFTING] Source bt_65 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_65_to_bt_103 to hyper_bt_39_to_bt_103 (bt_39 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_65 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_103_to_bt_65 to hyper_bt_103_to_bt_39 (bt_103 -> bt_39)
- [HYPEREDGE_LIFTING] Source bt_3 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_3_to_bt_103 to hyper_bt_39_to_bt_103 (bt_39 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_14 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_103_to_bt_14 to hyper_bt_103_to_bt_39 (bt_103 -> bt_39)
- [HYPEREDGE_LIFTING] Source bt_136 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_136_to_bt_103 to hyper_bt_39_to_bt_103 (bt_39 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_136 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_103_to_bt_136 to hyper_bt_103_to_bt_39 (bt_103 -> bt_39)
- [HYPEREDGE_LIFTING] Target bt_55 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_103_to_bt_55 to hyper_bt_103_to_bt_39 (bt_103 -> bt_39)
- [HYPEREDGE_LIFTING] Source bt_55 is hidden, lifting to ancestor bt_39
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_55_to_bt_103 to hyper_bt_39_to_bt_103 (bt_39 -> bt_103)
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_14_to_bt_48
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_79_to_bt_55
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_55_to_bt_3
- [HYPEREDGE_LIFTING] Completed lifting: 15 updated, 3 deleted
- [DEBUG] Post-collapse visibility check for bt_39:
- [DEBUG] Final visibility state: visibleNodes=0, visibleContainers=47, hyperEdges=112
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_39
- [DEBUG] Starting collapse for container bt_171
- [COLLAPSE] Found 0 crossing edges for container bt_171
- [DEBUG] About to hide descendants of bt_171
- [DEBUG] After hiding descendants, visible nodes: 0, visible containers: 40
- [COLLAPSE] Creating 0 hyperEdges for container bt_171
- [DEBUG] About to hide 0 crossing edges
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_171
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_171
- [HYPEREDGE_LIFTING] Target bt_181 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_46_to_bt_181 to hyper_bt_46_to_bt_171 (bt_46 -> bt_171)
- [HYPEREDGE_LIFTING] Target bt_87 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_119_to_bt_87 to hyper_bt_119_to_bt_171 (bt_119 -> bt_171)
- [HYPEREDGE_LIFTING] Source bt_184 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_184_to_bt_139 to hyper_bt_171_to_bt_139 (bt_171 -> bt_139)
- [HYPEREDGE_LIFTING] Target bt_184 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_47_to_bt_184 to hyper_bt_47_to_bt_171 (bt_47 -> bt_171)
- [HYPEREDGE_LIFTING] Source bt_181 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Target bt_18 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_181_to_bt_18 - would create self-loop bt_171 -> bt_171
- [HYPEREDGE_LIFTING] Source bt_18 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_18_to_bt_19 to hyper_bt_171_to_bt_19 (bt_171 -> bt_19)
- [HYPEREDGE_LIFTING] Target bt_4 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_164_to_bt_4 to hyper_bt_164_to_bt_171 (bt_164 -> bt_171)
- [HYPEREDGE_LIFTING] Source bt_4 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_4_to_bt_164 to hyper_bt_171_to_bt_164 (bt_171 -> bt_164)
- [HYPEREDGE_LIFTING] Source bt_4 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_4_to_bt_140 to hyper_bt_171_to_bt_140 (bt_171 -> bt_140)
- [HYPEREDGE_LIFTING] Source bt_87 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Target bt_4 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_87_to_bt_4 - would create self-loop bt_171 -> bt_171
- [HYPEREDGE_LIFTING] Target bt_4 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_125_to_bt_4 to hyper_bt_125_to_bt_171 (bt_125 -> bt_171)
- [HYPEREDGE_LIFTING] Target bt_74 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_19_to_bt_74 to hyper_bt_19_to_bt_171 (bt_19 -> bt_171)
- [HYPEREDGE_LIFTING] Source bt_74 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_74_to_bt_12 to hyper_bt_171_to_bt_12 (bt_171 -> bt_12)
- [HYPEREDGE_LIFTING] Target bt_74 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_104_to_bt_74 to hyper_bt_104_to_bt_171 (bt_104 -> bt_171)
- [HYPEREDGE_LIFTING] Source bt_74 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_74_to_bt_104 to hyper_bt_171_to_bt_104 (bt_171 -> bt_104)
- [HYPEREDGE_LIFTING] Target bt_149 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_134_to_bt_149 to hyper_bt_134_to_bt_171 (bt_134 -> bt_171)
- [HYPEREDGE_LIFTING] Source bt_149 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_149_to_bt_134 to hyper_bt_171_to_bt_134 (bt_171 -> bt_134)
- [HYPEREDGE_LIFTING] Target bt_149 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_51_to_bt_149 to hyper_bt_51_to_bt_171 (bt_51 -> bt_171)
- [HYPEREDGE_LIFTING] Source bt_149 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_149_to_bt_51 to hyper_bt_171_to_bt_51 (bt_171 -> bt_51)
- [HYPEREDGE_LIFTING] Source bt_149 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Target bt_4 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_149_to_bt_4 - would create self-loop bt_171 -> bt_171
- [HYPEREDGE_LIFTING] Target bt_18 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_153_to_bt_18 to hyper_bt_153_to_bt_171 (bt_153 -> bt_171)
- [HYPEREDGE_LIFTING] Target bt_149 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_153_to_bt_149 to hyper_bt_153_to_bt_171 (bt_153 -> bt_171)
- [HYPEREDGE_LIFTING] Source bt_87 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_87_to_bt_27 to hyper_bt_171_to_bt_27 (bt_171 -> bt_27)
- [HYPEREDGE_LIFTING] Target bt_87 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_27_to_bt_87 to hyper_bt_27_to_bt_171 (bt_27 -> bt_171)
- [HYPEREDGE_LIFTING] Target bt_184 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_27_to_bt_184 to hyper_bt_27_to_bt_171 (bt_27 -> bt_171)
- [HYPEREDGE_LIFTING] Source bt_184 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_184_to_bt_27 to hyper_bt_171_to_bt_27 (bt_171 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_4 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_4_to_bt_27 to hyper_bt_171_to_bt_27 (bt_171 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_74 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_74_to_bt_27 to hyper_bt_171_to_bt_27 (bt_171 -> bt_27)
- [HYPEREDGE_LIFTING] Source bt_149 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_149_to_bt_27 to hyper_bt_171_to_bt_27 (bt_171 -> bt_27)
- [HYPEREDGE_LIFTING] Target bt_18 is hidden, lifting to ancestor bt_171
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_39_to_bt_18 to hyper_bt_39_to_bt_171 (bt_39 -> bt_171)
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_181_to_bt_18
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_87_to_bt_4
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_149_to_bt_4
- [HYPEREDGE_LIFTING] Completed lifting: 27 updated, 3 deleted
- [DEBUG] Post-collapse visibility check for bt_171:
- [DEBUG] Final visibility state: visibleNodes=0, visibleContainers=40, hyperEdges=103
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_171
- [DEBUG] Starting collapse for container bt_146
- [COLLAPSE] Found 0 crossing edges for container bt_146
- [DEBUG] About to hide descendants of bt_146
- [DEBUG] After hiding descendants, visible nodes: 0, visible containers: 35
- [COLLAPSE] Creating 0 hyperEdges for container bt_146
- [DEBUG] About to hide 0 crossing edges
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_146
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_146
- [HYPEREDGE_LIFTING] Source bt_29 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Target bt_187 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_29_to_bt_187 - would create self-loop bt_146 -> bt_146
- [HYPEREDGE_LIFTING] Target bt_11 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_37_to_bt_11 to hyper_bt_37_to_bt_146 (bt_37 -> bt_146)
- [HYPEREDGE_LIFTING] Target bt_29 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_37_to_bt_29 to hyper_bt_37_to_bt_146 (bt_37 -> bt_146)
- [HYPEREDGE_LIFTING] Source bt_187 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_187_to_bt_37 to hyper_bt_146_to_bt_37 (bt_146 -> bt_37)
- [HYPEREDGE_LIFTING] Source bt_53 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_53_to_bt_103 to hyper_bt_146_to_bt_103 (bt_146 -> bt_103)
- [HYPEREDGE_LIFTING] Source bt_11 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_11_to_bt_103 to hyper_bt_146_to_bt_103 (bt_146 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_11 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_103_to_bt_11 to hyper_bt_103_to_bt_146 (bt_103 -> bt_146)
- [HYPEREDGE_LIFTING] Source bt_39 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_39_to_bt_12 to hyper_bt_146_to_bt_12 (bt_146 -> bt_12)
- [HYPEREDGE_LIFTING] Source bt_39 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_39_to_bt_31 to hyper_bt_146_to_bt_31 (bt_146 -> bt_31)
- [HYPEREDGE_LIFTING] Source bt_39 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_39_to_bt_37 to hyper_bt_146_to_bt_37 (bt_146 -> bt_37)
- [HYPEREDGE_LIFTING] Target bt_39 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_103_to_bt_39 to hyper_bt_103_to_bt_146 (bt_103 -> bt_146)
- [HYPEREDGE_LIFTING] Source bt_39 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_39_to_bt_103 to hyper_bt_146_to_bt_103 (bt_146 -> bt_103)
- [HYPEREDGE_LIFTING] Source bt_39 is hidden, lifting to ancestor bt_146
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_39_to_bt_171 to hyper_bt_146_to_bt_171 (bt_146 -> bt_171)
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_29_to_bt_187
- [HYPEREDGE_LIFTING] Completed lifting: 12 updated, 1 deleted
- [DEBUG] Post-collapse visibility check for bt_146:
- [DEBUG] Final visibility state: visibleNodes=0, visibleContainers=35, hyperEdges=97
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_146
- [DEBUG] Starting collapse for container bt_121
- [COLLAPSE] Found 0 crossing edges for container bt_121
- [DEBUG] About to hide descendants of bt_121
- [DEBUG] After hiding descendants, visible nodes: 0, visible containers: 12
- [COLLAPSE] Creating 0 hyperEdges for container bt_121
- [DEBUG] About to hide 0 crossing edges
- [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of bt_121
- [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of bt_121
- [HYPEREDGE_LIFTING] Target bt_47 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_139_to_bt_47 to hyper_bt_139_to_bt_121 (bt_139 -> bt_121)
- [HYPEREDGE_LIFTING] Source bt_51 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_134 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_51_to_bt_134 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_5 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_5 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_5_to_bt_5 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Target bt_5 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_12_to_bt_5 to hyper_bt_12_to_bt_121 (bt_12 -> bt_121)
- [HYPEREDGE_LIFTING] Target bt_104 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_12_to_bt_104 to hyper_bt_12_to_bt_121 (bt_12 -> bt_121)
- [HYPEREDGE_LIFTING] Source bt_140 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_125 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_140_to_bt_125 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_140 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_168 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_140_to_bt_168 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_170 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_170_to_bt_82 to hyper_bt_121_to_bt_82 (bt_121 -> bt_82)
- [HYPEREDGE_LIFTING] Source bt_125 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_125_to_bt_82 to hyper_bt_121_to_bt_82 (bt_121 -> bt_82)
- [HYPEREDGE_LIFTING] Target bt_125 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_82_to_bt_125 to hyper_bt_82_to_bt_121 (bt_82 -> bt_121)
- [HYPEREDGE_LIFTING] Source bt_168 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_168_to_bt_82 to hyper_bt_121_to_bt_82 (bt_121 -> bt_82)
- [HYPEREDGE_LIFTING] Target bt_168 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_82_to_bt_168 to hyper_bt_82_to_bt_121 (bt_82 -> bt_121)
- [HYPEREDGE_LIFTING] Source bt_36 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_75 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_36_to_bt_75 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Target bt_75 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_183_to_bt_75 to hyper_bt_183_to_bt_121 (bt_183 -> bt_121)
- [HYPEREDGE_LIFTING] Source bt_75 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_182 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_75_to_bt_182 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_182 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_75 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_182_to_bt_75 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_46 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_75 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_46_to_bt_75 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_75 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_46 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_75_to_bt_46 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_50 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_75 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_50_to_bt_75 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_75 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_23 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_75_to_bt_23 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_22 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_22 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_22_to_bt_22 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_22 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_22_to_bt_12 to hyper_bt_121_to_bt_12 (bt_121 -> bt_12)
- [HYPEREDGE_LIFTING] Source bt_5 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_22 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_5_to_bt_22 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_22 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_5 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_22_to_bt_5 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Target bt_119 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_109_to_bt_119 to hyper_bt_109_to_bt_121 (bt_109 -> bt_121)
- [HYPEREDGE_LIFTING] Source bt_119 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_119_to_bt_109 to hyper_bt_121_to_bt_109 (bt_121 -> bt_109)
- [HYPEREDGE_LIFTING] Source bt_182 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_182_to_bt_109 to hyper_bt_121_to_bt_109 (bt_121 -> bt_109)
- [HYPEREDGE_LIFTING] Target bt_23 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_109_to_bt_23 to hyper_bt_109_to_bt_121 (bt_109 -> bt_121)
- [HYPEREDGE_LIFTING] Source bt_23 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_23_to_bt_109 to hyper_bt_121_to_bt_109 (bt_121 -> bt_109)
- [HYPEREDGE_LIFTING] Source bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_36 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_153_to_bt_36 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_153_to_bt_183 to hyper_bt_121_to_bt_183 (bt_121 -> bt_183)
- [HYPEREDGE_LIFTING] Source bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_51 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_153_to_bt_51 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_46 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_46_to_bt_153 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_50 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_153_to_bt_50 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_51 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_51_to_bt_153 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_128 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_128_to_bt_153 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_128 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_153_to_bt_128 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_140 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_153_to_bt_140 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_168 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_168_to_bt_153 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_23 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_153_to_bt_23 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_23 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_23_to_bt_153 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_75 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_75_to_bt_153 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_22 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_153_to_bt_22 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_22 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_22_to_bt_153 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_183_to_bt_27 to hyper_bt_183_to_bt_121 (bt_183 -> bt_121)
- [HYPEREDGE_LIFTING] Source bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_27_to_bt_27 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_19 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_19_to_bt_27 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_46 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_27_to_bt_46 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_27_to_bt_106 to hyper_bt_121_to_bt_106 (bt_121 -> bt_106)
- [HYPEREDGE_LIFTING] Source bt_119 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_119_to_bt_27 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_119 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_27_to_bt_119 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_51 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_51_to_bt_27 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_182 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_27_to_bt_182 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_128 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_128_to_bt_27 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_23 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_23_to_bt_27 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_22 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_22_to_bt_27 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_22 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_27_to_bt_22 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_27_to_bt_109 to hyper_bt_121_to_bt_109 (bt_121 -> bt_109)
- [HYPEREDGE_LIFTING] Source bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_27_to_bt_153 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_153_to_bt_27 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_27_to_bt_103 to hyper_bt_121_to_bt_103 (bt_121 -> bt_103)
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_103_to_bt_27 to hyper_bt_103_to_bt_121 (bt_103 -> bt_121)
- [HYPEREDGE_LIFTING] Source bt_46 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_46_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_119 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_119_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_171_to_bt_139 to hyper_bt_121_to_bt_139 (bt_121 -> bt_139)
- [HYPEREDGE_LIFTING] Source bt_47 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_47_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_19 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_171_to_bt_19 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_164 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_164_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_164 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_171_to_bt_164 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_140 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_171_to_bt_140 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_125 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_125_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_19 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_19_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_171_to_bt_12 to hyper_bt_121_to_bt_12 (bt_121 -> bt_12)
- [HYPEREDGE_LIFTING] Source bt_104 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_104_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_104 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_171_to_bt_104 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_134 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_134_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_134 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_171_to_bt_134 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_51 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_51_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_51 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_171_to_bt_51 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_153 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_153_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_171_to_bt_27 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Source bt_27 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Removing hyperEdge hyper_bt_27_to_bt_171 - would create self-loop bt_121 -> bt_121
- [HYPEREDGE_LIFTING] Target bt_171 is hidden, lifting to ancestor bt_121
- [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_bt_146_to_bt_171 to hyper_bt_146_to_bt_121 (bt_146 -> bt_121)
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_51_to_bt_134
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_5_to_bt_5
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_140_to_bt_125
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_140_to_bt_168
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_36_to_bt_75
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_75_to_bt_182
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_182_to_bt_75
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_46_to_bt_75
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_75_to_bt_46
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_50_to_bt_75
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_75_to_bt_23
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_22_to_bt_22
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_5_to_bt_22
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_22_to_bt_5
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_153_to_bt_36
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_153_to_bt_51
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_46_to_bt_153
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_153_to_bt_50
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_51_to_bt_153
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_128_to_bt_153
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_153_to_bt_128
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_153_to_bt_140
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_168_to_bt_153
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_153_to_bt_23
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_23_to_bt_153
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_75_to_bt_153
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_153_to_bt_22
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_22_to_bt_153
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_27_to_bt_27
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_19_to_bt_27
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_27_to_bt_46
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_119_to_bt_27
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_27_to_bt_119
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_51_to_bt_27
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_27_to_bt_182
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_128_to_bt_27
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_23_to_bt_27
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_22_to_bt_27
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_27_to_bt_22
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_27_to_bt_153
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_153_to_bt_27
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_46_to_bt_171
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_119_to_bt_171
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_47_to_bt_171
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_171_to_bt_19
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_164_to_bt_171
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_171_to_bt_164
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_171_to_bt_140
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_125_to_bt_171
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_19_to_bt_171
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_104_to_bt_171
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_171_to_bt_104
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_134_to_bt_171
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_171_to_bt_134
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_51_to_bt_171
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_171_to_bt_51
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_153_to_bt_171
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_171_to_bt_27
- [HYPEREDGE_LIFTING] Deleted unrecoverable hyperEdge hyper_bt_27_to_bt_171
- [HYPEREDGE_LIFTING] Completed lifting: 24 updated, 59 deleted
- [DEBUG] Post-collapse visibility check for bt_121:
- [DEBUG] Final visibility state: visibleNodes=0, visibleContainers=12, hyperEdges=28
- [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
- [VisualizationEngine] 📦 Collapsed container: bt_121
- [VisualizationEngine] ✅ All 166 collapse operations complete
- [VisualizationEngine] 🔄 Re-running layout after smart collapse
- [VisualizationEngine] 🧹 Clearing layout cache to force fresh ELK layout with collapsed dimensions
- [VisualizationEngine] 🧹 Clearing layout positions for fresh ELK calculation...
- [VisualizationEngine] ✅ Cleared layout positions for all containers and nodes
- [VisualizationEngine] 🔄 Creating fresh ELK instance to avoid any internal caching
- [VisualizationEngine] 📋 ELKBridge config: {"algorithm":"mrtree","enableSmartCollapse":true}
- [ELKBridge] 🆕 Created fresh ELK instance: ELKNode (1754880957774)
- [VisualizationEngine] 🔍 Validating re-layout invariants...
- [VisualizationEngine] ✅ Re-layout invariants passed: 12 containers all have elkFixed=false
- [VisualizationEngine] 🔍 Validating collapsed container dimensions...
- [VisualizationEngine] ✅ Container bt_12: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_17: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_31: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_37: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_82: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_103: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_106: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_109: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_121: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_139: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_146: 200x194 (collapsed)
- [VisualizationEngine] ✅ Container bt_183: 200x194 (collapsed)
- [VisualizationEngine] ✅ Collapsed container dimensions validated: 12 containers all have proper small dimensions
- [VisualizationEngine] 🔍 Validating ELK layout config...
- [VisualizationEngine] 📐 ELK Config: algorithm=mrtree
- [VisualizationEngine] ✅ ELK layout config validated
- [VisualizationEngine] 🔍 Validating TreeHierarchy/VisState sync...
- [VisualizationEngine] 📊 Container states: 12 collapsed, 0 expanded
- [VisualizationEngine] ✅ TreeHierarchy sync validated (12 total containers)
+main.js:1550 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+vis.js:69 Loading visualizer-v4 components...
+vis.js:75 Loading VisState...
+vis.js:399 🖥️ Window dimensions: {width: 1124, height: 1029}
+vis.js:412 📐 Calculated canvas height: 949
+vis.js:75 Loading FlowGraph...
+vis.js:75 Loading shared config...
+vis.js:75 Loading JSONParser...
+vis.js:75 Loading layout...
+vis.js:75 Loading InfoPanel...
+vis.js:75 Loading LayoutControls...
+vis.js:75 Loading FileDropZone...
+vis.js:168 Processing uploaded file: {edges: Array(8), hierarchyChoices: Array(2), legend: {…}, nodeAssignments: {…}, nodeTypeConfig: {…}, …}
+vis.js:193 ✅ File loaded successfully
+ELKBridge.ts:29 [ELKBridge] 🆕 Created fresh ELK instance: ELKNode (1754939966917)
+VisualizationEngine.ts:524 [VisualizationEngine] 🚀 VisualizationEngine initialized
+VisualizationEngine.ts:524 [VisualizationEngine] 🔧 Config: {"autoLayout":true,"layoutDebounceMs":300,"enableLogging":true,"layoutConfig":{"algorithm":"mrtree","enableSmartCollapse":true}}
+VisualizationEngine.ts:524 [VisualizationEngine] 📊 Initial layoutCount: 0
+VisualizationEngine.ts:524 [VisualizationEngine] 📊 Layout requested
+VisualizationEngine.ts:524 [VisualizationEngine] 🔄 State: initial → laying_out
+ELKBridge.ts:43 [ELKBridge] 🚀 Starting ELK layout from VisState
+ELKBridge.ts:48 [ELKBridge] 🧹 Clearing existing edge layouts for ReactFlow automatic routing
+ELKBridge.ts:304 [ELKBridge] 🔄 Using CANONICAL flat ELK pattern
+ELKBridge.ts:330 [ELKBridge] ✅ CANONICAL flat graph: 11 nodes, 8 edges
+ELKBridge.ts:185 [ELKBridge] 🔍 ELK Input Graph Structure:
+ELKBridge.ts:185 [ELKBridge] 📊 Root: 11 children
+ELKBridge.ts:198 [ELKBridge] ✅ No existing positions in ELK input (good for fresh layout)
+ELKBridge.ts:205 [ELKBridge] 📦 All container dimensions:
+ELKBridge.ts:205 [ELKBridge] 📦 5: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 7: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 0: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 1: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 4: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 8: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 6: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 2: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 3: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 loc_0: 200x194
+ELKBridge.ts:205 [ELKBridge] 📦 loc_1: 200x194
+ELKBridge.ts:212 [ELKBridge] ⚙️  Layout options: {
+  "elk.algorithm": "mrtree",
+  "elk.direction": "DOWN",
+  "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+  "elk.mrtree.spacing.nodeNode": "75",
+  "elk.mrtree.spacing.levelSeparation": "60",
+  "elk.spacing.nodeNode": "75",
+  "elk.spacing.edgeNode": "0",
+  "elk.spacing.edgeEdge": "10",
+  "elk.spacing.componentComponent": "60",
+  "elk.layered.spacing.nodeNodeBetweenLayers": "25",
+  "elk.nodeSize.constraints": "FIXED_SIZE",
+  "elk.nodeSize.options": "DEFAULT_MINIMUM_SIZE",
+  "elk.json.shapeCoords": "ROOT",
+  "elk.json.edgeCoords": "ROOT"
+}
+vis.js:399 🖥️ Window dimensions: {width: 1124, height: 1029}
+vis.js:412 📐 Calculated canvas height: 949
+ELKBridge.ts:87 [ELKBridge] 🔍 Large graph detected, logging input structure...
+ELKBridge.ts:87 [ELKBridge] 📊 Total containers: 11
+ELKBridge.ts:87 [ELKBridge] 📊 Total edges: 8
+ELKBridge.ts:124 [ELKBridge] 🎯 ELK Output Results:
+ELKBridge.ts:124 [ELKBridge] 📍 5: pos=(120,792) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 7: pos=(120,1062) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 0: pos=(120,117) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 1: pos=(120,252) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 4: pos=(120,657) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 8: pos=(120,1197) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 6: pos=(120,927) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 2: pos=(120,387) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 3: pos=(120,522) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 loc_0: pos=(375,117) size=200x194
+ELKBridge.ts:124 [ELKBridge] 📍 loc_1: pos=(650,117) size=200x194
+ELKBridge.ts:131 [ELKBridge] 🔗 ELK Edge Results:
+ELKBridge.ts:131 [ELKBridge] 📊 Total edges from ELK: 8
+ELKBridge.ts:131 [ELKBridge] 🔗 Edge e0: 1 sections, start=(210,177), end=(210,252)
+ELKBridge.ts:131 [ELKBridge] 🔗 Edge e1: 1 sections, start=(210,312), end=(210,387)
+ELKBridge.ts:131 [ELKBridge] 🔗 Edge e2: 1 sections, start=(210,447), end=(210,522)
+ELKBridge.ts:131 [ELKBridge] 🔗 Edge e3: 1 sections, start=(210,582), end=(210,657)
+ELKBridge.ts:131 [ELKBridge] 🔗 Edge e4: 1 sections, start=(210,717), end=(210,792)
+ELKBridge.ts:131 [ELKBridge] 🔗 ... and 3 more edges
+ELKBridge.ts:152 [ELKBridge] 📐 Actual ELK spacing: avg=-129.0px, range=-180-75px
+ [ELKBridge] 🔷 Found 5 as node, using updateNodeFromELK
+ [ELKBridge] � Setting node layout for 5: ELK=(120, 792) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ [ELKBridge] 🔷 Found 7 as node, using updateNodeFromELK
+ [ELKBridge] � Setting node layout for 7: ELK=(120, 1062) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ [ELKBridge] 🔷 Found 0 as node, using updateNodeFromELK
+ [ELKBridge] � Setting node layout for 0: ELK=(120, 117) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ [ELKBridge] 🔷 Found 1 as node, using updateNodeFromELK
+ [ELKBridge] � Setting node layout for 1: ELK=(120, 252) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ [ELKBridge] 🔷 Found 4 as node, using updateNodeFromELK
+ [ELKBridge] � Setting node layout for 4: ELK=(120, 657) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ [ELKBridge] 🔷 Found 8 as node, using updateNodeFromELK
+ [ELKBridge] � Setting node layout for 8: ELK=(120, 1197) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ [ELKBridge] 🔷 Found 6 as node, using updateNodeFromELK
+ [ELKBridge] � Setting node layout for 6: ELK=(120, 927) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ [ELKBridge] 🔷 Found 2 as node, using updateNodeFromELK
+ [ELKBridge] � Setting node layout for 2: ELK=(120, 387) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ [ELKBridge] 🔷 Found 3 as node, using updateNodeFromELK
+ [ELKBridge] � Setting node layout for 3: ELK=(120, 522) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ [ELKBridge] 🏗️ Found loc_0 as container in VisState, using updateContainerFromELK
+ [ELKBridge] 🏗️ Found loc_1 as container in VisState, using updateContainerFromELK
+ [ELKBridge] ✅ Using ReactFlow automatic edge routing - no ELK routing processing needed
+ [VisualizationEngine] 🔍 SMART COLLAPSE DEBUG:
+ [VisualizationEngine]   - enableSmartCollapse: true
+ [VisualizationEngine]   - layoutCount: 0
+ [VisualizationEngine]   - condition met: true
+ [VisualizationEngine] 🧠 Running smart collapse after initial layout
+ [VisualizationEngine] 🧠 Starting smart collapse algorithm
+ [VisualizationEngine] 📊 Found 2 containers for smart collapse analysis
+ [VisualizationEngine] 📏 Container loc_0 area calculation: 200x238 = 47600, collapsed=false
+ [VisualizationEngine] 📏 Container loc_1 area calculation: 200x238 = 47600, collapsed=false
+ [VisualizationEngine] 📐 Container areas: loc_0=47600, loc_1=47600
+ [VisualizationEngine] 📱 Viewport: 1200x800 (960000 total area)
+ [VisualizationEngine] 💰 Container area budget: 672000 (70% of viewport)
+ [VisualizationEngine] ✅ Keeping loc_0 expanded (area: 47600, total used: 47600)
+ [VisualizationEngine] ✅ Keeping loc_1 expanded (area: 47600, total used: 95200)
+ [VisualizationEngine] 🎯 Smart collapse decisions: keep 2 expanded, collapse 0
+ [VisualizationEngine] 📋 Keeping expanded: loc_0, loc_1
+ [VisualizationEngine] 📋 Collapsing: none
+ [VisualizationEngine] 💰 Final budget usage: 95200/672000 (14.2%)
+ [VisualizationEngine] 🎉 Smart collapse algorithm complete
  [ELKBridge] 🚀 Starting ELK layout from VisState
- [ELKBridge] 📦 Collapsed container bt_12 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_17 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_31 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_37 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_82 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_103 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_106 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_109 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_121 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_139 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_146 dimensions: Object
- [ELKBridge] 📦 Collapsed container bt_183 dimensions: Object
+ [ELKBridge] 🧹 Clearing existing edge layouts for ReactFlow automatic routing
+ [ELKBridge] 🔄 Using CANONICAL flat ELK pattern
+ [ELKBridge] ✅ CANONICAL flat graph: 11 nodes, 8 edges
  [ELKBridge] 🔍 ELK Input Graph Structure:
- [ELKBridge] 📊 Root: 12 children
+ [ELKBridge] 📊 Root: 11 children
  [ELKBridge] ✅ No existing positions in ELK input (good for fresh layout)
  [ELKBridge] 📦 All container dimensions:
- [ELKBridge] 📦 bt_12: 200x194
- [ELKBridge] 📦 bt_17: 200x194
- [ELKBridge] 📦 bt_31: 200x194
- [ELKBridge] 📦 bt_37: 200x194
- [ELKBridge] 📦 bt_82: 200x194
- [ELKBridge] 📦 bt_103: 200x194
- [ELKBridge] 📦 bt_106: 200x194
- [ELKBridge] 📦 bt_109: 200x194
- [ELKBridge] 📦 bt_121: 200x194
- [ELKBridge] 📦 bt_139: 200x194
- [ELKBridge] 📦 bt_146: 200x194
- [ELKBridge] 📦 bt_183: 200x194
- [ELKBridge] ⚙️  Layout options: {
+ [ELKBridge] 📦 5: 180x60
+ [ELKBridge] 📦 7: 180x60
+ [ELKBridge] 📦 0: 180x60
+ [ELKBridge] 📦 1: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 4: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 8: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 6: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 2: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 3: 180x60
+ELKBridge.ts:205 [ELKBridge] 📦 loc_0: 200x238
+ELKBridge.ts:205 [ELKBridge] 📦 loc_1: 200x238
+ELKBridge.ts:212 [ELKBridge] ⚙️  Layout options: {
   "elk.algorithm": "mrtree",
   "elk.direction": "DOWN",
   "elk.hierarchyHandling": "INCLUDE_CHILDREN",
@@ -901,127 +150,96 @@
   "elk.spacing.componentComponent": "60",
   "elk.layered.spacing.nodeNodeBetweenLayers": "25",
   "elk.nodeSize.constraints": "FIXED_SIZE",
-  "elk.nodeSize.options": "DEFAULT_MINIMUM_SIZE"
+  "elk.nodeSize.options": "DEFAULT_MINIMUM_SIZE",
+  "elk.json.shapeCoords": "ROOT",
+  "elk.json.edgeCoords": "ROOT"
 }
- [ELKBridge] 🔍 Large graph detected, logging input structure...
- [ELKBridge] 📊 Total containers: 12
- [ELKBridge] 📊 Total edges: 28
- [ELKBridge] 🎯 ELK Output Results:
- [ELKBridge] 📍 bt_12: pos=(501,20) size=200x194
- [ELKBridge] 📍 bt_17: pos=(570,827) size=200x194
- [ELKBridge] 📍 bt_31: pos=(845,1096) size=200x194
- [ELKBridge] 📍 bt_37: pos=(708,558) size=200x194
- [ELKBridge] 📍 bt_82: pos=(295,558) size=200x194
- [ELKBridge] 📍 bt_103: pos=(501,289) size=200x194
- [ELKBridge] 📍 bt_106: pos=(295,1096) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_109: pos=(20,1096) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_121: pos=(295,827) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_139: pos=(570,1096) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_146: pos=(845,827) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_183: pos=(20,1365) size=200x194
-ELKBridge.ts:121 [ELKBridge] 📐 Actual ELK spacing: avg=-125.0px, range=-200-75px
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_12 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_17 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_31 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_37 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_82 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_103 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_106 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_109 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_121 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_139 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_146 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_183 as container in VisState, using updateContainerFromELK
-VisualizationEngine.ts:524 [VisualizationEngine] ✅ Post-collapse layout complete
-VisualizationEngine.ts:524 [VisualizationEngine] 💰 Final budget usage: 665280/672000 (99.0%)
-VisualizationEngine.ts:524 [VisualizationEngine] 🎉 Smart collapse algorithm complete
-ELKBridge.ts:43 [ELKBridge] 🚀 Starting ELK layout from VisState
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_12 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_17 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_31 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_37 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_82 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_103 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_106 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_109 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_121 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_139 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_146 dimensions: Object
-ELKBridge.ts:324 [ELKBridge] 📦 Collapsed container bt_183 dimensions: Object
-ELKBridge.ts:154 [ELKBridge] 🔍 ELK Input Graph Structure:
-ELKBridge.ts:154 [ELKBridge] 📊 Root: 12 children
-ELKBridge.ts:167 [ELKBridge] ✅ No existing positions in ELK input (good for fresh layout)
-ELKBridge.ts:174 [ELKBridge] 📦 All container dimensions:
-ELKBridge.ts:174 [ELKBridge] 📦 bt_12: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_17: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_31: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_37: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_82: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_103: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_106: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_109: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_121: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_139: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_146: 200x194
-ELKBridge.ts:174 [ELKBridge] 📦 bt_183: 200x194
-ELKBridge.ts:181 [ELKBridge] ⚙️  Layout options: {
-  "elk.algorithm": "mrtree",
-  "elk.direction": "DOWN",
-  "elk.hierarchyHandling": "INCLUDE_CHILDREN",
-  "elk.mrtree.spacing.nodeNode": "75",
-  "elk.mrtree.spacing.levelSeparation": "60",
-  "elk.spacing.nodeNode": "75",
-  "elk.spacing.edgeNode": "0",
-  "elk.spacing.edgeEdge": "10",
-  "elk.spacing.componentComponent": "60",
-  "elk.layered.spacing.nodeNodeBetweenLayers": "25",
-  "elk.nodeSize.constraints": "FIXED_SIZE",
-  "elk.nodeSize.options": "DEFAULT_MINIMUM_SIZE"
-}
-ELKBridge.ts:77 [ELKBridge] 🔍 Large graph detected, logging input structure...
-ELKBridge.ts:77 [ELKBridge] 📊 Total containers: 12
-ELKBridge.ts:77 [ELKBridge] 📊 Total edges: 28
-ELKBridge.ts:114 [ELKBridge] 🎯 ELK Output Results:
-ELKBridge.ts:114 [ELKBridge] 📍 bt_12: pos=(501,20) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_17: pos=(570,827) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_31: pos=(845,1096) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_37: pos=(708,558) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_82: pos=(295,558) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_103: pos=(501,289) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_106: pos=(295,1096) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_109: pos=(20,1096) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_121: pos=(295,827) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_139: pos=(570,1096) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_146: pos=(845,827) size=200x194
-ELKBridge.ts:114 [ELKBridge] 📍 bt_183: pos=(20,1365) size=200x194
-ELKBridge.ts:121 [ELKBridge] 📐 Actual ELK spacing: avg=-125.0px, range=-200-75px
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_12 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_17 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_31 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_37 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_82 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_103 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_106 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_109 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_121 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_139 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_146 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:498 [ELKBridge] 🏗️ Found bt_183 as container in VisState, using updateContainerFromELK
+ELKBridge.ts:87 [ELKBridge] 🔍 Large graph detected, logging input structure...
+ELKBridge.ts:87 [ELKBridge] 📊 Total containers: 11
+ELKBridge.ts:87 [ELKBridge] 📊 Total edges: 8
+ELKBridge.ts:124 [ELKBridge] 🎯 ELK Output Results:
+ELKBridge.ts:124 [ELKBridge] 📍 5: pos=(120,814) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 7: pos=(120,1084) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 0: pos=(120,139) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 1: pos=(120,274) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 4: pos=(120,679) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 8: pos=(120,1219) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 6: pos=(120,949) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 2: pos=(120,409) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 3: pos=(120,544) size=180x60
+ELKBridge.ts:124 [ELKBridge] 📍 loc_0: pos=(375,139) size=200x238
+ELKBridge.ts:124 [ELKBridge] 📍 loc_1: pos=(650,139) size=200x238
+ELKBridge.ts:131 [ELKBridge] 🔗 ELK Edge Results:
+ELKBridge.ts:131 [ELKBridge] 📊 Total edges from ELK: 8
+ELKBridge.ts:131 [ELKBridge] 🔗 Edge e0: 1 sections, start=(210,199), end=(210,274)
+ELKBridge.ts:131 [ELKBridge] 🔗 Edge e1: 1 sections, start=(210,334), end=(210,409)
+ELKBridge.ts:131 [ELKBridge] 🔗 Edge e2: 1 sections, start=(210,469), end=(210,544)
+ELKBridge.ts:131 [ELKBridge] 🔗 Edge e3: 1 sections, start=(210,604), end=(210,679)
+ELKBridge.ts:131 [ELKBridge] 🔗 Edge e4: 1 sections, start=(210,739), end=(210,814)
+ELKBridge.ts:131 [ELKBridge] 🔗 ... and 3 more edges
+ELKBridge.ts:152 [ELKBridge] 📐 Actual ELK spacing: avg=-129.0px, range=-180-75px
+ELKBridge.ts:593 [ELKBridge] 🔷 Found 5 as node, using updateNodeFromELK
+ELKBridge.ts:656 [ELKBridge] � Setting node layout for 5: ELK=(120, 814) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ELKBridge.ts:593 [ELKBridge] 🔷 Found 7 as node, using updateNodeFromELK
+ELKBridge.ts:656 [ELKBridge] � Setting node layout for 7: ELK=(120, 1084) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ELKBridge.ts:593 [ELKBridge] 🔷 Found 0 as node, using updateNodeFromELK
+ELKBridge.ts:656 [ELKBridge] � Setting node layout for 0: ELK=(120, 139) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ELKBridge.ts:593 [ELKBridge] 🔷 Found 1 as node, using updateNodeFromELK
+ELKBridge.ts:656 [ELKBridge] � Setting node layout for 1: ELK=(120, 274) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ELKBridge.ts:593 [ELKBridge] 🔷 Found 4 as node, using updateNodeFromELK
+ELKBridge.ts:656 [ELKBridge] � Setting node layout for 4: ELK=(120, 679) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ELKBridge.ts:593 [ELKBridge] 🔷 Found 8 as node, using updateNodeFromELK
+ELKBridge.ts:656 [ELKBridge] � Setting node layout for 8: ELK=(120, 1219) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ELKBridge.ts:593 [ELKBridge] 🔷 Found 6 as node, using updateNodeFromELK
+ELKBridge.ts:656 [ELKBridge] � Setting node layout for 6: ELK=(120, 949) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ELKBridge.ts:593 [ELKBridge] 🔷 Found 2 as node, using updateNodeFromELK
+ELKBridge.ts:656 [ELKBridge] � Setting node layout for 2: ELK=(120, 409) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ELKBridge.ts:593 [ELKBridge] 🔷 Found 3 as node, using updateNodeFromELK
+ELKBridge.ts:656 [ELKBridge] � Setting node layout for 3: ELK=(120, 544) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
+ELKBridge.ts:581 [ELKBridge] 🏗️ Found loc_0 as container in VisState, using updateContainerFromELK
+ELKBridge.ts:581 [ELKBridge] 🏗️ Found loc_1 as container in VisState, using updateContainerFromELK
+ELKBridge.ts:604 [ELKBridge] ✅ Using ReactFlow automatic edge routing - no ELK routing processing needed
 VisualizationEngine.ts:524 [VisualizationEngine] 🔄 State: laying_out → ready
 VisualizationEngine.ts:524 [VisualizationEngine] ✅ Layout complete (1 total layouts)
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_12: collapsed=true, ELK=(501, 20), ReactFlow=(501, 20), size=200x194, nodeCount=1
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_17: collapsed=true, ELK=(570, 827), ReactFlow=(570, 827), size=200x194, nodeCount=1
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_31: collapsed=true, ELK=(845, 1096), ReactFlow=(845, 1096), size=200x194, nodeCount=3
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_37: collapsed=true, ELK=(708, 558), ReactFlow=(708, 558), size=200x194, nodeCount=1
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_82: collapsed=true, ELK=(295, 558), ReactFlow=(295, 558), size=200x194, nodeCount=1
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_103: collapsed=true, ELK=(501, 289), ReactFlow=(501, 289), size=200x194, nodeCount=7
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_106: collapsed=true, ELK=(295, 1096), ReactFlow=(295, 1096), size=200x194, nodeCount=1
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_109: collapsed=true, ELK=(20, 1096), ReactFlow=(20, 1096), size=200x194, nodeCount=5
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_121: collapsed=true, ELK=(295, 827), ReactFlow=(295, 827), size=200x194, nodeCount=23
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_139: collapsed=true, ELK=(570, 1096), ReactFlow=(570, 1096), size=200x194, nodeCount=1
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_146: collapsed=true, ELK=(845, 827), ReactFlow=(845, 827), size=200x194, nodeCount=5
-ReactFlowBridge.ts:146 [ReactFlowBridge] 📦 Container bt_183: collapsed=true, ELK=(20, 1365), ReactFlow=(20, 1365), size=200x194, nodeCount=1
-vis.js:399 🖥️ Window dimensions: Object
-vis.js:412 📐 Calculated canvas height: 949
-vis.js:423 🎯 Window resized, triggering immediate auto-fit...
-vis.js:423 ✅ Calling fitView directly on resize
+ReactFlowBridge.ts:71 [ReactFlowBridge] 🔄 Using HIERARCHICAL ELK + ReactFlow pattern
+ReactFlowBridge.ts:79 [ReactFlowBridge] 🗺️ Parent map has 9 relationships: (9) [Array(2), Array(2), Array(2), Array(2), Array(2), Array(2), Array(2), Array(2), Array(2)]
+ReactFlowBridge.ts:83 [ReactFlowBridge] 📊 Before conversion: 2 containers, 9 nodes
+ReactFlowBridge.ts:266 [ReactFlowBridge] 📦 Container loc_0: collapsed=false, position=(375, 139), size=200x282, nodeCount=0
+ReactFlowBridge.ts:266 [ReactFlowBridge] 📦 Container loc_1: collapsed=false, position=(650, 139), size=200x282, nodeCount=0
+ReactFlowBridge.ts:86 [ReactFlowBridge] 📦 After container conversion: 2 container nodes
+ReactFlowBridge.ts:322 [ReactFlowBridge] 🔷 Node 5: absolute=(120, 814) -> relative=(-530, 675) parent=loc_1
+ReactFlowBridge.ts:322 [ReactFlowBridge] 🔷 Node 7: absolute=(120, 1084) -> relative=(-255, 945) parent=loc_0
+ReactFlowBridge.ts:322 [ReactFlowBridge] 🔷 Node 0: absolute=(120, 139) -> relative=(-255, 0) parent=loc_0
+ReactFlowBridge.ts:322 [ReactFlowBridge] 🔷 Node 1: absolute=(120, 274) -> relative=(-255, 135) parent=loc_0
+ReactFlowBridge.ts:322 [ReactFlowBridge] 🔷 Node 4: absolute=(120, 679) -> relative=(-530, 540) parent=loc_1
+ReactFlowBridge.ts:322 [ReactFlowBridge] 🔷 Node 8: absolute=(120, 1219) -> relative=(-255, 1080) parent=loc_0
+ReactFlowBridge.ts:322 [ReactFlowBridge] 🔷 Node 6: absolute=(120, 949) -> relative=(-530, 810) parent=loc_1
+ReactFlowBridge.ts:322 [ReactFlowBridge] 🔷 Node 2: absolute=(120, 409) -> relative=(-530, 270) parent=loc_1
+ReactFlowBridge.ts:322 [ReactFlowBridge] 🔷 Node 3: absolute=(120, 544) -> relative=(-530, 405) parent=loc_1
+ReactFlowBridge.ts:90 [ReactFlowBridge] 🔷 After node conversion: 9 standard nodes
+ReactFlowBridge.ts:405 [ReactFlowBridge] 🔗 Edge e0 has no routing sections - will use automatic ReactFlow routing
+ReactFlowBridge.ts:405 [ReactFlowBridge] 🔗 Edge e1 has no routing sections - will use automatic ReactFlow routing
+ReactFlowBridge.ts:405 [ReactFlowBridge] 🔗 Edge e2 has no routing sections - will use automatic ReactFlow routing
+ReactFlowBridge.ts:405 [ReactFlowBridge] 🔗 Edge e3 has no routing sections - will use automatic ReactFlow routing
+ReactFlowBridge.ts:405 [ReactFlowBridge] 🔗 Edge e4 has no routing sections - will use automatic ReactFlow routing
+ReactFlowBridge.ts:405 [ReactFlowBridge] 🔗 Edge e5 has no routing sections - will use automatic ReactFlow routing
+ReactFlowBridge.ts:405 [ReactFlowBridge] 🔗 Edge e6 has no routing sections - will use automatic ReactFlow routing
+ReactFlowBridge.ts:405 [ReactFlowBridge] 🔗 Edge e7 has no routing sections - will use automatic ReactFlow routing
+ReactFlowBridge.ts:94 [ReactFlowBridge] ✅ Hierarchical pattern: 11 nodes, 8 edges
+FlowGraph.tsx:227 [FlowGraph] 🚫 Auto-fit disabled for debugging Y-axis offset
+edges.tsx:15 [StandardEdge] DEBUG Edge e0: {sourceX: 180.001953125, sourceY: 180.41015625, targetX: 180.001953125, targetY: 271.626953125, sourcePosition: 'bottom', …}
+edges.tsx:25 [StandardEdge] Generated path for e0: M180.001953125,180.41015625 C180.001953125,226.0185546875 180.001953125,226.0185546875 180.001953125,271.626953125
+edges.tsx:15 [StandardEdge] DEBUG Edge e1: {sourceX: 180.001953125, sourceY: 315.41015625, targetX: 180.001953125, targetY: 406.626953125, sourcePosition: 'bottom', …}
+edges.tsx:25 [StandardEdge] Generated path for e1: M180.001953125,315.41015625 C180.001953125,361.0185546875 180.001953125,361.0185546875 180.001953125,406.626953125
+edges.tsx:15 [StandardEdge] DEBUG Edge e2: {sourceX: 180.001953125, sourceY: 450.41015625, targetX: 180.001953125, targetY: 541.626953125, sourcePosition: 'bottom', …}
+edges.tsx:25 [StandardEdge] Generated path for e2: M180.001953125,450.41015625 C180.001953125,496.0185546875 180.001953125,496.0185546875 180.001953125,541.626953125
+edges.tsx:15 [StandardEdge] DEBUG Edge e3: {sourceX: 180.001953125, sourceY: 585.41015625, targetX: 180.001953125, targetY: 676.626953125, sourcePosition: 'bottom', …}
+edges.tsx:25 [StandardEdge] Generated path for e3: M180.001953125,585.41015625 C180.001953125,631.0185546875 180.001953125,631.0185546875 180.001953125,676.626953125
+edges.tsx:15 [StandardEdge] DEBUG Edge e4: {sourceX: 180.001953125, sourceY: 720.41015625, targetX: 180.001953125, targetY: 811.626953125, sourcePosition: 'bottom', …}
+edges.tsx:25 [StandardEdge] Generated path for e4: M180.001953125,720.41015625 C180.001953125,766.0185546875 180.001953125,766.0185546875 180.001953125,811.626953125
+edges.tsx:15 [StandardEdge] DEBUG Edge e5: {sourceX: 180.001953125, sourceY: 855.41015625, targetX: 180.001953125, targetY: 946.626953125, sourcePosition: 'bottom', …}
+edges.tsx:25 [StandardEdge] Generated path for e5: M180.001953125,855.41015625 C180.001953125,901.0185546875 180.001953125,901.0185546875 180.001953125,946.626953125
+edges.tsx:15 [StandardEdge] DEBUG Edge e6: {sourceX: 180.001953125, sourceY: 990.41015625, targetX: 180.001953125, targetY: 1081.626953125, sourcePosition: 'bottom', …}
+edges.tsx:25 [StandardEdge] Generated path for e6: M180.001953125,990.41015625 C180.001953125,1036.0185546875 180.001953125,1036.0185546875 180.001953125,1081.626953125
+edges.tsx:15 [StandardEdge] DEBUG Edge e7: {sourceX: 180.001953125, sourceY: 1125.41015625, targetX: 180.001953125, targetY: 1216.626953125, sourcePosition: 'bottom', …}
+edges.tsx:25 [StandardEdge] Generated path for e7: M180.001953125,1125.41015625 C180.001953125,1171.0185546875 180.001953125,1171.0185546875 180.001953125,1216.626953125

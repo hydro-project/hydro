@@ -211,7 +211,11 @@ export type ELKAlgorithm = typeof ELK_ALGORITHMS[keyof typeof ELK_ALGORITHMS];
 export function getELKLayoutOptions(algorithm: ELKAlgorithm = ELK_ALGORITHMS.MRTREE) {
   return {
     ...ELK_LAYOUT_OPTIONS,
-    'elk.algorithm': algorithm
+    'elk.algorithm': algorithm,
+    // STANDARD PRACTICE: Use absolute coordinates for hierarchical ReactFlow integration
+    // This eliminates the need for complex coordinate transformations
+    'elk.json.shapeCoords': 'ROOT',  // All node coordinates are absolute
+    'elk.json.edgeCoords': 'ROOT'    // All edge coordinates are absolute
   };
 }
 

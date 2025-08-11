@@ -5,18 +5,33 @@
  */
 
 import React from 'react';
-import { BaseEdge, EdgeProps, getStraightPath } from '@xyflow/react';
+import { BaseEdge, EdgeProps, getStraightPath, getBezierPath } from '@xyflow/react';
 
 /**
- * Standard graph edge component
+ * Standard graph edge component - uses ReactFlow's automatic routing
  */
 export function StandardEdge(props: EdgeProps) {
-  const [edgePath] = getStraightPath({
+  // Use ReactFlow's automatic routing for consistent coordinate system
+  console.log(`[StandardEdge] DEBUG Edge ${props.id}:`, {
     sourceX: props.sourceX,
     sourceY: props.sourceY,
     targetX: props.targetX,
     targetY: props.targetY,
+    sourcePosition: props.sourcePosition,
+    targetPosition: props.targetPosition
   });
+  
+  // Try Bezier path for better edge routing
+  const [edgePath] = getBezierPath({
+    sourceX: props.sourceX,
+    sourceY: props.sourceY,
+    targetX: props.targetX,
+    targetY: props.targetY,
+    sourcePosition: props.sourcePosition,
+    targetPosition: props.targetPosition,
+  });
+
+  console.log(`[StandardEdge] Generated path for ${props.id}: ${edgePath}`);
 
   return (
     <BaseEdge

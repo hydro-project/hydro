@@ -201,28 +201,30 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         // });
         
         // Auto-fit if enabled (with debouncing to prevent excessive fits)
-        if (config.fitView !== false) {
-          const now = Date.now();
-          const timeSinceLastFit = now - lastFitTimeRef.current;
-          
-          // Clear any existing timeout
-          if (autoFitTimeoutRef.current) {
-            clearTimeout(autoFitTimeoutRef.current);
-          }
-          
-          // Only fit if enough time has passed or this is a significant layout change
-          const shouldFit = timeSinceLastFit > 500; // Minimum 500ms between fits
-          
-          autoFitTimeoutRef.current = setTimeout(() => {
-            try {
-              fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
-              lastFitTimeRef.current = Date.now();
-              // // console.log((('[FlowGraph] 🎯 Auto-fit applied')));
-            } catch (err) {
-              console.warn('[FlowGraph] ⚠️ Auto-fit failed:', err);
-            }
-          }, shouldFit ? 100 : 300); // Short delay for immediate fits, longer for recent ones
-        }
+        // DISABLED TEMPORARILY: Testing if auto-fit causes coordinate mismatch
+        // if (config.fitView !== false) {
+        //   const now = Date.now();
+        //   const timeSinceLastFit = now - lastFitTimeRef.current;
+        //   
+        //   // Clear any existing timeout
+        //   if (autoFitTimeoutRef.current) {
+        //     clearTimeout(autoFitTimeoutRef.current);
+        //   }
+        //   
+        //   // Only fit if enough time has passed or this is a significant layout change
+        //   const shouldFit = timeSinceLastFit > 500; // Minimum 500ms between fits
+        //   
+        //   autoFitTimeoutRef.current = setTimeout(() => {
+        //     try {
+        //       fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
+        //       lastFitTimeRef.current = Date.now();
+        //       // // console.log((('[FlowGraph] 🎯 Auto-fit applied')));
+        //     } catch (err) {
+        //       console.warn('[FlowGraph] ⚠️ Auto-fit failed:', err);
+        //     }
+        //   }, shouldFit ? 100 : 300); // Short delay for immediate fits, longer for recent ones
+        // }
+        console.log('[FlowGraph] 🚫 Auto-fit disabled for debugging Y-axis offset');
         
         // DEBUG: Log all container node data to find differences
         // const containerNodes = dataWithManualPositions.nodes.filter(n => n.type === 'container');
@@ -285,29 +287,31 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
     // Store the manual position in VisualizationState
     visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
     
+    // DISABLED TEMPORARILY: Testing if auto-fit causes coordinate mismatch
     // Auto-fit if enabled (after a brief delay to let the position update settle)
-    if (config.fitView !== false) {
-      const now = Date.now();
-      const timeSinceLastFit = now - lastFitTimeRef.current;
-      
-      // Clear any existing timeout
-      if (autoFitTimeoutRef.current) {
-        clearTimeout(autoFitTimeoutRef.current);
-      }
-      
-      // Only auto-fit if enough time has passed since the last fit
-      if (timeSinceLastFit > 500) {
-        autoFitTimeoutRef.current = setTimeout(() => {
-          try {
-            fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
-            lastFitTimeRef.current = Date.now();
-            // // console.log((('[FlowGraph] 🎯 Auto-fit applied after drag')));
-          } catch (err) {
-            console.warn('[FlowGraph] ⚠️ Auto-fit after drag failed:', err);
-          }
-        }, 200); // Brief delay to let drag position settle
-      }
-    }
+    // if (config.fitView !== false) {
+    //   const now = Date.now();
+    //   const timeSinceLastFit = now - lastFitTimeRef.current;
+    //   
+    //   // Clear any existing timeout
+    //   if (autoFitTimeoutRef.current) {
+    //     clearTimeout(autoFitTimeoutRef.current);
+    //   }
+    //   
+    //   // Only auto-fit if enough time has passed since the last fit
+    //   if (timeSinceLastFit > 500) {
+    //     autoFitTimeoutRef.current = setTimeout(() => {
+    //       try {
+    //         fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
+    //         lastFitTimeRef.current = Date.now();
+    //         // // console.log((('[FlowGraph] 🎯 Auto-fit applied after drag')));
+    //       } catch (err) {
+    //         console.warn('[FlowGraph] ⚠️ Auto-fit after drag failed:', err);
+    //       }
+    //     }, 200); // Brief delay to let drag position settle
+    //   }
+    // }
+    console.log('[FlowGraph] 🚫 Auto-fit after drag disabled for debugging Y-axis offset');
   }, [visualizationState, config.fitView, fitView]);
 
   // Handle ReactFlow node changes (including drag position updates)
