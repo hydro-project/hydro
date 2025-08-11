@@ -16,7 +16,7 @@ export interface HandleConfig {
 /**
  * Handle strategy types
  */
-export type HandleStrategy = 'continuous' | 'discrete' | 'none';
+export type HandleStrategy = 'continuous' | 'discrete' | 'floating' | 'none';
 
 /**
  * Configuration for different handle strategies
@@ -53,6 +53,17 @@ export const HANDLE_STRATEGIES = {
   },
   
   /**
+   * Floating handles - whole node connectivity with smart edge attachment
+   * Uses custom floating edge component for continuous-handle-like UX
+   * No visible handles - edges attach dynamically to optimal points
+   */
+  floating: {
+    enableContinuousHandles: false,
+    sourceHandles: [] as HandleConfig[], // No handles needed
+    targetHandles: [] as HandleConfig[], // Custom edge calculates attachment points
+  },
+  
+  /**
    * No handles - let ReactFlow auto-connect
    * Simplest approach but least control
    */
@@ -65,9 +76,9 @@ export const HANDLE_STRATEGIES = {
 
 /**
  * Current handle strategy - easily changeable
- * FIXED: Using discrete handles for proper edge connection
+ * FLOATING: Using floating edges for continuous-handle-like UX
  */
-export const CURRENT_HANDLE_STRATEGY: HandleStrategy = 'discrete';
+export const CURRENT_HANDLE_STRATEGY: HandleStrategy = 'floating';
 
 /**
  * Get the current handle configuration

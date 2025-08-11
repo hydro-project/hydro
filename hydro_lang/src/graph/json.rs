@@ -111,6 +111,81 @@ impl<W> HydroJson<W> {
             node["position"]["y"] = serde_json::Value::Number(serde_json::Number::from(0));
         }
     }
+
+    /// Optimize backtrace data for size efficiency
+    /// 1. Remove redundant/non-essential frames
+    /// 2. Truncate paths
+    /// 3. Remove memory addresses (not useful for visualization)
+    /// 4. Limit frame count for size efficiency
+    fn optimize_backtrace(&self, backtrace: &crate::backtrace::Backtrace) -> serde_json::Value {
+        #[cfg(feature = "build")]
+        {
+            let elements = backtrace.elements();
+            
+            // filter out obviously internal frames
+            let relevant_frames: Vec<_> = elements
+                .iter()
+                .filter(|elem| {
+                    let filename = elem.filename.as_deref().unwrap_or("");
+                    let fn_name = &elem.fn_name;
+                    
+                    // Filter out obviously internal/system frames
+                    !(filename.contains(".cargo/registry/")
+                        || filename.contains(".rustup/toolchains/")
+                        || fn_name.starts_with("std::")
+                        || fn_name.starts_with("core::")
+                        || fn_name.starts_with("alloc::")
+                        || fn_name.contains("rust_begin_unwind")
+                        || fn_name.contains("rust_panic")
+                        || fn_name.contains("__rust_")
+                        || filename.ends_with("panic.rs")
+                        || filename.ends_with("/rustc/"))
+                })
+                .map(|elem| {
+                    // Truncate paths and function names for size
+                    let short_filename = elem.filename.as_deref()
+                        .map(|f| Self::truncate_path(f))
+                        .unwrap_or_else(|| "unknown".to_string());
+                    
+                    let short_fn_name = Self::truncate_function_name(&elem.fn_name);
+
+                    serde_json::json!({
+                        "fn": short_fn_name,
+                        "file": short_filename,
+                        "line": elem.lineno
+                        // Removed "addr" - not useful for visualization and saves space
+                    })
+                })
+                .collect();
+
+            serde_json::Value::Array(relevant_frames)
+        }
+        #[cfg(not(feature = "build"))]
+        {
+            serde_json::json!([])
+        }
+    }
+
+    /// Truncate file paths to keep only the relevant parts
+    fn truncate_path(path: &str) -> String {
+        let parts: Vec<&str> = path.split('/').collect();
+        
+        // For paths like "/Users/foo/project/src/main.rs", keep "src/main.rs"
+        if let Some(src_idx) = parts.iter().rposition(|&p| p == "src") {
+            parts[src_idx..].join("/")
+        } else if parts.len() > 2 {
+            // Keep last 2 components
+            parts[parts.len().saturating_sub(2)..].join("/")
+        } else {
+            path.to_string()
+        }
+    }
+
+    /// Truncate function names to remove module paths
+    fn truncate_function_name(fn_name: &str) -> String {
+        // Remove everything before the last "::" to get just the function name
+        fn_name.split("::").last().unwrap_or(fn_name).to_string()
+    }
 }
 
 impl<W> HydroGraphWrite for HydroJson<W>
@@ -194,24 +269,9 @@ where
             node_label.to_string()
         };
 
-        // Convert backtrace to JSON if available
+        // Convert backtrace to JSON if available (optimized for size)
         let backtrace_json = if let Some(bt) = backtrace {
-            #[cfg(feature = "build")]
-            {
-                let elements = bt.elements();
-                serde_json::json!(elements.into_iter().map(|elem| {
-                    serde_json::json!({
-                        "fn_name": elem.fn_name,
-                        "filename": elem.filename,
-                        "lineno": elem.lineno,
-                        "addr": elem.addr
-                    })
-                }).collect::<Vec<_>>())
-            }
-            #[cfg(not(feature = "build"))]
-            {
-                serde_json::json!([])
-            }
+            self.optimize_backtrace(bt)
         } else {
             serde_json::json!([])
         };

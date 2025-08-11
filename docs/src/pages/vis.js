@@ -125,6 +125,7 @@ function VisV4Component() {
     
     const urlParams = new URLSearchParams(location.search);
     const dataParam = urlParams.get('data');
+    const compressedParam = urlParams.get('compressed');
     
     if (dataParam && !currentVisualizationState) {
       try {
@@ -161,8 +162,85 @@ function VisV4Component() {
         console.error('❌ Error loading graph from URL:', err);
         setError(`Failed to load graph from URL: ${err.message}`);
       }
+    } else if (compressedParam && !currentVisualizationState) {
+      // Handle compressed data
+      loadCompressedData(compressedParam);
     }
   }, [location.search, parseGraphJSON, validateGraphJSON, getAvailableGroupings, createVisualizationState, loading, currentVisualizationState, currentGrouping]);
+
+  // Load compressed data from URL parameter
+  const loadCompressedData = React.useCallback(async (compressedData) => {
+    try {
+      console.log('Loading compressed graph data from URL parameter...');
+      setLoading(true);
+      
+      // Decode base64 and decompress
+      const compressedBytes = Uint8Array.from(atob(compressedData), c => c.charCodeAt(0));
+      
+      // Use browser's built-in decompression (if available) or fallback
+      let jsonString;
+      if (typeof DecompressionStream !== 'undefined') {
+        // Modern browser with Compression Streams API
+        const stream = new DecompressionStream('gzip');
+        const writer = stream.writable.getWriter();
+        const reader = stream.readable.getReader();
+        
+        writer.write(compressedBytes);
+        writer.close();
+        
+        const chunks = [];
+        let done = false;
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          if (value) chunks.push(value);
+        }
+        
+        const decompressed = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
+        let offset = 0;
+        for (const chunk of chunks) {
+          decompressed.set(chunk, offset);
+          offset += chunk.length;
+        }
+        
+        jsonString = new TextDecoder().decode(decompressed);
+      } else {
+        // Fallback: assume uncompressed for older browsers
+        console.warn('Browser does not support compression streams, assuming uncompressed data');
+        jsonString = new TextDecoder().decode(compressedBytes);
+      }
+      
+      const jsonData = JSON.parse(jsonString);
+      console.log('Parsed compressed data:', jsonData);
+      
+      // Validate and parse the JSON
+      const validationResult = validateGraphJSON(jsonData);
+      if (!validationResult.isValid) {
+        throw new Error(`Invalid graph data: ${validationResult.errors.join(', ')}`);
+      }
+      
+      const parsedData = parseGraphJSON(jsonData);
+      setCurrentVisualizationState(parsedData.state);
+      setGraphData(jsonData);
+      
+      // Extract grouping options from the data
+      const groupings = getAvailableGroupings(jsonData);
+      setGroupingOptions(groupings);
+      
+      // Set default grouping if not set and groupings are available
+      if ((!currentGrouping || typeof currentGrouping !== 'string') && groupings.length > 0) {
+        setCurrentGrouping(groupings[0].id);
+      }
+      
+      console.log('✅ Successfully loaded compressed graph from URL');
+      
+    } catch (err) {
+      console.error('❌ Error loading compressed data from URL:', err);
+      setError(`Failed to load compressed graph from URL: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [parseGraphJSON, validateGraphJSON, getAvailableGroupings, currentGrouping]);
 
   // File upload handler
   const handleFileLoad = React.useCallback((jsonData) => {

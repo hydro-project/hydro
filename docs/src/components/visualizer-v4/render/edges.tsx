@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { BaseEdge, EdgeProps, getStraightPath, getBezierPath } from '@xyflow/react';
+import FloatingEdge from './FloatingEdge';
 
 /**
  * Standard graph edge component - uses ReactFlow's automatic routing
@@ -69,5 +70,6 @@ export function HyperEdge(props: EdgeProps) {
 // Export map for ReactFlow edgeTypes
 export const edgeTypes = {
   standard: StandardEdge,
-  hyper: HyperEdge
+  hyper: HyperEdge,
+  floating: FloatingEdge
 };

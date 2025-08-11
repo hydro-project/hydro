@@ -122,18 +122,41 @@ fn open_json_visualizer_with_fallback(json_content: &str, context_name: &str) ->
     {
         use data_encoding::BASE64URL_NOPAD;
 
-        // Encode the JSON data for URL
-        let encoded_data = BASE64URL_NOPAD.encode(json_content.as_bytes());
-        let base_url_length = "https://hydro.run/docs/visualizer#data=".len();
+        // Try compression first for large JSON
+        let (encoded_data, is_compressed) = if json_content.len() > 1000 {
+            match compress_json(json_content) {
+                Ok(compressed) => {
+                    let encoded = BASE64URL_NOPAD.encode(&compressed);
+                    println!(
+                        "📦 Compressed JSON from {} to {} bytes",
+                        json_content.len(),
+                        compressed.len()
+                    );
+                    (encoded, true)
+                }
+                Err(_) => {
+                    // Fallback to uncompressed
+                    (BASE64URL_NOPAD.encode(json_content.as_bytes()), false)
+                }
+            }
+        } else {
+            (BASE64URL_NOPAD.encode(json_content.as_bytes()), false)
+        };
+
+        let base_url_length = if is_compressed {
+            "https://hydro.run/docs/visualizer#compressed=".len()
+        } else {
+            "https://hydro.run/docs/visualizer#data=".len()
+        };
 
         if base_url_length + encoded_data.len() > MAX_SAFE_URL_LENGTH {
-            // Large graph - save to temp file and give instructions
+            // Still too large even with compression - save to temp file
             handle_large_graph_fallback(json_content, encoded_data.len())?;
             return Ok(());
         }
 
-        // Small graph - use URL encoding
-        try_open_visualizer_urls(&encoded_data, context_name)?;
+        // Small enough - use URL encoding
+        try_open_visualizer_urls(&encoded_data, context_name, is_compressed)?;
     }
 
     #[cfg(not(feature = "viz"))]
@@ -188,9 +211,20 @@ fn save_json_to_temp(json_content: &str) -> Result<std::path::PathBuf> {
 }
 
 /// Try to open the visualizer URLs, with localhost fallback to docs site.
-fn try_open_visualizer_urls(encoded_data: &str, context_name: &str) -> Result<()> {
-    let localhost_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
-    let docs_url = format!("https://hydro.run/docs/visualizer#data={}", encoded_data);
+fn try_open_visualizer_urls(
+    encoded_data: &str,
+    context_name: &str,
+    is_compressed: bool,
+) -> Result<()> {
+    let url_param = if is_compressed { "compressed" } else { "data" };
+    let localhost_url = format!(
+        "http://localhost:3000/visualizer#{}={}",
+        url_param, encoded_data
+    );
+    let docs_url = format!(
+        "https://hydro.run/docs/visualizer#{}={}",
+        url_param, encoded_data
+    );
 
     // Try to open localhost first
     match webbrowser::open(&localhost_url) {
@@ -274,4 +308,17 @@ fn print_json_debug_info(json_content: &str) {
         }
     }
     println!("=== END JSON SAMPLE ===");
+}
+
+/// Compress JSON data using gzip compression
+#[cfg(feature = "viz")]
+fn compress_json(json_content: &str) -> Result<Vec<u8>> {
+    use std::io::Write;
+
+    use flate2::Compression;
+    use flate2::write::GzEncoder;
+
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(json_content.as_bytes())?;
+    Ok(encoder.finish()?)
 }

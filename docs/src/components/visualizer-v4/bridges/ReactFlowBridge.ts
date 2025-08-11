@@ -9,7 +9,7 @@
 import type { VisualizationState } from '../core/VisState';
 import type { GraphNode, GraphEdge, Container } from '../shared/types';
 import { MarkerType } from '@xyflow/react';
-import { getHandleConfig } from '../render/handleConfig';
+import { getHandleConfig, CURRENT_HANDLE_STRATEGY } from '../render/handleConfig';
 
 // ReactFlow types
 export interface ReactFlowNode {
@@ -29,12 +29,13 @@ export interface ReactFlowNode {
     height?: number;
   };
   parentId?: string;
+  connectable?: boolean; // For floating handles strategy
   // extent?: 'parent'; // REMOVED: Causes drag coordinate issues in ReactFlow
 }
 
 export interface ReactFlowEdge {
   id: string;
-  type: 'standard' | 'hyper';
+  type: 'standard' | 'hyper' | 'floating';
   source: string;
   target: string;
   sourceHandle?: string;
@@ -289,7 +290,8 @@ export class ReactFlowBridge {
           width,
           height
         },
-        parentId
+        parentId,
+        connectable: CURRENT_HANDLE_STRATEGY === 'floating'
       };
       
       nodes.push(containerNode);
@@ -340,7 +342,8 @@ export class ReactFlowBridge {
           colorPalette: this.colorPalette,
           ...this.extractCustomProperties(node)
         },
-        parentId
+        parentId,
+        connectable: CURRENT_HANDLE_STRATEGY === 'floating'
       };
       
       nodes.push(standardNode);
@@ -364,21 +367,52 @@ export class ReactFlowBridge {
       
       const handleConfig = getHandleConfig();
       
-      const reactFlowEdge: ReactFlowEdge = {
-        id: edge.id,
-        type: 'standard',
-        source: edge.source,
-        target: edge.target,
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 15,
-          height: 15,
-          color: '#999'
-        },
-        data: {
-          style: edge.style || 'default'
-        } as any
-      };
+      console.log(`[ReactFlowBridge] 🔍 BROWSER DEBUG - Edge ${edge.id}: CURRENT_HANDLE_STRATEGY=${CURRENT_HANDLE_STRATEGY}`);
+      
+      // Determine edge type based on handle strategy
+      const edgeType: 'standard' | 'floating' = CURRENT_HANDLE_STRATEGY === 'floating' ? 'floating' : 'standard';
+      
+      // For floating edges, create edge without handle properties
+      // For other edges, create edge with handle properties that can be set
+      let reactFlowEdge: ReactFlowEdge;
+      
+      if (CURRENT_HANDLE_STRATEGY === 'floating') {
+        // Floating edges: no handle properties at all
+        reactFlowEdge = {
+          id: edge.id,
+          type: edgeType,
+          source: edge.source,
+          target: edge.target,
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 15,
+            height: 15,
+            color: '#999'
+          },
+          data: {
+            style: edge.style || 'default'
+          } as any
+        };
+      } else {
+        // Standard edges: include handle properties
+        reactFlowEdge = {
+          id: edge.id,
+          type: edgeType,
+          source: edge.source,
+          target: edge.target,
+          sourceHandle: undefined,
+          targetHandle: undefined,
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 15,
+            height: 15,
+            color: '#999'
+          },
+          data: {
+            style: edge.style || 'default'
+          } as any
+        };
+      }
       
       // Check if this edge has layout/routing information from ELK
       if (edge.layout && edge.layout.sections && edge.layout.sections.length > 0) {
@@ -409,14 +443,29 @@ export class ReactFlowBridge {
       
       // Handle strategy should be determined by VisualizationState, not ReactFlowBridge
       // TODO: Move handle logic to VisualizationState.getEdgeHandles(edgeId)
-      if (!handleConfig.enableContinuousHandles) {
+      if (CURRENT_HANDLE_STRATEGY === 'floating') {
+        // For floating edges, the edge object already has no handle properties
+        // Nothing to do - the custom FloatingEdge component will calculate attachment points
+        console.log(`[ReactFlowBridge] ✅ BROWSER - Floating edge ${edge.id} - no handle properties`);
+      } else if (CURRENT_HANDLE_STRATEGY === 'discrete' || !handleConfig.enableContinuousHandles) {
         // Use discrete handles with forced top-down flow for consistent edge positioning
         reactFlowEdge.sourceHandle = edge.sourceHandle || 'out-bottom';
         reactFlowEdge.targetHandle = edge.targetHandle || 'in-top';
+        console.log(`[ReactFlowBridge] ✅ BROWSER - Discrete edge ${edge.id} - added handles: ${reactFlowEdge.sourceHandle}→${reactFlowEdge.targetHandle}`);
+      } else {
+        // For continuous handles, sourceHandle/targetHandle remain undefined
+        console.log(`[ReactFlowBridge] ✅ BROWSER - Continuous edge ${edge.id} - no handle properties needed`);
       }
-      // For continuous handles, omit sourceHandle/targetHandle to let ReactFlow auto-connect
       
-      // // console.log(((`[ReactFlowBridge] ✅ Created ReactFlow edge ${edge.id}:`, reactFlowEdge)));
+      console.log(`[ReactFlowBridge] 🔍 BROWSER - Final edge ${edge.id}:`, {
+        type: reactFlowEdge.type,
+        hasSourceHandle: 'sourceHandle' in reactFlowEdge,
+        hasTargetHandle: 'targetHandle' in reactFlowEdge,
+        sourceHandle: reactFlowEdge.sourceHandle,
+        targetHandle: reactFlowEdge.targetHandle
+      });
+      
+      // console.log(`[ReactFlowBridge] ✅ Created ReactFlow edge ${edge.id}:`, reactFlowEdge);
       
       edges.push(reactFlowEdge);
     });
