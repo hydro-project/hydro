@@ -17,7 +17,8 @@ use crate::keyed_stream::KeyedStream;
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
-use crate::{Bounded, Optional, Singleton, Unbounded};
+use crate::unsafety::NonDet;
+use crate::*;
 
 pub mod networking;
 
@@ -741,7 +742,7 @@ where
     /// guarantee. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
@@ -769,27 +770,30 @@ where
     /// # }
     /// # }));
     /// ```
-    pub unsafe fn assume_ordering<O2>(self) -> Stream<T, L, B, O2, R> {
+    pub fn assume_ordering<O2>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
         Stream::new(self.location, self.ir_node.into_inner())
+    }
+
+    pub fn weakest_ordering(self) -> Stream<T, L, B, NoOrder, R> {
+        let nondet = local_nondet!("this is a weaker odering guarantee, so it is safe to assume");
+        self.assume_ordering::<NoOrder>(nondet)
     }
 
     /// Explicitly "casts" the stream to a type with a different retries
     /// guarantee. Useful in unsafe code where the lack of retries cannot
     /// be proven by the type-system.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub unsafe fn assume_retries<R2>(self) -> Stream<T, L, B, O, R2> {
+    pub fn assume_retries<R2>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
         Stream::new(self.location, self.ir_node.into_inner())
     }
 
     pub fn weakest_retries(self) -> Stream<T, L, B, O, AtLeastOnce> {
-        unsafe {
-            // SAFETY: this is a weaker retry guarantee, so it is safe to assume
-            self.assume_retries::<AtLeastOnce>()
-        }
+        let nondet = local_nondet!("this is a weaker retry guarantee, so it is safe to assume");
+        self.assume_retries::<AtLeastOnce>(nondet)
     }
 }
 
@@ -856,11 +860,10 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T),
     {
-        unsafe {
-            // SAFETY: the combinator function is commutative and idempotent
-            self.assume_ordering().assume_retries()
-        }
-        .fold(init, comb)
+        let nondet = local_nondet!("the combinator function is commutative and idempotent");
+        self.assume_ordering(nondet)
+            .assume_retries(nondet)
+            .fold(init, comb)
     }
 
     /// Combines elements of the stream into an [`Optional`], by starting with the first element in the stream,
@@ -894,11 +897,10 @@ where
     where
         F: Fn(&mut T, T) + 'a,
     {
-        unsafe {
-            // SAFETY: the combinator function is commutative and idempotent
-            self.assume_ordering().assume_retries()
-        }
-        .reduce(comb)
+        let nondet = local_nondet!("the combinator function is commutative and idempotent");
+        self.assume_ordering(nondet)
+            .assume_retries(nondet)
+            .reduce(comb)
     }
 
     /// Computes the maximum element in the stream as an [`Optional`], which
@@ -1043,11 +1045,8 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T),
     {
-        unsafe {
-            // SAFETY: the combinator function is commutative
-            self.assume_ordering()
-        }
-        .fold(init, comb)
+        let nondet = local_nondet!("the combinator function is commutative");
+        self.assume_ordering(nondet).fold(init, comb)
     }
 
     /// Combines elements of the stream into a [`Optional`], by starting with the first element in the stream,
@@ -1077,11 +1076,8 @@ where
     where
         F: Fn(&mut T, T) + 'a,
     {
-        unsafe {
-            // SAFETY: the combinator function is commutative
-            self.assume_ordering()
-        }
-        .reduce(comb)
+        let nondet = local_nondet!("the combinator function is commutative");
+        self.assume_ordering(nondet).reduce(comb)
     }
 
     /// Computes the number of elements in the stream as a [`Singleton`].
@@ -1140,11 +1136,8 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T),
     {
-        unsafe {
-            // SAFETY: the combinator function is idempotent
-            self.assume_retries()
-        }
-        .fold(init, comb)
+        let nondet = local_nondet!("the combinator function is idempotent");
+        self.assume_retries(nondet).fold(init, comb)
     }
 
     /// Combines elements of the stream into an [`Optional`], by starting with the first element in the stream,
@@ -1172,11 +1165,8 @@ where
     where
         F: Fn(&mut T, T) + 'a,
     {
-        unsafe {
-            // SAFETY: the combinator function is idempotent
-            self.assume_retries()
-        }
-        .reduce(comb)
+        let nondet = local_nondet!("the combinator function is idempotent");
+        self.assume_retries(nondet).reduce(comb)
     }
 }
 
@@ -1497,21 +1487,19 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O
         other: Stream<T, L, Unbounded, O2, R2>,
     ) -> Stream<T, L, Unbounded, NoOrder, R2::Min> {
         let tick = self.location.tick();
-        unsafe {
-            // SAFETY: Because the outputs are unordered,
-            // we can interleave batches from both streams.
-            self.tick_batch(&tick)
-                .assume_ordering::<NoOrder>()
-                .assume_retries::<R2::Min>()
-                .chain(
-                    other
-                        .tick_batch(&tick)
-                        .assume_ordering::<NoOrder>()
-                        .assume_retries::<R2::Min>(),
-                )
-                .all_ticks()
-                .assume_ordering()
-        }
+        // Because the outputs are unordered, we can interleave batches from both streams.
+        let nondet_batch_interleaving = local_nondet!("output stream is NoOrder, can interleave");
+        self.batch(&tick, nondet_batch_interleaving)
+            .assume_ordering::<NoOrder>(nondet_batch_interleaving)
+            .assume_retries::<R2::Min>(nondet_batch_interleaving)
+            .chain(
+                other
+                    .batch(&tick, nondet_batch_interleaving)
+                    .assume_ordering::<NoOrder>(nondet_batch_interleaving)
+                    .assume_retries::<R2::Min>(nondet_batch_interleaving),
+            )
+            .all_ticks()
+            .assume_ordering(nondet_batch_interleaving)
     }
 }
 
@@ -1685,7 +1673,7 @@ where
 impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R> {
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
         KeyedStream {
-            underlying: unsafe { self.assume_ordering::<NoOrder>() },
+            underlying: self.weakest_ordering(),
             _phantom_order: Default::default(),
         }
     }
@@ -2179,9 +2167,9 @@ where
     /// processed. These batches are guaranteed to be contiguous across ticks and preserve
     /// the order of the input.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub unsafe fn tick_batch(self) -> Stream<T, Tick<L>, Bounded, O, R> {
+    pub fn batch(self, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
         Stream::new(
             self.location.clone().tick,
             HydroNode::Unpersist {
@@ -2253,10 +2241,10 @@ where
     /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
     /// the order of the input.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub unsafe fn tick_batch(self, tick: &Tick<L>) -> Stream<T, Tick<L>, Bounded, O, R> {
-        unsafe { self.atomic(tick).tick_batch() }
+    pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
+        self.atomic(tick).batch(nondet)
     }
 
     /// Given a time interval, returns a stream corresponding to samples taken from the
@@ -2264,66 +2252,60 @@ where
     /// as the input, but with arbitrary elements skipped between samples. There is also
     /// no guarantee on the exact timing of the samples.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// The output stream is non-deterministic in which elements are sampled, since this
     /// is controlled by a clock.
-    pub unsafe fn sample_every(
+    pub fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
+        nondet: NonDet,
     ) -> Stream<T, L, Unbounded, O, AtLeastOnce> {
-        let samples = unsafe {
-            // SAFETY: source of intentional non-determinism
-            self.location.source_interval(interval)
-        };
+        let samples = self.location.source_interval(interval, nondet);
 
         let tick = self.location.tick();
-        unsafe {
-            // SAFETY: source of intentional non-determinism
-            self.tick_batch(&tick)
-                .continue_if(samples.tick_batch(&tick).first())
-                .all_ticks()
-                .weakest_retries()
-        }
+        self.batch(&tick, nondet)
+            .continue_if(samples.batch(&tick, nondet).first())
+            .all_ticks()
+            .weakest_retries()
     }
 
     /// Given a timeout duration, returns an [`Optional`]  which will have a value if the
     /// stream has not emitted a value since that duration.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Timeout relies on non-deterministic sampling of the stream, so depending on when
     /// samples take place, timeouts may be non-deterministically generated or missed,
     /// and the notification of the timeout may be delayed as well. There is also no
     /// guarantee on how long the [`Optional`] will have a value after the timeout is
     /// detected based on when the next sample is taken.
-    pub unsafe fn timeout(
+    pub fn timeout(
         self,
         duration: impl QuotedWithContext<'a, std::time::Duration, Tick<L>> + Copy + 'a,
+        nondet: NonDet,
     ) -> Optional<(), L, Unbounded> {
         let tick = self.location.tick();
 
-        let latest_received = unsafe { self.assume_retries() }.fold_commutative(
+        let latest_received = self.assume_retries(nondet).fold_commutative(
             q!(|| None),
             q!(|latest, _| {
                 *latest = Some(Instant::now());
             }),
         );
 
-        unsafe {
-            // SAFETY: Non-deterministic delay in detecting a timeout is expected.
-            latest_received.latest_tick(&tick)
-        }
-        .filter_map(q!(move |latest_received| {
-            if let Some(latest_received) = latest_received {
-                if Instant::now().duration_since(latest_received) > duration {
-                    Some(())
+        latest_received
+            .latest_tick(&tick, nondet)
+            .filter_map(q!(move |latest_received| {
+                if let Some(latest_received) = latest_received {
+                    if Instant::now().duration_since(latest_received) > duration {
+                        Some(())
+                    } else {
+                        None
+                    }
                 } else {
-                    None
+                    Some(())
                 }
-            } else {
-                Some(())
-            }
-        }))
-        .latest()
+            }))
+            .latest()
     }
 }
 
