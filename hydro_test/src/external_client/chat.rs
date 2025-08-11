@@ -3,6 +3,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use colored::{Color, Colorize};
 use hydro_lang::keyed_stream::KeyedStream;
 use hydro_lang::location::MembershipEvent;
+use hydro_lang::unsafety::NonDet;
 use hydro_lang::*;
 use hydro_std::membership::track_membership;
 use palette::{FromColor, Hsv, Srgb};
@@ -32,28 +33,31 @@ pub fn chat_server<'a, P>(
     process: &Process<'a, P>,
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded>,
     membership: KeyedStream<u64, MembershipEvent, Process<'a, P>, Unbounded>,
+    nondet_user_arrival_broadcast: NonDet,
 ) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, NoOrder> {
     let current_members = track_membership(membership);
 
     let tick = process.tick();
 
-    unsafe {
-        current_members
-            .snapshot(&tick)
-            .keys()
-            .cross_product(in_stream.entries().tick_batch(&tick))
-            .into_keyed()
-    }
-    .all_ticks()
-    .filter_map_with_key(q!(|(recipient_id, (sender_id, line))| {
-        if sender_id != recipient_id {
-            Some(format!(
-                "From {}: {:}",
-                sender_id,
-                line.color(self::hash_to_color(sender_id + 10))
-            ))
-        } else {
-            None
-        }
-    }))
+    current_members
+        .snapshot(&tick, nondet_user_arrival_broadcast)
+        .keys()
+        .cross_product(
+            in_stream
+                .entries()
+                .batch(&tick, nondet_user_arrival_broadcast),
+        )
+        .into_keyed()
+        .all_ticks()
+        .filter_map_with_key(q!(|(recipient_id, (sender_id, line))| {
+            if sender_id != recipient_id {
+                Some(format!(
+                    "From {}: {:}",
+                    sender_id,
+                    line.color(self::hash_to_color(sender_id + 10))
+                ))
+            } else {
+                None
+            }
+        }))
 }
