@@ -16,25 +16,29 @@ pub fn two_pc_bench<'a>(
     clients: &Cluster<'a, Client>,
     client_aggregator: &Process<'a, Aggregator>,
 ) {
-    let bench_results = unsafe {
-        bench_client(
-            clients,
-            inc_u32_workload_generator,
-            |payloads| {
-                // Send committed requests back to the original client
-                two_pc(
-                    coordinator,
-                    participants,
-                    num_participants,
-                    payloads.send_bincode(coordinator).entries(),
-                )
-                .demux_bincode(clients)
-            },
-            num_clients_per_node,
-        )
-    };
+    let bench_results = bench_client(
+        clients,
+        inc_u32_workload_generator,
+        |payloads| {
+            // Send committed requests back to the original client
+            two_pc(
+                coordinator,
+                participants,
+                num_participants,
+                payloads.send_bincode(coordinator).entries(),
+            )
+            .demux_bincode(clients)
+        },
+        num_clients_per_node,
+        local_nondet("bench"),
+    );
 
-    print_bench_results(bench_results, client_aggregator, clients);
+    print_bench_results(
+        bench_results,
+        client_aggregator,
+        clients,
+        local_nondet("bench"),
+    );
 }
 
 #[cfg(test)]
