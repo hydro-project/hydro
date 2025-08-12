@@ -528,7 +528,7 @@ class VisualizationStateInvariantValidator {
           // Collapsed containers should have standard small dimensions  
           // Allow some tolerance above the collapsed constants for layout adjustments
           const maxAllowedWidth = SIZES.COLLAPSED_CONTAINER_WIDTH * 1.5;  // 300
-          const maxAllowedHeight = SIZES.COLLAPSED_CONTAINER_HEIGHT * 2;  // 200
+          const maxAllowedHeight = SIZES.COLLAPSED_CONTAINER_HEIGHT * 2;  // 300
           
           if (width > maxAllowedWidth || height > maxAllowedHeight) {
             // Suppress this warning for recently collapsed containers during layout transition
@@ -1260,7 +1260,14 @@ export class VisualizationState implements ContainerHierarchyView {
       this._inRecursiveOperation = false;
       // Defer validation until after React rendering cycle completes
       // This prevents console warnings from interrupting the render flow
-      setTimeout(() => this.validateInvariants(), 0);
+      setTimeout(() => {
+        try {
+          this.validateInvariants();
+        } catch (error) {
+          // Log but don't throw in deferred validation to avoid uncaught exceptions
+          console.error('[VisState] Deferred validation error:', error);
+        }
+      }, 0);
     }
   }
   
@@ -1452,7 +1459,14 @@ export class VisualizationState implements ContainerHierarchyView {
     if (!this._inRecursiveOperation) {
       // Defer validation until after React rendering cycle completes
       // This prevents console warnings from interrupting the render flow
-      setTimeout(() => this.validateInvariants(), 0);
+      setTimeout(() => {
+        try {
+          this.validateInvariants();
+        } catch (error) {
+          // Log but don't throw in deferred validation to avoid uncaught exceptions
+          console.error('[VisState] Deferred validation error:', error);
+        }
+      }, 0);
     }
   }
   

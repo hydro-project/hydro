@@ -67,7 +67,7 @@ export type { ReactFlowData } from './bridges/ReactFlowBridge';
 /**
  * File upload and drop zone component
  */
-export { FileDropZone } from './components/FileDropZone';
+export { default as FileDropZone } from './components/FileDropZone';
 
 /**
  * UI Control components

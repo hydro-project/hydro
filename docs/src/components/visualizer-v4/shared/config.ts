@@ -130,7 +130,7 @@ export const SIZES = {
   LARGE: 'large',
   BORDER_RADIUS_DEFAULT: '6px',
   COLLAPSED_CONTAINER_WIDTH: 200,
-  COLLAPSED_CONTAINER_HEIGHT: 100
+  COLLAPSED_CONTAINER_HEIGHT: 150
 };
 
 // Typography and font size constants

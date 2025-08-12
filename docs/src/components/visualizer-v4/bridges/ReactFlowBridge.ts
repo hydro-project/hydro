@@ -30,7 +30,7 @@ export interface ReactFlowNode {
   };
   parentId?: string;
   connectable?: boolean; // For floating handles strategy
-  // extent?: 'parent'; // REMOVED: Causes drag coordinate issues in ReactFlow
+  extent?: 'parent' | [[number, number], [number, number]]; // Constrains node movement to parent boundaries
 }
 
 export interface ReactFlowEdge {
@@ -271,7 +271,9 @@ export class ReactFlowBridge {
           height
         },
         parentId,
-        connectable: CURRENT_HANDLE_STRATEGY === 'floating'
+        connectable: CURRENT_HANDLE_STRATEGY === 'floating',
+        // Constrain child containers to their parent boundaries
+        ...(parentId && { extent: 'parent' as const })
       };
       
       nodes.push(containerNode);
@@ -319,7 +321,9 @@ export class ReactFlowBridge {
           ...this.extractCustomProperties(node)
         },
         parentId,
-        connectable: CURRENT_HANDLE_STRATEGY === 'floating'
+        connectable: CURRENT_HANDLE_STRATEGY === 'floating',
+        // Constrain child nodes to their parent boundaries
+        ...(parentId && { extent: 'parent' as const })
       };
       
       nodes.push(standardNode);

@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { ReactFlowBridge } from '../ReactFlowBridge';
 import type { ReactFlowData } from '../ReactFlowBridge';
+import { CURRENT_HANDLE_STRATEGY } from '../../render/handleConfig';
 
 describe('ReactFlowBridge', () => {
   const bridge = new ReactFlowBridge();
@@ -77,6 +78,16 @@ describe('ReactFlowBridge', () => {
             position: { x: 50, y: 75 },
             dimensions: { width: 350, height: 250 }
           }
+        };
+      }
+      return null;
+    },
+    // Add the getContainerLayout method that the bridge expects
+    getContainerLayout: (id: string) => {
+      if (id === 'container1') {
+        return {
+          position: { x: 50, y: 75 },
+          dimensions: { width: 350, height: 250 }
         };
       }
       return null;
@@ -160,7 +171,8 @@ describe('ReactFlowBridge', () => {
       const result = bridge.visStateToReactFlow(mockVisState as any);
       
       // All edges (including hyperedges) should be processed as standard edges
-      const regularEdges = result.edges.filter(e => e.type === 'standard');
+      const expectedEdgeType = CURRENT_HANDLE_STRATEGY === 'floating' ? 'floating' : 'standard';
+      const regularEdges = result.edges.filter(e => e.type === expectedEdgeType);
       expect(regularEdges.length).toBe(2); // 1 regular + 1 hyperedge (transparently included)
       
       const edge1 = regularEdges.find(e => e.id === 'edge1');
@@ -178,9 +190,10 @@ describe('ReactFlowBridge', () => {
       const allEdges = result.edges;
       expect(allEdges.length).toBeGreaterThan(0);
       
-      // All edges should be standard type (hyperedges are encapsulated)
+      // All edges should have the current handle strategy type (hyperedges are encapsulated)
+      const expectedEdgeType = CURRENT_HANDLE_STRATEGY === 'floating' ? 'floating' : 'standard';
       allEdges.forEach(edge => {
-        expect(edge.type).toBe('standard');
+        expect(edge.type).toBe(expectedEdgeType);
         expect(edge.id).toBeDefined();
         expect(edge.source).toBeDefined();
         expect(edge.target).toBeDefined();
@@ -227,6 +240,15 @@ describe('ReactFlowBridge', () => {
           }
           return null;
         },
+        getContainerLayout: (id: string) => {
+          if (id === 'parent_container') {
+            return {
+              position: { x: 100, y: 150 },
+              dimensions: { width: 200, height: 150 }
+            };
+          }
+          return null;
+        },
         getNodeLayout: (id: string) => {
           // Mock layout for child node test
           if (id === 'child_node') {
@@ -246,10 +268,10 @@ describe('ReactFlowBridge', () => {
       const childNode = result.nodes.find(n => n.id === 'child_node');
       
       expect(childNode).toBeDefined();
-      // With the fixed coordinate system, ELK child coordinates are already relative
-      // ELK: (170, 225) → ReactFlow: (170, 225) (no longer subtract container position)
-      expect(childNode!.position.x).toBe(170);
-      expect(childNode!.position.y).toBe(225);
+      // Child coordinates should be relative to container position
+      // Child absolute: (170, 225), Container: (100, 150) → Relative: (70, 75)
+      expect(childNode!.position.x).toBe(70);
+      expect(childNode!.position.y).toBe(75);
       expect(childNode!.parentId).toBe('parent_container');
       // expect(childNode!.extent).toBe('parent'); // REMOVED: No longer setting extent
     });
@@ -264,6 +286,7 @@ describe('ReactFlowBridge', () => {
       // Import the handle configuration to check current strategy
       const { getHandleConfig } = await import('../../render/handleConfig');
       const handleConfig = getHandleConfig();
+      const expectedEdgeType = CURRENT_HANDLE_STRATEGY === 'floating' ? 'floating' : 'standard';
       
       for (const edge of result.edges) {
         if (handleConfig.enableContinuousHandles) {
@@ -283,7 +306,7 @@ describe('ReactFlowBridge', () => {
         expect(edge.source).toBeDefined();
         expect(edge.target).toBeDefined();
         expect(edge.id).toBeDefined();
-        expect(edge.type).toBe('standard');
+        expect(edge.type).toBe(expectedEdgeType);
       }
     });
   });

@@ -244,10 +244,6 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
     eventHandlers?.onNodeDrag?.(event, node);
   }, [eventHandlers]);
 
-  const onNodeDragStart = useCallback((event: any, node: any) => {
-    // Drag start - no action needed
-  }, []);
-
   const onNodeDragStop = useCallback((event: any, node: any) => {
     // Store the manual position in VisualizationState
     visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
@@ -284,6 +280,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         if (!prev) return prev;
         
         // Use ReactFlow's built-in applyNodeChanges function
+        // ReactFlow's extent: 'parent' handles boundary constraints automatically
         const updatedNodes = applyNodeChanges(changes, prev.nodes);
         
         return {
@@ -405,7 +402,6 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
           onNodeDrag={onNodeDrag}
-          onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onNodesChange={onNodesChange}
           fitView={false}

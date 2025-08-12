@@ -1,0 +1,94 @@
+{
+  "edges": [
+    {
+      "id": "e1",
+      "source": "node1",
+      "target": "node2"
+    },
+    {
+      "id": "e2", 
+      "source": "node2",
+      "target": "node1"
+    }
+  ],
+  "hierarchyChoices": [
+    {
+      "hierarchy": [
+        {
+          "children": [],
+          "id": "container_a",
+          "name": "Container A"
+        },
+        {
+          "children": [],
+          "id": "container_b", 
+          "name": "Container B"
+        }
+      ],
+      "id": "location",
+      "name": "Location"
+    }
+  ],
+  "legend": {
+    "items": [
+      {
+        "label": "Transform",
+        "type": "Transform"
+      }
+    ],
+    "title": "Node Types"
+  },
+  "nodeAssignments": {
+    "location": {
+      "node1": "container_a",
+      "node2": "container_b"
+    }
+  },
+  "nodeTypeConfig": {
+    "defaultType": "Transform",
+    "types": [
+      {
+        "colorIndex": 0,
+        "id": "Transform",
+        "label": "Transform"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "data": {},
+      "id": "node1",
+      "label": "Node 1",
+      "type": "Transform"
+    },
+    {
+      "data": {},
+      "id": "node2", 
+      "label": "Node 2",
+      "type": "Transform"
+    }
+  ],
+  "styles": {
+    "containerStyles": {
+      "default": {
+        "background": "rgba(255, 255, 255, 0.9)",
+        "border": "2px solid #1a365d",
+        "borderRadius": "8px"
+      }
+    },
+    "edgeStyles": {
+      "default": {
+        "stroke": "#4a5568",
+        "strokeWidth": 2
+      }
+    },
+    "nodeStyles": {
+      "default": {
+        "background": "#ffffff",
+        "border": "2px solid #4a5568",
+        "borderRadius": "4px",
+        "color": "#2d3748"
+      }
+    }
+  }
+}

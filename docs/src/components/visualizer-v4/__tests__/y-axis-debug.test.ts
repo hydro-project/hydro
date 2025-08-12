@@ -12,11 +12,11 @@ describe('Y-Axis Debug', () => {
     const visState = new VisualizationState();
     
     // Add some test nodes
-    visState.addNode({ id: 'node1', x: 0, y: 0, width: 100, height: 50, label: 'Node 1' });
-    visState.addNode({ id: 'node2', x: 200, y: 100, width: 100, height: 50, label: 'Node 2' });
+    visState.setGraphNode('node1', { x: 0, y: 0, width: 100, height: 50, label: 'Node 1' });
+    visState.setGraphNode('node2', { x: 200, y: 100, width: 100, height: 50, label: 'Node 2' });
     
     // Add an edge
-    visState.addEdge({ id: 'edge1', source: 'node1', target: 'node2' });
+    visState.setGraphEdge('edge1', { source: 'node1', target: 'node2' });
     
     console.log('=== Y-AXIS DEBUG TEST ===');
     
@@ -28,7 +28,7 @@ describe('Y-Axis Debug', () => {
     
     // Run ELK layout
     const elkBridge = new ELKBridge();
-    await elkBridge.runLayout(visState, 'mrtree');
+    await elkBridge.layoutVisState(visState);
     
     // Get ELK layout results
     console.log('\n🔧 ELK layout results:');
@@ -39,7 +39,7 @@ describe('Y-Axis Debug', () => {
     
     // Get edge routing if available
     console.log('\n🔗 Edge routing:');
-    visState.allEdges.forEach(edge => {
+    visState.visibleEdges.forEach(edge => {
       const layout = visState.getEdgeLayout(edge.id);
       if (layout?.routing && layout.routing.length > 0) {
         const section = layout.routing[0];
