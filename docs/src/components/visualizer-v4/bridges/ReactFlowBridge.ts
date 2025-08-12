@@ -377,7 +377,7 @@ export class ReactFlowBridge {
       let reactFlowEdge: ReactFlowEdge;
       
       if (CURRENT_HANDLE_STRATEGY === 'floating') {
-        // Floating edges: no handle properties at all
+        // Floating edges: completely omit handle properties (don't set them to undefined)
         reactFlowEdge = {
           id: edge.id,
           type: edgeType,

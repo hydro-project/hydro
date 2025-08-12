@@ -75,34 +75,6 @@ impl<W> HydroJson<W> {
             .collect()
     }
 
-    fn node_type_to_style(&self, _node_type: HydroNodeType) -> serde_json::Value {
-        // No styling in backend - let the visualizer handle all presentation
-        serde_json::json!({})
-    }
-    fn edge_type_to_style(&self, edge_type: HydroEdgeType) -> serde_json::Value {
-        // Minimal styling - let the visualizer handle presentation
-        // Only include essential behavior hints for the frontend
-        let mut style = serde_json::json!({});
-
-        // Apply type-specific behavior hints only (not colors/styling)
-        match edge_type {
-            HydroEdgeType::Network => {
-                // Network edges should be animated and dashed to show cross-location communication
-                style["animated"] = serde_json::Value::Bool(true);
-                style["isDashed"] = serde_json::Value::Bool(true);
-            }
-            HydroEdgeType::Cycle => {
-                // Cycle edges should be animated to show feedback loops
-                style["animated"] = serde_json::Value::Bool(true);
-            }
-            _ => {
-                // All other edge types use default visualizer styling
-            }
-        }
-
-        style
-    }
-
     /// Apply elk.js layout via browser - nodes start at origin for elk.js to position
     fn apply_layout(&mut self) {
         // Set all nodes to default position - elk.js will handle layout in browser
@@ -213,8 +185,6 @@ where
         location_type: Option<&str>,
         backtrace: Option<&crate::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
-        let style = self.node_type_to_style(node_type);
-
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
             super::render::NodeLabel::Static(s) => s.clone(),
@@ -292,8 +262,7 @@ where
             "position": {
                 "x": 0,
                 "y": 0
-            },
-            "style": style
+            }
         });
         self.nodes.push(node);
         
@@ -312,41 +281,18 @@ where
         edge_type: HydroEdgeType,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
-        let mut style = self.edge_type_to_style(edge_type);
         let edge_id = format!("e{}", self.edge_count);
         self.edge_count += 1;
-
-        // Check if this edge crosses location boundaries
-        let is_cross_location = if let (Some(src_location), Some(dst_location)) = 
-            (self.node_locations.get(&src_id), self.node_locations.get(&dst_id)) {
-            src_location != dst_location
-        } else {
-            false
-        };
-
-        // Mark cross-location edges with special styling
-        if is_cross_location {
-            style["animated"] = serde_json::Value::Bool(true);
-            style["isDashed"] = serde_json::Value::Bool(true);
-        }
 
         let mut edge = serde_json::json!({
             "id": edge_id,
             "source": src_id.to_string(),
             "target": dst_id.to_string(),
-            "style": style
+            "edgeType": format!("{:?}", edge_type),
         });
-
-        // Add animation for certain edge types or cross-location edges
-        if matches!(edge_type, HydroEdgeType::Network | HydroEdgeType::Cycle) || is_cross_location {
-            if let Some(style_obj) = edge["style"].as_object_mut() {
-                style_obj.insert("animated".to_string(), serde_json::Value::Bool(true));
-            }
-        }
 
         if let Some(label_text) = label {
             edge["label"] = serde_json::Value::String(label_text.to_string());
-            // Remove label styling - let the visualizer handle it
         }
 
         self.edges.push(edge);

@@ -11,6 +11,7 @@ interface FileDropZoneProps {
   onFileLoad: (data: any) => void;
   hasData?: boolean;
   className?: string;
+  generatedFilePath?: string;
 }
 
 const dropZoneStyles: React.CSSProperties = {
@@ -74,7 +75,12 @@ const loadingStyles: React.CSSProperties = {
   borderRadius: '8px',
 };
 
-export function FileDropZone({ onFileLoad, hasData = false, className }: FileDropZoneProps) {
+export default function FileDropZone({ 
+  onFileLoad, 
+  hasData = false, 
+  className = '', 
+  generatedFilePath 
+}: FileDropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
@@ -209,32 +215,60 @@ export function FileDropZone({ onFileLoad, hasData = false, className }: FileDro
         >
           Choose File
         </label>
-        <div style={{ 
-          marginTop: '32px', 
-          paddingTop: '24px', 
-          borderTop: '1px solid #eee', 
-          color: '#777', 
-          fontSize: '14px' 
-        }}>
-          <p>Generate JSON files using:</p>
-          <code style={{
-            display: 'block',
-            background: '#f5f5f5',
-            padding: '8px 12px',
-            borderRadius: '4px',
-            marginTop: '8px',
-            fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
-            color: '#d73a49'
+        {generatedFilePath ? (
+          <div style={{ 
+            marginTop: '32px', 
+            paddingTop: '24px', 
+            borderTop: '1px solid #eee', 
+            color: '#555', 
+            fontSize: '14px' 
           }}>
-            built_flow.reactflow_to_file("graph.json")
-          </code>
-          <p style={{ marginTop: '16px', fontSize: '12px' }}>
-            Supports the new framework-independent visualization system
-          </p>
-        </div>
+            <p style={{ marginBottom: '12px', color: '#333', fontWeight: 'bold' }}>
+              📄 Generated file ready to load:
+            </p>
+            <code style={{
+              display: 'block',
+              background: '#e8f5e8',
+              padding: '12px',
+              borderRadius: '6px',
+              marginTop: '8px',
+              fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
+              color: '#2e7d32',
+              fontSize: '13px',
+              wordBreak: 'break-all'
+            }}>
+              {generatedFilePath}
+            </code>
+            <p style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>
+              💡 Drag and drop this file here, or click "Choose File" to browse for it
+            </p>
+          </div>
+        ) : (
+          <div style={{ 
+            marginTop: '32px', 
+            paddingTop: '24px', 
+            borderTop: '1px solid #eee', 
+            color: '#777', 
+            fontSize: '14px' 
+          }}>
+            <p>Generate JSON files using:</p>
+            <code style={{
+              display: 'block',
+              background: '#f5f5f5',
+              padding: '8px 12px',
+              borderRadius: '4px',
+              marginTop: '8px',
+              fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
+              color: '#d73a49'
+            }}>
+              built_flow.reactflow_to_file("graph.json")
+            </code>
+            <p style={{ marginTop: '16px', fontSize: '12px' }}>
+              Supports the new framework-independent visualization system
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-export default FileDropZone;

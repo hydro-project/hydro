@@ -52,6 +52,7 @@ function VisV4Component() {
   const [loading, setLoading] = React.useState(true);
   const [currentVisualizationState, setCurrentVisualizationState] = React.useState(null);
   const [graphData, setGraphData] = React.useState(null);
+  const [generatedFilePath, setGeneratedFilePath] = React.useState(null);
   
   // Force re-render counter when VisState internal state changes
   const [, forceUpdate] = React.useReducer(x => x + 1, 0);
@@ -95,6 +96,7 @@ function VisV4Component() {
         
         console.log('Loading FileDropZone...');
         const FileDropZoneModule = await import('@site/src/components/visualizer-v4/components/FileDropZone.tsx');
+        console.log('FileDropZone module loaded:', FileDropZoneModule);
         
         setCreateVisualizationState(() => visStateModule.createVisualizationState);
         setFlowGraph(() => FlowGraphModule.FlowGraph);
@@ -105,7 +107,8 @@ function VisV4Component() {
         setEdgeStyles(configModule.EDGE_STYLES);
         setInfoPanel(() => InfoPanelModule.InfoPanel);
         setLayoutControls(() => LayoutControlsModule.LayoutControls);
-        setFileDropZone(() => FileDropZoneModule.FileDropZone);
+        setFileDropZone(() => FileDropZoneModule.default);
+        console.log('All components loaded successfully');
         // Don't load grouping options here - wait until we have graph data
         setLoading(false);
         setError(null);
@@ -126,6 +129,12 @@ function VisV4Component() {
     const urlParams = new URLSearchParams(location.search);
     const dataParam = urlParams.get('data');
     const compressedParam = urlParams.get('compressed');
+    const fileParam = urlParams.get('file');
+    
+    // Handle file path parameter (from Rust debug output)
+    if (fileParam && !generatedFilePath) {
+      setGeneratedFilePath(decodeURIComponent(fileParam));
+    }
     
     if (dataParam && !currentVisualizationState) {
       try {
@@ -166,7 +175,7 @@ function VisV4Component() {
       // Handle compressed data
       loadCompressedData(compressedParam);
     }
-  }, [location.search, parseGraphJSON, validateGraphJSON, getAvailableGroupings, createVisualizationState, loading, currentVisualizationState, currentGrouping]);
+  }, [location.search, parseGraphJSON, validateGraphJSON, getAvailableGroupings, createVisualizationState, loading, currentVisualizationState, currentGrouping, generatedFilePath]);
 
   // Load compressed data from URL parameter
   const loadCompressedData = React.useCallback(async (compressedData) => {
@@ -742,6 +751,7 @@ function VisV4Component() {
             onFileLoad={handleFileLoad}
             hasData={!!currentVisualizationState}
             className="vis-file-drop"
+            generatedFilePath={generatedFilePath}
           />
         ) : (
           <div style={{

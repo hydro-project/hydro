@@ -70,12 +70,35 @@ pub fn save_dot(
     save_to_file(content, filename, "hydro_graph.dot", "DOT/Graphviz file")
 }
 
-/// Opens Hydro IR leaves in the new JSON visualizer in browser.
-/// Generates JSON and opens it via URL encoding in the docs visualizer.
+/// Opens Hydro IR leaves by saving JSON to file and opening the visualizer.
+/// Simple approach: save file, open browser, user drags and drops.
 pub fn open_json_visualizer(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
     let json_content = render_with_config(leaves, config, render_hydro_ir_json);
     print_json_debug_info(&json_content);
-    open_json_browser_impl(&json_content)
+
+    // Save to temp file
+    let temp_file = save_json_to_temp(&json_content)?;
+
+    println!("📄 Saved graph to: {}", temp_file.display());
+    println!("🌐 Opening visualizer...");
+
+    // Open the visualizer page with the file path as a URL parameter
+    let file_path_str = temp_file.to_string_lossy();
+    let encoded_path = urlencoding::encode(&file_path_str);
+    let visualizer_url = format!("http://localhost:3000/vis?file={}", encoded_path);
+    match webbrowser::open(&visualizer_url) {
+        Ok(_) => {
+            println!("✅ Opened visualizer: http://localhost:3000/vis");
+            println!("💡 The generated file path is shown in the visualizer for easy loading");
+        }
+        Err(e) => {
+            println!("❌ Failed to open browser: {}", e);
+            println!("💡 Please manually open: http://localhost:3000/vis");
+            println!("💡 Then drag and drop this file: {}", temp_file.display());
+        }
+    }
+
+    Ok(())
 }
 
 fn open_mermaid_browser(mermaid_src: &str) -> Result<()> {
@@ -104,10 +127,6 @@ fn open_dot_browser(dot_src: &str) -> Result<()> {
         write!(url, "%{:02x}", byte).unwrap();
     }
     webbrowser::open(&url)
-}
-
-fn open_json_browser_impl(json_content: &str) -> Result<()> {
-    open_json_visualizer_with_fallback(json_content, "new JSON visualizer")
 }
 
 /// Helper function to create a complete HTML file with JSON visualization and open it in browser.
