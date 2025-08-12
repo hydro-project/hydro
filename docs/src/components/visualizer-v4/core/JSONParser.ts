@@ -504,7 +504,7 @@ function parseNodes(nodes: RawNode[], state: VisualizationState): void {
       // Extract nodeType from data
       const nodeType = rawNode.data?.nodeType || rawNode.data?.type;
       
-      state.setGraphNode(id, {
+      state.addGraphNode(id, {
         label: nodeLabel || id,
         style: NODE_STYLES.DEFAULT, // Default style - will be applied by bridge based on semanticTags
         // ✅ All nodes start visible - VisualizationState manages visibility
@@ -524,7 +524,7 @@ function parseEdges(edges: RawEdge[], state: VisualizationState): void {
     try {
       const { id, source, target, semanticTags, ...otherProps } = rawEdge;
       
-      state.setGraphEdge(id, {
+      state.addGraphEdge(id, {
         source,
         target,
         style: EDGE_STYLES.DEFAULT, // Default style - will be applied by bridge based on semanticTags
@@ -594,7 +594,7 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
     // Old format: groups is an object { containerID: [nodeID1, nodeID2, ...] }
     for (const [containerId, nodeIds] of Object.entries(groupsData)) {
       if (Array.isArray(nodeIds)) {
-        state.setContainer(containerId, {
+        state.addContainer(containerId, {
           label: containerId,
           children: nodeIds,
           collapsed: false
@@ -624,7 +624,7 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
           }
         }
         
-        state.setContainer(item.id, {
+        state.addContainer(item.id, {
           label: item.name || item.id,
           children,
           collapsed: false
@@ -637,7 +637,7 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
           if (parent) {
             const parentChildren = state.getContainerChildren(parentId);
             if (!parentChildren.has(item.id)) {
-              state.setContainer(parentId, {
+              state.addContainer(parentId, {
                 ...parent,
                 children: [...parentChildren, item.id]
               });
@@ -664,7 +664,7 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
           // Add node to container's children
           const currentChildren = state.getContainerChildren(containerId);
           if (!currentChildren.has(nodeId)) {
-            state.setContainer(containerId, {
+            state.addContainer(containerId, {
               ...container,
               children: [...currentChildren, nodeId]
             });

@@ -30,7 +30,7 @@ describe('Debug Container States', () => {
     // Collapse them
     for (const containerId of containersToCollapse) {
       console.log(`Collapsing ${containerId}...`);
-      visState.setContainerCollapsed(containerId, true);
+      visState.setContainerState(containerId, { collapsed: true });
       
       const container = visState.getContainer(containerId);
       console.log(`Container ${containerId} AFTER: collapsed=${container.collapsed}, hidden=${container.hidden}`);

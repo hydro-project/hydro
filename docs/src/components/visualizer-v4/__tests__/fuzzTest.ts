@@ -178,17 +178,15 @@ class InvariantChecker {
    */
   private checkCollectionConsistency(context: string): void {
     // Check that expanded containers collection is consistent
-    const expandedContainers = this.state.expandedContainers;
+    const expandedContainers = this.state.getExpandedContainers();
     const visibleContainers = this.state.visibleContainers;
     const expectedExpandedCount = visibleContainers.filter(c => !c.collapsed).length;
-    
+
     assert.strictEqual(
       expandedContainers.length,
       expectedExpandedCount,
       `${context}: Expanded containers collection size mismatch. Expected: ${expectedExpandedCount}, Actual: ${expandedContainers.length}`
-    );
-    
-    // Check that all expanded containers are indeed not collapsed
+    );    // Check that all expanded containers are indeed not collapsed
     for (const container of expandedContainers) {
       assert.strictEqual(
         container.collapsed,
@@ -331,7 +329,7 @@ class FuzzTester {
       visibleNodes: state.visibleNodes.length,
       visibleEdges: state.visibleEdges.length,
       hyperEdges: 0, // HyperEdges are now internal - not counted externally
-      expandedContainers: state.expandedContainers.length,
+      expandedContainers: state.getExpandedContainers().length,
       collapsedContainers: state.visibleContainers.filter(c => c.collapsed).length
     };
   }

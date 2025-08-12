@@ -67,7 +67,7 @@ describe('Initial Layout Regression Tests', () => {
     const visState = parseResult.state;
 
     // Verify that containers are created as expanded
-    const expandedContainers = visState.expandedContainers;
+    const expandedContainers = visState.getExpandedContainers();
     expect(expandedContainers.length).toBeGreaterThan(0);
     
     // All containers should be expanded initially
@@ -96,7 +96,7 @@ describe('Initial Layout Regression Tests', () => {
     const visStatePassedToElk = elkCall[0];
     
     // Verify that ELK received expanded containers
-    const expandedContainersForElk = visStatePassedToElk.expandedContainers;
+    const expandedContainersForElk = visStatePassedToElk.getExpandedContainers();
     expect(expandedContainersForElk.length).toBeGreaterThan(0);
     
     // REGRESSION TEST: Ensure no containers are collapsed in initial ELK call
@@ -162,7 +162,7 @@ describe('Initial Layout Regression Tests', () => {
     const visStatePassedToElk = mockLayoutVisState.mock.calls[0][0];
     
     // REGRESSION TEST: ELK should never receive empty input
-    const expandedContainers = visStatePassedToElk.expandedContainers;
+    const expandedContainers = visStatePassedToElk.getExpandedContainers();
     const visibleNodes = visStatePassedToElk.visibleNodes;
     
     // Either containers or nodes should be visible to ELK
@@ -215,7 +215,7 @@ describe('Initial Layout Regression Tests', () => {
     });
 
     // The expandedContainers getter should initially return all containers  
-    const expandedContainers = visState.expandedContainers;
+    const expandedContainers = visState.getExpandedContainers();
     expect(expandedContainers.length).toBe(3);
 
     console.log(`✅ JSONParser created ${expandedContainers.length}/3 containers as expanded`);

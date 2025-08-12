@@ -83,15 +83,6 @@ export class VisualizationStateAdapter implements VisualizationState {
     return this.core.getContainer(id);
   }
 
-  setContainerCollapsed(id: string, collapsed: boolean): void {
-    this.core.updateContainer(id, { collapsed });
-  }
-
-  getContainerCollapsed(id: string): boolean | undefined {
-    const container = this.core.getContainer(id);
-    return container?.collapsed;
-  }
-
   setContainerHidden(id: string, hidden: boolean): void {
     this.core.updateContainer(id, { hidden });
   }

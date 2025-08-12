@@ -22,7 +22,7 @@ describe('ELKBridge Container Hierarchy', () => {
       
       // Check initial state
       expect(state.visibleNodes.length).toBe(5); // 5 nodes
-      expect(state.expandedContainers.length).toBe(2); // 2 containers
+      expect(state.getExpandedContainers().length).toBe(2); // 2 containers
       expect(state.visibleEdges.length).toBe(4); // 4 edges
       
       // Test container membership
@@ -170,7 +170,7 @@ describe('ELKBridge Container Hierarchy', () => {
       await elkBridge.layoutVisState(state);
       
       // After layout, all containers should have proper layout information
-      const containers = state.expandedContainers;
+      const containers = state.getExpandedContainers();
       for (const container of containers) {
         const layout = state.getContainerLayout(container.id);
         
@@ -253,7 +253,7 @@ describe('ELKBridge Container Hierarchy', () => {
       const state = testData!.state;
       
       // Before layout, check container dimensions
-      const containers = state.expandedContainers;
+      const containers = state.getExpandedContainers();
       const initialDimensions = containers.map(c => {
         const dims = state.getContainerAdjustedDimensions(c.id);
         return {

@@ -60,7 +60,7 @@ describe('VisualizationState + Clean Bridges Integration', () => {
       const allNodesForELK = [...visibleNodes, ...collapsedAsNodes];
 
       // Simulate ELKBridge.extractVisibleContainers() - now clean
-      const expandedContainers = visState.expandedContainers;
+      const expandedContainers = visState.getExpandedContainers();
 
       // Simulate ELKBridge.buildELKGraph() top-level node logic - now clean
       const topLevelNodes = visState.getTopLevelNodes();
@@ -117,7 +117,7 @@ describe('VisualizationState + Clean Bridges Integration', () => {
       visState.collapseContainer('bt_26');
 
       // Simulate what ELK would receive (old bridge would have leaked children)
-      const expandedContainers = visState.expandedContainers;
+      const expandedContainers = visState.getExpandedContainers();
       const collapsedAsNodes = visState.getCollapsedContainersAsNodes();
 
       // Verify: ELK sees no expanded containers (so no children to layout)
@@ -245,7 +245,7 @@ describe('VisualizationState + Clean Bridges Integration', () => {
       // ELK Bridge perspective
       const elkNodes = [...visState.visibleNodes, ...visState.getCollapsedContainersAsNodes()];
       const elkTopLevel = visState.getTopLevelNodes();
-      const elkContainers = visState.expandedContainers;
+      const elkContainers = visState.getExpandedContainers();
 
       // ReactFlow Bridge perspective  
       const reactFlowParents = visState.getParentChildMap();

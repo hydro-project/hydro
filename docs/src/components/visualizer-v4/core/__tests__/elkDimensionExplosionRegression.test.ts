@@ -65,7 +65,7 @@ describe('ELK Dimension Explosion Bug - Regression Tests', () => {
       });
 
       // ELK should see clean data - no dimension explosion risk
-      const expandedContainers = visState.expandedContainers;
+      const expandedContainers = visState.getExpandedContainers();
       expect(expandedContainers).toHaveLength(0);
     });
 
@@ -128,7 +128,7 @@ describe('ELK Dimension Explosion Bug - Regression Tests', () => {
       // inner_container_1 and inner_container_2 should NOT be visible because they're hidden
 
       // No expanded containers should exist
-      const expandedContainers = visState.expandedContainers;
+      const expandedContainers = visState.getExpandedContainers();
       expect(expandedContainers).toHaveLength(0);
     });
 
@@ -179,7 +179,7 @@ describe('ELK Dimension Explosion Bug - Regression Tests', () => {
         expect(visibleNodeIds).not.toContain(`collapsed_node_${i}`);
       }
 
-      expect(visState.expandedContainers).toHaveLength(1);
+      expect(visState.getExpandedContainers()).toHaveLength(1);
       expect(visState.getCollapsedContainersAsNodes()).toHaveLength(1);
     });
   });
@@ -211,7 +211,7 @@ describe('ELK Dimension Explosion Bug - Regression Tests', () => {
       });
       
       // Simulate what ELKBridge would receive
-      const expandedContainers = visState.expandedContainers;
+      const expandedContainers = visState.getExpandedContainers();
       const visibleNodes = visState.visibleNodes;
       const collapsedAsNodes = visState.getCollapsedContainersAsNodes();
       
@@ -249,7 +249,7 @@ describe('ELK Dimension Explosion Bug - Regression Tests', () => {
       });
       
       const visibleNodes = visState.visibleNodes;
-      const expandedContainers = visState.expandedContainers;
+      const expandedContainers = visState.getExpandedContainers();
       const collapsedAsNodes = visState.getCollapsedContainersAsNodes();
       const topLevelNodes = visState.getTopLevelNodes();
       
@@ -330,7 +330,7 @@ describe('ELK Dimension Explosion Bug - Regression Tests', () => {
       // Verify the fix: ELK would see clean data
       const elkInput = {
         nodes: [...visState.visibleNodes, ...visState.getCollapsedContainersAsNodes()],
-        containers: visState.expandedContainers
+        containers: visState.getExpandedContainers()
       };
       
       // ELK should see exactly 1 node (bt_26 as collapsed), not 23+ nodes

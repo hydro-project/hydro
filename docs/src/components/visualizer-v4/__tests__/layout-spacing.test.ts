@@ -30,7 +30,7 @@ describe('Layout Spacing Regression Tests', () => {
     console.log(`📦 Collapsing ${containersToCollapse.length} containers: ${containersToCollapse.join(', ')}`);
     
     for (const containerId of containersToCollapse) {
-      visState.setContainerCollapsed(containerId, true);
+      visState.setContainerState(containerId, { collapsed: true });
     }
     
     // Run ELK layout on the collapsed state
@@ -151,7 +151,7 @@ describe('Layout Spacing Regression Tests', () => {
     const containerIds = Array.from((visState as any)._collections.containers.keys()).slice(0, 2) as string[];
     
     for (const containerId of containerIds) {
-      visState.setContainerCollapsed(containerId, true);
+      visState.setContainerState(containerId, { collapsed: true });
     }
     
     const elkBridge = new ELKBridge();
@@ -207,8 +207,8 @@ describe('Layout Spacing Regression Tests', () => {
     const containerIds = Array.from((visState1 as any)._collections.containers.keys()).slice(0, 2) as string[];
     
     for (const containerId of containerIds) {
-      visState1.setContainerCollapsed(containerId, true);
-      visState2.setContainerCollapsed(containerId, true);
+      visState1.setContainerState(containerId, { collapsed: true });
+      visState2.setContainerState(containerId, { collapsed: true });
     }
     
     const elkBridge1 = new ELKBridge();

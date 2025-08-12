@@ -640,9 +640,6 @@ export interface ContainerHierarchyView {
  * // console.log(state.visibleContainers);  // Array of visible containers (includes collapsed)
  * // console.log(state.getExpandedContainers()); // Array of expanded containers (recommended)
  * 
- * // ============ DEPRECATED/INTERNAL STATE (avoid in bridges) ============
- * // console.log(state.expandedContainers); // DEPRECATED - exposes internal state
- * 
  * // Update properties idiomatically  
  * state.updateNode('n1', { hidden: true, style: 'highlighted' });
  * state.updateContainer('c1', { collapsed: true });
@@ -857,17 +854,37 @@ export class VisualizationState implements ContainerHierarchyView {
     this._collections.manualPositions.set(entityId, { x, y });
   }
 
-  // ============ LEGACY/COMPATIBILITY API ============
-  // These methods maintain compatibility with existing JSONParser and test code
+  // ============ CORE API - Direct Entity Management ============
+  // These are the primary methods for creating/accessing entities
   
   /**
-   * Set a graph node (legacy compatibility method)
-   * @deprecated Use the new controlled mutation API when possible
+   * Get a graph node by ID (core API)
    */
-  setGraphNode(nodeId: string, nodeData: any): VisualizationState {
+  getGraphNode(nodeId: string): any | undefined {
+    return this._collections.graphNodes.get(nodeId);
+  }
+  
+  /**
+   * Get a graph edge by ID (core API)
+   */
+  getGraphEdge(edgeId: string): any | undefined {
+    return this._collections.graphEdges.get(edgeId);
+  }
+  
+  /**
+   * Get a container by ID (core API)
+   */
+  getContainer(containerId: string): any | undefined {
+    return this._collections.containers.get(containerId);
+  }
+  
+  /**
+   * Add a graph node directly (for JSONParser and initial data loading)
+   */
+  addGraphNode(nodeId: string, nodeData: any): void {
     // Check if node belongs to a collapsed container and should be hidden
     const parentContainer = this._collections.nodeContainers.get(nodeId);
-    let shouldBeHidden = nodeData.hidden;
+    let shouldBeHidden = nodeData.hidden || false; // Default to false if not specified
     
     if (parentContainer) {
       const container = this._collections.containers.get(parentContainer);
@@ -881,123 +898,111 @@ export class VisualizationState implements ContainerHierarchyView {
       ...nodeData, 
       id: nodeId, 
       hidden: shouldBeHidden,
-      width: nodeData.width || 180,  // DEFAULT_NODE_WIDTH
-      height: nodeData.height || 60  // DEFAULT_NODE_HEIGHT
+      width: nodeData.width || LAYOUT_CONSTANTS.DEFAULT_NODE_WIDTH,
+      height: nodeData.height || LAYOUT_CONSTANTS.DEFAULT_NODE_HEIGHT 
     };
     
-    // Store the node data with correct hidden state and dimensions
     this._collections.graphNodes.set(nodeId, processedData);
     
-    // Add to visible nodes only if not hidden
+    // Update visibility cache
     if (!shouldBeHidden) {
-      this._collections._visibleNodes.set(nodeId, this._collections.graphNodes.get(nodeId));
+      this._collections._visibleNodes.set(nodeId, processedData);
     }
     
-    return this;
+    // Update edge mappings if needed
+    this._collections.nodeToEdges.set(nodeId, new Set());
   }
   
   /**
-   * Set a graph edge (legacy compatibility method)
-   * @deprecated Use the new controlled mutation API when possible
+   * Add a graph edge directly (for JSONParser and initial data loading)
    */
-  setGraphEdge(edgeId: string, edgeData: any): VisualizationState {
-    // Store the edge data
-    this._collections.graphEdges.set(edgeId, { ...edgeData, id: edgeId });
+  addGraphEdge(edgeId: string, edgeData: any): void {
+    const processedData = { 
+      ...edgeData, 
+      id: edgeId,
+      hidden: edgeData.hidden || false // Default to false if not specified
+    };
+    this._collections.graphEdges.set(edgeId, processedData);
     
-    // Update node-to-edges mapping
-    const sourceEdges = this._collections.nodeToEdges.get(edgeData.source) || new Set();
-    sourceEdges.add(edgeId);
-    this._collections.nodeToEdges.set(edgeData.source, sourceEdges);
+    // Update node-to-edge mappings
+    const sourceSet = this._collections.nodeToEdges.get(edgeData.source) || new Set();
+    sourceSet.add(edgeId);
+    this._collections.nodeToEdges.set(edgeData.source, sourceSet);
     
-    const targetEdges = this._collections.nodeToEdges.get(edgeData.target) || new Set();
-    targetEdges.add(edgeId);
-    this._collections.nodeToEdges.set(edgeData.target, targetEdges);
+    const targetSet = this._collections.nodeToEdges.get(edgeData.target) || new Set();
+    targetSet.add(edgeId);
+    this._collections.nodeToEdges.set(edgeData.target, targetSet);
     
-    // Add to visible edges if not hidden and endpoints are visible
-    if (!edgeData.hidden && this._isEndpointVisible(edgeData.source) && this._isEndpointVisible(edgeData.target)) {
-      this._collections._visibleEdges.set(edgeId, this._collections.graphEdges.get(edgeId));
+    // Update visibility cache if edge should be visible
+    const sourceExists = this._isEndpointVisible(edgeData.source);
+    const targetExists = this._isEndpointVisible(edgeData.target);
+    if (!processedData.hidden && sourceExists && targetExists) {
+      this._collections._visibleEdges.set(edgeId, processedData);
     }
-    
-    return this;
   }
   
   /**
-   * Set a container (legacy compatibility method)
-   * @deprecated Use the new controlled mutation API when possible
+   * Add a container directly (for JSONParser and initial data loading)
    */
-  setContainer(containerId: string, containerData: any): VisualizationState {
-    // Convert children array to Set for ELKBridge compatibility
-    const processedData = { ...containerData, id: containerId };
-    if (containerData.children && Array.isArray(containerData.children)) {
-      processedData.children = new Set<string>(containerData.children);
-    }
+  addContainer(containerId: string, containerData: any): void {
+    // Ensure proper defaults
+    const processedData = {
+      ...containerData,
+      id: containerId,
+      collapsed: containerData.collapsed || false,
+      hidden: containerData.hidden || false,
+      children: new Set(containerData.children || []),
+      width: containerData.width || LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH,
+      height: containerData.height || LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT
+    };
     
-    // ENCAPSULATION: External code CANNOT set dimensions - only VisState controls dimensions
-    // Dimensions are set by ELK results via setContainerLayout, or by internal defaults
-    // Remove any dimension-related properties that external code might try to set
-    delete processedData.width;
-    delete processedData.height;
-    delete processedData.expandedDimensions;
-    
-    // Set internal default dimensions - external code has no control over these
-    if (containerData.collapsed) {
-      processedData.width = LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH;
-      processedData.height = LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;
-    } else {
-      processedData.width = LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH;
-      processedData.height = LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;
-    }
-    
-    // Store the container data with Set children and default dimensions
     this._collections.containers.set(containerId, processedData);
     
-    // Update hierarchy tracking
+    // Update visibility caches
+    this._updateContainerVisibilityCaches(containerId, processedData);
+    
+    // Process children relationships
     if (containerData.children) {
-      const childrenSet = new Set<string>(containerData.children);
-      this._collections.containerChildren.set(containerId, childrenSet);
-      
-      // Update node-to-container mapping
       for (const childId of containerData.children) {
         this._collections.nodeContainers.set(childId, containerId);
+        this._collections.containerChildren.set(containerId, processedData.children);
       }
     }
     
-    // Update visibility caches
-    const container = this._collections.containers.get(containerId)!;
-    this._updateContainerVisibilityCaches(containerId, container);
-    
-    // CRITICAL: If container is created with collapsed=true, immediately hide all children
-    if (containerData.collapsed) {
-      this._inRecursiveOperation = true;
-      try {
-        this._hideAllDescendants(containerId);
-      } finally {
-        this._inRecursiveOperation = false;
-      }
+    // If container is collapsed, delegate to the full collapse handling logic
+    if (processedData.collapsed) {
+      this._handleContainerCollapse(containerId);
     }
-    
+  }
+
+  // ============ LEGACY/COMPATIBILITY API ============
+  // These methods maintain compatibility with existing JSONParser and test code
+  
+  /**
+   * Set a graph node (legacy compatibility - forwards to addGraphNode)
+   * @deprecated Use addGraphNode() for new code
+   */
+  setGraphNode(nodeId: string, nodeData: any): VisualizationState {
+    this.addGraphNode(nodeId, nodeData);
     return this;
   }
   
   /**
-   * Get a graph node (legacy compatibility method)
+   * Set a graph edge (legacy compatibility - forwards to addGraphEdge)
+   * @deprecated Use addGraphEdge() for new code
    */
-  getGraphNode(nodeId: string): any | undefined {
-    const node = this._collections.graphNodes.get(nodeId);
-    if (!node) return undefined;
-    
-    // Include visibility information for backwards compatibility with tests
-    return {
-      ...node,
-      hidden: node.hidden || !this._collections._visibleNodes.has(nodeId)
-    };
+  setGraphEdge(edgeId: string, edgeData: any): VisualizationState {
+    this.addGraphEdge(edgeId, edgeData);
+    return this;
   }
   
   /**
-   * Get a container (legacy compatibility method)
+   * Set a container (legacy compatibility - forwards to addContainer)
+   * @deprecated Use addContainer() for new code
    */
-  getContainer(containerId: string): any | undefined {
-    return this._collections.containers.get(containerId);
+  setContainer(containerId: string, containerData: any): VisualizationState {
+    this.addContainer(containerId, containerData);
+    return this;
   }
   
   /**
@@ -1297,32 +1302,6 @@ export class VisualizationState implements ContainerHierarchyView {
     return container?.elkFixed || false;
   }
 
-  // ============ TEMPORARY TEST COMPATIBILITY (to be removed) ============
-  // These methods provide temporary compatibility for tests during refactoring
-  // TODO: Update tests to use proper encapsulated API and remove these methods
-  
-  /**
-   * @deprecated Use visibleContainers.filter(c => c.collapsed) instead
-   */
-  getContainerCollapsed(containerId: string): boolean {
-    const container = this._collections.containers.get(containerId);
-    return container?.collapsed || false;
-  }
-  
-  /**
-   * @deprecated Use setContainerState() instead
-   */
-  setContainerCollapsed(containerId: string, collapsed: boolean): void {
-    this.setContainerState(containerId, { collapsed });
-  }
-  
-  /**
-   * @deprecated Use visibleContainers.filter(c => !c.collapsed) instead
-   */
-  get expandedContainers(): ReadonlyArray<any> {
-    return Array.from(this._collections._expandedContainers.values());
-  }
-  
   // ============ CONTROLLED STATE MUTATION API ============
   // These are the ONLY safe ways to modify state - ensures consistency
   
@@ -1361,21 +1340,6 @@ export class VisualizationState implements ContainerHierarchyView {
         }
       }
     }
-  }
-  
-  /**
-   * Get graph edge (legacy compatibility method)
-   */
-  getGraphEdge(edgeId: string): any | undefined {
-    const edge = this._collections.graphEdges.get(edgeId);
-    if (!edge) return undefined;
-    
-    // Include visibility information for backwards compatibility with tests
-    const isVisible = this._collections._visibleEdges.has(edgeId);
-    return {
-      ...edge,
-      hidden: edge.hidden || !isVisible
-    };
   }
 
   // ============ CONTROLLED STATE MUTATION API ============
@@ -2447,11 +2411,12 @@ export class VisualizationState implements ContainerHierarchyView {
     for (const container of this._collections.containers.values()) {
       if (container.collapsed && !container.hidden) {
         // Convert collapsed container to node format for ELK
+        // Use standardized dimensions for collapsed containers
         collapsedAsNodes.push({
           id: container.id,
           label: container.label || container.id,
-          width: container.width || 200,
-          height: container.height || 150,
+          width: LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH,  // Always use standard width
+          height: LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT, // Always use standard height
           x: container.x || 0,
           y: container.y || 0,
           hidden: false,
@@ -2543,12 +2508,12 @@ export class VisualizationState implements ContainerHierarchyView {
       const updates: any = {};
       
       if (!node.width || node.width <= 0) {
-        updates.width = 180; // LAYOUT_CONSTANTS.DEFAULT_NODE_WIDTH
+        updates.width = LAYOUT_CONSTANTS.DEFAULT_NODE_WIDTH;
         needsUpdate = true;
       }
       
       if (!node.height || node.height <= 0) {
-        updates.height = 60; // LAYOUT_CONSTANTS.DEFAULT_NODE_HEIGHT
+        updates.height = LAYOUT_CONSTANTS.DEFAULT_NODE_HEIGHT;
         needsUpdate = true;
       }
       
@@ -2558,18 +2523,19 @@ export class VisualizationState implements ContainerHierarchyView {
       }
     }
     
-    // Fix container dimensions
+    // Fix container dimensions - normalize ALL containers to standard dimensions for encapsulation
     for (const [containerId, container] of this._collections.containers) {
       let needsUpdate = false;
       const updates: any = {};
       
-      if (!container.width || container.width <= 0) {
-        updates.width = 200; // LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH
+      // Always normalize to minimum dimensions (ignore external dimensions per encapsulation)
+      if (container.width !== LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH) {
+        updates.width = LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH;
         needsUpdate = true;
       }
       
-      if (!container.height || container.height <= 0) {
-        updates.height = 150; // LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT
+      if (container.height !== LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT) {
+        updates.height = LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;
         needsUpdate = true;
       }
       

@@ -154,8 +154,6 @@ export interface VisualizationState {
   // Container methods
   setContainer(id: string, props: CreateContainerProps): ExternalContainer;
   getContainer(id: string): ExternalContainer | undefined;
-  setContainerCollapsed(id: string, collapsed: boolean): void;
-  getContainerCollapsed(id: string): boolean | undefined;
   setContainerHidden(id: string, hidden: boolean): void;
   getContainerHidden(id: string): boolean | undefined;
 
