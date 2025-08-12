@@ -87,12 +87,6 @@ export class ELKBridge {
     // Debug: Log ELK output to compare with our working standalone test
     const elkOutputContainers = (elkResult.children || []);
     
-    // Debug: Log edge routing information from ELK
-    const elkOutputEdges = (elkResult.edges || []);
-    if (elkOutputEdges.length === 0) {
-      console.warn('[ELKBridge] ⚠️ No edges in ELK result!');
-    }
-    
     // Calculate actual spacing from ELK results
     const sortedByX = elkOutputContainers
       .filter(c => c.x !== undefined)
