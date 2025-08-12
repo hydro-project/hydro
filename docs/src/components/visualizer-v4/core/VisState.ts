@@ -2003,7 +2003,7 @@ export class VisualizationState implements ContainerHierarchyView {
     }
 
     // Use the highest priority style from the aggregated edges
-    const style = this._aggregateStyles(originalEdges);
+    const style = this._hyperEdgeStyles(originalEdges);
 
     return {
       id: hyperEdgeId,
@@ -2022,7 +2022,7 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Aggregate styles from multiple edges (highest priority wins)
    */
-  private _aggregateStyles(edges: any[]): string {
+  private _hyperEdgeStyles(edges: any[]): string {
     // Priority order: ERROR > WARNING > THICK > HIGHLIGHTED > DEFAULT
     const stylePriority: Record<string, number> = {
       'error': 5,
