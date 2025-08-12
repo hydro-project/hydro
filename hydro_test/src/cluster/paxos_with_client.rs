@@ -99,20 +99,18 @@ pub trait PaxosLike<'a>: Sized {
 
                 let payloads_at_proposer = {
                     payloads_at_proposer.assume_ordering(nondet!(
-
-                    /// documented non-determinism in interleaving of client payloads,
-                                        nondet_order
-                                    ))
+                        /// documented non-determinism in interleaving of client payloads
+                        nondet_order
+                    ))
                 };
 
                 payloads_at_proposer
             },
             checkpoints,
             nondet!(
-
-            /// non-deterministic leader changes may lead to sending to a stale leader, which will drop payloads,
-                        nondet_commit
-                    ),
+                /// non-deterministic leader changes may lead to sending to a stale leader, which will drop payloads
+                nondet_commit
+            ),
             nondet_commit,
         )
     }
