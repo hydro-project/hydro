@@ -84,7 +84,6 @@ export class ELKBridge {
     
     const elkResult = await this.elk.layout(elkGraph);
     
-    // Debug: Log ELK output to compare with our working standalone test
     const elkOutputContainers = (elkResult.children || []);
     
     // Calculate actual spacing from ELK results
