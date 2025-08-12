@@ -3,6 +3,8 @@ import { createVisualizationState } from '../VisState';
 import { VisualizationEngine } from '../VisualizationEngine';
 import { ELKBridge } from '../../bridges/ELKBridge';
 
+const LOTS_OF_KIDS = 50;
+
 /**
  * Smart Collapse Integration Tests
  * 
@@ -36,14 +38,14 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       const bt_117_children = [];
       
       // Add many child nodes to bt_66 to make it large
-      for (let i = 0; i < 25; i++) {
+      for (let i = 0; i < LOTS_OF_KIDS; i++) {
         const childId = `node_bt_66_child_${i}`;
         visState.setGraphNode(childId, { label: `Child ${i} of bt_66` });
         bt_66_children.push(childId);
       }
       
       // Add many child nodes to bt_117 to make it large  
-      for (let i = 0; i < 25; i++) {
+      for (let i = 0; i < LOTS_OF_KIDS; i++) {
         const childId = `node_bt_117_child_${i}`;
         visState.setGraphNode(childId, { label: `Child ${i} of bt_117` });
         bt_117_children.push(childId);
@@ -108,7 +110,7 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       
       // Create many child nodes to make the container genuinely large
       const containerChildren = [];
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < LOTS_OF_KIDS; i++) {
         const childId = `crossing_node_${i}`;
         visState.setGraphNode(childId, { label: `Crossing Node ${i}` });
         containerChildren.push(childId);
@@ -164,20 +166,19 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       for (let i = 0; i < 10; i++) {
         const containerId = `bt_${i}`;
         containerIds.push(containerId);
-        
-        // Add child nodes
-        for (let j = 0; j < 5; j++) {
+        const children: string[] = [];
+        // Add lots of child nodes
+        for (let j = 0; j < LOTS_OF_KIDS; j++) {
           const nodeId = `node_${i}_${j}`;
           visState.setGraphNode(nodeId, { label: `Node ${i}-${j}` });
+          children.push(nodeId);
         }
 
         // Create large container that should be auto-collapsed
         visState.setContainer(containerId, {
           collapsed: false,
           hidden: false,
-          children: [`node_${i}_0`, `node_${i}_1`, `node_${i}_2`, `node_${i}_3`, `node_${i}_4`],
-          width: 2000 + (i * 100),
-          height: 1500 + (i * 100) // Escalating large areas
+          children: children,
         });
       }
 
@@ -286,7 +287,7 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       
       // Create many children for bt_66 to make it large enough to be collapsed
       const bt_66_children = [];
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < LOTS_OF_KIDS; i++) {
         const childId = `bt_66_internal_${i}`;
         visState.setGraphNode(childId, { label: `BT66 Internal ${i}` });
         bt_66_children.push(childId);
@@ -294,7 +295,7 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       
       // Create many children for bt_117 to make it large enough to be collapsed
       const bt_117_children = [];
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < LOTS_OF_KIDS; i++) {
         const childId = `bt_117_internal_${i}`;
         visState.setGraphNode(childId, { label: `BT117 Internal ${i}` });
         bt_117_children.push(childId);
@@ -522,7 +523,7 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
         // Calculate how many children needed to reach the expected area
         const expectedArea = width * height;
         const childArea = 180 * 60; // Default node size
-        const childrenNeeded = Math.max(Math.ceil(expectedArea / childArea / 5), 10); // Use /5 for more children, minimum 10
+        const childrenNeeded = LOTS_OF_KIDS;
         
         // Create enough children to make container naturally large
         for (let i = 0; i < childrenNeeded; i++) {
@@ -612,7 +613,7 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       
       // Create many child nodes to make the container genuinely massive
       const giantChildren = [];
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < LOTS_OF_KIDS; i++) {
         const childId = `giant_child_${i}`;
         visState.setGraphNode(childId, { label: `Giant Child ${i}` });
         giantChildren.push(childId);
