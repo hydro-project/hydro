@@ -16,31 +16,30 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
         .map(q!(|string| (string, ())))
         .into_keyed();
 
-    let batches = unsafe {
-        // SAFETY: addition is associative so we can batch reduce
-        partitioned_words.batch(&cluster.tick())
-    }
-    .fold(q!(|| 0), q!(|count, _| *count += 1))
-    .entries()
-    .inspect(q!(|(string, count)| println!(
-        "partition count: {} - {}",
-        string, count
-    )))
-    .all_ticks()
-    .send_bincode(&process)
-    .values();
+    let batches = partitioned_words
+        .batch(
+            &cluster.tick(),
+            nondet!(/** addition is associative so we can batch reduce */),
+        )
+        .fold(q!(|| 0), q!(|count, _| *count += 1))
+        .entries()
+        .inspect(q!(|(string, count)| println!(
+            "partition count: {} - {}",
+            string, count
+        )))
+        .all_ticks()
+        .send_bincode(&process)
+        .values();
 
     let reduced = batches
         .into_keyed()
         .reduce_commutative(q!(|total, count| *total += count));
 
-    unsafe { reduced.snapshot(&process.tick()).entries().all_ticks() }.for_each(q!(|(
-        string,
-        count,
-    )| println!(
-        "{}: {}",
-        string, count
-    )));
+    reduced
+        .snapshot(&process.tick(), nondet!(/** intentional output */))
+        .entries()
+        .all_ticks()
+        .for_each(q!(|(string, count)| println!("{}: {}", string, count)));
 
     (process, cluster)
 }
