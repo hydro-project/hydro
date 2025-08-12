@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["deserialize_bincode_with_type","serialize_bincode_with_type"]};
