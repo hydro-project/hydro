@@ -1,207 +1,79 @@
-vis.js:70 Loading visualizer-v4 components...
-vis.js:76 Loading VisState...
-vis.js:486 🖥️ Window dimensions: {width: 961, height: 823}
-vis.js:499 📐 Calculated canvas height: 743
-vis.js:76 Loading FlowGraph...
-vis.js:76 Loading shared config...
-vis.js:76 Loading JSONParser...
-vis.js:76 Loading layout...
-vis.js:76 Loading InfoPanel...
-vis.js:76 Loading LayoutControls...
-vis.js:76 Loading FileDropZone...
-vis.js:76 FileDropZone module loaded: Module {__esModule: true, Symbol(Symbol.toStringTag): 'Module'}
-vis.js:76 All components loaded successfully
-vis.js:255 Processing uploaded file: {edges: Array(8), hierarchyChoices: Array(2), legend: {…}, nodeAssignments: {…}, nodeTypeConfig: {…}, …}
-vis.js:280 ✅ File loaded successfully
-ELKBridge.ts:29 [ELKBridge] 🆕 Created fresh ELK instance: ELKNode (1754964462500)
-VisualizationEngine.ts:524 [VisualizationEngine] 🚀 VisualizationEngine initialized
-VisualizationEngine.ts:524 [VisualizationEngine] 🔧 Config: {"autoLayout":true,"layoutDebounceMs":300,"enableLogging":true,"layoutConfig":{"algorithm":"mrtree","enableSmartCollapse":true}}
-VisualizationEngine.ts:524 [VisualizationEngine] 📊 Initial layoutCount: 0
-VisualizationEngine.ts:524 [VisualizationEngine] 📊 Layout requested
-VisualizationEngine.ts:524 [VisualizationEngine] 🔄 State: initial → laying_out
-ELKBridge.ts:43 [ELKBridge] 🚀 Starting ELK layout from VisState
-ELKBridge.ts:48 [ELKBridge] 🧹 Clearing existing edge layouts for ReactFlow automatic routing
-ELKBridge.ts:304 [ELKBridge] 🔄 Using HIERARCHICAL ELK pattern to match ReactFlow
-ELKBridge.ts:351 [ELKBridge] ✅ HIERARCHICAL graph: 2 top-level nodes, 8 edges
-ELKBridge.ts:185 [ELKBridge] 🔍 ELK Input Graph Structure:
-ELKBridge.ts:185 [ELKBridge] 📊 Root: 2 children
-ELKBridge.ts:198 [ELKBridge] ✅ No existing positions in ELK input (good for fresh layout)
-ELKBridge.ts:205 [ELKBridge] 📦 All container dimensions:
-ELKBridge.ts:205 [ELKBridge] 📦 loc_0: 200x194
-ELKBridge.ts:205 [ELKBridge] 📦 loc_1: 200x194
-ELKBridge.ts:212 [ELKBridge] ⚙️  Layout options: {
-  "elk.algorithm": "mrtree",
-  "elk.direction": "DOWN",
-  "elk.hierarchyHandling": "INCLUDE_CHILDREN",
-  "elk.mrtree.spacing.nodeNode": "75",
-  "elk.mrtree.spacing.levelSeparation": "60",
-  "elk.spacing.nodeNode": "75",
-  "elk.spacing.edgeNode": "0",
-  "elk.spacing.edgeEdge": "10",
-  "elk.spacing.componentComponent": "60",
-  "elk.layered.spacing.nodeNodeBetweenLayers": "25",
-  "elk.nodeSize.constraints": "FIXED_SIZE",
-  "elk.nodeSize.options": "DEFAULT_MINIMUM_SIZE",
-  "elk.json.shapeCoords": "ROOT",
-  "elk.json.edgeCoords": "ROOT"
-}
-vis.js:486 🖥️ Window dimensions: {width: 961, height: 823}
-vis.js:499 📐 Calculated canvas height: 743
-ELKBridge.ts:124 [ELKBridge] 🎯 ELK Output Results:
-ELKBridge.ts:124 [ELKBridge] 📍 loc_0: pos=(522,62) size=404x164
-ELKBridge.ts:124 [ELKBridge] 📍 loc_1: pos=(522,301) size=1004x84
-ELKBridge.ts:131 [ELKBridge] 🔗 ELK Edge Results:
-ELKBridge.ts:131 [ELKBridge] 📊 Total edges from ELK: 8
-ELKBridge.ts:131 [ELKBridge] 🔗 Edge e0: 1 sections, start=(714,104), end=(734,104)
-ELKBridge.ts:131 [ELKBridge] 🔗 Edge e1: no sections (cross-hierarchy edge)
-ELKBridge.ts:131 [ELKBridge] 🔗 Edge e2: 1 sections, start=(714,343), end=(734,343)
-ELKBridge.ts:131 [ELKBridge] 🔗 Edge e3: 1 sections, start=(914,343), end=(934,343)
-ELKBridge.ts:131 [ELKBridge] 🔗 Edge e4: 1 sections, start=(1114,343), end=(1134,343)
-ELKBridge.ts:131 [ELKBridge] 🔗 ... and 3 more edges
-ELKBridge.ts:152 [ELKBridge] 📐 Actual ELK spacing: avg=-404.0px, range=-404--404px
- [ELKBridge] 🏗️ Found loc_0 as container in VisState, using updateContainerFromELK
- [ELKBridge] � Setting node layout for 0: ELK=(534, 74) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
- [ELKBridge] � Setting node layout for 1: ELK=(734, 74) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
- [ELKBridge] � Setting node layout for 7: ELK=(534, 154) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
- [ELKBridge] � Setting node layout for 8: ELK=(734, 154) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
- [ELKBridge] 🏗️ Found loc_1 as container in VisState, using updateContainerFromELK
- [ELKBridge] � Setting node layout for 2: ELK=(534, 313) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
- [ELKBridge] � Setting node layout for 3: ELK=(734, 313) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
- [ELKBridge] � Setting node layout for 4: ELK=(934, 313) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
- [ELKBridge] � Setting node layout for 5: ELK=(1134, 313) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
- [ELKBridge] � Setting node layout for 6: ELK=(1334, 313) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
- [ELKBridge] ✅ Using ReactFlow automatic edge routing - no ELK routing processing needed
- [VisualizationEngine] 🔍 SMART COLLAPSE DEBUG:
- [VisualizationEngine]   - enableSmartCollapse: true
- [VisualizationEngine]   - layoutCount: 0
- [VisualizationEngine]   - condition met: true
- [VisualizationEngine] 🧠 Running smart collapse after initial layout
- [VisualizationEngine] 🧠 Starting smart collapse algorithm
- [VisualizationEngine] 📊 Found 2 containers for smart collapse analysis
- [VisualizationEngine] 📏 Container loc_0 area calculation: 404x208 = 84032, collapsed=false
- [VisualizationEngine] 📏 Container loc_1 area calculation: 1004x128 = 128512, collapsed=false
- [VisualizationEngine] 📐 Container areas: loc_0=84032, loc_1=128512
- [VisualizationEngine] 📱 Viewport: 1200x800 (960000 total area)
- [VisualizationEngine] 💰 Container area budget: 672000 (70% of viewport)
- [VisualizationEngine] ✅ Keeping loc_0 expanded (area: 84032, total used: 84032)
- [VisualizationEngine] ✅ Keeping loc_1 expanded (area: 128512, total used: 212544)
- [VisualizationEngine] 🎯 Smart collapse decisions: keep 2 expanded, collapse 0
- [VisualizationEngine] 📋 Keeping expanded: loc_0, loc_1
- [VisualizationEngine] 📋 Collapsing: none
- [VisualizationEngine] 💰 Final budget usage: 212544/672000 (31.6%)
- [VisualizationEngine] 🎉 Smart collapse algorithm complete
- [ELKBridge] 🚀 Starting ELK layout from VisState
- [ELKBridge] 🧹 Clearing existing edge layouts for ReactFlow automatic routing
- [ELKBridge] 🔄 Using HIERARCHICAL ELK pattern to match ReactFlow
- [ELKBridge] ✅ HIERARCHICAL graph: 2 top-level nodes, 8 edges
- [ELKBridge] 🔍 ELK Input Graph Structure:
- [ELKBridge] 📊 Root: 2 children
- [ELKBridge] ✅ No existing positions in ELK input (good for fresh layout)
- [ELKBridge] 📦 All container dimensions:
- [ELKBridge] 📦 loc_0: 404x208
- [ELKBridge] 📦 loc_1: 1004x128
- [ELKBridge] ⚙️  Layout options: {
-  "elk.algorithm": "mrtree",
-  "elk.direction": "DOWN",
-  "elk.hierarchyHandling": "INCLUDE_CHILDREN",
-  "elk.mrtree.spacing.nodeNode": "75",
-  "elk.mrtree.spacing.levelSeparation": "60",
-  "elk.spacing.nodeNode": "75",
-  "elk.spacing.edgeNode": "0",
-  "elk.spacing.edgeEdge": "10",
-  "elk.spacing.componentComponent": "60",
-  "elk.layered.spacing.nodeNodeBetweenLayers": "25",
-  "elk.nodeSize.constraints": "FIXED_SIZE",
-  "elk.nodeSize.options": "DEFAULT_MINIMUM_SIZE",
-  "elk.json.shapeCoords": "ROOT",
-  "elk.json.edgeCoords": "ROOT"
-}
- [ELKBridge] 🎯 ELK Output Results:
- [ELKBridge] 📍 loc_0: pos=(522,62) size=404x164
- [ELKBridge] 📍 loc_1: pos=(522,301) size=1004x84
- [ELKBridge] 🔗 ELK Edge Results:
-ELKBridge.ts:131 [ELKBridge] 📊 Total edges from ELK: 8
-ELKBridge.ts:131 [ELKBridge] 🔗 Edge e0: 1 sections, start=(714,104), end=(734,104)
-ELKBridge.ts:131 [ELKBridge] 🔗 Edge e1: no sections (cross-hierarchy edge)
-ELKBridge.ts:131 [ELKBridge] 🔗 Edge e2: 1 sections, start=(714,343), end=(734,343)
-ELKBridge.ts:131 [ELKBridge] 🔗 Edge e3: 1 sections, start=(914,343), end=(934,343)
-ELKBridge.ts:131 [ELKBridge] 🔗 Edge e4: 1 sections, start=(1114,343), end=(1134,343)
-ELKBridge.ts:131 [ELKBridge] 🔗 ... and 3 more edges
-ELKBridge.ts:152 [ELKBridge] 📐 Actual ELK spacing: avg=-404.0px, range=-404--404px
-ELKBridge.ts:602 [ELKBridge] 🏗️ Found loc_0 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:677 [ELKBridge] � Setting node layout for 0: ELK=(534, 74) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
-ELKBridge.ts:677 [ELKBridge] � Setting node layout for 1: ELK=(734, 74) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
-ELKBridge.ts:677 [ELKBridge] � Setting node layout for 7: ELK=(534, 154) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
-ELKBridge.ts:677 [ELKBridge] � Setting node layout for 8: ELK=(734, 154) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
-ELKBridge.ts:602 [ELKBridge] 🏗️ Found loc_1 as container in VisState, using updateContainerFromELK
-ELKBridge.ts:677 [ELKBridge] � Setting node layout for 2: ELK=(534, 313) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
-ELKBridge.ts:677 [ELKBridge] � Setting node layout for 3: ELK=(734, 313) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
-ELKBridge.ts:677 [ELKBridge] � Setting node layout for 4: ELK=(934, 313) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
-ELKBridge.ts:677 [ELKBridge] � Setting node layout for 5: ELK=(1134, 313) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
-ELKBridge.ts:677 [ELKBridge] � Setting node layout for 6: ELK=(1334, 313) -> calling setNodeLayout with: {position: {…}, dimensions: {…}}
-ELKBridge.ts:625 [ELKBridge] ✅ Using ReactFlow automatic edge routing - no ELK routing processing needed
-VisualizationEngine.ts:524 [VisualizationEngine] 🔄 State: laying_out → ready
-VisualizationEngine.ts:524 [VisualizationEngine] ✅ Layout complete (1 total layouts)
-ReactFlowBridge.ts:72 [ReactFlowBridge] 🔄 Using HIERARCHICAL ELK + ReactFlow pattern
-ReactFlowBridge.ts:80 [ReactFlowBridge] 🗺️ Parent map has 9 relationships: (9) [Array(2), Array(2), Array(2), Array(2), Array(2), Array(2), Array(2), Array(2), Array(2)]
-ReactFlowBridge.ts:84 [ReactFlowBridge] 📊 Before conversion: 2 containers, 9 nodes
-ReactFlowBridge.ts:267 [ReactFlowBridge] 📦 Container loc_0: collapsed=false, position=(522, 62), size=404x208, nodeCount=0
-ReactFlowBridge.ts:267 [ReactFlowBridge] 📦 Container loc_1: collapsed=false, position=(522, 301), size=1004x128, nodeCount=0
-ReactFlowBridge.ts:87 [ReactFlowBridge] 📦 After container conversion: 2 container nodes
-ReactFlowBridge.ts:324 [ReactFlowBridge] 🔷 Node 5: absolute=(1134, 313) -> relative=(612, 12) parent=loc_1
-ReactFlowBridge.ts:324 [ReactFlowBridge] 🔷 Node 7: absolute=(534, 154) -> relative=(12, 92) parent=loc_0
-ReactFlowBridge.ts:324 [ReactFlowBridge] 🔷 Node 0: absolute=(534, 74) -> relative=(12, 12) parent=loc_0
-ReactFlowBridge.ts:324 [ReactFlowBridge] 🔷 Node 1: absolute=(734, 74) -> relative=(212, 12) parent=loc_0
-ReactFlowBridge.ts:324 [ReactFlowBridge] 🔷 Node 4: absolute=(934, 313) -> relative=(412, 12) parent=loc_1
-ReactFlowBridge.ts:324 [ReactFlowBridge] 🔷 Node 8: absolute=(734, 154) -> relative=(212, 92) parent=loc_0
-ReactFlowBridge.ts:324 [ReactFlowBridge] 🔷 Node 6: absolute=(1334, 313) -> relative=(812, 12) parent=loc_1
-ReactFlowBridge.ts:324 [ReactFlowBridge] 🔷 Node 2: absolute=(534, 313) -> relative=(12, 12) parent=loc_1
-ReactFlowBridge.ts:324 [ReactFlowBridge] 🔷 Node 3: absolute=(734, 313) -> relative=(212, 12) parent=loc_1
-ReactFlowBridge.ts:91 [ReactFlowBridge] 🔷 After node conversion: 9 standard nodes
-ReactFlowBridge.ts:355 [ReactFlowBridge] 🔍 STARTING EDGE CONVERSION - Strategy: floating
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 Edge 0 (e0): {source: '0', target: '1', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 BROWSER DEBUG - Edge e0: CURRENT_HANDLE_STRATEGY=floating
-ReactFlowBridge.ts:448 [ReactFlowBridge] 🔗 Edge e0 has no routing sections - will use automatic ReactFlow routing
-ReactFlowBridge.ts:459 [ReactFlowBridge] ✅ BROWSER - Floating edge e0 - using default handles for React Flow v12 compatibility
-ReactFlowBridge.ts:468 [ReactFlowBridge] 🔍 BROWSER - Final edge e0: {type: 'floating', hasSourceHandle: true, hasTargetHandle: true, sourceHandleValue: 'out-bottom', targetHandleValue: 'in-top'}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 Edge 1 (e1): {source: '1', target: '2', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 BROWSER DEBUG - Edge e1: CURRENT_HANDLE_STRATEGY=floating
-ReactFlowBridge.ts:448 [ReactFlowBridge] 🔗 Edge e1 has no routing sections - will use automatic ReactFlow routing
-ReactFlowBridge.ts:459 [ReactFlowBridge] ✅ BROWSER - Floating edge e1 - using default handles for React Flow v12 compatibility
-ReactFlowBridge.ts:468 [ReactFlowBridge] 🔍 BROWSER - Final edge e1: {type: 'floating', hasSourceHandle: true, hasTargetHandle: true, sourceHandleValue: 'out-bottom', targetHandleValue: 'in-top'}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 Edge 2 (e2): {source: '2', target: '3', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 BROWSER DEBUG - Edge e2: CURRENT_HANDLE_STRATEGY=floating
-ReactFlowBridge.ts:448 [ReactFlowBridge] 🔗 Edge e2 has no routing sections - will use automatic ReactFlow routing
-ReactFlowBridge.ts:459 [ReactFlowBridge] ✅ BROWSER - Floating edge e2 - using default handles for React Flow v12 compatibility
-ReactFlowBridge.ts:468 [ReactFlowBridge] 🔍 BROWSER - Final edge e2: {type: 'floating', hasSourceHandle: true, hasTargetHandle: true, sourceHandleValue: 'out-bottom', targetHandleValue: 'in-top'}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 Edge 3 (e3): {source: '3', target: '4', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 BROWSER DEBUG - Edge e3: CURRENT_HANDLE_STRATEGY=floating
-ReactFlowBridge.ts:448 [ReactFlowBridge] 🔗 Edge e3 has no routing sections - will use automatic ReactFlow routing
-ReactFlowBridge.ts:459 [ReactFlowBridge] ✅ BROWSER - Floating edge e3 - using default handles for React Flow v12 compatibility
-ReactFlowBridge.ts:468 [ReactFlowBridge] 🔍 BROWSER - Final edge e3: {type: 'floating', hasSourceHandle: true, hasTargetHandle: true, sourceHandleValue: 'out-bottom', targetHandleValue: 'in-top'}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 Edge 4 (e4): {source: '4', target: '5', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 BROWSER DEBUG - Edge e4: CURRENT_HANDLE_STRATEGY=floating
-ReactFlowBridge.ts:448 [ReactFlowBridge] 🔗 Edge e4 has no routing sections - will use automatic ReactFlow routing
-ReactFlowBridge.ts:459 [ReactFlowBridge] ✅ BROWSER - Floating edge e4 - using default handles for React Flow v12 compatibility
-ReactFlowBridge.ts:468 [ReactFlowBridge] 🔍 BROWSER - Final edge e4: {type: 'floating', hasSourceHandle: true, hasTargetHandle: true, sourceHandleValue: 'out-bottom', targetHandleValue: 'in-top'}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 Edge 5 (e5): {source: '5', target: '6', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 BROWSER DEBUG - Edge e5: CURRENT_HANDLE_STRATEGY=floating
-ReactFlowBridge.ts:448 [ReactFlowBridge] 🔗 Edge e5 has no routing sections - will use automatic ReactFlow routing
-ReactFlowBridge.ts:459 [ReactFlowBridge] ✅ BROWSER - Floating edge e5 - using default handles for React Flow v12 compatibility
-ReactFlowBridge.ts:468 [ReactFlowBridge] 🔍 BROWSER - Final edge e5: {type: 'floating', hasSourceHandle: true, hasTargetHandle: true, sourceHandleValue: 'out-bottom', targetHandleValue: 'in-top'}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 Edge 6 (e6): {source: '6', target: '7', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 BROWSER DEBUG - Edge e6: CURRENT_HANDLE_STRATEGY=floating
-ReactFlowBridge.ts:448 [ReactFlowBridge] 🔗 Edge e6 has no routing sections - will use automatic ReactFlow routing
-ReactFlowBridge.ts:459 [ReactFlowBridge] ✅ BROWSER - Floating edge e6 - using default handles for React Flow v12 compatibility
-ReactFlowBridge.ts:468 [ReactFlowBridge] 🔍 BROWSER - Final edge e6: {type: 'floating', hasSourceHandle: true, hasTargetHandle: true, sourceHandleValue: 'out-bottom', targetHandleValue: 'in-top'}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 Edge 7 (e7): {source: '7', target: '8', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:361 [ReactFlowBridge] 🔍 BROWSER DEBUG - Edge e7: CURRENT_HANDLE_STRATEGY=floating
-ReactFlowBridge.ts:448 [ReactFlowBridge] 🔗 Edge e7 has no routing sections - will use automatic ReactFlow routing
-ReactFlowBridge.ts:459 [ReactFlowBridge] ✅ BROWSER - Floating edge e7 - using default handles for React Flow v12 compatibility
-ReactFlowBridge.ts:468 [ReactFlowBridge] 🔍 BROWSER - Final edge e7: {type: 'floating', hasSourceHandle: true, hasTargetHandle: true, sourceHandleValue: 'out-bottom', targetHandleValue: 'in-top'}
-ReactFlowBridge.ts:95 [ReactFlowBridge] ✅ Hierarchical pattern: 11 nodes, 8 edges
-FlowGraph.tsx:227 [FlowGraph] 🚫 Auto-fit disabled for debugging Y-axis offset
-FlowGraph.tsx:436 [FlowGraph] 🔍 FINAL DEBUG - Edges before ReactFlow: (8) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-FlowGraph.tsx:436 [FlowGraph] 🔍 FINAL DEBUG - Edges before ReactFlow: (8) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-FlowGraph.tsx:436 [FlowGraph] 🔍 FINAL DEBUG - Edges before ReactFlow: (8) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-FlowGraph.tsx:436 [FlowGraph] 🔍 FINAL DEBUG - Edges before ReactFlow: (8) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+main.js:1550 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+VisState.ts:1514 [DEBUG] Starting collapse for container loc_0
+VisState.ts:1536 [COLLAPSE] Found 2 crossing edges for container loc_0
+VisState.ts:1545 [COLLAPSE] Creating 2 hyperEdges for container loc_0
+VisState.ts:1545 [DEBUG] Creating hyperEdge: hyper_loc_0_to_2 (loc_0 -> 2)
+VisState.ts:1545 [DEBUG] Creating hyperEdge: hyper_6_to_loc_0 (6 -> loc_0)
+VisState.ts:1564 [DEBUG] About to hide 2 crossing edges
+VisState.ts:1572 [DEBUG] Hiding regular edge: e1
+VisState.ts:1572 [DEBUG] Hiding regular edge: e6
+VisState.ts:1582 [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of loc_0
+VisState.ts:1678 [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of loc_0
+VisState.ts:1785 [HYPEREDGE_LIFTING] Completed lifting: 0 updated, 0 deleted
+VisState.ts:1586 [DEBUG] Post-collapse visibility check for loc_0:
+VisState.ts:1604 [DEBUG] Final visibility state: visibleNodes=5, visibleContainers=2, hyperEdges=2
+VisState.ts:1836 [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
+VisState.ts:1514 [DEBUG] Starting collapse for container loc_1
+VisState.ts:1034 [DEBUG] Preserving hyperEdge hyper_loc_0_to_2: external container->internal connection
+VisState.ts:1029 [DEBUG] Preserving hyperEdge hyper_6_to_loc_0: internal->external container connection
+VisState.ts:1536 [COLLAPSE] Found 0 crossing edges for container loc_1
+VisState.ts:1545 [COLLAPSE] Creating 0 hyperEdges for container loc_1
+VisState.ts:1564 [DEBUG] About to hide 0 crossing edges
+VisState.ts:1582 [DEBUG] Updating existing hyperEdges with invalid endpoints due to collapse of loc_1
+VisState.ts:1678 [HYPEREDGE_LIFTING] Checking existing hyperEdges for invalidation due to collapse of loc_1
+VisState.ts:1724 [HYPEREDGE_LIFTING] Target 2 is hidden, lifting to ancestor loc_1
+VisState.ts:1757 [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_loc_0_to_2 to hyper_loc_0_to_loc_1 (loc_0 -> loc_1)
+VisState.ts:1714 [HYPEREDGE_LIFTING] Source 6 is hidden, lifting to ancestor loc_1
+VisState.ts:1757 [HYPEREDGE_LIFTING] Lifting hyperEdge hyper_6_to_loc_0 to hyper_loc_1_to_loc_0 (loc_1 -> loc_0)
+VisState.ts:1785 [HYPEREDGE_LIFTING] Completed lifting: 2 updated, 0 deleted
+VisState.ts:1586 [DEBUG] Post-collapse visibility check for loc_1:
+VisState.ts:1604 [DEBUG] Final visibility state: visibleNodes=0, visibleContainers=2, hyperEdges=2
+VisState.ts:1836 [HYPEREDGE_LIFTING] Validation passed: All hyperEdges have valid endpoints
+VisState.ts:103 [VisState] Invariant warnings (1): [{…}]0: {type: 'COLLAPSED_CONTAINER_LARGE_DIMENSIONS', message: 'Collapsed container loc_0 has unexpectedly large dimensions: 200x238 (expected ≤300x200)', entityId: 'loc_0', severity: 'warning'}length: 1[[Prototype]]: Array(0)
+validateInvariants @ VisState.ts:103
+validateInvariants @ VisState.ts:2341
+eval @ VisState.ts:1252
+setTimeout
+collapseContainer @ VisState.ts:1252
+eval @ vis.js:324
+eval @ FlowGraph.tsx:231
+onSelectNodeHandler @ index.js:2213
+callCallback @ react-dom.development.js:4164
+invokeGuardedCallbackDev @ react-dom.development.js:4213
+invokeGuardedCallback @ react-dom.development.js:4277
+invokeGuardedCallbackAndCatchFirstError @ react-dom.development.js:4291
+executeDispatch @ react-dom.development.js:9041
+processDispatchQueueItemsInOrder @ react-dom.development.js:9073
+processDispatchQueue @ react-dom.development.js:9086
+dispatchEventsForPlugins @ react-dom.development.js:9097
+eval @ react-dom.development.js:9288
+batchedUpdates$1 @ react-dom.development.js:26174
+batchedUpdates @ react-dom.development.js:3991
+dispatchEventForPluginEventSystem @ react-dom.development.js:9287
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ react-dom.development.js:6465
+dispatchEvent @ react-dom.development.js:6457
+dispatchDiscreteEvent @ react-dom.development.js:6430
+VisState.ts:109 [VisState] Warning summary: {COLLAPSED_CONTAINER_LARGE_DIMENSIONS: 1}COLLAPSED_CONTAINER_LARGE_DIMENSIONS: 1[[Prototype]]: Object
+validateInvariants @ VisState.ts:109
+validateInvariants @ VisState.ts:2341
+eval @ VisState.ts:1252
+setTimeout
+collapseContainer @ VisState.ts:1252
+eval @ vis.js:324
+eval @ FlowGraph.tsx:231
+onSelectNodeHandler @ index.js:2213
+callCallback @ react-dom.development.js:4164
+invokeGuardedCallbackDev @ react-dom.development.js:4213
+invokeGuardedCallback @ react-dom.development.js:4277
+invokeGuardedCallbackAndCatchFirstError @ react-dom.development.js:4291
+executeDispatch @ react-dom.development.js:9041
+processDispatchQueueItemsInOrder @ react-dom.development.js:9073
+processDispatchQueue @ react-dom.development.js:9086
+dispatchEventsForPlugins @ react-dom.development.js:9097
+eval @ react-dom.development.js:9288
+batchedUpdates$1 @ react-dom.development.js:26174
+batchedUpdates @ react-dom.development.js:3991
+dispatchEventForPluginEventSystem @ react-dom.development.js:9287
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ react-dom.development.js:6465
+dispatchEvent @ react-dom.development.js:6457
+dispatchDiscreteEvent @ react-dom.development.js:6430

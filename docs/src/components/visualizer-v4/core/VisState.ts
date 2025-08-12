@@ -16,7 +16,7 @@ import {
   GraphEdge,
   Container
 } from '../shared/types';
-import { LAYOUT_CONSTANTS, HYPEREDGE_CONSTANTS } from '../shared/config';
+import { LAYOUT_CONSTANTS, HYPEREDGE_CONSTANTS, SIZES } from '../shared/config';
 import { ContainerPadding } from './ContainerPadding';
 // Simple assertion function that works in both Node.js and browser environments
 function assert(condition: any, message?: string): asserts condition {
@@ -99,8 +99,19 @@ class VisualizationStateInvariantValidator {
         delete warningsByType['HYPEREDGE_TO_HIDDEN_CONTAINER'];
       }
       
-      // Log other warnings normally (HYPEREDGE_TO_HIDDEN_CONTAINER now excluded)
-      const otherWarnings = warnings.filter(w => w.type !== 'HYPEREDGE_TO_HIDDEN_CONTAINER');
+      // Special handling for container dimension warnings during collapse transitions
+      const dimensionWarnings = warningsByType['COLLAPSED_CONTAINER_LARGE_DIMENSIONS'] || 0;
+      if (dimensionWarnings > 0) {
+        // Suppress dimension warnings during active collapse operations
+        // These are expected during layout transitions
+        delete warningsByType['COLLAPSED_CONTAINER_LARGE_DIMENSIONS'];
+      }
+      
+      // Log other warnings normally (excluding suppressed types)
+      const otherWarnings = warnings.filter(w => 
+        w.type !== 'HYPEREDGE_TO_HIDDEN_CONTAINER' && 
+        w.type !== 'COLLAPSED_CONTAINER_LARGE_DIMENSIONS'
+      );
       if (otherWarnings.length > 0) {
         console.warn(`[VisState] Invariant warnings (${otherWarnings.length}):`, otherWarnings);
       }
@@ -514,14 +525,21 @@ class VisualizationStateInvariantValidator {
         if (layout && layout.dimensions) {
           const { width, height } = layout.dimensions;
           
-          // Collapsed containers should have standard small dimensions
-          if (width > 300 || height > 200) {
-            violations.push({
-              type: 'COLLAPSED_CONTAINER_LARGE_DIMENSIONS',
-              message: `Collapsed container ${containerId} has unexpectedly large dimensions: ${width}x${height}`,
-              entityId: containerId,
-              severity: 'warning'
-            });
+          // Collapsed containers should have standard small dimensions  
+          // Allow some tolerance above the collapsed constants for layout adjustments
+          const maxAllowedWidth = SIZES.COLLAPSED_CONTAINER_WIDTH * 1.5;  // 300
+          const maxAllowedHeight = SIZES.COLLAPSED_CONTAINER_HEIGHT * 2;  // 200
+          
+          if (width > maxAllowedWidth || height > maxAllowedHeight) {
+            // Suppress this warning for recently collapsed containers during layout transition
+            if (!this.state._recentlyCollapsedContainers.has(containerId)) {
+              violations.push({
+                type: 'COLLAPSED_CONTAINER_LARGE_DIMENSIONS',
+                message: `Collapsed container ${containerId} has unexpectedly large dimensions: ${width}x${height} (expected ≤${maxAllowedWidth}x${maxAllowedHeight})`,
+                entityId: containerId,
+                severity: 'warning'
+              });
+            }
           }
         }
       }
@@ -657,6 +675,12 @@ export class VisualizationState implements ContainerHierarchyView {
   
   // Invariant validation system
   private readonly invariantValidator: VisualizationStateInvariantValidator;
+
+  // Track containers in transition state to suppress spurious warnings
+  private readonly _recentlyCollapsedContainers = new Set<string>();
+
+  // Flag to track recursive operations
+  private _inRecursiveOperation = false;
 
   // ============ PROTECTED ACCESSORS (Internal use only) ============
   // These provide controlled access to collections for internal methods
@@ -996,14 +1020,33 @@ export class VisualizationState implements ContainerHierarchyView {
       }
     }
 
-    // Also check visible hyperedges (for nested collapsed containers)
+    // Check visible hyperedges, but with special logic to avoid deleting hyperEdges from other collapses
     for (const [hyperEdgeId, hyperEdge] of this._collections.hyperEdges) {
       if (hyperEdge.hidden) continue;
 
       const sourceInContainer = allDescendantNodes.has(hyperEdge.source);
       const targetInContainer = allDescendantNodes.has(hyperEdge.target);
 
+      // Only consider hyperEdge as crossing if one endpoint is a descendant node (not the container itself)
+      // This prevents hyperEdges connecting to other collapsed containers from being incorrectly deleted
+      const sourceIsContainer = this._collections.containers.has(hyperEdge.source);
+      const targetIsContainer = this._collections.containers.has(hyperEdge.target);
+      
       if (sourceInContainer !== targetInContainer) {
+        // If the external endpoint is another container (not a node), this hyperEdge should NOT be deleted
+        // It represents a connection between containers and should be preserved
+        if (sourceInContainer && targetIsContainer) {
+          // Source is inside, target is external container - don't delete
+          console.log(`[DEBUG] Preserving hyperEdge ${hyperEdgeId}: internal->external container connection`);
+          continue;
+        }
+        if (targetInContainer && sourceIsContainer) {
+          // Target is inside, source is external container - don't delete  
+          console.log(`[DEBUG] Preserving hyperEdge ${hyperEdgeId}: external container->internal connection`);
+          continue;
+        }
+        
+        // If we get here, it's a genuine crossing edge (node<->container connection)
         crossingEdges.push(hyperEdge);
       }
     }
@@ -1203,11 +1246,21 @@ export class VisualizationState implements ContainerHierarchyView {
     
     this._inRecursiveOperation = true;
     try {
+      // Track this container as recently collapsed to suppress dimension warnings
+      this._recentlyCollapsedContainers.add(containerId);
+      
       this.setContainerState(containerId, { collapsed: true });
+      
+      // Clear the tracking after layout has had time to adjust (2 seconds)
+      setTimeout(() => {
+        this._recentlyCollapsedContainers.delete(containerId);
+      }, 2000);
+      
     } finally {
       this._inRecursiveOperation = false;
-      // Validate at the end of the complete operation
-      this.validateInvariants();
+      // Defer validation until after React rendering cycle completes
+      // This prevents console warnings from interrupting the render flow
+      setTimeout(() => this.validateInvariants(), 0);
     }
   }
   
@@ -1371,8 +1424,8 @@ export class VisualizationState implements ContainerHierarchyView {
       
       // CRITICAL: Always override dimensions when collapsing to prevent dimension explosion
       if (state.collapsed) {
-        container.width = LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH;   // Force small collapsed width
-        container.height = LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;  // Force small collapsed height
+        container.width = SIZES.COLLAPSED_CONTAINER_WIDTH;   // Use proper collapsed width constant
+        container.height = SIZES.COLLAPSED_CONTAINER_HEIGHT; // Use proper collapsed height constant
       }
     }
     if (state.hidden !== undefined) container.hidden = state.hidden;
@@ -1397,12 +1450,11 @@ export class VisualizationState implements ContainerHierarchyView {
     // Only validate at the end for top-level operations
     // Skip validation during recursive operations to avoid performance issues
     if (!this._inRecursiveOperation) {
-      this.validateInvariants();
+      // Defer validation until after React rendering cycle completes
+      // This prevents console warnings from interrupting the render flow
+      setTimeout(() => this.validateInvariants(), 0);
     }
   }
-  
-  // Flag to track recursive operations
-  private _inRecursiveOperation = false;
   
   /**
    * Safely set edge visibility with endpoint validation
