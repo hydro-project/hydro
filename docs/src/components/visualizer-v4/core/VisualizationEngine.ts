@@ -42,7 +42,7 @@ export interface VisualizationEngineConfig {
 const DEFAULT_CONFIG: VisualizationEngineConfig = {
   autoLayout: true,
   layoutDebounceMs: 300,
-  enableLogging: true,
+  enableLogging: false,
   layoutConfig: {
     enableSmartCollapse: true,
     algorithm: 'mrtree',

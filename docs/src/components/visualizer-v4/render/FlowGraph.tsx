@@ -1,13 +1,6 @@
 /**
  * @fileoverview Bridge-Based FlowGraph Component
  * 
- * Complete replacement for alpha FlowGraph using o        console.log('[FlowGraph] ✅ Updated ReactFlow data:', {
-          nodes: dataWithManualPositions.nodes.length,
-          edges: dataWithManualPositions.edges.length
-        });
-        
-        setReactFlowData(dataWithManualPositions);ture.
- * Maintains identical API while using the new VisualizationEngine internally.
  */
 
 import React, { useEffect, useState, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
@@ -78,7 +71,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   const [converter] = useState(() => new ReactFlowConverter());
   const [engine] = useState(() => createVisualizationEngine(visualizationState, {
     autoLayout: true, // Always auto-layout for alpha compatibility
-    enableLogging: true, // Enable logging to debug smart collapse
+    enableLogging: false, // Enable logging to debug smart collapse
     layoutConfig: layoutConfig
   }));
 
@@ -114,7 +107,6 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   useEffect(() => {
     // Only run if we have all dependencies and data already exists
     if (layoutConfig && engine && converter && visualizationState && reactFlowData) {
-      // // console.log((('[FlowGraph] 🔧 Layout config changed, updating engine and re-running layout...')));
       engine.updateLayoutConfig(layoutConfig, false); // Update config first
       
       // Trigger a re-layout with the new algorithm
@@ -135,10 +127,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
           // Apply any existing manual positions
           const dataWithManualPositions = applyManualPositions(baseData, visualizationState.getAllManualPositions());
           
-          setReactFlowData(dataWithManualPositions);
-          
-          // // console.log((('[FlowGraph] ✅ Layout change applied successfully')));
-          
+          setReactFlowData(dataWithManualPositions);          
         } catch (err) {
           console.error('[FlowGraph] ❌ Failed to apply layout change:', err);
           setError(err instanceof Error ? err.message : String(err));
@@ -154,7 +143,6 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   // Listen to config changes (including color palette)
   useEffect(() => {
     if (config && converter && config.colorPalette) {
-      // // console.log((('[FlowGraph] 🎨 Color palette changed to:', config.colorPalette)));
       converter.setColorPalette(config.colorPalette);
     }
   }, [config?.colorPalette, converter]); // Only depend on the specific colorPalette value
@@ -163,7 +151,6 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   useEffect(() => {
     // Skip the effect entirely if smart collapse is running
     if (engine.getState().isRunningSmartCollapse) {
-      // console.log(('[FlowGraph] ⚠️ Skipping entire useEffect - smart collapse running'));
       return;
     }
 
@@ -172,15 +159,13 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         // Don't run layout if visualization engine is already running one OR during smart collapse
         const engineState = engine.getState();
         if (engineState.phase === 'laying_out' || engineState.isRunningSmartCollapse) {
-          // console.log(('[FlowGraph] ⚠️ Skipping layout - engine busy (phase:', engineState.phase, 'smartCollapse:', engineState.isRunningSmartCollapse, ')'));
+          console.warn(('[FlowGraph] ⚠️ Skipping layout - engine busy (phase:', engineState.phase, 'smartCollapse:', engineState.isRunningSmartCollapse, ')'));
           return;
         }
 
         setLoading(true);
         setError(null);
 
-        // console.log(('[FlowGraph] 🔄 Visualization state changed, updating...'));
-        
         // Run layout
         await engine.runLayout();
         
@@ -194,50 +179,30 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         const dataWithManualPositions = applyManualPositions(baseData, manualPositions);
         
         setReactFlowData(dataWithManualPositions);
-        
-        // console.log('[FlowGraph] ✅ Updated ReactFlow data:', {
-        //   nodes: dataWithManualPositions.nodes.length,
-        //   edges: dataWithManualPositions.edges.length
-        // });
-        
+                
         // Auto-fit if enabled (with debouncing to prevent excessive fits)
-        // DISABLED TEMPORARILY: Testing if auto-fit causes coordinate mismatch
-        // if (config.fitView !== false) {
-        //   const now = Date.now();
-        //   const timeSinceLastFit = now - lastFitTimeRef.current;
-        //   
-        //   // Clear any existing timeout
-        //   if (autoFitTimeoutRef.current) {
-        //     clearTimeout(autoFitTimeoutRef.current);
-        //   }
-        //   
-        //   // Only fit if enough time has passed or this is a significant layout change
-        //   const shouldFit = timeSinceLastFit > 500; // Minimum 500ms between fits
-        //   
-        //   autoFitTimeoutRef.current = setTimeout(() => {
-        //     try {
-        //       fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
-        //       lastFitTimeRef.current = Date.now();
-        //       // // console.log((('[FlowGraph] 🎯 Auto-fit applied')));
-        //     } catch (err) {
-        //       console.warn('[FlowGraph] ⚠️ Auto-fit failed:', err);
-        //     }
-        //   }, shouldFit ? 100 : 300); // Short delay for immediate fits, longer for recent ones
-        // }
-        console.log('[FlowGraph] 🚫 Auto-fit disabled for debugging Y-axis offset');
-        
-        // DEBUG: Log all container node data to find differences
-        // const containerNodes = dataWithManualPositions.nodes.filter(n => n.type === 'container');
-        // // console.log((('[FlowGraph] 🔍 CONTAINER NODES BEING PASSED TO REACTFLOW:')));
-        // containerNodes.forEach(node => {
-        //   console.log(`[FlowGraph] 📦 ${node.id}:`, {
-        //     position: node.position,
-        //     data: node.data,
-        //     // extent: node.extent, // REMOVED: No longer using extent
-        //     parentId: node.parentId
-        //   });
-        // });
-        
+        if (config.fitView !== false) {
+          const now = Date.now();
+          const timeSinceLastFit = now - lastFitTimeRef.current;
+          
+          // Clear any existing timeout
+          if (autoFitTimeoutRef.current) {
+            clearTimeout(autoFitTimeoutRef.current);
+          }
+          
+          // Only fit if enough time has passed or this is a significant layout change
+          const shouldFit = timeSinceLastFit > 500; // Minimum 500ms between fits
+          
+          autoFitTimeoutRef.current = setTimeout(() => {
+            try {
+              fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
+              lastFitTimeRef.current = Date.now();
+              // // console.log((('[FlowGraph] 🎯 Auto-fit applied')));
+            } catch (err) {
+              console.warn('[FlowGraph] ⚠️ Auto-fit failed:', err);
+            }
+          }, shouldFit ? 100 : 300); // Short delay for immediate fits, longer for recent ones
+        }        
       } catch (err) {
         console.error('[FlowGraph] ❌ Failed to update visualization:', err);
         setError(err instanceof Error ? err.message : String(err));
@@ -287,31 +252,28 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
     // Store the manual position in VisualizationState
     visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
     
-    // DISABLED TEMPORARILY: Testing if auto-fit causes coordinate mismatch
     // Auto-fit if enabled (after a brief delay to let the position update settle)
-    // if (config.fitView !== false) {
-    //   const now = Date.now();
-    //   const timeSinceLastFit = now - lastFitTimeRef.current;
-    //   
-    //   // Clear any existing timeout
-    //   if (autoFitTimeoutRef.current) {
-    //     clearTimeout(autoFitTimeoutRef.current);
-    //   }
-    //   
-    //   // Only auto-fit if enough time has passed since the last fit
-    //   if (timeSinceLastFit > 500) {
-    //     autoFitTimeoutRef.current = setTimeout(() => {
-    //       try {
-    //         fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
-    //         lastFitTimeRef.current = Date.now();
-    //         // // console.log((('[FlowGraph] 🎯 Auto-fit applied after drag')));
-    //       } catch (err) {
-    //         console.warn('[FlowGraph] ⚠️ Auto-fit after drag failed:', err);
-    //       }
-    //     }, 200); // Brief delay to let drag position settle
-    //   }
-    // }
-    console.log('[FlowGraph] 🚫 Auto-fit after drag disabled for debugging Y-axis offset');
+    if (config.fitView !== false) {
+      const now = Date.now();
+      const timeSinceLastFit = now - lastFitTimeRef.current;
+      
+      // Clear any existing timeout
+      if (autoFitTimeoutRef.current) {
+        clearTimeout(autoFitTimeoutRef.current);
+      }
+      
+      // Only auto-fit if enough time has passed since the last fit
+      if (timeSinceLastFit > 500) {
+        autoFitTimeoutRef.current = setTimeout(() => {
+          try {
+            fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
+            lastFitTimeRef.current = Date.now();
+          } catch (err) {
+            console.warn('[FlowGraph] ⚠️ Auto-fit after drag failed:', err);
+          }
+        }, 200); // Brief delay to let drag position settle
+      }
+    }
   }, [visualizationState, config.fitView, fitView]);
 
   // Handle ReactFlow node changes (including drag position updates)

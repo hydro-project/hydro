@@ -19,6 +19,31 @@ export interface HandleConfig {
 export type HandleStrategy = 'continuous' | 'discrete' | 'floating' | 'none';
 
 /**
+ * Handle styles for different strategies
+ */
+export const HANDLE_STYLES = {
+  continuous: {
+    background: 'transparent',
+    border: 'none',
+    width: '100%',
+    height: '100%',
+  },
+  discrete: {
+    background: '#555',
+    border: '2px solid #222',
+    width: '8px',
+    height: '8px',
+  },
+  floating: {
+    background: 'transparent',
+    border: 'none',
+    width: '8px',
+    height: '8px',
+    opacity: 0, // Invisible handles for floating edges
+  }
+} as const;
+
+/**
  * Configuration for different handle strategies
  */
 export const HANDLE_STRATEGIES = {
@@ -55,12 +80,22 @@ export const HANDLE_STRATEGIES = {
   /**
    * Floating handles - whole node connectivity with smart edge attachment
    * Uses custom floating edge component for continuous-handle-like UX
-   * No visible handles - edges attach dynamically to optimal points
+   * Includes discrete handles for React Flow v12 compatibility but FloatingEdge ignores positions
    */
   floating: {
     enableContinuousHandles: false,
-    sourceHandles: [] as HandleConfig[], // No handles needed
-    targetHandles: [] as HandleConfig[], // Custom edge calculates attachment points
+    sourceHandles: [
+      { id: 'out-top', position: Position.Top, style: { opacity: 0, width: '8px', height: '8px' } },
+      { id: 'out-right', position: Position.Right, style: { opacity: 0, width: '8px', height: '8px' } },
+      { id: 'out-bottom', position: Position.Bottom, style: { opacity: 0, width: '8px', height: '8px' } },
+      { id: 'out-left', position: Position.Left, style: { opacity: 0, width: '8px', height: '8px' } },
+    ] as HandleConfig[],
+    targetHandles: [
+      { id: 'in-top', position: Position.Top, style: { opacity: 0, width: '8px', height: '8px' } },
+      { id: 'in-right', position: Position.Right, style: { opacity: 0, width: '8px', height: '8px' } },
+      { id: 'in-bottom', position: Position.Bottom, style: { opacity: 0, width: '8px', height: '8px' } },
+      { id: 'in-left', position: Position.Left, style: { opacity: 0, width: '8px', height: '8px' } },
+    ] as HandleConfig[],
   },
   
   /**
@@ -89,10 +124,6 @@ export function getHandleConfig() {
 
 /**
  * Default handle style for continuous handles
+ * @deprecated Use HANDLE_STYLES.continuous instead
  */
-export const CONTINUOUS_HANDLE_STYLE: React.CSSProperties = {
-  background: 'transparent',
-  border: 'none',
-  width: '100%',
-  height: '100%',
-};
+export const CONTINUOUS_HANDLE_STYLE: React.CSSProperties = HANDLE_STYLES.continuous;

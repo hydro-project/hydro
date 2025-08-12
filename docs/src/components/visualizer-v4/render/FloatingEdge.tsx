@@ -6,7 +6,7 @@
  */
 
 import { useCallback } from 'react';
-import { getStraightPath, useStore, EdgeProps } from '@xyflow/react';
+import { getBezierPath, useStore, EdgeProps } from '@xyflow/react';
 
 // Utility function to get edge parameters for floating connection
 function getEdgeParams(source: any, target: any) {
@@ -29,19 +29,21 @@ function getEdgeParams(source: any, target: any) {
 // Calculate intersection point on node rectangle
 function getNodeIntersection(intersectionNode: any, targetNode: any) {
   const {
-    width: intersectionNodeWidth,
-    height: intersectionNodeHeight,
-    positionAbsolute: intersectionNodePosition,
+    measured: { width: intersectionNodeWidth = 120, height: intersectionNodeHeight = 40 },
+    internals: { positionAbsolute: intersectionNodePosition },
   } = intersectionNode;
-  const targetPosition = targetNode.positionAbsolute;
+  const {
+    measured: { width: targetNodeWidth = 120, height: targetNodeHeight = 40 },
+    internals: { positionAbsolute: targetPosition },
+  } = targetNode;
 
   const w = intersectionNodeWidth / 2;
   const h = intersectionNodeHeight / 2;
 
   const x2 = intersectionNodePosition.x + w;
   const y2 = intersectionNodePosition.y + h;
-  const x1 = targetPosition.x + targetNode.width / 2;
-  const y1 = targetPosition.y + targetNode.height / 2;
+  const x1 = targetPosition.x + targetNodeWidth / 2;
+  const y1 = targetPosition.y + targetNodeHeight / 2;
 
   const xx1 = (x1 - x2) / (2 * w) - (y1 - y2) / (2 * h);
   const yy1 = (x1 - x2) / (2 * w) + (y1 - y2) / (2 * h);
@@ -56,7 +58,11 @@ function getNodeIntersection(intersectionNode: any, targetNode: any) {
 
 // Get edge position (which side of the node)
 function getEdgePosition(node: any, intersectionPoint: any) {
-  const n = { ...node.positionAbsolute, ...node };
+  const n = { 
+    ...node.internals.positionAbsolute, 
+    width: node.measured.width || 120,
+    height: node.measured.height || 40
+  };
   const nx = Math.round(n.x);
   const ny = Math.round(n.y);
   const px = Math.round(intersectionPoint.x);
@@ -88,7 +94,7 @@ export default function FloatingEdge({ id, source, target, markerEnd, style }: E
 
   const { sx, sy, tx, ty } = getEdgeParams(sourceNode, targetNode);
 
-  const [edgePath] = getStraightPath({
+  const [edgePath] = getBezierPath({
     sourceX: sx,
     sourceY: sy,
     targetX: tx,

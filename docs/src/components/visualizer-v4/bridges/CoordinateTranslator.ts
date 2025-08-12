@@ -172,13 +172,6 @@ export class CoordinateTranslator {
     reactFlowCoords: ReactFlowCoordinates,
     parentContainer?: ContainerInfo
   ): void {
-    console.log(`[CoordinateTranslator] 🔍 DEBUG ${elementId}:`, {
-      elkCoords: `(${elkCoords.x}, ${elkCoords.y})`,
-      reactFlowCoords: `(${reactFlowCoords.x}, ${reactFlowCoords.y})`,
-      parentContainer: parentContainer ? 
-        `${parentContainer.id} at (${parentContainer.x}, ${parentContainer.y})` : 
-        'none',
-      coordinateSystem: parentContainer ? 'relative' : 'absolute'
-    });
+    // Debug logging removed for performance
   }
 }

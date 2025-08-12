@@ -242,7 +242,7 @@ export function ExampleVisualization({ visState }: ExampleVisualizationProps): J
         config={{
           autoLayout: true,
           autoVisualize: true,
-          enableLogging: true
+          enableLogging: false
         }}
         style={{ height: '700px' }}
       />

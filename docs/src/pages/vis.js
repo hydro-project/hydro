@@ -70,33 +70,22 @@ function VisV4Component() {
   React.useEffect(() => {
     const loadComponents = async () => {
       try {
-        console.log('Loading visualizer-v4 components...');
-        
         // Import v4 components with specific error handling for each
-        console.log('Loading VisState...');
         const visStateModule = await import('@site/src/components/visualizer-v4/core/VisState.ts');
         
-        console.log('Loading FlowGraph...');
         const FlowGraphModule = await import('@site/src/components/visualizer-v4/render/FlowGraph.tsx');
         
-        console.log('Loading shared config...');
         const configModule = await import('@site/src/components/visualizer-v4/shared/config.ts');
         
-        console.log('Loading JSONParser...');
         const parserModule = await import('@site/src/components/visualizer-v4/core/JSONParser.ts');
         
-        console.log('Loading layout...');
         const layoutModule = await import('@site/src/components/visualizer-v4/layout/index.ts');
         
-        console.log('Loading InfoPanel...');
         const InfoPanelModule = await import('@site/src/components/visualizer-v4/components/InfoPanel.tsx');
         
-        console.log('Loading LayoutControls...');
         const LayoutControlsModule = await import('@site/src/components/visualizer-v4/components/LayoutControls.tsx');
         
-        console.log('Loading FileDropZone...');
         const FileDropZoneModule = await import('@site/src/components/visualizer-v4/components/FileDropZone.tsx');
-        console.log('FileDropZone module loaded:', FileDropZoneModule);
         
         setCreateVisualizationState(() => visStateModule.createVisualizationState);
         setFlowGraph(() => FlowGraphModule.FlowGraph);
@@ -108,7 +97,6 @@ function VisV4Component() {
         setInfoPanel(() => InfoPanelModule.InfoPanel);
         setLayoutControls(() => LayoutControlsModule.LayoutControls);
         setFileDropZone(() => FileDropZoneModule.default);
-        console.log('All components loaded successfully');
         // Don't load grouping options here - wait until we have graph data
         setLoading(false);
         setError(null);
@@ -137,14 +125,10 @@ function VisV4Component() {
     }
     
     if (dataParam && !currentVisualizationState) {
-      try {
-        console.log('Loading graph data from URL parameter...');
-        
+      try {        
         // Decode the base64 data
         const jsonString = atob(dataParam);
         const jsonData = JSON.parse(jsonString);
-        
-        console.log('Parsed URL data:', jsonData);
         
         // Validate and parse the JSON
         const validationResult = validateGraphJSON(jsonData);
@@ -165,8 +149,6 @@ function VisV4Component() {
           setCurrentGrouping(groupings[0].id);
         }
         
-        console.log('✅ Successfully loaded graph from URL');
-        
       } catch (err) {
         console.error('❌ Error loading graph from URL:', err);
         setError(`Failed to load graph from URL: ${err.message}`);
@@ -180,7 +162,6 @@ function VisV4Component() {
   // Load compressed data from URL parameter
   const loadCompressedData = React.useCallback(async (compressedData) => {
     try {
-      console.log('Loading compressed graph data from URL parameter...');
       setLoading(true);
       
       // Decode base64 and decompress
@@ -220,7 +201,6 @@ function VisV4Component() {
       }
       
       const jsonData = JSON.parse(jsonString);
-      console.log('Parsed compressed data:', jsonData);
       
       // Validate and parse the JSON
       const validationResult = validateGraphJSON(jsonData);
@@ -239,10 +219,7 @@ function VisV4Component() {
       // Set default grouping if not set and groupings are available
       if ((!currentGrouping || typeof currentGrouping !== 'string') && groupings.length > 0) {
         setCurrentGrouping(groupings[0].id);
-      }
-      
-      console.log('✅ Successfully loaded compressed graph from URL');
-      
+      }      
     } catch (err) {
       console.error('❌ Error loading compressed data from URL:', err);
       setError(`Failed to load compressed graph from URL: ${err.message}`);
@@ -259,8 +236,6 @@ function VisV4Component() {
     }
     
     try {
-      console.log('Processing uploaded file:', jsonData);
-      
       // Validate the JSON
       const validationResult = validateGraphJSON(jsonData);
       if (!validationResult.isValid) {
@@ -283,8 +258,6 @@ function VisV4Component() {
       
       setError(null);
       
-      console.log('✅ File loaded successfully');
-      
     } catch (err) {
       console.error('❌ Error processing file:', err);
       setError(`Failed to process file: ${err.message}`);
@@ -296,8 +269,6 @@ function VisV4Component() {
     if (!createVisualizationState || !NODE_STYLES || !EDGE_STYLES) return;
     
     try {
-      console.log('Creating test graph...');
-      
       const visState = createVisualizationState();
       
       // Add some test nodes
@@ -335,8 +306,6 @@ function VisV4Component() {
       setCurrentVisualizationState(visState);
       setError(null);
       
-      console.log('✅ Test graph created');
-      
     } catch (err) {
       console.error('❌ Error creating test graph:', err);
       setError(`Failed to create test graph: ${err.message}`);
@@ -351,8 +320,6 @@ function VisV4Component() {
   const handleNodeClick = React.useCallback(async (event, node) => {
     if (!currentVisualizationState) return;
     
-    console.log('🖱️ Node clicked:', node.id, node.type);
-    
     // Check if this is a container node that can be collapsed/expanded
     if (node.type === 'container') {
       try {
@@ -361,17 +328,13 @@ function VisV4Component() {
         const container = currentVisualizationState.getContainer(node.id);
         if (container) {
           if (container.collapsed) {
-            console.log('📂 Expanding container:', node.id);
             currentVisualizationState.expandContainer(node.id);
           } else {
-            console.log('📁 Collapsing container:', node.id);
             currentVisualizationState.collapseContainer(node.id);
           }
           
           // Force component update to reflect changes
           forceUpdate();
-          
-          console.log('✅ Container toggle complete');
         }
       } catch (err) {
         console.error('❌ Error toggling container:', err);
@@ -385,16 +348,13 @@ function VisV4Component() {
 
   // Pack all containers (collapse all)
   const handlePackAll = React.useCallback(async () => {
-    console.log('🔥 handlePackAll clicked!'); // Debug log
     if (!currentVisualizationState) return;
     
-    console.log('📦 Packing all containers...');
     setIsLayoutRunning(true);
     
     try {
       // Get ALL containers (not just visible ones) to ensure we collapse nested hierarchies
       const allContainers = Array.from(currentVisualizationState.containers.values());
-      console.log(`📦 Found ${allContainers.length} total containers:`, allContainers.map(c => `${c.id}(collapsed:${c.collapsed})`));
       
       // Sort containers by depth (deepest first) for bottom-up collapse
       const containersByDepth = allContainers
@@ -405,16 +365,13 @@ function VisV4Component() {
           return depthB - depthA; // Deepest first
         });
       
-      console.log(`📦 Collapsing ${containersByDepth.length} containers in depth order:`);
       containersByDepth.forEach(container => {
         const depth = getContainerDepth(currentVisualizationState, container.id);
-        console.log(`  📦 ${container.id} at depth ${depth}`);
       });
       
       // Collapse in depth order (deepest first)
       containersByDepth.forEach(container => {
         if (!container.collapsed) {
-          console.log(`📦 Collapsing container ${container.id} at depth ${getContainerDepth(currentVisualizationState, container.id)}`);
           currentVisualizationState.collapseContainer(container.id);
         }
       });
@@ -422,7 +379,6 @@ function VisV4Component() {
       // Force component update to reflect changes
       forceUpdate();
       
-      console.log('✅ All containers packed');
     } catch (err) {
       console.error('❌ Error packing containers:', err);
       setError(`Failed to pack containers: ${err.message}`);
@@ -436,7 +392,6 @@ function VisV4Component() {
   const handleUnpackAll = React.useCallback(async () => {
     if (!currentVisualizationState) return;
     
-    console.log('📂 Unpacking all containers...');
     setIsLayoutRunning(true);
     
     try {
@@ -449,8 +404,6 @@ function VisV4Component() {
       
       // Force component update to reflect changes
       forceUpdate();
-      
-      console.log('✅ All containers unpacked');
     } catch (err) {
       console.error('❌ Error unpacking containers:', err);
       setError(`Failed to unpack containers: ${err.message}`);
@@ -462,10 +415,8 @@ function VisV4Component() {
 
   // Fit view handler
   const handleFitView = React.useCallback(() => {
-    console.log('🎯 Fitting view...');
     if (flowGraphRef.current && flowGraphRef.current.fitView) {
       flowGraphRef.current.fitView();
-      console.log('✅ View fit called directly');
     } else {
       console.warn('⚠️ FlowGraph ref not available, using fallback method');
       // Fallback to the old toggle method
@@ -476,7 +427,6 @@ function VisV4Component() {
 
   // Layout algorithm change handler
   const handleLayoutAlgorithmChange = React.useCallback((newAlgorithm) => {
-    console.log('🔧 Layout algorithm changed to:', newAlgorithm);
     setLayoutAlgorithm(newAlgorithm);
     // Note: This will trigger a re-render which should cause FlowGraph to re-layout
     // The actual layout change will be handled by FlowGraph's props change detection
@@ -490,8 +440,6 @@ function VisV4Component() {
       const windowHeight = window.innerHeight;
       const windowWidth = window.innerWidth;
       
-      console.log('🖥️ Window dimensions:', { width: windowWidth, height: windowHeight });
-      
       // Calculate height based on window size - MUCH more aggressive
       let newHeight = windowHeight - 80; // Almost fullscreen, leaving just 80px for header/controls
       
@@ -499,7 +447,6 @@ function VisV4Component() {
       const minHeight = 700;
       newHeight = Math.max(newHeight, minHeight);
       
-      console.log('📐 Calculated canvas height:', newHeight);
       setCanvasHeight(newHeight);
     };
     
@@ -508,10 +455,8 @@ function VisV4Component() {
       
       // Also trigger auto-fit directly on resize if enabled
       if (autoFit && currentVisualizationState) {
-        console.log('🎯 Window resized, triggering immediate auto-fit...');
         setTimeout(() => {
           if (flowGraphRef.current && flowGraphRef.current.fitView) {
-            console.log('✅ Calling fitView directly on resize');
             flowGraphRef.current.fitView();
           }
         }, 300); // Delay to let canvas resize complete
@@ -530,19 +475,11 @@ function VisV4Component() {
   // Auto-fit when canvas size changes (secondary trigger)
   React.useEffect(() => {
     if (autoFit && currentVisualizationState) {
-      console.log('🎯 Canvas height effect triggered, attempting auto-fit...', {
-        canvasHeight,
-        hasFlowGraphRef: !!flowGraphRef.current,
-        hasFitViewMethod: !!(flowGraphRef.current && flowGraphRef.current.fitView)
-      });
-      
       // Add a delay to let the DOM update with the new size
       setTimeout(() => {
         if (flowGraphRef.current && flowGraphRef.current.fitView) {
-          console.log('✅ Calling fitView through ref (canvas height change)');
           flowGraphRef.current.fitView();
         } else {
-          console.log('⚠️ FlowGraph ref not available, using autoFit toggle fallback');
           // Fallback: toggle autoFit to trigger re-fit
           setAutoFit(false);
           setTimeout(() => setAutoFit(true), 50);
@@ -553,7 +490,6 @@ function VisV4Component() {
 
   // Color palette change handler
   const handleColorPaletteChange = React.useCallback((newPalette) => {
-    console.log('🎨 Color palette changed to:', newPalette);
     setColorPalette(newPalette);
     // Note: This will trigger a re-render which should update node colors
   }, []);
@@ -562,16 +498,13 @@ function VisV4Component() {
   const handleGroupingChange = React.useCallback((newGrouping) => {
     if (!parseGraphJSON || !graphData || !createVisualizationState) return;
     
-    console.log('🔄 Grouping changed to:', newGrouping);
     setIsChangingGrouping(true);
     setCurrentGrouping(newGrouping);
     
     try {
       // Re-parse the original graph data with the new grouping
       const parsedData = parseGraphJSON(graphData, newGrouping);
-      setCurrentVisualizationState(parsedData.state);
-      
-      console.log('✅ Graph re-parsed with new grouping');
+      setCurrentVisualizationState(parsedData.state);      
     } catch (err) {
       console.error('❌ Error changing grouping:', err);
       setError(`Failed to change grouping: ${err.message}`);
@@ -585,22 +518,18 @@ function VisV4Component() {
   const handleHierarchyToggle = React.useCallback((containerId) => {
     if (!currentVisualizationState) return;
     
-    console.log('🌳 Hierarchy tree toggle:', containerId);
     try {
       const container = currentVisualizationState.getContainer(containerId);
       if (container) {
         const wasCollapsed = container.collapsed;
         if (wasCollapsed) {
           currentVisualizationState.expandContainer(containerId);
-          console.log('📂 Expanded container in tree:', containerId);
         } else {
           currentVisualizationState.collapseContainer(containerId);
-          console.log('📁 Collapsed container in tree:', containerId);
         }
         
         // Force component update to reflect changes
         forceUpdate();
-        console.log('🔄 Forced update after tree toggle');
       }
     } catch (err) {
       console.error('❌ Error toggling hierarchy:', err);
@@ -824,7 +753,7 @@ function VisV4Component() {
                     fitView: autoFit,
                     colorPalette: colorPalette
                   }}
-                  onLayoutComplete={() => console.log('Layout complete!')}
+                  // onLayoutComplete={() => console.log('Layout complete!')}
                   onError={(err) => {
                     console.error('Visualization error:', err);
                     setError(`Visualization error: ${err.message}`);

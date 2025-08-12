@@ -71,30 +71,20 @@ export class ReactFlowBridge {
    * HIERARCHICAL: Standard ELK + ReactFlow pattern with proper parent-child relationships
    */
   visStateToReactFlow(visState: VisualizationState): ReactFlowData {
-    console.log('[ReactFlowBridge] 🔄 Using HIERARCHICAL ELK + ReactFlow pattern');
-    
     const nodes: ReactFlowNode[] = [];
     const edges: ReactFlowEdge[] = [];
     
     // Build parent-child mapping for hierarchy
     const parentMap = this.buildParentMap(visState);
-    console.log(`[ReactFlowBridge] 🗺️ Parent map has ${parentMap.size} relationships:`, Array.from(parentMap.entries()));
-    
-    // Log container and node counts before conversion
-    console.log(`[ReactFlowBridge] 📊 Before conversion: ${visState.visibleContainers.length} containers, ${visState.visibleNodes.length} nodes`);
     
     // Convert containers first (so they exist when children reference them)
     this.convertContainers(visState, nodes, parentMap);
-    console.log(`[ReactFlowBridge] 📦 After container conversion: ${nodes.filter(n => n.type === 'container').length} container nodes`);
     
     // Convert regular nodes with parent relationships
     this.convertNodes(visState, nodes, parentMap);
-    console.log(`[ReactFlowBridge] 🔷 After node conversion: ${nodes.filter(n => n.type === 'standard').length} standard nodes`);
     
     // Convert edges using simple source/target mapping with discrete handles
     this.convertEdges(visState, edges);
-    
-    console.log(`[ReactFlowBridge] ✅ Hierarchical pattern: ${nodes.length} nodes, ${edges.length} edges`);
     
     return { nodes, edges };
   }
@@ -119,8 +109,6 @@ export class ReactFlowBridge {
           y: node.y || 0
         };
       }
-      
-      console.log(`[ReactFlowBridge] 🔷 FLAT Node ${node.id}: position=(${position.x}, ${position.y})`);
       
       const flatNode: ReactFlowNode = {
         id: node.id,
@@ -165,8 +153,6 @@ export class ReactFlowBridge {
       const nodeCount = container.collapsed ? 
         visState.getContainerChildren(container.id)?.size || 0 : 0;
       
-      console.log(`[ReactFlowBridge] 📦 FLAT Container ${container.id}: position=(${position.x}, ${position.y}), size=${width}x${height}`);
-      
       const flatContainer: ReactFlowNode = {
         id: container.id,
         type: 'container',
@@ -196,11 +182,7 @@ export class ReactFlowBridge {
    * CANONICAL PATTERN: Convert edges using simple source/target mapping
    */
   private convertEdgesToFlat(visState: VisualizationState, edges: ReactFlowEdge[]): void {
-    console.log(`[ReactFlowBridge] 🔗 Converting ${visState.visibleEdges.length} edges using CANONICAL pattern`);
-    
     visState.visibleEdges.forEach(edge => {
-      console.log(`[ReactFlowBridge] 🔗 FLAT Edge ${edge.id}: ${edge.source} -> ${edge.target}`);
-      
       const flatEdge: ReactFlowEdge = {
         id: edge.id,
         type: 'standard',
@@ -270,8 +252,6 @@ export class ReactFlowBridge {
       const nodeCount = container.collapsed ? 
         visState.getContainerChildren(container.id)?.size || 0 : 0;
       
-      console.log(`[ReactFlowBridge] 📦 Container ${container.id}: collapsed=${container.collapsed}, position=(${position.x}, ${position.y}), size=${width}x${height}, nodeCount=${nodeCount}`);
-      
       const containerNode: ReactFlowNode = {
         id: container.id,
         type: 'container',
@@ -325,13 +305,9 @@ export class ReactFlowBridge {
             x: position.x - parentLayout.position.x,
             y: position.y - parentLayout.position.y
           };
-          console.log(`[ReactFlowBridge] 🔷 Node ${node.id}: absolute=(${nodeLayout?.position?.x}, ${nodeLayout?.position?.y}) -> relative=(${position.x}, ${position.y}) parent=${parentId}`);
-        } else {
-          console.log(`[ReactFlowBridge] 🔷 Node ${node.id}: position=(${position.x}, ${position.y}), parent=${parentId} (no parent layout found)`);
         }
-      } else {
-        console.log(`[ReactFlowBridge] 🔷 Node ${node.id}: position=(${position.x}, ${position.y}), parent=none`);
       }
+      
       const standardNode: ReactFlowNode = {
         id: node.id,
         type: 'standard',
@@ -354,20 +330,8 @@ export class ReactFlowBridge {
    * Convert regular edges to ReactFlow edges
    */
   private convertEdges(visState: VisualizationState, edges: ReactFlowEdge[]): void {
-    visState.visibleEdges.forEach(edge => {
-    //   // Debug: log the actual edge data to see what we're getting
-    //   console.log(`[ReactFlowBridge] 🔍 Debug edge ${edge.id}:`, {
-    //     source: edge.source,
-    //     target: edge.target,
-    //     sourceHandle: edge.sourceHandle,
-    //     targetHandle: edge.targetHandle,
-    //     sourceHandleType: typeof edge.sourceHandle,
-    //     targetHandleType: typeof edge.targetHandle
-    //   });
-      
+    visState.visibleEdges.forEach((edge, index) => {
       const handleConfig = getHandleConfig();
-      
-      console.log(`[ReactFlowBridge] 🔍 BROWSER DEBUG - Edge ${edge.id}: CURRENT_HANDLE_STRATEGY=${CURRENT_HANDLE_STRATEGY}`);
       
       // Determine edge type based on handle strategy
       const edgeType: 'standard' | 'floating' = CURRENT_HANDLE_STRATEGY === 'floating' ? 'floating' : 'standard';
@@ -393,6 +357,11 @@ export class ReactFlowBridge {
             style: edge.style || 'default'
           } as any
         };
+        
+        // Extra safety: ensure no handle properties exist
+        delete (reactFlowEdge as any).sourceHandle;
+        delete (reactFlowEdge as any).targetHandle;
+        
       } else {
         // Standard edges: include handle properties
         reactFlowEdge = {
@@ -416,16 +385,13 @@ export class ReactFlowBridge {
       
       // Check if this edge has layout/routing information from ELK
       if (edge.layout && edge.layout.sections && edge.layout.sections.length > 0) {
-        console.log(`[ReactFlowBridge] 🔗 Edge ${edge.id} has ${edge.layout.sections.length} routing sections`);
+        // Handle existing routing sections
       } else if (edge.sections && edge.sections.length > 0) {
-        console.log(`[ReactFlowBridge] 🔗 Edge ${edge.id} has ${edge.sections.length} routing sections (direct sections property)`);
         // Use the sections directly if layout.sections is not available
         const sections = edge.sections.map((section, i) => {
           const startPoint = section.startPoint;
           const endPoint = section.endPoint;
           const bendPoints = section.bendPoints || [];
-          
-          console.log(`[ReactFlowBridge] 📍 Section ${i} (already corrected): start=(${startPoint?.x},${startPoint?.y}), end=(${endPoint?.x},${endPoint?.y})`);
           
           return {
             ...section,
@@ -437,35 +403,20 @@ export class ReactFlowBridge {
         
         // Store routing sections in ReactFlow edge data for custom edge renderer
         (reactFlowEdge.data as any).routing = sections;
-      } else {
-        console.log(`[ReactFlowBridge] 🔗 Edge ${edge.id} has no routing sections - will use automatic ReactFlow routing`);
       }
       
       // Handle strategy should be determined by VisualizationState, not ReactFlowBridge
       // TODO: Move handle logic to VisualizationState.getEdgeHandles(edgeId)
-      if (CURRENT_HANDLE_STRATEGY === 'floating') {
-        // For floating edges, the edge object already has no handle properties
-        // Nothing to do - the custom FloatingEdge component will calculate attachment points
-        console.log(`[ReactFlowBridge] ✅ BROWSER - Floating edge ${edge.id} - no handle properties`);
+      if (edgeType === 'floating') {
+        // For floating edges, use actual handle IDs but let FloatingEdge component calculate positions
+        // React Flow v12 requires valid handle IDs, even for floating edges
+        reactFlowEdge.sourceHandle = 'out-bottom'; // Default handles that exist on nodes
+        reactFlowEdge.targetHandle = 'in-top';
       } else if (CURRENT_HANDLE_STRATEGY === 'discrete' || !handleConfig.enableContinuousHandles) {
         // Use discrete handles with forced top-down flow for consistent edge positioning
         reactFlowEdge.sourceHandle = edge.sourceHandle || 'out-bottom';
         reactFlowEdge.targetHandle = edge.targetHandle || 'in-top';
-        console.log(`[ReactFlowBridge] ✅ BROWSER - Discrete edge ${edge.id} - added handles: ${reactFlowEdge.sourceHandle}→${reactFlowEdge.targetHandle}`);
-      } else {
-        // For continuous handles, sourceHandle/targetHandle remain undefined
-        console.log(`[ReactFlowBridge] ✅ BROWSER - Continuous edge ${edge.id} - no handle properties needed`);
       }
-      
-      console.log(`[ReactFlowBridge] 🔍 BROWSER - Final edge ${edge.id}:`, {
-        type: reactFlowEdge.type,
-        hasSourceHandle: 'sourceHandle' in reactFlowEdge,
-        hasTargetHandle: 'targetHandle' in reactFlowEdge,
-        sourceHandle: reactFlowEdge.sourceHandle,
-        targetHandle: reactFlowEdge.targetHandle
-      });
-      
-      // console.log(`[ReactFlowBridge] ✅ Created ReactFlow edge ${edge.id}:`, reactFlowEdge);
       
       edges.push(reactFlowEdge);
     });
