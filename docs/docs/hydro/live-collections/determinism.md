@@ -22,26 +22,24 @@ Much existing literature in distributed systems focuses on data consistency leve
 ## Unsafe Operations in Hydro
 All **safe** APIs in Hydro (the ones you can call regularly in Rust) guarantee determinism. But often it is necessary to do something non-deterministic, like generate events at a fixed wall-clock-time interval, or split an input into arbitrarily sized batches.
 
-Hydro offers APIs for such concepts behind an **`unsafe`** guard. This keyword is typically used to mark Rust functions that may not be memory-safe, but we reuse this in Hydro to mark APIs with non-deterministic constructs.
-
-To call such an API, the Rust compiler will ask you to wrap the call in an `unsafe` block. It is typically good practice to also include a `// SAFETY: ...` comment to explain why the non-determinism is there.
+These non-deterministic APIs take additional paramters called **non-determinism guards**. These values, with type `NonDep`, help you reason about how non-determinism affects your application. To pass a non-determinism guard, you must invoke `nondet!()` with an explanation for how the non-determinism affects the application. If the non-determinism is never exposed outside the function, or if it appears at the root of your application (and thus is documented in the service guarantees), you should use `nondet!()` with only a single parameter containing the explanation.
 
 ```rust,no_run
 # use hydro_lang::*;
-# let flow = FlowBuilder::new();
-# let stream_inputs = flow.process::<()>().source_iter(q!([123]));
 use std::time::Duration;
 
-unsafe {
-  // SAFETY: intentional non-determinism
-  stream_inputs
-    .sample_every(q!(Duration::from_secs(1)))
-}.for_each(q!(|v| println!("Sample: {:?}", v)))
+fn singleton_with_delay<T, L>(
+  singleton: Singleton<T, Process<L>, Unbounded>
+) -> Optional<T, Process<L>, Unbounded> {
+  singleton
+    .sample_every(q!(Duration::from_secs(1)), nondet!(/** non-deterministic samples will eventually resolve to deterministic result */))
+    .last()
+}
 ```
 
-When writing a function with Hydro that involves `unsafe` code, it is important to be extra careful about whether the non-determinism is exposed externally. In some applications, a utility function may involve local non-determinism (such as sending retries), but not expose it outside the function (e.g., via deduplicating received responses).
+When writing a function with Hydro that involves non-deterministic APIs, it is important to be extra careful about whether the non-determinism is exposed externally. In some applications, a utility function may involve local non-determinism (such as sending retries), but not expose it outside the function (e.g., via deduplicating received responses).
 
-But other functions may expose the non-determinism, in which case they should be marked `unsafe` as well. If the function is public, Rust will require you to put a `# Safety` section in its documentation to explain the non-determinism.
+If the outputs of your code are non-deterministic, you should take non-determinism guards and document this behavior in the Rustdoc. Then, when invoking APIs whose non-determinism propagates to the outputs of your code, you should use `nondet!` passing in an explanation as well the relevant guard parameter.
 
 ```rust
 # use hydro_lang::*;
@@ -50,17 +48,19 @@ use std::time::Duration;
 
 /// ...
 ///
-/// # Safety
+/// # Non-Determinism
 /// This function will non-deterministically print elements
 /// from the stream according to a timer.
 unsafe fn print_samples<T: Debug, L>(
-  stream: Stream<T, Process<L>, Unbounded>
+  stream: Stream<T, Process<L>, Unbounded>,
+  nondet_samples: NonDet
 ) {
-  unsafe {
-    // SAFETY: documented non-determinism
-    stream
-      .sample_every(q!(Duration::from_secs(1)))
-  }.for_each(q!(|v| println!("Sample: {:?}", v)))
+  stream
+    .sample_every(q!(Duration::from_secs(1)), nondet!(
+      /// non-deterministic timing will result in non-determistic samples printed
+      nondet_samples
+    ))
+    .for_each(q!(|v| println!("Sample: {:?}", v)))
 }
 ```
 
