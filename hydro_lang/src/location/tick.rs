@@ -12,7 +12,7 @@ use crate::cycle::{
 };
 use crate::ir::{HydroNode, HydroSource};
 use crate::stream::ExactlyOnce;
-use crate::{Bounded, Optional, Singleton, Stream, TotalOrder};
+use crate::{Bounded, Optional, Singleton, Stream, TotalOrder, nondet};
 
 #[sealed]
 pub trait NoTick {}
@@ -116,11 +116,7 @@ where
             .flat_map_ordered(q!(move |_| 0..batch_size))
             .map(q!(|_| ()));
 
-        unsafe {
-            // SAFETY: at runtime, `spin` produces a single value per tick,
-            // so each batch is guaranteed to be the same size.
-            out.tick_batch(self)
-        }
+        out.batch(self, nondet!(/** at runtime, `spin` produces a single value per tick, so each batch is guaranteed to be the same size. */))
     }
 
     pub fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, L>) -> Singleton<T, Self, Bounded>
@@ -128,10 +124,10 @@ where
         T: Clone,
         L: NoTick + NoAtomic,
     {
-        unsafe {
-            // SAFETY: a top-level singleton produces the same value each tick
-            self.outer().singleton(e).latest_tick(self)
-        }
+        self.outer().singleton(e).snapshot(
+            self,
+            nondet!(/** a top-level singleton produces the same value each tick */),
+        )
     }
 
     pub fn optional_first_tick<T: Clone>(
