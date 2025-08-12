@@ -69,9 +69,9 @@ pub fn properties_optimize(ir: &mut [HydroLeaf], db: &mut PropertyDatabase) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::FlowBuilder;
     use crate::deploy::HydroDeploy;
     use crate::location::Location;
+    use crate::{FlowBuilder, nondet};
 
     #[test]
     fn test_property_database() {
@@ -99,17 +99,15 @@ mod tests {
         let counter_func = q!(|count: &mut i32, _| *count += 1);
         let _ = database.add_commutative_tag(counter_func, &tick);
 
-        unsafe {
-            process
-                .source_iter(q!(vec![]))
-                .map(q!(|string: String| (string, ())))
-                .tick_batch(&tick)
-        }
-        .into_keyed()
-        .fold(q!(|| 0), counter_func)
-        .entries()
-        .all_ticks()
-        .for_each(q!(|(string, count)| println!("{}: {}", string, count)));
+        process
+            .source_iter(q!(vec![]))
+            .map(q!(|string: String| (string, ())))
+            .batch(&tick, nondet!(/** test */))
+            .into_keyed()
+            .fold(q!(|| 0), counter_func)
+            .entries()
+            .all_ticks()
+            .for_each(q!(|(string, count)| println!("{}: {}", string, count)));
 
         let built = flow
             .optimize_with(|ir| properties_optimize(ir, &mut database))
