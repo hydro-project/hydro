@@ -8,17 +8,23 @@ pub fn graph_reachability<'a>(
     let reachability_tick = process.tick();
     let (set_reached_cycle, reached_cycle) = reachability_tick.cycle::<Stream<_, _, _, NoOrder>>();
 
-    let reached = unsafe {
-        // SAFETY: roots can be inserted on any tick because we are fixpointing
-        roots.tick_batch(&reachability_tick).chain(reached_cycle)
-    };
+    let reached = roots
+        .batch(
+            &reachability_tick,
+            nondet!(/** roots can be inserted on any tick because we are fixpointing */),
+        )
+        .chain(reached_cycle);
     let reachable = reached
         .clone()
         .map(q!(|r| (r, ())))
-        .join(unsafe {
-            // SAFETY: edges can be inserted on any tick because we are fixpointing
-            edges.tick_batch(&reachability_tick).persist()
-        })
+        .join(
+            edges
+                .batch(
+                    &reachability_tick,
+                    nondet!(/** edges can be inserted on any tick because we are fixpointing */),
+                )
+                .persist(),
+        )
         .map(q!(|(_from, (_, to))| to));
     set_reached_cycle.complete_next_tick(reached.clone().chain(reachable));
 
