@@ -230,12 +230,18 @@ export class ELKBridge {
    * HIERARCHICAL: Use proper ELK hierarchy to match ReactFlow parent-child relationships
    */
   private visStateToELK(visState: VisualizationState): ElkGraph {    
-    // HIERARCHICAL: Build container nodes with their children
+    // HIERARCHICAL: Build proper container hierarchy
     const rootNodes: ElkNode[] = [];
     const processedNodes = new Set<string>();
+    const processedContainers = new Set<string>();
     
-    // Process containers first
-    visState.visibleContainers.forEach(container => {
+    // Helper function to build container hierarchy recursively
+    const buildContainerHierarchy = (containerId: string): ElkNode => {
+      const container = visState.getContainer(containerId);
+      if (!container) {
+        throw new Error(`Container ${containerId} not found`);
+      }
+      
       const containerNode: ElkNode = {
         id: container.id,
         width: container.width || 200,
@@ -243,22 +249,45 @@ export class ELKBridge {
         children: []
       };
       
-      // Add child nodes to this container
       if (!container.collapsed && container.children) {
         container.children.forEach(childId => {
-          const childNode = visState.visibleNodes.find(n => n.id === childId);
-          if (childNode) {
-            containerNode.children!.push({
-              id: childNode.id,
-              width: childNode.width || 180,
-              height: childNode.height || 60
-            });
-            processedNodes.add(childId);
+          // Check if child is a container
+          const childContainer = visState.getContainer(childId);
+          if (childContainer && visState.visibleContainers.some(vc => vc.id === childId)) {
+            // Add child container recursively
+            const childContainerNode = buildContainerHierarchy(childId);
+            containerNode.children!.push(childContainerNode);
+            processedContainers.add(childId);
+          } else {
+            // Add child node
+            const childNode = visState.visibleNodes.find(n => n.id === childId);
+            if (childNode) {
+              containerNode.children!.push({
+                id: childNode.id,
+                width: childNode.width || 180,
+                height: childNode.height || 60
+              });
+              processedNodes.add(childId);
+            }
           }
         });
       }
       
-      rootNodes.push(containerNode);
+      return containerNode;
+    };
+    
+    // Add only root-level containers to rootNodes
+    visState.visibleContainers.forEach(container => {
+      // Check if this container has a parent that's also visible
+      const hasVisibleParent = visState.visibleContainers.some(otherContainer => 
+        otherContainer.children && otherContainer.children.has(container.id)
+      );
+      
+      if (!hasVisibleParent && !processedContainers.has(container.id)) {
+        const containerNode = buildContainerHierarchy(container.id);
+        rootNodes.push(containerNode);
+        processedContainers.add(container.id);
+      }
     });
     
     // Add any uncontained nodes at root level
@@ -394,48 +423,10 @@ export class ELKBridge {
       return !hasContainerParent;
     });
     
-    // Recursively build ELK hierarchy starting from root containers
-    const buildContainerHierarchy = (container: Container): ElkNode => {
-      // Find child nodes (regular nodes)
-      const childNodes = nodes.filter(node => container.children.has(node.id));
-      
-      // Find child containers (nested containers)
-      const childContainers = containers.filter(childContainer => 
-        container.children.has(childContainer.id)
-      );
-      
-      // Create ELK children array with both nodes and nested containers
-      const elkChildren: ElkNode[] = [
-        // Add child nodes
-        ...childNodes.map(node => ({
-          id: node.id,
-          width: node.width || 180,
-          height: node.height || 60
-        })),
-        // Add child containers (recursively)
-        ...childContainers.map(childContainer => buildContainerHierarchy(childContainer))
-      ];
-      
-      // Use layout dimensions if available (e.g., from collapsed state), otherwise use defaults
-      // IMPORTANT: Use VisualizationState API to get proper dimensions (handles collapsed containers)
-      const effectiveDimensions = visState.getContainerAdjustedDimensions(container.id);
-      const containerWidth = effectiveDimensions.width;
-      const containerHeight = effectiveDimensions.height;
-      
-      return {
-        id: container.id,
-        width: containerWidth,
-        height: containerHeight,
-        children: elkChildren,
-        layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm)
-      };
-    };
+    // PURE REACTFLOW APPROACH: Don't send containers to ELK at all
+    // Only layout individual nodes, let ReactFlow handle all container positioning
     
-    // Build hierarchy for each root container
-    rootContainers.forEach(container => {
-      const hierarchyNode = buildContainerHierarchy(container);
-      elkNodes.push(hierarchyNode);
-    });
+    // Don't add any containers to ELK - they'll be positioned manually by ReactFlow
     
     // Add top-level nodes (not in any container, excluding collapsed containers that were already added as nodes)
     // TODO: VisualizationState should provide getTopLevelNodes() method

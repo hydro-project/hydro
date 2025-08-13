@@ -8,6 +8,7 @@
 
 import type { VisualizationState } from '../core/VisualizationState';
 import type { GraphNode, GraphEdge, Container } from '../shared/types';
+import { LAYOUT_CONSTANTS } from '../shared/config';
 import { MarkerType } from '@xyflow/react';
 import { getHandleConfig, CURRENT_HANDLE_STRATEGY } from '../render/handleConfig';
 
@@ -68,22 +69,22 @@ export class ReactFlowBridge {
 
   /**
    * Convert positioned VisState data to ReactFlow format
-   * HIERARCHICAL: Standard ELK + ReactFlow pattern with proper parent-child relationships
+   * TRUST ELK: Use ELK's hierarchical layout results completely
    */
   visStateToReactFlow(visState: VisualizationState): ReactFlowData {
     const nodes: ReactFlowNode[] = [];
     const edges: ReactFlowEdge[] = [];
     
-    // Build parent-child mapping for hierarchy
+    // Build parent-child mapping from VisualizationState
     const parentMap = this.buildParentMap(visState);
     
-    // Convert containers first (so they exist when children reference them)
-    this.convertContainers(visState, nodes, parentMap);
+    // Convert containers using ELK positions
+    this.convertContainersFromELK(visState, nodes, parentMap);
     
-    // Convert regular nodes with parent relationships
-    this.convertNodes(visState, nodes, parentMap);
+    // Convert regular nodes using ELK positions  
+    this.convertNodesFromELK(visState, nodes, parentMap);
     
-    // Convert edges using simple source/target mapping with discrete handles
+    // Convert edges using simple source/target mapping
     this.convertEdges(visState, edges);
     
     return { nodes, edges };
@@ -213,14 +214,28 @@ export class ReactFlowBridge {
   private buildParentMap(visState: VisualizationState): Map<string, string> {
     const parentMap = new Map<string, string>();
     
-    // TODO: Move this business logic to VisualizationState
-    // Map nodes to their parent containers
+    // Create lookup sets for performance
+    const visibleContainerIds = new Set(Array.from(visState.visibleContainers).map(c => c.id));
+    const visibleNodeIds = new Set(Array.from(visState.visibleNodes).map(n => n.id));
+    
+    // Map all containers and nodes to their parent containers for visual hierarchy
+    // This creates the nested structure in ReactFlow regardless of collapsed state
     visState.visibleContainers.forEach(container => {
-      if (!container.collapsed) {
-        // BUSINESS LOGIC VIOLATION: VisualizationState should determine which containers can have children
+      // Map child containers to this parent container
+      if (container.children) {
         container.children.forEach(childId => {
-          parentMap.set(childId, container.id);
+          // Only set parent relationship if the child is also visible
+          if (visibleContainerIds.has(childId) || visibleNodeIds.has(childId)) {
+            parentMap.set(childId, container.id);
+          }
         });
+      }
+    });
+    
+    // Also map nodes to their containers using the containerId property
+    visState.visibleNodes.forEach(node => {
+      if (node.containerId && visibleContainerIds.has(node.containerId)) {
+        parentMap.set(node.id, node.containerId);
       }
     });
     
@@ -228,26 +243,89 @@ export class ReactFlowBridge {
   }
 
   /**
-   * Convert containers to ReactFlow container nodes
+   * Sort containers by hierarchy level to ensure parents are processed before children
    */
-  private convertContainers(
+  private sortContainersByHierarchy(containers: any[], parentMap: Map<string, string>): any[] {
+    const getHierarchyLevel = (containerId: string): number => {
+      let level = 0;
+      let currentId = containerId;
+      while (parentMap.has(currentId)) {
+        level++;
+        currentId = parentMap.get(currentId)!;
+      }
+      return level;
+    };
+    
+    return containers.sort((a, b) => getHierarchyLevel(a.id) - getHierarchyLevel(b.id));
+  }
+
+  /**
+   * Convert containers to ReactFlow container nodes using ELK layout positions
+   * TRUST ELK: Use ELK's hierarchical positioning completely
+   */
+  private convertContainersFromELK(
     visState: VisualizationState, 
     nodes: ReactFlowNode[], 
     parentMap: Map<string, string>
   ): void {
-    visState.visibleContainers.forEach(container => {
+    // Sort containers by hierarchy level (parents first, then children)
+    const containers = Array.from(visState.visibleContainers);
+    const sortedContainers = this.sortContainersByHierarchy(containers, parentMap);
+    
+    sortedContainers.forEach(container => {
       const parentId = parentMap.get(container.id);
       
-      // STANDARD PRACTICE: ELK configured with ROOT coordinates, use directly
+      // Get position and dimensions from ELK layout (stored in VisualizationState)
       const containerLayout = visState.getContainerLayout(container.id);
-      const position = {
-        x: containerLayout?.position?.x || container.x || 0,
-        y: containerLayout?.position?.y || container.y || 0
-      };
+      let position: { x: number; y: number };
       
-      // visibleContainers already includes adjusted dimensions
-      const width = container.width;
-      const height = container.height;
+      if (parentId) {
+        // CHILD CONTAINER: Convert absolute ELK coordinates to relative coordinates  
+        const parentLayout = visState.getContainerLayout(parentId);
+        
+        // Check if we have meaningful ELK layout data (not just default 0,0 values)
+        const hasRealELKLayout = containerLayout?.position?.x !== undefined && 
+                                containerLayout?.position?.y !== undefined &&
+                                (containerLayout.position.x !== 0 || containerLayout.position.y !== 0);
+        
+        if (hasRealELKLayout) {
+          // Use ELK coordinates converted to relative
+          const absoluteX = containerLayout?.position?.x || container.x || 0;
+          const absoluteY = containerLayout?.position?.y || container.y || 0;
+          const parentX = parentLayout?.position?.x || 0;
+          const parentY = parentLayout?.position?.y || 0;
+          
+          position = {
+            x: absoluteX - parentX,
+            y: absoluteY - parentY
+          };
+        } else {
+          // FALLBACK: Grid positioning when no meaningful ELK layout data
+          const siblingContainers = Array.from(visState.visibleContainers)
+            .filter(c => parentMap.get(c.id) === parentId);
+          const containerIndex = siblingContainers.findIndex(c => c.id === container.id);
+          
+          const cols = LAYOUT_CONSTANTS.CONTAINER_GRID_COLUMNS || 2;
+          const col = containerIndex % cols;
+          const row = Math.floor(containerIndex / cols);
+          const padding = LAYOUT_CONSTANTS.CONTAINER_GRID_PADDING || 20;
+          const titleHeight = LAYOUT_CONSTANTS.CONTAINER_TITLE_HEIGHT || 30;
+          
+          position = {
+            x: padding + col * (LAYOUT_CONSTANTS.CHILD_CONTAINER_WIDTH + padding),
+            y: titleHeight + row * (LAYOUT_CONSTANTS.CHILD_CONTAINER_HEIGHT + padding)
+          };
+        }
+      } else {
+        // ROOT CONTAINER: Use absolute ELK coordinates or fallback
+        position = {
+          x: containerLayout?.position?.x || container.x || 0,
+          y: containerLayout?.position?.y || container.y || 0
+        };
+      }
+      
+      const width = containerLayout?.dimensions?.width || container.width || LAYOUT_CONSTANTS.DEFAULT_PARENT_CONTAINER_WIDTH;
+      const height = containerLayout?.dimensions?.height || container.height || LAYOUT_CONSTANTS.DEFAULT_PARENT_CONTAINER_HEIGHT;
       
       const nodeCount = container.collapsed ? 
         visState.getContainerChildren(container.id)?.size || 0 : 0;
@@ -257,23 +335,19 @@ export class ReactFlowBridge {
         type: 'container',
         position,
         data: {
-          label: (container as any).data?.label || (container as any).label || container.id,
+          label: (container as any).label || container.id,
           style: (container as any).style || 'default',
-          collapsed: container.collapsed || false,
-          colorPalette: this.colorPalette,
-          nodeCount,
+          collapsed: container.collapsed,
           width,
           height,
-          ...this.extractCustomProperties(container as any)
+          nodeCount: nodeCount
         },
         style: {
           width,
           height
         },
-        parentId,
-        connectable: CURRENT_HANDLE_STRATEGY === 'floating',
-        // Constrain child containers to their parent boundaries
-        ...(parentId && { extent: 'parent' as const })
+        parentId: parentId,
+        extent: parentId ? 'parent' : undefined // Constrain to parent if nested
       };
       
       nodes.push(containerNode);
@@ -281,9 +355,10 @@ export class ReactFlowBridge {
   }
 
   /**
-   * Convert regular nodes to ReactFlow standard nodes
+   * Convert regular nodes to ReactFlow standard nodes using ELK layout positions
+   * TRUST ELK: Use ELK's hierarchical positioning completely
    */
-  private convertNodes(
+  private convertNodesFromELK(
     visState: VisualizationState, 
     nodes: ReactFlowNode[], 
     parentMap: Map<string, string>
@@ -291,23 +366,28 @@ export class ReactFlowBridge {
     visState.visibleNodes.forEach(node => {
       const parentId = parentMap.get(node.id);
       
-      // Get node layout from ELK (absolute coordinates)
+      // Get position from ELK layout (stored in VisualizationState)
       const nodeLayout = visState.getNodeLayout(node.id);
-      let position = {
-        x: nodeLayout?.position?.x || node.x || 0,
-        y: nodeLayout?.position?.y || node.y || 0
-      };
+      let position: { x: number; y: number };
       
-      // HIERARCHICAL COORDINATE TRANSFORMATION: Convert absolute to relative
       if (parentId) {
+        // CHILD NODE: Convert absolute ELK coordinates to relative coordinates
         const parentLayout = visState.getContainerLayout(parentId);
-        if (parentLayout?.position) {
-          // Make coordinates relative to parent container
-          position = {
-            x: position.x - parentLayout.position.x,
-            y: position.y - parentLayout.position.y
-          };
-        }
+        const absoluteX = nodeLayout?.position?.x || node.x || 0;
+        const absoluteY = nodeLayout?.position?.y || node.y || 0;
+        const parentX = parentLayout?.position?.x || 0;
+        const parentY = parentLayout?.position?.y || 0;
+        
+        position = {
+          x: absoluteX - parentX,
+          y: absoluteY - parentY
+        };
+      } else {
+        // ROOT NODE: Use absolute ELK coordinates
+        position = {
+          x: nodeLayout?.position?.x || node.x || 0,
+          y: nodeLayout?.position?.y || node.y || 0
+        };
       }
       
       const standardNode: ReactFlowNode = {
@@ -322,8 +402,8 @@ export class ReactFlowBridge {
         },
         parentId,
         connectable: CURRENT_HANDLE_STRATEGY === 'floating',
-        // Constrain child nodes to their parent boundaries
-        ...(parentId && { extent: 'parent' as const })
+        // ReactFlow sub-flow: constrain children within parent bounds
+        extent: parentId ? 'parent' : undefined
       };
       
       nodes.push(standardNode);

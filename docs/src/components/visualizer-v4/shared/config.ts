@@ -44,6 +44,30 @@ export const LAYOUT_CONSTANTS = {
   MIN_CONTAINER_WIDTH: 200,
   MIN_CONTAINER_HEIGHT: 150,
   
+  // Container sizing constants for ReactFlow hierarchical layout (fallback values when ELK doesn't provide sizing)
+  CHILD_CONTAINER_WIDTH: 200,           // Compact width for child containers (was 220)
+  CHILD_CONTAINER_HEIGHT: 120,          // Compact height for child containers (was 140)
+  MAX_PARENT_CONTAINER_WIDTH: 500,      // Reduced maximum width cap (was 600)
+  MAX_PARENT_CONTAINER_HEIGHT: 350,     // Reduced maximum height cap (was 450)
+  DEFAULT_PARENT_CONTAINER_WIDTH: 250,  // Reduced default width (was 300)
+  DEFAULT_PARENT_CONTAINER_HEIGHT: 150, // Reduced default height (was 200)
+  FALLBACK_CONTAINER_WIDTH: 200,        // Match child container width
+  FALLBACK_CONTAINER_HEIGHT: 120,       // Match child container height
+  FALLBACK_CONTAINER_MAX_WIDTH: 250,    // Reduced fallback max (was 300)
+  FALLBACK_CONTAINER_MAX_HEIGHT: 150,   // Reduced fallback max (was 200)
+  
+  // Node positioning within containers (fallback values when ELK positioning isn't available)
+  NODE_GRID_PADDING: 8,                 // Compact padding between nodes (was 10)
+  NODE_CONTAINER_TITLE_HEIGHT: 30,      // Compact title height (was 35)
+  NODE_GRID_WIDTH: 100,                 // Compact node width (was 120)
+  NODE_GRID_HEIGHT: 40,                 // Compact node height (was 45)
+  NODE_GRID_COLUMNS: 2,                 // Keep 2 columns
+  
+  // Container positioning within parent containers (fallback values)
+  CONTAINER_GRID_PADDING: 10,           // Compact padding between containers (was 15)
+  CONTAINER_TITLE_HEIGHT: 30,           // Match node title height (was 35)
+  CONTAINER_GRID_COLUMNS: 2,            // Keep 2 columns
+  
   // Container label positioning and sizing
   CONTAINER_LABEL_HEIGHT: 32,           // Height reserved for container labels
   CONTAINER_LABEL_PADDING: 12,          // Padding around container labels
@@ -188,7 +212,8 @@ export const LAYOUT_SPACING = {
 export const ELK_LAYOUT_OPTIONS = {
   'elk.algorithm': 'mrtree',
   'elk.direction': 'DOWN',
-  'elk.hierarchyHandling': 'INCLUDE_CHILDREN',    // Added: maintain visual hierarchy
+  // STANDARD APPROACH: Don't use ELK for hierarchical layout, use ReactFlow sub-flows
+  // ELK layouts root containers only, ReactFlow handles parent-child relationships
   
   // // MRTREE-specific spacing properties (the generic ones don't work with mrtree!)
   // 'elk.mrtree.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL.toString(),
@@ -212,10 +237,11 @@ export function getELKLayoutOptions(algorithm: ELKAlgorithm = ELK_ALGORITHMS.MRT
   return {
     ...ELK_LAYOUT_OPTIONS,
     'elk.algorithm': algorithm,
-    // STANDARD PRACTICE: Use absolute coordinates for hierarchical ReactFlow integration
-    // This eliminates the need for complex coordinate transformations
-    'elk.json.shapeCoords': 'ROOT',  // All node coordinates are absolute
-    'elk.json.edgeCoords': 'ROOT'    // All edge coordinates are absolute
+    // TRUST ELK: Enable proper hierarchical layout handling
+    'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+    // Use absolute coordinates for ReactFlow integration
+    'elk.json.shapeCoords': 'ROOT',
+    'elk.json.edgeCoords': 'ROOT'
   };
 }
 
