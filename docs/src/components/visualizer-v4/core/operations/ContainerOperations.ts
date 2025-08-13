@@ -33,7 +33,7 @@ export class ContainerOperations {
     const children = this.state.getContainerChildren(containerId);
     for (const childId of children) {
       const childContainer = this.state.getContainer(childId);
-      if (childContainer) {
+      if (childContainer && !childContainer.collapsed) {
         this.handleContainerCollapse(childId);
       }
     }

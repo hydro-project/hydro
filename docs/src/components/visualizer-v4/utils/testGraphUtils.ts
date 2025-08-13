@@ -3,7 +3,7 @@
  * Separate from test file to avoid importing test framework code in browser
  */
 
-import { VisualizationState } from '../core/VisState';
+import { VisualizationState } from '../core/VisualizationState';
 
 export function createCollapsedContainersTestGraph(): VisualizationState {
   const visState = new VisualizationState();

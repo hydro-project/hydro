@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createVisualizationState } from '../core/VisState';
+import { createVisualizationState } from '../core/VisualizationState';
 import { ELKBridge } from '../bridges/ELKBridge';
 
 describe('Layout Configuration Changes', () => {

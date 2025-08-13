@@ -4,7 +4,7 @@
  * Bridges the existing VisualizationState implementation with the ReactFlow interface.
  */
 
-import { VisualizationState as CoreVisualizationState } from '../core/VisState';
+import { VisualizationState as CoreVisualizationState } from '../core/VisualizationState';
 
 import type { 
   VisualizationState,

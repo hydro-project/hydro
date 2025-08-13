@@ -7,7 +7,7 @@
  * - ELK returns layout positions that get applied back to VisState
  */
 
-import { VisualizationState } from '../core/VisState';
+import { VisualizationState } from '../core/VisualizationState';
 import type { 
   GraphNode, 
   GraphEdge, 

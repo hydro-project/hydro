@@ -2,7 +2,7 @@
  * Debug test to validate smart collapse hypothesis
  */
 
-import { VisualizationState, createVisualizationState } from '../VisState';
+import { VisualizationState, createVisualizationState } from '../VisualizationState';
 import { VisualizationEngine } from '../VisualizationEngine';
 
 describe('Debug Smart Collapse', () => {

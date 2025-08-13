@@ -6,7 +6,7 @@
  * Uses configurable handle system for maximum layout flexibility.
  */
 
-import type { VisualizationState } from '../core/VisState';
+import type { VisualizationState } from '../core/VisualizationState';
 import type { GraphNode, GraphEdge, Container } from '../shared/types';
 import { MarkerType } from '@xyflow/react';
 import { getHandleConfig, CURRENT_HANDLE_STRATEGY } from '../render/handleConfig';

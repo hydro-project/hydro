@@ -9,7 +9,7 @@
  * Clean separation: Engine orchestrates, Bridges translate, VisState stores
  */
 
-import type { VisualizationState } from './VisState';
+import type { VisualizationState } from './VisualizationState';
 import { ELKBridge } from '../bridges/ELKBridge';
 import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';

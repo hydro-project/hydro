@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createVisualizationState, VisualizationState } from '../VisState';
+import { createVisualizationState, VisualizationState } from '../VisualizationState';
 
 describe('Container Operations', () => {
   

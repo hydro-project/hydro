@@ -71,7 +71,7 @@ function VisV4Component() {
     const loadComponents = async () => {
       try {
         // Import v4 components with specific error handling for each
-        const visStateModule = await import('@site/src/components/visualizer-v4/core/VisState.ts');
+        const visStateModule = await import('@site/src/components/visualizer-v4/core/VisualizationState.ts');
         
         const FlowGraphModule = await import('@site/src/components/visualizer-v4/render/FlowGraph.tsx');
         

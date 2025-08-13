@@ -19,7 +19,7 @@
  */
 
 import { describe, test, expect } from 'vitest';
-import { createVisualizationState } from '../VisState';
+import { createVisualizationState } from '../VisualizationState';
 
 describe('Edge Invariant Validation', () => {
   

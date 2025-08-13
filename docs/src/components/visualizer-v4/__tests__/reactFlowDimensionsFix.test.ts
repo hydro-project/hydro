@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createVisualizationState } from '../core/VisState';
-import type { VisualizationState } from '../core/VisState';
+import { createVisualizationState } from '../core/VisualizationState';
+import type { VisualizationState } from '../core/VisualizationState';
 import { ELKBridge } from '../bridges/ELKBridge';
 import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
 

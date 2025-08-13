@@ -21,12 +21,12 @@ export const VERSION = '4.0.0' as const;
 /**
  * Core visualization state class - single source of truth
  */
-export { VisualizationState } from './core/VisState';
+export { VisualizationState } from './core/VisualizationState';
 
 /**
  * Factory function to create a new VisualizationState instance.
  */
-export { createVisualizationState } from './core/VisState';
+export { createVisualizationState } from './core/VisualizationState';
 
 // ============ Bridge Architecture (from vis v3) ============
 

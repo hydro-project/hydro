@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { VisualizationEngine } from '../core/VisualizationEngine';
-import { VisualizationState } from '../core/VisState';
+import { VisualizationState } from '../core/VisualizationState';
 import { ELKBridge } from '../bridges/ELKBridge';
 
 describe('Algorithm Configuration Consistency', () => {

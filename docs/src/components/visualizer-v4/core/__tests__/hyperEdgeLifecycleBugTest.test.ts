@@ -8,7 +8,7 @@
  */
 
 import { describe, test, expect, beforeEach } from 'vitest';
-import { VisualizationState } from '../VisState';
+import { VisualizationState } from '../VisualizationState';
 
 describe('HyperEdge Lifecycle Bug Reproduction', () => {
   let visState: VisualizationState;

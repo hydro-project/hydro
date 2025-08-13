@@ -10,8 +10,8 @@
  */
 
 import { describe, test, expect, beforeEach } from 'vitest';
-import { createVisualizationState } from '../VisState';
-import type { VisualizationState } from '../VisState';
+import { createVisualizationState } from '../VisualizationState';
+import type { VisualizationState } from '../VisualizationState';
 
 describe('ELK Dimension Explosion Bug - Regression Tests', () => {
   let visState: VisualizationState;

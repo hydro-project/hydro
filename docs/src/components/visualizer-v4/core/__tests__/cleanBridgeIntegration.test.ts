@@ -7,8 +7,8 @@
  */
 
 import { describe, test, expect, beforeEach } from 'vitest';
-import { createVisualizationState } from '../VisState';
-import type { VisualizationState } from '../VisState';
+import { createVisualizationState } from '../VisualizationState';
+import type { VisualizationState } from '../VisualizationState';
 
 describe('VisualizationState + Clean Bridges Integration', () => {
   let visState: VisualizationState;

@@ -11,8 +11,8 @@
  */
 
 import { describe, test, expect, beforeEach } from 'vitest';
-import { createVisualizationState } from '../VisState';
-import type { VisualizationState } from '../VisState';
+import { createVisualizationState } from '../VisualizationState';
+import type { VisualizationState } from '../VisualizationState';
 
 describe('TreeHierarchy/VisState Synchronization Tests', () => {
   let visState: VisualizationState;

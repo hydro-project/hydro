@@ -5,7 +5,7 @@
  * and not during internal operations.
  */
 
-import { VisualizationState } from '../VisState';
+import { VisualizationState } from '../VisualizationState';
 
 describe('Validation API Boundary', () => {
   let visState: VisualizationState;

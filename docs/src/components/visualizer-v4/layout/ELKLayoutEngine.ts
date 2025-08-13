@@ -6,7 +6,7 @@
  */
 
 import { VisualizationEngine, createVisualizationEngine } from '../core/VisualizationEngine';
-import { createVisualizationState } from '../core/VisState';
+import { createVisualizationState } from '../core/VisualizationState';
 import type { 
   NodeStyle,
   EdgeStyle,

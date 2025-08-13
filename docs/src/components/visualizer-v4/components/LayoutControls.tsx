@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import type { VisualizationState } from '../core/VisState';
+import type { VisualizationState } from '../core/VisualizationState';
 
 // SVG Icons for pack/unpack operations
 const PackIcon = () => (

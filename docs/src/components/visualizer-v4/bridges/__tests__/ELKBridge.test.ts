@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { ELKBridge } from '../ELKBridge';
-import { createVisualizationState } from '../../core/VisState';
+import { createVisualizationState } from '../../core/VisualizationState';
 
 describe('ELKBridge', () => {
   describe('instantiation', () => {

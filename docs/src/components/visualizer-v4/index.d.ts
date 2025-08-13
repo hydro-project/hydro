@@ -18,11 +18,11 @@ export declare const VERSION: "2.0.0";
 /**
  * Core visualization state class - now powered by bridge architecture!
  */
-export { VisualizationState } from './core/VisState';
+export { VisualizationState } from './core/VisualizationState';
 /**
  * Factory function to create a new VisualizationState instance.
  */
-export { createVisualizationState } from './core/VisState';
+export { createVisualizationState } from './core/VisualizationState';
 /**
  * Pre-defined styling constants and types
  */

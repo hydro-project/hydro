@@ -12,7 +12,7 @@ import { ReactFlowConverter } from './ReactFlowConverter';
 import { DEFAULT_RENDER_CONFIG } from './config';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
-import type { VisualizationState } from '../core/VisState';
+import type { VisualizationState } from '../core/VisualizationState';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';
 import type { RenderConfig, FlowGraphEventHandlers, LayoutConfig } from '../core/types';
 

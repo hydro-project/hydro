@@ -4,7 +4,7 @@
 
 import { describe, test } from 'vitest';
 import { ELKBridge } from '../bridges/ELKBridge';
-import { VisualizationState } from '../core/VisState';
+import { VisualizationState } from '../core/VisualizationState';
 
 describe('Y-Axis Debug', () => {
   test('should output current Y coordinates from ELK', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createVisualizationState } from '../VisState';
+import { createVisualizationState } from '../VisualizationState';
 import { VisualizationEngine } from '../VisualizationEngine';
 import { ELKBridge } from '../../bridges/ELKBridge';
 

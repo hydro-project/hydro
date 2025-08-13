@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createVisualizationState } from '../VisState';
+import { createVisualizationState } from '../VisualizationState';
 
 describe('EdgeIndexEncapsulation', () => {
   describe('basic functionality', () => {

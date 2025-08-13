@@ -12,7 +12,7 @@ import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { useVisualization } from '../hooks/useVisualization';
-import type { VisualizationState } from '../core/VisState';
+import type { VisualizationState } from '../core/VisualizationState';
 import type { UseVisualizationConfig } from '../hooks/useVisualization';
 
 export interface VisualizationComponentProps {

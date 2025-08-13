@@ -7,8 +7,8 @@
 import fs from 'fs';
 import path from 'path';
 import { parseGraphJSON } from '../core/JSONParser';
-import { createVisualizationState } from '../core/VisState';
-import type { VisualizationState } from '../core/VisState';
+import { createVisualizationState } from '../core/VisualizationState';
+import type { VisualizationState } from '../core/VisualizationState';
 
 export interface TestDataResult {
   rawData: any;

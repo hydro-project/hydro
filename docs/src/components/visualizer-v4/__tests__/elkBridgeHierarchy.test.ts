@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ELKBridge } from '../bridges/ELKBridge';
 import { loadChatJsonTestData, skipIfNoTestData, createMockVisStateWithContainers } from './testUtils';
-import type { VisualizationState } from '../core/VisState';
+import type { VisualizationState } from '../core/VisualizationState';
 
 describe('ELKBridge Container Hierarchy', () => {
   let elkBridge: ELKBridge;

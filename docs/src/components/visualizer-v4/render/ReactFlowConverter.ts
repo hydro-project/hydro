@@ -6,7 +6,7 @@
  */
 
 import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
-import type { VisualizationState } from '../core/VisState';
+import type { VisualizationState } from '../core/VisualizationState';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';
 
 export class ReactFlowConverter {

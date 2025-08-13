@@ -5,7 +5,7 @@
  * Handles nodes, edges, hierarchies, and grouping assignments.
  */
 
-import { createVisualizationState, VisualizationState } from './VisState';
+import { createVisualizationState, VisualizationState } from './VisualizationState';
 import { NODE_STYLES, EDGE_STYLES, NodeStyle, EdgeStyle } from '../shared/config';
 
 // ============ Type Definitions ============
