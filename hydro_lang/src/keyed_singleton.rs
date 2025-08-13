@@ -6,6 +6,7 @@ use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick};
 use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
+use crate::unsafety::NonDet;
 use crate::{Atomic, Bounded, Location, NoOrder, Stream, Tick, Unbounded};
 
 pub struct KeyedSingleton<K, V, Loc, Bound> {
@@ -113,12 +114,16 @@ where
     /// Given a tick, returns a keyed singleton with a entries consisting of keys with
     /// snapshots of the value singleton.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Because this picks a snapshot of each singleton whose value is continuously changing,
     /// the output singleton has a non-deterministic value since each snapshot can be at an
     /// arbitrary point in time.
-    pub unsafe fn snapshot(self, tick: &Tick<L>) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
-        unsafe { self.atomic(tick).snapshot() }
+    pub fn snapshot(
+        self,
+        tick: &Tick<L>,
+        nondet: NonDet,
+    ) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+        self.atomic(tick).snapshot(nondet)
     }
 }
 
@@ -129,11 +134,11 @@ where
     /// Returns a keyed singleton with a entries consisting of keys with snapshots of the value
     /// singleton being atomically processed.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Because this picks a snapshot of each singleton whose value is continuously changing,
     /// each output singleton has a non-deterministic value since each snapshot can be at an
     /// arbitrary point in time.
-    pub unsafe fn snapshot(self) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    pub fn snapshot(self, _nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
         KeyedSingleton {
             underlying: Stream::new(
                 self.underlying.location.tick,

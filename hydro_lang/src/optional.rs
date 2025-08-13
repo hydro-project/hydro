@@ -13,6 +13,7 @@ use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::singleton::ZipResult;
 use crate::stream::{AtLeastOnce, ExactlyOnce, NoOrder};
+use crate::unsafety::NonDet;
 use crate::{Bounded, Location, Singleton, Stream, Tick, TotalOrder, Unbounded};
 
 pub struct Optional<Type, Loc, Bound> {
@@ -518,11 +519,11 @@ where
     /// being atomically processed. The snapshot at tick `t + 1` is guaranteed to include
     /// at least all relevant data that contributed to the snapshot at tick `t`.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Because this picks a snapshot of a optional whose value is continuously changing,
     /// the output optional has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
-    pub unsafe fn latest_tick(self) -> Optional<T, Tick<L>, Bounded> {
+    pub fn snapshot(self, _nondet: NonDet) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
             self.location.clone().tick,
             HydroNode::Unpersist {
@@ -549,28 +550,24 @@ where
     /// as of that tick. The snapshot at tick `t + 1` is guaranteed to include at least all
     /// relevant data that contributed to the snapshot at tick `t`.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// Because this picks a snapshot of a optional whose value is continuously changing,
     /// the output optional has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
-    pub unsafe fn latest_tick(self, tick: &Tick<L>) -> Optional<T, Tick<L>, Bounded> {
-        unsafe { self.atomic(tick).latest_tick() }
+    pub fn snapshot(self, tick: &Tick<L>, nondet: NonDet) -> Optional<T, Tick<L>, Bounded> {
+        self.atomic(tick).snapshot(nondet)
     }
 
     /// Eagerly samples the optional as fast as possible, returning a stream of snapshots
     /// with order corresponding to increasing prefixes of data contributing to the optional.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// At runtime, the optional will be arbitrarily sampled as fast as possible, but due
     /// to non-deterministic batching and arrival of inputs, the output stream is
     /// non-deterministic.
-    pub unsafe fn sample_eager(self) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce> {
+    pub fn sample_eager(self, nondet: NonDet) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce> {
         let tick = self.location.tick();
-
-        unsafe {
-            // SAFETY: source of intentional non-determinism
-            self.latest_tick(&tick).all_ticks().weakest_retries()
-        }
+        self.snapshot(&tick, nondet).all_ticks().weakest_retries()
     }
 
     /// Given a time interval, returns a stream corresponding to snapshots of the optional
@@ -579,26 +576,21 @@ where
     /// represent the value of the optional given some prefix of the streams leading up to
     /// it.
     ///
-    /// # Safety
+    /// # Non-Determinism
     /// The output stream is non-deterministic in which elements are sampled, since this
     /// is controlled by a clock.
-    pub unsafe fn sample_every(
+    pub fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
+        nondet: NonDet,
     ) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce> {
-        let samples = unsafe {
-            // SAFETY: source of intentional non-determinism
-            self.location.source_interval(interval)
-        };
+        let samples = self.location.source_interval(interval, nondet);
         let tick = self.location.tick();
 
-        unsafe {
-            // SAFETY: source of intentional non-determinism
-            self.latest_tick(&tick)
-                .continue_if(samples.tick_batch(&tick).first())
-                .all_ticks()
-                .weakest_retries()
-        }
+        self.snapshot(&tick, nondet)
+            .continue_if(samples.batch(&tick, nondet).first())
+            .all_ticks()
+            .weakest_retries()
     }
 }
 
