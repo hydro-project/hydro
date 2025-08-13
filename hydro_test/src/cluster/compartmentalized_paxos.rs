@@ -54,24 +54,26 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
         ballot.map(q!(|ballot| ballot.proposer_id))
     }
 
-    unsafe fn build<P: PaxosPayload>(
+    fn build<P: PaxosPayload>(
         self,
         with_ballot: impl FnOnce(
             Stream<Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
         ) -> Stream<P, Cluster<'a, Self::PaxosIn>, Unbounded>,
         a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
+        nondet_leader: NonDet,
+        nondet_commit: NonDet,
     ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder> {
-        unsafe {
-            compartmentalized_paxos_core(
-                &self.proposers,
-                &self.proxy_leaders,
-                &self.acceptors,
-                a_checkpoint,
-                with_ballot,
-                self.config,
-            )
-            .1
-        }
+        compartmentalized_paxos_core(
+            &self.proposers,
+            &self.proxy_leaders,
+            &self.acceptors,
+            a_checkpoint,
+            with_ballot,
+            self.config,
+            nondet_leader,
+            nondet_commit,
+        )
+        .1
     }
 }
 
@@ -89,13 +91,17 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
 /// and a stream of sequenced payloads with an index and optional payload (in the case of
 /// holes in the log).
 ///
-/// # Safety
+/// # Non-Determinism
 /// When the leader is stable, the algorithm will commit incoming payloads to the leader
 /// in deterministic order. However, when the leader is changing, payloads may be
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
-#[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
+#[expect(
+    clippy::type_complexity,
+    clippy::too_many_arguments,
+    reason = "internal paxos code // TODO"
+)]
+pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
     proposers: &Cluster<'a, Proposer>,
     proxy_leaders: &Cluster<'a, ProxyLeader>,
     acceptors: &Cluster<'a, Acceptor>,
@@ -104,6 +110,8 @@ pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
         Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
     ) -> Stream<P, Cluster<'a, Proposer>, Unbounded>,
     config: CompartmentalizedPaxosConfig,
+    nondet_leader: NonDet,
+    nondet_commit_leader_change: NonDet,
 ) -> (
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
     Stream<(usize, Option<P>), Cluster<'a, ProxyLeader>, Unbounded, NoOrder>,
@@ -129,24 +137,27 @@ pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
     let (a_log_complete_cycle, a_log_forward_reference) =
         acceptor_tick.forward_ref::<Singleton<_, _, _>>();
 
-    let (p_ballot, p_is_leader, p_relevant_p1bs, a_max_ballot) = unsafe {
-        // SAFETY: The primary non-determinism exposed by leader election algorithm lies in which leader
-        // is elected, which affects both the ballot at each proposer and the leader flag. But using a stale ballot
-        // or leader flag will only lead to failure in sequencing rather than commiting the wrong value. Because
-        // ballots are non-deterministic, the acceptor max ballot is also non-deterministic, although we are
-        // guaranteed that the max ballot will match the current ballot of a proposer who believes they are the leader.
-        leader_election(
-            proposers,
-            acceptors,
-            &proposer_tick,
-            &acceptor_tick,
-            config.acceptor_grid_rows,
-            config.acceptor_grid_rows * config.acceptor_grid_cols,
-            config.paxos_config,
-            sequencing_max_ballot_forward_reference,
-            a_log_forward_reference,
-        )
-    };
+    let (p_ballot, p_is_leader, p_relevant_p1bs, a_max_ballot) = leader_election(
+        proposers,
+        acceptors,
+        &proposer_tick,
+        &acceptor_tick,
+        config.acceptor_grid_rows,
+        config.acceptor_grid_rows * config.acceptor_grid_cols,
+        config.paxos_config,
+        sequencing_max_ballot_forward_reference,
+        a_log_forward_reference,
+        nondet!(
+            /// The primary non-determinism exposed by leader election algorithm lies in which leader
+            /// is elected, which affects both the ballot at each proposer and the leader flag. But using a stale ballot
+            /// or leader flag will only lead to failure in sequencing rather than commiting the wrong value.
+            nondet_leader
+        ),
+        nondet!(
+            /// Because ballots are non-deterministic, the acceptor max ballot is also non-deterministic, although we are
+            /// guaranteed that the max ballot will match the current ballot of a proposer who believes they are the leader.
+        ),
+    );
 
     let just_became_leader = p_is_leader
         .clone()
@@ -159,34 +170,34 @@ pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
             .all_ticks(),
     );
 
-    let (p_to_replicas, a_log, sequencing_max_ballots) = unsafe {
-        // SAFETY: The relevant p1bs are non-deterministic because they come from a arbitrary quorum, but because
-        // we use a quorum, if we remain the leader there are no missing committed values when we combine the logs.
-        // The remaining non-determinism is in when incoming payloads are batched versus the leader flag and state
-        // of acceptors, which in the worst case will lead to dropped payloads as documented.
-        sequence_payload(
-            proposers,
-            proxy_leaders,
-            acceptors,
-            &proposer_tick,
-            &proxy_leader_tick,
-            &acceptor_tick,
-            c_to_proposers,
-            a_checkpoint,
-            p_ballot.clone(),
-            p_is_leader,
-            p_relevant_p1bs,
-            config,
-            a_max_ballot,
-        )
-    };
+    let (p_to_replicas, a_log, sequencing_max_ballots) = sequence_payload(
+        proposers,
+        proxy_leaders,
+        acceptors,
+        &proposer_tick,
+        &proxy_leader_tick,
+        &acceptor_tick,
+        c_to_proposers,
+        a_checkpoint,
+        p_ballot.clone(),
+        p_is_leader,
+        p_relevant_p1bs,
+        config,
+        a_max_ballot,
+        nondet!(
+            /// The relevant p1bs are non-deterministic because they come from a arbitrary quorum, but because
+            /// we use a quorum, if we remain the leader there are no missing committed values when we combine the logs.
+            /// The remaining non-determinism is in when incoming payloads are batched versus the leader flag and state
+            /// of acceptors, which in the worst case will lead to dropped payloads as documented.
+            nondet_commit_leader_change
+        ),
+    );
 
-    a_log_complete_cycle.complete(unsafe {
-        // SAFETY: We will always write payloads to the log before acknowledging them to the proposers,
-        // which guarantees that if the leader changes the quorum overlap between sequencing and leader
-        // election will include the committed value.
-        a_log.latest_tick()
-    });
+    a_log_complete_cycle.complete(a_log.snapshot(nondet!(
+        /// We will always write payloads to the log before acknowledging them to the proposers,
+        /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
+        /// election will include the committed value.
+    )));
     sequencing_max_ballot_complete_cycle.complete(sequencing_max_ballots);
 
     (
@@ -201,7 +212,7 @@ pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
     clippy::too_many_arguments,
     reason = "internal paxos code // TODO"
 )]
-unsafe fn sequence_payload<'a, P: PaxosPayload>(
+fn sequence_payload<'a, P: PaxosPayload>(
     proposers: &Cluster<'a, Proposer>,
     proxy_leaders: &Cluster<'a, ProxyLeader>,
     acceptors: &Cluster<'a, Acceptor>,
@@ -222,6 +233,7 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
     >,
     config: CompartmentalizedPaxosConfig,
     a_max_ballot: Singleton<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded>,
+    nondet_commit_leader_change: NonDet,
 ) -> (
     Stream<(usize, Option<P>), Cluster<'a, ProxyLeader>, Unbounded, NoOrder>,
     Singleton<
@@ -234,16 +246,23 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
     let (p_log_to_recommit, p_max_slot) =
         recommit_after_leader_election(p_relevant_p1bs, p_ballot.clone(), config.paxos_config.f);
 
-    let p_indexed_payloads = index_payloads(proposer_tick, p_max_slot, unsafe {
-        // SAFETY: We batch payloads so that we can compute the correct slot based on
-        // base slot. In the case of a leader re-election, the base slot is updated which
-        // affects the computed payload slots. This non-determinism can lead to non-determinism
-        // in which payloads are committed when the leader is changing, which is documented at
-        // the function level.
+    let p_indexed_payloads = index_payloads(
+        proposer_tick,
+        p_max_slot,
         c_to_proposers
-            .tick_batch(proposer_tick)
-            .continue_if(p_is_leader.clone())
-    });
+            .batch(
+                proposer_tick,
+                nondet!(
+                    /// We batch payloads so that we can compute the correct slot based on
+                    /// base slot. In the case of a leader re-election, the base slot is updated which
+                    /// affects the computed payload slots. This non-determinism can lead to non-determinism
+                    /// in which payloads are committed when the leader is changing, which is documented at
+                    /// the function level.
+                    nondet_commit_leader_change
+                ),
+            )
+            .continue_if(p_is_leader.clone()),
+    );
 
     let num_proxy_leaders = config.num_proxy_leaders;
     let p_to_proxy_leaders_p2a = p_indexed_payloads
@@ -302,9 +321,11 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
         config.acceptor_grid_cols,
     );
 
-    let pl_to_replicas = join_responses(proxy_leader_tick, quorums.map(q!(|k| (k, ()))), unsafe {
-        p_to_proxy_leaders_p2a.tick_batch(proxy_leader_tick)
-    });
+    let pl_to_replicas = join_responses(
+        proxy_leader_tick,
+        quorums.map(q!(|k| (k, ()))),
+        p_to_proxy_leaders_p2a.batch(proxy_leader_tick, nondet!(/** TODO */)),
+    );
 
     let pl_failed_p2b_to_proposer = fails
         .map(q!(|(_, ballot)| (ballot.proposer_id, ballot)))

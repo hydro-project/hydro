@@ -11,6 +11,11 @@ export default function prismIncludeLanguages(PrismObject) {
     // eslint-disable-next-line global-require, import/no-dynamic-require
     require(`prismjs/components/prism-${lang}`);
   });
+  Prism.languages["rust"] = {
+    nondet: /nondet!/,
+    "nondet-ident": /_?nondet[a-zA-Z_]*/,
+    ...Prism.languages.rust,
+  };
   Prism.languages["rust,ignore"] = Prism.languages.rust;
   Prism.languages["rust,no_run"] = Prism.languages.rust;
   Prism.languages["compile_fail"] = Prism.languages.rust;

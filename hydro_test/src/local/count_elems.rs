@@ -6,12 +6,11 @@ pub fn count_elems<'a, T: 'a>(
 ) -> Stream<u32, Process<'a>, Unbounded> {
     let tick = process.tick();
 
-    let count = unsafe {
-        // SAFETY: intentionally using ticks
-        input_stream.map(q!(|_| 1)).tick_batch(&tick)
-    }
-    .fold(q!(|| 0), q!(|a, b| *a += b))
-    .all_ticks();
+    let count = input_stream
+        .map(q!(|_| 1))
+        .batch(&tick, nondet!(/** test */))
+        .fold(q!(|| 0), q!(|a, b| *a += b))
+        .all_ticks();
 
     count
 }

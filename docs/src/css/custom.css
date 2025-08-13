@@ -96,3 +96,21 @@ body {
 .header-discord-link:hover::before {
   background-color: var(--ifm-navbar-link-hover-color);
 }
+
+.token.nondet {
+  color: #ff0000;
+  font-weight: bold;
+}
+
+.token.nondet-ident {
+  color: #ff0000;
+  font-weight: bold;
+}
+
+[data-theme="dark"] .token.nondet {
+  color: #ff5555;
+}
+
+[data-theme="dark"] .token.nondet-ident {
+  color: #ff5555;
+}
