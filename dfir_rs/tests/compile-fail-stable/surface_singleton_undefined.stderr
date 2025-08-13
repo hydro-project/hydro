@@ -1,0 +1,5 @@
+error: Cannot find referenced name `unknown`; name was never assigned.
+ --> tests/compile-fail-stable/surface_singleton_undefined.rs:5:41
+  |
+5 |             -> filter(|value| value <= #unknown.as_reveal_ref())
+  |                                         ^^^^^^^

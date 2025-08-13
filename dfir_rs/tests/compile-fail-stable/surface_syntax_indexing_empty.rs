@@ -1,0 +1,1 @@
+../compile-fail/surface_syntax_indexing_empty.rs

@@ -1,0 +1,13 @@
+error: Closure provided to `demux(..)` must have two arguments: the first argument is the item, and the second argument lists ports. E.g. the second argument could be `var_args!(port_a, port_b, ..)`.
+ --> tests/compile-fail-stable/surface_demux_badclosure.rs:5:49
+  |
+5 |         my_demux = source_iter(0..10) -> demux(|var_args!(a, b, c)| {
+  |                                                 ^^^^^^^^
+
+warning: unused import: `var_args`
+ --> tests/compile-fail-stable/surface_demux_badclosure.rs:1:28
+  |
+1 | use dfir_rs::{dfir_syntax, var_args};
+  |                            ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default

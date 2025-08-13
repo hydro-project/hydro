@@ -1,0 +1,5 @@
+error: Output port from `demux_enum(..)` must be specified and must be a valid identifier.
+  --> tests/compile-fail-stable/surface_demuxenum_port_elided.rs:22:9
+   |
+22 |         my_demux -> for_each(std::mem::drop);
+   |         ^^^^^^^^

@@ -1,0 +1,1 @@
+../compile-fail/surface_degenerate_tee.rs

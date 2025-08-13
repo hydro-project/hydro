@@ -1,0 +1,10 @@
+error: unexpected end of input, expected one of: parentheses, identifier, `mod`
+ --> tests/compile-fail-stable/surface_syntax_eol_indexing.rs:4:18
+  |
+4 |       let mut df = dfir_syntax! {
+  |  __________________^
+5 | |         source_iter(0..10) -> [0]
+6 | |     };
+  | |_____^
+  |
+  = note: this error originates in the macro `dfir_syntax` (in Nightly builds, run with -Z macro-backtrace for more info)

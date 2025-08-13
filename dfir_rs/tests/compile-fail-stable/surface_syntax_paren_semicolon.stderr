@@ -1,0 +1,5 @@
+error: unexpected token, expected `)`
+ --> tests/compile-fail-stable/surface_syntax_paren_semicolon.rs:5:28
+  |
+5 |         (source_iter(0..10););
+  |                            ^

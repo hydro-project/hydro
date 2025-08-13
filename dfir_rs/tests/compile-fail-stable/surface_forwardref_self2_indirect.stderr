@@ -1,0 +1,29 @@
+error: Name `f` forms or references an illegal self-referential cycle (1/2).
+ --> tests/compile-fail-stable/surface_forwardref_self2_indirect.rs:5:39
+  |
+5 |         g = f -> map(|x: usize| x) -> f;
+  |                                       ^
+
+error: Name `g` forms or references an illegal self-referential cycle (2/2).
+ --> tests/compile-fail-stable/surface_forwardref_self2_indirect.rs:6:13
+  |
+6 |         f = g;
+  |             ^
+
+error: Name `f` forms or references an illegal self-referential cycle (1/1).
+ --> tests/compile-fail-stable/surface_forwardref_self2_indirect.rs:5:13
+  |
+5 |         g = f -> map(|x: usize| x) -> f;
+  |             ^
+
+error: `map` must have exactly 1 input(s), actually has 0.
+ --> tests/compile-fail-stable/surface_forwardref_self2_indirect.rs:5:18
+  |
+5 |         g = f -> map(|x: usize| x) -> f;
+  |                  ^^^
+
+error: `map` must have exactly 1 output(s), actually has 0.
+ --> tests/compile-fail-stable/surface_forwardref_self2_indirect.rs:5:18
+  |
+5 |         g = f -> map(|x: usize| x) -> f;
+  |                  ^^^

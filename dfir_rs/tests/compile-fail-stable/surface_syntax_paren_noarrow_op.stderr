@@ -1,0 +1,5 @@
+error: expected `->`
+ --> tests/compile-fail-stable/surface_syntax_paren_noarrow_op.rs:5:29
+  |
+5 |         (source_iter(0..10) for_each(std::mem::drop));
+  |                             ^^^^^^^^

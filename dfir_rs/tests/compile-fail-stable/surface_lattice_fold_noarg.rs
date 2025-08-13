@@ -1,0 +1,1 @@
+../compile-fail/surface_lattice_fold_noarg.rs
