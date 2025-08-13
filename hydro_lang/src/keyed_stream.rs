@@ -1154,7 +1154,7 @@ mod tests {
 
         let sum = node
             .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
-            .union(tick_triggered_input)
+            .interleave(tick_triggered_input)
             .into_keyed()
             .reduce_watermark_commutative(
                 watermark,
