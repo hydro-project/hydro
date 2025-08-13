@@ -22,6 +22,13 @@ export class ContainerOperations {
   handleContainerCollapse(containerId: string): void {
     console.log(`[DEBUG] Starting collapse for container ${containerId}`);
     
+    // CRITICAL: Verify no hyperEdges exist for this container before collapse
+    // This ensures expansion cleanup worked correctly
+    this.validateNoExistingHyperEdges(containerId);
+    
+    // Track hyperEdges created during this collapse to detect duplicates
+    const createdHyperEdgeIds = new Set<string>();
+    
     // 1. Recurse bottom-up
     const children = this.state.getContainerChildren(containerId);
     for (const childId of children) {
@@ -48,6 +55,20 @@ export class ContainerOperations {
     
     for (const hyperEdge of hyperEdges) {
       console.log(`[DEBUG] Creating hyperEdge: ${hyperEdge.id} (${hyperEdge.source} -> ${hyperEdge.target})`);
+      
+      // Check for duplicates within this collapse operation
+      if (createdHyperEdgeIds.has(hyperEdge.id)) {
+        throw new Error(`DUPLICATE HYPEREDGE: Attempting to create hyperEdge ${hyperEdge.id} twice during collapse of ${containerId}. This indicates a bug in the hyperEdge generation logic.`);
+      }
+      
+      // Check if hyperEdge already exists globally (should not happen if expansion cleanup worked correctly)
+      if (this.state._collections.hyperEdges.has(hyperEdge.id)) {
+        throw new Error(`HYPEREDGE ALREADY EXISTS: Attempting to create hyperEdge ${hyperEdge.id} during collapse of ${containerId}, but it already exists. This indicates incomplete cleanup during previous expansion.`);
+      }
+      
+      // Track this hyperEdge locally
+      createdHyperEdgeIds.add(hyperEdge.id);
+      
       // Create hyperEdge using internal API
       this.state._collections.hyperEdges.set(hyperEdge.id, hyperEdge);
       
@@ -88,7 +109,7 @@ export class ContainerOperations {
    * Expands only the specified container, leaving child containers in their current state
    */
   handleContainerExpansion(containerId: string): void {
-    console.log(`[EXPANSION] Starting expansion of ${containerId}`);
+    console.log(`[EXPANSION] ⭐ Starting expansion of ${containerId}`);
     
     // CRITICAL: Temporarily suppress validation during the expansion process
     // to avoid invariant violations during the transition period
@@ -119,6 +140,7 @@ export class ContainerOperations {
       // INVARIANT VIOLATION: MISSING_HYPEREDGE temporarily violated
       // REASON: We remove hyperEdges but haven't created replacements yet
       // WHY OK: We immediately restore connections in the cleanup process
+      console.log(`[EXPANSION] ⭐ About to call cleanupHyperEdgesForExpansion for ${containerId}`);
       this.cleanupHyperEdgesForExpansion(containerId);
       
     } finally {
@@ -379,24 +401,30 @@ export class ContainerOperations {
 
   /**
    * Find all hyperEdges that correspond to a container being expanded
-   * This includes hyperEdges that connect to the container itself, its ancestors, or its descendants
-   * due to state changes on the remote side
+   * This includes ANY hyperEdge that has the expanding container as an endpoint,
+   * because when a container expands, it should no longer be represented in hyperEdges
    */
   private findCorrespondingHyperEdges(containerId: string): any[] {
     const correspondingHyperEdges = [];
     
+    console.log(`[DEBUG] Finding corresponding hyperEdges for expanding container: ${containerId}`);
+    
     for (const [hyperEdgeId, hyperEdge] of this.state._collections.hyperEdges) {
       if (hyperEdge.hidden) continue;
       
-      // Check if this hyperEdge corresponds to the expanding container
-      const sourceCorresponds = this.isCorrespondingEndpoint(hyperEdge.source, containerId);
-      const targetCorresponds = this.isCorrespondingEndpoint(hyperEdge.target, containerId);
+      console.log(`[DEBUG] Checking hyperEdge: ${hyperEdgeId} (${hyperEdge.source} -> ${hyperEdge.target})`);
       
-      if (sourceCorresponds || targetCorresponds) {
+      // ANY hyperEdge that has the expanding container as either source or target
+      // should be cleaned up, because the container is no longer collapsed
+      if (hyperEdge.source === containerId || hyperEdge.target === containerId) {
+        console.log(`[DEBUG] ✅ FOUND corresponding hyperEdge: ${hyperEdgeId}`);
         correspondingHyperEdges.push(hyperEdge);
+      } else {
+        console.log(`[DEBUG] ❌ Not corresponding: ${hyperEdgeId}`);
       }
     }
     
+    console.log(`[DEBUG] Total corresponding hyperEdges found: ${correspondingHyperEdges.length}`);
     return correspondingHyperEdges;
   }
 
@@ -500,7 +528,9 @@ export class ContainerOperations {
         
         if (sourceIsHidden || targetIsHidden) {
           console.log(`[EXPANSION] Cannot restore edge ${originalEdgeId} yet - source hidden: ${sourceIsHidden}, target hidden: ${targetIsHidden}`);
-          // Don't restore the edge yet, but continue to check if we need a hyperEdge
+          // Don't restore the edge yet, and don't create a hyperEdge either
+          // This edge will be handled when its endpoints become visible
+          return;
         } else {
           // Check if the edge crosses any collapsed containers
           const targetContainer = this.state.getContainer(target);
@@ -545,6 +575,9 @@ export class ContainerOperations {
           
           const hyperEdgeId = `${HYPEREDGE_CONSTANTS.PREFIX}${hyperSource}${HYPEREDGE_CONSTANTS.SEPARATOR}${hyperTarget}`;
           
+          console.log(`[DEBUG] createOrRestoreConnection attempting to create hyperEdge: ${hyperEdgeId}`);
+          console.log(`[DEBUG] HyperEdge already exists: ${this.state._collections.hyperEdges.has(hyperEdgeId)}`);
+          
           if (!this.state._collections.hyperEdges.has(hyperEdgeId)) {
             const hyperEdge = {
               id: hyperEdgeId,
@@ -557,7 +590,7 @@ export class ContainerOperations {
             
             // Add to collections
             this.state._collections.hyperEdges.set(hyperEdgeId, hyperEdge);
-            this.state._collections._visibleEdges.set(hyperEdgeId, hyperEdge);
+            // Note: hyperEdges should NOT be added to _visibleEdges - they're handled separately in visibleEdges getter
             
             // Update node-to-edges mapping
             const sourceEdges = this.state._collections.nodeToEdges.get(hyperSource) || new Set();
@@ -569,6 +602,13 @@ export class ContainerOperations {
             this.state._collections.nodeToEdges.set(hyperTarget, targetEdges);
             
             console.log(`[EXPANSION] Created hyperEdge ${hyperEdgeId} instead of restoring edge: ${hyperSource} -> ${hyperTarget} (original: ${source} -> ${target})`);
+          } else {
+            // HyperEdge already exists, aggregate this edge into it
+            const existingHyperEdge = this.state._collections.hyperEdges.get(hyperEdgeId);
+            if (existingHyperEdge && originalEdgeId && originalEdge) {
+              existingHyperEdge.aggregatedEdges.set(originalEdgeId, originalEdge);
+              console.log(`[EXPANSION] Aggregated edge ${originalEdgeId} into existing hyperEdge ${hyperEdgeId}`);
+            }
           }
           return;
         }
@@ -722,6 +762,23 @@ export class ContainerOperations {
         // Check if this hyperEdge already exists
         if (this.state._collections.hyperEdges.has(newHyperEdgeId)) {
           console.log(`[HYPEREDGE_LIFTING] HyperEdge ${newHyperEdgeId} already exists, removing duplicate ${hyperEdgeId}`);
+          
+          // IMPORTANT: Merge aggregatedEdges from the duplicate into the existing hyperEdge
+          // to ensure all original edges are properly tracked
+          const existingHyperEdge = this.state._collections.hyperEdges.get(newHyperEdgeId);
+          if (existingHyperEdge && hyperEdge.aggregatedEdges) {
+            if (!existingHyperEdge.aggregatedEdges) {
+              existingHyperEdge.aggregatedEdges = new Map();
+            }
+            
+            // Merge all aggregated edges from the duplicate
+            for (const [edgeId, edgeData] of hyperEdge.aggregatedEdges) {
+              existingHyperEdge.aggregatedEdges.set(edgeId, edgeData);
+            }
+            
+            console.log(`[HYPEREDGE_LIFTING] Merged ${hyperEdge.aggregatedEdges.size} aggregated edges from ${hyperEdgeId} into ${newHyperEdgeId}`);
+          }
+          
           toDelete.push(hyperEdgeId);
           continue;
         }
@@ -824,6 +881,8 @@ export class ContainerOperations {
 
   private validateHyperEdgeLifting(): void {
     // Check that hyperEdges only exist between collapsed containers or from nodes to collapsed containers
+    const invalidHyperEdges = [];
+    
     for (const [hyperEdgeId, hyperEdge] of this.state._collections.hyperEdges) {
       const sourceContainer = this.state.getContainer(hyperEdge.source);
       const targetContainer = this.state.getContainer(hyperEdge.target);
@@ -832,8 +891,18 @@ export class ContainerOperations {
       const targetIsCollapsedContainer = targetContainer?.collapsed === true;
       
       if (!sourceIsCollapsedContainer && !targetIsCollapsedContainer) {
-        console.warn(`[CONTAINER_OPS] HyperEdge ${hyperEdgeId} exists but neither endpoint is a collapsed container: source ${hyperEdge.source}, target ${hyperEdge.target}`);
+        console.warn(`[CONTAINER_OPS] HyperEdge ${hyperEdgeId} exists but neither endpoint is a collapsed container: source ${hyperEdge.source}, target ${hyperEdge.target} - REMOVING`);
+        invalidHyperEdges.push(hyperEdgeId);
       }
+    }
+    
+    // Remove all invalid hyperEdges
+    for (const hyperEdgeId of invalidHyperEdges) {
+      this.removeHyperEdge(hyperEdgeId);
+    }
+    
+    if (invalidHyperEdges.length > 0) {
+      console.log(`[CONTAINER_OPS] Cleaned up ${invalidHyperEdges.length} invalid hyperEdges`);
     }
   }
 
@@ -898,5 +967,70 @@ export class ContainerOperations {
     }
     
     return descendants;
+  }
+
+  /**
+   * Clean up all invalid hyperEdges - ensures no hyperEdges exist without a collapsed container endpoint
+   * This fixes the INVALID_HYPEREDGE_ROUTING validation error
+   */
+  cleanupInvalidHyperEdges(): void {
+    console.log(`[HYPEREDGE_CLEANUP] Starting cleanup of invalid hyperEdges`);
+    
+    const hyperEdgesToRemove: string[] = [];
+    
+    for (const [hyperEdgeId, hyperEdge] of this.state._collections.hyperEdges) {
+      if (hyperEdge.hidden) continue;
+      
+      // Check if either endpoint is a collapsed container
+      const sourceContainer = this.state.getContainer(hyperEdge.source);
+      const targetContainer = this.state.getContainer(hyperEdge.target);
+      
+      const sourceIsCollapsedContainer = sourceContainer && sourceContainer.collapsed && !sourceContainer.hidden;
+      const targetIsCollapsedContainer = targetContainer && targetContainer.collapsed && !targetContainer.hidden;
+      
+      // If neither endpoint is a collapsed container, this hyperEdge is invalid
+      if (!sourceIsCollapsedContainer && !targetIsCollapsedContainer) {
+        console.log(`[HYPEREDGE_CLEANUP] Removing invalid hyperEdge ${hyperEdgeId}: source=${hyperEdge.source} (collapsed=${sourceIsCollapsedContainer}), target=${hyperEdge.target} (collapsed=${targetIsCollapsedContainer})`);
+        hyperEdgesToRemove.push(hyperEdgeId);
+      }
+    }
+    
+    // Remove invalid hyperEdges
+    for (const hyperEdgeId of hyperEdgesToRemove) {
+      this.removeHyperEdge(hyperEdgeId);
+    }
+    
+    console.log(`[HYPEREDGE_CLEANUP] Cleaned up ${hyperEdgesToRemove.length} invalid hyperEdges`);
+  }
+
+  /**
+   * Validate that no hyperEdges exist for a container before collapse
+   * This ensures that expansion cleanup worked correctly
+   */
+  private validateNoExistingHyperEdges(containerId: string): void {
+    const existingHyperEdges = [];
+    
+    for (const [hyperEdgeId, hyperEdge] of this.state._collections.hyperEdges) {
+      if (hyperEdge.hidden) continue;
+      
+      // Check if this hyperEdge has the container as either endpoint
+      if (hyperEdge.source === containerId || hyperEdge.target === containerId) {
+        existingHyperEdges.push(hyperEdgeId);
+      }
+    }
+    
+    if (existingHyperEdges.length > 0) {
+      console.log(`[VALIDATION] ❌ EXPANSION CLEANUP FAILURE for ${containerId}:`);
+      console.log(`[VALIDATION] Found ${existingHyperEdges.length} existing hyperEdges: ${existingHyperEdges.join(', ')}`);
+      console.log(`[VALIDATION] Total hyperEdges in system: ${this.state._collections.hyperEdges.size}`);
+      
+      // Log details of each existing hyperEdge
+      for (const hyperEdgeId of existingHyperEdges) {
+        const hyperEdge = this.state._collections.hyperEdges.get(hyperEdgeId);
+        console.log(`[VALIDATION] HyperEdge ${hyperEdgeId}: ${hyperEdge.source} -> ${hyperEdge.target}, hidden: ${hyperEdge.hidden}`);
+      }
+      
+      throw new Error(`EXPANSION CLEANUP FAILURE: Container ${containerId} is being collapsed but ${existingHyperEdges.length} hyperEdges still exist: ${existingHyperEdges.join(', ')}. This indicates incomplete cleanup during previous expansion.`);
+    }
   }
 }

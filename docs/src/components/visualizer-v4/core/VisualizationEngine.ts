@@ -264,15 +264,16 @@ export class VisualizationEngine {
     try {
       this.log('🧠 Starting smart collapse algorithm');
       
-      // Step 1: Get all visible containers from VisState
-      const containers = this.visState.visibleContainers;
+      // Step 1: Get only TOP-LEVEL containers from VisState
+      // This ensures we don't double-process parent and child containers
+      const containers = this.visState.getTopLevelContainers();
       
       if (containers.length === 0) {
-        this.log('ℹ️ No containers found, skipping smart collapse');
+        this.log('ℹ️ No top-level containers found, skipping smart collapse');
         return;
       }
       
-      this.log(`📊 Found ${containers.length} containers for smart collapse analysis`);
+      this.log(`📊 Found ${containers.length} top-level containers for smart collapse analysis`);
       
             // Step 2: Calculate container areas using layout dimensions
       const containerAreas = containers.map(container => {
@@ -342,6 +343,14 @@ export class VisualizationEngine {
             
             if (container.collapsed) {
               this.log(`⚠️ Container ${containerId} is already collapsed, skipping`);
+              continue;
+            }
+            
+            // CRITICAL: Check if container is now hidden due to ancestor collapse
+            // Smart collapse processes containers individually, but our recursive collapse
+            // may have already hidden descendant containers when their ancestors were collapsed
+            if (container.hidden) {
+              this.log(`⚠️ Container ${containerId} was hidden by ancestor collapse, skipping`);
               continue;
             }
             

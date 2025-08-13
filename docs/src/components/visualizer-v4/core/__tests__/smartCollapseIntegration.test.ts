@@ -6,6 +6,59 @@ import { ELKBridge } from '../../bridges/ELKBridge';
 const LOTS_OF_KIDS = 50;
 
 /**
+ * Validates edge integrity - ensures all visible edges have valid, existing endpoints
+ */
+async function validateEdgeIntegrity(visState: any, phase: string) {
+  console.log(`    🔍 Validating edge integrity: ${phase}`);
+  
+  // Get all visible entities using public API
+  const visibleNodes = visState.getVisibleNodes();
+  const visibleContainers = visState.getVisibleContainers();
+  const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
+  const visibleContainerIds = new Set(visibleContainers.map(c => c.id));
+  const allVisibleEntityIds = new Set([...visibleNodeIds, ...visibleContainerIds]);
+  
+  // Check hyperEdges using public API
+  const visibleHyperEdges = visState.visibleHyperEdges;
+  let invalidEdges = 0;
+  let disconnectedEdges = [];
+  
+  for (const hyperEdge of visibleHyperEdges) {
+    // Validate source node (single node, not array)
+    if (!allVisibleEntityIds.has(hyperEdge.source)) {
+      invalidEdges++;
+      disconnectedEdges.push({
+        hyperEdgeId: hyperEdge.id,
+        missingNodeId: hyperEdge.source,
+        type: 'source'
+      });
+      console.error(`      ❌ DISCONNECTED HYPEREDGE SOURCE: ${hyperEdge.id} missing source node ${hyperEdge.source}`);
+    }
+    
+    // Validate target node (single node, not array)
+    if (!allVisibleEntityIds.has(hyperEdge.target)) {
+      invalidEdges++;
+      disconnectedEdges.push({
+        hyperEdgeId: hyperEdge.id,
+        missingNodeId: hyperEdge.target,
+        type: 'target'
+      });
+      console.error(`      ❌ DISCONNECTED HYPEREDGE TARGET: ${hyperEdge.id} missing target node ${hyperEdge.target}`);
+    }
+  }
+  
+  if (invalidEdges > 0) {
+    throw new Error(
+      `❌ Edge integrity validation failed in ${phase}!\n` +
+      `Found ${invalidEdges} disconnected hyperEdge endpoints.\n` +
+      `These floating edges will cause visual artifacts in the layout!`
+    );
+  }
+  
+  console.log(`      ✅ Edge integrity OK: ${visibleHyperEdges.length} hyperEdges all valid`);
+}
+
+/**
  * Smart Collapse Integration Tests
  * 
  * These tests specifically target the bug where smart collapse fails during 
@@ -480,10 +533,16 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
         }
       }
 
+      // 🔍 FUZZ TEST: Validate edge integrity before layout
+      await validateEdgeIntegrity(visState, 'Pre-layout with randomized complex dataset');
+
       // Layout should complete within reasonable time
       await engine.runLayout();
       const endTime = Date.now();
       const layoutTime = endTime - startTime;
+
+      // 🔍 FUZZ TEST: Validate edge integrity after layout and smart collapse
+      await validateEdgeIntegrity(visState, 'Post-layout after smart collapse with randomized data');
 
       // Should complete within 5 seconds even with complex data
       expect(layoutTime).toBeLessThan(5000);
@@ -498,6 +557,9 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       }
 
       expect(collapsedContainers).toBeGreaterThan(0);
+
+      // 🔍 FUZZ TEST: Final edge integrity validation
+      await validateEdgeIntegrity(visState, 'Final state after performance validation');
     });
   });
 
@@ -645,6 +707,178 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       // The giant container should be collapsed due to its large size
       const giant = visState.getContainer('giant_container');
       expect(giant.collapsed).toBe(true);
+    });
+
+    it('🔥 FUZZ TEST: randomized expand/collapse cycles with comprehensive edge validation', async () => {
+      // Create a randomized dataset with varying complexity
+      const containerCount = 20 + Math.floor(Math.random() * 30); // 20-50 containers
+      const edgeCount = 50 + Math.floor(Math.random() * 150); // 50-200 edges
+      
+      console.log(`🎲 Fuzz test setup: ${containerCount} containers, ${edgeCount} edges`);
+      
+      // Create containers with random sizes and child counts
+      const containerNodeCounts = []; // Track how many nodes each container has
+      
+      for (let i = 0; i < containerCount; i++) {
+        const containerId = `fuzz_container_${i}`;
+        const childCount = 2 + Math.floor(Math.random() * 8); // 2-10 children each
+        containerNodeCounts[i] = childCount; // Store for later reference
+        const childNodes = [];
+        
+        for (let j = 0; j < childCount; j++) {
+          const nodeId = `${containerId}_node_${j}`;
+          visState.setGraphNode(nodeId, { 
+            label: `Node ${j}`,
+            width: 100 + Math.floor(Math.random() * 200),
+            height: 60 + Math.floor(Math.random() * 100)
+          });
+          childNodes.push(nodeId);
+        }
+        
+        visState.setContainer(containerId, {
+          collapsed: false,
+          hidden: false,
+          children: childNodes,
+          width: 300 + Math.floor(Math.random() * 2000),
+          height: 200 + Math.floor(Math.random() * 1500)
+        });
+      }
+      
+      // Add random interconnections using correct node counts
+      for (let i = 0; i < edgeCount; i++) {
+        const sourceContainer = Math.floor(Math.random() * containerCount);
+        const targetContainer = Math.floor(Math.random() * containerCount);
+        
+        if (sourceContainer !== targetContainer) {
+          // Get random nodes from each container using correct bounds
+          const sourceNodeIndex = Math.floor(Math.random() * containerNodeCounts[sourceContainer]);
+          const targetNodeIndex = Math.floor(Math.random() * containerNodeCounts[targetContainer]);
+          
+          const sourceNode = `fuzz_container_${sourceContainer}_node_${sourceNodeIndex}`;
+          const targetNode = `fuzz_container_${targetContainer}_node_${targetNodeIndex}`;
+          
+          visState.setGraphEdge(`fuzz_edge_${i}`, {
+            source: sourceNode,
+            target: targetNode
+          });
+        }
+      }
+      
+      // 🔍 Initial edge integrity validation
+      await validateEdgeIntegrity(visState, 'Fuzz test initial state');
+      
+      // Initial layout
+      await engine.runLayout();
+      await validateEdgeIntegrity(visState, 'After initial fuzz layout');
+      
+      // Perform 5-10 random expand/collapse cycles
+      const cycles = 5 + Math.floor(Math.random() * 5);
+      console.log(`🔄 Performing ${cycles} random expand/collapse cycles...`);
+      
+      for (let cycle = 0; cycle < cycles; cycle++) {
+        const operationCount = 3 + Math.floor(Math.random() * 7); // 3-10 operations per cycle
+        
+        for (let op = 0; op < operationCount; op++) {
+          const containerId = `fuzz_container_${Math.floor(Math.random() * containerCount)}`;
+          const container = visState.getContainer(containerId);
+          
+          if (container) {
+            // Randomly toggle container state
+            const newCollapsed = Math.random() > 0.5;
+            visState.setContainer(containerId, {
+              ...container,
+              collapsed: newCollapsed
+            });
+          }
+        }
+        
+        // Validate edges after each cycle
+        await validateEdgeIntegrity(visState, `Fuzz cycle ${cycle + 1} state changes`);
+        
+        // Re-layout and validate again
+        await engine.runLayout();
+        await validateEdgeIntegrity(visState, `Fuzz cycle ${cycle + 1} post-layout`);
+      }
+      
+      // Final comprehensive validation
+      await validateEdgeIntegrity(visState, 'Final fuzz test state');
+      
+      // Verify system is in good state
+      expect(engine.getState().phase).toBe('ready');
+      
+      // Should have some hyperEdges (collapsed containers create them)
+      const hyperEdges = visState.visibleHyperEdges;
+      expect(hyperEdges.length).toBeGreaterThan(0);
+      
+      console.log(`✅ Fuzz test completed: ${hyperEdges.length} hyperEdges, all valid`);
+    });
+
+    it('🔬 DEBUG: Manual expand/collapse cycle to test hyperEdge cleanup', async () => {
+      // Create a simple test case to verify hyperEdge cleanup
+      console.log('🔬 Setting up minimal expand/collapse test...');
+      
+      // Create two containers with nodes
+      for (let i = 0; i < 2; i++) {
+        const containerId = `test_container_${i}`;
+        const nodeId = `${containerId}_node_0`;
+        
+        visState.setGraphNode(nodeId, { label: `Node ${i}` });
+        visState.setContainer(containerId, {
+          collapsed: false,
+          hidden: false,
+          children: [nodeId]
+        });
+      }
+      
+      // Create an edge between containers
+      visState.setGraphEdge('test_edge', {
+        source: 'test_container_0_node_0',
+        target: 'test_container_1_node_0'
+      });
+      
+      console.log('🔬 Initial state created');
+      await validateEdgeIntegrity(visState, 'Initial simple test state');
+      
+      // Initial layout
+      await engine.runLayout();
+      await validateEdgeIntegrity(visState, 'After initial layout');
+      
+      // Manually collapse container 0
+      console.log('🔬 Manually collapsing test_container_0...');
+      const container0 = visState.getContainer('test_container_0');
+      visState.setContainer('test_container_0', {
+        ...container0,
+        collapsed: true
+      });
+      
+      await validateEdgeIntegrity(visState, 'After manual collapse');
+      
+      // Re-layout (should create hyperEdges)
+      await engine.runLayout();
+      await validateEdgeIntegrity(visState, 'After layout with collapsed container');
+      
+      const hyperEdgesAfterCollapse = visState.visibleHyperEdges;
+      console.log(`🔬 HyperEdges after collapse: ${hyperEdgesAfterCollapse.length}`);
+      
+      // Now manually expand container 0
+      console.log('🔬 Manually expanding test_container_0...');
+      const container0AfterCollapse = visState.getContainer('test_container_0');
+      console.log(`🔬 Container 0 state before expansion: collapsed=${container0AfterCollapse.collapsed}`);
+      
+      visState.setContainer('test_container_0', {
+        ...container0AfterCollapse,
+        collapsed: false  // Explicitly set to false
+      });
+      
+      console.log(`🔬 Container 0 state after setContainer call: collapsed=${visState.getContainer('test_container_0').collapsed}`);
+      
+      await validateEdgeIntegrity(visState, 'After manual expansion (should clean up hyperEdges)');
+      
+      const hyperEdgesAfterExpansion = visState.visibleHyperEdges;
+      console.log(`🔬 HyperEdges after expansion: ${hyperEdgesAfterExpansion.length}`);
+      
+      // Should have fewer hyperEdges after expansion
+      expect(hyperEdgesAfterExpansion.length).toBeLessThanOrEqual(hyperEdgesAfterCollapse.length);
     });
   });
 });

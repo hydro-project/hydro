@@ -126,6 +126,35 @@ export class BridgeCompatibility {
   }
 
   /**
+   * Get top-level containers (containers with no visible parent container)
+   */
+  getTopLevelContainers(): ReadonlyArray<any> {
+    const topLevelContainers = [];
+    
+    for (const container of this.state.visibleContainers) {
+      // Check if this container has a parent container
+      let hasVisibleParent = false;
+      
+      for (const [parentId, children] of this.state._collections.containerChildren) {
+        if (children.has(container.id)) {
+          const parent = this.state._collections.containers.get(parentId);
+          if (parent && !parent.collapsed && !parent.hidden) {
+            hasVisibleParent = true;
+            break;
+          }
+        }
+      }
+      
+      if (!hasVisibleParent) {
+        // Container has no visible parent - it's top level
+        topLevelContainers.push(container);
+      }
+    }
+    
+    return topLevelContainers;
+  }
+
+  /**
    * Get container ELK fixed status (minimal bridge compatibility)
    */
   getContainerELKFixed(containerId: string): boolean {

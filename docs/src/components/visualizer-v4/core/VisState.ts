@@ -84,7 +84,10 @@ export class VisualizationState implements ContainerHierarchyView {
     nodeToEdges: new Map<string, Set<string>>(),
     manualPositions: new Map<string, {x: number, y: number}>(),
     containerChildren: new Map<string, Set<string>>(),
-    nodeContainers: new Map<string, string>()
+    nodeContainers: new Map<string, string>(),
+    
+    // Track active keys to prevent duplicates at React rendering level
+    _activeRenderKeys: new Set<string>()
   };
   
   // Specialized operation classes
@@ -201,7 +204,12 @@ export class VisualizationState implements ContainerHierarchyView {
       return !edge.hidden;
     });
     
-    return [...regularEdges, ...hyperEdges];
+    const allEdges = [...regularEdges, ...hyperEdges];
+    
+    // Check for duplicate keys to prevent React warnings
+    this._validateRenderKeys(allEdges);
+    
+    return allEdges;
   }
 
   /**
@@ -214,7 +222,12 @@ export class VisualizationState implements ContainerHierarchyView {
       return !edge.hidden;
     });
     
-    return [...regularEdges, ...hyperEdges];
+    const allEdges = [...regularEdges, ...hyperEdges];
+    
+    // Check for duplicate keys to prevent React warnings
+    this._validateRenderKeys(allEdges);
+    
+    return allEdges;
   }
   
   /**
@@ -424,6 +437,10 @@ export class VisualizationState implements ContainerHierarchyView {
    * Add a container directly (for JSONParser and initial data loading)
    */
   addContainer(containerId: string, containerData: any): void {
+    // Check existing state BEFORE making changes
+    const existingContainer = this._collections.containers.get(containerId);
+    const wasCollapsed = existingContainer?.collapsed === true;
+    
     // Ensure proper defaults
     const processedData = {
       ...containerData,
@@ -448,9 +465,17 @@ export class VisualizationState implements ContainerHierarchyView {
       }
     }
     
-    // If container is collapsed, delegate to the full collapse handling logic
-    if (processedData.collapsed) {
+    // Handle state transitions
+    const isNowCollapsed = processedData.collapsed === true;
+    const isNowExpanded = processedData.collapsed === false;
+    
+    if (!wasCollapsed && isNowCollapsed) {
+      // Container is being collapsed
       this.containerOps.handleContainerCollapse(containerId);
+    } else if (wasCollapsed && isNowExpanded) {
+      // Container is being expanded
+      console.log(`[ADDCONTAINER] Container ${containerId} changing from collapsed to expanded - calling expansion handler`);
+      this.containerOps.handleContainerExpansion(containerId);
     }
   }
 
@@ -494,10 +519,14 @@ export class VisualizationState implements ContainerHierarchyView {
     // Handle collapse/expand transitions with hyperEdge management
     if (state.collapsed !== undefined && state.collapsed !== wasCollapsed) {
       if (state.collapsed) {
+        console.log(`[CONTAINER_STATE] 🔄 Collapsing container: ${containerId} (was: ${wasCollapsed}, now: ${state.collapsed})`);
         this.containerOps.handleContainerCollapse(containerId);
       } else {
+        console.log(`[CONTAINER_STATE] 🔄 Expanding container: ${containerId} (was: ${wasCollapsed}, now: ${state.collapsed})`);
         this.containerOps.handleContainerExpansion(containerId);
       }
+    } else {
+      console.log(`[CONTAINER_STATE] ℹ️  No collapse state change for container: ${containerId} (was: ${wasCollapsed}, now: ${state.collapsed})`);
     }
     
     // Handle hide/show transitions  
@@ -664,6 +693,10 @@ export class VisualizationState implements ContainerHierarchyView {
 
   getTopLevelNodes(): ReadonlyArray<any> {
     return this.bridgeCompat.getTopLevelNodes();
+  }
+
+  getTopLevelContainers(): ReadonlyArray<any> {
+    return this.bridgeCompat.getTopLevelContainers();
   }
 
   getContainerELKFixed(containerId: string): boolean {
@@ -843,6 +876,58 @@ export class VisualizationState implements ContainerHierarchyView {
       const shouldBeVisible = sourceVisible && targetVisible;
       
       this.setEdgeVisibility(edgeId as string, shouldBeVisible);
+    }
+  }
+
+  /**
+   * Validate render keys to prevent React duplicate key warnings
+   * This method checks for duplicate IDs in the edge collection that would cause React warnings
+   */
+  private _validateRenderKeys(edges: any[]): void {
+    const seenKeys = new Set<string>();
+    const duplicateKeys = new Set<string>();
+    
+    for (const edge of edges) {
+      if (seenKeys.has(edge.id)) {
+        duplicateKeys.add(edge.id);
+        console.log(`[DEBUG] Duplicate edge detected: ${edge.id}, isHyperEdge: ${edge.id.startsWith('hyper_')}`);
+      } else {
+        seenKeys.add(edge.id);
+      }
+    }
+    
+    if (duplicateKeys.size > 0) {
+      console.error(`[DUPLICATE_KEYS] Found duplicate edge keys that will cause React warnings:`, Array.from(duplicateKeys));
+      
+      // Debug: analyze where duplicates are coming from
+      const regularEdges = Array.from(this._collections._visibleEdges.values());
+      const hyperEdges = Array.from(this._collections.hyperEdges.values()).filter((edge: any) => !edge.hidden);
+      
+      console.log(`[DEBUG] Regular edges count: ${regularEdges.length}, HyperEdges count: ${hyperEdges.length}`);
+      console.log(`[DEBUG] Regular edge IDs:`, regularEdges.map(e => e.id));
+      console.log(`[DEBUG] HyperEdge IDs:`, hyperEdges.map(e => e.id));
+      
+      // Check for ID overlap between regular and hyperEdges
+      const regularIds = new Set(regularEdges.map(e => e.id));
+      const hyperIds = new Set(hyperEdges.map(e => e.id));
+      const overlap = Array.from(duplicateKeys).filter(id => regularIds.has(id) && hyperIds.has(id));
+      
+      if (overlap.length > 0) {
+        console.error(`[DEBUG] ID OVERLAP between regular edges and hyperEdges:`, overlap);
+      }
+      
+      // In strict validation mode, throw an error to fail tests
+      if (this._validationLevel === 'strict') {
+        throw new Error(`Duplicate edge keys detected: ${Array.from(duplicateKeys).join(', ')}`);
+      }
+      
+      // In normal mode for fuzz tests, treat as test failure
+      if (this._validationLevel === 'normal' && duplicateKeys.size > 0) {
+        throw new Error(`FUZZ TEST FAILURE: Found ${duplicateKeys.size} duplicate edge keys that will cause React warnings. This indicates a timing issue in hyperEdge creation/removal.`);
+      }
+      
+      // Otherwise, just log the warning but let React handle it
+      console.warn(`[DUPLICATE_KEYS] React will show warnings for these duplicate keys. Check hyperEdge creation/removal timing.`);
     }
   }
 }

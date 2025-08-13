@@ -190,9 +190,9 @@ export const ELK_LAYOUT_OPTIONS = {
   'elk.direction': 'DOWN',
   'elk.hierarchyHandling': 'INCLUDE_CHILDREN',    // Added: maintain visual hierarchy
   
-  // MRTREE-specific spacing properties (the generic ones don't work with mrtree!)
-  'elk.mrtree.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL.toString(),
-  'elk.mrtree.spacing.levelSeparation': LAYOUT_SPACING.COMPONENT_TO_COMPONENT.toString(),
+  // // MRTREE-specific spacing properties (the generic ones don't work with mrtree!)
+  // 'elk.mrtree.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL.toString(),
+  // 'elk.mrtree.spacing.levelSeparation': LAYOUT_SPACING.COMPONENT_TO_COMPONENT.toString(),
   
   // Generic spacing as fallback
   'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL.toString(),
@@ -202,7 +202,7 @@ export const ELK_LAYOUT_OPTIONS = {
   'elk.layered.spacing.nodeNodeBetweenLayers': '25',  // Match Visualizer layer separation
   
   // CRITICAL: Force ELK to respect container dimensions (prevents size explosion)
-  'elk.nodeSize.constraints': 'FIXED_SIZE',           // Don't resize containers to fit content
+  // 'elk.nodeSize.constraints': 'FIXED_SIZE',           // Don't resize containers to fit content
   'elk.nodeSize.options': 'DEFAULT_MINIMUM_SIZE'      // Respect our specified dimensions
 };
 
