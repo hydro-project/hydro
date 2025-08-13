@@ -83,7 +83,7 @@ impl MinRetries<ExactlyOnce> for AtLeastOnce {
 
 #[sealed::sealed]
 impl MinRetries<AtLeastOnce> for ExactlyOnce {
-    type Min = ExactlyOnce;
+    type Min = AtLeastOnce;
 }
 
 /// An ordered sequence stream of elements of type `T`.
@@ -744,6 +744,8 @@ where
         Stream::new(self.location, self.ir_node.into_inner())
     }
 
+    /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
+    /// which is always safe because that is the weakest possible guarantee.
     pub fn weakest_ordering(self) -> Stream<T, L, B, NoOrder, R> {
         let nondet = nondet!(/** this is a weaker odering guarantee, so it is safe to assume */);
         self.assume_ordering::<NoOrder>(nondet)
@@ -761,9 +763,22 @@ where
         Stream::new(self.location, self.ir_node.into_inner())
     }
 
+    /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
+    /// which is always safe because that is the weakest possible guarantee.
     pub fn weakest_retries(self) -> Stream<T, L, B, O, AtLeastOnce> {
         let nondet = nondet!(/** this is a weaker retry guarantee, so it is safe to assume */);
         self.assume_retries::<AtLeastOnce>(nondet)
+    }
+
+    /// Weakens the retries guarantee provided by the stream to be the weaker of the
+    /// current guarantee and `R2`. This is safe because the output guarantee will
+    /// always be weaker than the input.
+    pub fn weaken_retries<R2>(self) -> Stream<T, L, B, O, <R as MinRetries<R2>>::Min>
+    where
+        R: MinRetries<R2>,
+    {
+        let nondet = nondet!(/** this is a weaker retry guarantee, so it is safe to assume */);
+        self.assume_retries::<<R as MinRetries<R2>>::Min>(nondet)
     }
 }
 
@@ -1444,7 +1459,7 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// numbers.clone().map(q!(|x| x + 1)).union(numbers)
+    /// numbers.clone().map(q!(|x| x + 1)).interleave(numbers)
     /// # }, |mut stream| async move {
     /// // 2, 3, 4, 5, and 1, 2, 3, 4 interleaved in unknown order
     /// # for w in vec![2, 3, 4, 5, 1, 2, 3, 4] {
@@ -1452,24 +1467,26 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O
     /// # }
     /// # }));
     /// ```
-    pub fn union<O2, R2: MinRetries<R>>(
+    pub fn interleave<O2, R2: MinRetries<R>>(
         self,
         other: Stream<T, L, Unbounded, O2, R2>,
-    ) -> Stream<T, L, Unbounded, NoOrder, R2::Min> {
+    ) -> Stream<T, L, Unbounded, NoOrder, R::Min>
+    where
+        R: MinRetries<R2, Min = R2::Min>,
+    {
         let tick = self.location.tick();
         // Because the outputs are unordered, we can interleave batches from both streams.
         let nondet_batch_interleaving = nondet!(/** output stream is NoOrder, can interleave */);
         self.batch(&tick, nondet_batch_interleaving)
-            .assume_ordering::<NoOrder>(nondet_batch_interleaving)
-            .assume_retries::<R2::Min>(nondet_batch_interleaving)
+            .weakest_ordering()
+            .weaken_retries::<R2>()
             .chain(
                 other
                     .batch(&tick, nondet_batch_interleaving)
-                    .assume_ordering::<NoOrder>(nondet_batch_interleaving)
-                    .assume_retries::<R2::Min>(nondet_batch_interleaving),
+                    .weakest_ordering()
+                    .weaken_retries::<R>(),
             )
             .all_ticks()
-            .assume_ordering(nondet_batch_interleaving)
     }
 }
 
