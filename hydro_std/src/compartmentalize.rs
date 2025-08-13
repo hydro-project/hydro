@@ -56,10 +56,9 @@ impl<'a, T, C1, B, Order> DecoupleClusterStream<'a, T, C1, B, Order>
             .demux_bincode(other)
             .values();
 
-        unsafe {
-            // SAFETY: this is safe because we are only receiving from one sender
-            sent.assume_ordering()
-        }
+        sent.assume_ordering(
+            nondet!(/** this is safe because we are only receiving from one sender */),
+        )
     }
 }
 

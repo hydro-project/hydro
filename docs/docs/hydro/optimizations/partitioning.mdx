@@ -169,15 +169,12 @@ fn chain_parents_same_input<'a, L>(
 
     let parent1 = input1.clone();
     let parent2 = input1.map(q!(|(a, b)| (a, b+2)));
-    // Both `chain` and `join` are atomic and require `tick_batch`
-    unsafe {
-        parent1.tick_batch(&tick).chain(parent2.tick_batch(&tick))
-            .join(input2.tick_batch(&tick))
-            .all_ticks()
-            .for_each(q!(|(a, (input1b, input2b))| {
-                println!("Joined: {} {} {}", a, input1b, input2b);
-            }));
-    }
+    parent1.batch(&tick, nondet!(/** ... */)).chain(parent2.batch(&tick, nondet!(/** ... */)))
+        .join(input2.batch(&tick, nondet!(/** ... */)))
+        .all_ticks()
+        .for_each(q!(|(a, (input1b, input2b))| {
+            println!("Joined: {} {} {}", a, input1b, input2b);
+        }));
 }
 ```
 
@@ -208,15 +205,12 @@ fn chain_parents_different_inputs<'a, L>(
 
     let parent1 = input1.map(q!(|(a, b)| (a, b+2)));
     let parent2 = input2.clone().map(q!(|(a, b)| (a, b+2)));
-    // Both `chain` and `join` are atomic and require `tick_batch`
-    unsafe {
-        parent1.tick_batch(&tick).chain(parent2.tick_batch(&tick))
-            .join(input2.tick_batch(&tick))
-            .all_ticks()
-            .for_each(q!(|(a, (input1and2b, input2b))| {
-                println!("Joined: {} {} {}", a, input1and2b, input2b);
-            }));
-    }
+    parent1.batch(&tick, nondet!(/** ...*/)).chain(parent2.batch(&tick, nondet!(/** ... */)))
+        .join(input2.batch(&tick, nondet!(/** ... */)))
+        .all_ticks()
+        .for_each(q!(|(a, (input1and2b, input2b))| {
+            println!("Joined: {} {} {}", a, input1and2b, input2b);
+        }));
 }
 ```
 

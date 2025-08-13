@@ -1,0 +1,19 @@
+{
+    "highlight.regexes": {
+        "(nondet!)": [
+            {
+              "color": "#ff0000",
+              "fontWeight": "bold"
+            }
+        ],
+        "(_?nondet[a-zA-Z_]*)": {
+            "regexFlags": "g",
+            "decorations": [
+                {
+                    "color": "#ff0000",
+                    "fontWeight": "bold"
+                }
+            ]
+        }
+    }
+}
