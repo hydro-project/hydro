@@ -3,7 +3,7 @@ use dfir_rs::tokio_util::codec::LinesCodec;
 use hydro_deploy::Deployment;
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::graph_util::GraphConfig;
-use hydro_lang::{Location, NetworkHint};
+use hydro_lang::{Location, NetworkHint, nondet};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -24,7 +24,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         process.bidi_external_many_bytes::<_, _, LinesCodec>(&external, NetworkHint::Auto);
 
     output_ref.complete(hydro_test::external_client::chat::chat_server(
-        &process, input, membership,
+        &process,
+        input,
+        membership,
+        nondet!(/** test */),
     ));
 
     // Extract the IR BEFORE the builder is consumed by deployment methods

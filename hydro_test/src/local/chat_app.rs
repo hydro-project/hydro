@@ -1,3 +1,4 @@
+use hydro_lang::unsafety::NonDet;
 use hydro_lang::*;
 
 pub fn chat_app<'a>(
@@ -5,27 +6,21 @@ pub fn chat_app<'a>(
     users_stream: Stream<u32, Process<'a>, Unbounded>,
     messages: Stream<String, Process<'a>, Unbounded>,
     replay_messages: bool,
+    // intentionally non-deterministic to not send messages to users that joined after the message was sent
+    nondet_user_arrival_broadcast: NonDet,
 ) -> Stream<(u32, String), Process<'a>, Unbounded, NoOrder> {
     let tick = process.tick();
 
-    let users = unsafe {
-        // SAFETY: intentionally non-deterministic to not send messaged
-        // to users that joined after the message was sent
-        users_stream.tick_batch(&tick)
-    }
-    .persist();
+    let users = users_stream
+        .batch(&tick, nondet_user_arrival_broadcast)
+        .persist();
 
     let messages = if replay_messages {
-        unsafe {
-            // SAFETY: see above
-            messages.tick_batch(&tick)
-        }
-        .persist()
+        messages
+            .batch(&tick, nondet_user_arrival_broadcast)
+            .persist()
     } else {
-        unsafe {
-            // SAFETY: see above
-            messages.tick_batch(&tick)
-        }
+        messages.batch(&tick, nondet_user_arrival_broadcast)
     };
 
     // do this after the persist to test pullup
@@ -43,7 +38,7 @@ pub fn chat_app<'a>(
 mod tests {
     use futures::{SinkExt, Stream, StreamExt};
     use hydro_deploy::Deployment;
-    use hydro_lang::Location;
+    use hydro_lang::{Location, nondet};
 
     async fn take_next_n<T>(stream: &mut (impl Stream<Item = T> + Unpin), n: usize) -> Vec<T> {
         let mut out = Vec::with_capacity(n);
@@ -67,7 +62,7 @@ mod tests {
 
         let (users_send, users) = p1.source_external_bincode(&external);
         let (messages_send, messages) = p1.source_external_bincode(&external);
-        let out = super::chat_app(&p1, users, messages, false);
+        let out = super::chat_app(&p1, users, messages, false, nondet!(/** test */));
         let out_recv = out.send_bincode_external(&external);
 
         let built = builder.with_default_optimize();
@@ -132,7 +127,7 @@ mod tests {
 
         let (users_send, users) = p1.source_external_bincode(&external);
         let (messages_send, messages) = p1.source_external_bincode(&external);
-        let out = super::chat_app(&p1, users, messages, true);
+        let out = super::chat_app(&p1, users, messages, true, nondet!(/** test */));
         let out_recv = out.send_bincode_external(&external);
 
         let built = builder.with_default_optimize();
