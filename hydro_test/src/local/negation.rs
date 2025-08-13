@@ -8,31 +8,35 @@ pub fn test_difference<'a>(
 ) -> Stream<u32, Process<'a>, Unbounded> {
     let tick = process.tick();
 
-    let mut source = unsafe {
-        // SAFETY: intentionally using ticks
-        process
-            .source_iter(q!(0..5))
-            .tick_batch(&tick)
-            .continue_if(tick_trigger.clone().tick_batch(&tick).first())
-    };
+    let mut source = process
+        .source_iter(q!(0..5))
+        .batch(&tick, nondet!(/** test */))
+        .continue_if(
+            tick_trigger
+                .clone()
+                .batch(&tick, nondet!(/** test */))
+                .first(),
+        );
     if persist1 {
         source = source.persist();
     }
 
-    let mut source2 = unsafe {
-        // SAFETY: intentionally using ticks
-        process
-            .source_iter(q!(3..6))
-            .tick_batch(&tick)
-            .continue_if(tick_trigger.clone().tick_batch(&tick).first())
-    };
+    let mut source2 = process
+        .source_iter(q!(3..6))
+        .batch(&tick, nondet!(/** test */))
+        .continue_if(
+            tick_trigger
+                .clone()
+                .batch(&tick, nondet!(/** test */))
+                .first(),
+        );
     if persist2 {
         source2 = source2.persist();
     }
 
     source
         .filter_not_in(source2)
-        .continue_if(unsafe { tick_trigger.tick_batch(&tick).first() })
+        .continue_if(tick_trigger.batch(&tick, nondet!(/** test */)).first())
         .all_ticks()
 }
 
@@ -44,32 +48,36 @@ pub fn test_anti_join<'a>(
 ) -> Stream<u32, Process<'a>, Unbounded> {
     let tick = process.tick();
 
-    let mut source = unsafe {
-        // SAFETY: intentionally using ticks
-        process
-            .source_iter(q!(0..5))
-            .map(q!(|v| (v, v)))
-            .tick_batch(&tick)
-            .continue_if(tick_trigger.clone().tick_batch(&tick).first())
-    };
+    let mut source = process
+        .source_iter(q!(0..5))
+        .map(q!(|v| (v, v)))
+        .batch(&tick, nondet!(/** test */))
+        .continue_if(
+            tick_trigger
+                .clone()
+                .batch(&tick, nondet!(/** test */))
+                .first(),
+        );
     if persist1 {
         source = source.persist();
     }
 
-    let mut source2 = unsafe {
-        // SAFETY: intentionally using ticks
-        process
-            .source_iter(q!(3..6))
-            .tick_batch(&tick)
-            .continue_if(tick_trigger.clone().tick_batch(&tick).first())
-    };
+    let mut source2 = process
+        .source_iter(q!(3..6))
+        .batch(&tick, nondet!(/** test */))
+        .continue_if(
+            tick_trigger
+                .clone()
+                .batch(&tick, nondet!(/** test */))
+                .first(),
+        );
     if persist2 {
         source2 = source2.persist();
     }
 
     source
         .anti_join(source2)
-        .continue_if(unsafe { tick_trigger.tick_batch(&tick).first() })
+        .continue_if(tick_trigger.batch(&tick, nondet!(/** test */)).first())
         .all_ticks()
         .map(q!(|v| v.0))
 }
