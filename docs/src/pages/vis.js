@@ -335,6 +335,13 @@ function VisV4Component() {
           
           // Force component update to reflect changes
           forceUpdate();
+          
+          // Trigger auto-fit after layout completes
+          if (autoFit && flowGraphRef.current && flowGraphRef.current.fitView) {
+            setTimeout(() => {
+              flowGraphRef.current.fitView();
+            }, 500); // Wait for layout to complete
+          }
         }
       } catch (err) {
         console.error('❌ Error toggling container:', err);
@@ -344,7 +351,7 @@ function VisV4Component() {
         setTimeout(() => setIsLayoutRunning(false), 1000);
       }
     }
-  }, [currentVisualizationState]);
+  }, [currentVisualizationState, autoFit]);
 
   // Pack all containers (collapse all)
   const handlePackAll = React.useCallback(async () => {
@@ -379,6 +386,13 @@ function VisV4Component() {
       // Force component update to reflect changes
       forceUpdate();
       
+      // Trigger auto-fit after layout completes
+      if (autoFit && flowGraphRef.current && flowGraphRef.current.fitView) {
+        setTimeout(() => {
+          flowGraphRef.current.fitView();
+        }, 700); // Wait a bit longer for collapse to complete
+      }
+      
     } catch (err) {
       console.error('❌ Error packing containers:', err);
       setError(`Failed to pack containers: ${err.message}`);
@@ -386,7 +400,7 @@ function VisV4Component() {
       // Add a delay to let the layout complete
       setTimeout(() => setIsLayoutRunning(false), 1500);
     }
-  }, [currentVisualizationState]);
+  }, [currentVisualizationState, autoFit]);
 
   // Unpack all containers (expand all)
   const handleUnpackAll = React.useCallback(async () => {
@@ -395,15 +409,27 @@ function VisV4Component() {
     setIsLayoutRunning(true);
     
     try {
-      const containers = currentVisualizationState.visibleContainers;
-      containers.forEach(container => {
+      // Get ALL containers and expand them all (not just root containers)
+      // This ensures every collapsed container gets expanded, regardless of hierarchy
+      const allContainers = Array.from(currentVisualizationState.containers.values());
+      
+      // Expand all collapsed containers individually
+      allContainers.forEach(container => {
         if (container.collapsed) {
+          console.log('Expanding container:', container.id);
           currentVisualizationState.expandContainer(container.id);
         }
       });
       
       // Force component update to reflect changes
       forceUpdate();
+      
+      // Trigger auto-fit after layout completes
+      if (autoFit && flowGraphRef.current && flowGraphRef.current.fitView) {
+        setTimeout(() => {
+          flowGraphRef.current.fitView();
+        }, 700); // Wait a bit longer for expand to complete
+      }
     } catch (err) {
       console.error('❌ Error unpacking containers:', err);
       setError(`Failed to unpack containers: ${err.message}`);
@@ -411,7 +437,7 @@ function VisV4Component() {
       // Add a delay to let the layout complete
       setTimeout(() => setIsLayoutRunning(false), 1500);
     }
-  }, [currentVisualizationState]);
+  }, [currentVisualizationState, autoFit]);
 
   // Fit view handler
   const handleFitView = React.useCallback(() => {

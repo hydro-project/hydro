@@ -138,7 +138,7 @@ export class VisualizationStateAdapter implements VisualizationState {
   }
 
   expandContainer(containerId: string): void {
-    this.core.expandContainer(containerId);
+    this.core.expandContainerRecursive(containerId);
   }
 
   // Layout methods - delegate to core
