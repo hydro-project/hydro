@@ -13,4 +13,4 @@ Much like Rust's type system helps ensure memory safety, Hydro helps ensure **di
 - Relying on non-determinstic clocks for batching events
   - See [Ticks and Atomicity / Batching and Emitting Streams](./ticks-atomicity/batching-and-emitting)
 
-These safety guarantees are surfaced through the Rust type system, so you can catch these bugs at compile time rather than in production. And when it is necessary to bypass these checks for advanced distributed logic, you can use the same `unsafe` keyword as in Rust as an escape hatch.
+These safety guarantees are surfaced through the Rust type system, so you can catch these bugs at compile time rather than in production. And when it is necessary to bypass these checks for advanced distributed logic, you can use the [Non-Determinism Guards](./live-collections/determinism#unsafe-operations-in-hydro) to clearly mark code that should be carefully reviewed.
