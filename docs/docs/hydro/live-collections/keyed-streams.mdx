@@ -128,7 +128,7 @@ let purchases = process.source_iter(q!(vec![
 # let out =
 purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount))
 # ;
-# unsafe { out.snapshot(&process.tick()) }.entries().all_ticks().map(q!(|(k, v)| (k.to_string(), v)))
+# out.snapshot(&process.tick(), nondet!(/** test */)).entries().all_ticks().map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {
 // { "alice": 28, "bob": 13 }
 # let mut results = vec![];
@@ -163,7 +163,7 @@ health_checks.fold_commutative_idempotent(
     q!(|acc, check| *acc |= check)
 )
 # ;
-# unsafe { out.snapshot(&process.tick()) }.entries().all_ticks().map(q!(|(k, v)| (k.to_string(), v)))
+# out.snapshot(&process.tick(), nondet!(/** test */)).entries().all_ticks().map(q!(|(k, v)| (k.to_string(), v)))
 # }, |mut stream| async move {
 // { "server1": true, "server2": false }
 # let mut results = vec![];

@@ -37,17 +37,18 @@ pub fn compute_pi<'a>(
             *total += total_batch;
         }));
 
-    unsafe {
-        // SAFETY: intentional non-determinism
-        estimate.sample_every(q!(Duration::from_secs(1)))
-    }
-    .for_each(q!(|(inside, total)| {
-        println!(
-            "pi: {} ({} trials)",
-            4.0 * inside as f64 / total as f64,
-            total
-        );
-    }));
+    estimate
+        .sample_every(
+            q!(Duration::from_secs(1)),
+            nondet!(/** intentional output */),
+        )
+        .for_each(q!(|(inside, total)| {
+            println!(
+                "pi: {} ({} trials)",
+                4.0 * inside as f64 / total as f64,
+                total
+            );
+        }));
 
     (cluster, process)
 }

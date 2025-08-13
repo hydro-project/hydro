@@ -30,13 +30,17 @@ pub fn paxos_bench<'a>(
         let (acceptor_checkpoint_complete, acceptor_checkpoint) =
             acceptors.forward_ref::<Optional<_, _, _>>();
 
-        let sequenced_payloads = unsafe {
-            // SAFETY: clients "own" certain keys, so interleaving elements from clients will not affect
-            // the order of writes to the same key
-
+        let sequenced_payloads = paxos.with_client(
+            clients,
+            payloads,
+            acceptor_checkpoint,
             // TODO(shadaj): we should retry when a payload is dropped due to stale leader
-            paxos.with_client(clients, payloads, acceptor_checkpoint)
-        };
+            nondet!(/** benchmarking, assuming no re-election */),
+            nondet!(
+                /// clients 'own' certain keys, so interleaving elements from clients will not affect
+                /// the order of writes to the same key
+            ),
+        );
 
         let sequenced_to_replicas = sequenced_payloads.broadcast_bincode(replicas).values();
 
@@ -46,11 +50,8 @@ pub fn paxos_bench<'a>(
 
         // Get the latest checkpoint sequence per replica
         let checkpoint_tick = acceptors.tick();
-        let a_checkpoint = unsafe {
-            // SAFETY: even though we batch the checkpoint messages, because we reduce over the entire history,
-            // the final min checkpoint is deterministic
+        let a_checkpoint = {
             // TODO(shadaj): once we can reduce keyed over unbounded streams, this should be safe
-
             let a_checkpoint_largest_seqs = replica_checkpoint
                 .broadcast_bincode(&acceptors)
                 .entries()
@@ -60,7 +61,13 @@ pub fn paxos_bench<'a>(
                         *curr_seq = seq;
                     }
                 }))
-                .snapshot(&checkpoint_tick);
+                .snapshot(
+                    &checkpoint_tick,
+                    nondet!(
+                        /// even though we batch the checkpoint messages, because we reduce over the entire history,
+                        /// the final min checkpoint is deterministic
+                    ),
+                );
 
             let a_checkpoints_quorum_reached = a_checkpoint_largest_seqs
                 .clone()
@@ -100,14 +107,13 @@ pub fn paxos_bench<'a>(
         .end_atomic()
     };
 
-    let bench_results = unsafe {
-        bench_client(
-            clients,
-            inc_u32_workload_generator,
-            paxos_processor,
-            num_clients_per_node,
-        )
-    };
+    let bench_results = bench_client(
+        clients,
+        inc_u32_workload_generator,
+        paxos_processor,
+        num_clients_per_node,
+        nondet!(/** bench */),
+    );
 
     print_bench_results(bench_results, client_aggregator, clients);
 }

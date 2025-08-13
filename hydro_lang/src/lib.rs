@@ -27,6 +27,9 @@ pub mod runtime_context;
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_context")))]
 pub use runtime_context::RUNTIME_CONTEXT;
 
+pub mod unsafety;
+pub use unsafety::*;
+
 pub mod boundedness;
 pub use boundedness::{Bounded, Unbounded};
 

@@ -18,7 +18,7 @@ In some cases, you may need to convert between bounded and unbounded collections
 # let tick = process.tick();
 # let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
 let input: Stream<_, _, Bounded> = // ...
-#   unsafe { numbers.tick_batch(&tick) };
+#  numbers.batch(&tick, nondet!(/** test */));
 let unbounded: Stream<_, _, Unbounded> = input.into();
 ```
 
@@ -32,7 +32,7 @@ let input: Singleton<_, _, Bounded> = tick.singleton(q!(0));
 let unbounded: Singleton<_, _, Unbounded> = input.into();
 ```
 
-Converting from an unbounded collection **to a bounded collection**, however is more complex. This requires cutting off the unbounded collection at a specific point in time, which may not be possible to do deterministically. For example, the most common way to convert an unbounded `Stream` to a bounded one is to batch its elements non-deterministically using `.tick_batch()`. Because this is non-deterministic, we require that it be placed in an `unsafe` block.
+Converting from an unbounded collection **to a bounded collection**, however is more complex. This requires cutting off the unbounded collection at a specific point in time, which may not be possible to do deterministically. For example, the most common way to convert an unbounded `Stream` to a bounded one is to batch its elements non-deterministically using `.batch()`. Because this is non-deterministic, this API requires a [non-determinism guard](./determinism.md#unsafe-operations-in-hydro).
 
 ```rust,no_run
 # use hydro_lang::*;
@@ -40,9 +40,8 @@ Converting from an unbounded collection **to a bounded collection**, however is 
 # let flow = FlowBuilder::new();
 # let process = flow.process::<()>();
 let unbounded_input = // ...
-#   process.source_iter(q!(vec![1, 2, 3, 4]));
+#  process.source_iter(q!(vec![1, 2, 3, 4]));
 let tick = process.tick();
-let batch: Stream<_, _, Bounded> = unsafe {
-    unbounded_input.tick_batch(&tick)
-};
+let batch: Stream<_, _, Bounded> =
+  unbounded_input.batch(&tick, nondet!(/** ... */));
 ```

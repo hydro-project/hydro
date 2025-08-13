@@ -21,11 +21,10 @@ pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<
 
     let remaining_and_new: Stream<(K, M), Tick<L>, Bounded, _> = remaining_to_join.chain(metadata);
 
-    let responses = unsafe {
-        // SAFETY: because we persist the metadata, delays resulting from
-        // batching boundaries do not affect the output contents.
-        responses.tick_batch()
-    };
+    let responses = responses.batch(nondet!(
+        /// Because we persist the metadata, delays resulting from
+        /// batching boundaries do not affect the output contents.
+    ));
 
     // TODO(shadaj): we should have a "split-join" operator
     // that returns both join and anti-join without cloning
