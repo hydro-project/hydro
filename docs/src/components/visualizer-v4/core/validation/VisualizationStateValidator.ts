@@ -475,9 +475,15 @@ export class VisualizationStateInvariantValidator {
         }
         
         // IMPROVED: Check if there's any hyperEdge that represents this connectivity
-        // instead of looking for a specific naming pattern
+        // by looking at aggregatedEdges property which tracks original edges
         const representingHyperEdges = Array.from(this.state.hyperEdges.values()).filter((hyperEdge: any) => {
-          // Check if this hyperEdge represents the same connectivity as the crossing edge
+          // First check if this hyperEdge has aggregatedEdges tracking
+          if (hyperEdge.aggregatedEdges && hyperEdge.aggregatedEdges.has(crossingEdge.id)) {
+            return !hyperEdge.hidden;
+          }
+          
+          // Fallback: Check if this hyperEdge represents the same connectivity
+          // This handles cases where aggregatedEdges might not be properly set
           return (
             (hyperEdge.source === crossingEdge.source || hyperEdge.source === containerId) &&
             (hyperEdge.target === crossingEdge.target || hyperEdge.target === containerId) &&

@@ -914,7 +914,8 @@ export class ContainerOperations {
     const allDescendantNodes = new Set(this.getAllDescendantNodes(containerId));
     const crossingEdges: any[] = [];
 
-    // Check all visible regular edges
+    // Check ALL regular edges (both visible and hidden)
+    // CRITICAL: Hidden edges might still represent connectivity that needs hyperEdges
     for (const [edgeId, edge] of this.state._collections.graphEdges) {
       const sourceInContainer = allDescendantNodes.has(edge.source);
       const targetInContainer = allDescendantNodes.has(edge.target);

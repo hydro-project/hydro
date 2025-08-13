@@ -55,6 +55,13 @@ async function validateEdgeIntegrity(visState: any, phase: string) {
     );
   }
   
+  // ALSO validate invariants to catch validation logic bugs like MISSING_HYPEREDGE
+  try {
+    visState.validateInvariants();
+  } catch (error) {
+    throw new Error(`❌ Invariant validation failed in ${phase}: ${error.message}`);
+  }
+  
   console.log(`      ✅ Edge integrity OK: ${visibleHyperEdges.length} hyperEdges all valid`);
 }
 
