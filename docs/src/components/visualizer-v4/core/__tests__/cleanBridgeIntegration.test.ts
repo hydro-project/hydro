@@ -172,6 +172,12 @@ describe('VisualizationState + Clean Bridges Integration', () => {
     });
 
     test('should provide consistent edge handle information', () => {
+      // Setup: Create nodes first
+      visState.setGraphNode('node1', { x: 0, y: 0, hidden: false });
+      visState.setGraphNode('node2', { x: 100, y: 100, hidden: false });
+      visState.setGraphNode('node3', { x: 200, y: 200, hidden: false });
+      visState.setGraphNode('node4', { x: 300, y: 300, hidden: false });
+      
       // Setup: Various edge handle scenarios
       visState.setGraphEdge('edge_custom', {
         source: 'node1',
@@ -224,16 +230,14 @@ describe('VisualizationState + Clean Bridges Integration', () => {
       visState.setGraphNode('external_node', { label: 'External', width: 180, height: 80, hidden: false });
 
       visState.setContainer('shared_container', {
-        collapsed: true,
+        collapsed: false, // Start expanded
         hidden: false,
         children: ['shared_node'],
         width: 250,
         height: 150
       });
 
-      // CRITICAL: Actually collapse to trigger invariants
-      visState.collapseContainer('shared_container');
-
+      // Create the edge BEFORE collapsing so it can be properly processed
       visState.setGraphEdge('cross_edge', {
         source: 'external_node',
         target: 'shared_node',
@@ -241,6 +245,9 @@ describe('VisualizationState + Clean Bridges Integration', () => {
         targetHandle: 'in-1',
         hidden: false
       });
+
+      // CRITICAL: Actually collapse to trigger invariants
+      visState.collapseContainer('shared_container');
 
       // ELK Bridge perspective
       const elkNodes = [...visState.visibleNodes, ...visState.getCollapsedContainersAsNodes()];

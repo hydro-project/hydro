@@ -23,7 +23,6 @@ import { ContainerPadding } from './ContainerPadding';
 
 // Import specialized operation classes
 import { VisualizationStateInvariantValidator } from './validation/VisualizationStateValidator';
-import { ValidationConfigs, wrapPublicMethods } from './validation/ValidationWrapper';
 import { ContainerOperations } from './operations/ContainerOperations';
 import { VisibilityManager } from './operations/VisibilityManager';
 import { LayoutOperations } from './operations/LayoutOperations';
@@ -99,10 +98,6 @@ export class VisualizationState implements ContainerHierarchyView {
 
   // Flag to track recursive operations
   private _inRecursiveOperation = false;
-  
-  // Flag to control validation during transitions
-  public _validationEnabled = true;
-  public _validationLevel: 'strict' | 'normal' | 'minimal' | 'silent' = 'normal';
 
   // ============ PROTECTED ACCESSORS (Internal use only) ============
   // These provide controlled access to collections for internal methods
@@ -134,42 +129,6 @@ export class VisualizationState implements ContainerHierarchyView {
     this.visibilityManager = new VisibilityManager(this);
     this.layoutOps = new LayoutOperations(this);
     this.bridgeCompat = new BridgeCompatibility(this);
-    
-    // Wrap public APIs with validation
-    this._wrapPublicMethods();
-  }
-
-  /**
-   * Wraps public methods with validation at API boundaries
-   * This removes the need for internal validation calls throughout the codebase
-   */
-  private _wrapPublicMethods(): void {
-    wrapPublicMethods(this, {
-      // State mutation APIs - validate after changes
-      'addGraphNode': ValidationConfigs.MUTATOR,
-      'addGraphEdge': ValidationConfigs.MUTATOR,  
-      'addContainer': ValidationConfigs.MUTATOR,
-      'setContainerState': ValidationConfigs.MUTATOR,
-      'setContainerCollapsed': ValidationConfigs.MUTATOR,
-      'updateNode': ValidationConfigs.MUTATOR,
-      'removeGraphNode': ValidationConfigs.MUTATOR,
-      'removeGraphEdge': ValidationConfigs.MUTATOR,
-      
-      // Internal operations called by public APIs - skip validation to prevent duplicate checks
-      'setNodeVisibility': ValidationConfigs.INTERNAL,
-      'setEdgeVisibility': ValidationConfigs.INTERNAL,
-      
-      // Read-only APIs - no validation needed (performance)
-      'getVisibleNodes': ValidationConfigs.GETTER,
-      'getVisibleEdges': ValidationConfigs.GETTER,
-      'getVisibleContainers': ValidationConfigs.GETTER,
-      'getExpandedContainers': ValidationConfigs.GETTER,
-      'getCrossingEdges': ValidationConfigs.GETTER,
-      
-      // Legacy compatibility methods - validate after
-      'setGraphNode': ValidationConfigs.MUTATOR,
-      'setHyperEdge': ValidationConfigs.MUTATOR
-    });
   }
 
   // ============ SAFE BRIDGE API (Read-only access for external systems) ============
@@ -179,14 +138,6 @@ export class VisualizationState implements ContainerHierarchyView {
    * Bridges should ONLY use this method, never access internal maps directly
    */
   get visibleNodes(): ReadonlyArray<any> {
-    return Array.from(this._collections._visibleNodes.values());
-  }
-
-  /**
-   * Get visible nodes as mutable array (legacy compatibility)
-   * @deprecated Use visibleNodes getter for new code
-   */
-  getVisibleNodes(): any[] {
     return Array.from(this._collections._visibleNodes.values());
   }
   
@@ -203,19 +154,6 @@ export class VisualizationState implements ContainerHierarchyView {
     
     return [...regularEdges, ...hyperEdges];
   }
-
-  /**
-   * Get visible edges as mutable array (legacy compatibility)
-   * @deprecated Use visibleEdges getter for new code
-   */
-  getVisibleEdges(): any[] {
-    const regularEdges = Array.from(this._collections._visibleEdges.values());
-    const hyperEdges = Array.from(this._collections.hyperEdges.values()).filter((edge: any) => {
-      return !edge.hidden;
-    });
-    
-    return [...regularEdges, ...hyperEdges];
-  }
   
   /**
    * Get visible containers for rendering (safe read-only access)
@@ -223,21 +161,6 @@ export class VisualizationState implements ContainerHierarchyView {
    * Returns containers with dimensions adjusted for labels.
    */
   get visibleContainers(): ReadonlyArray<any> {
-    return Array.from(this._collections._visibleContainers.values()).map(container => {
-      const adjustedDimensions = this.layoutOps.getContainerAdjustedDimensions(container.id);
-      return {
-        ...container,
-        width: adjustedDimensions.width,
-        height: adjustedDimensions.height
-      };
-    });
-  }
-
-  /**
-   * Get visible containers as mutable array (legacy compatibility)
-   * @deprecated Use visibleContainers getter for new code
-   */
-  getVisibleContainers(): any[] {
     return Array.from(this._collections._visibleContainers.values()).map(container => {
       const adjustedDimensions = this.layoutOps.getContainerAdjustedDimensions(container.id);
       return {
@@ -504,6 +427,17 @@ export class VisualizationState implements ContainerHierarchyView {
     if (state.hidden !== undefined && state.hidden !== wasHidden) {
       this.visibilityManager.cascadeContainerVisibility(containerId, !state.hidden);
     }
+    
+    // Only validate at the end for top-level operations
+    if (!this._inRecursiveOperation) {
+      setTimeout(() => {
+        try {
+          this.validateInvariants();
+        } catch (error) {
+          console.error('[VisState] Validation failed:', error);
+        }
+      }, 0);
+    }
   }
   
   /**
@@ -562,11 +496,18 @@ export class VisualizationState implements ContainerHierarchyView {
       
     } finally {
       this._inRecursiveOperation = false;
+      setTimeout(() => {
+        try {
+          this.validateInvariants();
+        } catch (error) {
+          console.error('[VisState] Validation failed:', error);
+        }
+      }, 0);
     }
   }
   
   /**
-   * Expand a container with proper hyperEdge cleanup
+   * Expand a container (legacy compatibility method)
    */
   expandContainer(containerId: string): void {
     const container = this._collections.containers.get(containerId);
@@ -574,44 +515,7 @@ export class VisualizationState implements ContainerHierarchyView {
       throw new Error(`Cannot expand non-existent container: ${containerId}`);
     }
     
-    // Use the proper container operations method that handles hyperEdge cleanup
-    this.containerOps.handleContainerExpansion(containerId);
-    
-    // Also update the container's collapsed state
     this.setContainerState(containerId, { collapsed: false });
-  }
-
-  /**
-   * Recursively expand a container and all its child containers
-   */
-  expandContainerRecursive(containerId: string): void {
-    const container = this._collections.containers.get(containerId);
-    if (!container) {
-      throw new Error(`Cannot expand non-existent container: ${containerId}`);
-    }
-    
-    // Use the recursive container operations method
-    this.containerOps.handleContainerExpansionRecursive(containerId);
-    
-    // Update all affected containers' collapsed state
-    this._updateCollapsedStateRecursive(containerId, false);
-  }
-
-  /**
-   * Helper to recursively update collapsed state
-   */
-  private _updateCollapsedStateRecursive(containerId: string, collapsed: boolean): void {
-    this.setContainerState(containerId, { collapsed });
-    
-    const children = this.getContainerChildren(containerId) || new Set();
-    for (const childId of Array.from(children)) {
-      if (typeof childId === 'string') {
-        const childContainer = this._collections.containers.get(childId);
-        if (childContainer) {
-          this._updateCollapsedStateRecursive(childId, collapsed);
-        }
-      }
-    }
   }
 
   /**
@@ -658,7 +562,7 @@ export class VisualizationState implements ContainerHierarchyView {
     return this.bridgeCompat.getCollapsedContainersAsNodes();
   }
 
-  getContainersRequiringLayout(changedContainerId?: string): ReadonlyArray<any> {
+  getContainersRequiringLayout(): ReadonlyArray<any> {
     return this.bridgeCompat.getContainersRequiringLayout();
   }
 
@@ -668,6 +572,13 @@ export class VisualizationState implements ContainerHierarchyView {
 
   getContainerELKFixed(containerId: string): boolean {
     return this.bridgeCompat.getContainerELKFixed(containerId);
+  }
+
+  setContainerELKFixed(containerId: string, fixed: boolean): void {
+    const container = this._collections.containers.get(containerId);
+    if (container) {
+      container.elkFixed = fixed;
+    }
   }
 
   // ============ CORE CONTAINER OPERATIONS (Direct access) ============
@@ -691,75 +602,6 @@ export class VisualizationState implements ContainerHierarchyView {
     children.add(childId);
     this._collections.containerChildren.set(containerId, children);
     this._collections.nodeContainers.set(childId, containerId);
-  }
-
-  removeContainerChild(containerId: string, childId: string): void {
-    const children = this._collections.containerChildren.get(containerId);
-    if (children) {
-      children.delete(childId);
-      if (children.size === 0) {
-        this._collections.containerChildren.delete(containerId);
-      }
-    }
-    this._collections.nodeContainers.delete(childId);
-  }
-
-  updateNode(nodeId: string, updates: any): void {
-    const node = this._collections.graphNodes.get(nodeId);
-    if (node) {
-      Object.assign(node, updates);
-      
-      // Update visibility cache if hidden state changed
-      if (updates.hidden !== undefined) {
-        if (updates.hidden) {
-          this._collections._visibleNodes.delete(nodeId);
-        } else {
-          this._collections._visibleNodes.set(nodeId, node);
-        }
-      }
-    }
-  }
-
-  removeGraphNode(nodeId: string): void {
-    this._collections.graphNodes.delete(nodeId);
-    this._collections._visibleNodes.delete(nodeId);
-    this._collections.nodeToEdges.delete(nodeId);
-    this._collections.nodeContainers.delete(nodeId);
-  }
-
-  removeGraphEdge(edgeId: string): void {
-    const edge = this._collections.graphEdges.get(edgeId);
-    if (edge) {
-      // Remove from node-to-edges mappings
-      const sourceEdges = this._collections.nodeToEdges.get(edge.source);
-      if (sourceEdges) sourceEdges.delete(edgeId);
-      
-      const targetEdges = this._collections.nodeToEdges.get(edge.target);
-      if (targetEdges) targetEdges.delete(edgeId);
-    }
-    
-    this._collections.graphEdges.delete(edgeId);
-    this._collections._visibleEdges.delete(edgeId);
-  }
-
-  setContainerELKFixed(containerId: string, fixed: boolean): void {
-    const container = this._collections.containers.get(containerId);
-    if (container) {
-      container.elkFixed = fixed;
-    }
-  }
-
-  getContainerCollapsed(containerId: string): boolean {
-    const container = this._collections.containers.get(containerId);
-    return container?.collapsed || false;
-  }
-
-  setContainerCollapsed(containerId: string, collapsed: boolean): void {
-    this.setContainerState(containerId, { collapsed });
-  }
-
-  get expandedContainers(): ReadonlyArray<any> {
-    return this.getExpandedContainers();
   }
 
   getNodeVisibility(nodeId: string): { hidden?: boolean } {
@@ -800,9 +642,6 @@ export class VisualizationState implements ContainerHierarchyView {
    * Validate all VisualizationState invariants
    */
   validateInvariants(): void {
-    if (!this._validationEnabled) {
-      return; // Skip validation during controlled transitions
-    }
     this.invariantValidator.validateInvariants();
   }
 

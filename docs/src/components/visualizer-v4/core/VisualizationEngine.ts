@@ -30,6 +30,7 @@ export interface VisualizationEngineState {
   lastUpdate: number;
   layoutCount: number;
   error?: string;
+  isRunningSmartCollapse?: boolean;
 }
 
 export interface VisualizationEngineConfig {
@@ -218,7 +219,7 @@ export class VisualizationEngine {
       this.runLayout().catch(error => {
         this.handleError('Scheduled layout failed', error);
       });
-    }, this.config.layoutDebounceMs);
+    }, 100) as unknown as number; // 100ms debounce delay
   }
 
   /**

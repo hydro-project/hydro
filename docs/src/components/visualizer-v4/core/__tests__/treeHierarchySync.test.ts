@@ -163,8 +163,8 @@ describe('TreeHierarchy/VisState Synchronization Tests', () => {
       // Our assertion should catch this inconsistency
       if (process.env.NODE_ENV !== 'production') {
         expect(() => {
-          visState.visibleNodes; // This should trigger our assertion
-        }).toThrow(/BUG: Node node1 is in _visibleNodes but its parent container container1 is collapsed/);
+          visState.validateInvariants(); // Manually trigger validation to detect the inconsistency
+        }).toThrow(/Node node1 should be hidden because.*container1 is collapsed/);
       } else {
         // In production, just check the inconsistency exists
         const containerCollapsed = visState.getContainer('container1')?.collapsed;

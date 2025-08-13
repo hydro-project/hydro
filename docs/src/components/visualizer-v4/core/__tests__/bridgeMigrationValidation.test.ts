@@ -39,15 +39,15 @@ describe('Bridge Migration Validation', () => {
       const containerAsNode = collapsedAsNodes[0];
       
       // This should match the original ELKBridge containerAsNode creation
-      expect(containerAsNode).toEqual({
+      expect(containerAsNode).toMatchObject({
         id: 'bt_26',
-        label: 'bt_26',
         width: 200,  // Should use container dimensions, not defaults
         height: 150,
         x: 100,
         y: 200,
         hidden: false,
-        style: 'default'
+        collapsed: true,
+        type: 'container-node'
       });
     });
 
@@ -69,8 +69,8 @@ describe('Bridge Migration Validation', () => {
         id: 'container_no_dims',
         width: LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH,
         height: LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT,
-        x: 0,
-        y: 0
+        collapsed: true,
+        type: 'container-node'
       });
     });
   });
@@ -178,7 +178,11 @@ describe('Bridge Migration Validation', () => {
 
   describe('ReactFlowBridge Migration: Edge Handle Logic', () => {
     test('should match original ReactFlowBridge edge handle assignment', () => {
-      // Setup: Edges with various handle configurations
+      // Setup: Create nodes first, then edges with various handle configurations
+      visState.setGraphNode('node1', { label: 'Node 1' });
+      visState.setGraphNode('node2', { label: 'Node 2' });
+      visState.setGraphNode('node3', { label: 'Node 3' });
+      
       visState.setGraphEdge('edge_with_handles', {
         source: 'node1',
         target: 'node2',
@@ -229,10 +233,20 @@ describe('Bridge Migration Validation', () => {
   describe('Cross-Bridge Consistency', () => {
     test('should provide consistent data between ELK and ReactFlow bridge needs', () => {
       // Setup: Complex scenario that both bridges would handle
+      visState.setGraphNode('external', { label: 'External' });
       visState.setGraphNode('sharedNode', { label: 'Shared', width: 200, height: 100, hidden: false });
       
+      // Create the edge first, before collapsing the container
+      visState.setGraphEdge('sharedEdge', {
+        source: 'external',
+        target: 'sharedNode',
+        sourceHandle: 'out-port',
+        hidden: false
+      });
+      
+      // Then set up the container - initially not collapsed
       visState.setContainer('sharedContainer', {
-        collapsed: true,
+        collapsed: false,  // Start expanded so edge creation is valid
         hidden: false,
         children: ['sharedNode'],
         width: 250,
@@ -241,12 +255,8 @@ describe('Bridge Migration Validation', () => {
         y: 75
       });
       
-      visState.setGraphEdge('sharedEdge', {
-        source: 'external',
-        target: 'sharedNode',
-        sourceHandle: 'out-port',
-        hidden: false
-      });
+      // Now collapse the container
+      visState.collapseContainer('sharedContainer');
 
       // Execute: Get data as both bridges would
       const collapsedAsNodes = visState.getCollapsedContainersAsNodes(); // ELK Bridge

@@ -101,9 +101,9 @@ export class ELKLayoutEngine implements LayoutEngine {
       
       // Convert results back to alpha format
       const result: LayoutResult = {
-        nodes: this.convertNodes(visState.visibleNodes),
-        edges: this.convertEdges(visState.visibleEdges),
-        containers: this.convertContainers(visState.visibleContainers)
+        nodes: this.convertNodes([...visState.visibleNodes]),
+        edges: this.convertEdges([...visState.visibleEdges]),
+        containers: this.convertContainers([...visState.visibleContainers])
       };
       
       // Update statistics

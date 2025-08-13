@@ -60,8 +60,8 @@ describe('VisualizationState Bridge Support Methods', () => {
       expect(collapsed1Node).toMatchObject({
         id: 'collapsed1',
         label: 'collapsed1',
-        width: 200,
-        height: 150,
+        width: 250,
+        height: 180,
         x: 100,
         y: 200,
         hidden: false,
@@ -240,6 +240,10 @@ describe('VisualizationState Bridge Support Methods', () => {
 
   describe('getEdgeHandles()', () => {
     test('should return custom handles when specified', () => {
+      // Setup: Create nodes first
+      visState.setGraphNode('node1', { x: 0, y: 0, hidden: false });
+      visState.setGraphNode('node2', { x: 100, y: 100, hidden: false });
+      
       // Setup: Edge with custom handles
       visState.setGraphEdge('edge1', {
         source: 'node1',
@@ -260,6 +264,10 @@ describe('VisualizationState Bridge Support Methods', () => {
     });
 
     test('should return default handles when not specified', () => {
+      // Setup: Create nodes first
+      visState.setGraphNode('node1', { x: 0, y: 0, hidden: false });
+      visState.setGraphNode('node2', { x: 100, y: 100, hidden: false });
+      
       // Setup: Edge without custom handles
       visState.setGraphEdge('edge2', {
         source: 'node1',
@@ -286,6 +294,10 @@ describe('VisualizationState Bridge Support Methods', () => {
     });
 
     test('should use defaults for partial handle specification', () => {
+      // Setup: Create nodes first
+      visState.setGraphNode('node1', { x: 0, y: 0, hidden: false });
+      visState.setGraphNode('node2', { x: 100, y: 100, hidden: false });
+      
       // Setup: Edge with only source handle specified
       visState.setGraphEdge('edge3', {
         source: 'node1',

@@ -352,8 +352,8 @@ describe('Container Operations', () => {
       const hyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
       expect(hyperEdges.length).toBe(1);
       
-      // Expand and verify restoration
-      state.expandContainer('outerContainer');
+      // Expand and verify restoration (using recursive expansion for nested case)
+      state.expandContainerRecursive('outerContainer');
       
       // After expansion, we should see inner container + inner nodes + external
       expect(state.visibleNodes.length).toBe(3); // innerNode1, innerNode2, external (inner container is expanded by default)

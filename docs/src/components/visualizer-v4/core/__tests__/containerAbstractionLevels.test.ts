@@ -312,8 +312,8 @@ describe('Container Abstraction Level Tests', () => {
       state.collapseContainer('systemModule');
       expect(state.visibleNodes.length).toBe(1);
       
-      // HIERARCHICAL GROUNDING: Expand the outer container
-      state.expandContainer('systemModule');
+      // HIERARCHICAL GROUNDING: Expand the outer container recursively
+      state.expandContainerRecursive('systemModule');
       
       // Inner details should be revealed (coreModule expanded by default)
       expect(state.visibleNodes.length).toBe(3); // coreImpl1, coreImpl2, consumer
@@ -346,7 +346,7 @@ describe('Container Abstraction Level Tests', () => {
       
       // Complex Lifting → Grounding sequence
       state.collapseContainer('outer');  // LIFT to highest abstraction
-      state.expandContainer('outer');    // GROUND to reveal structure
+      state.expandContainerRecursive('outer');    // GROUND to reveal structure recursively
       
       // Should return to original nested concrete state
       expect(state.visibleNodes.length).toBe(initialNodes);

@@ -94,11 +94,13 @@ export class VisualizationStateAdapter implements VisualizationState {
 
   // Visibility methods
   getVisibleNodes(): GraphNode[] {
-    return this.core.visibleNodes;
+    // Create safe mutable copy for external use while preserving encapsulation
+    return [...this.core.visibleNodes];
   }
 
   getVisibleEdges(): GraphEdge[] {
-    return this.core.visibleEdges;
+    // Create safe mutable copy for external use while preserving encapsulation
+    return [...this.core.visibleEdges];
   }
 
   getVisibleContainers(): ExternalContainer[] {
@@ -174,16 +176,19 @@ export class VisualizationStateAdapter implements VisualizationState {
   }
 
   getContainersRequiringLayout(changedContainerId?: string): ExternalContainer[] {
-    return this.core.getContainersRequiringLayout(changedContainerId);
+    // Create safe mutable copy for external use while preserving encapsulation
+    return [...this.core.getContainersRequiringLayout()];
   }
 
   // Visibility properties (readonly getters)
   get visibleNodes(): GraphNode[] {
-    return this.core.visibleNodes;
+    // Create safe mutable copy for external use while preserving encapsulation
+    return [...this.core.visibleNodes];
   }
 
   get visibleEdges(): GraphEdge[] {
-    return this.core.visibleEdges;
+    // Create safe mutable copy for external use while preserving encapsulation
+    return [...this.core.visibleEdges];
   }
 
   get visibleContainers(): ExternalContainer[] {

@@ -159,7 +159,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         // Don't run layout if visualization engine is already running one OR during smart collapse
         const engineState = engine.getState();
         if (engineState.phase === 'laying_out' || engineState.isRunningSmartCollapse) {
-          console.warn(('[FlowGraph] ⚠️ Skipping layout - engine busy (phase:', engineState.phase, 'smartCollapse:', engineState.isRunningSmartCollapse, ')'));
+          console.warn('[FlowGraph] ⚠️ Skipping layout - engine busy (phase:', engineState.phase, 'smartCollapse:', engineState.isRunningSmartCollapse, ')');
           return;
         }
 
