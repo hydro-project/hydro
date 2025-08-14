@@ -20,4 +20,4 @@ As the lowest level of the Hydro stack, DFIR requires some knowledge of Rust to 
 
 The most recent release of the [DFIR Book docs](https://hydro.run/docs/dfir/#this-book) are online, providing documentation and numerous annotated examples.
 
-You can also check out the [DFIR Playground](https://hydro.run/playground) to see DFIR's flow syntax in action!
+You can also check out the [DFIR Playground](https://hydro.run/docs/dfir/playground) to see DFIR's flow syntax in action!
