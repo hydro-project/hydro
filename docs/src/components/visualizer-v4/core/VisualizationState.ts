@@ -666,6 +666,44 @@ export class VisualizationState implements ContainerHierarchyView {
   }
 
   /**
+   * Expand all containers in bulk with proper validation handling
+   */
+  expandAllContainers(): void {
+    const topLevelContainers = this.getTopLevelContainers();
+    const collapsedTopLevel = topLevelContainers.filter(c => c.collapsed);
+    
+    if (collapsedTopLevel.length === 0) return;
+    
+    // Expand each top-level collapsed container one by one using the basic method
+    for (const container of collapsedTopLevel) {
+      this.expandContainer(container.id);
+    }
+  }
+
+  /**
+   * Collapse all containers in bulk with proper validation handling
+   */
+  collapseAllContainers(): void {
+    const topLevelContainers = this.getTopLevelContainers();
+    const expandedTopLevel = topLevelContainers.filter(c => !c.collapsed);
+    
+    if (expandedTopLevel.length === 0) return;
+    
+    // Disable validation for the entire bulk operation
+    const originalValidation = this._validationEnabled;
+    this._validationEnabled = false;
+    
+    try {
+      // Collapse each top-level expanded container (this will cascade to children)
+      for (const container of expandedTopLevel) {
+        this.collapseContainer(container.id);
+      }
+    } finally {
+      this._validationEnabled = originalValidation;
+    }
+  }
+
+  /**
    * Update container properties (legacy compatibility method)
    */
   updateContainer(containerId: string, updates: any): void {

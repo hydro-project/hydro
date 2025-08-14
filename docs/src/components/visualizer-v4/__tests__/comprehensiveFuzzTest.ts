@@ -5,15 +5,15 @@
  * to stress test all visualizer controls and operations using paxos-flipped.json
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parseGraphJSON, validateGraphJSON } from '../core/JSONParser';
-import { VisualizationState } from '../core/VisualizationState';
-import { VisualizationEngine } from '../core/VisualizationEngine';
-import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types';
-import type { LayoutConfig } from '../core/types';
+import { parseGraphJSON, validateGraphJSON } from '../core/JSONParser.js';
+import { VisualizationState } from '../core/VisualizationState.js';
+import { VisualizationEngine } from '../core/VisualizationEngine.js';
+import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types.js';
+import type { LayoutConfig } from '../core/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -49,7 +49,7 @@ interface ComprehensiveStateSnapshot {
   layoutCount: number;
 }
 
-// Simple PRNG for reproducible tests
+// Simple PRNG for reproducible tests (same as original)
 class SimpleRandom {
   private seed: number;
 
@@ -76,47 +76,122 @@ class SimpleRandom {
 }
 
 /**
- * Edge integrity validation (from BUG HUNTER)
+ * Enhanced invariant checker with edge integrity validation
  */
-async function validateEdgeIntegrity(state: VisualizationState, context: string): Promise<void> {
-  const visibleNodes = state.getVisibleNodes();
-  const visibleContainers = state.getVisibleContainers();
-  const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-  const visibleContainerIds = new Set(visibleContainers.map(c => c.id));
-  const allVisibleEntityIds = new Set([...visibleNodeIds, ...visibleContainerIds]);
+class ComprehensiveInvariantChecker {
+  constructor(private state: VisualizationState, private engine: VisualizationEngine) {}
   
-  const visibleHyperEdges = state.visibleHyperEdges;
-  let disconnectedEdges = 0;
+  /**
+   * Check all invariants including edge integrity
+   */
+  async checkAll(context: string = ''): Promise<void> {
+    this.checkBasicInvariants(context);
+    await this.checkEdgeIntegrity(context);
+    this.checkEngineStateConsistency(context);
+  }
   
-  for (const hyperEdge of visibleHyperEdges) {
-    // Validate source
-    if (!allVisibleEntityIds.has(hyperEdge.source)) {
-      disconnectedEdges++;
-      console.error(`🚨 DISCONNECTED HYPEREDGE SOURCE: ${hyperEdge.id} missing source ${hyperEdge.source}`);
+  /**
+   * Basic visualization state invariants
+   */
+  private checkBasicInvariants(context: string): void {
+    const visibleNodes = this.state.getVisibleNodes();
+    const visibleEdges = this.state.visibleEdges;
+    const visibleContainers = this.state.getVisibleContainers();
+    const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
+    
+    // Node visibility invariant
+    for (const node of visibleNodes) {
+      expect(node.hidden).toBe(false);
+      
+      const container = this.state.getNodeContainer(node.id);
+      if (container) {
+        const containerData = this.state.getContainer(container);
+        expect(containerData?.collapsed).toBe(false);
+      }
     }
     
-    // Validate target
-    if (!allVisibleEntityIds.has(hyperEdge.target)) {
-      disconnectedEdges++;
-      console.error(`🚨 DISCONNECTED HYPEREDGE TARGET: ${hyperEdge.id} missing target ${hyperEdge.target}`);
+    // Edge visibility invariant
+    for (const edge of visibleEdges) {
+      expect(visibleNodeIds.has(edge.source)).toBe(true);
+      expect(visibleNodeIds.has(edge.target)).toBe(true);
+      expect(edge.hidden).toBe(false);
+    }
+    
+    // Container hierarchy invariant
+    for (const container of visibleContainers) {
+      const children = this.state.getContainerChildren(container.id);
+      for (const childId of children) {
+        const nodeContainer = this.state.getNodeContainer(childId);
+        if (nodeContainer) {
+          expect(nodeContainer).toBe(container.id);
+        }
+      }
+    }
+    
+    // HyperEdge encapsulation invariant
+    for (const edge of visibleEdges) {
+      expect(edge.id?.startsWith('hyper_')).toBe(false);
     }
   }
   
-  if (disconnectedEdges > 0) {
-    throw new Error(
-      `❌ Edge integrity validation failed in ${context}!\n` +
-      `Found ${disconnectedEdges} disconnected hyperEdge endpoints.`
-    );
+  /**
+   * Critical edge integrity validation (from BUG HUNTER)
+   */
+  private async checkEdgeIntegrity(context: string): Promise<void> {
+    const visibleNodes = this.state.getVisibleNodes();
+    const visibleContainers = this.state.getVisibleContainers();
+    const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
+    const visibleContainerIds = new Set(visibleContainers.map(c => c.id));
+    const allVisibleEntityIds = new Set([...visibleNodeIds, ...visibleContainerIds]);
+    
+    const visibleHyperEdges = this.state.visibleHyperEdges;
+    let disconnectedEdges = 0;
+    
+    for (const hyperEdge of visibleHyperEdges) {
+      // Validate source
+      if (!allVisibleEntityIds.has(hyperEdge.source)) {
+        disconnectedEdges++;
+        console.error(`🚨 DISCONNECTED HYPEREDGE SOURCE: ${hyperEdge.id} missing source ${hyperEdge.source}`);
+      }
+      
+      // Validate target
+      if (!allVisibleEntityIds.has(hyperEdge.target)) {
+        disconnectedEdges++;
+        console.error(`🚨 DISCONNECTED HYPEREDGE TARGET: ${hyperEdge.id} missing target ${hyperEdge.target}`);
+      }
+    }
+    
+    if (disconnectedEdges > 0) {
+      throw new Error(
+        `❌ Edge integrity validation failed in ${context}!\n` +
+        `Found ${disconnectedEdges} disconnected hyperEdge endpoints.`
+      );
+    }
+    
+    // Check for the "all edges disappeared" bug
+    const edgeCount = visibleHyperEdges.length;
+    const nodeCount = visibleNodes.length;
+    
+    if (edgeCount === 0 && nodeCount > 0) {
+      throw new Error(
+        `🚨 CRITICAL BUG: All edges disappeared but nodes remain! Context: ${context}`
+      );
+    }
   }
   
-  // Check for the "all edges disappeared" bug
-  const edgeCount = visibleHyperEdges.length;
-  const nodeCount = visibleNodes.length;
-  
-  if (edgeCount === 0 && nodeCount > 0) {
-    throw new Error(
-      `🚨 CRITICAL BUG: All edges disappeared but nodes remain! Context: ${context}`
-    );
+  /**
+   * Engine state consistency checks
+   */
+  private checkEngineStateConsistency(context: string): void {
+    const engineState = this.engine.getState();
+    
+    // Engine should not be stuck in laying_out phase
+    if (engineState.phase === 'laying_out') {
+      console.warn(`⚠️ ${context}: Engine stuck in laying_out phase`);
+    }
+    
+    // Layout count should be reasonable
+    expect(engineState.layoutCount).toBeGreaterThanOrEqual(0);
   }
 }
 
@@ -170,14 +245,13 @@ class ComprehensiveFuzzTester {
       }
     });
     
+    const checker = new ComprehensiveInvariantChecker(state, engine);
+    
     console.log(`📊 Initial state: ${state.getVisibleNodes().length} nodes, ${state.visibleHyperEdges.length} hyperEdges, ${state.getVisibleContainers().length} containers`);
     
     // Run initial layout
     await engine.runLayout();
-    
-    // Use the existing validateInvariants method instead of our own
-    state.validateInvariants();
-    await validateEdgeIntegrity(state, 'Initial layout');
+    await checker.checkAll('Initial layout');
     
     let totalOperations = 0;
     let disconnectedEdgeIssues = 0;
@@ -199,9 +273,8 @@ class ComprehensiveFuzzTester {
             await this.executeOperation(state, engine, operation);
             totalOperations++;
             
-            // Use the existing validateInvariants method
-            state.validateInvariants();
-            await validateEdgeIntegrity(state, `After operation ${totalOperations}: ${operation.type}`);
+            // Check all invariants after operation
+            await checker.checkAll(`After operation ${totalOperations}: ${operation.type}`);
             
           } catch (error: unknown) {
             console.error(`❌ Operation ${totalOperations} failed:`, operation);
@@ -227,9 +300,8 @@ class ComprehensiveFuzzTester {
       }
     }
     
-    // Final validation using the existing method
-    state.validateInvariants();
-    await validateEdgeIntegrity(state, 'Final state after comprehensive testing');
+    // Final validation
+    await checker.checkAll('Final state after comprehensive testing');
     
     // Report results
     console.log(`\n🎯 COMPREHENSIVE FUZZ TEST RESULTS:`);
@@ -364,14 +436,22 @@ class ComprehensiveFuzzTester {
         break;
         
       case 'expandAllNodes':
-        // Expand all containers using bulk method
-        state.expandAllContainers();
+        // Expand all containers
+        const allContainers = state.getVisibleContainers();
+        for (const container of allContainers) {
+          if (container.collapsed) {
+            state.expandContainer(container.id);
+          }
+        }
         await engine.runLayout();
         break;
         
       case 'contractAllNodes':
-        // Collapse all containers using bulk method
-        state.collapseAllContainers();
+        // Collapse all containers
+        const expandedContainers = state.getVisibleContainers().filter(c => !c.collapsed);
+        for (const container of expandedContainers) {
+          state.collapseContainer(container.id);
+        }
         await engine.runLayout();
         break;
         
@@ -437,12 +517,14 @@ class ComprehensiveFuzzTester {
   }
 }
 
-// Vitest test suite
-describe('Comprehensive Visualizer Fuzz Testing', () => {
-  it('should stress test all visualizer controls with paxos-flipped.json without finding disconnected edges', async () => {
-    console.log('🧪 STARTING COMPREHENSIVE FUZZ TESTING SUITE');
-    console.log('============================================\n');
-    
+/**
+ * Run comprehensive fuzz test on paxos-flipped.json
+ */
+export async function runComprehensiveFuzzTest(): Promise<void> {
+  console.log('🧪 STARTING COMPREHENSIVE FUZZ TESTING SUITE');
+  console.log('============================================\n');
+  
+  try {
     // Load paxos-flipped.json as specified
     const paxosFilePath = join(__dirname, '../test-data/paxos-flipped.json');
     const paxosJsonString = readFileSync(paxosFilePath, 'utf-8');
@@ -458,43 +540,56 @@ describe('Comprehensive Visualizer Fuzz Testing', () => {
     const data = JSON.parse(paxosJsonString);
     const groupings = data.hierarchyChoices || [];
     
-    console.log(`📊 Found ${groupings.length} groupings: ${groupings.map((g: any) => g.name).join(', ')}`);
-    
-    // Test first grouping only for initial testing
-    if (groupings.length > 0) {
-      const grouping = groupings[0];
-      console.log(`\n🎯 Testing grouping: ${grouping.name} (${grouping.id})`);
-      const tester = new ComprehensiveFuzzTester(data, `paxos-flipped-${grouping.name}`);
-      await tester.runTest(grouping.id);
-    } else {
+    if (groupings.length === 0) {
       console.log(`⚠️ No groupings found, testing with flat structure`);
       const tester = new ComprehensiveFuzzTester(data, 'paxos-flipped');
       await tester.runTest();
+    } else {
+      console.log(`📊 Found ${groupings.length} groupings: ${groupings.map((g: any) => g.name).join(', ')}`);
+      
+      // Test each grouping
+      for (const grouping of groupings) {
+        console.log(`\n🎯 Testing grouping: ${grouping.name} (${grouping.id})`);
+        const tester = new ComprehensiveFuzzTester(data, `paxos-flipped-${grouping.name}`);
+        await tester.runTest(grouping.id);
+      }
     }
     
-    console.log('\n🎉 COMPREHENSIVE FUZZ TEST COMPLETED SUCCESSFULLY!');
+    console.log('\n🎉 ALL COMPREHENSIVE FUZZ TESTS COMPLETED SUCCESSFULLY!');
     console.log('No disconnected edges or visualizer control issues found.');
+    
+  } catch (error: unknown) {
+    console.error('❌ Comprehensive fuzz testing failed:', error instanceof Error ? error.message : String(error));
+    throw error;
+  }
+}
+
+// Export components for use in other tests
+export { ComprehensiveFuzzTester, ComprehensiveInvariantChecker };
+
+/**
+ * Vitest test suite for comprehensive fuzz testing
+ */
+describe('Comprehensive Visualizer Fuzz Testing', () => {
+  test('🎲 Comprehensive fuzz test of all visualizer controls using paxos-flipped.json', async () => {
+    await runComprehensiveFuzzTest();
   }, 120000); // 2 minute timeout for comprehensive testing
-  
-  it('should validate individual fuzz operations work correctly', async () => {
-    // Load test data
+
+  test('🐛 DISCONNECTED EDGES BUG HUNTER: Combined with comprehensive fuzz operations', async () => {
+    console.log('🐛 Running focused disconnected edges bug hunting with fuzz operations...');
+    
+    // Load paxos-flipped.json specifically for bug hunting
     const paxosFilePath = join(__dirname, '../test-data/paxos-flipped.json');
     const paxosJsonString = readFileSync(paxosFilePath, 'utf-8');
     const data = JSON.parse(paxosJsonString);
     
-    // Quick test with just a few iterations
-    const tester = new ComprehensiveFuzzTester(data, 'paxos-flipped-quick');
-    
-    // Run a quick test with first grouping
+    // Focus on a single grouping for intensive bug hunting
     const groupings = data.hierarchyChoices || [];
-    const groupingId = groupings.length > 0 ? groupings[0].id : null;
+    const testGrouping = groupings.length > 0 ? groupings[0].id : null;
     
-    await tester.runTest(groupingId);
+    const tester = new ComprehensiveFuzzTester(data, 'bug-hunter-focused');
+    await tester.runTest(testGrouping);
     
-    // If we get here without throwing, the test passed
-    expect(true).toBe(true);
-  }, 60000); // 1 minute timeout for quick test
+    console.log('✅ Bug hunter completed - no disconnected edges found!');
+  }, 60000); // 1 minute timeout for focused bug hunting
 });
-
-// Export components for use in other tests
-export { ComprehensiveFuzzTester, validateEdgeIntegrity };
