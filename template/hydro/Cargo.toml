@@ -13,7 +13,7 @@ stageleft = "0.9.6"
 stageleft_tool = "0.9.6"
 
 [dev-dependencies]
-ctor = "0.2"
+ctor = "0.5"
 hydro_deploy = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
 hydro_lang = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}", features = [
     "deploy",

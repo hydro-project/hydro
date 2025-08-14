@@ -13,7 +13,6 @@ hydro_std = { path = "../hydro_std", version = "^0.14.0" }
 stageleft.workspace = true
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
-ctor = "0.2.9"
 colored = "3.0.0"
 palette = "0.7.6"
 tokio = "1.29.0"
@@ -27,7 +26,7 @@ stageleft_tool.workspace = true
 
 [dev-dependencies]
 clap = { version = "4.4", features = ["derive"] }
-ctor = "0.2"
+ctor = "0.5"
 dfir_lang = { path = "../dfir_lang", version = "^0.14.0" }
 example_test = { path = "../example_test", version = "^0.0.0" }
 futures = "0.3.0"
