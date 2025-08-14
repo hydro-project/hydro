@@ -1142,22 +1142,22 @@ dependencies = [
 
 [[package]]
 name = "ctor"
-version = "0.2.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32a2785755761f3ddc1492979ce1e48d2c00d09311c39e4466429188f3dd6501"
-dependencies = [
- "quote",
- "syn 2.0.101",
-]
-
-[[package]]
-name = "ctor"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4735f265ba6a1188052ca32d461028a7d1125868be18e287e756019da7607b5"
 dependencies = [
- "ctor-proc-macro",
- "dtor",
+ "ctor-proc-macro 0.0.5",
+ "dtor 0.0.6",
+]
+
+[[package]]
+name = "ctor"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67773048316103656a637612c4a62477603b777d91d9c62ff2290f9cde178fdb"
+dependencies = [
+ "ctor-proc-macro 0.0.6",
+ "dtor 0.1.0",
 ]
 
 [[package]]
@@ -1165,6 +1165,12 @@ name = "ctor-proc-macro"
 version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f211af61d8efdd104f96e57adf5e426ba1bc3ed7a4ead616e15e5881fd79c4d"
+
+[[package]]
+name = "ctor-proc-macro"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2931af7e13dc045d8e9d26afccc6fa115d64e115c9c84b1166288b46f6782c2"
 
 [[package]]
 name = "ctr"
@@ -1441,7 +1447,16 @@ version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97cbdf2ad6846025e8e25df05171abfb30e3ababa12ee0a0e44b9bbe570633a8"
 dependencies = [
- "dtor-proc-macro",
+ "dtor-proc-macro 0.0.5",
+]
+
+[[package]]
+name = "dtor"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e58a0764cddb55ab28955347b45be00ade43d4d6f3ba4bf3dc354e4ec9432934"
+dependencies = [
+ "dtor-proc-macro 0.0.6",
 ]
 
 [[package]]
@@ -1449,6 +1464,12 @@ name = "dtor-proc-macro"
 version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7454e41ff9012c00d53cf7f475c5e3afa3b91b7c90568495495e8d9bf47a1055"
+
+[[package]]
+name = "dtor-proc-macro"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f678cf4a922c215c63e0de95eb1ff08a958a81d47e485cf9da1e27bf6305cfa5"
 
 [[package]]
 name = "dunce"
@@ -2299,7 +2320,7 @@ dependencies = [
  "bytes",
  "chrono",
  "clap",
- "ctor 0.2.9",
+ "ctor 0.5.0",
  "data-encoding",
  "dfir_lang",
  "dfir_rs",
@@ -2338,7 +2359,7 @@ dependencies = [
 name = "hydro_optimize"
 version = "0.13.0"
 dependencies = [
- "ctor 0.2.9",
+ "ctor 0.5.0",
  "good_lp",
  "hydro_deploy",
  "hydro_lang",
@@ -2356,7 +2377,7 @@ dependencies = [
 name = "hydro_std"
 version = "0.14.0"
 dependencies = [
- "ctor 0.2.9",
+ "ctor 0.5.0",
  "hdrhistogram",
  "hydro_deploy",
  "hydro_lang",
@@ -2373,7 +2394,7 @@ dependencies = [
  "bytes",
  "clap",
  "colored 3.0.0",
- "ctor 0.2.9",
+ "ctor 0.5.0",
  "dfir_lang",
  "dfir_rs",
  "example_test",

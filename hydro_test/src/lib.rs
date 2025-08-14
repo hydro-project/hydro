@@ -8,6 +8,14 @@ pub mod local;
 #[doc(hidden)]
 #[cfg(doctest)]
 mod docs {
+    /// ```rust,no_run
+    /// ##[ctor::ctor(anonymous)]
+    /// fn init() {
+    ///     hydro_lang::deploy::init_test();
+    /// }
+    /// ```
+    fn __setup_hydro_doctest() {}
+
     include_mdtests::include_mdtests!("docs/docs/hydro/**/*.md*");
 }
 

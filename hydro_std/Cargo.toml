@@ -29,4 +29,4 @@ hydro_lang = { path = "../hydro_lang", version = "^0.14.0", features = [
 ] }
 insta = "1.39"
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0" }
-ctor = "0.2"
+ctor = "0.5"
