@@ -1,3 +1,21 @@
+// TODO(shadaj): this should be stageleft::stageleft_no_q_crate()
+#[doc(hidden)]
+#[allow(
+    unused,
+    ambiguous_glob_reexports,
+    unexpected_cfgs,
+    clippy::suspicious_else_formatting,
+    clippy::type_complexity,
+    reason = "generated code"
+)]
+pub mod __staged {
+    include!(concat!(
+        env!("OUT_DIR"),
+        stageleft::PATH_SEPARATOR!(),
+        "staged_deps.rs"
+    ));
+}
+
 pub mod debug;
 pub mod decouple_analysis;
 pub mod decoupler;
