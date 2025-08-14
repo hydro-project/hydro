@@ -331,6 +331,9 @@ export class VisualizationEngine {
       if (containersToCollapse.length > 0) {
         this.log(`🔧 Applying collapse decisions to ${containersToCollapse.length} containers`);
         
+        // Set flag to skip individual validation during batch collapse
+        (this.visState as any).isRunningSmartCollapse = true;
+        
         for (const containerId of containersToCollapse) {
           try {
             // CRITICAL: Check if container is already collapsed before attempting collapse
@@ -368,6 +371,18 @@ export class VisualizationEngine {
           }
         }
         
+        // Clear the smart collapse flag
+        (this.visState as any).isRunningSmartCollapse = false;
+        
+        // Run final validation after all containers are collapsed
+        this.log('🔍 Running final hyper edge validation after smart collapse');
+        // Only validate if validation is enabled
+        if ((this.visState as any)._validationEnabled) {
+          (this.visState as any).containerOps.validateHyperEdgeLifting();
+        } else {
+          this.log('⚠️ Skipping hyper edge validation - validation disabled');
+        }
+        
         this.log(`✅ All ${containersToCollapse.length} collapse operations complete`);
         
         // Step 6: Re-run layout after collapse to get clean final layout
@@ -400,7 +415,12 @@ export class VisualizationEngine {
       this.log('🎉 Smart collapse algorithm complete');
       
     } catch (error) {
+      // Ensure smart collapse flag is cleared even on error
+      (this.visState as any).isRunningSmartCollapse = false;
       this.handleError('Smart collapse failed', error);
+    } finally {
+      // Ensure smart collapse flag is always cleared
+      (this.visState as any).isRunningSmartCollapse = false;
     }
   }
 

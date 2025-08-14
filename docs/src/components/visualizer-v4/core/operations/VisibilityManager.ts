@@ -72,53 +72,41 @@ export class VisibilityManager {
    * Update container visibility caches
    */
   updateContainerVisibilityCaches(containerId: string, container: any): void {
-    console.log(`[VisibilityManager] 🔄 Updating visibility caches for container ${containerId}: collapsed=${container.collapsed}, hidden=${container.hidden}`);
     
     // DIAGNOSTIC: Check for specific problem containers
     if (containerId === 'bt_81' || containerId === 'bt_98') {
-      console.log(`[VisibilityManager] 🔍 DIAGNOSTIC: Problem container ${containerId} - hidden: ${container.hidden}, collapsed: ${container.collapsed}`);
       
       // Check if this container has a parent and if that parent is collapsed
       const parentContainerId = this.state._collections.nodeContainers.get(containerId);
       if (parentContainerId) {
         const parentContainer = this.state._collections.containers.get(parentContainerId);
-        console.log(`[VisibilityManager] 🔍 DIAGNOSTIC: ${containerId} has parent ${parentContainerId} - parent collapsed: ${parentContainer?.collapsed}, parent hidden: ${parentContainer?.hidden}`);
         if (parentContainer?.collapsed) {
-          console.log(`[VisibilityManager] 🚨 PROBLEM: ${containerId} should be hidden because parent ${parentContainerId} is collapsed!`);
         }
       } else {
-        console.log(`[VisibilityManager] 🔍 DIAGNOSTIC: ${containerId} has no parent (root level container)`);
       }
     }
     
     // Update _visibleContainers (includes collapsed containers)
     if (!container.hidden) {
       this.state._collections._visibleContainers.set(containerId, container);
-      console.log(`[VisibilityManager] ✅ Added ${containerId} to _visibleContainers`);
     } else {
       this.state._collections._visibleContainers.delete(containerId);
-      console.log(`[VisibilityManager] ❌ Removed ${containerId} from _visibleContainers (hidden)`);
       if (containerId === 'bt_81' || containerId === 'bt_98') {
-        console.log(`[VisibilityManager] 🔍 DIAGNOSTIC: Problem container ${containerId} EXCLUDED because hidden=${container.hidden}`);
       }
     }
     
     // Update _expandedContainers (only non-collapsed containers)
     if (!container.hidden && !container.collapsed) {
       this.state._collections._expandedContainers.set(containerId, container);
-      console.log(`[VisibilityManager] ✅ Added ${containerId} to _expandedContainers`);
     } else {
       this.state._collections._expandedContainers.delete(containerId);
-      console.log(`[VisibilityManager] ❌ Removed ${containerId} from _expandedContainers (hidden=${container.hidden}, collapsed=${container.collapsed})`);
     }
     
     // Update collapsedContainers
     if (container.collapsed && !container.hidden) {
       this.state._collections.collapsedContainers.set(containerId, container);
-      console.log(`[VisibilityManager] ✅ Added ${containerId} to collapsedContainers`);
     } else {
       this.state._collections.collapsedContainers.delete(containerId);
-      console.log(`[VisibilityManager] ❌ Removed ${containerId} from collapsedContainers (collapsed=${container.collapsed}, hidden=${container.hidden})`);
     }
   }
 

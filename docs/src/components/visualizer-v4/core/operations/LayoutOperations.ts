@@ -209,7 +209,6 @@ export class LayoutOperations {
     }
     
     if (fixedCount > 0) {
-      console.log(`[VisState] Fixed ${fixedCount} invalid dimensions`);
     }
   }
 

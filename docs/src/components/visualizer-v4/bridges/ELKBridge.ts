@@ -111,8 +111,6 @@ export class ELKBridge {
    * Log ELK graph structure for debugging layout issues
    */
   private logELKGraphStructure(elkGraph: ElkGraph): void {
-    console.log('[ELKBridge] 🔍 ELK Input Graph Structure:');
-    console.log(`[ELKBridge] 📊 Root: ${elkGraph.children?.length || 0} children`);
     
     // Log container positions if they exist (this might be the issue)
     const containersWithPositions = (elkGraph.children || []).filter(child => 
@@ -120,23 +118,17 @@ export class ELKBridge {
     );
     
     if (containersWithPositions.length > 0) {
-      console.log(`[ELKBridge] ⚠️  Found ${containersWithPositions.length} containers with existing positions:`);
       for (const container of containersWithPositions) { // Log ALL containers with positions!
-        console.log(`[ELKBridge] 📍 ${container.id}: position=(${container.x}, ${container.y}), size=${container.width}x${container.height}`);
       }
     } else {
-      console.log('[ELKBridge] ✅ No existing positions in ELK input (good for fresh layout)');
     }
     
     // Log ALL container dimensions to see if there are inconsistencies
     const containers = (elkGraph.children || []);
-    console.log(`[ELKBridge] 📦 All container dimensions:`);
     for (const container of containers) {
-      console.log(`[ELKBridge] 📦 ${container.id}: ${container.width}x${container.height}`);
     }
     
     // CRITICAL: Log the exact layout options being sent
-    console.log(`[ELKBridge] ⚙️  Layout options:`, JSON.stringify(elkGraph.layoutOptions, null, 2));
   }
 
   /**
@@ -190,9 +182,7 @@ export class ELKBridge {
     };
     elkGraph.children?.forEach(collectNodeIds);
     
-    console.log(`[ELKBridge] 🔍 Collected ${allValidNodeIds.size} valid node IDs from ELK graph`);
     if (allValidNodeIds.size < 20) {
-      console.log(`[ELKBridge] 🔍 All valid node IDs: ${Array.from(allValidNodeIds).join(', ')}`);
     }
     
     // STRICT VALIDATION: Throw error for edges with invalid endpoints instead of silently filtering
@@ -319,13 +309,11 @@ export class ELKBridge {
       
       // DIAGNOSTIC: Check parent relationships for problematic containers
       if (container.id === 'bt_81' || container.id === 'bt_98') {
-        console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ${container.id} hasVisibleParent: ${hasVisibleParent}`);
         if (hasVisibleParent) {
           // Find the parent
           const parent = visState.visibleContainers.find(otherContainer => 
             visState.getContainerChildren(otherContainer.id).has(container.id)
           );
-          console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ${container.id} parent is: ${parent?.id}`);
         }
       }
       
@@ -375,19 +363,16 @@ export class ELKBridge {
     // No custom offset corrections - ELK provides the correct coordinate system
     
     // DIAGNOSTIC: Check if bt_81 and bt_98 are in the ELK result
-    console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ELK returned ${elkResult.children.length} top-level children`);
     const problemContainers = ['bt_81', 'bt_98'];
     problemContainers.forEach(containerId => {
       const foundAtRoot = elkResult.children?.find(child => child.id === containerId);
       if (foundAtRoot) {
-        console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ${containerId} found at ROOT level - x: ${foundAtRoot.x}, y: ${foundAtRoot.y}`);
       } else {
         // Check if it's nested in any other container
         let foundNested = false;
         const searchNested = (elkNode: ElkNode, depth: number = 0) => {
           elkNode.children?.forEach(child => {
             if (child.id === containerId) {
-              console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ${containerId} found NESTED at depth ${depth} inside ${elkNode.id} - x: ${child.x}, y: ${child.y}`);
               foundNested = true;
             } else if (child.children) {
               searchNested(child, depth + 1);
@@ -397,7 +382,6 @@ export class ELKBridge {
         elkResult.children?.forEach(rootChild => searchNested(rootChild, 1));
         
         if (!foundNested) {
-          console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ${containerId} NOT FOUND in ELK result at all!`);
         }
       }
     });

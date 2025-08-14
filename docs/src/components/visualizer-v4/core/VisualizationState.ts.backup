@@ -237,6 +237,8 @@ export class VisualizationState implements ContainerHierarchyView {
    */
   get visibleContainers(): ReadonlyArray<any> {
     const containers = Array.from(this._collections._visibleContainers.values());
+    console.log(`[VisualizationState] 🔍 visibleContainers getter called - found ${containers.length} containers`);
+    console.log(`[VisualizationState] 🔍 Container IDs: ${containers.map(c => `${c.id}(collapsed:${c.collapsed})`).join(', ')}`);
     
     return containers.map(container => {
       const adjustedDimensions = this.layoutOps.getContainerAdjustedDimensions(container.id);
@@ -476,6 +478,7 @@ export class VisualizationState implements ContainerHierarchyView {
       this.containerOps.handleContainerCollapse(containerId);
     } else if (wasCollapsed && isNowExpanded) {
       // Container is being expanded
+      console.log(`[ADDCONTAINER] Container ${containerId} changing from collapsed to expanded - calling expansion handler`);
       this.containerOps.handleContainerExpansion(containerId);
     }
   }
@@ -520,6 +523,7 @@ export class VisualizationState implements ContainerHierarchyView {
     // Handle collapse/expand transitions with hyperEdge management
     if (state.collapsed !== undefined && state.collapsed !== wasCollapsed) {
       if (state.collapsed) {
+        console.log(`[CONTAINER_STATE] 🔄 Collapsing container: ${containerId} (was: ${wasCollapsed}, now: ${state.collapsed})`);
         
         // Disable validation during collapse to avoid intermediate state warnings
         const originalValidation = this._validationEnabled;
@@ -531,6 +535,7 @@ export class VisualizationState implements ContainerHierarchyView {
           this._validationEnabled = originalValidation;
         }
       } else {
+        console.log(`[CONTAINER_STATE] 🔄 Expanding container: ${containerId} (was: ${wasCollapsed}, now: ${state.collapsed})`);
         
         // Disable validation during expansion to avoid intermediate state warnings  
         const originalValidation = this._validationEnabled;
@@ -543,6 +548,7 @@ export class VisualizationState implements ContainerHierarchyView {
         }
       }
     } else {
+      console.log(`[CONTAINER_STATE] ℹ️  No collapse state change for container: ${containerId} (was: ${wasCollapsed}, now: ${state.collapsed})`);
     }
     
     // Handle hide/show transitions  
@@ -621,15 +627,19 @@ export class VisualizationState implements ContainerHierarchyView {
    * Expand a container with proper hyperEdge cleanup
    */
   expandContainer(containerId: string): void {
+    console.log(`[VisualizationState] 🔄 expandContainer called for: ${containerId}`);
     const container = this._collections.containers.get(containerId);
     if (!container) {
       throw new Error(`Cannot expand non-existent container: ${containerId}`);
     }
     
+    console.log(`[VisualizationState] 🔄 Container ${containerId} current state - collapsed: ${container.collapsed}, hidden: ${container.hidden}`);
     
     // Just update the container's collapsed state - setContainerState will handle calling handleContainerExpansion
+    console.log(`[VisualizationState] 🔄 Setting container state for: ${containerId}`);
     this.setContainerState(containerId, { collapsed: false });
     
+    console.log(`[VisualizationState] ✅ expandContainer completed for: ${containerId}`);
   }
 
   /**
@@ -872,6 +882,7 @@ export class VisualizationState implements ContainerHierarchyView {
    */
   validateAllInvariants(context?: string): void {
     if (context) {
+      console.log(`[VisState] Validating invariants: ${context}`);
     }
     this.validateInvariants();
   }

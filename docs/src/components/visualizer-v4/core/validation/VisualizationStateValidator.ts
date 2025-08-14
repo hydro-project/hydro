@@ -1,5 +1,7 @@
 /**
- * Visualization State Invariant Validation System
+ * Visualization State Invari  validateInvariants(): ValidationResult {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationError[] = []; Validation System
  * 
  * Centralizes all validation logic for VisualizationState to ensure consistency
  * and catch bugs early. Extracted from VisState.ts for better separation of concerns.
@@ -457,7 +459,7 @@ export class VisualizationStateInvariantValidator {
     // converted to hyperEdges and original edges are hidden
     for (const [containerId, container] of this.state.containers) {
       if (!container.collapsed) continue;
-
+      
       const crossingEdges = this.state.getCrossingEdges(containerId);
       
       for (const crossingEdge of crossingEdges) {
