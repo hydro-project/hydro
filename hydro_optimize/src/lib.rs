@@ -1,3 +1,14 @@
+// TODO(shadaj): this should be stageleft::stageleft_no_q_crate()
+#[doc(hidden)]
+#[cfg(test)]
+pub mod __staged {
+    include!(concat!(
+        env!("OUT_DIR"),
+        stageleft::PATH_SEPARATOR!(),
+        "staged_deps.rs"
+    ));
+}
+
 pub mod debug;
 pub mod decouple_analysis;
 pub mod decoupler;
