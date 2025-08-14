@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
@@ -7,7 +9,10 @@ use crate::location::{LocationId, NoTick};
 use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
 use crate::unsafety::NonDet;
-use crate::{Atomic, Bounded, Location, NoOrder, Stream, Tick, Unbounded};
+use crate::{
+    Atomic, Bounded, KeyedStream, Location, NoOrder, Optional, Singleton, Stream, Tick, TotalOrder,
+    Unbounded, nondet,
+};
 
 pub struct KeyedSingleton<K, V, Loc, Bound> {
     pub(crate) underlying: Stream<(K, V), Loc, Bound, NoOrder, ExactlyOnce>,
@@ -101,6 +106,37 @@ impl<'a, K, V, L: Location<'a>, B> KeyedSingleton<K, V, L, B> {
     }
 }
 
+impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    pub fn get(self, key: Singleton<K, Tick<L>, Bounded>) -> Optional<V, Tick<L>, Bounded> {
+        self.entries()
+            .join(key.into_stream().map(q!(|k| (k, ()))))
+            .map(q!(|(_, (v, _))| v))
+            .assume_ordering::<TotalOrder>(nondet!(/** only a single key, so totally ordered */))
+            .first()
+    }
+
+    pub fn get_many<O2, R2>(
+        self,
+        keys: Stream<K, Tick<L>, Bounded, O2, R2>,
+    ) -> KeyedStream<K, V, Tick<L>, Bounded, NoOrder, R2> {
+        self.entries()
+            .weaker_retries()
+            .join(keys.map(q!(|k| (k, ()))))
+            .map(q!(|(k, (v, _))| (k, v)))
+            .into_keyed()
+    }
+
+    pub fn join<O2, R2, V2>(
+        self,
+        with: KeyedStream<K, V2, Tick<L>, Bounded, O2, R2>,
+    ) -> KeyedStream<K, (V, V2), Tick<L>, Bounded, NoOrder, R2> {
+        self.entries()
+            .weaker_retries()
+            .join(with.entries())
+            .into_keyed()
+    }
+}
+
 impl<'a, K, V, L, B> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
@@ -153,7 +189,7 @@ impl<'a, K, V, L> KeyedSingleton<K, V, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
-    pub fn all_ticks(self) -> KeyedSingleton<K, V, L, Unbounded> {
+    pub fn latest(self) -> KeyedSingleton<K, V, L, Unbounded> {
         KeyedSingleton {
             underlying: self.underlying.all_ticks(),
         }
