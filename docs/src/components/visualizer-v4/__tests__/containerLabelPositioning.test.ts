@@ -50,9 +50,10 @@ describe('Container Label Positioning & Dimensions', () => {
 
       const adjustedDims = visState.getContainerAdjustedDimensions('container1');
 
-      // Should return the cached padded dimensions
+      // FIXED DOUBLE PADDING: Should return the raw ELK dimensions without manual label space
+      // Container components handle label positioning internally
       expect(adjustedDims.width).toBe(baseWidth);
-      expect(adjustedDims.height).toBe(baseHeight + LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING);
+      expect(adjustedDims.height).toBe(baseHeight);
     });
 
     test('should ensure minimum dimensions for collapsed containers', () => {
@@ -64,11 +65,10 @@ describe('Container Label Positioning & Dimensions', () => {
 
       const adjustedDims = visState.getContainerAdjustedDimensions('container1');
 
-      // Should enforce minimum width and include label space in height
+      // FIXED DOUBLE PADDING: Should enforce minimum width and height without manual label space
+      // Container components handle label positioning internally
       expect(adjustedDims.width).toBeGreaterThanOrEqual(LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH);
-      expect(adjustedDims.height).toBeGreaterThanOrEqual(
-        LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING * 2
-      );
+      expect(adjustedDims.height).toBeGreaterThanOrEqual(LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT);
     });
 
     test('should handle containers without explicit dimensions', () => {
@@ -78,11 +78,10 @@ describe('Container Label Positioning & Dimensions', () => {
 
       const adjustedDims = visState.getContainerAdjustedDimensions('container1');
 
-      // Should use minimum dimensions plus label space
+      // FIXED DOUBLE PADDING: Should use minimum dimensions without manual label space
+      // Container components handle label positioning internally
       expect(adjustedDims.width).toBe(LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH);
-      expect(adjustedDims.height).toBeGreaterThanOrEqual(
-        LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT + LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT
-      );
+      expect(adjustedDims.height).toBe(LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT);
     });
 
     test('should throw error for non-existent container', () => {

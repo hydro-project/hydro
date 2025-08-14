@@ -127,6 +127,13 @@ describe('ReactFlowBridge', () => {
         }
       };
       return edgeLayoutMap[id] || null;
+    },
+    // Add the getContainerChildren method that the bridge expects
+    getContainerChildren: (id: string) => {
+      if (id === 'container1') {
+        return new Set(['node1']);
+      }
+      return new Set();
     }
   });
 
@@ -261,6 +268,12 @@ describe('ReactFlowBridge', () => {
             return { width: 200, height: 150 };
           }
           return { width: 200, height: 150 }; // Default dimensions
+        },
+        getContainerChildren: (id: string) => {
+          if (id === 'parent_container') {
+            return new Set(['child_node']);
+          }
+          return new Set();
         }
       };
       

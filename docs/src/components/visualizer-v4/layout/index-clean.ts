@@ -6,7 +6,7 @@
  */
 
 // Core layout engine - bridge-based!
-export { ELKLayoutEngine, DEFAULT_LAYOUT_CONFIG, createELKStateManager } from './ELKLayoutEngine';
+export { ELKLayoutEngine, DEFAULT_LAYOUT_CONFIG } from './ELKLayoutEngine';
 
 // Our own types
 export type {
@@ -43,9 +43,3 @@ export const LAYOUT_CONFIGS = {
   compact: { ...DEFAULT_LAYOUT_CONFIG, spacing: 50 },
   spacious: { ...DEFAULT_LAYOUT_CONFIG, spacing: 150 }
 };
-
-// State manager type for compatibility
-export interface ELKStateManager {
-  updatePositions(): void;
-  dispose(): void;
-}

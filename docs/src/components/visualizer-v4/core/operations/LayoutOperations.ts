@@ -99,6 +99,9 @@ export class LayoutOperations {
 
   /**
    * Get container adjusted dimensions
+   * 
+   * FIXED DOUBLE PADDING: Don't add manual label space since ELK layout and container 
+   * components should handle label positioning internally
    */
   getContainerAdjustedDimensions(containerId: string): { width: number; height: number } {
     const container = this.state._collections.containers.get(containerId);
@@ -110,8 +113,7 @@ export class LayoutOperations {
     if (container.collapsed) {
       return { 
         width: LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH,
-        height: LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT + 
-                LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING
+        height: LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT
       };
     }
     
@@ -131,13 +133,14 @@ export class LayoutOperations {
       baseHeight = container.height;
     }
     
-    // For expanded containers without cached dimensions, add label space to height
+    // For expanded containers without cached dimensions, use raw dimensions
+    // Let ELK layout and container components handle internal label positioning
     const width = baseWidth || LAYOUT_CONSTANTS.MIN_CONTAINER_WIDTH;
     const height = baseHeight || LAYOUT_CONSTANTS.MIN_CONTAINER_HEIGHT;
     
     return { 
       width: width, 
-      height: height + LAYOUT_CONSTANTS.CONTAINER_LABEL_HEIGHT + LAYOUT_CONSTANTS.CONTAINER_LABEL_PADDING
+      height: height
     };
   }
 

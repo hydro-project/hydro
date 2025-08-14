@@ -7,17 +7,18 @@
  * - Provides clean interface for ReactFlow integration
  */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { useVisualization } from '../hooks/useVisualization';
+import { VisualizationEngine } from '../core/VisualizationEngine';
+import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
 import type { VisualizationState } from '../core/VisualizationState';
-import type { UseVisualizationConfig } from '../hooks/useVisualization';
+import type { ReactFlowData } from '../bridges/ReactFlowBridge';
 
 export interface VisualizationComponentProps {
   visState: VisualizationState;
-  config?: UseVisualizationConfig;
+  config?: any;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -28,17 +29,39 @@ export function VisualizationComponent({
   className = '',
   style = {}
 }: VisualizationComponentProps): JSX.Element {
-  const {
-    reactFlowData,
-    engineState,
-    runLayout,
-    visualize,
-    onDataChanged,
-    isLoading,
-    isReady,
-    hasError,
-    error
-  } = useVisualization(visState, config);
+  const [reactFlowData, setReactFlowData] = useState<ReactFlowData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Create visualization engine
+  const [engine] = useState(() => new VisualizationEngine(visState));
+
+  // Function to refresh the visualization
+  const refreshVisualization = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Run ELK layout
+      await engine.runLayout();
+      
+      // Convert to ReactFlow format
+      const bridge = new ReactFlowBridge();
+      const reactFlowData = bridge.visStateToReactFlow(visState);
+      
+      setReactFlowData(reactFlowData);
+    } catch (err) {
+      console.error('[VisualizationComponent] Failed to generate visualization:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [visState, engine]);
+
+  // Initial load and refresh when visState changes
+  useEffect(() => {
+    refreshVisualization();
+  }, [refreshVisualization]);
 
   // Loading state
   if (isLoading) {
@@ -56,12 +79,7 @@ export function VisualizationComponent({
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '24px', marginBottom: '16px' }}>🔄</div>
           <div style={{ fontSize: '16px', color: '#666' }}>
-            {engineState.phase === 'laying_out' && 'Running layout...'}
-            {engineState.phase === 'rendering' && 'Generating visualization...'}
-            {engineState.phase === 'initial' && 'Initializing...'}
-          </div>
-          <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-            Phase: {engineState.phase} | Layouts: {engineState.layoutCount}
+            Running layout...
           </div>
         </div>
       </div>
@@ -69,7 +87,7 @@ export function VisualizationComponent({
   }
 
   // Error state
-  if (hasError) {
+  if (error) {
     return (
       <div className={`visualization-error ${className}`} style={{
         display: 'flex',
@@ -90,7 +108,7 @@ export function VisualizationComponent({
             {error}
           </div>
           <button 
-            onClick={visualize}
+            onClick={refreshVisualization}
             style={{
               padding: '8px 16px',
               background: '#007bff',
@@ -126,7 +144,7 @@ export function VisualizationComponent({
             Ready to visualize
           </div>
           <button 
-            onClick={visualize}
+            onClick={refreshVisualization}
             style={{
               padding: '8px 16px',
               background: '#28a745',
@@ -163,12 +181,11 @@ export function VisualizationComponent({
       }}>
         <div style={{ fontSize: '14px', color: '#666' }}>
           Nodes: {reactFlowData.nodes.length} | 
-          Edges: {reactFlowData.edges.length} | 
-          Layouts: {engineState.layoutCount}
+          Edges: {reactFlowData.edges.length}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button 
-            onClick={runLayout}
+            onClick={refreshVisualization}
             style={{
               padding: '4px 12px',
               background: '#007bff',
@@ -182,7 +199,7 @@ export function VisualizationComponent({
             Re-layout
           </button>
           <button 
-            onClick={onDataChanged}
+            onClick={refreshVisualization}
             style={{
               padding: '4px 12px',
               background: '#6c757d',
@@ -205,6 +222,23 @@ export function VisualizationComponent({
           edges={reactFlowData.edges}
           fitView
           attributionPosition="bottom-left"
+          onNodeDoubleClick={(event, node) => {
+            // Handle container collapse/expand on double-click
+            if (node.type === 'container') {
+              const container = visState.getContainer(node.id);
+              if (container) {
+                if (container.collapsed) {
+                  console.log(`[VisualizationComponent] 🔓 Expanding container: ${node.id}`);
+                  visState.expandContainer(node.id);
+                } else {
+                  console.log(`[VisualizationComponent] 🔒 Collapsing container: ${node.id}`);
+                  visState.collapseContainer(node.id);
+                }
+                // Force refresh after container state change
+                refreshVisualization();
+              }
+            }
+          }}
         >
           <Background />
           <Controls />

@@ -232,13 +232,4 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   nodeSize: { width: 180, height: 60 }
 };
 
-/**
- * Create ELK state manager - compatibility wrapper
- */
-export function createELKStateManager() {
-  // ...existing code...
-  return {
-    updatePositions: () => {},
-    dispose: () => {}
-  };
-}
+

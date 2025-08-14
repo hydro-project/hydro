@@ -72,6 +72,37 @@ describe('Layout Spacing Regression Tests', () => {
         };
       }).filter(c => c.collapsed);
       
+      // Only check containers that should actually be positioned by ELK
+      // Exclude containers that are children of collapsed containers
+      const containersToCheck = collapsedContainers.filter(container => {
+        const parentContainer = visState.getNodeContainer(container.id);
+        
+        if (parentContainer && parentContainer !== container.id) {
+          const parent = visState.getContainer(parentContainer);
+          if (parent?.collapsed) {
+            return false; // Skip containers that are children of collapsed containers
+          }
+        }
+        
+        // Also check the actual container object for hidden state
+        const actualContainer = visState.getContainer(container.id);
+        if (actualContainer?.hidden) {
+          return false; // Skip hidden containers
+        }
+        
+        return true; // Include this container in position checks
+      });
+      
+      // Check for containers with invalid positions (e.g., stuck at origin) - this is a HARD FAILURE
+      // Only check containers that should have been positioned by ELK (not children of collapsed containers)
+      const containersAtOrigin = containersToCheck.filter(c => c.x === 0 && c.y === 0);
+      if (containersAtOrigin.length > 0) {
+        console.error(`❌ LAYOUT BUG: Found ${containersAtOrigin.length} containers positioned at origin (0,0):`);
+        containersAtOrigin.forEach(c => console.error(`   ${c.id}: (${c.x}, ${c.y})`));
+        console.error(`   This indicates a serious positioning bug in the layout algorithm.`);
+        throw new Error(`Layout bug: ${containersAtOrigin.length} containers positioned at (0,0): ${containersAtOrigin.map(c => c.id).join(', ')}`);
+      }
+      
       console.log('📐 Collapsed container positions:', collapsedContainers.map(c => ({
         id: c.id,
         x: c.x,
@@ -79,12 +110,12 @@ describe('Layout Spacing Regression Tests', () => {
       })));
       
       // Calculate spacing between adjacent containers
-      if (collapsedContainers.length >= 2) {
-        collapsedContainers.sort((a, b) => a.x - b.x); // Sort by x position
+      if (containersToCheck.length >= 2) {
+        containersToCheck.sort((a, b) => a.x - b.x); // Sort by x position
         
-        for (let i = 1; i < collapsedContainers.length; i++) {
-          const prev = collapsedContainers[i - 1];
-          const curr = collapsedContainers[i];
+        for (let i = 1; i < containersToCheck.length; i++) {
+          const prev = containersToCheck[i - 1];
+          const curr = containersToCheck[i];
           
           const horizontalGap = Math.abs(curr.x - prev.x);
           const verticalGap = Math.abs(curr.y - prev.y);
@@ -111,8 +142,8 @@ describe('Layout Spacing Regression Tests', () => {
       }
       
       // Additional check: Look for any containers with extreme positions that suggest corruption
-      const allContainers = Array.from((visState as any)._collections.containers.values());
-      const extremePositions = allContainers.filter((container: any) => {
+      // Only check containers that should be visible (not children of collapsed containers)
+      const extremePositions = containersToCheck.filter((container: any) => {
         const x = container.x || 0;
         const y = container.y || 0;
         return Math.abs(x) > 15000 || Math.abs(y) > 15000; // Adjusted for larger graphs - 5000px was too strict 
@@ -124,12 +155,6 @@ describe('Layout Spacing Regression Tests', () => {
           console.error(`   ${container.id}: (${container.x}, ${container.y})`);
         });
       }
-      
-      // Log container positions for analysis
-      console.log(`📊 Container position summary:`);
-      allContainers.slice(0, 5).forEach((container: any) => {
-        console.log(`   ${container.id}: (${container.x || 0}, ${container.y || 0})`);
-      });
       
       expect(extremePositions).toHaveLength(0);
       

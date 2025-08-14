@@ -190,6 +190,11 @@ export class ELKBridge {
     };
     elkGraph.children?.forEach(collectNodeIds);
     
+    console.log(`[ELKBridge] 🔍 Collected ${allValidNodeIds.size} valid node IDs from ELK graph`);
+    if (allValidNodeIds.size < 20) {
+      console.log(`[ELKBridge] 🔍 All valid node IDs: ${Array.from(allValidNodeIds).join(', ')}`);
+    }
+    
     // STRICT VALIDATION: Throw error for edges with invalid endpoints instead of silently filtering
     // This forces VisualizationState to provide clean, valid data
     elkGraph.edges?.forEach(edge => {
@@ -242,15 +247,23 @@ export class ELKBridge {
         throw new Error(`Container ${containerId} not found`);
       }
       
+      // Ensure valid dimensions - fallback to defaults if invalid
+      const containerWidth = (typeof container.width === 'number' && !isNaN(container.width) && isFinite(container.width)) 
+        ? container.width : 200;
+      const containerHeight = (typeof container.height === 'number' && !isNaN(container.height) && isFinite(container.height)) 
+        ? container.height : 150;
+      
       const containerNode: ElkNode = {
         id: container.id,
-        width: container.width || 200,
-        height: container.height || 150,
+        width: containerWidth,
+        height: containerHeight,
         children: []
       };
       
-      if (!container.collapsed && container.children) {
-        container.children.forEach(childId => {
+      if (!container.collapsed) {
+        // Use VisualizationState API to get children (returns Set)
+        const containerChildren = visState.getContainerChildren(container.id);
+        containerChildren.forEach(childId => {
           // Check if child is a container
           const childContainer = visState.getContainer(childId);
           if (childContainer && visState.visibleContainers.some(vc => vc.id === childId)) {
@@ -262,15 +275,36 @@ export class ELKBridge {
             // Add child node
             const childNode = visState.visibleNodes.find(n => n.id === childId);
             if (childNode) {
+              // Ensure valid node dimensions
+              const nodeWidth = (typeof childNode.width === 'number' && !isNaN(childNode.width) && isFinite(childNode.width)) 
+                ? childNode.width : 180;
+              const nodeHeight = (typeof childNode.height === 'number' && !isNaN(childNode.height) && isFinite(childNode.height)) 
+                ? childNode.height : 60;
+                
               containerNode.children!.push({
                 id: childNode.id,
-                width: childNode.width || 180,
-                height: childNode.height || 60
+                width: nodeWidth,
+                height: nodeHeight
               });
               processedNodes.add(childId);
             }
           }
         });
+        
+        // Add a label node for expanded containers to ensure ELK accounts for label space
+        // This acts as a virtual node that reserves space for the container's label
+        if (containerNode.children!.length > 0) { // Only add label if container has content
+          const labelNode: ElkNode = {
+            id: `${container.id}_label`,
+            width: Math.min(containerWidth * 0.6, 150), // Label width (smaller to not dominate layout)
+            height: 20, // Compact label height
+            layoutOptions: {
+              // Let ELK position the label node naturally among other children
+              // No fixed positioning - ELK will place it where it fits best
+            }
+          };
+          containerNode.children!.push(labelNode);
+        }
       }
       
       return containerNode;
@@ -280,8 +314,20 @@ export class ELKBridge {
     visState.visibleContainers.forEach(container => {
       // Check if this container has a parent that's also visible
       const hasVisibleParent = visState.visibleContainers.some(otherContainer => 
-        otherContainer.children && otherContainer.children.has(container.id)
+        visState.getContainerChildren(otherContainer.id).has(container.id)
       );
+      
+      // DIAGNOSTIC: Check parent relationships for problematic containers
+      if (container.id === 'bt_81' || container.id === 'bt_98') {
+        console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ${container.id} hasVisibleParent: ${hasVisibleParent}`);
+        if (hasVisibleParent) {
+          // Find the parent
+          const parent = visState.visibleContainers.find(otherContainer => 
+            visState.getContainerChildren(otherContainer.id).has(container.id)
+          );
+          console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ${container.id} parent is: ${parent?.id}`);
+        }
+      }
       
       if (!hasVisibleParent && !processedContainers.has(container.id)) {
         const containerNode = buildContainerHierarchy(container.id);
@@ -317,154 +363,6 @@ export class ELKBridge {
   }
 
   /**
-   * Extract visible nodes (both GraphNodes and collapsed containers as nodes)
-   * NOTE: VisualizationState should handle all business logic for node conversion
-   */
-  private extractVisibleNodes(visState: VisualizationState): GraphNode[] {
-    const nodes: GraphNode[] = [];
-    
-    // Add visible regular nodes using the correct VisState API
-    const visibleNodes = visState.visibleNodes;
-    
-    // SAFETY CHECK: Verify that visibleNodes excludes hidden nodes
-    const hiddenNodesInVisible = visibleNodes.filter(n => n.hidden === true);
-    if (hiddenNodesInVisible.length > 0) {
-      console.error(`[ELKBridge] 🚨 CRITICAL: Found ${hiddenNodesInVisible.length} hidden nodes in visibleNodes:`, 
-        hiddenNodesInVisible.map(n => n.id));
-      throw new Error(`ELKBridge received hidden nodes from VisState.visibleNodes - this violates the hiding contract`);
-    }
-    
-    nodes.push(...visibleNodes);
-    
-    // Add collapsed containers as nodes - VisualizationState should provide these pre-converted
-    // TODO: Move this logic to VisualizationState.getCollapsedContainersAsNodes()
-    const visibleContainers = visState.visibleContainers;
-    visibleContainers.forEach(container => {
-      if (container.collapsed) {
-        // BUSINESS LOGIC VIOLATION: This conversion should be in VisualizationState
-        const containerAsNode: GraphNode = {
-          id: container.id,
-          label: container.id,
-          width: container.width || 200,  // VisualizationState should guarantee valid dimensions
-          height: container.height || 150, // VisualizationState should guarantee valid dimensions
-          x: container.x || 0,            
-          y: container.y || 0,            
-          hidden: false,
-          style: 'default' // VisualizationState should determine style
-        };
-        
-        // SAFETY CHECK: Ensure collapsed container is not hidden
-        if (container.hidden) {
-          console.error(`[ELKBridge] 🚨 CRITICAL: Collapsed container ${container.id} is hidden but was included in visibleContainers`);
-          throw new Error(`ELKBridge contract violation: hidden collapsed container ${container.id} should not be converted to node`);
-        }
-                
-        nodes.push(containerAsNode);
-      }
-    });
-    
-    return nodes;
-  }
-
-  /**
-   * Extract visible containers (only expanded ones that need hierarchical layout)
-   */
-  private extractVisibleContainers(visState: VisualizationState): Container[] {
-    const containers: Container[] = [];
-    
-    // CRITICAL ARCHITECTURAL FIX: Use visibleContainers (includes collapsed) not expandedContainers (excludes collapsed)
-    // RULE: Bridges should only see the public visible interface, not internal state like expandedContainers
-    // According to our rules: collapsed containers should appear in ELK, hidden containers should not
-    const visibleContainers = visState.visibleContainers;
-    
-    // SAFETY CHECK: Verify that visibleContainers excludes hidden containers
-    // This is a defensive check to ensure our dependency on VisState's filtering is correct
-    const hiddenContainersInVisible = visibleContainers.filter(c => c.hidden === true);
-    if (hiddenContainersInVisible.length > 0) {
-      console.error(`[ELKBridge] 🚨 CRITICAL: Found ${hiddenContainersInVisible.length} hidden containers in visibleContainers:`, 
-        hiddenContainersInVisible.map(c => c.id));
-      throw new Error(`ELKBridge received hidden containers from VisState.visibleContainers - this violates the hiding contract`);
-    }
-    
-    // Convert computed views back to raw Container objects
-    for (const computedContainer of visibleContainers) {
-      const rawContainer = visState.getContainer(computedContainer.id);
-      if (rawContainer) {
-        // Double-check: ensure the raw container is also not hidden
-        if (rawContainer.hidden) {
-          console.error(`[ELKBridge] 🚨 CRITICAL: Raw container ${rawContainer.id} is hidden but was in visibleContainers`);
-          throw new Error(`ELKBridge contract violation: hidden container ${rawContainer.id} should not be in visibleContainers`);
-        }
-        containers.push(rawContainer);
-      }
-    }
-    
-    return containers;
-  }
-
-  /**
-   * Build ELK graph from extracted data
-   */
-  private buildELKGraph(
-    nodes: GraphNode[], 
-    containers: Container[], 
-    edges: GraphEdge[],
-    visState: VisualizationState
-  ): ElkGraph {
-    // Build hierarchy: create nested ELK structure
-    const elkNodes: ElkNode[] = [];
-    
-    // Find root containers (containers with no parent container)
-    const rootContainers = containers.filter(container => {
-      // Check if this container has a parent that's also a container
-      const hasContainerParent = containers.some(otherContainer => 
-        otherContainer.children && otherContainer.children.has(container.id)
-      );
-      return !hasContainerParent;
-    });
-    
-    // PURE REACTFLOW APPROACH: Don't send containers to ELK at all
-    // Only layout individual nodes, let ReactFlow handle all container positioning
-    
-    // Don't add any containers to ELK - they'll be positioned manually by ReactFlow
-    
-    // Add top-level nodes (not in any container, excluding collapsed containers that were already added as nodes)
-    // TODO: VisualizationState should provide getTopLevelNodes() method
-    const collapsedContainerIds = new Set(visState.visibleContainers.filter(c => c.collapsed).map(c => c.id));
-    const topLevelNodes = nodes.filter(node => 
-      !this.isNodeInAnyContainer(node.id, containers) && 
-      !collapsedContainerIds.has(node.id)
-    );
-    
-    topLevelNodes.forEach(node => {
-      // VisualizationState should guarantee these nodes have valid dimensions
-      if (!node.width || !node.height) {
-        throw new Error(`Top-level node ${node.id} missing dimensions. VisualizationState should provide valid dimensions.`);
-      }
-      
-      elkNodes.push({
-        id: node.id,
-        width: node.width,
-        height: node.height
-      });
-    });
-    
-    // Convert all edges to ELK format
-    const elkEdges: ElkEdge[] = edges.map(edge => ({
-      id: edge.id,
-      sources: [edge.source],
-      targets: [edge.target]
-    }));
-    
-    return {
-      id: 'root',
-      children: elkNodes,
-      edges: elkEdges,
-      layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm)
-    };
-  }
-
-  /**
    * Apply ELK results back to VisState
    */
   private elkToVisState(elkResult: ElkGraph, visState: VisualizationState): void {
@@ -475,6 +373,34 @@ export class ELKBridge {
     
     // SIMPLIFIED: Use ELK coordinates directly following ReactFlow best practices
     // No custom offset corrections - ELK provides the correct coordinate system
+    
+    // DIAGNOSTIC: Check if bt_81 and bt_98 are in the ELK result
+    console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ELK returned ${elkResult.children.length} top-level children`);
+    const problemContainers = ['bt_81', 'bt_98'];
+    problemContainers.forEach(containerId => {
+      const foundAtRoot = elkResult.children?.find(child => child.id === containerId);
+      if (foundAtRoot) {
+        console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ${containerId} found at ROOT level - x: ${foundAtRoot.x}, y: ${foundAtRoot.y}`);
+      } else {
+        // Check if it's nested in any other container
+        let foundNested = false;
+        const searchNested = (elkNode: ElkNode, depth: number = 0) => {
+          elkNode.children?.forEach(child => {
+            if (child.id === containerId) {
+              console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ${containerId} found NESTED at depth ${depth} inside ${elkNode.id} - x: ${child.x}, y: ${child.y}`);
+              foundNested = true;
+            } else if (child.children) {
+              searchNested(child, depth + 1);
+            }
+          });
+        };
+        elkResult.children?.forEach(rootChild => searchNested(rootChild, 1));
+        
+        if (!foundNested) {
+          console.log(`[ELKBridge] 🔍 DIAGNOSTIC: ${containerId} NOT FOUND in ELK result at all!`);
+        }
+      }
+    });
     
     // Apply positions to containers and nodes using ELK coordinates directly
     elkResult.children.forEach(elkNode => {
@@ -512,18 +438,59 @@ export class ELKBridge {
     // Use VisState's proper layout methods instead of direct property access
     const layoutUpdates: any = {};
     
+    // Validate and set position
     if (elkNode.x !== undefined || elkNode.y !== undefined) {
       layoutUpdates.position = {};
-      if (elkNode.x !== undefined) layoutUpdates.position.x = elkNode.x;
-      if (elkNode.y !== undefined) layoutUpdates.position.y = elkNode.y;
+      
+      // Validate x coordinate
+      if (elkNode.x !== undefined) {
+        if (typeof elkNode.x === 'number' && !isNaN(elkNode.x) && isFinite(elkNode.x)) {
+          layoutUpdates.position.x = elkNode.x;
+        } else {
+          console.error(`[ELKBridge] ❌ LAYOUT BUG: Invalid x coordinate for container ${elkNode.id}: ${elkNode.x} (type: ${typeof elkNode.x})`);
+          layoutUpdates.position.x = 0; // Temporarily fallback to see what's happening
+        }
+      }
+      
+      // Validate y coordinate  
+      if (elkNode.y !== undefined) {
+        if (typeof elkNode.y === 'number' && !isNaN(elkNode.y) && isFinite(elkNode.y)) {
+          layoutUpdates.position.y = elkNode.y;
+        } else {
+          console.error(`[ELKBridge] ❌ LAYOUT BUG: Invalid y coordinate for container ${elkNode.id}: ${elkNode.y} (type: ${typeof elkNode.y})`);
+          layoutUpdates.position.y = 0; // Temporarily fallback to see what's happening
+        }
+      }
+    } else {
+      // ELK didn't provide ANY position coordinates - this is also a bug!
+      console.error(`[ELKBridge] ❌ LAYOUT BUG: ELK provided no position coordinates for container ${elkNode.id}`);
+      // Temporarily use origin fallback to see what's happening
+      layoutUpdates.position = { x: 0, y: 0 };
     }
     
+    // Validate and set dimensions
     if (elkNode.width !== undefined || elkNode.height !== undefined) {
       layoutUpdates.dimensions = {};
       
-      // Bridge is just a format translator - pass through ELK dimensions as-is
-      if (elkNode.width !== undefined) layoutUpdates.dimensions.width = elkNode.width;
-      if (elkNode.height !== undefined) layoutUpdates.dimensions.height = elkNode.height;
+      // Validate width
+      if (elkNode.width !== undefined) {
+        if (typeof elkNode.width === 'number' && !isNaN(elkNode.width) && isFinite(elkNode.width) && elkNode.width > 0) {
+          layoutUpdates.dimensions.width = elkNode.width;
+        } else {
+          console.error(`[ELKBridge] Invalid width for container ${elkNode.id}: ${elkNode.width}`);
+          layoutUpdates.dimensions.width = 200; // Fallback
+        }
+      }
+      
+      // Validate height
+      if (elkNode.height !== undefined) {
+        if (typeof elkNode.height === 'number' && !isNaN(elkNode.height) && isFinite(elkNode.height) && elkNode.height > 0) {
+          layoutUpdates.dimensions.height = elkNode.height;
+        } else {
+          console.error(`[ELKBridge] Invalid height for container ${elkNode.id}: ${elkNode.height}`);
+          layoutUpdates.dimensions.height = 150; // Fallback
+        }
+      }
     }
     
     if (Object.keys(layoutUpdates).length > 0) {
@@ -532,6 +499,34 @@ export class ELKBridge {
     
     // Update child positions (recursively handle containers vs nodes)
     elkNode.children?.forEach(elkChildNode => {
+      // Handle label nodes - store label position with the container
+      if (elkChildNode.id.endsWith('_label')) {
+        const containerId = elkChildNode.id.replace('_label', '');
+        const container = visState.getContainer(containerId);
+        
+        if (container) {
+          // Store label positioning information with the container
+          // This will be used by the container component to render the label
+          const containerLayout = visState.getContainerLayout(containerId) || { 
+            position: { x: container.x || 0, y: container.y || 0 },
+            dimensions: { width: container.width || 200, height: container.height || 150 }
+          };
+          
+          // Update container layout with label position information
+          visState.setContainerLayout(containerId, {
+            ...containerLayout,
+            labelPosition: {
+              x: elkChildNode.x || 0,
+              y: elkChildNode.y || 0,
+              width: elkChildNode.width || 150,
+              height: elkChildNode.height || 20
+            }
+          });
+        }
+        
+        return;
+      }
+      
       if (elkChildNode.children && elkChildNode.children.length > 0) {
         // This child is also a container - recurse into it
         this.updateContainerFromELK(elkChildNode, visState);
@@ -550,16 +545,50 @@ export class ELKBridge {
     try {
       const layoutUpdates: any = {};
       
+      // Validate and set position
       if (elkNode.x !== undefined || elkNode.y !== undefined) {
         layoutUpdates.position = {};
-        if (elkNode.x !== undefined) layoutUpdates.position.x = elkNode.x;
-        if (elkNode.y !== undefined) layoutUpdates.position.y = elkNode.y;
+        
+        if (elkNode.x !== undefined) {
+          if (typeof elkNode.x === 'number' && !isNaN(elkNode.x) && isFinite(elkNode.x)) {
+            layoutUpdates.position.x = elkNode.x;
+          } else {
+            console.error(`[ELKBridge] Invalid x coordinate for node ${elkNode.id}: ${elkNode.x}`);
+            layoutUpdates.position.x = 0;
+          }
+        }
+        
+        if (elkNode.y !== undefined) {
+          if (typeof elkNode.y === 'number' && !isNaN(elkNode.y) && isFinite(elkNode.y)) {
+            layoutUpdates.position.y = elkNode.y;
+          } else {
+            console.error(`[ELKBridge] Invalid y coordinate for node ${elkNode.id}: ${elkNode.y}`);
+            layoutUpdates.position.y = 0;
+          }
+        }
       }
       
+      // Validate and set dimensions
       if (elkNode.width !== undefined || elkNode.height !== undefined) {
         layoutUpdates.dimensions = {};
-        if (elkNode.width !== undefined) layoutUpdates.dimensions.width = elkNode.width;
-        if (elkNode.height !== undefined) layoutUpdates.dimensions.height = elkNode.height;
+        
+        if (elkNode.width !== undefined) {
+          if (typeof elkNode.width === 'number' && !isNaN(elkNode.width) && isFinite(elkNode.width) && elkNode.width > 0) {
+            layoutUpdates.dimensions.width = elkNode.width;
+          } else {
+            console.error(`[ELKBridge] Invalid width for node ${elkNode.id}: ${elkNode.width}`);
+            layoutUpdates.dimensions.width = 180;
+          }
+        }
+        
+        if (elkNode.height !== undefined) {
+          if (typeof elkNode.height === 'number' && !isNaN(elkNode.height) && isFinite(elkNode.height) && elkNode.height > 0) {
+            layoutUpdates.dimensions.height = elkNode.height;
+          } else {
+            console.error(`[ELKBridge] Invalid height for node ${elkNode.id}: ${elkNode.height}`);
+            layoutUpdates.dimensions.height = 60;
+          }
+        }
       }
       
       if (Object.keys(layoutUpdates).length > 0) {
@@ -567,20 +596,52 @@ export class ELKBridge {
       }
       return;
     } catch (nodeError) {
-      // If not found as node, might be a collapsed container
+      // If not found as node, might be a collapsed container - apply same validation
       try {
         const layoutUpdates: any = {};
         
         if (elkNode.x !== undefined || elkNode.y !== undefined) {
           layoutUpdates.position = {};
-          if (elkNode.x !== undefined) layoutUpdates.position.x = elkNode.x;
-          if (elkNode.y !== undefined) layoutUpdates.position.y = elkNode.y;
+          
+          if (elkNode.x !== undefined) {
+            if (typeof elkNode.x === 'number' && !isNaN(elkNode.x) && isFinite(elkNode.x)) {
+              layoutUpdates.position.x = elkNode.x;
+            } else {
+              console.error(`[ELKBridge] Invalid x coordinate for container ${elkNode.id}: ${elkNode.x}`);
+              layoutUpdates.position.x = 0;
+            }
+          }
+          
+          if (elkNode.y !== undefined) {
+            if (typeof elkNode.y === 'number' && !isNaN(elkNode.y) && isFinite(elkNode.y)) {
+              layoutUpdates.position.y = elkNode.y;
+            } else {
+              console.error(`[ELKBridge] Invalid y coordinate for container ${elkNode.id}: ${elkNode.y}`);
+              layoutUpdates.position.y = 0;
+            }
+          }
         }
         
         if (elkNode.width !== undefined || elkNode.height !== undefined) {
           layoutUpdates.dimensions = {};
-          if (elkNode.width !== undefined) layoutUpdates.dimensions.width = elkNode.width;
-          if (elkNode.height !== undefined) layoutUpdates.dimensions.height = elkNode.height;
+          
+          if (elkNode.width !== undefined) {
+            if (typeof elkNode.width === 'number' && !isNaN(elkNode.width) && isFinite(elkNode.width) && elkNode.width > 0) {
+              layoutUpdates.dimensions.width = elkNode.width;
+            } else {
+              console.error(`[ELKBridge] Invalid width for container ${elkNode.id}: ${elkNode.width}`);
+              layoutUpdates.dimensions.width = 200;
+            }
+          }
+          
+          if (elkNode.height !== undefined) {
+            if (typeof elkNode.height === 'number' && !isNaN(elkNode.height) && isFinite(elkNode.height) && elkNode.height > 0) {
+              layoutUpdates.dimensions.height = elkNode.height;
+            } else {
+              console.error(`[ELKBridge] Invalid height for container ${elkNode.id}: ${elkNode.height}`);
+              layoutUpdates.dimensions.height = 150;
+            }
+          }
         }
         
         if (Object.keys(layoutUpdates).length > 0) {
@@ -593,13 +654,4 @@ export class ELKBridge {
     }
   }
 
-  // Helper methods for containment logic
-  private isNodeInContainer(nodeId: string, containerId: string, container: Container): boolean {
-    // Use the container's children set
-    return container.children.has(nodeId);
-  }
-  
-  private isNodeInAnyContainer(nodeId: string, containers: Container[]): boolean {
-    return containers.some(container => this.isNodeInContainer(nodeId, container.id, container));
-  }
 }

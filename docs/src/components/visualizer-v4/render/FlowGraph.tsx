@@ -27,6 +27,7 @@ export interface FlowGraphProps {
 
 export interface FlowGraphRef {
   fitView: () => void;
+  refreshLayout: () => Promise<void>;
 }
 
 // Internal component that uses ReactFlow hooks
@@ -45,7 +46,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   // ReactFlow instance for programmatic control
   const { fitView } = useReactFlow();
   
-  // Expose fitView method through ref
+  // Expose fitView and refreshLayout methods through ref
   useImperativeHandle(ref, () => ({
     fitView: () => {
       try {
@@ -53,6 +54,53 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         // // console.log((('[FlowGraph] 🎯 Manual fit view called')));
       } catch (err) {
         console.warn('[FlowGraph] ⚠️ Manual fit view failed:', err);
+      }
+    },
+    refreshLayout: async () => {
+      try {
+        console.log('[FlowGraph] 🔄 Starting refreshLayout...');
+        setLoading(true);
+        setError(null);
+
+        // Run layout
+        console.log('[FlowGraph] 🔄 Running ELK layout...');
+        await engine.runLayout();
+        
+        // Convert to ReactFlow format
+        console.log('[FlowGraph] 🔄 Converting to ReactFlow format...');
+        const baseData = converter.convert(visualizationState);
+        
+        console.log('[FlowGraph] 🔄 Layout result:', {
+          containers: baseData.nodes.filter(n => n.type === 'container').length,
+          regularNodes: baseData.nodes.filter(n => n.type !== 'container').length,
+          edges: baseData.edges.length
+        });
+        
+        // Store the base data for reference
+        baseReactFlowDataRef.current = baseData;
+        
+        // Apply any existing manual positions
+        const dataWithManualPositions = applyManualPositions(baseData, manualPositions);
+        
+        setReactFlowData(dataWithManualPositions);
+                
+        // Auto-fit if enabled
+        if (config.fitView !== false) {
+          setTimeout(() => {
+            try {
+              fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
+              lastFitTimeRef.current = Date.now();
+              console.log('[FlowGraph] 🎯 Auto-fit applied after refresh');
+            } catch (err) {
+              console.warn('[FlowGraph] ⚠️ Auto-fit failed during refresh:', err);
+            }
+          }, 200);
+        }        
+      } catch (err) {
+        console.error('[FlowGraph] ❌ Failed to refresh layout:', err);
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setLoading(false);
       }
     }
   }));
@@ -452,11 +500,16 @@ FlowGraphInternal.displayName = 'FlowGraphInternal';
 export const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>((props, ref) => {
   const flowGraphRef = useRef<FlowGraphRef>(null);
   
-  // Expose fitView method through ref
+  // Expose fitView and refreshLayout methods through ref
   useImperativeHandle(ref, () => ({
     fitView: () => {
       if (flowGraphRef.current) {
         flowGraphRef.current.fitView();
+      }
+    },
+    refreshLayout: async () => {
+      if (flowGraphRef.current) {
+        await flowGraphRef.current.refreshLayout();
       }
     }
   }));

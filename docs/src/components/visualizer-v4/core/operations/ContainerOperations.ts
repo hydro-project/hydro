@@ -385,13 +385,14 @@ export class ContainerOperations {
           }
         }
       } else {
-        console.log(`[EXPANSION] No aggregatedEdges found for hyperEdge ${hyperEdge.id}, creating direct container connection`);
-        // Fallback: create a direct connection between the container and remote
-        if (isOutgoing) {
-          this.createOrRestoreConnection(containerId, remote, new Map(), `direct_${containerId}_${remote}`);
-        } else {
-          this.createOrRestoreConnection(remote, containerId, new Map(), `direct_${remote}_${containerId}`);
-        }
+        console.log(`[EXPANSION] ⚠️ No aggregatedEdges found for hyperEdge ${hyperEdge.id}`);
+        console.log(`[EXPANSION] ⚠️ HyperEdge object:`, JSON.stringify(hyperEdge, null, 2));
+        console.log(`[EXPANSION] ⚠️ This suggests the hyperEdge was not properly created during collapse`);
+        
+        // Since we can't restore the original connections without aggregatedEdges data,
+        // we need to delete this hyperEdge and let the system recreate proper connections
+        console.log(`[EXPANSION] ⚠️ Deleting invalid hyperEdge ${hyperEdge.id} - cannot restore without aggregatedEdges`);
+        // Don't create fallback connections that reference the container directly
       }
     }
     

@@ -18,7 +18,8 @@ describe('ReactFlowBridge Container Positioning', () => {
       y: 100,
       width: 400,
       height: 300,
-      collapsed: false
+      collapsed: false,
+      children: ['child']  // Establish hierarchy properly
     });
 
     // Set up a child container at absolute position (150, 150) 
@@ -32,9 +33,6 @@ describe('ReactFlowBridge Container Positioning', () => {
       collapsed: false
     });
 
-    // Set up container hierarchy
-    visState.addContainerParent('child', 'parent');
-
     // Mock ELK layout data  
     visState.setContainerLayout('parent', {
       position: { x: 100, y: 100 },
@@ -47,7 +45,7 @@ describe('ReactFlowBridge Container Positioning', () => {
     });
 
     // Convert to ReactFlow format
-    const reactFlowData = bridge.convert(visState);
+    const reactFlowData = bridge.visStateToReactFlow(visState);
     
     // Find containers in the result
     const parentContainer = reactFlowData.nodes.find(n => n.id === 'parent');
@@ -74,7 +72,8 @@ describe('ReactFlowBridge Container Positioning', () => {
       y: 0,
       width: 400,
       height: 300,
-      collapsed: false
+      collapsed: false,
+      children: ['child1', 'child2']  // Establish hierarchy properly
     });
 
     visState.setContainer({
@@ -95,12 +94,8 @@ describe('ReactFlowBridge Container Positioning', () => {
       collapsed: false
     });
 
-    // Set up hierarchy
-    visState.addContainerParent('child1', 'parent');
-    visState.addContainerParent('child2', 'parent');
-
     // Convert without ELK data
-    const reactFlowData = bridge.convert(visState);
+    const reactFlowData = bridge.visStateToReactFlow(visState);
     
     const child1 = reactFlowData.nodes.find(n => n.id === 'child1');
     const child2 = reactFlowData.nodes.find(n => n.id === 'child2');

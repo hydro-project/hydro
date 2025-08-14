@@ -236,7 +236,11 @@ export class VisualizationState implements ContainerHierarchyView {
    * Returns containers with dimensions adjusted for labels.
    */
   get visibleContainers(): ReadonlyArray<any> {
-    return Array.from(this._collections._visibleContainers.values()).map(container => {
+    const containers = Array.from(this._collections._visibleContainers.values());
+    console.log(`[VisualizationState] 🔍 visibleContainers getter called - found ${containers.length} containers`);
+    console.log(`[VisualizationState] 🔍 Container IDs: ${containers.map(c => `${c.id}(collapsed:${c.collapsed})`).join(', ')}`);
+    
+    return containers.map(container => {
       const adjustedDimensions = this.layoutOps.getContainerAdjustedDimensions(container.id);
       return {
         ...container,
@@ -566,8 +570,15 @@ export class VisualizationState implements ContainerHierarchyView {
    * Set a container (legacy compatibility - forwards to addContainer)
    * @deprecated Use addContainer() for new code
    */
-  setContainer(containerId: string, containerData: any): VisualizationState {
-    this.addContainer(containerId, containerData);
+  setContainer(containerIdOrData: string | any, containerData?: any): VisualizationState {
+    if (typeof containerIdOrData === 'string') {
+      // Old API: setContainer('id', { ... })
+      this.addContainer(containerIdOrData, containerData);
+    } else {
+      // New API: setContainer({ id: 'id', ... })
+      const { id, ...data } = containerIdOrData;
+      this.addContainer(id, data);
+    }
     return this;
   }
 
@@ -598,16 +609,19 @@ export class VisualizationState implements ContainerHierarchyView {
    * Expand a container with proper hyperEdge cleanup
    */
   expandContainer(containerId: string): void {
+    console.log(`[VisualizationState] 🔄 expandContainer called for: ${containerId}`);
     const container = this._collections.containers.get(containerId);
     if (!container) {
       throw new Error(`Cannot expand non-existent container: ${containerId}`);
     }
     
-    // Use the proper container operations method that handles hyperEdge cleanup
-    this.containerOps.handleContainerExpansion(containerId);
+    console.log(`[VisualizationState] 🔄 Container ${containerId} current state - collapsed: ${container.collapsed}, hidden: ${container.hidden}`);
     
-    // Also update the container's collapsed state
+    // Just update the container's collapsed state - setContainerState will handle calling handleContainerExpansion
+    console.log(`[VisualizationState] 🔄 Setting container state for: ${containerId}`);
     this.setContainerState(containerId, { collapsed: false });
+    
+    console.log(`[VisualizationState] ✅ expandContainer completed for: ${containerId}`);
   }
 
   /**

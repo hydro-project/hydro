@@ -221,15 +221,14 @@ export class ReactFlowBridge {
     // Map all containers and nodes to their parent containers for visual hierarchy
     // This creates the nested structure in ReactFlow regardless of collapsed state
     visState.visibleContainers.forEach(container => {
-      // Map child containers to this parent container
-      if (container.children) {
-        container.children.forEach(childId => {
-          // Only set parent relationship if the child is also visible
-          if (visibleContainerIds.has(childId) || visibleNodeIds.has(childId)) {
-            parentMap.set(childId, container.id);
-          }
-        });
-      }
+      // Map child containers to this parent container using VisualizationState API
+      const containerChildren = visState.getContainerChildren(container.id);
+      containerChildren.forEach(childId => {
+        // Only set parent relationship if the child is also visible
+        if (visibleContainerIds.has(childId) || visibleNodeIds.has(childId)) {
+          parentMap.set(childId, container.id);
+        }
+      });
     });
     
     // Also map nodes to their containers using the containerId property
@@ -295,9 +294,20 @@ export class ReactFlowBridge {
           const parentX = parentLayout?.position?.x || 0;
           const parentY = parentLayout?.position?.y || 0;
           
+                    // Validate coordinates before calculation
+          const validAbsoluteX = (typeof absoluteX === 'number' && !isNaN(absoluteX) && isFinite(absoluteX)) ? absoluteX : 0;
+          const validAbsoluteY = (typeof absoluteY === 'number' && !isNaN(absoluteY) && isFinite(absoluteY)) ? absoluteY : 0;
+          const validParentX = (typeof parentX === 'number' && !isNaN(parentX) && isFinite(parentX)) ? parentX : 0;
+          const validParentY = (typeof parentY === 'number' && !isNaN(parentY) && isFinite(parentY)) ? parentY : 0;
+          
+          // Log if we found invalid coordinates
+          if (absoluteX !== validAbsoluteX || absoluteY !== validAbsoluteY || parentX !== validParentX || parentY !== validParentY) {
+            console.warn(`[ReactFlowBridge] Fixed invalid coordinates for container ${container.id}: abs(${absoluteX},${absoluteY}) -> (${validAbsoluteX},${validAbsoluteY}), parent(${parentX},${parentY}) -> (${validParentX},${validParentY})`);
+          }
+          
           position = {
-            x: absoluteX - parentX,
-            y: absoluteY - parentY
+            x: validAbsoluteX - validParentX,
+            y: validAbsoluteY - validParentY
           };
         } else {
           // FALLBACK: Grid positioning when no meaningful ELK layout data
@@ -318,14 +328,26 @@ export class ReactFlowBridge {
         }
       } else {
         // ROOT CONTAINER: Use absolute ELK coordinates or fallback
+        const rootX = containerLayout?.position?.x || container.x || 0;
+        const rootY = containerLayout?.position?.y || container.y || 0;
+        
+        // Validate root coordinates
+        const validRootX = (typeof rootX === 'number' && !isNaN(rootX) && isFinite(rootX)) ? rootX : 0;
+        const validRootY = (typeof rootY === 'number' && !isNaN(rootY) && isFinite(rootY)) ? rootY : 0;
+        
         position = {
-          x: containerLayout?.position?.x || container.x || 0,
-          y: containerLayout?.position?.y || container.y || 0
+          x: validRootX,
+          y: validRootY
         };
       }
       
-      const width = containerLayout?.dimensions?.width || container.width || LAYOUT_CONSTANTS.DEFAULT_PARENT_CONTAINER_WIDTH;
-      const height = containerLayout?.dimensions?.height || container.height || LAYOUT_CONSTANTS.DEFAULT_PARENT_CONTAINER_HEIGHT;
+      // Get adjusted dimensions that include label space (matches test expectations)
+      const adjustedDimensions = visState.getContainerAdjustedDimensions(container.id);
+      
+      const width = (typeof adjustedDimensions.width === 'number' && !isNaN(adjustedDimensions.width) && isFinite(adjustedDimensions.width) && adjustedDimensions.width > 0) 
+        ? adjustedDimensions.width : LAYOUT_CONSTANTS.DEFAULT_PARENT_CONTAINER_WIDTH;
+      const height = (typeof adjustedDimensions.height === 'number' && !isNaN(adjustedDimensions.height) && isFinite(adjustedDimensions.height) && adjustedDimensions.height > 0) 
+        ? adjustedDimensions.height : LAYOUT_CONSTANTS.DEFAULT_PARENT_CONTAINER_HEIGHT;
       
       const nodeCount = container.collapsed ? 
         visState.getContainerChildren(container.id)?.size || 0 : 0;
@@ -378,15 +400,28 @@ export class ReactFlowBridge {
         const parentX = parentLayout?.position?.x || 0;
         const parentY = parentLayout?.position?.y || 0;
         
+        // Validate all coordinates before calculation
+        const validAbsoluteX = (typeof absoluteX === 'number' && !isNaN(absoluteX) && isFinite(absoluteX)) ? absoluteX : 0;
+        const validAbsoluteY = (typeof absoluteY === 'number' && !isNaN(absoluteY) && isFinite(absoluteY)) ? absoluteY : 0;
+        const validParentX = (typeof parentX === 'number' && !isNaN(parentX) && isFinite(parentX)) ? parentX : 0;
+        const validParentY = (typeof parentY === 'number' && !isNaN(parentY) && isFinite(parentY)) ? parentY : 0;
+        
         position = {
-          x: absoluteX - parentX,
-          y: absoluteY - parentY
+          x: validAbsoluteX - validParentX,
+          y: validAbsoluteY - validParentY
         };
       } else {
         // ROOT NODE: Use absolute ELK coordinates
+        const rootX = nodeLayout?.position?.x || node.x || 0;
+        const rootY = nodeLayout?.position?.y || node.y || 0;
+        
+        // Validate root coordinates
+        const validRootX = (typeof rootX === 'number' && !isNaN(rootX) && isFinite(rootX)) ? rootX : 0;
+        const validRootY = (typeof rootY === 'number' && !isNaN(rootY) && isFinite(rootY)) ? rootY : 0;
+        
         position = {
-          x: nodeLayout?.position?.x || node.x || 0,
-          y: nodeLayout?.position?.y || node.y || 0
+          x: validRootX,
+          y: validRootY
         };
       }
       

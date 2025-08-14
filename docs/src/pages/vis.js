@@ -327,14 +327,29 @@ function VisV4Component() {
         
         const container = currentVisualizationState.getContainer(node.id);
         if (container) {
+          console.log(`🔄 Container ${node.id} BEFORE operation - collapsed: ${container.collapsed}`);
+          
           if (container.collapsed) {
+            console.log(`🔄 Expanding container: ${node.id}`);
             currentVisualizationState.expandContainer(node.id);
           } else {
+            console.log(`🔄 Collapsing container: ${node.id}`);
             currentVisualizationState.collapseContainer(node.id);
           }
           
-          // Force component update to reflect changes
-          forceUpdate();
+          console.log(`🔄 Container ${node.id} AFTER operation - collapsed: ${container.collapsed}`);
+          
+          // CRITICAL: Trigger layout refresh after container state change
+          // Container expansion/collapse changes which nodes are visible, requiring ELK re-layout
+          console.log(`🔄 Container ${node.id} operation complete, triggering layout refresh...`);
+          if (flowGraphRef.current && flowGraphRef.current.refreshLayout) {
+            await flowGraphRef.current.refreshLayout();
+            console.log(`✅ Layout refresh completed for container: ${node.id}`);
+          } else {
+            console.warn('⚠️ refreshLayout not available, using forceUpdate fallback');
+            // Fallback: force component update if refreshLayout not available
+            forceUpdate();
+          }
           
           // Trigger auto-fit after layout completes
           if (autoFit && flowGraphRef.current && flowGraphRef.current.fitView) {
@@ -383,8 +398,13 @@ function VisV4Component() {
         }
       });
       
-      // Force component update to reflect changes
-      forceUpdate();
+      // CRITICAL: Trigger layout refresh after collapsing all containers
+      if (flowGraphRef.current && flowGraphRef.current.refreshLayout) {
+        await flowGraphRef.current.refreshLayout();
+      } else {
+        // Fallback: force component update if refreshLayout not available
+        forceUpdate();
+      }
       
       // Trigger auto-fit after layout completes
       if (autoFit && flowGraphRef.current && flowGraphRef.current.fitView) {
@@ -421,8 +441,13 @@ function VisV4Component() {
         }
       });
       
-      // Force component update to reflect changes
-      forceUpdate();
+      // CRITICAL: Trigger layout refresh after expanding all containers
+      if (flowGraphRef.current && flowGraphRef.current.refreshLayout) {
+        await flowGraphRef.current.refreshLayout();
+      } else {
+        // Fallback: force component update if refreshLayout not available
+        forceUpdate();
+      }
       
       // Trigger auto-fit after layout completes
       if (autoFit && flowGraphRef.current && flowGraphRef.current.fitView) {
@@ -541,7 +566,7 @@ function VisV4Component() {
   }, [parseGraphJSON, graphData, createVisualizationState]);
 
   // Hierarchy tree toggle handler (for InfoPanel tree)
-  const handleHierarchyToggle = React.useCallback((containerId) => {
+  const handleHierarchyToggle = React.useCallback(async (containerId) => {
     if (!currentVisualizationState) return;
     
     try {
@@ -554,8 +579,13 @@ function VisV4Component() {
           currentVisualizationState.collapseContainer(containerId);
         }
         
-        // Force component update to reflect changes
-        forceUpdate();
+        // CRITICAL: Trigger layout refresh after container state change
+        if (flowGraphRef.current && flowGraphRef.current.refreshLayout) {
+          await flowGraphRef.current.refreshLayout();
+        } else {
+          // Fallback: force component update if refreshLayout not available
+          forceUpdate();
+        }
       }
     } catch (err) {
       console.error('❌ Error toggling hierarchy:', err);
