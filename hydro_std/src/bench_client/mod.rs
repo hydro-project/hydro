@@ -197,10 +197,11 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
 
     let combined_latencies = keyed_latencies
         .map(q!(|histogram| histogram.histogram.borrow().clone()))
-        .batch(&aggregator.tick(), nondet_sampling)
         .reduce_idempotent(q!(|combined, new| {
+            // get the most recent histogram for each client
             *combined = new;
         }))
+        .snapshot(&aggregator.tick(), nondet_sampling)
         .values()
         .reduce_commutative(q!(|combined, new| {
             combined.add(new).unwrap();
