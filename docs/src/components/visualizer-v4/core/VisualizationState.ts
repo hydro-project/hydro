@@ -30,7 +30,6 @@ import { ContainerOperations } from './operations/ContainerOperations';
 import { VisibilityManager } from './operations/VisibilityManager';
 import { CoveredEdgesIndex } from './CoveredEdgesIndex';
 import { LayoutOperations } from './operations/LayoutOperations';
-import { BridgeCompatibility } from './compatibility/BridgeCompatibility';
 
 // Simple assertion function that works in both Node.js and browser environments
 function assert(condition: any, message?: string): asserts condition {
@@ -98,7 +97,6 @@ export class VisualizationState implements ContainerHierarchyView {
   private readonly containerOps: ContainerOperations;
   private readonly visibilityManager: VisibilityManager;
   private readonly layoutOps: LayoutOperations;
-  private readonly bridgeCompat: BridgeCompatibility;
 
   // Track containers in transition state to suppress spurious warnings
   private readonly _recentlyCollapsedContainers = new Set<string>();
@@ -142,7 +140,6 @@ export class VisualizationState implements ContainerHierarchyView {
     this.containerOps = new ContainerOperations(this);
     this.visibilityManager = new VisibilityManager(this);
     this.layoutOps = new LayoutOperations(this);
-    this.bridgeCompat = new BridgeCompatibility(this);
     
     // Wrap public APIs with validation
     this._wrapPublicMethods();
@@ -722,7 +719,28 @@ export class VisualizationState implements ContainerHierarchyView {
    * Expand all containers in bulk with proper validation handling
    */
   expandAllContainers(): void {
-    const topLevelContainers = this.getTopLevelContainers();
+    // Get top-level containers (containers with no visible parent container)
+    const topLevelContainers = [];
+    
+    for (const container of this.visibleContainers) {
+      // Check if this container has a parent container
+      let hasVisibleParent = false;
+      
+      for (const [parentId, children] of this.containerChildren) {
+        if (children.has(container.id)) {
+          const parent = this.containers.get(parentId);
+          if (parent && !parent.collapsed && !parent.hidden) {
+            hasVisibleParent = true;
+            break;
+          }
+        }
+      }
+      
+      if (!hasVisibleParent) {
+        topLevelContainers.push(container);
+      }
+    }
+    
     const collapsedTopLevel = topLevelContainers.filter(c => c.collapsed);
     
     if (collapsedTopLevel.length === 0) return;
@@ -770,6 +788,129 @@ export class VisualizationState implements ContainerHierarchyView {
       this.visibilityManager.updateContainerVisibilityCaches(containerId, container);
     }
   }
+
+  // ============ BRIDGE SUPPORT METHODS ============
+  
+  /**
+   * Get parent-child mapping for ReactFlow bridge
+   */
+  getParentChildMap(): Map<string, string> {
+    const parentMap = new Map<string, string>();
+    
+    // Map visible nodes to their expanded parent containers
+    for (const node of this.visibleNodes) {
+      const parentContainer = this._collections.nodeContainers.get(node.id);
+      if (parentContainer) {
+        const parent = this._collections.containers.get(parentContainer);
+        if (parent && !parent.collapsed && !parent.hidden) {
+          parentMap.set(node.id, parentContainer);
+        }
+      }
+    }
+    
+    // Also handle containers defined with children arrays (for test compatibility)
+    for (const [containerId, container] of this._collections.containers) {
+      if (!container.collapsed && !container.hidden && container.children) {
+        for (const childId of container.children) {
+          parentMap.set(childId, containerId);
+        }
+      }
+    }
+    
+    // Also map visible containers to their parent containers
+    for (const container of this.visibleContainers) {
+      for (const [parentId, children] of this._collections.containerChildren) {
+        if (children.has(container.id)) {
+          const parent = this._collections.containers.get(parentId);
+          if (parent && !parent.collapsed && !parent.hidden) {
+            parentMap.set(container.id, parentId);
+          }
+          break;
+        }
+      }
+    }
+    
+    return parentMap;
+  }
+
+  /**
+   * Get collapsed containers as nodes for ELK bridge
+   */
+  getCollapsedContainersAsNodes(): ReadonlyArray<any> {
+    const collapsedAsNodes = [];
+    
+    for (const container of this._collections.containers.values()) {
+      if (container.collapsed && !container.hidden) {
+        collapsedAsNodes.push({
+          ...container,
+          x: container.x ?? 0,
+          y: container.y ?? 0,
+          label: container.label || container.id,
+          style: container.style || 'default',
+          type: 'container-node',
+          collapsed: true
+        });
+      }
+    }
+    
+    return collapsedAsNodes;
+  }
+
+  /**
+   * Get top-level nodes (nodes not in any expanded container)
+   */
+  getTopLevelNodes(): ReadonlyArray<any> {
+    const topLevelNodes = [];
+    
+    for (const node of this.visibleNodes) {
+      // Check if node is in any expanded container
+      let isInExpandedContainer = false;
+      
+      for (const container of this.visibleContainers) {
+        if (!container.collapsed) {
+          const children = this._collections.containerChildren.get(container.id);
+          if (children && children.has(node.id)) {
+            isInExpandedContainer = true;
+            break;
+          }
+        }
+      }
+      
+      if (!isInExpandedContainer) {
+        topLevelNodes.push(node);
+      }
+    }
+    
+    return topLevelNodes;
+  }
+
+  /**
+   * Get top-level containers (containers with no visible parent container)
+   */
+  getTopLevelContainers(): ReadonlyArray<any> {
+    const topLevelContainers = [];
+    
+    for (const container of this.visibleContainers) {
+      // Check if this container has a parent container
+      let hasVisibleParent = false;
+      
+      for (const [parentId, children] of this._collections.containerChildren) {
+        if (children.has(container.id)) {
+          const parent = this._collections.containers.get(parentId);
+          if (parent && !parent.collapsed && !parent.hidden) {
+            hasVisibleParent = true;
+            break;
+          }
+        }
+      }
+      
+      if (!hasVisibleParent) {
+        topLevelContainers.push(container);
+      }
+    }
+    
+    return topLevelContainers;
+  }
   
   /**
    * Update edge properties (legacy compatibility method)
@@ -788,36 +929,6 @@ export class VisualizationState implements ContainerHierarchyView {
         }
       }
     }
-  }
-
-  // ============ BRIDGE COMPATIBILITY (Delegate to BridgeCompatibility) ============
-
-  getParentChildMap(): Map<string, string> {
-    return this.bridgeCompat.getParentChildMap();
-  }
-
-  getEdgeHandles(edgeId: string): { sourceHandle?: string; targetHandle?: string } {
-    return this.bridgeCompat.getEdgeHandles(edgeId);
-  }
-
-  getCollapsedContainersAsNodes(): ReadonlyArray<any> {
-    return this.bridgeCompat.getCollapsedContainersAsNodes();
-  }
-
-  getContainersRequiringLayout(changedContainerId?: string): ReadonlyArray<any> {
-    return this.bridgeCompat.getContainersRequiringLayout();
-  }
-
-  getTopLevelNodes(): ReadonlyArray<any> {
-    return this.bridgeCompat.getTopLevelNodes();
-  }
-
-  getTopLevelContainers(): ReadonlyArray<any> {
-    return this.bridgeCompat.getTopLevelContainers();
-  }
-
-  getContainerELKFixed(containerId: string): boolean {
-    return this.bridgeCompat.getContainerELKFixed(containerId);
   }
 
   // ============ CORE CONTAINER OPERATIONS (Direct access) ============

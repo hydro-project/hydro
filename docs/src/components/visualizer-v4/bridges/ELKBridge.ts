@@ -77,7 +77,11 @@ export class ELKBridge {
       }
       
       // In test environments, throw an error if we have leaks
-      if (leaks.length > 0 && (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true')) {
+      // Note: Using globalThis to check for test environment since process may not be available in browser
+      const isTestEnvironment = typeof globalThis !== 'undefined' && 
+        (globalThis.process?.env?.NODE_ENV === 'test' || globalThis.process?.env?.VITEST === 'true');
+      
+      if (leaks.length > 0 && isTestEnvironment) {
         throw new Error(`ELK CONTAINER LEAKS DETECTED: ${leaks.length} collapsed containers have visible children. This violates the collapsed container invariant. Leaks: ${leaks.slice(0, 3).join('; ')}`);
       }
     }
@@ -636,6 +640,26 @@ export class ELKBridge {
         console.warn(`[ELKBridge] Node/Container ${elkNode.id} not found in VisState`);
       }
     }
+  }
+
+  /**
+   * Get containers requiring layout (moved from VisualizationState)
+   * This is ELK-specific logic for determining which containers need layout
+   */
+  getContainersRequiringLayout(visState: VisualizationState, changedContainerId?: string): ReadonlyArray<any> {
+    // Return all visible containers that need layout
+    return visState.visibleContainers.filter(container => !container.hidden);
+  }
+
+  /**
+   * Get container ELK fixed status (moved from VisualizationState)
+   * This is ELK-specific logic for tracking fixed positions
+   */
+  getContainerELKFixed(visState: VisualizationState, containerId: string): boolean {
+    const container = visState.getContainer(containerId);
+    if (!container) return false;
+    
+    return container.elkFixed || false;
   }
 
 }

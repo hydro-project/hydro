@@ -13,6 +13,7 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { createVisualizationState } from '../VisualizationState';
 import type { VisualizationState } from '../VisualizationState';
+import { ELKBridge } from '../../bridges/ELKBridge';
 
 describe('TreeHierarchy/VisState Synchronization Tests', () => {
   let visState: VisualizationState;
@@ -196,11 +197,12 @@ describe('TreeHierarchy/VisState Synchronization Tests', () => {
       visState.setGraphNode('node2', { label: 'Node 2', hidden: false });
 
       // Simulate the getContainersRequiringLayout call (what ELK bridge uses)
-      const containersForLayout = visState.getContainersRequiringLayout();
+      const elkBridge = new ELKBridge();
+      const containersForLayout = elkBridge.getContainersRequiringLayout(visState);
       
       // All containers should be elkFixed=false for fresh layout
       for (const container of containersForLayout) {
-        const isFixed = visState.getContainerELKFixed(container.id);
+        const isFixed = elkBridge.getContainerELKFixed(visState, container.id);
         expect(isFixed).toBe(false); // Should be false for fresh layout
       }
     });
@@ -215,11 +217,12 @@ describe('TreeHierarchy/VisState Synchronization Tests', () => {
       visState.setGraphNode('node1', { label: 'Node 1', hidden: false });
 
       // Simulate interactive collapse with one container changing
-      const containersForInteractiveLayout = visState.getContainersRequiringLayout('interactive');
+      const elkBridge2 = new ELKBridge();
+      const containersForInteractiveLayout = elkBridge2.getContainersRequiringLayout(visState, 'interactive');
       
       // The changed container should be elkFixed=false, others should be elkFixed=true
       for (const container of containersForInteractiveLayout) {
-        const isFixed = visState.getContainerELKFixed(container.id);
+        const isFixed = elkBridge2.getContainerELKFixed(visState, container.id);
         if (container.id === 'interactive') {
           expect(isFixed).toBe(false); // Changed container should be free
         } else {
@@ -282,10 +285,11 @@ describe('TreeHierarchy/VisState Synchronization Tests', () => {
       expect(visibleContainerIds).toContain('bt_3');
 
       // 4. Fresh layout preparation should set all elkFixed=false
-      visState.getContainersRequiringLayout(); // Simulate fresh layout call
+      const elkBridge3 = new ELKBridge();
+      elkBridge3.getContainersRequiringLayout(visState); // Simulate fresh layout call
       const allContainers = visState.visibleContainers;
       for (const container of allContainers) {
-        const isFixed = visState.getContainerELKFixed(container.id);
+        const isFixed = elkBridge3.getContainerELKFixed(visState, container.id);
         expect(isFixed).toBe(false); // All should be free for fresh layout
       }
 

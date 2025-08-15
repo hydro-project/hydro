@@ -524,8 +524,8 @@ export class ReactFlowBridge {
         (reactFlowEdge.data as any).routing = sections;
       }
       
-      // Handle strategy should be determined by VisualizationState, not ReactFlowBridge
-      // TODO: Move handle logic to VisualizationState.getEdgeHandles(edgeId)
+      // Handle strategy should be determined by edge properties, not hard-coded
+      const edgeHandles = this.getEdgeHandles(visState, edge.id);
       if (edgeType === 'floating') {
         // For floating edges, use actual handle IDs but let FloatingEdge component calculate positions
         // React Flow v12 requires valid handle IDs, even for floating edges
@@ -533,12 +533,27 @@ export class ReactFlowBridge {
         reactFlowEdge.targetHandle = 'in-top';
       } else if (CURRENT_HANDLE_STRATEGY === 'discrete' || !handleConfig.enableContinuousHandles) {
         // Use discrete handles with forced top-down flow for consistent edge positioning
-        reactFlowEdge.sourceHandle = edge.sourceHandle || 'out-bottom';
-        reactFlowEdge.targetHandle = edge.targetHandle || 'in-top';
+        reactFlowEdge.sourceHandle = edgeHandles.sourceHandle || 'out-bottom';
+        reactFlowEdge.targetHandle = edgeHandles.targetHandle || 'in-top';
       }
       
       edges.push(reactFlowEdge);
     });
+  }
+
+  /**
+   * Get edge handles for ReactFlow bridge (moved from VisualizationState)
+   * This is ReactFlow-specific logic for handle assignment
+   */
+  getEdgeHandles(visState: VisualizationState, edgeId: string): { sourceHandle?: string; targetHandle?: string } {
+    const edge = visState.getGraphEdge(edgeId);
+    if (!edge) return {};
+    
+    // Handle edges with port information
+    return {
+      sourceHandle: (edge as any).sourceHandle || 'default-out',
+      targetHandle: (edge as any).targetHandle || 'default-in'
+    };
   }
 
   /**

@@ -9,6 +9,7 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { createVisualizationState } from '../VisualizationState';
 import type { VisualizationState } from '../VisualizationState';
+import { ReactFlowBridge } from '../../bridges/ReactFlowBridge';
 
 describe('VisualizationState + Clean Bridges Integration', () => {
   let visState: VisualizationState;
@@ -201,9 +202,10 @@ describe('VisualizationState + Clean Bridges Integration', () => {
       });
 
       // Simulate ReactFlowBridge edge handle assignment - now clean
-      const handles1 = visState.getEdgeHandles('edge_custom');
-      const handles2 = visState.getEdgeHandles('edge_partial');
-      const handles3 = visState.getEdgeHandles('edge_defaults');
+      const reactFlowBridge = new ReactFlowBridge();
+      const handles1 = reactFlowBridge.getEdgeHandles(visState, 'edge_custom');
+      const handles2 = reactFlowBridge.getEdgeHandles(visState, 'edge_partial');
+      const handles3 = reactFlowBridge.getEdgeHandles(visState, 'edge_defaults');
 
       // Verify: Consistent handle logic (no more hardcoded defaults in bridge)
       expect(handles1).toEqual({
@@ -255,8 +257,9 @@ describe('VisualizationState + Clean Bridges Integration', () => {
       const elkContainers = visState.getExpandedContainers();
 
       // ReactFlow Bridge perspective  
+      const reactFlowBridge = new ReactFlowBridge();
       const reactFlowParents = visState.getParentChildMap();
-      const reactFlowHandles = visState.getEdgeHandles('cross_edge');
+      const reactFlowHandles = reactFlowBridge.getEdgeHandles(visState, 'cross_edge');
 
       // Verify: Both bridges see consistent data
       // ELK sees: collapsed container as node, shared_node is hidden (not top-level anymore)

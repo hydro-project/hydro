@@ -9,6 +9,7 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { createVisualizationState } from '../VisualizationState';
 import type { VisualizationState } from '../VisualizationState';
+import { ReactFlowBridge } from '../../bridges/ReactFlowBridge';
 import { LAYOUT_CONSTANTS } from '../../shared/config';
 
 describe('Bridge Migration Validation', () => {
@@ -207,9 +208,10 @@ describe('Bridge Migration Validation', () => {
       });
 
       // Execute: Get handles like original ReactFlowBridge
-      const handles1 = visState.getEdgeHandles('edge_with_handles');
-      const handles2 = visState.getEdgeHandles('edge_partial_handles');
-      const handles3 = visState.getEdgeHandles('edge_no_handles');
+      const reactFlowBridge = new ReactFlowBridge();
+      const handles1 = reactFlowBridge.getEdgeHandles(visState, 'edge_with_handles');
+      const handles2 = reactFlowBridge.getEdgeHandles(visState, 'edge_partial_handles');
+      const handles3 = reactFlowBridge.getEdgeHandles(visState, 'edge_no_handles');
 
       // Verify: Should match original ReactFlowBridge logic
       // Original: edge.sourceHandle || 'default-out', edge.targetHandle || 'default-in'
@@ -262,7 +264,8 @@ describe('Bridge Migration Validation', () => {
       const collapsedAsNodes = visState.getCollapsedContainersAsNodes(); // ELK Bridge
       const parentMap = visState.getParentChildMap(); // ReactFlow Bridge
       const topLevelNodes = visState.getTopLevelNodes(); // ELK Bridge
-      const edgeHandles = visState.getEdgeHandles('sharedEdge'); // ReactFlow Bridge
+      const reactFlowBridge = new ReactFlowBridge();
+      const edgeHandles = reactFlowBridge.getEdgeHandles(visState, 'sharedEdge'); // ReactFlow Bridge
 
       // Verify: Consistent view of the same data
       // ELK would see collapsed container as a node
