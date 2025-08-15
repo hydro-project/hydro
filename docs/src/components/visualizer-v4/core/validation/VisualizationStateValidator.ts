@@ -468,71 +468,8 @@ export class VisualizationStateInvariantValidator {
   public validateHyperEdgeRouting(): InvariantViolation[] {
     const violations: InvariantViolation[] = [];
 
-    // Check that when containers are collapsed, edges through them are properly
-    // converted to hyperEdges and original edges are hidden
-    // CRITICAL: Only check VISIBLE collapsed containers, not hidden ones!
-    // Hidden containers are child containers that were recursively collapsed
-    // NOTE: In the new CoveredEdgesIndex architecture, we no longer need to validate
-    // crossing edges since the index handles edge aggregation automatically
-    
-    // TODO: Consider implementing new validation logic for the CoveredEdgesIndex architecture
-    /*
-    // Original crossing edge validation - no longer applicable
-    for (const [containerId, container] of this.state.containers) {
-      if (!container.collapsed || container.hidden) continue;
-      
-      const crossingEdges = this.state.getCrossingEdges(containerId);
-      
-      for (const crossingEdge of crossingEdges) {
-        // CRITICAL: Only regular edges crossing collapsed containers should be hidden
-        // HyperEdges are ALLOWED to cross collapsed containers - that's their purpose!
-        const isHyperEdgeResult = isHyperEdge(crossingEdge);
-        
-        if (!isHyperEdgeResult && !crossingEdge.hidden) {
-          violations.push({
-            type: 'CROSSING_EDGE_NOT_HIDDEN',
-            message: `Regular edge ${crossingEdge.id} crosses collapsed container ${containerId} but is not hidden`,
-            entityId: crossingEdge.id,
-            severity: 'error'
-          });
-        }
-        
-        // CRITICAL: Skip hidden edges - they've already been processed and don't need hyperEdge representation
-        // Hidden edges either:
-        // 1. Have been replaced by hyperEdges, OR
-        // 2. Connect nodes that are both hidden inside collapsed containers
-        if (crossingEdge.hidden) {
-          continue;
-        }
-        
-        // IMPROVED: Check if there's any hyperEdge that represents this connectivity
-        // by looking at aggregatedEdges property which tracks original edges
-        const representingHyperEdges = Array.from(this.state.hyperEdges.values()).filter((hyperEdge: any) => {
-          // First check if this hyperEdge has aggregatedEdges tracking
-          if (hyperEdge.aggregatedEdges && hyperEdge.aggregatedEdges.has(crossingEdge.id)) {
-            return !hyperEdge.hidden;
-          }
-          
-          // Fallback: Check if this hyperEdge represents the same connectivity
-          // This handles cases where aggregatedEdges might not be properly set
-          return (
-            (hyperEdge.source === crossingEdge.source || hyperEdge.source === containerId) &&
-            (hyperEdge.target === crossingEdge.target || hyperEdge.target === containerId) &&
-            !hyperEdge.hidden
-          );
-        });
-        
-        if (!isHyperEdge && representingHyperEdges.length === 0) {
-          violations.push({
-            type: 'MISSING_HYPEREDGE',
-            message: `Edge ${crossingEdge.id} crosses collapsed container ${containerId} but no hyperEdge represents this connectivity`,
-            entityId: crossingEdge.id,
-            severity: 'error'
-          });
-        }
-      }
-    }
-    */
+    // Note: In the new CoveredEdgesIndex architecture, edge aggregation is handled
+    // automatically by the index, so crossing edge validation is no longer needed.
 
     return violations;
   }
