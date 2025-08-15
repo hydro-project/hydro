@@ -79,9 +79,9 @@ class SimpleRandom {
  * Edge integrity validation (from BUG HUNTER)
  */
 async function validateEdgeIntegrity(state: VisualizationState, context: string): Promise<void> {
-  const visibleNodes = state.getVisibleNodes();
+  const visibleNodes = state.visibleNodes;
   const visibleEdges = state.visibleEdges;
-  const visibleContainers = state.getVisibleContainers();
+  const visibleContainers = state.visibleContainers;
   const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
   const visibleContainerIds = new Set(visibleContainers.map(c => c.id));
   const allVisibleEntityIds = new Set([...visibleNodeIds, ...visibleContainerIds]);
@@ -171,7 +171,7 @@ class ComprehensiveFuzzTester {
       }
     });
     
-    console.log(`📊 Initial state: ${state.getVisibleNodes().length} nodes, ${state.visibleHyperEdges.length} hyperEdges, ${state.getVisibleContainers().length} containers`);
+    console.log(`📊 Initial state: ${state.visibleNodes.length} nodes, ${state.visibleHyperEdges.length} hyperEdges, ${state.visibleContainers.length} containers`);
     
     // Run initial layout
     await engine.runLayout();
@@ -238,7 +238,7 @@ class ComprehensiveFuzzTester {
     console.log(`   Grouping: ${groupingId || 'default'}`);
     console.log(`   Total operations: ${totalOperations}`);
     console.log(`   Disconnected edge issues: ${disconnectedEdgeIssues}`);
-    console.log(`   Final state: ${state.getVisibleNodes().length} nodes, ${state.visibleHyperEdges.length} hyperEdges`);
+    console.log(`   Final state: ${state.visibleNodes.length} nodes, ${state.visibleHyperEdges.length} hyperEdges`);
     
     const finalEngineState = engine.getState();
     console.log(`   Engine phase: ${finalEngineState.phase}, Layout count: ${finalEngineState.layoutCount}`);
@@ -300,7 +300,7 @@ class ComprehensiveFuzzTester {
    * Generate a random operation from all available visualizer controls
    */
   private generateRandomOperation(state: VisualizationState, engine: VisualizationEngine): FuzzOperation | null {
-    const allContainers = state.getVisibleContainers();
+    const allContainers = state.visibleContainers;
     // Get only containers that can actually be expanded (all ancestors are expanded)
     const expandableContainers = allContainers.filter(c => c.collapsed && this.canExpandContainer(state, c.id));
     // Get only containers that can actually be collapsed (expanded and visible)
@@ -471,11 +471,11 @@ class ComprehensiveFuzzTester {
     const engineState = engine.getState();
     
     return {
-      visibleNodes: state.getVisibleNodes().length,
+      visibleNodes: state.visibleNodes.length,
       visibleEdges: state.visibleEdges.length,
       hyperEdges: state.visibleHyperEdges.length,
       expandedContainers: state.getExpandedContainers().length,
-      collapsedContainers: state.getVisibleContainers().filter(c => c.collapsed).length,
+      collapsedContainers: state.visibleContainers.filter(c => c.collapsed).length,
       currentHierarchy: null, // Would need hierarchy tracking
       currentLayoutAlgorithm: 'unknown', // Would need layout config tracking
       autoLayoutEnabled: true, // Would need autofit tracking

@@ -417,7 +417,7 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Add a graph node directly (for JSONParser and initial data loading)
    */
-  addGraphNode(nodeId: string, nodeData: any): void {
+  addGraphNode(nodeId: string, nodeData: any): VisualizationState {
     // Check if node belongs to a collapsed container and should be hidden
     const parentContainer = this._collections.nodeContainers.get(nodeId);
     let shouldBeHidden = nodeData.hidden || false;
@@ -450,12 +450,14 @@ export class VisualizationState implements ContainerHierarchyView {
     
     // Invalidate covered edges index since graph structure changed
     this.invalidateCoveredEdgesIndex();
+    
+    return this;
   }
   
   /**
    * Add a graph edge directly (for JSONParser and initial data loading)
    */
-  addGraphEdge(edgeId: string, edgeData: any): void {
+  addGraphEdge(edgeId: string, edgeData: any): VisualizationState {
     const processedData = { 
       ...edgeData, 
       id: edgeId,
@@ -483,12 +485,14 @@ export class VisualizationState implements ContainerHierarchyView {
     if (!processedData.hidden && sourceExists && targetExists) {
       this._collections._visibleEdges.set(edgeId, processedData);
     }
+    
+    return this;
   }
   
   /**
    * Add a container directly (for JSONParser and initial data loading)
    */
-  addContainer(containerId: string, containerData: any): void {
+  addContainer(containerId: string, containerData: any): VisualizationState {
     // Check existing state BEFORE making changes
     const existingContainer = this._collections.containers.get(containerId);
     const wasCollapsed = existingContainer?.collapsed === true;
