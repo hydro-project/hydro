@@ -50,6 +50,20 @@ export interface HyperEdge {
   source: string;
   target: string;
   style?: EdgeStyle | string;
+  aggregatedEdges: Map<string, GraphEdge>;
+  hidden?: boolean;
+}
+
+// Union type for all edge types
+export type Edge = GraphEdge | HyperEdge;
+
+// Type guards for distinguishing edge types
+export function isHyperEdge(edge: Edge): edge is HyperEdge {
+  return 'aggregatedEdges' in edge;
+}
+
+export function isGraphEdge(edge: Edge): edge is GraphEdge {
+  return !('aggregatedEdges' in edge);
 }
 
 // Creation props for builder pattern
@@ -96,6 +110,9 @@ export interface PositionedContainer extends Container, Position, Dimensions {}
 export interface PositionedHyperEdge extends HyperEdge {
   points?: Position[];
 }
+
+// Union type for positioned edges
+export type PositionedAnyEdge = PositionedEdge | PositionedHyperEdge;
 
 // Layout engine interface
 export interface LayoutEngine {

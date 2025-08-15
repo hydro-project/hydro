@@ -19,7 +19,7 @@ export class VisibilityManager {
   setNodeVisibility(nodeId: string, visible: boolean): void {
     const node = this.state._collections.graphNodes.get(nodeId);
     if (!node) {
-      console.warn(`[VisualizationState] Cannot set visibility for non-existent node: ${nodeId}`);
+      console.warn(`[VisibilityManager] Cannot set visibility for non-existent node: ${nodeId}`);
       return;
     }
     
@@ -43,8 +43,7 @@ export class VisibilityManager {
   setEdgeVisibility(edgeId: string, visible: boolean): void {
     const edge = this.state._collections.graphEdges.get(edgeId);
     if (!edge) {
-      console.warn(`[VisualizationState] Cannot set visibility for non-existent edge: ${edgeId}`);
-      return;
+      throw new Error(`[VisibilityManager] Cannot set visibility for non-existent edge: ${edgeId}`);
     }
     
     // Validate endpoints are visible before making edge visible
@@ -53,7 +52,7 @@ export class VisibilityManager {
       const targetValid = this.isEndpointVisible(edge.target);
       
       if (!sourceValid || !targetValid) {
-        console.warn(`[VisualizationState] Cannot make edge ${edgeId} visible - endpoints not visible`);
+        console.warn(`[VisibilityManager] Cannot make edge ${edgeId} visible - endpoints not visible`);
         return;
       }
     }

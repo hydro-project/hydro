@@ -110,7 +110,7 @@ interface HyperEdge {
   source: string;          // Source node/container ID
   target: string;          // Target node/container ID
   style: string;           // Visual style identifier
-  aggregatedEdges: string[]; // IDs of original edges
+  aggregatedEdges: GraphEdge[]; // original edges
 }
 ```
 

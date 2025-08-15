@@ -18,6 +18,8 @@ import {
   GraphEdge,
   Container
 } from '../shared/types';
+
+import type { Edge, HyperEdge } from './types';
 import { LAYOUT_CONSTANTS, HYPEREDGE_CONSTANTS, SIZES } from '../shared/config';
 import { ContainerPadding } from './ContainerPadding';
 
@@ -72,15 +74,15 @@ export interface ContainerHierarchyView {
 export class VisualizationState implements ContainerHierarchyView {
   // Protected state collections - NEVER access directly!
   private readonly _collections = {
-    graphNodes: new Map<string, any>(),
-    graphEdges: new Map<string, any>(),
-    containers: new Map<string, any>(),
-    hyperEdges: new Map<string, any>(),
-    _visibleNodes: new Map<string, any>(),
-    _visibleEdges: new Map<string, any>(),
-    _visibleContainers: new Map<string, any>(),
-    _expandedContainers: new Map<string, any>(),
-    collapsedContainers: new Map<string, any>(),
+    graphNodes: new Map<string, GraphNode>(),
+    graphEdges: new Map<string, GraphEdge>(),
+    containers: new Map<string, Container>(),
+    hyperEdges: new Map<string, HyperEdge>(),
+    _visibleNodes: new Map<string, GraphNode>(),
+    _visibleEdges: new Map<string, Edge>(),
+    _visibleContainers: new Map<string, Container>(),
+    _expandedContainers: new Map<string, Container>(),
+    collapsedContainers: new Map<string, Container>(),
     nodeToEdges: new Map<string, Set<string>>(),
     manualPositions: new Map<string, {x: number, y: number}>(),
     containerChildren: new Map<string, Set<string>>(),
@@ -110,15 +112,15 @@ export class VisualizationState implements ContainerHierarchyView {
   // ============ PROTECTED ACCESSORS (Internal use only) ============
   // These provide controlled access to collections for internal methods
   
-  private get graphNodes(): Map<string, any> { return this._collections.graphNodes; }
-  private get graphEdges(): Map<string, any> { return this._collections.graphEdges; }
-  private get containers(): Map<string, any> { return this._collections.containers; }
-  private get hyperEdges(): Map<string, any> { return this._collections.hyperEdges; }
-  private get _visibleNodes(): Map<string, any> { return this._collections._visibleNodes; }
-  private get _visibleEdges(): Map<string, any> { return this._collections._visibleEdges; }
-  private get _visibleContainers(): Map<string, any> { return this._collections._visibleContainers; }
-  private get _expandedContainers(): Map<string, any> { return this._collections._expandedContainers; }
-  private get collapsedContainers(): Map<string, any> { return this._collections.collapsedContainers; }
+  private get graphNodes(): Map<string, GraphNode> { return this._collections.graphNodes; }
+  private get graphEdges(): Map<string, GraphEdge> { return this._collections.graphEdges; }
+  private get containers(): Map<string, Container> { return this._collections.containers; }
+  private get hyperEdges(): Map<string, HyperEdge> { return this._collections.hyperEdges; }
+  private get _visibleNodes(): Map<string, GraphNode> { return this._collections._visibleNodes; }
+  private get _visibleEdges(): Map<string, Edge> { return this._collections._visibleEdges; }
+  private get _visibleContainers(): Map<string, Container> { return this._collections._visibleContainers; }
+  private get _expandedContainers(): Map<string, Container> { return this._collections._expandedContainers; }
+  private get collapsedContainers(): Map<string, Container> { return this._collections.collapsedContainers; }
   private get nodeToEdges(): Map<string, Set<string>> { return this._collections.nodeToEdges; }
   private get manualPositions(): Map<string, {x: number, y: number}> { return this._collections.manualPositions; }
   
@@ -371,7 +373,7 @@ export class VisualizationState implements ContainerHierarchyView {
   getHyperEdge(hyperEdgeId: string): any | undefined {
     return this._collections.hyperEdges.get(hyperEdgeId);
   }
-  
+
   /**
    * Add a graph node directly (for JSONParser and initial data loading)
    */
@@ -476,7 +478,7 @@ export class VisualizationState implements ContainerHierarchyView {
       this.containerOps.handleContainerCollapse(containerId);
     } else if (wasCollapsed && isNowExpanded) {
       // Container is being expanded
-      this.containerOps.handleContainerExpansion(containerId);
+      // this.containerOps.handleContainerExpansion(containerId);
     }
   }
 
@@ -776,6 +778,19 @@ export class VisualizationState implements ContainerHierarchyView {
 
   setHyperEdge(hyperEdgeId: string, hyperEdgeData: any): this {
     this._collections.hyperEdges.set(hyperEdgeId, hyperEdgeData);
+     // Update node-to-edge mappings
+    const sourceSet = this._collections.nodeToEdges.get(hyperEdgeData.source) || new Set();
+    sourceSet.add(hyperEdgeId);
+    this._collections.nodeToEdges.set(hyperEdgeData.source, sourceSet);
+    
+    const targetSet = this._collections.nodeToEdges.get(hyperEdgeData.target) || new Set();
+    targetSet.add(hyperEdgeId);
+    this._collections.nodeToEdges.set(hyperEdgeData.target, targetSet);
+    
+    // Update visibility cache if edge should be visible
+    const sourceExists = this._isEndpointVisible(hyperEdgeData.source);
+    const targetExists = this._isEndpointVisible(hyperEdgeData.target);
+
     return this;
   }
 
@@ -832,6 +847,21 @@ export class VisualizationState implements ContainerHierarchyView {
     }
     
     this._collections.graphEdges.delete(edgeId);
+    this._collections._visibleEdges.delete(edgeId);
+  }
+
+  removeHyperEdge(edgeId: string): void {
+    const edge = this._collections.hyperEdges.get(edgeId);
+    if (edge) {
+      // Remove from node-to-edges mappings
+      const sourceEdges = this._collections.nodeToEdges.get(edge.source);
+      if (sourceEdges) sourceEdges.delete(edgeId);
+
+      const targetEdges = this._collections.nodeToEdges.get(edge.target);
+      if (targetEdges) targetEdges.delete(edgeId);
+    }
+
+    this._collections.hyperEdges.delete(edgeId);
     this._collections._visibleEdges.delete(edgeId);
   }
 

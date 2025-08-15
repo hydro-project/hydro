@@ -10,6 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { createVisualizationState, VisualizationState } from '../VisualizationState';
+import { isHyperEdge } from '../types';
 
 describe('Container Abstraction Level Tests', () => {
   
@@ -42,7 +43,7 @@ describe('Container Abstraction Level Tests', () => {
       expect(implementationEdge?.hidden).toBe(false);
       
       // No abstractions should exist yet
-      const initialAbstractions = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const initialAbstractions = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(initialAbstractions.length).toBe(0);
       
       // // console.log((('  Initial concrete state verified')));
@@ -60,7 +61,7 @@ describe('Container Abstraction Level Tests', () => {
       expect(edgeAfterLifting?.hidden).toBe(true); // Implementation edge hidden
       
       // Abstract representation should be created
-      const abstractions = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const abstractions = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(abstractions.length).toBe(1);
       
       const abstraction = abstractions[0];
@@ -96,7 +97,7 @@ describe('Container Abstraction Level Tests', () => {
       expect(internalBeforeGrounding?.hidden).toBe(true);
       expect(edgeBeforeGrounding?.hidden).toBe(true);
       
-      const abstractionsBefore = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const abstractionsBefore = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(abstractionsBefore.length).toBe(1);
       
       // // console.log((('  Starting from abstract state')));
@@ -114,7 +115,7 @@ describe('Container Abstraction Level Tests', () => {
       expect(edgeAfterGrounding?.hidden).toBe(false); // Implementation edge revealed
       
       // Abstractions should be removed
-      const abstractionsAfter = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const abstractionsAfter = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(abstractionsAfter.length).toBe(0);
       
       // // console.log((('  ✅ GROUNDING successful: Implementation details revealed')));
@@ -135,7 +136,7 @@ describe('Container Abstraction Level Tests', () => {
       // Capture initial state
       const initialNodes = state.visibleNodes.length;
       const initialEdges = state.visibleEdges.length;
-      const initialAbstractions = state.visibleEdges.filter(e => e.id?.startsWith('hyper_')).length;
+      const initialAbstractions = state.visibleEdges.filter(e => isHyperEdge(e)).length;
       
       // Apply Lifting → Grounding sequence
       state.collapseContainer('module');  // LIFT (create abstraction)
@@ -145,7 +146,7 @@ describe('Container Abstraction Level Tests', () => {
       expect(state.visibleNodes.length).toBe(initialNodes);
       expect(state.visibleEdges.length).toBe(initialEdges);
       
-      const finalAbstractions = state.visibleEdges.filter(e => e.id?.startsWith('hyper_')).length;
+      const finalAbstractions = state.visibleEdges.filter(e => isHyperEdge(e)).length;
       expect(finalAbstractions).toBe(initialAbstractions);
       
       // All nodes should be visible again
@@ -191,20 +192,20 @@ describe('Container Abstraction Level Tests', () => {
       // Verify initial concrete state
       expect(state.visibleNodes.length).toBe(5);
       expect(state.visibleEdges.length).toBe(5);
-      expect(state.visibleEdges.filter(e => e.id?.startsWith('hyper_')).length).toBe(0);
+      expect(state.visibleEdges.filter(e => isHyperEdge(e)).length).toBe(0);
       
       // PROGRESSIVE LIFTING: First level of abstraction
       state.collapseContainer('moduleA');
       
       expect(state.visibleNodes.length).toBe(3); // impl3, impl4, client (moduleA abstracted)
-      const firstLevelAbstractions = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const firstLevelAbstractions = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(firstLevelAbstractions.length).toBeGreaterThan(0);
       
       // PROGRESSIVE LIFTING: Second level of abstraction  
       state.collapseContainer('moduleB');
       
       expect(state.visibleNodes.length).toBe(1); // Just client (both modules abstracted)
-      const secondLevelAbstractions = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const secondLevelAbstractions = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(secondLevelAbstractions.length).toBeGreaterThan(0);
       
       // // console.log((('  ✅ PROGRESSIVE LIFTING successful: Multiple abstraction levels created')));
@@ -248,7 +249,7 @@ describe('Container Abstraction Level Tests', () => {
       
       expect(state.visibleNodes.length).toBe(5); // All implementations visible
       expect(state.visibleEdges.length).toBe(5); // All implementation edges visible
-      expect(state.visibleEdges.filter(e => e.id?.startsWith('hyper_')).length).toBe(0);
+      expect(state.visibleEdges.filter(e => isHyperEdge(e)).length).toBe(0);
       
       // // console.log((('  ✅ PROGRESSIVE GROUNDING successful: Full implementation details revealed')));
     });
@@ -285,7 +286,7 @@ describe('Container Abstraction Level Tests', () => {
       // The entire hierarchy should be abstracted away
       expect(state.visibleNodes.length).toBe(1); // Just consumer
       
-      const hierarchicalAbstractions = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const hierarchicalAbstractions = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(hierarchicalAbstractions.length).toBe(1);
       
       // // console.log((('  ✅ HIERARCHICAL LIFTING successful: Nested structure abstracted')));
@@ -318,7 +319,7 @@ describe('Container Abstraction Level Tests', () => {
       // Inner details should be revealed (coreModule expanded by default)
       expect(state.visibleNodes.length).toBe(3); // coreImpl1, coreImpl2, consumer
       expect(state.visibleEdges.length).toBe(2); // Both edges visible
-      expect(state.visibleEdges.filter(e => e.id?.startsWith('hyper_')).length).toBe(0);
+      expect(state.visibleEdges.filter(e => isHyperEdge(e)).length).toBe(0);
       
       // // console.log((('  ✅ HIERARCHICAL GROUNDING successful: Nested implementation revealed')));
     });
@@ -351,7 +352,7 @@ describe('Container Abstraction Level Tests', () => {
       // Should return to original nested concrete state
       expect(state.visibleNodes.length).toBe(initialNodes);
       expect(state.visibleEdges.length).toBe(initialEdges);
-      expect(state.visibleEdges.filter(e => e.id?.startsWith('hyper_')).length).toBe(0);
+      expect(state.visibleEdges.filter(e => isHyperEdge(e)).length).toBe(0);
       
       // // console.log((('  ✅ NESTED SYMMETRY verified: Complex Lift → Ground = Identity')));
     });

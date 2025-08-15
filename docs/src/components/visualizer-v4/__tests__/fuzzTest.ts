@@ -167,7 +167,7 @@ class InvariantChecker {
     for (const edge of visibleEdges) {
       // All visible edges should be regular edges (no hyperedges exposed)
       assert(
-        !edge.id?.startsWith('hyper_'),
+        !isHyperEdge(e),
         `${context}: Found hyperedge ${edge.id} in visibleEdges - hyperedges should be encapsulated!`
       );
     }

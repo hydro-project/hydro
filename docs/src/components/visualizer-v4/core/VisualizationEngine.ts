@@ -376,11 +376,11 @@ export class VisualizationEngine {
         
         // Run final validation after all containers are collapsed
         this.log('🔍 Running final hyper edge validation after smart collapse');
-        // Only validate if validation is enabled
-        if ((this.visState as any)._validationEnabled) {
+        // CRITICAL: Always clean up invalid hyperEdges after smart collapse
+        try {
           (this.visState as any).containerOps.validateHyperEdgeLifting();
-        } else {
-          this.log('⚠️ Skipping hyper edge validation - validation disabled');
+        } catch (error) {
+          this.log(`⚠️ HyperEdge cleanup failed: ${error}`);
         }
         
         this.log(`✅ All ${containersToCollapse.length} collapse operations complete`);

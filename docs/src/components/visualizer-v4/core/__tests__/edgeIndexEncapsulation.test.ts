@@ -6,6 +6,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { createVisualizationState } from '../VisualizationState';
+import { isHyperEdge } from '../types.js';
+
 
 describe('EdgeIndexEncapsulation', () => {
   describe('basic functionality', () => {
@@ -105,7 +107,7 @@ describe('EdgeIndexEncapsulation', () => {
       state.collapseContainer('container1');
       
       // Check edge encapsulation behavior after collapse
-      const visibleRegularEdges = state.visibleEdges.filter(e => !e.id?.startsWith('hyper_'));
+      const visibleRegularEdges = state.visibleEdges.filter(e => !isHyperEdge(e));
       const hyperEdges = state.visibleHyperEdges;
       
       expect(visibleRegularEdges.length).toBeLessThanOrEqual(2); // Some edges may be hidden

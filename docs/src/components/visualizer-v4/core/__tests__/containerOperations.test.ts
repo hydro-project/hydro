@@ -14,6 +14,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { createVisualizationState, VisualizationState } from '../VisualizationState';
+import { isHyperEdge } from '../types';
 
 describe('Container Operations', () => {
   
@@ -201,7 +202,7 @@ describe('Container Operations', () => {
       expect(edge?.hidden).toBe(false);
       
       // Count hyperEdges via visibleEdges (hyperEdges are included when containers are collapsed)
-      const initialHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const initialHyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(initialHyperEdges.length).toBe(0);
       
       // // console.log((('  Initial state verified')));
@@ -219,7 +220,7 @@ describe('Container Operations', () => {
       expect(edgeAfterCollapse?.hidden).toBe(true);
       
       // Check for hyperEdges via visibleEdges (they have id starting with 'hyper_')
-      const hyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const hyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(hyperEdges.length).toBe(1);
       
       const hyperEdge = hyperEdges[0];
@@ -239,7 +240,7 @@ describe('Container Operations', () => {
       expect(externalNodeAfterExpand?.hidden).toBe(false);
       expect(edgeAfterExpand?.hidden).toBe(false);
       
-      const finalHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const finalHyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(finalHyperEdges.length).toBe(0);
       
       // // console.log((('  Expanded state verified')));
@@ -280,7 +281,7 @@ describe('Container Operations', () => {
       expect(state.visibleNodes.length).toBe(5);
       expect(state.visibleEdges.length).toBe(5);
       
-      const initialHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const initialHyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(initialHyperEdges.length).toBe(0);
       
       // Collapse containerA
@@ -291,7 +292,7 @@ describe('Container Operations', () => {
       
       // Check visible edges (should include hyperEdges for A's external connections)
       const partialCollapseEdges = state.visibleEdges;
-      const hyperEdgesAfterA = partialCollapseEdges.filter(e => e.id?.startsWith('hyper_'));
+      const hyperEdgesAfterA = partialCollapseEdges.filter(e => isHyperEdge(e));
       expect(hyperEdgesAfterA.length).toBeGreaterThan(0); // Should have hyperEdges for A connections
       
       // Collapse containerB as well
@@ -301,7 +302,7 @@ describe('Container Operations', () => {
       expect(state.visibleNodes.length).toBe(1); // Just external (both containers collapsed)
       
       const fullCollapseEdges = state.visibleEdges;
-      const hyperEdgesAfterBoth = fullCollapseEdges.filter(e => e.id?.startsWith('hyper_'));
+      const hyperEdgesAfterBoth = fullCollapseEdges.filter(e => isHyperEdge(e));
       expect(hyperEdgesAfterBoth.length).toBeGreaterThan(0); // Should have hyperEdges for connections
       
       // Expand both containers
@@ -312,7 +313,7 @@ describe('Container Operations', () => {
       expect(state.visibleNodes.length).toBe(5);
       expect(state.visibleEdges.length).toBe(5);
       
-      const finalHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const finalHyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(finalHyperEdges.length).toBe(0);
       
       // // console.log((('✓ Multiple containers edge management test passed')));
@@ -349,7 +350,7 @@ describe('Container Operations', () => {
       expect(state.visibleNodes.length).toBe(1); // Just external (outer container is collapsed)
       
       // Check for hyperEdges (should have connection from outer to external)
-      const hyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const hyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(hyperEdges.length).toBe(1);
       
       // Expand and verify restoration (using recursive expansion for nested case)
@@ -359,7 +360,7 @@ describe('Container Operations', () => {
       expect(state.visibleNodes.length).toBe(3); // innerNode1, innerNode2, external (inner container is expanded by default)
       expect(state.visibleEdges.length).toBe(2);
       
-      const finalHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const finalHyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(finalHyperEdges.length).toBe(0);
       
       // // console.log((('✓ Nested container grounding test passed')));
@@ -409,7 +410,7 @@ describe('Container Operations', () => {
       expect(state.visibleNodes.length).toBe(4);
       expect(state.visibleEdges.length).toBe(5);
       
-      const initialHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const initialHyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(initialHyperEdges.length).toBe(0);
       
       // // console.log((('  Initial state: 4 nodes, 5 edges, 0 hyperedges')));
@@ -417,7 +418,7 @@ describe('Container Operations', () => {
       // Step 1: Collapse containerA
       state.collapseContainer('containerA');
       
-      const afterCollapseA = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const afterCollapseA = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(afterCollapseA.length).toBe(3); // Should have hyperEdges for A->B and B->A connections
       
       // // console.log((('  After collapsing A: found', afterCollapseA.length, 'hyperedges')));
@@ -425,7 +426,7 @@ describe('Container Operations', () => {
       // Step 2: Collapse containerB (this creates cross-container hyperedges)
       state.collapseContainer('containerB');
       
-      const afterCollapseB = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const afterCollapseB = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(afterCollapseB.length).toBe(2); // Should have A <-> B hyperedges
       
       // Verify we have the cross-container hyperedges
@@ -441,7 +442,7 @@ describe('Container Operations', () => {
       // Step 3: Expand containerA (this is where the bug occurred)
       state.expandContainer('containerA');
       
-      const afterExpandA = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const afterExpandA = state.visibleEdges.filter(e => isHyperEdge(e));
       
       // CRITICAL: We should still have hyperedges connecting A's internal nodes to containerB
       expect(afterExpandA.length).toBeGreaterThan(0); // Should preserve connections to still-collapsed B
@@ -463,7 +464,7 @@ describe('Container Operations', () => {
       expect(state.visibleNodes.length).toBe(4);
       expect(state.visibleEdges.length).toBe(5);
       
-      const finalHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const finalHyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(finalHyperEdges.length).toBe(0);
       
       // Verify original edges are restored
@@ -518,7 +519,7 @@ describe('Container Operations', () => {
       expect(state.visibleNodes.length).toBe(4);
       expect(state.visibleEdges.length).toBe(6);
       
-      const initialHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const initialHyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
       expect(initialHyperEdges.length).toBe(0);
       
       // // console.log((('  Initial state: 4 nodes, 6 edges (4 cross-container bidirectional), 0 hyperedges')));
@@ -530,7 +531,7 @@ describe('Container Operations', () => {
         // Step 1: Collapse containerA
         state.collapseContainer('containerA');
         
-        const afterCollapseA = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+        const afterCollapseA = state.visibleEdges.filter(e => isHyperEdge(e));
         expect(afterCollapseA.length).toBe(4); // Should have hyperEdges for both A→B and B→A directions
         
         // // console.log(((`  Iter ${iteration} - After collapsing A: found ${afterCollapseA.length} hyperedges`)));
@@ -538,7 +539,7 @@ describe('Container Operations', () => {
         // Step 2: Collapse containerB (this creates cross-container hyperedges)
         state.collapseContainer('containerB');
         
-        const afterCollapseB = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+        const afterCollapseB = state.visibleEdges.filter(e => isHyperEdge(e));
         expect(afterCollapseB.length).toBe(2); // Should have bidirectional A ↔ B hyperedges
         
         // Verify we have BOTH directions of cross-container hyperedges
@@ -554,7 +555,7 @@ describe('Container Operations', () => {
         // Step 3: Expand containerA (critical test point)
         state.expandContainer('containerA');
         
-        const afterExpandA = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+        const afterExpandA = state.visibleEdges.filter(e => isHyperEdge(e));
         
         // CRITICAL: We should still have hyperedges connecting A's internal nodes to containerB
         // This should work in BOTH directions since we have bidirectional edges
@@ -579,7 +580,7 @@ describe('Container Operations', () => {
         expect(state.visibleNodes.length).toBe(4);
         expect(state.visibleEdges.length).toBe(6);
         
-        const finalHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+        const finalHyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
         expect(finalHyperEdges.length).toBe(0);
         
         // Verify ALL original edges are restored (bidirectional)
@@ -599,7 +600,7 @@ describe('Container Operations', () => {
         if (iteration === 2) {
           // On the second iteration, make sure we don't have any leftover hyperedges
           // or corrupted state from the first iteration
-          const allVisibleHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+          const allVisibleHyperEdges = state.visibleEdges.filter(e => isHyperEdge(e));
           expect(allVisibleHyperEdges.length).toBe(0);
           // // console.log(((`  Iter ${iteration} - ✅ No hyperedge accumulation detected`)));
         }
@@ -656,25 +657,25 @@ describe('Container Operations', () => {
       state.collapseContainer('containerA');
       state.collapseContainer('containerB');
       
-      const afterBothCollapsed = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const afterBothCollapsed = state.visibleEdges.filter(e => isHyperEdge(e));
       // // console.log((('  After collapsing both:', afterBothCollapsed.map(e => e.id))));
       
       // Step 2: Expand A, then immediately collapse A again (potential state corruption)
       state.expandContainer('containerA');
-      const afterExpandA = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const afterExpandA = state.visibleEdges.filter(e => isHyperEdge(e));
       // // console.log((('  After expanding A:', afterExpandA.map(e => e.id))));
       
       state.collapseContainer('containerA'); // This might reuse IDs or create conflicts
-      const afterRecollapseA = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const afterRecollapseA = state.visibleEdges.filter(e => isHyperEdge(e));
       // // console.log((('  After re-collapsing A:', afterRecollapseA.map(e => e.id))));
       
       // Step 3: Now expand B, then expand A (different order)
       state.expandContainer('containerB');
-      const afterExpandB = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const afterExpandB = state.visibleEdges.filter(e => isHyperEdge(e));
       // // console.log((('  After expanding B:', afterExpandB.map(e => e.id))));
       
       state.expandContainer('containerA');
-      const afterExpandBothNew = state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+      const afterExpandBothNew = state.visibleEdges.filter(e => isHyperEdge(e));
       // // console.log((('  After expanding both (new order):', afterExpandBothNew.map(e => e.id))));
       
       // Step 4: Verify final state is correct

@@ -13,7 +13,7 @@ import { parseGraphJSON, validateGraphJSON } from '../core/JSONParser.js';
 import { VisualizationState } from '../core/VisualizationState.js';
 import { VisualizationEngine } from '../core/VisualizationEngine.js';
 import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types.js';
-import type { LayoutConfig } from '../core/types.js';
+import { isHyperEdge, type LayoutConfig } from '../core/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -130,7 +130,7 @@ class ComprehensiveInvariantChecker {
     
     // HyperEdge encapsulation invariant
     for (const edge of visibleEdges) {
-      expect(edge.id?.startsWith('hyper_')).toBe(false);
+      expect(isHyperEdge(edge)).toBe(false);
     }
   }
   

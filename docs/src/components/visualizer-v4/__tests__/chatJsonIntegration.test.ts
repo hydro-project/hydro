@@ -9,6 +9,8 @@ import { parseGraphJSON, getAvailableGroupings } from '../core/JSONParser';
 import { ELKBridge } from '../bridges/ELKBridge';
 import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
 import { loadChatJsonTestData, skipIfNoTestData } from './testUtils';
+import { isHyperEdge } from '../core/types.js';
+
 
 describe('ChatJsonIntegration', () => {
   describe('json processing', () => {
@@ -260,7 +262,7 @@ describe('ChatJsonIntegration', () => {
       let crossContainerEdges = 0;
 
       for (const edge of edges) {
-        const isHyperEdge = edge.id.startsWith('hyper_');
+        const isEdgeHyper = isHyperEdge(edge);
         
         // Check for sections in the edge layout (where ELKBridge stores them)
         const edgeLayout = state.getEdgeLayout(edge.id);
@@ -279,7 +281,7 @@ describe('ChatJsonIntegration', () => {
           }
         } else {
           crossContainerEdges++;
-          if (isHyperEdge) {
+          if (isEdgeHyper) {
             // // console.log(((`[HyperEdge] ${edge.id}: no sections (automatic routing)`)));
           } else {
             // // console.log(((`[Cross-Container Edge] ${edge.id}: no sections (crosses containers)`)));

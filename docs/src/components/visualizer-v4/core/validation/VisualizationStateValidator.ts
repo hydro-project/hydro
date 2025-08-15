@@ -8,6 +8,7 @@
  */
 
 import { LAYOUT_CONSTANTS, HYPEREDGE_CONSTANTS } from '../../shared/config';
+import { isHyperEdge } from '../types.js';
 
 export interface InvariantViolation {
   type: string;
@@ -457,23 +458,34 @@ export class VisualizationStateInvariantValidator {
 
     // Check that when containers are collapsed, edges through them are properly
     // converted to hyperEdges and original edges are hidden
+    // CRITICAL: Only check VISIBLE collapsed containers, not hidden ones!
+    // Hidden containers are child containers that were recursively collapsed
+    // and their connectivity should be handled by their visible collapsed parent
     for (const [containerId, container] of this.state.containers) {
-      if (!container.collapsed) continue;
+      if (!container.collapsed || container.hidden) continue;
       
       const crossingEdges = this.state.getCrossingEdges(containerId);
       
       for (const crossingEdge of crossingEdges) {
         // CRITICAL: Only regular edges crossing collapsed containers should be hidden
         // HyperEdges are ALLOWED to cross collapsed containers - that's their purpose!
-        const isHyperEdge = crossingEdge.id.startsWith(HYPEREDGE_CONSTANTS.PREFIX);
+        const isHyperEdgeResult = isHyperEdge(crossingEdge);
         
-        if (!isHyperEdge && !crossingEdge.hidden) {
+        if (!isHyperEdgeResult && !crossingEdge.hidden) {
           violations.push({
             type: 'CROSSING_EDGE_NOT_HIDDEN',
             message: `Regular edge ${crossingEdge.id} crosses collapsed container ${containerId} but is not hidden`,
             entityId: crossingEdge.id,
             severity: 'error'
           });
+        }
+        
+        // CRITICAL: Skip hidden edges - they've already been processed and don't need hyperEdge representation
+        // Hidden edges either:
+        // 1. Have been replaced by hyperEdges, OR
+        // 2. Connect nodes that are both hidden inside collapsed containers
+        if (crossingEdge.hidden) {
+          continue;
         }
         
         // IMPROVED: Check if there's any hyperEdge that represents this connectivity
@@ -498,7 +510,7 @@ export class VisualizationStateInvariantValidator {
             type: 'MISSING_HYPEREDGE',
             message: `Edge ${crossingEdge.id} crosses collapsed container ${containerId} but no hyperEdge represents this connectivity`,
             entityId: crossingEdge.id,
-            severity: 'warning'
+            severity: 'error'
           });
         }
       }
