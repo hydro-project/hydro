@@ -172,6 +172,17 @@ export interface RenderConfig {
   enablePan?: boolean;
   enableSelection?: boolean;
   colorPalette?: string;
+  // Visual style overrides (non-layout)
+  edgeStyle?: 'bezier' | 'straight' | 'smoothstep';
+  edgeColor?: string;
+  edgeWidth?: number;
+  edgeDashed?: boolean;
+  nodeBorderRadius?: number;
+  nodePadding?: number;
+  nodeFontSize?: number;
+  containerBorderRadius?: number;
+  containerBorderWidth?: number;
+  containerShadow?: 'LIGHT' | 'MEDIUM' | 'LARGE' | 'NONE';
 }
 
 export interface FlowGraphEventHandlers {

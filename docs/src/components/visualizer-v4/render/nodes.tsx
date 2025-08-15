@@ -9,6 +9,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { getHandleConfig, CONTINUOUS_HANDLE_STYLE } from './handleConfig';
 import { generateNodeColors } from '../shared/colorUtils';
 import { truncateContainerName } from '../shared/textUtils';
+import { useStyleConfig } from './StyleConfigContext';
 
 /**
  * Render handles based on current configuration
@@ -67,6 +68,7 @@ function renderHandles() {
  * Standard graph node component
  */
 export function StandardNode({ id, data }: NodeProps) {
+  const styleCfg = useStyleConfig();
   // Get dynamic colors based on node type (preferred) or style as fallback
   const nodeType = String(data.nodeType || data.style || 'default');
   const colorPalette = String(data.colorPalette || 'Set3');
@@ -75,11 +77,11 @@ export function StandardNode({ id, data }: NodeProps) {
   return (
     <div
       style={{
-        padding: '12px 16px',
+        padding: `${styleCfg.nodePadding ?? 12}px 16px`,
         background: colors.primary,
         border: `1px solid ${colors.border}`,
-        borderRadius: '4px',
-        fontSize: '12px',
+        borderRadius: `${styleCfg.nodeBorderRadius ?? 4}px`,
+        fontSize: `${styleCfg.nodeFontSize ?? 12}px`,
         textAlign: 'center',
         minWidth: '120px',
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
@@ -96,6 +98,7 @@ export function StandardNode({ id, data }: NodeProps) {
  * Container node component with label positioned at bottom-right
  */
 export function ContainerNode({ id, data }: NodeProps) {
+  const styleCfg = useStyleConfig();
   // Use dimensions from ELK layout via ReactFlowBridge data
   const width = data.width || 180; // fallback to default
   const height = data.height || (data.collapsed ? 100 : 120); // fallback to default, taller for collapsed
@@ -166,8 +169,8 @@ export function ContainerNode({ id, data }: NodeProps) {
           width: `${width}px`,
           height: `${height}px`,
           background: containerColors.background,
-          border: `2px solid ${containerColors.border}`,
-          borderRadius: '8px',
+          border: `${styleCfg.containerBorderWidth ?? 2}px solid ${containerColors.border}`,
+          borderRadius: `${styleCfg.containerBorderRadius ?? 8}px`,
           position: 'relative',
           boxSizing: 'border-box',
           display: 'flex',
@@ -175,7 +178,10 @@ export function ContainerNode({ id, data }: NodeProps) {
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          boxShadow: styleCfg.containerShadow === 'NONE' ? 'none' :
+            styleCfg.containerShadow === 'LARGE' ? '0 10px 15px -3px rgba(0,0,0,0.2)' :
+            styleCfg.containerShadow === 'MEDIUM' ? '0 4px 6px -1px rgba(0,0,0,0.15)' :
+            '0 2px 8px rgba(0,0,0,0.15)',
           transition: 'all 0.2s ease'
         }}
       >
@@ -217,10 +223,10 @@ export function ContainerNode({ id, data }: NodeProps) {
   return (
     <div
       style={{
-        padding: '16px',
+  padding: `${Math.max((styleCfg.nodePadding ?? 12) + 4, 8)}px`,
         background: 'rgba(25, 118, 210, 0.1)',
-        border: '2px solid #1976d2',
-        borderRadius: '8px',
+  border: `${styleCfg.containerBorderWidth ?? 2}px solid #1976d2`,
+  borderRadius: `${styleCfg.containerBorderRadius ?? 8}px`,
         width: `${width}px`,  // Use ELK-calculated width
         height: `${height}px`, // Use ELK-calculated height (now includes label space)
         position: 'relative',

@@ -73,6 +73,7 @@ export { default as FileDropZone } from './components/FileDropZone';
  * UI Control components
  */
 export { LayoutControls } from './components/LayoutControls';
+export { StyleTunerPanel } from './components/StyleTunerPanel';
 export { InfoPanel } from './components/InfoPanel';
 export { GroupingControls } from './components/GroupingControls';
 export { Legend } from './components/Legend';

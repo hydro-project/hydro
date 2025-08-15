@@ -5,40 +5,53 @@
  */
 
 import React from 'react';
-import { BaseEdge, EdgeProps, getStraightPath, getBezierPath } from '@xyflow/react';
+import { BaseEdge, EdgeProps, getStraightPath, getBezierPath, getSmoothStepPath } from '@xyflow/react';
 import FloatingEdge from './FloatingEdge';
+import { useStyleConfig } from './StyleConfigContext';
 
 /**
  * Standard graph edge component - uses ReactFlow's automatic routing
  */
 export function StandardEdge(props: EdgeProps) {
-  // Use ReactFlow's automatic routing for consistent coordinate system
-  console.log(`[StandardEdge] DEBUG Edge ${props.id}:`, {
-    sourceX: props.sourceX,
-    sourceY: props.sourceY,
-    targetX: props.targetX,
-    targetY: props.targetY,
-    sourcePosition: props.sourcePosition,
-    targetPosition: props.targetPosition
-  });
-  
-  // Try Bezier path for better edge routing
-  const [edgePath] = getBezierPath({
-    sourceX: props.sourceX,
-    sourceY: props.sourceY,
-    targetX: props.targetX,
-    targetY: props.targetY,
-    sourcePosition: props.sourcePosition,
-    targetPosition: props.targetPosition,
-  });
+  const styleCfg = useStyleConfig();
 
-  console.log(`[StandardEdge] Generated path for ${props.id}: ${edgePath}`);
+  let edgePath: string;
+  if (styleCfg.edgeStyle === 'straight') {
+    [edgePath] = getStraightPath({
+      sourceX: props.sourceX,
+      sourceY: props.sourceY,
+      targetX: props.targetX,
+      targetY: props.targetY,
+    });
+  } else if (styleCfg.edgeStyle === 'smoothstep') {
+    [edgePath] = getSmoothStepPath({
+      sourceX: props.sourceX,
+      sourceY: props.sourceY,
+      targetX: props.targetX,
+      targetY: props.targetY,
+      sourcePosition: props.sourcePosition,
+      targetPosition: props.targetPosition,
+    });
+  } else {
+    [edgePath] = getBezierPath({
+      sourceX: props.sourceX,
+      sourceY: props.sourceY,
+      targetX: props.targetX,
+      targetY: props.targetY,
+      sourcePosition: props.sourcePosition,
+      targetPosition: props.targetPosition,
+    });
+  }
 
   return (
     <BaseEdge
       path={edgePath}
       markerEnd={props.markerEnd}
-      style={{ stroke: '#1976d2', strokeWidth: 2 }}
+      style={{ 
+        stroke: styleCfg.edgeColor || '#1976d2', 
+        strokeWidth: styleCfg.edgeWidth ?? 2,
+        strokeDasharray: styleCfg.edgeDashed ? '6,6' : undefined
+      }}
     />
   );
 }
@@ -47,6 +60,8 @@ export function StandardEdge(props: EdgeProps) {
  * HyperEdge component
  */
 export function HyperEdge(props: EdgeProps) {
+  const styleCfg = useStyleConfig();
+
   const [edgePath] = getStraightPath({
     sourceX: props.sourceX,
     sourceY: props.sourceY,
@@ -59,9 +74,9 @@ export function HyperEdge(props: EdgeProps) {
       path={edgePath}
       markerEnd={props.markerEnd}
       style={{ 
-        stroke: '#ff5722', 
-        strokeWidth: 3, 
-        strokeDasharray: '5,5' 
+        stroke: styleCfg.edgeColor || '#ff5722', 
+        strokeWidth: (styleCfg.edgeWidth ?? 3), 
+        strokeDasharray: styleCfg.edgeDashed ? '5,5' : '5,5' 
       }}
     />
   );

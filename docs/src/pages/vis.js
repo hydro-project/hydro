@@ -42,12 +42,25 @@ function VisV4Component() {
   const [EDGE_STYLES, setEdgeStyles] = React.useState(null);
   const [InfoPanel, setInfoPanel] = React.useState(null);
   const [LayoutControls, setLayoutControls] = React.useState(null);
+  const [StyleTunerPanel, setStyleTunerPanel] = React.useState(null);
   const [FileDropZone, setFileDropZone] = React.useState(null);
   const [groupingOptions, setGroupingOptions] = React.useState([]);
   const [currentGrouping, setCurrentGrouping] = React.useState(null);
   const [colorPalette, setColorPalette] = React.useState('Set3');
   const [layoutAlgorithm, setLayoutAlgorithm] = React.useState('mrtree');
   const [autoFit, setAutoFit] = React.useState(true);
+  const [styleConfig, setStyleConfig] = React.useState({
+    edgeStyle: 'bezier',
+    edgeColor: '#1976d2',
+    edgeWidth: 2,
+    edgeDashed: false,
+    nodeBorderRadius: 4,
+    nodePadding: 12,
+    nodeFontSize: 12,
+    containerBorderRadius: 8,
+    containerBorderWidth: 2,
+    containerShadow: 'LIGHT'
+  });
   const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [currentVisualizationState, setCurrentVisualizationState] = React.useState(null);
@@ -84,6 +97,7 @@ function VisV4Component() {
         const InfoPanelModule = await import('@site/src/components/visualizer-v4/components/InfoPanel.tsx');
         
         const LayoutControlsModule = await import('@site/src/components/visualizer-v4/components/LayoutControls.tsx');
+  const StyleTunerPanelModule = await import('@site/src/components/visualizer-v4/components/StyleTunerPanel.tsx');
         
         const FileDropZoneModule = await import('@site/src/components/visualizer-v4/components/FileDropZone.tsx');
         
@@ -96,6 +110,7 @@ function VisV4Component() {
         setEdgeStyles(configModule.EDGE_STYLES);
         setInfoPanel(() => InfoPanelModule.InfoPanel);
         setLayoutControls(() => LayoutControlsModule.LayoutControls);
+  setStyleTunerPanel(() => StyleTunerPanelModule.StyleTunerPanel);
         setFileDropZone(() => FileDropZoneModule.default);
         // Don't load grouping options here - wait until we have graph data
         setLoading(false);
@@ -807,7 +822,17 @@ function VisV4Component() {
                   }}
                   config={{
                     fitView: autoFit,
-                    colorPalette: colorPalette
+                    colorPalette: colorPalette,
+                    edgeStyle: styleConfig.edgeStyle,
+                    edgeColor: styleConfig.edgeColor,
+                    edgeWidth: styleConfig.edgeWidth,
+                    edgeDashed: styleConfig.edgeDashed,
+                    nodeBorderRadius: styleConfig.nodeBorderRadius,
+                    nodePadding: styleConfig.nodePadding,
+                    nodeFontSize: styleConfig.nodeFontSize,
+                    containerBorderRadius: styleConfig.containerBorderRadius,
+                    containerBorderWidth: styleConfig.containerBorderWidth,
+                    containerShadow: styleConfig.containerShadow
                   }}
                   // onLayoutComplete={() => console.log('Layout complete!')}
                   onError={(err) => {
@@ -821,6 +846,13 @@ function VisV4Component() {
                 />
               )}
             </div>
+
+            {/* Style Tuner Panel */}
+            {StyleTunerPanel && (
+              <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 1500, width: 320 }}>
+                <StyleTunerPanel value={styleConfig} onChange={setStyleConfig} />
+              </div>
+            )}
             
             {/* Layout operation loading overlay */}
             {isLayoutRunning && (

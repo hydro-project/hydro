@@ -12,6 +12,7 @@ import { ReactFlowConverter } from './ReactFlowConverter';
 import { DEFAULT_RENDER_CONFIG } from './config';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
+import { StyleConfigProvider } from './StyleConfigContext';
 import type { VisualizationState } from '../core/VisualizationState';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';
 import type { RenderConfig, FlowGraphEventHandlers, LayoutConfig } from '../core/types';
@@ -455,6 +456,18 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
 
   // Main ReactFlow render
   return (
+    <StyleConfigProvider value={{
+      edgeStyle: config.edgeStyle,
+      edgeColor: config.edgeColor,
+      edgeWidth: config.edgeWidth,
+      edgeDashed: config.edgeDashed,
+      nodeBorderRadius: config.nodeBorderRadius,
+      nodePadding: config.nodePadding,
+      nodeFontSize: config.nodeFontSize,
+      containerBorderRadius: config.containerBorderRadius,
+      containerBorderWidth: config.containerBorderWidth,
+      containerShadow: config.containerShadow
+    }}>
     <div className={className} style={{ width: '100%', height: '100%', ...style }}>
       <ReactFlow
         nodes={reactFlowData?.nodes || []}
@@ -504,7 +517,8 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
           🔄 Updating...
         </div>
       )}
-    </div>
+  </div>
+  </StyleConfigProvider>
   );
 });
 
