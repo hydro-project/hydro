@@ -55,10 +55,9 @@ export interface GraphEdge {
   id: string;
   source: string;
   target: string;
-  style: EdgeStyle;
-  hidden: boolean;
-  layout?: LayoutState; // Layout-related properties (for routing points)
-  [key: string]: any; // Allow custom properties
+  style?: EdgeStyle | string;
+  hidden?: boolean;
+  type: 'graph';
 }
 
 export interface Container {
@@ -76,7 +75,7 @@ export interface HyperEdge {
   source: string;
   target: string;
   style: EdgeStyle;
-  aggregatedEdges: GraphEdge[];
+  type: 'hyper';
   [key: string]: any; // Allow custom properties
 }
 

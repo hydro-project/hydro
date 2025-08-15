@@ -91,11 +91,14 @@ describe('Aggregated Edge Preservation', () => {
     const container1Children = visState.getContainerChildren('container1');
     console.log(`  - Container1 children: ${Array.from(container1Children || []).join(', ')}`);
     
-    // Debug: Check crossing edges
-    const crossingEdges = visState._containerOperations.getCrossingEdges('container1');
-    console.log(`  - Crossing edges for container1: ${crossingEdges.length}`);
-    for (const edge of crossingEdges) {
-      console.log(`    * ${edge.id}: ${edge.source} -> ${edge.target}`);
+    // Debug: Check aggregated edges using new CoveredEdgesIndex
+    const aggregatedEdges = visState.getAggregatedEdges('container1');
+    console.log(`  - Aggregated edges for container1: ${aggregatedEdges.size}`);
+    for (const edgeId of aggregatedEdges) {
+      const edge = visState.getGraphEdge(edgeId);
+      if (edge) {
+        console.log(`    * ${edge.id}: ${edge.source} -> ${edge.target}`);
+      }
     }
     
     visState._containerOperations.handleContainerCollapse('container1');

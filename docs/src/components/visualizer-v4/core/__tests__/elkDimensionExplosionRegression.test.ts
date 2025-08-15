@@ -89,9 +89,9 @@ describe('ELK Dimension Explosion Bug - Regression Tests', () => {
         visState.setGraphNode(inner2NodeId, { label: `Inner2 Node ${i}`, hidden: false });
       }
 
-      // Create collapsed containers - all children should be immediately hidden
+      // Create expanded containers first - this is the natural initialization flow
       visState.setContainer('inner_container_1', {
-        collapsed: true,
+        collapsed: false,
         hidden: false,
         children: inner1Nodes,
         width: 250,
@@ -99,7 +99,7 @@ describe('ELK Dimension Explosion Bug - Regression Tests', () => {
       });
 
       visState.setContainer('inner_container_2', {
-        collapsed: true,
+        collapsed: false,
         hidden: false,
         children: inner2Nodes,
         width: 250,
@@ -107,15 +107,36 @@ describe('ELK Dimension Explosion Bug - Regression Tests', () => {
       });
 
       visState.setContainer('outer_container', {
-        collapsed: true,
+        collapsed: false,
         hidden: false,
         children: [...outerNodes, 'inner_container_1', 'inner_container_2'],
         width: 300,
         height: 200
       });
 
-      // All 45 nodes should be hidden
-      const visibleNodes = visState.visibleNodes;
+      // Verify initial state - all nodes should be visible when everything is expanded
+      let visibleNodes = visState.visibleNodes;
+      expect(visibleNodes).toHaveLength(45); // All 45 nodes visible when expanded
+
+      // Now properly collapse containers using the collapseContainer method
+      console.log('[TEST] Collapsing inner containers...');
+      visState.collapseContainer('inner_container_1');
+      visState.collapseContainer('inner_container_2');
+      
+      // After collapsing inner containers, their children should be hidden
+      visibleNodes = visState.visibleNodes;
+      expect(visibleNodes).toHaveLength(15); // Only outerNodes should be visible now
+
+      // Finally collapse the outer container
+      console.log('[TEST] Collapsing outer container...');
+      visState.collapseContainer('outer_container');
+
+      // Finally collapse the outer container
+      console.log('[TEST] Collapsing outer container...');
+      visState.collapseContainer('outer_container');
+
+      // All 45 nodes should now be hidden (cascaded collapse)
+      visibleNodes = visState.visibleNodes;
       expect(visibleNodes).toHaveLength(0);
 
       // Only the outer collapsed container should be visible as a node

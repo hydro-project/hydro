@@ -8,7 +8,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { createVisualizationState, VisualizationState } from '../VisualizationState';
-import { isHyperEdge } from '../operations/ContainerOperations';
+import { isHyperEdge } from '../types';
 
 describe('Container Collapse/Expand Tests', () => {
   /**

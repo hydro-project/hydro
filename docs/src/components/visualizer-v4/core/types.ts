@@ -1,7 +1,13 @@
 /**
  * @fileoverview Bridge Architecture Types
- * 
- * Clean type definitions for our bridge-based implementation.
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  style?: EdgeStyle | string;
+  hidden?: boolean;
+  type: 'graph';
+}Clean type definitions for our bridge-based implementation.
  * No dependencies on alpha.
  */
 
@@ -30,6 +36,7 @@ export interface GraphNode {
 }
 
 export interface GraphEdge {
+  type: 'graph';
   id: string;
   source: string;
   target: string;
@@ -50,8 +57,9 @@ export interface HyperEdge {
   source: string;
   target: string;
   style?: EdgeStyle | string;
-  aggregatedEdges: Map<string, GraphEdge>;
   hidden?: boolean;
+  type: 'hyper';
+  aggregatedEdges?: Map<string, GraphEdge>;
 }
 
 // Union type for all edge types
@@ -59,11 +67,11 @@ export type Edge = GraphEdge | HyperEdge;
 
 // Type guards for distinguishing edge types
 export function isHyperEdge(edge: Edge): edge is HyperEdge {
-  return 'aggregatedEdges' in edge;
+  return edge.type === 'hyper';
 }
 
 export function isGraphEdge(edge: Edge): edge is GraphEdge {
-  return !('aggregatedEdges' in edge);
+  return edge.type === 'graph';
 }
 
 // Creation props for builder pattern

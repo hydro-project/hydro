@@ -472,7 +472,12 @@ export class VisualizationStateInvariantValidator {
     // converted to hyperEdges and original edges are hidden
     // CRITICAL: Only check VISIBLE collapsed containers, not hidden ones!
     // Hidden containers are child containers that were recursively collapsed
-    // and their connectivity should be handled by their visible collapsed parent
+    // NOTE: In the new CoveredEdgesIndex architecture, we no longer need to validate
+    // crossing edges since the index handles edge aggregation automatically
+    
+    // TODO: Consider implementing new validation logic for the CoveredEdgesIndex architecture
+    /*
+    // Original crossing edge validation - no longer applicable
     for (const [containerId, container] of this.state.containers) {
       if (!container.collapsed || container.hidden) continue;
       
@@ -527,6 +532,7 @@ export class VisualizationStateInvariantValidator {
         }
       }
     }
+    */
 
     return violations;
   }

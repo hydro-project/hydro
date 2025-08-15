@@ -28,6 +28,7 @@ import { VisualizationStateInvariantValidator } from './validation/Visualization
 import { ValidationConfigs, wrapPublicMethods } from './validation/ValidationWrapper';
 import { ContainerOperations } from './operations/ContainerOperations';
 import { VisibilityManager } from './operations/VisibilityManager';
+import { CoveredEdgesIndex } from './CoveredEdgesIndex';
 import { LayoutOperations } from './operations/LayoutOperations';
 import { BridgeCompatibility } from './compatibility/BridgeCompatibility';
 
@@ -109,6 +110,9 @@ export class VisualizationState implements ContainerHierarchyView {
   public _validationEnabled = true;
   public _validationLevel: 'strict' | 'normal' | 'minimal' | 'silent' = 'normal';
 
+  // Covered edges index for efficient aggregated edge queries
+  private _coveredEdgesIndex: CoveredEdgesIndex | null = null;
+
   // ============ PROTECTED ACCESSORS (Internal use only) ============
   // These provide controlled access to collections for internal methods
   
@@ -163,13 +167,6 @@ export class VisualizationState implements ContainerHierarchyView {
       // Internal operations called by public APIs - skip validation to prevent duplicate checks
       'setNodeVisibility': ValidationConfigs.INTERNAL,
       'setEdgeVisibility': ValidationConfigs.INTERNAL,
-      
-      // Read-only APIs - no validation needed (performance)
-      'getVisibleNodes': ValidationConfigs.GETTER,
-      'getVisibleEdges': ValidationConfigs.GETTER,
-      'getVisibleContainers': ValidationConfigs.GETTER,
-      'getExpandedContainers': ValidationConfigs.GETTER,
-      'getCrossingEdges': ValidationConfigs.GETTER,
       
       // Legacy compatibility methods - validate after
       'setGraphNode': ValidationConfigs.MUTATOR,
@@ -294,6 +291,49 @@ export class VisualizationState implements ContainerHierarchyView {
     return this._collections.nodeContainers.get(nodeId);
   }
 
+  // ============ COVERED EDGES INDEX API ============
+  
+  /**
+   * Build/rebuild the covered edges index
+   * Call this after hierarchy changes (adding/removing containers or changing parent-child relationships)
+   */
+  buildCoveredEdgesIndex(): void {
+    if (!this._coveredEdgesIndex) {
+      this._coveredEdgesIndex = new CoveredEdgesIndex();
+    }
+    this._coveredEdgesIndex.initialize(
+      this._collections.containers,
+      this._collections.graphEdges,
+      this._collections.containerChildren,
+      this._collections.nodeContainers
+    );
+  }
+
+  /**
+   * Get all edges that would be aggregated by a given container or hyperEdge
+   * This replaces the complex aggregatedEdges tracking in hyperEdges
+   */
+  getAggregatedEdges(entityId: string): ReadonlySet<string> {
+    if (!this._coveredEdgesIndex) {
+      this.buildCoveredEdgesIndex();
+    }
+    
+    const coveredEdgeIds = this._coveredEdgesIndex!.getCoveredEdges(entityId);
+    return coveredEdgeIds;
+  }  /**
+   * Check if the covered edges index needs rebuilding
+   */
+  isCoveredEdgesIndexStale(): boolean {
+    return this._coveredEdgesIndex === null;
+  }
+
+  /**
+   * Invalidate the covered edges index (call this when hierarchy changes)
+   */
+  invalidateCoveredEdgesIndex(): void {
+    this._coveredEdgesIndex = null;
+  }
+
   // ============ LAYOUT API (Delegate to LayoutOperations) ============
   
   getAllManualPositions(): Map<string, { x: number; y: number }> {
@@ -407,6 +447,9 @@ export class VisualizationState implements ContainerHierarchyView {
     
     // Update edge mappings if needed
     this._collections.nodeToEdges.set(nodeId, new Set());
+    
+    // Invalidate covered edges index since graph structure changed
+    this.invalidateCoveredEdgesIndex();
   }
   
   /**
@@ -428,6 +471,11 @@ export class VisualizationState implements ContainerHierarchyView {
     const targetSet = this._collections.nodeToEdges.get(edgeData.target) || new Set();
     targetSet.add(edgeId);
     this._collections.nodeToEdges.set(edgeData.target, targetSet);
+    
+    // Update CoveredEdgesIndex if it exists
+    if (this._coveredEdgesIndex) {
+      this._coveredEdgesIndex.addEdge(edgeId, processedData, this._collections.nodeContainers);
+    }
     
     // Update visibility cache if edge should be visible
     const sourceExists = this._isEndpointVisible(edgeData.source);
@@ -469,17 +517,20 @@ export class VisualizationState implements ContainerHierarchyView {
       }
     }
     
-    // Handle state transitions
+    // Handle state transitions and cascading
     const isNowCollapsed = processedData.collapsed === true;
     const isNowExpanded = processedData.collapsed === false;
     
-    if (!wasCollapsed && isNowCollapsed) {
-      // Container is being collapsed
+    if (isNowCollapsed && (!wasCollapsed || !existingContainer)) {
+      // Container is being collapsed (either transition or added as collapsed)
       this.containerOps.handleContainerCollapse(containerId);
     } else if (wasCollapsed && isNowExpanded) {
       // Container is being expanded
       // this.containerOps.handleContainerExpansion(containerId);
     }
+    
+    // Invalidate covered edges index since hierarchy changed
+    this.invalidateCoveredEdgesIndex();
   }
 
   // ============ CONTROLLED STATE MUTATION API ============
@@ -643,8 +694,8 @@ export class VisualizationState implements ContainerHierarchyView {
       throw new Error(`Cannot expand non-existent container: ${containerId}`);
     }
     
-    // Use the recursive container operations method
-    this.containerOps.handleContainerExpansionRecursive(containerId);
+    // Use the container operations method
+    this.containerOps.handleContainerExpansion(containerId);
     
     // Update all affected containers' collapsed state
     this._updateCollapsedStateRecursive(containerId, false);
@@ -770,13 +821,6 @@ export class VisualizationState implements ContainerHierarchyView {
   }
 
   // ============ CORE CONTAINER OPERATIONS (Direct access) ============
-
-  /**
-   * Get crossing edges for a container (core container operation)
-   */
-  getCrossingEdges(containerId: string): any[] {
-    return this.containerOps.getCrossingEdges(containerId);
-  }
 
   // ============ MINIMAL COMPATIBILITY METHODS ============
 
@@ -976,6 +1020,14 @@ export class VisualizationState implements ContainerHierarchyView {
       
       this.setEdgeVisibility(edgeId as string, shouldBeVisible);
     }
+  }
+
+  /**
+   * Get crossing edges for a container
+   * A crossing edge is one where exactly one endpoint is inside the container
+   */
+  getCrossingEdges(containerId: string): GraphEdge[] {
+    return this.containerOps.getCrossingEdges(containerId);
   }
 
   /**

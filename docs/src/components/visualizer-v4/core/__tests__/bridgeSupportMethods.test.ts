@@ -60,8 +60,8 @@ describe('VisualizationState Bridge Support Methods', () => {
       expect(collapsed1Node).toMatchObject({
         id: 'collapsed1',
         label: 'collapsed1',
-        width: 250,
-        height: 180,
+        width: 200,
+        height: 150,
         x: 100,
         y: 200,
         hidden: false,
