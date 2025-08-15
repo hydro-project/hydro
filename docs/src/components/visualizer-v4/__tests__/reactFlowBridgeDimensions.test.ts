@@ -22,14 +22,13 @@ describe('ReactFlowBridge Dimensions Fix', () => {
   it('should correctly use ELK-calculated dimensions in ReactFlow conversion', async () => {
     // // console.log((('\n=== Testing ReactFlowBridge Dimensions Fix ===')));
 
-    // 1. Create a simple hierarchy with containers using fluent API
-    visState
-      .setGraphNode('node1', { label: 'Node 1', style: 'default' })
-      .setGraphNode('node2', { label: 'Node 2', style: 'default' })
-      .setGraphNode('node3', { label: 'Node 3', style: 'default' })
-      .setContainer('container1', { children: ['node1', 'node2'], collapsed: false })
-      .setGraphEdge('edge1', { source: 'node1', target: 'node2' })
-      .setGraphEdge('edge2', { source: 'node2', target: 'node3' });
+    // 1. Create a simple hierarchy with containers using official API
+    visState.addGraphNode('node1', { label: 'Node 1', style: 'default' });
+    visState.addGraphNode('node2', { label: 'Node 2', style: 'default' });
+    visState.addGraphNode('node3', { label: 'Node 3', style: 'default' });
+    visState.addContainer('container1', { children: ['node1', 'node2'], collapsed: false });
+    visState.addGraphEdge('edge1', { source: 'node1', target: 'node2' });
+    visState.addGraphEdge('edge2', { source: 'node2', target: 'node3' });
 
     // // console.log((('✅ Created test data with 1 container containing 2 nodes')));
 
@@ -90,19 +89,19 @@ describe('ReactFlowBridge Dimensions Fix', () => {
     // // console.log((('\n=== Testing Multiple Container Dimensions ===')));
 
     // Create containers with different numbers of children (should get different sizes)
-    visState
-      .setGraphNode('node1', { label: 'Node 1', style: 'default' })
-      .setGraphNode('node2', { label: 'Node 2', style: 'default' })
-      .setGraphNode('node3', { label: 'Node 3', style: 'default' })
-      .setGraphNode('node4', { label: 'Node 4', style: 'default' })
-      .setGraphNode('node5', { label: 'Node 5', style: 'default' })
-      // Small container with 2 nodes
-      .setContainer('small_container', { children: ['node1', 'node2'], collapsed: false })
-      // Large container with 3 nodes  
-      .setContainer('large_container', { children: ['node3', 'node4', 'node5'], collapsed: false })
-      .setGraphEdge('edge1', { source: 'node1', target: 'node2' })
-      .setGraphEdge('edge2', { source: 'node3', target: 'node4' })
-      .setGraphEdge('edge3', { source: 'node4', target: 'node5' });
+    visState.addGraphNode('node1', { label: 'Node 1', style: 'default' });
+    visState.addGraphNode('node2', { label: 'Node 2', style: 'default' });
+    visState.addGraphNode('node3', { label: 'Node 3', style: 'default' });
+    visState.addGraphNode('node4', { label: 'Node 4', style: 'default' });
+    visState.addGraphNode('node5', { label: 'Node 5', style: 'default' });
+    
+    // Small container with 2 nodes
+    visState.addContainer('small_container', { children: ['node1', 'node2'], collapsed: false });
+    // Large container with 3 nodes
+    visState.addContainer('large_container', { children: ['node3', 'node4', 'node5'], collapsed: false });
+    visState.addGraphEdge('edge1', { source: 'node1', target: 'node2' });
+    visState.addGraphEdge('edge2', { source: 'node3', target: 'node4' });
+    visState.addGraphEdge('edge3', { source: 'node4', target: 'node5' });
 
     // Run ELK layout
     await elkBridge.layoutVisState(visState);
