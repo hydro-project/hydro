@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["REACTFLOW_TEMPLATE"],"fn":["get_template"]};
