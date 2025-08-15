@@ -360,6 +360,7 @@ export class ReactFlowBridge {
           label: (container as any).label || container.id,
           style: (container as any).style || 'default',
           collapsed: container.collapsed,
+          colorPalette: this.colorPalette,
           width,
           height,
           nodeCount: nodeCount

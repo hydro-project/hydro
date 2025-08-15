@@ -116,6 +116,15 @@ export const COMPONENT_COLORS = {
 };
 
 export const COLOR_PALETTES = {
+  Set2: [
+    { primary: '#66c2a5', secondary: '#e0f2ef', name: 'Teal Green' },
+    { primary: '#fc8d62', secondary: '#ffe1d6', name: 'Soft Orange' },
+    { primary: '#8da0cb', secondary: '#e6e9f5', name: 'Dusty Blue' },
+    { primary: '#e78ac3', secondary: '#fbe1f2', name: 'Pink Purple' },
+    { primary: '#a6d854', secondary: '#eef8d9', name: 'Lime Green' },
+    { primary: '#ffd92f', secondary: '#fff6bf', name: 'Soft Yellow' },
+    { primary: '#e5c494', secondary: '#f6ebd9', name: 'Tan' }
+  ],
   Set3: [
     { primary: '#8dd3c7', secondary: '#ffffb3', name: 'Light Teal' },
     { primary: '#bebada', secondary: '#fb8072', name: 'Light Purple' },

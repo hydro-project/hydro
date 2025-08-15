@@ -191,7 +191,21 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   // Listen to config changes (including color palette)
   useEffect(() => {
     if (config && converter && config.colorPalette) {
+      // Update converter palette for future conversions
       converter.setColorPalette(config.colorPalette);
+
+      // Also update existing reactFlowData to reflect palette immediately without re-layout
+      setReactFlowData(prev => {
+        if (!prev) return prev;
+        const updatedNodes = prev.nodes.map(n => ({
+          ...n,
+          data: {
+            ...n.data,
+            colorPalette: config.colorPalette
+          }
+        }));
+        return { ...prev, nodes: updatedNodes };
+      });
     }
   }, [config?.colorPalette, converter]); // Only depend on the specific colorPalette value
 
