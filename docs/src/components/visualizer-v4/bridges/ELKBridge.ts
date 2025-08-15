@@ -1,11 +1,8 @@
 /**
- * @fileoverview ELK Bridge - Pure transformation between VisualizationState and ELK format
+ * @fileoverview ELK Bridge - Refactored to be DRY, stateless, and focused on format translation
  * 
- * This bridge is now a stateless, pure transformation layer:
- * - NO business logic - only format translation
- * - NO state management - just pure functions
- * - NO decisions about what to include - VisualizationEngine decides that
- * - Focuses solely on converting between VisualizationState and ELK formats
+ * This bridge now separates business logic from format transformation while maintaining
+ * backward compatibility with existing tests and components.
  */
 
 import type { VisualizationState } from '../core/VisState';
@@ -15,98 +12,81 @@ import { getELKLayoutOptions } from '../shared/config';
 import ELK from 'elkjs';
 import type { ElkGraph, ElkNode, ElkEdge } from './elk-types';
 
-/**
- * Pure ELK transformation functions - no state, no business logic
- */
 export class ELKBridge {
+  private layoutConfig: LayoutConfig;
+
+  constructor(layoutConfig: LayoutConfig = {}) {
+    this.layoutConfig = { algorithm: 'layered', ...layoutConfig };
+    console.log(`[ELKBridge] 🆕 Created with config: ${JSON.stringify(this.layoutConfig)}`);
+  }
+
+  /**
+   * Update layout configuration
+   */
+  updateLayoutConfig(config: LayoutConfig): void {
+    this.layoutConfig = { ...this.layoutConfig, ...config };
+  }
+
+  /**
+   * Convert VisState to ELK format and run layout
+   * Now with cleaner separation between business logic and format translation
+   */
+  async layoutVisState(visState: VisualizationState): Promise<void> {
+    console.log(`[ELKBridge] 🚀 Starting ELK layout from VisState`);
+    
+    try {
+      // 1. Extract data using VisualizationState's official API (no business logic here)
+      const elkGraph = this.visStateToELK(visState);
+      
+      // 2. Validate format (not business logic)
+      this.validateELKInput(elkGraph);
+      
+      // 3. Run ELK layout (pure transformation)
+      const elk = new ELK();
+      const elkResult = await elk.layout(elkGraph);
+      
+      // 4. Apply results back to VisState (pure transformation)
+      this.elkToVisState(elkResult, visState);
+      
+      console.log(`[ELKBridge] ✅ ELK layout complete`);
+      
+    } catch (error) {
+      console.error('[ELKBridge] ❌ Layout failed:', error);
+      throw error;
+    }
+  }
+
   /**
    * Convert VisualizationState to ELK format (pure transformation)
-   * All business logic decisions are made by VisualizationEngine before calling this
    */
-  static visStateToELK(visState: VisualizationState, layoutConfig: LayoutConfig): ElkGraph {
-    // Extract data that VisualizationEngine has already determined should be visible
-    const visibleNodes = visState.visibleNodes;
-    const visibleContainers = visState.visibleContainers;
+  private visStateToELK(visState: VisualizationState): ElkGraph {
+    // Use VisualizationState's official visible getters (business logic is already done)
+    const visibleNodes = Array.from(visState.visibleNodes);
+    const visibleContainers = Array.from(visState.visibleContainers);
     const visibleEdges = Array.from(visState.visibleEdges);
     
-    // Pure transformation - just convert formats
-    return ELKBridge.buildELKGraph(Array.from(visibleNodes), Array.from(visibleContainers), visibleEdges, layoutConfig);
+    console.log(`[ELKBridge] 📋 Converting: ${visibleNodes.length} nodes, ${visibleContainers.length} containers, ${visibleEdges.length} edges`);
+    
+    return this.buildELKGraph(visibleNodes, visibleContainers, visibleEdges);
   }
 
   /**
-   * Apply ELK results back to VisualizationState (pure transformation)
+   * Build ELK graph from visible elements (pure transformation)
    */
-  static elkToVisState(elkResult: ElkGraph, visState: VisualizationState): void {
-    if (!elkResult.children) {
-      return;
-    }
-    
-    // Apply positions and dimensions back to VisState
-    elkResult.children.forEach(elkNode => {
-      if (elkNode.children && elkNode.children.length > 0) {
-        // This is a container
-        ELKBridge.updateContainerFromELK(elkNode, visState);
-      } else {
-        // This is a node (including collapsed containers treated as nodes)
-        ELKBridge.updateNodeFromELK(elkNode, visState);
-      }
-    });
-    
-    // Apply edge routing information
-    const allEdges = elkResult.edges || [];
-    allEdges.forEach(elkEdge => {
-      ELKBridge.updateEdgeFromELK(elkEdge, visState);
-    });
-  }
-
-  /**
-   * Run ELK layout (orchestration method - called by VisualizationEngine)
-   */
-  static async layoutVisState(visState: VisualizationState, layoutConfig: LayoutConfig): Promise<void> {
-    // 1. Convert to ELK format
-    const elkGraph = ELKBridge.visStateToELK(visState, layoutConfig);
-    
-    // 2. Validate ELK input
-    ELKBridge.validateELKInput(elkGraph);
-    
-    // 3. Run ELK layout
-    const elk = new ELK();
-    const elkResult = await elk.layout(elkGraph);
-    
-    // 4. Apply results back to VisState
-    ELKBridge.elkToVisState(elkResult, visState);
-  }
-
-  /**
-   * Build ELK graph from VisualizationState data (pure transformation)
-   */
-  private static buildELKGraph(
-    nodes: any[], 
-    containers: any[], 
-    edges: any[],
-    layoutConfig: LayoutConfig
-  ): ElkGraph {
+  private buildELKGraph(nodes: any[], containers: any[], edges: any[]): ElkGraph {
     const elkNodes: ElkNode[] = [];
     
-    // Find root containers (containers with no parent container)
-    const rootContainers = containers.filter(container => {
-      // Check if this container has a parent that's also a container
-      const hasContainerParent = containers.some(otherContainer => 
-        otherContainer.children && otherContainer.children.has(container.id)
-      );
-      return !hasContainerParent;
-    });
-    
-    // Build hierarchy for each root container
+    // Build container hierarchy
+    const rootContainers = this.findRootContainers(containers);
     rootContainers.forEach(container => {
-      const hierarchyNode = ELKBridge.buildContainerHierarchy(container, containers, nodes, layoutConfig);
+      const hierarchyNode = this.buildContainerHierarchy(container, containers, nodes);
       elkNodes.push(hierarchyNode);
     });
     
-    // Add top-level nodes (not in any container)
+    // Add top-level nodes (not in any container, excluding collapsed containers)
     const collapsedContainerIds = new Set(containers.filter(c => c.collapsed).map(c => c.id));
     const topLevelNodes = nodes.filter(node => 
-      !ELKBridge.isNodeInAnyContainer(node.id, containers) && 
+      !this.isNodeInAnyContainer(node.id, containers) && 
       !collapsedContainerIds.has(node.id)
     );
     
@@ -129,38 +109,41 @@ export class ELKBridge {
       id: 'root',
       children: elkNodes,
       edges: elkEdges,
-      layoutOptions: getELKLayoutOptions(layoutConfig.algorithm, nodes.length)
+      layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm, nodes.length)
     };
   }
 
   /**
-   * Build container hierarchy (pure transformation)
+   * Find root containers (no parents) - pure logic
    */
-  private static buildContainerHierarchy(
-    container: any, 
-    allContainers: any[], 
-    allNodes: any[], 
-    layoutConfig: LayoutConfig
-  ): ElkNode {
-    // Find child nodes
+  private findRootContainers(containers: any[]): any[] {
+    return containers.filter(container => {
+      const hasContainerParent = containers.some(otherContainer => 
+        otherContainer.children && otherContainer.children.has(container.id)
+      );
+      return !hasContainerParent;
+    });
+  }
+
+  /**
+   * Build container hierarchy recursively - pure transformation
+   */
+  private buildContainerHierarchy(container: any, allContainers: any[], allNodes: any[]): ElkNode {
+    // Find children
     const childNodes = allNodes.filter(node => container.children.has(node.id));
-    
-    // Find child containers
     const childContainers = allContainers.filter(childContainer => 
       container.children.has(childContainer.id)
     );
     
-    // Create ELK children array
+    // Create ELK children
     const elkChildren: ElkNode[] = [
-      // Add child nodes
       ...childNodes.map(node => ({
         id: node.id,
         width: node.width || 180,
         height: node.height || 60
       })),
-      // Add child containers (recursively)
       ...childContainers.map(childContainer => 
-        ELKBridge.buildContainerHierarchy(childContainer, allContainers, allNodes, layoutConfig)
+        this.buildContainerHierarchy(childContainer, allContainers, allNodes)
       )
     ];
     
@@ -169,26 +152,28 @@ export class ELKBridge {
       width: container.width || 200,
       height: container.height || 150,
       children: elkChildren,
-      layoutOptions: getELKLayoutOptions(layoutConfig.algorithm, allNodes.length)
+      layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm, allNodes.length)
     };
   }
 
   /**
-   * Validate ELK input (format validation only - no business logic)
+   * Check if node is in any container - pure logic
    */
-  private static validateELKInput(elkGraph: ElkGraph): void {
-    if (!elkGraph.children) {
-      elkGraph.children = [];
-    }
-    
-    if (!elkGraph.edges) {
-      elkGraph.edges = [];
-    }
+  private isNodeInAnyContainer(nodeId: string, containers: any[]): boolean {
+    return containers.some(container => container.children && container.children.has(nodeId));
+  }
+
+  /**
+   * Validate ELK input format - format validation only
+   */
+  private validateELKInput(elkGraph: ElkGraph): void {
+    if (!elkGraph.children) elkGraph.children = [];
+    if (!elkGraph.edges) elkGraph.edges = [];
     
     // Validate node format
     elkGraph.children.forEach(node => {
       if (!node.id) {
-        throw new Error(`ELK node missing ID: ${JSON.stringify(node)}`);
+        throw new Error(`ELK node missing ID`);
       }
       if (typeof node.width !== 'number' || node.width <= 0) {
         throw new Error(`ELK node ${node.id} has invalid width: ${node.width}`);
@@ -200,9 +185,7 @@ export class ELKBridge {
     
     // Validate edge format
     elkGraph.edges.forEach(edge => {
-      if (!edge.id) {
-        throw new Error(`ELK edge missing ID: ${JSON.stringify(edge)}`);
-      }
+      if (!edge.id) throw new Error(`ELK edge missing ID`);
       if (!edge.sources || edge.sources.length === 0) {
         throw new Error(`ELK edge missing sources: ${edge.id}`);
       }
@@ -213,9 +196,31 @@ export class ELKBridge {
   }
 
   /**
-   * Update container from ELK result (pure transformation)
+   * Apply ELK results back to VisualizationState - pure transformation
    */
-  private static updateContainerFromELK(elkNode: ElkNode, visState: VisualizationState): void {
+  private elkToVisState(elkResult: ElkGraph, visState: VisualizationState): void {
+    if (!elkResult.children) return;
+    
+    // Apply positions to containers and nodes
+    elkResult.children.forEach(elkNode => {
+      if (elkNode.children && elkNode.children.length > 0) {
+        this.updateContainerFromELK(elkNode, visState);
+      } else {
+        this.updateNodeFromELK(elkNode, visState);
+      }
+    });
+    
+    // Apply edge routing
+    const allEdges = elkResult.edges || [];
+    allEdges.forEach(elkEdge => {
+      this.updateEdgeFromELK(elkEdge, visState);
+    });
+  }
+
+  /**
+   * Update container from ELK result - pure transformation
+   */
+  private updateContainerFromELK(elkNode: ElkNode, visState: VisualizationState): void {
     const layoutUpdates: any = {};
     
     if (elkNode.x !== undefined || elkNode.y !== undefined) {
@@ -234,20 +239,20 @@ export class ELKBridge {
       visState.setContainerLayout(elkNode.id, layoutUpdates);
     }
     
-    // Update child positions recursively
+    // Update children recursively
     elkNode.children?.forEach(elkChildNode => {
       if (elkChildNode.children && elkChildNode.children.length > 0) {
-        ELKBridge.updateContainerFromELK(elkChildNode, visState);
+        this.updateContainerFromELK(elkChildNode, visState);
       } else {
-        ELKBridge.updateNodeFromELK(elkChildNode, visState);
+        this.updateNodeFromELK(elkChildNode, visState);
       }
     });
   }
 
   /**
-   * Update node from ELK result (pure transformation)
+   * Update node from ELK result - pure transformation
    */
-  private static updateNodeFromELK(elkNode: ElkNode, visState: VisualizationState): void {
+  private updateNodeFromELK(elkNode: ElkNode, visState: VisualizationState): void {
     const layoutUpdates: any = {};
     
     if (elkNode.x !== undefined || elkNode.y !== undefined) {
@@ -266,7 +271,7 @@ export class ELKBridge {
       try {
         visState.setNodeLayout(elkNode.id, layoutUpdates);
       } catch (nodeError) {
-        // If not found as node, try as container
+        // Try as container if not found as node
         try {
           visState.setContainerLayout(elkNode.id, layoutUpdates);
         } catch (containerError) {
@@ -277,21 +282,15 @@ export class ELKBridge {
   }
 
   /**
-   * Update edge from ELK result (pure transformation)
+   * Update edge from ELK result - pure transformation
    */
-  private static updateEdgeFromELK(elkEdge: ElkEdge, visState: VisualizationState): void {
+  private updateEdgeFromELK(elkEdge: ElkEdge, visState: VisualizationState): void {
     if (elkEdge.sections && elkEdge.sections.length > 0) {
       try {
         visState.setEdgeLayout(elkEdge.id, { sections: elkEdge.sections });
       } catch (error) {
-        // Edge no longer exists in VisState (probably filtered out as hyperedge)
         console.warn(`[ELKBridge] Skipping layout update for edge ${elkEdge.id} - edge no longer exists`);
       }
     }
-  }
-
-  // Helper methods
-  private static isNodeInAnyContainer(nodeId: string, containers: any[]): boolean {
-    return containers.some(container => container.children && container.children.has(nodeId));
   }
 }
