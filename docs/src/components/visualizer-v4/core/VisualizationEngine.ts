@@ -59,6 +59,7 @@ export class VisualizationEngine {
   private state: VisualizationEngineState;
   private layoutTimeout?: number;
   private listeners: Map<string, (state: VisualizationEngineState) => void> = new Map();
+  private colorPalette: string = 'Set3'; // Business logic: color palette management
 
   constructor(
     visState: VisualizationState, 
@@ -97,6 +98,20 @@ export class VisualizationEngine {
   }
 
   /**
+   * Set the color palette for visualization
+   */
+  setColorPalette(palette: string): void {
+    this.colorPalette = palette;
+  }
+
+  /**
+   * Get the current color palette
+   */
+  getColorPalette(): string {
+    return this.colorPalette;
+  }
+
+  /**
    * Update layout configuration and optionally re-run layout
    */
   updateLayoutConfig(layoutConfig: LayoutConfig, autoReLayout: boolean = true): void {
@@ -126,8 +141,26 @@ export class VisualizationEngine {
     try {
       this.updateState('laying_out');
       
-      // Use ELK bridge to layout the VisState
+      // Business logic: Clear any existing edge layout data to ensure ReactFlow starts fresh
+      this.visState.visibleEdges.forEach(edge => {
+        try {
+          this.visState.setEdgeLayout(edge.id, { sections: [] });
+        } catch (error) {
+          // Edge might not exist anymore, ignore
+        }
+      });
+      
+      // Business logic: Validate container state before layout
+      await this.validateContainerState();
+      
+      // Business logic: Yield control to browser to show loading state
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // Use ELK bridge to layout the VisState (pure format translation)
       await this.elkBridge.layoutVisState(this.visState);
+      
+      // Business logic: Yield control again after layout
+      await new Promise(resolve => setTimeout(resolve, 10));
             
       // DEBUG: Check smart collapse conditions
       this.log(`🔍 SMART COLLAPSE DEBUG:`);
@@ -169,8 +202,8 @@ export class VisualizationEngine {
     try {
       this.updateState('rendering');
       
-      // Use ReactFlow bridge to convert VisState
-      const reactFlowData = this.reactFlowBridge.visStateToReactFlow(this.visState);
+      // Use ReactFlow bridge to convert VisState, passing color palette as parameter
+      const reactFlowData = this.reactFlowBridge.visStateToReactFlow(this.visState, this.colorPalette);
       
       this.updateState('displayed');
       
@@ -445,6 +478,37 @@ export class VisualizationEngine {
         console.error('[VisualizationEngine] Listener error:', error);
       }
     });
+  }
+
+  // ============ Private Business Logic Methods ============
+
+  /**
+   * Validate container state before running layout
+   * Business logic moved from ELKBridge
+   */
+  private async validateContainerState(): Promise<void> {
+    const visibleContainers = this.visState.visibleContainers;
+    
+    // Check for data leaks in large graphs
+    if (visibleContainers.length > 10) {
+      const leaks: string[] = [];
+      for (const container of visibleContainers) {
+        // Check if collapsed containers accidentally have visible children
+        if (container.collapsed) {
+          const children = this.visState.getContainerChildren(container.id);
+          if (children && children.size > 0) {
+            const leakMsg = `Container ${container.id} has ${children.size} children but should be collapsed!`;
+            this.log(`⚠️ LEAK: ${leakMsg}`);
+            leaks.push(leakMsg);
+          }
+        }
+      }
+      
+      // In test environments, throw an error if we have leaks
+      if (leaks.length > 0 && (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true')) {
+        throw new Error(`CONTAINER LEAKS DETECTED: ${leaks.length} collapsed containers have visible children. This violates the collapsed container invariant. Leaks: ${leaks.slice(0, 3).join('; ')}`);
+      }
+    }
   }
 
   /**

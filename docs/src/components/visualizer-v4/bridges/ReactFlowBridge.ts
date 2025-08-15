@@ -58,20 +58,11 @@ export interface ReactFlowData {
 }
 
 export class ReactFlowBridge {
-  private colorPalette: string = 'Set3';
-
-  /**
-   * Set the color palette for node styling
-   */
-  setColorPalette(palette: string): void {
-    this.colorPalette = palette;
-  }
-
   /**
    * Convert positioned VisState data to ReactFlow format
-   * TRUST ELK: Use ELK's hierarchical layout results completely
+   * Pure format translation - no business logic
    */
-  visStateToReactFlow(visState: VisualizationState): ReactFlowData {
+  visStateToReactFlow(visState: VisualizationState, colorPalette: string = 'Set3'): ReactFlowData {
     const nodes: ReactFlowNode[] = [];
     const edges: ReactFlowEdge[] = [];
     
@@ -79,10 +70,10 @@ export class ReactFlowBridge {
     const parentMap = this.buildParentMap(visState);
     
     // Convert containers using ELK positions
-    this.convertContainersFromELK(visState, nodes, parentMap);
+    this.convertContainersFromELK(visState, nodes, parentMap, colorPalette);
     
     // Convert regular nodes using ELK positions  
-    this.convertNodesFromELK(visState, nodes, parentMap);
+    this.convertNodesFromELK(visState, nodes, parentMap, colorPalette);
     
     // Convert edges using simple source/target mapping
     this.convertEdges(visState, edges);
@@ -260,12 +251,13 @@ export class ReactFlowBridge {
 
   /**
    * Convert containers to ReactFlow container nodes using ELK layout positions
-   * TRUST ELK: Use ELK's hierarchical positioning completely
+   * Pure format translation using provided color palette
    */
   private convertContainersFromELK(
     visState: VisualizationState, 
     nodes: ReactFlowNode[], 
-    parentMap: Map<string, string>
+    parentMap: Map<string, string>,
+    colorPalette: string
   ): void {
     // Sort containers by hierarchy level (parents first, then children)
     const containers = Array.from(visState.visibleContainers);
@@ -310,20 +302,10 @@ export class ReactFlowBridge {
             y: validAbsoluteY - validParentY
           };
         } else {
-          // FALLBACK: Grid positioning when no meaningful ELK layout data
-          const siblingContainers = Array.from(visState.visibleContainers)
-            .filter(c => parentMap.get(c.id) === parentId);
-          const containerIndex = siblingContainers.findIndex(c => c.id === container.id);
-          
-          const cols = LAYOUT_CONSTANTS.CONTAINER_GRID_COLUMNS || 2;
-          const col = containerIndex % cols;
-          const row = Math.floor(containerIndex / cols);
-          const padding = LAYOUT_CONSTANTS.CONTAINER_GRID_PADDING || 20;
-          const titleHeight = LAYOUT_CONSTANTS.CONTAINER_TITLE_HEIGHT || 30;
-          
+          // Use absolute ELK coordinates for positioning
           position = {
-            x: padding + col * (LAYOUT_CONSTANTS.CHILD_CONTAINER_WIDTH + padding),
-            y: titleHeight + row * (LAYOUT_CONSTANTS.CHILD_CONTAINER_HEIGHT + padding)
+            x: containerLayout?.position?.x || container.x || 0,
+            y: containerLayout?.position?.y || container.y || 0
           };
         }
       } else {
@@ -362,7 +344,8 @@ export class ReactFlowBridge {
           collapsed: container.collapsed,
           width,
           height,
-          nodeCount: nodeCount
+          nodeCount: nodeCount,
+          colorPalette
         },
         style: {
           width,
@@ -378,12 +361,13 @@ export class ReactFlowBridge {
 
   /**
    * Convert regular nodes to ReactFlow standard nodes using ELK layout positions
-   * TRUST ELK: Use ELK's hierarchical positioning completely
+   * Pure format translation using provided color palette
    */
   private convertNodesFromELK(
     visState: VisualizationState, 
     nodes: ReactFlowNode[], 
-    parentMap: Map<string, string>
+    parentMap: Map<string, string>,
+    colorPalette: string
   ): void {
     visState.visibleNodes.forEach(node => {
       const parentId = parentMap.get(node.id);
@@ -432,7 +416,7 @@ export class ReactFlowBridge {
         data: {
           label: node.label || node.id,
           style: node.style || 'default',
-          colorPalette: this.colorPalette,
+          colorPalette,
           ...this.extractCustomProperties(node)
         },
         parentId,
