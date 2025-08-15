@@ -165,3 +165,36 @@ export interface InfoPanelState {
   hierarchyCollapsed: boolean;
   groupingCollapsed: boolean;
 }
+
+// ============ Visual Configuration Panel Props ============
+
+export interface VisualConfigState {
+  // Style selections
+  nodeStyle: string;
+  edgeStyle: string;
+  containerStyle: string;
+  edgeType: string;
+  
+  // Color and palette
+  colorPalette: string;
+  
+  // Typography
+  typographyScale: number;
+  infoPanelFontSize: number;
+  
+  // Visual styling
+  shadowIntensity: string;
+  borderRadius: number;
+  
+  // Container sizing
+  collapsedContainerWidth: number;
+  collapsedContainerHeight: number;
+}
+
+export interface VisualConfigPanelProps extends BaseComponentProps {
+  id?: string;
+  title?: string;
+  defaultConfig?: Partial<VisualConfigState>;
+  onConfigChange?: (config: VisualConfigState) => void;
+  onPositionChange?: (panelId: string, position: PanelPosition) => void;
+}
