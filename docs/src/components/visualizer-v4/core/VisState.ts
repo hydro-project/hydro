@@ -622,9 +622,6 @@ export interface ContainerHierarchyView {
  * // console.log(state.visibleContainers);  // Array of visible containers (includes collapsed)
  * // console.log(state.getExpandedContainers()); // Array of expanded containers (recommended)
  * 
- * // ============ DEPRECATED/INTERNAL STATE (avoid in bridges) ============
- * // console.log(state.expandedContainers); // DEPRECATED - exposes internal state
- * 
  * // Update properties idiomatically  
  * state.updateNode('n1', { hidden: true, style: 'highlighted' });
  * state.updateContainer('c1', { collapsed: true });
@@ -1217,27 +1214,10 @@ export class VisualizationState implements ContainerHierarchyView {
   // These methods provide temporary compatibility for tests during refactoring
   // TODO: Update tests to use proper encapsulated API and remove these methods
   
-  /**
-   * @deprecated Use visibleContainers.filter(c => c.collapsed) instead
-   */
-  getContainerCollapsed(containerId: string): boolean {
-    const container = this._collections.containers.get(containerId);
-    return container?.collapsed || false;
-  }
-  
-  /**
-   * @deprecated Use setContainerState() instead
-   */
-  setContainerCollapsed(containerId: string, collapsed: boolean): void {
-    this.setContainerState(containerId, { collapsed });
-  }
-  
-  /**
-   * @deprecated Use visibleContainers.filter(c => !c.collapsed) instead
-   */
-  get expandedContainers(): ReadonlyArray<any> {
-    return Array.from(this._collections._expandedContainers.values());
-  }
+  // Deprecated methods removed - use official API:
+  // - getContainerCollapsed() → visibleContainers.filter(c => c.collapsed) 
+  // - setContainerCollapsed() → setContainerState()
+  // - expandedContainers → getExpandedContainers()
   
   // ============ CONTROLLED STATE MUTATION API ============
   // These are the ONLY safe ways to modify state - ensures consistency
@@ -2291,7 +2271,7 @@ export class VisualizationState implements ContainerHierarchyView {
       if (parentContainer) {
         const container = this._collections.containers.get(parentContainer);
         // Only include if parent container is expanded (visible)
-        if (container && !container.collapsed && this._collections._expandedContainers.has(parentContainer)) {
+        if (container && !container.collapsed && !container.hidden) {
           parentMap.set(node.id, parentContainer);
         }
       }
@@ -2313,7 +2293,7 @@ export class VisualizationState implements ContainerHierarchyView {
         if (children.has(container.id)) {
           const parentObj = this._collections.containers.get(parentId);
           // Only include if parent container is expanded (visible)
-          if (parentObj && !parentObj.collapsed && this._collections._expandedContainers.has(parentId)) {
+          if (parentObj && !parentObj.collapsed && !parentObj.hidden) {
             parentMap.set(container.id, parentId);
             break;
           }
@@ -2390,7 +2370,7 @@ export class VisualizationState implements ContainerHierarchyView {
       } else {
         const container = this._collections.containers.get(parentContainer);
         // If parent container is collapsed or hidden, the node is effectively top-level
-        if (!container || container.collapsed || container.hidden || !this._collections._expandedContainers.has(parentContainer)) {
+        if (!container || container.collapsed || container.hidden) {
           topLevelNodes.push(node);
         }
       }

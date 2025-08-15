@@ -1,11 +1,13 @@
 /**
- * @fileoverview ReactFlow Bridge - Refactored to be DRY, stateless, and focused on format translation
+ * @fileoverview ReactFlow Bridge - Converts VisualizationState to ReactFlow format
  * 
- * This bridge now separates business logic from format transformation while maintaining
- * backward compatibility with existing tests and components.
+ * This bridge converts VisualizationState to ReactFlow's expected data structures.
+ * ReactFlow only sees unified edges (hyperedges are included transparently).
+ * Uses configurable handle system for maximum layout flexibility.
  */
 
 import type { VisualizationState } from '../core/VisState';
+import type { GraphNode, GraphEdge, Container } from '../shared/types';
 import { CoordinateTranslator, type ContainerInfo } from './CoordinateTranslator';
 import { MarkerType } from '@xyflow/react';
 import { getHandleConfig } from '../render/handleConfig';
@@ -28,6 +30,7 @@ export interface ReactFlowNode {
     height?: number;
   };
   parentId?: string;
+  // extent?: 'parent'; // REMOVED: Causes drag coordinate issues in ReactFlow
 }
 
 export interface ReactFlowEdge {
@@ -65,75 +68,52 @@ export class ReactFlowBridge {
 
   /**
    * Convert positioned VisState data to ReactFlow format
-   * Now cleaner with better separation of concerns
+   * Pure data transformation - no layout logic
    */
   visStateToReactFlow(visState: VisualizationState): ReactFlowData {
-    console.log('[ReactFlowBridge] 🔄 Converting VisState to ReactFlow format');
+    // // console.log((('[ReactFlowBridge] 🔄 Converting VisState to ReactFlow format')));
     
     const nodes: ReactFlowNode[] = [];
     const edges: ReactFlowEdge[] = [];
     
-    // Build parent-child mapping using VisualizationState's official API
+    // Create parent-child mapping for hierarchical layout
     const parentMap = this.buildParentMap(visState);
     
-    // Convert all components using pure transformation functions
+    // Convert containers to ReactFlow nodes
     this.convertContainers(visState, nodes, parentMap);
+    
+    // Convert regular nodes to ReactFlow nodes  
     this.convertNodes(visState, nodes, parentMap);
+    
+    // Convert all edges to ReactFlow edges (now includes hyperedges transparently)
     this.convertEdges(visState, edges);
     
-    console.log(`[ReactFlowBridge] ✅ Generated ${nodes.length} nodes, ${edges.length} edges`);
     return { nodes, edges };
   }
 
   /**
-   * Build parent-child relationship map using VisualizationState's official API
-   * This logic could be moved to VisualizationEngine in the future for better separation
+   * Build parent-child relationship map
+   * NOTE: VisualizationState should provide this logic via getParentChildMap()
    */
   private buildParentMap(visState: VisualizationState): Map<string, string> {
     const parentMap = new Map<string, string>();
     
-    // Map nodes to their parent containers (only if parent is expanded)
-    for (const node of visState.visibleNodes) {
-      const parentContainer = visState.getNodeContainer(node.id);
-      if (parentContainer) {
-        const container = visState.getContainer(parentContainer);
-        // Only include if parent container is expanded (not collapsed)
-        if (container && !container.collapsed && !container.hidden) {
-          parentMap.set(node.id, parentContainer);
-        }
+    // TODO: Move this business logic to VisualizationState
+    // Map nodes to their parent containers
+    visState.visibleContainers.forEach(container => {
+      if (!container.collapsed) {
+        // BUSINESS LOGIC VIOLATION: VisualizationState should determine which containers can have children
+        container.children.forEach(childId => {
+          parentMap.set(childId, container.id);
+        });
       }
-    }
-    
-    // Map containers to their parent containers (for nested containers)
-    for (const container of visState.visibleContainers) {
-      const parentContainer = this.findContainerParent(container.id, visState);
-      if (parentContainer) {
-        const parentObj = visState.getContainer(parentContainer);
-        // Only include if parent container is expanded
-        if (parentObj && !parentObj.collapsed && !parentObj.hidden) {
-          parentMap.set(container.id, parentContainer);
-        }
-      }
-    }
+    });
     
     return parentMap;
   }
 
   /**
-   * Find the parent container for a given container - pure logic helper
-   */
-  private findContainerParent(containerId: string, visState: VisualizationState): string | undefined {
-    for (const container of visState.visibleContainers) {
-      const children = visState.getContainerChildren(container.id);
-      if (children && children.has(containerId)) {
-        return container.id;
-      }
-    }
-    return undefined;
-  }
-
-  /**
-   * Convert containers to ReactFlow container nodes - pure transformation
+   * Convert containers to ReactFlow container nodes
    */
   private convertContainers(
     visState: VisualizationState, 
@@ -143,7 +123,7 @@ export class ReactFlowBridge {
     visState.visibleContainers.forEach(container => {
       const parentId = parentMap.get(container.id);
       
-      // Get coordinates from VisualizationState
+      // Get coordinates from VisState computed view (already canonical coordinates)
       const elkCoords = {
         x: container.x || 0,
         y: container.y || 0
@@ -156,7 +136,8 @@ export class ReactFlowBridge {
       
       const position = CoordinateTranslator.elkToReactFlow(elkCoords, parentContainer);
       
-      // Use VisualizationState's official API for dimensions
+      // Use computed dimensions from VisState (includes ELK-calculated sizes via expandedDimensions)
+      // IMPORTANT: Use VisualizationState API to get proper dimensions (handles collapsed containers)
       const effectiveDimensions = visState.getContainerAdjustedDimensions(container.id);
       const width = effectiveDimensions.width;
       const height = effectiveDimensions.height;
@@ -165,16 +146,18 @@ export class ReactFlowBridge {
       const nodeCount = container.collapsed ? 
         visState.getContainerChildren(container.id)?.size || 0 : 0;
       
+      console.log(`[ReactFlowBridge] 📦 Container ${container.id}: collapsed=${container.collapsed}, ELK=(${elkCoords.x}, ${elkCoords.y}), ReactFlow=(${position.x}, ${position.y}), size=${width}x${height}, nodeCount=${nodeCount}`);
+      
       const containerNode: ReactFlowNode = {
         id: container.id,
         type: 'container',
         position,
         data: {
-          label: (container as any).data?.label || (container as any).label || container.id,
+          label: (container as any).data?.label || (container as any).label || container.id, // Use proper label like InfoPanel
           style: (container as any).style || 'default',
           collapsed: container.collapsed || false,
-          colorPalette: this.colorPalette,
-          nodeCount,
+          colorPalette: this.colorPalette, // Pass color palette for styling
+          nodeCount, // Number of child nodes for collapsed containers
           width,
           height,
           // Pass through any custom properties
@@ -185,6 +168,8 @@ export class ReactFlowBridge {
           height
         },
         parentId
+        // FIX: Remove extent: 'parent' - causes ReactFlow drag coordinate issues
+        // extent: parentId ? 'parent' : undefined
       };
       
       nodes.push(containerNode);
@@ -192,7 +177,7 @@ export class ReactFlowBridge {
   }
 
   /**
-   * Convert regular nodes to ReactFlow standard nodes - pure transformation
+   * Convert regular nodes to ReactFlow standard nodes
    */
   private convertNodes(
     visState: VisualizationState, 
@@ -202,8 +187,9 @@ export class ReactFlowBridge {
     visState.visibleNodes.forEach(node => {
       const parentId = parentMap.get(node.id);
       
-      // Get coordinates from VisualizationState
+      // Get ELK coordinates from node layout (where ELKBridge stores them)
       const nodeLayout = visState.getNodeLayout(node.id);
+      // // console.log(((`[ReactFlowBridge] 🔍 Node ${node.id} layout:`, nodeLayout, 'raw node coords:', { x: node.x, y: node.y })));
       const elkCoords = {
         x: nodeLayout?.position?.x || node.x || 0,
         y: nodeLayout?.position?.y || node.y || 0
@@ -214,7 +200,19 @@ export class ReactFlowBridge {
         CoordinateTranslator.getContainerInfo(parentId, visState) : 
         undefined;
       
+      // if (parentContainer) {
+      //   console.log(`[ReactFlowBridge] 🔍 Parent container ${parentId} info:`, {
+      //     id: parentContainer.id,
+      //     x: parentContainer.x,
+      //     y: parentContainer.y,
+      //     width: parentContainer.width,
+      //     height: parentContainer.height
+      //   });
+      // }
+      
       const position = CoordinateTranslator.elkToReactFlow(elkCoords, parentContainer);
+      
+      // // console.log(((`[ReactFlowBridge] 🔘 Node ${node.id}: parent=${parentId || 'none'}, ELK=(${elkCoords.x}, ${elkCoords.y}), ReactFlow=(${position.x}, ${position.y})`)));
       
       const standardNode: ReactFlowNode = {
         id: node.id,
@@ -223,11 +221,13 @@ export class ReactFlowBridge {
         data: {
           label: node.label || node.id,
           style: node.style || 'default',
-          colorPalette: this.colorPalette,
+          colorPalette: this.colorPalette, // Pass the current color palette
           // Pass through any custom properties
           ...this.extractCustomProperties(node)
         },
         parentId
+        // FIX: Remove extent: 'parent' - causes ReactFlow drag coordinate issues
+        // extent: parentId ? 'parent' : undefined
       };
       
       nodes.push(standardNode);
@@ -235,12 +235,22 @@ export class ReactFlowBridge {
   }
 
   /**
-   * Convert edges to ReactFlow edges - pure transformation
+   * Convert regular edges to ReactFlow edges
    */
   private convertEdges(visState: VisualizationState, edges: ReactFlowEdge[]): void {
-    const handleConfig = getHandleConfig();
-    
     visState.visibleEdges.forEach(edge => {
+    //   // Debug: log the actual edge data to see what we're getting
+    //   console.log(`[ReactFlowBridge] 🔍 Debug edge ${edge.id}:`, {
+    //     source: edge.source,
+    //     target: edge.target,
+    //     sourceHandle: edge.sourceHandle,
+    //     targetHandle: edge.targetHandle,
+    //     sourceHandleType: typeof edge.sourceHandle,
+    //     targetHandleType: typeof edge.targetHandle
+    //   });
+      
+      const handleConfig = getHandleConfig();
+      
       const reactFlowEdge: ReactFlowEdge = {
         id: edge.id,
         type: 'standard',
@@ -257,21 +267,25 @@ export class ReactFlowBridge {
         }
       };
       
-      // Handle assignment could be moved to VisualizationEngine for better separation
+      // Handle strategy should be determined by VisualizationState, not ReactFlowBridge
+      // TODO: Move handle logic to VisualizationState.getEdgeHandles(edgeId)
       if (!handleConfig.enableContinuousHandles) {
-        reactFlowEdge.sourceHandle = (edge as any).sourceHandle || 'default-out';
-        reactFlowEdge.targetHandle = (edge as any).targetHandle || 'default-in';
+        // BUSINESS LOGIC VIOLATION: VisualizationState should determine handle assignments
+        reactFlowEdge.sourceHandle = edge.sourceHandle || 'default-out';
+        reactFlowEdge.targetHandle = edge.targetHandle || 'default-in';
       }
       // For continuous handles, omit sourceHandle/targetHandle to let ReactFlow auto-connect
+      
+      // // console.log(((`[ReactFlowBridge] ✅ Created ReactFlow edge ${edge.id}:`, reactFlowEdge)));
       
       edges.push(reactFlowEdge);
     });
   }
 
   /**
-   * Extract custom properties from graph elements - pure transformation
+   * Extract custom properties from graph elements
    */
-  private extractCustomProperties(element: any): Record<string, any> {
+  private extractCustomProperties(element: GraphNode | GraphEdge | Container): Record<string, any> {
     const customProps: Record<string, any> = {};
     
     // Filter out known properties to get custom ones

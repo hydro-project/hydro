@@ -37,14 +37,12 @@ export interface VisualizationEngineConfig {
   layoutDebounceMs: number;     // Debounce layout calls
   enableLogging: boolean;       // Enable detailed logging
   layoutConfig?: LayoutConfig;  // Layout configuration
-  colorPalette?: string;        // Color palette for rendering
 }
 
 const DEFAULT_CONFIG: VisualizationEngineConfig = {
   autoLayout: true,
   layoutDebounceMs: 300,
   enableLogging: true,
-  colorPalette: 'Set3',
   layoutConfig: {
     enableSmartCollapse: true,
     algorithm: 'layered',
@@ -169,11 +167,6 @@ export class VisualizationEngine {
 
     try {
       this.updateState('rendering');
-      
-      // Set color palette on bridge if configured
-      if (this.config.colorPalette) {
-        this.reactFlowBridge.setColorPalette(this.config.colorPalette);
-      }
       
       // Use ReactFlow bridge to convert VisState
       const reactFlowData = this.reactFlowBridge.visStateToReactFlow(this.visState);
