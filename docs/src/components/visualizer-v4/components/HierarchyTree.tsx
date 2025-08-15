@@ -10,6 +10,7 @@ import type { TreeDataNode } from 'antd';
 import { HierarchyTreeProps, HierarchyTreeNode } from './types';
 import { TYPOGRAPHY } from '../shared/config';
 import { COMPONENT_COLORS } from '../shared/config';
+import { truncateLabel } from '../shared/textUtils';
 
 export function HierarchyTree({
   hierarchyTree,
@@ -23,49 +24,12 @@ export function HierarchyTree({
   style
 }: HierarchyTreeProps) {
 
-  // Utility function to truncate labels
-  const truncateLabel = (label: string, maxLength: number): string => {
-    if (!truncateLabels || label.length <= maxLength) {
-      return label;
-    }
-    
-    // Try to split on common delimiters and keep the meaningful part
-    const delimiters = ['::', '.', '_', '-', '/'];
-    for (const delimiter of delimiters) {
-      if (label.includes(delimiter)) {
-        const parts = label.split(delimiter);
-        const lastPart = parts[parts.length - 1];
-        // If the last part is meaningful and fits, use it
-        if (lastPart.length > 2 && lastPart.length <= maxLength) {
-          return `…${delimiter}${lastPart}`;
-        }
-        // If there are multiple parts, try to keep 2 meaningful parts
-        if (parts.length > 1) {
-          const lastTwoParts = parts.slice(-2).join(delimiter);
-          if (lastTwoParts.length <= maxLength) {
-            return `…${lastTwoParts}`;
-          }
-        }
-      }
-    }
-    
-    // Fallback: smart truncation from the end, keeping whole words when possible  
-    if (label.length > maxLength) {
-      const truncated = label.slice(0, maxLength - 1);
-      const lastSpaceIndex = truncated.lastIndexOf(' ');
-      if (lastSpaceIndex > maxLength * 0.7) { // Only break on word if it's not too short
-        return truncated.slice(0, lastSpaceIndex) + '…';
-      }
-      return truncated + '…';
-    }
-    
-    return label;
-  };
-
   // Convert HierarchyTreeNode to Ant Design TreeDataNode format
   const convertToTreeData = (nodes: HierarchyTreeNode[]): TreeDataNode[] => {
     return nodes.map(node => {
-      const truncatedLabel = truncateLabel(node.label, maxLabelLength);
+      const truncatedLabel = truncateLabels 
+        ? truncateLabel(node.label, { maxLength: maxLabelLength, leftTruncate: true })
+        : node.label;
       const leafChildrenCount = Math.max(0, node.nodeCount - (node.children?.length || 0));
       const hasChildren = node.children && node.children.length > 0;
       const hasLeafChildren = leafChildrenCount > 0;

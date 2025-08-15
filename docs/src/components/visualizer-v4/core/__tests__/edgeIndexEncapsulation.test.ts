@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { createVisualizationState } from '../VisualizationState';
-import { isHyperEdge } from '../types.js';
+import { isHyperEdge } from '../types';
 
 
 describe('EdgeIndexEncapsulation', () => {

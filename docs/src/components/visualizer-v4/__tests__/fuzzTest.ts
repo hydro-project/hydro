@@ -9,9 +9,10 @@ import assert from 'assert';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parseGraphJSON, validateGraphJSON, ValidationResult } from '../core/JSONParser.js';
-import { VisualizationState } from '../core/VisualizationState.js';
-import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types.js';
+import { parseGraphJSON, validateGraphJSON, ValidationResult } from '../core/JSONParser';
+import { VisualizationState } from '../core/VisualizationState';
+import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types';
+import { isHyperEdge } from '../core/types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

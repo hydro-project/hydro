@@ -9,11 +9,11 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parseGraphJSON, validateGraphJSON } from '../core/JSONParser.js';
-import { VisualizationState } from '../core/VisualizationState.js';
-import { VisualizationEngine } from '../core/VisualizationEngine.js';
-import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types.js';
-import { isHyperEdge, type LayoutConfig } from '../core/types.js';
+import { parseGraphJSON, validateGraphJSON } from '../core/JSONParser';
+import { VisualizationState } from '../core/VisualizationState';
+import { VisualizationEngine } from '../core/VisualizationEngine';
+import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types';
+import { isHyperEdge, type LayoutConfig } from '../core/types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

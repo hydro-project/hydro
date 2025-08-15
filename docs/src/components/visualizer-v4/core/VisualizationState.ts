@@ -678,7 +678,7 @@ export class VisualizationState implements ContainerHierarchyView {
     
     // Expand each top-level collapsed container one by one using the basic method
     for (const container of collapsedTopLevel) {
-      this.expandContainer(container.id);
+      this.expandContainerRecursive(container.id);
     }
   }
 
@@ -691,7 +691,7 @@ export class VisualizationState implements ContainerHierarchyView {
     
     if (expandedTopLevel.length === 0) return;
     
-    // Disable validation for the entire bulk operation
+    // Disable validation during bulk collapse to avoid intermediate state issues
     const originalValidation = this._validationEnabled;
     this._validationEnabled = false;
     
@@ -701,7 +701,11 @@ export class VisualizationState implements ContainerHierarchyView {
         this.collapseContainer(container.id);
       }
     } finally {
+      // Re-enable validation and run it once at the end
       this._validationEnabled = originalValidation;
+      if (originalValidation) {
+        this.validateInvariants();
+      }
     }
   }
 

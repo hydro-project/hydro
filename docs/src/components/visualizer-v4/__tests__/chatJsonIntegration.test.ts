@@ -9,7 +9,7 @@ import { parseGraphJSON, getAvailableGroupings } from '../core/JSONParser';
 import { ELKBridge } from '../bridges/ELKBridge';
 import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
 import { loadChatJsonTestData, skipIfNoTestData } from './testUtils';
-import { isHyperEdge } from '../core/types.js';
+import { isHyperEdge } from '../core/types';
 
 
 describe('ChatJsonIntegration', () => {

@@ -80,6 +80,7 @@ class SimpleRandom {
  */
 async function validateEdgeIntegrity(state: VisualizationState, context: string): Promise<void> {
   const visibleNodes = state.getVisibleNodes();
+  const visibleEdges = state.visibleEdges;
   const visibleContainers = state.getVisibleContainers();
   const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
   const visibleContainerIds = new Set(visibleContainers.map(c => c.id));
@@ -110,7 +111,7 @@ async function validateEdgeIntegrity(state: VisualizationState, context: string)
   }
   
   // Check for the "all edges disappeared" bug
-  const edgeCount = visibleHyperEdges.length;
+  const edgeCount = visibleHyperEdges.length + visibleEdges.length;
   const nodeCount = visibleNodes.length;
   
   if (edgeCount === 0 && nodeCount > 0) {
@@ -251,12 +252,59 @@ class ComprehensiveFuzzTester {
   }
   
   /**
+   * Check if a container can be expanded (all ancestors must be expanded)
+   */
+  private canExpandContainer(state: VisualizationState, containerId: string): boolean {
+    const container = state.getContainer(containerId);
+    if (!container || !container.collapsed) {
+      return false; // Can't expand if it doesn't exist or is already expanded
+    }
+    
+    // Check if all ancestors are expanded by walking up the hierarchy
+    let currentId = containerId;
+    while (currentId) {
+      // Get the parent of the current container
+      const parentId = state.getNodeContainer(currentId);
+      if (!parentId) {
+        break; // Reached the root
+      }
+      
+      const parent = state.getContainer(parentId);
+      if (!parent) {
+        break; // Parent doesn't exist (shouldn't happen)
+      }
+      
+      if (parent.collapsed) {
+        return false; // An ancestor is collapsed, so this container can't be expanded
+      }
+      
+      currentId = parentId;
+    }
+    
+    return true; // All ancestors are expanded, so this container can be expanded
+  }
+  
+  /**
+   * Check if a container can be collapsed (must be currently expanded and visible)
+   */
+  private canCollapseContainer(state: VisualizationState, containerId: string): boolean {
+    const container = state.getContainer(containerId);
+    if (!container || container.collapsed || container.hidden) {
+      return false; // Can't collapse if it doesn't exist, is already collapsed, or is hidden
+    }
+    
+    return true; // Container is expanded and visible, so it can be collapsed
+  }
+
+  /**
    * Generate a random operation from all available visualizer controls
    */
   private generateRandomOperation(state: VisualizationState, engine: VisualizationEngine): FuzzOperation | null {
     const allContainers = state.getVisibleContainers();
-    const expandedContainers = allContainers.filter(c => !c.collapsed);
-    const collapsedContainers = allContainers.filter(c => c.collapsed);
+    // Get only containers that can actually be expanded (all ancestors are expanded)
+    const expandableContainers = allContainers.filter(c => c.collapsed && this.canExpandContainer(state, c.id));
+    // Get only containers that can actually be collapsed (expanded and visible)
+    const collapsibleContainers = allContainers.filter(c => !c.collapsed && this.canCollapseContainer(state, c.id));
     
     const operations: string[] = [
       'expandNode',
@@ -285,17 +333,17 @@ class ComprehensiveFuzzTester {
     
     switch (operationType) {
       case 'expandNode':
-        if (collapsedContainers.length === 0) return null;
+        if (expandableContainers.length === 0) return null;
         return {
           type: 'expandNode',
-          containerId: this.random.choice(collapsedContainers).id
+          containerId: this.random.choice(expandableContainers).id
         };
         
       case 'contractNode':
-        if (expandedContainers.length === 0) return null;
+        if (collapsibleContainers.length === 0) return null;
         return {
           type: 'contractNode',
-          containerId: this.random.choice(expandedContainers).id
+          containerId: this.random.choice(collapsibleContainers).id
         };
         
       case 'expandAllNodes':
@@ -330,17 +378,17 @@ class ComprehensiveFuzzTester {
         return { type: 'fitToViewport' };
         
       case 'hierarchyTreeExpand':
-        if (collapsedContainers.length === 0) return null;
+        if (expandableContainers.length === 0) return null;
         return {
           type: 'hierarchyTreeExpand',
-          containerId: this.random.choice(collapsedContainers).id
+          containerId: this.random.choice(expandableContainers).id
         };
         
       case 'hierarchyTreeContract':
-        if (expandedContainers.length === 0) return null;
+        if (collapsibleContainers.length === 0) return null;
         return {
           type: 'hierarchyTreeContract',
-          containerId: this.random.choice(expandedContainers).id
+          containerId: this.random.choice(collapsibleContainers).id
         };
         
       default:
@@ -403,13 +451,13 @@ class ComprehensiveFuzzTester {
         break;
         
       case 'hierarchyTreeExpand':
-        // Same as expand node but via hierarchy tree interface
+        // HierarchyTree expand - same as regular expand, respects hierarchy constraints
         state.expandContainer(operation.containerId);
         await engine.runLayout();
         break;
         
       case 'hierarchyTreeContract':
-        // Same as contract node but via hierarchy tree interface
+        // HierarchyTree collapse - same as regular collapse, respects hierarchy constraints
         state.collapseContainer(operation.containerId);
         await engine.runLayout();
         break;

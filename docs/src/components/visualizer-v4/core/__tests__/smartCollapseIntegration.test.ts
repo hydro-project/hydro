@@ -792,10 +792,11 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
           if (container) {
             // Randomly toggle container state
             const newCollapsed = Math.random() > 0.5;
-            visState.setContainer(containerId, {
-              ...container,
-              collapsed: newCollapsed
-            });
+            if (newCollapsed && !container.collapsed) {
+              visState.collapseContainer(containerId);
+            } else if (!newCollapsed && container.collapsed) {
+              visState.expandContainer(containerId);
+            }
           }
         }
         
@@ -852,11 +853,7 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       
       // Manually collapse container 0
       console.log('🔬 Manually collapsing test_container_0...');
-      const container0 = visState.getContainer('test_container_0');
-      visState.setContainer('test_container_0', {
-        ...container0,
-        collapsed: true
-      });
+      visState.collapseContainer('test_container_0');
       
       await validateEdgeIntegrity(visState, 'After manual collapse');
       
@@ -872,11 +869,7 @@ describe('Smart Collapse Integration - Failure Prevention', () => {
       const container0AfterCollapse = visState.getContainer('test_container_0');
       console.log(`🔬 Container 0 state before expansion: collapsed=${container0AfterCollapse.collapsed}`);
       
-      visState.setContainer('test_container_0', {
-        ...container0AfterCollapse,
-        collapsed: false  // Explicitly set to false
-      });
-      
+      visState.expandContainer('test_container_0');
       console.log(`🔬 Container 0 state after setContainer call: collapsed=${visState.getContainer('test_container_0').collapsed}`);
       
       await validateEdgeIntegrity(visState, 'After manual expansion (should clean up hyperEdges)');
