@@ -56,27 +56,30 @@ export function skipIfNoTestData(testData: TestDataResult | null, testName: stri
  * Useful for unit tests that don't need the full chat.json data
  */
 export function createMockVisStateWithContainers() {
-  const state = createVisualizationState()
-    // Create nodes
-    .setGraphNode('node_0', { label: 'Node 0' })
-    .setGraphNode('node_1', { label: 'Node 1' })
-    .setGraphNode('node_2', { label: 'Node 2' })
-    .setGraphNode('node_3', { label: 'Node 3' })
-    .setGraphNode('node_4', { label: 'Node 4' })
-    // Create edges
-    .setGraphEdge('edge_0_1', { source: 'node_0', target: 'node_1' })
-    .setGraphEdge('edge_1_2', { source: 'node_1', target: 'node_2' })
-    .setGraphEdge('edge_2_3', { source: 'node_2', target: 'node_3' })
-    .setGraphEdge('edge_3_4', { source: 'node_3', target: 'node_4' })
-    // Create containers with minimal setup - let ELK calculate dimensions
-    .setContainer('container_a', { 
-      children: ['node_0', 'node_1'], 
-      collapsed: false 
-    })
-    .setContainer('container_b', { 
-      children: ['node_2', 'node_3', 'node_4'], 
-      collapsed: false 
-    });
+  const state = createVisualizationState();
+  
+  // Create nodes
+  state.addGraphNode('node_0', { label: 'Node 0' });
+  state.addGraphNode('node_1', { label: 'Node 1' });
+  state.addGraphNode('node_2', { label: 'Node 2' });
+  state.addGraphNode('node_3', { label: 'Node 3' });
+  state.addGraphNode('node_4', { label: 'Node 4' });
+  
+  // Create edges
+  state.addGraphEdge('edge_0_1', { source: 'node_0', target: 'node_1' });
+  state.addGraphEdge('edge_1_2', { source: 'node_1', target: 'node_2' });
+  state.addGraphEdge('edge_2_3', { source: 'node_2', target: 'node_3' });
+  state.addGraphEdge('edge_3_4', { source: 'node_3', target: 'node_4' });
+  
+  // Create containers with minimal setup - let ELK calculate dimensions
+  state.addContainer('container_a', { 
+    children: ['node_0', 'node_1'], 
+    collapsed: false 
+  });
+  state.addContainer('container_b', { 
+    children: ['node_2', 'node_3', 'node_4'], 
+    collapsed: false 
+  });
     
   return state;
 }

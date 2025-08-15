@@ -183,14 +183,6 @@ export class VisualizationState implements ContainerHierarchyView {
   get visibleNodes(): ReadonlyArray<any> {
     return Array.from(this._collections._visibleNodes.values());
   }
-
-  /**
-   * Get visible nodes as mutable array (legacy compatibility)
-   * @deprecated Use visibleNodes getter for new code
-   */
-  getVisibleNodes(): any[] {
-    return Array.from(this._collections._visibleNodes.values());
-  }
   
   /**
    * Get visible edges for rendering (safe read-only access)  
@@ -198,24 +190,6 @@ export class VisualizationState implements ContainerHierarchyView {
    */
   get visibleEdges(): ReadonlyArray<any> {
     // Include both regular visible edges and visible hyperEdges
-    const regularEdges = Array.from(this._collections._visibleEdges.values());
-    const hyperEdges = Array.from(this._collections.hyperEdges.values()).filter((edge: any) => {
-      return !edge.hidden;
-    });
-    
-    const allEdges = [...regularEdges, ...hyperEdges];
-    
-    // Check for duplicate keys to prevent React warnings
-    this._validateRenderKeys(allEdges);
-    
-    return allEdges;
-  }
-
-  /**
-   * Get visible edges as mutable array (legacy compatibility)
-   * @deprecated Use visibleEdges getter for new code
-   */
-  getVisibleEdges(): any[] {
     const regularEdges = Array.from(this._collections._visibleEdges.values());
     const hyperEdges = Array.from(this._collections.hyperEdges.values()).filter((edge: any) => {
       return !edge.hidden;
@@ -238,21 +212,6 @@ export class VisualizationState implements ContainerHierarchyView {
     const containers = Array.from(this._collections._visibleContainers.values());
     
     return containers.map(container => {
-      const adjustedDimensions = this.layoutOps.getContainerAdjustedDimensions(container.id);
-      return {
-        ...container,
-        width: adjustedDimensions.width,
-        height: adjustedDimensions.height
-      };
-    });
-  }
-
-  /**
-   * Get visible containers as mutable array (legacy compatibility)
-   * @deprecated Use visibleContainers getter for new code
-   */
-  getVisibleContainers(): any[] {
-    return Array.from(this._collections._visibleContainers.values()).map(container => {
       const adjustedDimensions = this.layoutOps.getContainerAdjustedDimensions(container.id);
       return {
         ...container,
@@ -613,40 +572,6 @@ export class VisualizationState implements ContainerHierarchyView {
 
   // ============ LEGACY/COMPATIBILITY API ============
   
-  /**
-   * Set a graph node (legacy compatibility - forwards to addGraphNode)
-   * @deprecated Use addGraphNode() for new code
-   */
-  setGraphNode(nodeId: string, nodeData: any): VisualizationState {
-    this.addGraphNode(nodeId, nodeData);
-    return this;
-  }
-  
-  /**
-   * Set a graph edge (legacy compatibility - forwards to addGraphEdge)
-   * @deprecated Use addGraphEdge() for new code
-   */
-  setGraphEdge(edgeId: string, edgeData: any): VisualizationState {
-    this.addGraphEdge(edgeId, edgeData);
-    return this;
-  }
-  
-  /**
-   * Set a container (legacy compatibility - forwards to addContainer)
-   * @deprecated Use addContainer() for new code
-   */
-  setContainer(containerIdOrData: string | any, containerData?: any): VisualizationState {
-    if (typeof containerIdOrData === 'string') {
-      // Old API: setContainer('id', { ... })
-      this.addContainer(containerIdOrData, containerData);
-    } else {
-      // New API: setContainer({ id: 'id', ... })
-      const { id, ...data } = containerIdOrData;
-      this.addContainer(id, data);
-    }
-    return this;
-  }
-
   /**
    * Collapse a container (legacy compatibility method)
    */
