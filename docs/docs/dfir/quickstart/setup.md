@@ -133,7 +133,7 @@ To work with the repository, it's best to start with an "example", found in the
 The simplest example is the
 ['hello world'](https://github.com/hydro-project/hydro/blob/main/dfir_rs/examples/hello_world/main.rs) example;
 the simplest example with networking is the
-[`echo server`](https://github.com/hydro-project/hydro/blob/main/dfir_rs/examples/echoserver/main.rs).
+[`echo server`](https://github.com/hydro-project/hydro/blob/main/dfir_rs/examples/echo_server/main.rs).
 
 The DFIR repository is set up as a [workspace](https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html),
 i.e. a repo containing a bunch of separate packages, `dfir_rs` is just the
