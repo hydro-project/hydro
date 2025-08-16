@@ -490,7 +490,7 @@ export class VisualizationEngine {
     let fixedCount = 0;
     
     for (const container of containers) {
-      const isFixed = this.visState.getContainerELKFixed(container.id);
+      const isFixed = this.elkBridge.getContainerELKFixed(this.visState, container.id);
       if (isFixed) {
         fixedCount++;
         this.log(`❌ INVARIANT VIOLATION: Container ${container.id} is elkFixed=true but should be false for fresh layout`);
