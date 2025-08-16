@@ -14,6 +14,12 @@ export { CollapsibleSection } from './CollapsibleSection';
 export { DockablePanel } from './DockablePanel';
 export { PANEL_POSITIONS } from './types';
 
+// Visual Configuration Panel
+export { VisualConfigPanel } from './VisualConfigPanel';
+
+// Control components
+export * from './controls';
+
 // Types
 export type {
   InfoPanelProps,
@@ -26,7 +32,9 @@ export type {
   LegendItem,
   GroupingOption,
   PanelPosition,
-  BaseComponentProps
+  BaseComponentProps,
+  VisualConfigState,
+  VisualConfigPanelProps
 } from './types';
 
 export type { LayoutControlsProps } from './LayoutControls';
