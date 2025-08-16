@@ -69,9 +69,9 @@
 <a href=#69 id=69 data-nosnippet>69</a>#[cfg(test)]
 <a href=#70 id=70 data-nosnippet>70</a></span><span class="kw">mod </span>tests {
 <a href=#71 id=71 data-nosnippet>71</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<a href=#72 id=72 data-nosnippet>72</a>    <span class="kw">use </span><span class="kw">crate</span>::FlowBuilder;
-<a href=#73 id=73 data-nosnippet>73</a>    <span class="kw">use </span><span class="kw">crate</span>::deploy::HydroDeploy;
-<a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
+<a href=#72 id=72 data-nosnippet>72</a>    <span class="kw">use </span><span class="kw">crate</span>::deploy::HydroDeploy;
+<a href=#73 id=73 data-nosnippet>73</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
+<a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">use crate</span>::{FlowBuilder, nondet};
 <a href=#75 id=75 data-nosnippet>75</a>
 <a href=#76 id=76 data-nosnippet>76</a>    <span class="attr">#[test]
 <a href=#77 id=77 data-nosnippet>77</a>    </span><span class="kw">fn </span>test_property_database() {
@@ -99,15 +99,15 @@
 <a href=#99 id=99 data-nosnippet>99</a>        <span class="kw">let </span>counter_func = <span class="macro">q!</span>(|count: <span class="kw-2">&amp;mut </span>i32, <span class="kw">_</span>| <span class="kw-2">*</span>count += <span class="number">1</span>);
 <a href=#100 id=100 data-nosnippet>100</a>        <span class="kw">let _ </span>= database.add_commutative_tag(counter_func, <span class="kw-2">&amp;</span>tick);
 <a href=#101 id=101 data-nosnippet>101</a>
-<a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">unsafe </span>{
-<a href=#103 id=103 data-nosnippet>103</a>            process
-<a href=#104 id=104 data-nosnippet>104</a>                .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[]))
-<a href=#105 id=105 data-nosnippet>105</a>                .map(<span class="macro">q!</span>(|string: String| (string, ())))
-<a href=#106 id=106 data-nosnippet>106</a>                .tick_batch(<span class="kw-2">&amp;</span>tick)
-<a href=#107 id=107 data-nosnippet>107</a>        }
-<a href=#108 id=108 data-nosnippet>108</a>        .fold_keyed(<span class="macro">q!</span>(|| <span class="number">0</span>), counter_func)
-<a href=#109 id=109 data-nosnippet>109</a>        .all_ticks()
-<a href=#110 id=110 data-nosnippet>110</a>        .for_each(<span class="macro">q!</span>(|(string, count)| <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, string, count)));
+<a href=#102 id=102 data-nosnippet>102</a>        process
+<a href=#103 id=103 data-nosnippet>103</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[]))
+<a href=#104 id=104 data-nosnippet>104</a>            .map(<span class="macro">q!</span>(|string: String| (string, ())))
+<a href=#105 id=105 data-nosnippet>105</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#106 id=106 data-nosnippet>106</a>            .into_keyed()
+<a href=#107 id=107 data-nosnippet>107</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0</span>), counter_func)
+<a href=#108 id=108 data-nosnippet>108</a>            .entries()
+<a href=#109 id=109 data-nosnippet>109</a>            .all_ticks()
+<a href=#110 id=110 data-nosnippet>110</a>            .for_each(<span class="macro">q!</span>(|(string, count)| <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, string, count)));
 <a href=#111 id=111 data-nosnippet>111</a>
 <a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span>built = flow
 <a href=#113 id=113 data-nosnippet>113</a>            .optimize_with(|ir| properties_optimize(ir, <span class="kw-2">&amp;mut </span>database))

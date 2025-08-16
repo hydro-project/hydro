@@ -74,10 +74,10 @@
 <a href=#74 id=74 data-nosnippet>74</a><span class="kw">where
 <a href=#75 id=75 data-nosnippet>75</a>    </span>S: CycleComplete&lt;<span class="lifetime">'a</span>, ForwardRefMarker&gt;,
 <a href=#76 id=76 data-nosnippet>76</a>{
-<a href=#77 id=77 data-nosnippet>77</a>    <span class="kw">pub fn </span>complete(<span class="kw-2">mut </span><span class="self">self</span>, stream: S) {
+<a href=#77 id=77 data-nosnippet>77</a>    <span class="kw">pub fn </span>complete(<span class="kw-2">mut </span><span class="self">self</span>, stream: <span class="kw">impl </span>Into&lt;S&gt;) {
 <a href=#78 id=78 data-nosnippet>78</a>        <span class="self">self</span>.completed = <span class="bool-val">true</span>;
 <a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">let </span>ident = <span class="self">self</span>.ident.clone();
-<a href=#80 id=80 data-nosnippet>80</a>        S::complete(stream, ident, <span class="self">self</span>.expected_location.clone())
+<a href=#80 id=80 data-nosnippet>80</a>        S::complete(stream.into(), ident, <span class="self">self</span>.expected_location.clone())
 <a href=#81 id=81 data-nosnippet>81</a>    }
 <a href=#82 id=82 data-nosnippet>82</a>}
 <a href=#83 id=83 data-nosnippet>83</a>
