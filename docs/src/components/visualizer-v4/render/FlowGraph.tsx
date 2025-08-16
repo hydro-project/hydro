@@ -210,6 +210,14 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
     }
   }, [config?.colorPalette, converter]); // Only depend on the specific colorPalette value
 
+  // Listen to edge color changes to update arrowhead color
+  useEffect(() => {
+    if (config && converter && config.edgeColor !== undefined) {
+      // Update converter edge appearance for future conversions
+      converter.setEdgeAppearance({ color: config.edgeColor });
+    }
+  }, [config?.edgeColor, converter]); // Only depend on the specific edgeColor value
+
   // Listen to visualization state changes
   useEffect(() => {
     // Skip the effect entirely if smart collapse is running

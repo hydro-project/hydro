@@ -229,3 +229,64 @@ vis/
 5. Update this README
 
 The visualization system is designed to be extended with additional layout engines, renderers, and interaction handlers while maintaining the core state management principles.
+
+## Style Tuner Panel
+
+The visualization system includes a dockable Style Tuner panel that allows interactive adjustment of visual properties in real-time.
+
+### Features
+
+- **Edge Styling**: Change edge style (bezier/straight/smoothstep), color, width, and dashed patterns
+- **Node Styling**: Adjust node border radius, padding, and font size
+- **Container Styling**: Modify container border radius, border width, and shadow effects
+- **Real-time Updates**: All changes are applied immediately to the visualization
+- **Dockable Interface**: Panel can be docked, undocked, and collapsed as needed
+
+### Usage
+
+The Style Tuner panel is available on the `/vis` page and is docked to the top-right by default.
+
+#### Edge Controls
+- **Edge Style**: Choose between bezier curves, straight lines, or smooth step routing
+- **Edge Color**: Pick color for both edge lines and arrowheads
+- **Edge Width**: Adjust thickness of edge lines (1-8px)
+- **Edge Dashed**: Toggle dashed line style
+
+#### Node Controls  
+- **Node Border Radius**: Control roundness of node corners (0-24px)
+- **Node Padding**: Adjust internal spacing within nodes (4-32px)
+- **Node Font Size**: Change text size in nodes (10-20px)
+
+#### Container Controls
+- **Container Border Radius**: Control roundness of container corners (0-24px)  
+- **Container Border Width**: Adjust thickness of container borders (1-6px)
+- **Container Shadow**: Choose shadow intensity (None/Light/Medium/Large)
+
+### Implementation
+
+```typescript
+import { StyleTunerPanel } from '@site/src/components/visualizer-v4';
+
+// Basic usage
+<StyleTunerPanel 
+  value={styleConfig} 
+  onChange={setStyleConfig}
+  defaultCollapsed={false}
+/>
+
+// Style config structure
+const styleConfig = {
+  edgeStyle: 'bezier' | 'straight' | 'smoothstep',
+  edgeColor: '#1976d2',
+  edgeWidth: 2,
+  edgeDashed: false,
+  nodeBorderRadius: 4,
+  nodePadding: 12,
+  nodeFontSize: 12,
+  containerBorderRadius: 8,
+  containerBorderWidth: 2,
+  containerShadow: 'LIGHT' | 'MEDIUM' | 'LARGE' | 'NONE'
+};
+```
+
+The Style Tuner integrates with the `StyleConfigProvider` to ensure all components receive consistent styling updates.
