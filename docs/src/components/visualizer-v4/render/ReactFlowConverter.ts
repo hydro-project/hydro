@@ -24,6 +24,13 @@ export class ReactFlowConverter {
   }
 
   /**
+   * Set edge appearance properties (color, etc.)
+   */
+  setEdgeAppearance(appearance: { color?: string }): void {
+    this.bridge.setEdgeAppearance(appearance);
+  }
+
+  /**
    * Convert VisualizationState to ReactFlow format - SAME API as alpha
    */
   convert(visState: VisualizationState): ReactFlowData {

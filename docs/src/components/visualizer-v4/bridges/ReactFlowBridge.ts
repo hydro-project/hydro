@@ -59,12 +59,20 @@ export interface ReactFlowData {
 
 export class ReactFlowBridge {
   private colorPalette: string = 'Set3';
+  private edgeAppearance: { color?: string } = {};
 
   /**
    * Set the color palette for node styling
    */
   setColorPalette(palette: string): void {
     this.colorPalette = palette;
+  }
+
+  /**
+   * Set edge appearance properties (color, etc.)
+   */
+  setEdgeAppearance(appearance: { color?: string }): void {
+    this.edgeAppearance = { ...this.edgeAppearance, ...appearance };
   }
 
   /**
@@ -195,7 +203,7 @@ export class ReactFlowBridge {
           type: MarkerType.ArrowClosed,
           width: 15,
           height: 15,
-          color: '#999'
+          color: this.edgeAppearance.color || '#999'
         },
         data: {
           style: edge.style || 'default'
@@ -471,7 +479,7 @@ export class ReactFlowBridge {
             type: MarkerType.ArrowClosed,
             width: 15,
             height: 15,
-            color: '#999'
+            color: this.edgeAppearance.color || '#999'
           },
           data: {
             style: edge.style || 'default'
@@ -495,7 +503,7 @@ export class ReactFlowBridge {
             type: MarkerType.ArrowClosed,
             width: 15,
             height: 15,
-            color: '#999'
+            color: this.edgeAppearance.color || '#999'
           },
           data: {
             style: edge.style || 'default'
