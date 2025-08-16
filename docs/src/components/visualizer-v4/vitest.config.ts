@@ -4,10 +4,11 @@ import path from 'path';
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
+    environment: 'jsdom', // Use jsdom for React testing
     pool: 'forks', // Use fork pool to avoid CJS issues
     include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     exclude: ['**/node_modules/**', '**/dist/**', '**/_DEPRECATED_*/**'],
+    setupFiles: ['./test-setup.ts'], // Add setup file for testing-library
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

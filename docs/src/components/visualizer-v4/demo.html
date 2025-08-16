@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Configuration Panel Demo</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #f9fafb;
+        }
+        
+        .demo-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .panel-container {
+            position: relative;
+            width: 350px;
+            flex-shrink: 0;
+        }
+        
+        .sample-element {
+            padding: 12px 16px;
+            border: 2px solid #d1d5db;
+            border-radius: 6px;
+            background-color: #ffffff;
+            margin: 8px;
+            min-width: 120px;
+            text-align: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-list {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            max-width: 600px;
+        }
+        
+        .feature-list h3 {
+            margin-top: 0;
+            color: #111827;
+        }
+        
+        .feature-list ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .feature-list li {
+            margin: 8px 0;
+            color: #6b7280;
+        }
+        
+        .highlight {
+            background-color: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="main-content">
+            <h1 style="color: #111827; font-size: 36px; margin-bottom: 16px;">
+                Visual Configuration Panel
+            </h1>
+            
+            <p style="color: #6b7280; font-size: 18px; text-align: center; max-width: 600px; margin-bottom: 40px;">
+                Interactive dockable panel for controlling visual constants from shared/config.ts.
+                Provides real-time visual controls for enhanced user experience.
+            </p>
+            
+            <!-- Sample visualization elements -->
+            <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 30px;">
+                <div class="sample-element" id="sample-node">
+                    Sample Node<br>
+                    <small>Responsive to style changes</small>
+                </div>
+                
+                <div style="width: 100px; height: 2px; background-color: #d1d5db; border-radius: 1px;" id="sample-edge"></div>
+                
+                <div class="sample-element" id="sample-container" style="width: 200px; height: 150px; display: flex; align-items: center; justify-content: center;">
+                    Sample Container<br>
+                    <small>Configurable sizing</small>
+                </div>
+            </div>
+            
+            <div class="feature-list">
+                <h3>✅ Implemented Features</h3>
+                <ul>
+                    <li><span class="highlight">Visual Controls:</span> Node Styles, Edge Styles, Container Styles, ReactFlow Edge Types</li>
+                    <li><span class="highlight">Color & Typography:</span> Color Palettes (Set3, Pastel1, Dark2), Typography Scale, InfoPanel Font Size</li>
+                    <li><span class="highlight">Visual Styling:</span> Shadow Intensity, Border Radius adjustments</li>
+                    <li><span class="highlight">Container Sizing:</span> Collapsed container dimensions control</li>
+                    <li><span class="highlight">Real-time Updates:</span> All changes applied immediately via callbacks</li>
+                    <li><span class="highlight">Dockable Panel:</span> Extends existing DockablePanel pattern</li>
+                    <li><span class="highlight">Collapsible Sections:</span> Organized UI with expandable/collapsible sections</li>
+                    <li><span class="highlight">Type Safety:</span> Full TypeScript interfaces and type checking</li>
+                </ul>
+                
+                <h3 style="margin-top: 24px;">🔧 Technical Implementation</h3>
+                <ul>
+                    <li>Modular control components (DropdownControl, SliderControl, RadioGroupControl)</li>
+                    <li>Integration with VisualizationState for reactive updates</li>
+                    <li>Uses shared/config.ts as single source of truth</li>
+                    <li>Clean separation of concerns with reusable widgets</li>
+                    <li>Consistent with existing component patterns</li>
+                </ul>
+                
+                <h3 style="margin-top: 24px;">📋 Integration Steps</h3>
+                <ul>
+                    <li>Import VisualConfigPanel from visualizer-v4/components</li>
+                    <li>Pass onConfigChange callback to handle configuration updates</li>
+                    <li>Apply configuration changes to VisualizationState</li>
+                    <li>Panel automatically docks and provides organized controls</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="panel-container">
+            <!-- The actual Visual Configuration Panel would be rendered here via React -->
+            <div style="position: absolute; top: 12px; right: 12px; 
+                        background: white; border: 1px solid #d1d5db; border-radius: 8px;
+                        padding: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                        width: 280px; max-height: 600px; overflow-y: auto;">
+                <div style="font-weight: bold; margin-bottom: 12px; color: #111827;">
+                    🎨 Visual Configuration
+                </div>
+                
+                <div style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                    <p><strong>Mock Panel Preview:</strong></p>
+                    <p>▾ Visual Controls</p>
+                    <p style="margin-left: 16px; font-size: 12px;">
+                        • Node Style: <select style="font-size: 11px;"><option>default</option></select><br>
+                        • Edge Style: <select style="font-size: 11px;"><option>default</option></select><br>
+                        • Container Style: <select style="font-size: 11px;"><option>default</option></select><br>
+                        • Edge Type: <select style="font-size: 11px;"><option>default</option></select>
+                    </p>
+                    
+                    <p>▾ Color & Typography</p>
+                    <p style="margin-left: 16px; font-size: 12px;">
+                        • Color Palette: ● Set3 ○ Pastel1 ○ Dark2<br>
+                        • Typography Scale: ▬▬●▬▬ (1.0x)<br>
+                        • InfoPanel Font: ▬▬●▬▬ (14px)
+                    </p>
+                    
+                    <p>▾ Visual Styling</p>
+                    <p style="margin-left: 16px; font-size: 12px;">
+                        • Shadow: <select style="font-size: 11px;"><option>Medium</option></select><br>
+                        • Border Radius: ▬▬●▬▬ (6px)
+                    </p>
+                    
+                    <p>△ Container Sizing</p>
+                    <p style="margin-left: 16px; font-size: 12px; color: #9ca3af;">
+                        (Collapsed by default)
+                    </p>
+                    
+                    <div style="margin-top: 16px; padding: 8px; background: #f3f4f6; border-radius: 4px;">
+                        <strong style="font-size: 12px;">Real Implementation:</strong>
+                        <p style="font-size: 11px; margin: 4px 0;">
+                            Uses React components with full interactivity, real-time updates, and integration with VisualizationState.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Simple demo interactivity
+        console.log('Visual Configuration Panel Demo Loaded');
+        console.log('Components implemented:');
+        console.log('- VisualConfigPanel.tsx');
+        console.log('- DropdownControl.tsx');
+        console.log('- SliderControl.tsx'); 
+        console.log('- RadioGroupControl.tsx');
+        console.log('- IntegrationExample.tsx');
+    </script>
+</body>
+</html>
