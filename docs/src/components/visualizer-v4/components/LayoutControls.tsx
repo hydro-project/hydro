@@ -37,20 +37,10 @@ const layoutOptions = {
   'radial': 'Radial'
 };
 
-// Color palette options
-const paletteOptions = {
-  'Set2': 'Set2',
-  'Set3': 'Set3', 
-  'Pastel1': 'Pastel1',
-  'Dark2': 'Dark2'
-};
-
 export interface LayoutControlsProps {
   visualizationState: VisualizationState;
   currentLayout?: string;
   onLayoutChange?: (layout: string) => void;
-  colorPalette?: string;
-  onPaletteChange?: (palette: string) => void;
   onCollapseAll?: () => void;
   onExpandAll?: () => void;
   autoFit?: boolean;
@@ -64,8 +54,6 @@ export function LayoutControls({
   visualizationState,
   currentLayout = 'layered',
   onLayoutChange,
-  colorPalette = 'Set2',
-  onPaletteChange,
   onCollapseAll,
   onExpandAll,
   autoFit = false,
@@ -109,24 +97,6 @@ export function LayoutControls({
         title="Layout Algorithm"
       >
         {Object.entries(layoutOptions).map(([key, label]) => (
-          <option key={key} value={key}>{label}</option>
-        ))}
-      </select>
-
-      {/* Color Palette Selector */}
-      <select 
-        value={colorPalette} 
-        onChange={(e) => onPaletteChange?.(e.target.value)}
-        style={{
-          padding: '4px 8px',
-          border: '1px solid #ced4da',
-          borderRadius: '4px',
-          backgroundColor: '#fff',
-          fontSize: '14px'
-        }}
-        title="Color Palette"
-      >
-        {Object.entries(paletteOptions).map(([key, label]) => (
           <option key={key} value={key}>{label}</option>
         ))}
       </select>

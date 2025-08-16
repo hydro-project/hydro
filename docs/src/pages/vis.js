@@ -699,8 +699,6 @@ function VisV4Component() {
             visualizationState={currentVisualizationState}
             currentLayout={layoutAlgorithm}
             onLayoutChange={handleLayoutAlgorithmChange}
-            colorPalette={colorPalette}
-            onPaletteChange={handleColorPaletteChange}
             autoFit={autoFit}
             onAutoFitToggle={setAutoFit}
             onCollapseAll={handlePackAll}
@@ -851,7 +849,12 @@ function VisV4Component() {
             {/* Style Tuner Panel */}
             {StyleTunerPanel && (
               <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 1500, width: 320 }}>
-                <StyleTunerPanel value={styleConfig} onChange={setStyleConfig} />
+                <StyleTunerPanel 
+                  value={styleConfig} 
+                  onChange={setStyleConfig} 
+                  colorPalette={colorPalette}
+                  onPaletteChange={handleColorPaletteChange}
+                />
               </div>
             )}
             

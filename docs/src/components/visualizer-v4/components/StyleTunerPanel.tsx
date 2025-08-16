@@ -3,6 +3,14 @@ import { DockablePanel, PANEL_POSITIONS } from './DockablePanel';
 
 type EdgeStyleKind = 'bezier' | 'straight' | 'smoothstep';
 
+// Color palette options
+const paletteOptions = {
+  'Set2': 'Set2',
+  'Set3': 'Set3', 
+  'Pastel1': 'Pastel1',
+  'Dark2': 'Dark2'
+};
+
 export interface StyleTunerPanelProps {
   // Feed and control the FlowGraph RenderConfig style fields
   value: {
@@ -18,10 +26,18 @@ export interface StyleTunerPanelProps {
     containerShadow?: 'LIGHT' | 'MEDIUM' | 'LARGE' | 'NONE';
   };
   onChange: (next: StyleTunerPanelProps['value']) => void;
+  colorPalette?: string;
+  onPaletteChange?: (palette: string) => void;
   defaultCollapsed?: boolean;
 }
 
-export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: StyleTunerPanelProps) {
+export function StyleTunerPanel({ 
+  value, 
+  onChange, 
+  colorPalette = 'Set2',
+  onPaletteChange,
+  defaultCollapsed = false 
+}: StyleTunerPanelProps) {
   const [local, setLocal] = useState(value);
 
   useEffect(() => setLocal(value), [value]);
@@ -99,6 +115,19 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
             checked={!!local.edgeDashed}
             onChange={(e) => update({ edgeDashed: e.target.checked })}
           />
+        </div>
+
+        <div style={rowStyle}>
+          <label>Color Palette</label>
+          <select 
+            value={colorPalette} 
+            onChange={(e) => onPaletteChange?.(e.target.value)}
+            style={inputStyle}
+          >
+            {Object.entries(paletteOptions).map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
         </div>
 
         <hr />
