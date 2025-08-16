@@ -52,7 +52,7 @@ export type { LayoutConfig, LayoutResult, LayoutEngine } from './layout/index';
  *
  * 🔥 KEY IMPROVEMENT: Clean coordinate translation between ELK and ReactFlow!
  */
-export { FlowGraph as FlowGraph, ReactFlowConverter, GraphStandardNode, GraphContainerNode, GraphStandardEdge, GraphHyperEdge, DEFAULT_RENDER_CONFIG } from './render/index';
+export { FlowGraph as FlowGraph, GraphStandardNode, GraphContainerNode, GraphStandardEdge, GraphHyperEdge, DEFAULT_RENDER_CONFIG } from './render/index';
 export type { RenderConfig, FlowGraphEventHandlers as FlowGraphEventHandlers } from './render/index';
 /**
  * Bridge architecture components for advanced users

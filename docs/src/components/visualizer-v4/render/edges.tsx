@@ -46,7 +46,7 @@ export function StandardEdge(props: EdgeProps) {
   return (
     <BaseEdge
       path={edgePath}
-      markerEnd={props.markerEnd}
+  markerEnd={props.markerEnd}
       style={{ 
         stroke: styleCfg.edgeColor || '#1976d2', 
         strokeWidth: styleCfg.edgeWidth ?? 2,
@@ -72,7 +72,7 @@ export function HyperEdge(props: EdgeProps) {
   return (
     <BaseEdge
       path={edgePath}
-      markerEnd={props.markerEnd}
+  markerEnd={props.markerEnd}
       style={{ 
         stroke: styleCfg.edgeColor || '#ff5722', 
         strokeWidth: (styleCfg.edgeWidth ?? 3), 

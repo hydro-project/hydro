@@ -14,7 +14,9 @@ export default defineConfig({
       exclude: ['**/_DEPRECATED_*/**', '**/dist/**', '**/*.config.*']
     },
     // Exit cleanly after tests complete (no watch mode by default)
-    watch: false
+    watch: false,
+    // Global setup for displaying final status messages
+    globalSetup: ['__tests__/global-teardown.ts']
   },
   resolve: {
     alias: {

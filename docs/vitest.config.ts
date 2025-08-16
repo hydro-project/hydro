@@ -20,7 +20,8 @@ export default defineConfig({
       exclude: ['**/_DEPRECATED_*/**', '**/dist/**', '**/*.config.*']
     },
     // Exit cleanly after tests complete (no watch mode by default)
-    watch: false
+    watch: false,
+    globalSetup: ['src/components/visualizer-v4/__tests__/global-teardown.ts']
   },
   resolve: {
     alias: {

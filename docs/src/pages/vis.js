@@ -96,8 +96,9 @@ function VisV4Component() {
         
         const InfoPanelModule = await import('@site/src/components/visualizer-v4/components/InfoPanel.tsx');
         
-        const LayoutControlsModule = await import('@site/src/components/visualizer-v4/components/LayoutControls.tsx');
-  const StyleTunerPanelModule = await import('@site/src/components/visualizer-v4/components/StyleTunerPanel.tsx');
+  const LayoutControlsModule = await import('@site/src/components/visualizer-v4/components/LayoutControls.tsx');
+  // Import StyleTunerPanel from the package barrel to avoid direct path resolution issues
+  const StyleTunerPanelModule = await import('@site/src/components/visualizer-v4');
         
         const FileDropZoneModule = await import('@site/src/components/visualizer-v4/components/FileDropZone.tsx');
         
@@ -109,7 +110,7 @@ function VisV4Component() {
         setNodeStyles(configModule.NODE_STYLES);
         setEdgeStyles(configModule.EDGE_STYLES);
         setInfoPanel(() => InfoPanelModule.InfoPanel);
-        setLayoutControls(() => LayoutControlsModule.LayoutControls);
+  setLayoutControls(() => LayoutControlsModule.LayoutControls);
   setStyleTunerPanel(() => StyleTunerPanelModule.StyleTunerPanel);
         setFileDropZone(() => FileDropZoneModule.default);
         // Don't load grouping options here - wait until we have graph data

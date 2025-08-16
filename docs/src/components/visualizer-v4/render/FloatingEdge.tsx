@@ -6,7 +6,8 @@
  */
 
 import { useCallback } from 'react';
-import { getBezierPath, useStore, EdgeProps } from '@xyflow/react';
+import { getBezierPath, getStraightPath, getSmoothStepPath, useStore, EdgeProps } from '@xyflow/react';
+import { useStyleConfig } from './StyleConfigContext';
 
 // Utility function to get edge parameters for floating connection
 function getEdgeParams(source: any, target: any) {
@@ -135,6 +136,7 @@ function getEdgePosition(node: any, intersectionPoint: any) {
 }
 
 export default function FloatingEdge({ id, source, target, markerEnd, style }: EdgeProps) {
+  const styleCfg = useStyleConfig();
   const sourceNode = useStore(useCallback((store) => store.nodeLookup.get(source), [source]));
   const targetNode = useStore(useCallback((store) => store.nodeLookup.get(target), [target]));
 
@@ -150,12 +152,31 @@ export default function FloatingEdge({ id, source, target, markerEnd, style }: E
   const safeTx = (typeof tx === 'number' && !isNaN(tx) && isFinite(tx)) ? tx : 100;
   const safeTy = (typeof ty === 'number' && !isNaN(ty) && isFinite(ty)) ? ty : 100;
 
-  const [edgePath] = getBezierPath({
-    sourceX: safeSx,
-    sourceY: safeSy,
-    targetX: safeTx,
-    targetY: safeTy,
-  });
+  let edgePath: string = '';
+  if (styleCfg.edgeStyle === 'straight') {
+    [edgePath] = getStraightPath({
+      sourceX: safeSx,
+      sourceY: safeSy,
+      targetX: safeTx,
+      targetY: safeTy,
+    });
+  } else if (styleCfg.edgeStyle === 'smoothstep') {
+    [edgePath] = getSmoothStepPath({
+      sourceX: safeSx,
+      sourceY: safeSy,
+      targetX: safeTx,
+      targetY: safeTy,
+      sourcePosition: undefined,
+      targetPosition: undefined,
+    });
+  } else {
+    [edgePath] = getBezierPath({
+      sourceX: safeSx,
+      sourceY: safeSy,
+      targetX: safeTx,
+      targetY: safeTy,
+    });
+  }
 
   return (
     <path
@@ -163,7 +184,12 @@ export default function FloatingEdge({ id, source, target, markerEnd, style }: E
       className="react-flow__edge-path"
       d={edgePath}
       markerEnd={markerEnd}
-      style={style}
+      style={{
+        ...style,
+        stroke: styleCfg.edgeColor || (style as any)?.stroke || '#1976d2',
+        strokeWidth: styleCfg.edgeWidth ?? (style as any)?.strokeWidth ?? 2,
+        strokeDasharray: styleCfg.edgeDashed ? '6,6' : (style as any)?.strokeDasharray,
+      }}
     />
   );
 }

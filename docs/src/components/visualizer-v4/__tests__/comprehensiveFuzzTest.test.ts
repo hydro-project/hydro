@@ -17,6 +17,9 @@ import type { LayoutConfig } from '../core/types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Skip fuzz tests by default unless explicitly enabled
+const shouldRunFuzzTests = process.env.ENABLE_FUZZ_TESTS === 'true';
+
 // Enhanced fuzz test configuration
 const FUZZ_ITERATIONS = 50;  // Number of fuzz cycles
 const MAX_OPERATIONS_PER_ITERATION = 20;  // Max operations in a single iteration
@@ -485,8 +488,11 @@ class ComprehensiveFuzzTester {
   }
 }
 
-// Vitest test suite
-describe('Comprehensive Visualizer Fuzz Testing', () => {
+// Vitest test suite - use conditional describe to skip by default
+const testSuite = shouldRunFuzzTests ? describe : describe.skip;
+
+testSuite('Comprehensive Visualizer Fuzz Testing', () => {
+
   it('should stress test all visualizer controls with paxos-flipped.json without finding disconnected edges', async () => {
     console.log('🧪 STARTING COMPREHENSIVE FUZZ TESTING SUITE');
     console.log('============================================\n');

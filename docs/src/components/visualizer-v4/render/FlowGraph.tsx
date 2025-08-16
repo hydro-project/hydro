@@ -8,7 +8,7 @@ import { ReactFlow, Background, Controls, MiniMap, useReactFlow, ReactFlowProvid
 import '@xyflow/react/dist/style.css';
 
 import { createVisualizationEngine } from '../core/VisualizationEngine';
-import { ReactFlowConverter } from './ReactFlowConverter';
+import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
 import { DEFAULT_RENDER_CONFIG } from './config';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
@@ -69,7 +69,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         
         // Convert to ReactFlow format
         console.log('[FlowGraph] 🔄 Converting to ReactFlow format...');
-        const baseData = converter.convert(visualizationState);
+        const baseData = bridge.visStateToReactFlow(visualizationState);
         
         console.log('[FlowGraph] 🔄 Layout result:', {
           containers: baseData.nodes.filter(n => n.type === 'container').length,
@@ -116,11 +116,11 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   // Ref to track the base layout data (before manual positioning)
   const baseReactFlowDataRef = useRef<ReactFlowData | null>(null);
 
-  // Create converter and engine
-  const [converter] = useState(() => new ReactFlowConverter());
+  // Create bridge and engine
+  const [bridge] = useState(() => new ReactFlowBridge());
   const [engine] = useState(() => createVisualizationEngine(visualizationState, {
-    autoLayout: true, // Always auto-layout for alpha compatibility
-    enableLogging: false, // Enable logging to debug smart collapse
+    autoLayout: true,
+    enableLogging: false,
     layoutConfig: layoutConfig
   }));
 
@@ -155,7 +155,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   // Listen to layout config changes
   useEffect(() => {
     // Only run if we have all dependencies and data already exists
-    if (layoutConfig && engine && converter && visualizationState && reactFlowData) {
+    if (layoutConfig && engine && bridge && visualizationState && reactFlowData) {
       engine.updateLayoutConfig(layoutConfig, false); // Update config first
       
       // Trigger a re-layout with the new algorithm
@@ -168,7 +168,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
           await engine.runLayout();
           
           // Convert to ReactFlow format
-          const baseData = converter.convert(visualizationState);
+          const baseData = bridge.visStateToReactFlow(visualizationState);
           
           // Store the base data for reference
           baseReactFlowDataRef.current = baseData;
@@ -191,9 +191,9 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
 
   // Listen to config changes (including color palette)
   useEffect(() => {
-    if (config && converter && config.colorPalette) {
-      // Update converter palette for future conversions
-      converter.setColorPalette(config.colorPalette);
+    if (config && bridge && config.colorPalette) {
+      // Update bridge palette for future conversions
+      bridge.setColorPalette(config.colorPalette);
 
       // Also update existing reactFlowData to reflect palette immediately without re-layout
       setReactFlowData(prev => {
@@ -208,7 +208,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         return { ...prev, nodes: updatedNodes };
       });
     }
-  }, [config?.colorPalette, converter]); // Only depend on the specific colorPalette value
+  }, [config?.colorPalette, bridge]); // Only depend on the specific colorPalette value
 
   // Listen to visualization state changes
   useEffect(() => {
@@ -233,7 +233,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         await engine.runLayout();
         
         // Convert to ReactFlow format
-        const baseData = converter.convert(visualizationState);
+        const baseData = bridge.visStateToReactFlow(visualizationState);
         
         // Store the base data for reference
         baseReactFlowDataRef.current = baseData;
@@ -280,7 +280,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
     // For alpha compatibility, we just do initial render
     // Real change detection would be implemented with proper state listeners
     
-  }, [visualizationState, engine, converter, applyManualPositions]);
+  }, [visualizationState, engine, bridge, applyManualPositions]);
 
   // Separate effect to update positions when manual positions change (without re-running layout)
   useEffect(() => {

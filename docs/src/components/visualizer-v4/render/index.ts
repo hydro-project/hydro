@@ -7,7 +7,6 @@
 
 // Main components
 export { FlowGraph } from './FlowGraph';
-export { ReactFlowConverter } from './ReactFlowConverter';
 
 // Node and edge components for compatibility
 export { StandardNode as GraphStandardNode, ContainerNode as GraphContainerNode } from './nodes';
