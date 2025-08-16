@@ -11,6 +11,7 @@ import type { ReactFlowData } from '../bridges/ReactFlowBridge';
 
 export class ReactFlowConverter {
   private bridge: ReactFlowBridge;
+  private edgeAppearance: { color?: string } = {};
 
   constructor() {
     this.bridge = new ReactFlowBridge();
@@ -21,6 +22,14 @@ export class ReactFlowConverter {
    */
   setColorPalette(palette: string): void {
     this.bridge.setColorPalette(palette);
+  }
+
+  /**
+   * Set edge appearance configuration (runtime-only)
+   */
+  setEdgeAppearance(appearance: { color?: string }): void {
+    this.edgeAppearance = { ...this.edgeAppearance, ...appearance };
+    this.bridge.setEdgeAppearance(this.edgeAppearance);
   }
 
   /**

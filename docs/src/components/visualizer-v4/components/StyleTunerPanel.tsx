@@ -49,6 +49,30 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
     marginBottom: '8px'
   };
 
+  const labelStyle: React.CSSProperties = {
+    fontSize: '12px',
+    fontWeight: '500',
+    color: '#374151',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px'
+  };
+
+  const sectionTitleStyle: React.CSSProperties = {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#1f2937',
+    margin: '12px 0 8px 0',
+    padding: '0 0 4px 0',
+    borderBottom: '1px solid #e5e7eb'
+  };
+
+  const valueDisplayStyle: React.CSSProperties = {
+    fontSize: '10px',
+    color: '#6b7280',
+    marginLeft: '4px'
+  };
+
   return (
     <DockablePanel
       id="style-tuner"
@@ -60,12 +84,17 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
       minHeight={200}
     >
       <div style={{ fontSize: '12px' }}>
+        <div style={sectionTitleStyle}>Edge Appearance</div>
+        
         <div style={rowStyle}>
-          <label>Edge Style</label>
+          <label style={labelStyle} title="Choose how edges are drawn between nodes">
+            Edge Style
+          </label>
           <select
             value={local.edgeStyle || 'bezier'}
             style={inputStyle}
             onChange={(e) => update({ edgeStyle: e.target.value as EdgeStyleKind })}
+            title="Bezier: curved edges, Straight: direct lines, SmoothStep: stepped curves"
           >
             <option value="bezier">Bezier</option>
             <option value="straight">Straight</option>
@@ -74,7 +103,9 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
         </div>
 
         <div style={rowStyle}>
-          <label>Edge Color</label>
+          <label style={labelStyle} title="Color for edges and arrowheads">
+            Edge Color
+          </label>
           <input
             type="color"
             value={local.edgeColor || '#1976d2'}
@@ -84,7 +115,10 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
         </div>
 
         <div style={rowStyle}>
-          <label>Edge Width</label>
+          <label style={labelStyle} title="Thickness of edge lines">
+            Edge Width
+            <span style={valueDisplayStyle}>{local.edgeWidth ?? 2}px</span>
+          </label>
           <input
             type="range" min={1} max={8}
             value={local.edgeWidth ?? 2}
@@ -93,7 +127,9 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
         </div>
 
         <div style={rowStyle}>
-          <label>Edge Dashed</label>
+          <label style={labelStyle} title="Draw edges with dashed lines">
+            Edge Dashed
+          </label>
           <input
             type="checkbox"
             checked={!!local.edgeDashed}
@@ -101,10 +137,13 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
           />
         </div>
 
-        <hr />
+        <div style={sectionTitleStyle}>Node Appearance</div>
 
         <div style={rowStyle}>
-          <label>Node Border Radius</label>
+          <label style={labelStyle} title="Roundness of node corners">
+            Border Radius
+            <span style={valueDisplayStyle}>{local.nodeBorderRadius ?? 4}px</span>
+          </label>
           <input
             type="range" min={0} max={24}
             value={local.nodeBorderRadius ?? 4}
@@ -113,7 +152,10 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
         </div>
 
         <div style={rowStyle}>
-          <label>Node Padding</label>
+          <label style={labelStyle} title="Inner spacing within nodes">
+            Padding
+            <span style={valueDisplayStyle}>{local.nodePadding ?? 12}px</span>
+          </label>
           <input
             type="range" min={4} max={32}
             value={local.nodePadding ?? 12}
@@ -122,7 +164,10 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
         </div>
 
         <div style={rowStyle}>
-          <label>Node Font Size</label>
+          <label style={labelStyle} title="Size of text within nodes">
+            Font Size
+            <span style={valueDisplayStyle}>{local.nodeFontSize ?? 12}px</span>
+          </label>
           <input
             type="range" min={10} max={20}
             value={local.nodeFontSize ?? 12}
@@ -130,10 +175,13 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
           />
         </div>
 
-        <hr />
+        <div style={sectionTitleStyle}>Container Appearance</div>
 
         <div style={rowStyle}>
-          <label>Container Border Radius</label>
+          <label style={labelStyle} title="Roundness of container corners">
+            Border Radius
+            <span style={valueDisplayStyle}>{local.containerBorderRadius ?? 8}px</span>
+          </label>
           <input
             type="range" min={0} max={24}
             value={local.containerBorderRadius ?? 8}
@@ -142,7 +190,10 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
         </div>
 
         <div style={rowStyle}>
-          <label>Container Border Width</label>
+          <label style={labelStyle} title="Thickness of container borders">
+            Border Width
+            <span style={valueDisplayStyle}>{local.containerBorderWidth ?? 2}px</span>
+          </label>
           <input
             type="range" min={1} max={6}
             value={local.containerBorderWidth ?? 2}
@@ -151,7 +202,9 @@ export function StyleTunerPanel({ value, onChange, defaultCollapsed = false }: S
         </div>
 
         <div style={rowStyle}>
-          <label>Container Shadow</label>
+          <label style={labelStyle} title="Drop shadow intensity">
+            Shadow
+          </label>
           <select
             value={local.containerShadow || 'LIGHT'}
             style={inputStyle}

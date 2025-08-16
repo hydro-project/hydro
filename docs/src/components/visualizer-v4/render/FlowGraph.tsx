@@ -210,6 +210,27 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
     }
   }, [config?.colorPalette, converter]); // Only depend on the specific colorPalette value
 
+  // Listen to edge color changes to update arrowhead markers
+  useEffect(() => {
+    if (config && converter && config.edgeColor) {
+      // Update converter edge appearance for arrowhead colors
+      converter.setEdgeAppearance({ color: config.edgeColor });
+
+      // Update existing reactFlowData to reflect edge color immediately without re-layout
+      setReactFlowData(prev => {
+        if (!prev) return prev;
+        const updatedEdges = prev.edges.map(edge => ({
+          ...edge,
+          markerEnd: edge.markerEnd ? {
+            ...edge.markerEnd,
+            color: config.edgeColor
+          } : undefined
+        }));
+        return { ...prev, edges: updatedEdges };
+      });
+    }
+  }, [config?.edgeColor, converter]); // Only depend on the specific edgeColor value
+
   // Listen to visualization state changes
   useEffect(() => {
     // Skip the effect entirely if smart collapse is running
