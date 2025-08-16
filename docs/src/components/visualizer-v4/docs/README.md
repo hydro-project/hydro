@@ -37,9 +37,32 @@ Complete reference for the core state management class.
 ### Visualization Features
 - **Interactive Nodes & Edges**: Click, double-click, context menu support
 - **Custom Styling**: Configurable colors, shapes, and visual styles
+- **Style Tuner Panel**: Dockable interface for real-time visual adjustments
 - **Container Operations**: Collapse/expand with automatic edge aggregation
 - **Real-time Updates**: Dynamic graph modifications with smooth updates
 - **Export Capabilities**: Support for various output formats
+
+### Style Tuner Panel
+The Style Tuner provides a dockable interface for interactive visual customization:
+
+#### Edge Appearance
+- **Edge Style**: Choose between Bezier (curved), Straight (direct), or SmoothStep (stepped) edge rendering
+- **Edge Color**: Set color for both edge lines and arrowhead markers
+- **Edge Width**: Adjust thickness of edge lines (1-8px)
+- **Edge Dashed**: Toggle between solid and dashed edge lines
+
+#### Node Appearance  
+- **Border Radius**: Control roundness of node corners (0-24px)
+- **Padding**: Adjust inner spacing within nodes (4-32px)
+- **Font Size**: Set text size within nodes (10-20px)
+
+#### Container Appearance
+- **Border Radius**: Control roundness of container corners (0-24px)
+- **Border Width**: Adjust thickness of container borders (1-6px)
+- **Shadow**: Choose shadow intensity (None, Light, Medium, Large)
+
+#### Usage
+The Style Tuner panel is enabled by default on the `/vis` page and can be found docked in the top-right corner. All changes apply immediately to the visualization without requiring a layout refresh. The panel can be collapsed, moved, or undocked as needed.
 
 ### Developer Experience
 - **TypeScript First**: Full type safety and IntelliSense support
