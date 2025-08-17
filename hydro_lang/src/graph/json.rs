@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Write;
 
+use std::collections::HashSet;
 use serde_json;
 
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
@@ -73,6 +74,93 @@ impl<W> HydroJson<W> {
                 "label": def["label"]
             }))
             .collect()
+    }
+
+    /// Get edge style configuration mapping semantic properties to visual styles
+    fn get_edge_style_config() -> serde_json::Value {
+        serde_json::json!({
+            "propertyMappings": {
+                "Network": {
+                    "reactFlowType": "default",
+                    "style": {
+                        "stroke": "#880088",
+                        "strokeWidth": 2,
+                        "strokeDasharray": "5,5"
+                    },
+                    "animated": false,
+                    "label": "Network"
+                },
+                "Cycle": {
+                    "reactFlowType": "default", 
+                    "style": {
+                        "stroke": "#ff8800",
+                        "strokeWidth": 2,
+                        "strokeDasharray": "3,3"
+                    },
+                    "animated": true,
+                    "label": "Cycle"
+                },
+                "Bounded": {
+                    "reactFlowType": "default",
+                    "style": {
+                        "stroke": "#008800",
+                        "strokeWidth": 3
+                    },
+                    "animated": false,
+                    "label": "Bounded"
+                },
+                "Unbounded": {
+                    "reactFlowType": "default",
+                    "style": {
+                        "stroke": "#666666",
+                        "strokeWidth": 2
+                    },
+                    "animated": false,
+                    "label": "Unbounded"
+                },
+                "NoOrder": {
+                    "reactFlowType": "default",
+                    "style": {
+                        "stroke": "#ff0000",
+                        "strokeWidth": 2,
+                        "strokeDasharray": "8,4"
+                    },
+                    "animated": false,
+                    "label": "No Order"
+                },
+                "TotalOrder": {
+                    "reactFlowType": "default",
+                    "style": {
+                        "stroke": "#0066cc",
+                        "strokeWidth": 2
+                    },
+                    "animated": false,
+                    "label": "Total Order"
+                },
+                "Keyed": {
+                    "reactFlowType": "default",
+                    "style": {
+                        "stroke": "#0088ff",
+                        "strokeWidth": 2,
+                        "strokeDasharray": "10,2"
+                    },
+                    "animated": false,
+                    "label": "Keyed"
+                }
+            },
+            "defaultStyle": {
+                "reactFlowType": "default",
+                "style": {
+                    "stroke": "#999999",
+                    "strokeWidth": 2
+                },
+                "animated": false
+            },
+            "combinationRules": {
+                "priority": ["Network", "Cycle", "Bounded", "NoOrder", "Keyed", "TotalOrder", "Unbounded"],
+                "description": "When multiple properties are present, the highest priority property determines the visual style"
+            }
+        })
     }
 
     /// Apply elk.js layout via browser - nodes start at origin for elk.js to position
@@ -278,17 +366,23 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_type: HydroEdgeType,
+        edge_properties: &HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
         let edge_id = format!("e{}", self.edge_count);
         self.edge_count += 1;
 
+        // Convert edge properties to a JSON array
+        let properties: Vec<String> = edge_properties.iter()
+            .map(|p| format!("{:?}", p))
+            .collect();
+
         let mut edge = serde_json::json!({
             "id": edge_id,
             "source": src_id.to_string(),
             "target": dst_id.to_string(),
-            "edgeType": format!("{:?}", edge_type),
+            "edgeProperties": properties,
+            "semanticTags": properties, // For backward compatibility with visualizer
         });
 
         if let Some(label_text) = label {
@@ -391,7 +485,8 @@ where
             "legend": {
                 "title": "Node Types",
                 "items": legend_items
-            }
+            },
+            "edgeStyleConfig": Self::get_edge_style_config()
         });
 
         write!(

@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::fmt::Write;
 
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
@@ -138,7 +139,7 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_type: HydroEdgeType,
+        edge_properties: &HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
         let mut properties = Vec::<Cow<'static, str>>::new();
@@ -147,21 +148,30 @@ where
             properties.push(format!("label=\"{}\"", escape_dot(label, "\\n")).into());
         }
 
-        // Styling based on edge type
-        match edge_type {
-            HydroEdgeType::Persistent => {
-                properties.push("color=\"#008800\"".into());
-                properties.push("style=\"bold\"".into());
-            }
-            HydroEdgeType::Network => {
-                properties.push("color=\"#880088\"".into());
-                properties.push("style=\"dashed\"".into());
-            }
-            HydroEdgeType::Cycle => {
-                properties.push("color=\"#ff8800\"".into());
-                properties.push("style=\"dotted\"".into());
-            }
-            HydroEdgeType::Stream => {}
+        // Styling based on edge properties
+        if edge_properties.contains(&HydroEdgeType::Network) {
+            properties.push("color=\"#880088\"".into());
+            properties.push("style=\"dashed\"".into());
+        } else if edge_properties.contains(&HydroEdgeType::Cycle) {
+            properties.push("color=\"#ff8800\"".into());
+            properties.push("style=\"dotted\"".into());
+        } else if edge_properties.contains(&HydroEdgeType::Bounded) {
+            properties.push("color=\"#008800\"".into());
+            properties.push("style=\"bold\"".into());
+        } else if edge_properties.contains(&HydroEdgeType::NoOrder) {
+            properties.push("color=\"#ff0000\"".into());
+            properties.push("style=\"dashed\"".into());
+        } else if edge_properties.contains(&HydroEdgeType::Keyed) {
+            properties.push("color=\"#0088ff\"".into());
+            properties.push("style=\"bold\"".into());
+        }
+        
+        // Add tooltip with all properties
+        if !edge_properties.is_empty() {
+            let props: Vec<String> = edge_properties.iter()
+                .map(|p| format!("{:?}", p))
+                .collect();
+            properties.push(format!("tooltip=\"{}\"", props.join(", ")).into());
         }
 
         write!(

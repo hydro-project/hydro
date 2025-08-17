@@ -1,4 +1,6 @@
 TASKS:
+- My goal is to extend the edge styling to generate and visualize semantic tags in the input JSON files.
+
 - enhance widgets in StyleTunerPanel to show the values of the settings, so I can copy them into config.ts
 - DRY, clean up, check encapsulation of any index structure modifications
 - Search/Graph Filtering/Focus: in treeview?

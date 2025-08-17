@@ -24,6 +24,11 @@ export interface ParseResult {
     containerCount: number;
     availableGroupings: GroupingOption[];
     styleConfig?: Record<string, any>;
+    edgeStyleConfig?: {
+      propertyMappings: Record<string, any>;
+      defaultStyle: any;
+      combinationRules: any;
+    };
     nodeTypeConfig?: {
       defaultType?: string;
       types?: Array<{
@@ -64,6 +69,7 @@ interface RawEdge {
   source: string;
   target: string;
   semanticTags?: string[];
+  edgeProperties?: string[];
   [key: string]: any;
 }
 
@@ -94,6 +100,11 @@ interface RawGraphData {
   styleConfig?: {
     edgeStyles?: Record<string, any>;
     nodeStyles?: Record<string, any>;
+  };
+  edgeStyleConfig?: {
+    propertyMappings: Record<string, any>;
+    defaultStyle: any;
+    combinationRules: any;
   };
   nodeTypeConfig?: {
     defaultType?: string;
@@ -160,6 +171,7 @@ export function parseGraphJSON(
       containerCount,
       availableGroupings: getAvailableGroupings(data),
       styleConfig: data.styleConfig || {}, // Include style configuration
+      edgeStyleConfig: data.edgeStyleConfig, // Include edge style configuration
       nodeTypeConfig: metadata.nodeTypeConfig
     }
   };
@@ -307,6 +319,10 @@ export function validateGraphJSON(jsonData: RawGraphData | string): ValidationRe
           // Validate semanticTags if present
           if ('semanticTags' in edge && !Array.isArray(edge.semanticTags)) {
             errors.push(`Edge '${edge.id || `at index ${i}`}' has invalid semanticTags - must be an array of strings.`);
+          }
+          // Validate edgeProperties if present
+          if ('edgeProperties' in edge && !Array.isArray(edge.edgeProperties)) {
+            errors.push(`Edge '${edge.id || `at index ${i}`}' has invalid edgeProperties - must be an array of strings.`);
           }
         }
       }
@@ -522,15 +538,16 @@ function parseNodes(nodes: RawNode[], state: VisualizationState): void {
 function parseEdges(edges: RawEdge[], state: VisualizationState): void {
   for (const rawEdge of edges) {
     try {
-      const { id, source, target, semanticTags, ...otherProps } = rawEdge;
+      const { id, source, target, semanticTags, edgeProperties, ...otherProps } = rawEdge;
       
       state.addGraphEdge(id, {
         source,
         target,
-        style: EDGE_STYLES.DEFAULT, // Default style - will be applied by bridge based on semanticTags
+        style: EDGE_STYLES.DEFAULT, // Default style - will be applied by bridge based on properties
         // ✅ All edges start visible - VisualizationState manages visibility
         hidden: false,
         semanticTags: semanticTags || [],
+        edgeProperties: edgeProperties || semanticTags || [], // Use edgeProperties or fall back to semanticTags
         ...otherProps
       });
     } catch (error) {
