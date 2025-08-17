@@ -721,3 +721,17 @@ function mapStyleConstant(
   console.warn(`Unknown style '${rawStyle}', using default`);
   return defaultStyle;
 }
+
+/**
+ * Create a RenderConfig from ParseResult metadata
+ * This helper makes it easy to pass edgeStyleConfig and other metadata to FlowGraph
+ */
+export function createRenderConfig(parseResult: ParseResult, baseConfig: any = {}): any {
+  return {
+    ...baseConfig,
+    edgeStyleConfig: parseResult.metadata.edgeStyleConfig,
+    // Include other metadata as needed
+    styleConfig: parseResult.metadata.styleConfig,
+    nodeTypeConfig: parseResult.metadata.nodeTypeConfig
+  };
+}

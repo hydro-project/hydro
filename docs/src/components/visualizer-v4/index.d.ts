@@ -38,6 +38,7 @@ export { parseGraphJSON } from './core/JSONParser';
 export { createGraphParser } from './core/JSONParser';
 export { getAvailableGroupings } from './core/JSONParser';
 export { validateGraphJSON } from './core/JSONParser';
+export { createRenderConfig } from './core/JSONParser';
 export type { ParseResult, ValidationResult, GroupingOption, ParserOptions } from './core/JSONParser';
 /**
  * ELK layout engine - COMPLETE REPLACEMENT with hyperedge fix!

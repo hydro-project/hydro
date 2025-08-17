@@ -36,6 +36,7 @@ function VisV4Component() {
   const [createVisualizationState, setCreateVisualizationState] = React.useState(null);
   const [FlowGraph, setFlowGraph] = React.useState(null);
   const [parseGraphJSON, setParseGraphJSON] = React.useState(null);
+  const [createRenderConfig, setCreateRenderConfig] = React.useState(null);
   const [getAvailableGroupings, setGetAvailableGroupings] = React.useState(null);
   const [validateGraphJSON, setValidateGraphJSON] = React.useState(null);
   const [NODE_STYLES, setNodeStyles] = React.useState(null);
@@ -64,6 +65,7 @@ function VisV4Component() {
   const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [currentVisualizationState, setCurrentVisualizationState] = React.useState(null);
+  const [edgeStyleConfig, setEdgeStyleConfig] = React.useState(null);
   const [graphData, setGraphData] = React.useState(null);
   const [generatedFilePath, setGeneratedFilePath] = React.useState(null);
   
@@ -105,6 +107,7 @@ function VisV4Component() {
         setCreateVisualizationState(() => visStateModule.createVisualizationState);
         setFlowGraph(() => FlowGraphModule.FlowGraph);
         setParseGraphJSON(() => parserModule.parseGraphJSON);
+        setCreateRenderConfig(() => parserModule.createRenderConfig);
         setGetAvailableGroupings(() => parserModule.getAvailableGroupings);
         setValidateGraphJSON(() => parserModule.validateGraphJSON);
         setNodeStyles(configModule.NODE_STYLES);
@@ -128,7 +131,7 @@ function VisV4Component() {
 
   // Handle URL data parameter (for sharing graphs via URL)
   React.useEffect(() => {
-    if (!parseGraphJSON || !createVisualizationState || !validateGraphJSON || !getAvailableGroupings || loading) return;
+    if (!parseGraphJSON || !createRenderConfig || !createVisualizationState || !validateGraphJSON || !getAvailableGroupings || loading) return;
     
     const urlParams = new URLSearchParams(location.search);
     const dataParam = urlParams.get('data');
@@ -153,7 +156,9 @@ function VisV4Component() {
         }
         
         const parsedData = parseGraphJSON(jsonData);
+        const renderConfig = createRenderConfig(parsedData);
         setCurrentVisualizationState(parsedData.state);
+        setEdgeStyleConfig(renderConfig);
         setGraphData(jsonData);
         
         // Extract grouping options from the data
@@ -173,7 +178,7 @@ function VisV4Component() {
       // Handle compressed data
       loadCompressedData(compressedParam);
     }
-  }, [location.search, parseGraphJSON, validateGraphJSON, getAvailableGroupings, createVisualizationState, loading, currentVisualizationState, currentGrouping, generatedFilePath]);
+  }, [location.search, parseGraphJSON, createRenderConfig, validateGraphJSON, getAvailableGroupings, createVisualizationState, loading, currentVisualizationState, currentGrouping, generatedFilePath]);
 
   // Load compressed data from URL parameter
   const loadCompressedData = React.useCallback(async (compressedData) => {
@@ -225,7 +230,9 @@ function VisV4Component() {
       }
       
       const parsedData = parseGraphJSON(jsonData);
+      const renderConfig = createRenderConfig(parsedData);
       setCurrentVisualizationState(parsedData.state);
+      setEdgeStyleConfig(renderConfig);
       setGraphData(jsonData);
       
       // Extract grouping options from the data
@@ -242,11 +249,11 @@ function VisV4Component() {
     } finally {
       setLoading(false);
     }
-  }, [parseGraphJSON, validateGraphJSON, getAvailableGroupings, currentGrouping]);
+  }, [parseGraphJSON, createRenderConfig, validateGraphJSON, getAvailableGroupings, currentGrouping]);
 
   // File upload handler
   const handleFileLoad = React.useCallback((jsonData) => {
-    if (!parseGraphJSON || !validateGraphJSON || !getAvailableGroupings) {
+    if (!parseGraphJSON || !createRenderConfig || !validateGraphJSON || !getAvailableGroupings) {
       setError('Components not loaded yet');
       return;
     }
@@ -260,7 +267,9 @@ function VisV4Component() {
       
       // Parse the JSON
       const parsedData = parseGraphJSON(jsonData);
+      const renderConfig = createRenderConfig(parsedData);
       setCurrentVisualizationState(parsedData.state);
+      setEdgeStyleConfig(renderConfig);
       setGraphData(jsonData);
       
       // Extract grouping options from the data
@@ -278,7 +287,7 @@ function VisV4Component() {
       console.error('❌ Error processing file:', err);
       setError(`Failed to process file: ${err.message}`);
     }
-  }, [parseGraphJSON, validateGraphJSON, getAvailableGroupings, currentGrouping]);
+  }, [parseGraphJSON, createRenderConfig, validateGraphJSON, getAvailableGroupings, currentGrouping]);
 
   // Create test graph
   const createTestGraph = React.useCallback(() => {
@@ -563,7 +572,7 @@ function VisV4Component() {
 
   // Grouping change handler - this will re-parse the data with the new grouping
   const handleGroupingChange = React.useCallback((newGrouping) => {
-    if (!parseGraphJSON || !graphData || !createVisualizationState) return;
+    if (!parseGraphJSON || !createRenderConfig || !graphData || !createVisualizationState) return;
     
     setIsChangingGrouping(true);
     setCurrentGrouping(newGrouping);
@@ -571,7 +580,9 @@ function VisV4Component() {
     try {
       // Re-parse the original graph data with the new grouping
       const parsedData = parseGraphJSON(graphData, newGrouping);
-      setCurrentVisualizationState(parsedData.state);      
+      const renderConfig = createRenderConfig(parsedData);
+      setCurrentVisualizationState(parsedData.state);
+      setEdgeStyleConfig(renderConfig);
     } catch (err) {
       console.error('❌ Error changing grouping:', err);
       setError(`Failed to change grouping: ${err.message}`);
@@ -579,7 +590,7 @@ function VisV4Component() {
       // Clear the grouping change loading state
       setTimeout(() => setIsChangingGrouping(false), 100);
     }
-  }, [parseGraphJSON, graphData, createVisualizationState]);
+  }, [parseGraphJSON, createRenderConfig, graphData, createVisualizationState]);
 
   // Hierarchy tree toggle handler (for InfoPanel tree)
   const handleHierarchyToggle = React.useCallback(async (containerId) => {
@@ -808,8 +819,24 @@ function VisV4Component() {
               position: 'relative',
               padding: '2%' // Add 2% border padding around the ReactFlow canvas
             }}>
-              {FlowGraph && (
-                <FlowGraph 
+              {FlowGraph && (() => {
+                const fullConfig = {
+                  fitView: autoFit,
+                  colorPalette: colorPalette,
+                  ...edgeStyleConfig,
+                  edgeStyle: styleConfig.edgeStyle,
+                  edgeColor: styleConfig.edgeColor,
+                  edgeWidth: styleConfig.edgeWidth,
+                  edgeDashed: styleConfig.edgeDashed,
+                  nodeBorderRadius: styleConfig.nodeBorderRadius,
+                  nodePadding: styleConfig.nodePadding,
+                  nodeFontSize: styleConfig.nodeFontSize,
+                  containerBorderRadius: styleConfig.containerBorderRadius,
+                  containerBorderWidth: styleConfig.containerBorderWidth,
+                  containerShadow: styleConfig.containerShadow
+                };
+                return (
+                  <FlowGraph 
                   ref={flowGraphRef}
                   visualizationState={currentVisualizationState}
                   layoutConfig={{ 
@@ -819,20 +846,7 @@ function VisV4Component() {
                   eventHandlers={{ 
                     onNodeClick: handleNodeClick 
                   }}
-                  config={{
-                    fitView: autoFit,
-                    colorPalette: colorPalette,
-                    edgeStyle: styleConfig.edgeStyle,
-                    edgeColor: styleConfig.edgeColor,
-                    edgeWidth: styleConfig.edgeWidth,
-                    edgeDashed: styleConfig.edgeDashed,
-                    nodeBorderRadius: styleConfig.nodeBorderRadius,
-                    nodePadding: styleConfig.nodePadding,
-                    nodeFontSize: styleConfig.nodeFontSize,
-                    containerBorderRadius: styleConfig.containerBorderRadius,
-                    containerBorderWidth: styleConfig.containerBorderWidth,
-                    containerShadow: styleConfig.containerShadow
-                  }}
+                  config={fullConfig}
                   // onLayoutComplete={() => console.log('Layout complete!')}
                   onError={(err) => {
                     console.error('Visualization error:', err);
@@ -843,7 +857,8 @@ function VisV4Component() {
                     height: '100%'
                   }}
                 />
-              )}
+                );
+              })()}
             </div>
 
             {/* Style Tuner Panel */}

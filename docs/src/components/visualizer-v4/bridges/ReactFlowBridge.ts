@@ -9,8 +9,9 @@
 import type { VisualizationState } from '../core/VisualizationState';
 import type { GraphNode, GraphEdge, Container } from '../shared/types';
 import { LAYOUT_CONSTANTS } from '../shared/config';
-import { MarkerType } from '@xyflow/react';
+import { MarkerType, Edge as ReactFlowEdge } from '@xyflow/react';
 import { getHandleConfig, CURRENT_HANDLE_STRATEGY } from '../render/handleConfig';
+import { convertEdgesToReactFlow, EdgeBridgeOptions } from './EdgeBridge';
 
 // ReactFlow types
 export interface ReactFlowNode {
@@ -34,24 +35,6 @@ export interface ReactFlowNode {
   extent?: 'parent' | [[number, number], [number, number]]; // Constrains node movement to parent boundaries
 }
 
-export interface ReactFlowEdge {
-  id: string;
-  type: 'standard' | 'hyper' | 'floating';
-  source: string;
-  target: string;
-  sourceHandle?: string;
-  targetHandle?: string;
-  markerEnd?: {
-    type: typeof MarkerType.ArrowClosed;
-    width: number;
-    height: number;
-    color: string;
-  };
-  data: {
-    style: string;
-  };
-}
-
 export interface ReactFlowData {
   nodes: ReactFlowNode[];
   edges: ReactFlowEdge[];
@@ -59,12 +42,20 @@ export interface ReactFlowData {
 
 export class ReactFlowBridge {
   private colorPalette: string = 'Set3';
+  private edgeStyleConfig?: any; // EdgeStyleConfig from EdgeStyleProcessor
 
   /**
    * Set the color palette for node styling
    */
   setColorPalette(palette: string): void {
     this.colorPalette = palette;
+  }
+
+  /**
+   * Set the edge style configuration
+   */
+  setEdgeStyleConfig(config: any): void {
+    this.edgeStyleConfig = config;
   }
 
   /**
@@ -84,8 +75,15 @@ export class ReactFlowBridge {
     // Convert regular nodes using ELK positions  
     this.convertNodesFromELK(visState, nodes, parentMap);
     
-    // Convert edges using simple source/target mapping
-    this.convertEdges(visState, edges);
+    // Convert edges using EdgeBridge for proper styling
+    const visibleEdges = Array.from(visState.visibleEdges);
+    const edgeBridgeOptions: EdgeBridgeOptions = {
+      edgeStyleConfig: this.edgeStyleConfig,
+      showPropertyLabels: true,
+      enableAnimations: true
+    };
+    const convertedEdges = convertEdgesToReactFlow(visibleEdges, edgeBridgeOptions);
+    edges.push(...convertedEdges);
     
     return { nodes, edges };
   }

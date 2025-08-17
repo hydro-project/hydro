@@ -1,8 +1,6 @@
 use std::collections::HashMap;
-use std::fmt::Write;
-
 use std::collections::HashSet;
-use serde_json;
+use std::fmt::Write;
 
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
 
@@ -20,6 +18,8 @@ pub struct HydroJson<W> {
     process_names: HashMap<usize, String>,
     cluster_names: HashMap<usize, String>,
     external_names: HashMap<usize, String>,
+    // Store backtraces for hierarchy generation
+    node_backtraces: HashMap<usize, crate::backtrace::Backtrace>,
 }
 
 impl<W> HydroJson<W> {
@@ -42,6 +42,7 @@ impl<W> HydroJson<W> {
             process_names,
             cluster_names,
             external_names,
+            node_backtraces: HashMap::new(),
         }
     }
 
@@ -80,85 +81,23 @@ impl<W> HydroJson<W> {
     fn get_edge_style_config() -> serde_json::Value {
         serde_json::json!({
             "propertyMappings": {
-                "Network": {
-                    "reactFlowType": "default",
-                    "style": {
-                        "stroke": "#880088",
-                        "strokeWidth": 2,
-                        "strokeDasharray": "5,5"
-                    },
-                    "animated": false,
-                    "label": "Network"
-                },
-                "Cycle": {
-                    "reactFlowType": "default", 
-                    "style": {
-                        "stroke": "#ff8800",
-                        "strokeWidth": 2,
-                        "strokeDasharray": "3,3"
-                    },
-                    "animated": true,
-                    "label": "Cycle"
-                },
-                "Bounded": {
-                    "reactFlowType": "default",
-                    "style": {
-                        "stroke": "#008800",
-                        "strokeWidth": 3
-                    },
-                    "animated": false,
-                    "label": "Bounded"
-                },
-                "Unbounded": {
-                    "reactFlowType": "default",
-                    "style": {
-                        "stroke": "#666666",
-                        "strokeWidth": 2
-                    },
-                    "animated": false,
-                    "label": "Unbounded"
-                },
-                "NoOrder": {
-                    "reactFlowType": "default",
-                    "style": {
-                        "stroke": "#ff0000",
-                        "strokeWidth": 2,
-                        "strokeDasharray": "8,4"
-                    },
-                    "animated": false,
-                    "label": "No Order"
-                },
-                "TotalOrder": {
-                    "reactFlowType": "default",
-                    "style": {
-                        "stroke": "#0066cc",
-                        "strokeWidth": 2
-                    },
-                    "animated": false,
-                    "label": "Total Order"
-                },
-                "Keyed": {
-                    "reactFlowType": "default",
-                    "style": {
-                        "stroke": "#0088ff",
-                        "strokeWidth": 2,
-                        "strokeDasharray": "10,2"
-                    },
-                    "animated": false,
-                    "label": "Keyed"
-                }
-            },
-            "defaultStyle": {
-                "reactFlowType": "default",
-                "style": {
-                    "stroke": "#999999",
-                    "strokeWidth": 2
-                },
-                "animated": false
+                // Network vs Non-Network: dashed/animated vs solid/static
+                "Network": "dashed-animated",
+                
+                // Bounded vs Unbounded: thick vs thin stroke (Bounded=thick, Unbounded=thin)
+                "Bounded": "thick-stroke",
+                "Unbounded": "thin-stroke",
+                
+                // NoOrder vs TotalOrder: wavy vs smooth line
+                "NoOrder": "wavy-line",
+                "TotalOrder": "smooth-line",
+                
+                // Keyed vs Non-Keyed: double vs single line
+                "Keyed": "double-line"
             },
             "combinationRules": {
-                "priority": ["Network", "Cycle", "Bounded", "NoOrder", "Keyed", "TotalOrder", "Unbounded"],
-                "description": "When multiple properties are present, the highest priority property determines the visual style"
+                "mutualExclusions": [],
+                "visualGroups": {}
             }
         })
     }
@@ -329,6 +268,8 @@ where
 
         // Convert backtrace to JSON if available (optimized for size)
         let backtrace_json = if let Some(bt) = backtrace {
+            // Store backtrace for hierarchy generation
+            self.node_backtraces.insert(node_id, bt.clone());
             self.optimize_backtrace(bt)
         } else {
             serde_json::json!([])
@@ -449,15 +390,6 @@ where
         let mut hierarchy_choices = Vec::new();
         let mut node_assignments_choices = serde_json::Map::new();
 
-        // Always add location-based hierarchy
-        let (location_hierarchy, location_assignments) = self.create_location_hierarchy();
-        hierarchy_choices.push(serde_json::json!({
-            "id": "location",
-            "name": "Location",
-            "hierarchy": location_hierarchy
-        }));
-        node_assignments_choices.insert("location".to_string(), serde_json::Value::Object(location_assignments));
-
        // Add backtrace-based hierarchy if available
         if self.has_backtrace_data() {
             let (backtrace_hierarchy, backtrace_assignments) = self.create_backtrace_hierarchy();
@@ -468,6 +400,15 @@ where
             }));
             node_assignments_choices.insert("backtrace".to_string(), serde_json::Value::Object(backtrace_assignments));
         }
+
+        // Always add location-based hierarchy
+        let (location_hierarchy, location_assignments) = self.create_location_hierarchy();
+        hierarchy_choices.push(serde_json::json!({
+            "id": "location",
+            "name": "Location",
+            "hierarchy": location_hierarchy
+        }));
+        node_assignments_choices.insert("location".to_string(), serde_json::Value::Object(location_assignments));
 
           // Create the final JSON structure in the format expected by the visualizer
         let node_type_definitions = Self::get_node_type_definitions();
@@ -498,12 +439,19 @@ where
 }
 
 impl<W> HydroJson<W> {
-    /// Check if any nodes have backtrace data
+    /// Check if any nodes have meaningful backtrace data
     fn has_backtrace_data(&self) -> bool {
         self.nodes.iter().any(|node| {
-            node["data"]["backtrace"]
-                .as_array()
-                .is_some_and(|bt| !bt.is_empty())
+            if let Some(backtrace_array) = node["data"]["backtrace"].as_array() {
+                // Check if any frame has meaningful filename or fn_name data
+                backtrace_array.iter().any(|frame| {
+                    let filename = frame["file"].as_str().unwrap_or("");
+                    let fn_name = frame["fn"].as_str().unwrap_or("");
+                    !filename.is_empty() || !fn_name.is_empty()
+                })
+            } else {
+                false
+            }
         })
     }
 
@@ -538,90 +486,96 @@ impl<W> HydroJson<W> {
         (hierarchy, node_assignments)
     }
 
-    /// Create backtrace-based hierarchy
+    /// Create backtrace-based hierarchy using structured backtrace data
     fn create_backtrace_hierarchy(&self) -> (Vec<serde_json::Value>, serde_json::Map<String, serde_json::Value>) {
         use std::collections::HashMap;
-
+        
         let mut hierarchy_map: HashMap<String, (String, usize, Option<String>)> = HashMap::new(); // path -> (name, depth, parent_path)
         let mut path_to_node_assignments: HashMap<String, Vec<String>> = HashMap::new(); // path -> [node_ids]
 
-        // Process each node's backtrace
+        // Process each node's backtrace using the stored backtraces
         for node in &self.nodes {
-            if let (Some(node_id), Some(backtrace_array)) = (
-                node["id"].as_str(),
-                node["data"]["backtrace"].as_array(),
-            ) {
-                if backtrace_array.is_empty() {
-                    continue;
-                }
-
-                // Extract user-relevant frames from backtrace
-                let user_frames: Vec<_> = backtrace_array
-                    .iter()
-                    .filter_map(|frame| {
-                        let filename = frame["filename"].as_str().unwrap_or("");
-                        let fn_name = frame["fn_name"].as_str().unwrap_or("");
-                        
-                        // Include frames that are from user code
-                        if filename.contains("hydro_test") 
-                            || filename.contains("src/")
-                            || (!filename.contains(".cargo/") 
-                                && !filename.contains(".rustup/")
-                                && !fn_name.contains("tokio")) {
-                            Some((filename, fn_name))
-                        } else {
-                            None
-                        }
-                    })
-                    .take(3) // Take top 3 user frames
-                    .collect();
-
-                if user_frames.is_empty() {
-                    continue;
-                }
-
-                // Build hierarchy path from backtrace frames (reverse order for call stack)
-                let mut hierarchy_path = Vec::new();
-                for (i, (filename, fn_name)) in user_frames.iter().rev().enumerate() {
-                    let label = if i == 0 {
-                        // Top level: show file
-                        Self::extract_file_path(filename)
-                    } else {
-                        // Function levels: show function name
-                        Self::extract_function_name(fn_name)
-                    };
-                    hierarchy_path.push(label);
-                }
-
-                // Create hierarchy nodes for this path
-                let mut current_path = String::new();
-                let mut parent_path: Option<String> = None;
-                let mut deepest_path = String::new();
-
-                for (depth, label) in hierarchy_path.iter().enumerate() {
-                    current_path = if current_path.is_empty() {
-                        label.clone()
-                    } else {
-                        format!("{}/{}", current_path, label)
-                    };
-
-                    if !hierarchy_map.contains_key(&current_path) {
-                        hierarchy_map.insert(
-                            current_path.clone(),
-                            (label.clone(), depth, parent_path.clone()),
-                        );
+            if let Some(node_id_str) = node["id"].as_str() {
+                if let Ok(node_id) = node_id_str.parse::<usize>() {
+                    if let Some(backtrace) = self.node_backtraces.get(&node_id) {
+                    let elements = backtrace.elements();
+                    
+                    if elements.is_empty() {
+                        continue;
                     }
 
-                    deepest_path = current_path.clone();
-                    parent_path = Some(current_path.clone());
-                }
+                    // Filter to user-relevant frames using structured data
+                    let user_frames: Vec<_> = elements
+                        .iter()
+                        .filter(|elem| {
+                            let filename = elem.filename.as_deref().unwrap_or("");
+                            let fn_name = &elem.fn_name;
+                            
+                            // Include frames that are from user code (more precise filtering)
+                            filename.contains("hydro_test") 
+                                || filename.contains("/src/")
+                                || (filename.contains("examples/") && !filename.contains(".cargo/"))
+                                || (!filename.contains(".cargo/registry/") 
+                                    && !filename.contains(".rustup/toolchains/")
+                                    && !fn_name.starts_with("std::")
+                                    && !fn_name.starts_with("core::")
+                                    && !fn_name.contains("tokio::"))
+                        })
+                        .take(5) // Take top 5 user frames for better differentiation
+                        .collect();
 
-                // Assign node to the deepest hierarchy level
-                if !deepest_path.is_empty() {
-                    path_to_node_assignments
-                        .entry(deepest_path)
-                        .or_default()
-                        .push(node_id.to_string());
+                    if user_frames.is_empty() {
+                        continue;
+                    }
+
+                    // Build hierarchy path from backtrace frames (reverse order for call stack)
+                    let mut hierarchy_path = Vec::new();
+                    for (i, elem) in user_frames.iter().rev().enumerate() {
+                        let label = if i == 0 {
+                            // Top level: show file (more specific)
+                            if let Some(filename) = &elem.filename {
+                                Self::extract_file_path(filename)
+                            } else {
+                                format!("fn_{}", Self::truncate_function_name(&elem.fn_name))
+                            }
+                        } else {
+                            // Function levels: show function name  
+                            Self::truncate_function_name(&elem.fn_name)
+                        };
+                        hierarchy_path.push(label);
+                    }
+
+                    // Create hierarchy nodes for this path
+                    let mut current_path = String::new();
+                    let mut parent_path: Option<String> = None;
+                    let mut deepest_path = String::new();
+
+                    for (depth, label) in hierarchy_path.iter().enumerate() {
+                        current_path = if current_path.is_empty() {
+                            label.clone()
+                        } else {
+                            format!("{}/{}", current_path, label)
+                        };
+
+                        if !hierarchy_map.contains_key(&current_path) {
+                            hierarchy_map.insert(
+                                current_path.clone(),
+                                (label.clone(), depth, parent_path.clone()),
+                            );
+                        }
+
+                        deepest_path = current_path.clone();
+                        parent_path = Some(current_path.clone());
+                    }
+
+                    // Assign node to the deepest hierarchy level
+                    if !deepest_path.is_empty() {
+                        path_to_node_assignments
+                            .entry(deepest_path)
+                            .or_default()
+                            .push(node_id_str.to_string());
+                    }
+                    }
                 }
             }
         }
@@ -696,24 +650,6 @@ impl<W> HydroJson<W> {
                 "name": name,
                 "children": children
             })
-        }
-    }
-
-    /// Extract meaningful function name from backtrace
-    fn extract_function_name(fn_name: &str) -> String {
-        if fn_name.is_empty() {
-            return "unknown".to_string();
-        }
-        
-        // Remove module paths and keep just the function name
-        let parts: Vec<&str> = fn_name.split("::").collect();
-        let last_part = parts.last().unwrap_or(&"unknown");
-        
-        // Handle closure syntax
-        if *last_part == "{{closure}}" && parts.len() > 1 {
-            parts[parts.len() - 2].to_string()
-        } else {
-            last_part.to_string()
         }
     }
 

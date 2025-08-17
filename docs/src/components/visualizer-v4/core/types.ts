@@ -172,6 +172,8 @@ export interface RenderConfig {
   enablePan?: boolean;
   enableSelection?: boolean;
   colorPalette?: string;
+  // Edge style configuration from JSON
+  edgeStyleConfig?: any; // Will be EdgeStyleConfig from EdgeStyleProcessor
   // Visual style overrides (non-layout)
   edgeStyle?: 'bezier' | 'straight' | 'smoothstep';
   edgeColor?: string;

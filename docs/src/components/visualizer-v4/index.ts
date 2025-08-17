@@ -42,6 +42,17 @@ export { CoordinateTranslator } from './bridges/CoordinateTranslator';
 export { VisualizationEngine, createVisualizationEngine } from './core/VisualizationEngine';
 export type { VisualizationEngineConfig } from './core/VisualizationEngine';
 
+// ============ JSON Parsing ============
+
+export { parseGraphJSON, createGraphParser, getAvailableGroupings, validateGraphJSON, createRenderConfig } from './core/JSONParser';
+export type { ParseResult, ValidationResult, GroupingOption, ParserOptions } from './core/JSONParser';
+
+// ============ Rendering Components ============
+
+export { FlowGraph } from './render/FlowGraph';
+export { DEFAULT_RENDER_CONFIG } from './render/config';
+export type { RenderConfig, FlowGraphEventHandlers } from './core/types';
+
 // ============ Types and Constants ============
 
 export { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from './shared/config';

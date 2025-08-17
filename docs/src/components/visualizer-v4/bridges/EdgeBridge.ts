@@ -5,7 +5,7 @@
  * based on edge properties and style configuration.
  */
 
-import { Edge as ReactFlowEdge } from '@xyflow/react';
+import { Edge as ReactFlowEdge, MarkerType } from '@xyflow/react';
 import { GraphEdge, HyperEdge, Edge } from '../core/types';
 import { processEdgeStyle, createEdgeLabel, EdgeStyleConfig } from '../core/EdgeStyleProcessor';
 
@@ -36,21 +36,32 @@ export function convertEdgeToReactFlow(
     ? createEdgeLabel(edgeProperties, edgeStyleConfig, originalLabel)
     : originalLabel;
   
-  // Build the ReactFlow edge
+  // Build the ReactFlow edge - force floating type since that's what we use
   const reactFlowEdge: ReactFlowEdge = {
     id: edge.id,
     source: edge.source,
     target: edge.target,
-    type: processedStyle.reactFlowType,
+    type: 'floating', // Force floating since that's what the visualizer uses
     style: processedStyle.style,
     animated: enableAnimations && processedStyle.animated,
     label: label,
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 15,
+      height: 15,
+      color: processedStyle.style?.stroke || '#999'
+    },
     data: {
       edgeProperties,
       appliedProperties: processedStyle.appliedProperties,
       originalEdge: edge
     }
   };
+
+  // For floating edges, ensure handle properties are completely omitted
+  // (Not set to undefined, but completely absent)
+  delete (reactFlowEdge as any).sourceHandle;
+  delete (reactFlowEdge as any).targetHandle;
   
   // Add any additional properties from the original edge
   if (edge.hidden) {

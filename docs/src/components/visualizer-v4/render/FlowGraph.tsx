@@ -189,26 +189,35 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
     }
   }, [layoutConfig]);
 
-  // Listen to config changes (including color palette)
+  // Listen to config changes (including color palette and edge style config)
   useEffect(() => {
-    if (config && bridge && config.colorPalette) {
+    if (config && bridge) {
       // Update bridge palette for future conversions
-      bridge.setColorPalette(config.colorPalette);
+      if (config.colorPalette) {
+        bridge.setColorPalette(config.colorPalette);
+      }
+      
+      // Update bridge edge style config for future conversions
+      if (config.edgeStyleConfig) {
+        bridge.setEdgeStyleConfig(config.edgeStyleConfig);
+      }
 
       // Also update existing reactFlowData to reflect palette immediately without re-layout
-      setReactFlowData(prev => {
-        if (!prev) return prev;
-        const updatedNodes = prev.nodes.map(n => ({
-          ...n,
-          data: {
-            ...n.data,
-            colorPalette: config.colorPalette
-          }
-        }));
-        return { ...prev, nodes: updatedNodes };
-      });
+      if (config.colorPalette) {
+        setReactFlowData(prev => {
+          if (!prev) return prev;
+          const updatedNodes = prev.nodes.map(n => ({
+            ...n,
+            data: {
+              ...n.data,
+              colorPalette: config.colorPalette
+            }
+          }));
+          return { ...prev, nodes: updatedNodes };
+        });
+      }
     }
-  }, [config?.colorPalette, bridge]); // Only depend on the specific colorPalette value
+  }, [config?.colorPalette, config?.edgeStyleConfig, bridge]); // Depend on both colorPalette and edgeStyleConfig
 
   // Listen to visualization state changes
   useEffect(() => {
