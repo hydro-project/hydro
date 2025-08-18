@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
-use crate::ir::HydroNode;
+use crate::ir::{HydroNode, StreamKind, StreamOrdering, StreamRetries};
 use crate::keyed_optional::KeyedOptional;
 use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
@@ -72,6 +72,72 @@ where
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         self.underlying.complete(ident, expected_location);
+    }
+}
+
+/// Helper function to create a KeyedStream from a transformed underlying stream,
+/// updating the metadata to reflect keyed stream type conversions.
+fn keyed_stream_with_updated_metadata<'a, K, V, U, L, B, O, R>(
+    underlying: Stream<(K, U), L, B, NoOrder, R>,
+) -> KeyedStream<K, U, L, B, O, R>
+where
+    L: Location<'a>,
+{
+    use crate::ir::{StreamKind, StreamOrdering, StreamRetries};
+
+    let ordering = match std::any::type_name::<O>() {
+        name if name.contains("TotalOrder") => StreamOrdering::TotalOrder,
+        _ => StreamOrdering::NoOrder,
+    };
+
+    let retries = match std::any::type_name::<R>() {
+        name if name.contains("ExactlyOnce") => StreamRetries::ExactlyOnce,
+        _ => StreamRetries::AtLeastOnce,
+    };
+
+    let is_bounded = std::any::type_name::<B>().contains("Bounded");
+
+    let updated_stream = underlying.update_metadata_for_keyed_conversion::<K, U>(
+        StreamKind::KeyedStream { ordering, retries },
+        is_bounded,
+    );
+
+    KeyedStream {
+        underlying: updated_stream,
+        _phantom_order: Default::default(),
+    }
+}
+
+/// Helper function to create a KeyedStream from a transformed underlying stream,
+/// updating the metadata to reflect keyed stream type conversions where input and output types are the same.
+fn keyed_stream_with_updated_same_type_metadata<'a, K, V, L, B, O, R>(
+    underlying: Stream<(K, V), L, B, NoOrder, R>,
+) -> KeyedStream<K, V, L, B, O, R>
+where
+    L: Location<'a>,
+{
+    use crate::ir::{StreamKind, StreamOrdering, StreamRetries};
+
+    let ordering = match std::any::type_name::<O>() {
+        name if name.contains("TotalOrder") => StreamOrdering::TotalOrder,
+        _ => StreamOrdering::NoOrder,
+    };
+
+    let retries = match std::any::type_name::<R>() {
+        name if name.contains("ExactlyOnce") => StreamRetries::ExactlyOnce,
+        _ => StreamRetries::AtLeastOnce,
+    };
+
+    let is_bounded = std::any::type_name::<B>().contains("Bounded");
+
+    let updated_stream = underlying.update_metadata_for_keyed_conversion::<K, V>(
+        StreamKind::KeyedStream { ordering, retries },
+        is_bounded,
+    );
+
+    KeyedStream {
+        underlying: updated_stream,
+        _phantom_order: Default::default(),
     }
 }
 
@@ -184,24 +250,8 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
             let orig = f;
             move |(k, v)| (k, orig(v))
         }));
-        let location = base.location.clone();
-        let node = match base.ir_node.into_inner() {
-            HydroNode::Map { f, input, .. } => HydroNode::Map {
-                f,
-                input,
-                metadata: location
-                    .new_conversion_metadata::<
-                        (K, U),
-                        KeyedStream<K, U, L, B, O, R>,
-                        KeyedStream<K, V, L, B, O, R>,
-                    >(),
-            },
-            other => other,
-        };
-        KeyedStream {
-            underlying: Stream::new(location, node),
-            _phantom_order: Default::default(),
-        }
+
+        keyed_stream_with_updated_metadata::<K, V, U, L, B, O, R>(base)
     }
 
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
@@ -237,24 +287,8 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
             let orig = f;
             move |(_k, v)| orig(v)
         }));
-        let location = base.location.clone();
-        let node = match base.ir_node.into_inner() {
-            HydroNode::Filter { f, input, .. } => HydroNode::Filter {
-                f,
-                input,
-                metadata: location
-                    .new_conversion_metadata::<
-                        (K, V),
-                        KeyedStream<K, V, L, B, O, R>,
-                        KeyedStream<K, V, L, B, O, R>,
-                    >(),
-            },
-            other => other,
-        };
-        KeyedStream {
-            underlying: Stream::new(location, node),
-            _phantom_order: Default::default(),
-        }
+
+        keyed_stream_with_updated_same_type_metadata(base)
     }
 
     /// Transforms each value by invoking `f` on each key-value pair. The resulting values are **not**
@@ -296,24 +330,8 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
                 (k, out)
             }
         }));
-        let location = base.location.clone();
-        let node = match base.ir_node.into_inner() {
-            HydroNode::Map { f, input, .. } => HydroNode::Map {
-                f,
-                input,
-                metadata: location
-                    .new_conversion_metadata::<
-                        (K, U),
-                        KeyedStream<K, U, L, B, O, R>,
-                        KeyedStream<K, V, L, B, O, R>,
-                    >(),
-            },
-            other => other,
-        };
-        KeyedStream {
-            underlying: Stream::new(location, node),
-            _phantom_order: Default::default(),
-        }
+
+        keyed_stream_with_updated_metadata::<K, V, U, L, B, O, R>(base)
     }
 
     /// An operator that both filters and maps each value, with keys staying the same.
@@ -349,24 +367,8 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
             let orig = f;
             move |(k, v)| orig(v).map(|o| (k, o))
         }));
-        let location = base.location.clone();
-        let node = match base.ir_node.into_inner() {
-            HydroNode::FilterMap { f, input, .. } => HydroNode::FilterMap {
-                f,
-                input,
-                metadata: location
-                    .new_conversion_metadata::<
-                        (K, U),
-                        KeyedStream<K, U, L, B, O, R>,
-                        KeyedStream<K, V, L, B, O, R>,
-                    >(),
-            },
-            other => other,
-        };
-        KeyedStream {
-            underlying: Stream::new(location, node),
-            _phantom_order: Default::default(),
-        }
+
+        keyed_stream_with_updated_metadata::<K, V, U, L, B, O, R>(base)
     }
 
     /// An operator that both filters and maps each key-value pair. The resulting values are **not**
@@ -406,24 +408,8 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
                 out.map(|o| (k, o))
             }
         }));
-        let location = base.location.clone();
-        let node = match base.ir_node.into_inner() {
-            HydroNode::FilterMap { f, input, .. } => HydroNode::FilterMap {
-                f,
-                input,
-                metadata: location
-                    .new_conversion_metadata::<
-                        (K, U),
-                        KeyedStream<K, U, L, B, O, R>,
-                        KeyedStream<K, V, L, B, O, R>,
-                    >(),
-            },
-            other => other,
-        };
-        KeyedStream {
-            underlying: Stream::new(location, node),
-            _phantom_order: Default::default(),
-        }
+
+        keyed_stream_with_updated_metadata::<K, V, U, L, B, O, R>(base)
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
@@ -455,24 +441,8 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
             let orig = f;
             move |(_k, v)| orig(v)
         }));
-        let location = base.location.clone();
-        let node = match base.ir_node.into_inner() {
-            HydroNode::Inspect { f, input, .. } => HydroNode::Inspect {
-                f,
-                input,
-                metadata: location
-                    .new_conversion_metadata::<
-                        (K, V),
-                        KeyedStream<K, V, L, B, O, R>,
-                        KeyedStream<K, V, L, B, O, R>,
-                    >(),
-            },
-            other => other,
-        };
-        KeyedStream {
-            underlying: Stream::new(location, node),
-            _phantom_order: Default::default(),
-        }
+
+        keyed_stream_with_updated_same_type_metadata(base)
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
@@ -503,24 +473,8 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
         F: Fn(&(K, V)) + 'a,
     {
         let base = self.underlying.inspect(f);
-        let location = base.location.clone();
-        let node = match base.ir_node.into_inner() {
-            HydroNode::Inspect { f, input, .. } => HydroNode::Inspect {
-                f,
-                input,
-                metadata: location
-                    .new_conversion_metadata::<
-                        (K, V),
-                        KeyedStream<K, V, L, B, O, R>,
-                        KeyedStream<K, V, L, B, O, R>,
-                    >(),
-            },
-            other => other,
-        };
-        KeyedStream {
-            underlying: Stream::new(location, node),
-            _phantom_order: Default::default(),
-        }
+
+        keyed_stream_with_updated_same_type_metadata(base)
     }
 }
 
@@ -680,11 +634,13 @@ where
             metadata: self
                 .underlying
                 .location
-                .new_conversion_metadata::<
-                    (K, A),
-                    KeyedSingleton<K, A, L, B>,
-                    KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>,
-                >(),
+                .new_node_metadata_with_kind::<(K, A)>(
+                    Some(StreamKind::KeyedStream {
+                        ordering: StreamOrdering::TotalOrder,
+                        retries: StreamRetries::ExactlyOnce,
+                    }),
+                    false, // Preserves boundedness characteristics
+                ),
         };
 
         KeyedSingleton {
@@ -730,11 +686,13 @@ where
             metadata: self
                 .underlying
                 .location
-                .new_conversion_metadata::<
-                    (K, V),
-                    KeyedOptional<K, V, L, B>,
-                    KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>,
-                >(),
+                .new_node_metadata_with_kind::<(K, V)>(
+                    Some(StreamKind::KeyedStream {
+                        ordering: StreamOrdering::TotalOrder,
+                        retries: StreamRetries::ExactlyOnce,
+                    }),
+                    false, // Preserves boundedness characteristics
+                ),
         };
 
         KeyedOptional {
@@ -791,12 +749,13 @@ where
                 metadata: self
                     .underlying
                     .location
-                    .new_multi_input_metadata::<
-                        (K, V),
-                        KeyedOptional<K, V, L, B>,
-                        KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>,
-                        Optional<O, Tick<L::Root>, Bounded>,
-                    >(),
+                    .new_node_metadata_with_kind::<(K, V)>(
+                        Some(StreamKind::KeyedStream {
+                            ordering: StreamOrdering::TotalOrder,
+                            retries: StreamRetries::ExactlyOnce,
+                        }),
+                        false, // Watermark operations preserve boundedness characteristics
+                    ),
             },
         );
 

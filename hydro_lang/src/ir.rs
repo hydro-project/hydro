@@ -28,6 +28,35 @@ use crate::backtrace::Backtrace;
 use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
 
+/// Represents the kind of stream/collection type for metadata
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum StreamKind {
+    Stream {
+        ordering: StreamOrdering,
+        retries: StreamRetries,
+    },
+    KeyedStream {
+        ordering: StreamOrdering,
+        retries: StreamRetries,
+    },
+    Singleton,
+    Optional,
+}
+
+/// Represents the ordering guarantees of a stream
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum StreamOrdering {
+    TotalOrder,
+    NoOrder,
+}
+
+/// Represents the retry/cardinality guarantees of a stream
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum StreamRetries {
+    ExactlyOnce,
+    AtLeastOnce,
+}
+
 /// Debug displays the type's tokens.
 ///
 /// Boxes `syn::Type` which is ~240 bytes.
@@ -963,13 +992,10 @@ pub struct HydroIrMetadata {
     pub location_kind: LocationId,
     pub backtrace: Backtrace,
     pub output_type: Option<DebugType>,
-    /// The conceptual collection type of this operation's output (e.g., Stream<T, L, B, O, R>)
-    pub collection_type: Option<DebugType>,
-    /// The conceptual collection types of the input(s) to this operation.
-    /// Used for visualization to show what the programmer sees on the edges.
-    /// For single-input operations: vec![input_type]
-    /// For multi-input operations: vec![left_type, right_type, ...] in operation order
-    pub input_collection_types: Vec<DebugType>,
+    /// The kind of stream/collection and its properties (ordering, retries, etc.)
+    pub stream_kind: Option<StreamKind>,
+    /// Whether this collection is bounded (finite) or unbounded (potentially infinite)
+    pub is_bounded: bool,
     pub cardinality: Option<usize>,
     pub cpu_usage: Option<f64>,
     pub network_recv_cpu_usage: Option<f64>,
@@ -994,6 +1020,8 @@ impl Debug for HydroIrMetadata {
         f.debug_struct("HydroIrMetadata")
             .field("location_kind", &self.location_kind)
             .field("output_type", &self.output_type)
+            .field("stream_kind", &self.stream_kind)
+            .field("is_bounded", &self.is_bounded)
             .finish()
     }
 }

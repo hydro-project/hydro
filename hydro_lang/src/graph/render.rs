@@ -327,11 +327,43 @@ fn extract_type_name(ty: &syn::Type) -> Option<String> {
     }
 }
 
-/// Build a semantic type label from node metadata using collection_type directly.
+/// Build a semantic type label from node metadata using stream_kind directly.
 fn type_label_from_metadata(meta: &crate::ir::HydroIrMetadata) -> Option<String> {
-    meta.collection_type.as_ref().and_then(|col| {
-        // Use direct type analysis only - no fallback to string parsing
-        semantic_label_from_type(col)
+    use crate::ir::{StreamKind, StreamOrdering, StreamRetries};
+    
+    meta.stream_kind.as_ref().map(|kind| {
+        let base_name = match kind {
+            StreamKind::Stream { ordering, retries } => {
+                let order_suffix = match ordering {
+                    StreamOrdering::TotalOrder => "",
+                    StreamOrdering::NoOrder => " (NoOrder)",
+                };
+                let retry_suffix = match retries {
+                    StreamRetries::ExactlyOnce => "",
+                    StreamRetries::AtLeastOnce => " (AtLeastOnce)",
+                };
+                format!("Stream{}{}", order_suffix, retry_suffix)
+            }
+            StreamKind::KeyedStream { ordering, retries } => {
+                let order_suffix = match ordering {
+                    StreamOrdering::TotalOrder => "",
+                    StreamOrdering::NoOrder => " (NoOrder)",
+                };
+                let retry_suffix = match retries {
+                    StreamRetries::ExactlyOnce => "",
+                    StreamRetries::AtLeastOnce => " (AtLeastOnce)",
+                };
+                format!("KeyedStream{}{}", order_suffix, retry_suffix)
+            }
+            StreamKind::Singleton => "Singleton".to_string(),
+            StreamKind::Optional => "Optional".to_string(),
+        };
+        
+        if meta.is_bounded {
+            format!("{} (Bounded)", base_name)
+        } else {
+            base_name
+        }
     })
 }
 
@@ -626,20 +658,15 @@ impl HydroNode {
             // simple single-input wrappers to find a semantic label.
             let src_lbl = type_label_from_metadata(src_node.metadata())
                 .or_else(|| find_semantic_label_upstream(src_node));
-            let dst_lbl = dst_metadata
-                .input_collection_types
-                .get(input_index)
-                .and_then(|ty| {
-                    // Use direct type analysis only - no fallback to string parsing
-                    semantic_label_from_type(ty)
-                });
-            // Decide the second line content per spec:
-            // - If both src and dst exist and are equal => show that single type
-            // - If both exist and differ => show "src ─as─> dst"
-            // - If only one exists => show whichever is present
+                
+            // Since we removed input_collection_types from metadata, we now derive the destination
+            // label from the source node's stream_kind and output type, which represents what flows
+            // through this edge
+            let dst_lbl = type_label_from_metadata(src_node.metadata());
+            
             // Auto-detect pass-through: for unnamed, single-input nodes whose output semantics
             // matches the source semantics, we defer showing coercion.
-            let auto_lazy = if base.is_none() && dst_metadata.input_collection_types.len() == 1 {
+            let auto_lazy = if base.is_none() {
                 let dst_out = type_label_from_metadata(dst_metadata);
                 match (src_lbl.as_ref(), dst_out.as_ref()) {
                     (Some(s), Some(o)) => s == o,

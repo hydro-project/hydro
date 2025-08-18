@@ -60,7 +60,10 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_optional_metadata::<T, Tick<L>, Bounded>(),
+                metadata: location.new_node_metadata_with_kind::<T>(
+                    Some(crate::ir::StreamKind::Optional),
+                    true, // Bounded
+                ),
             },
         )
     }
@@ -101,7 +104,10 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_optional_metadata::<T, Tick<L>, Bounded>(),
+                metadata: location.new_node_metadata_with_kind::<T>(
+                    Some(crate::ir::StreamKind::Optional),
+                    true, // Bounded
+                ),
             },
         )
     }
@@ -356,20 +362,18 @@ where
                     inner: Box::new(HydroNode::Chain {
                         first: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_optional_metadata::<T, L, B>(),
+                            metadata: self.location.new_node_metadata_with_kind::<T>(Some(crate::ir::StreamKind::Optional), false),
                         }),
                         second: Box::new(HydroNode::Unpersist {
                             inner: Box::new(other.ir_node.into_inner()),
-                            metadata: self.location.new_optional_metadata::<T, L, B>(),
+                            metadata: self.location.new_node_metadata_with_kind::<T>(Some(crate::ir::StreamKind::Optional), false),
                         }),
-                        metadata: self.location.new_multi_input_metadata::<
-                            T,
-                            Optional<T, L, B>,
-                            Optional<T, L, B>,
-                            Optional<T, L, B>,
-                        >(),
+                        metadata: self.location.new_node_metadata_with_kind::<T>(
+                            Some(crate::ir::StreamKind::Optional),
+                            false, // Multi-input operations typically result in unbounded
+                        ),
                     }),
-                    metadata: self.location.new_optional_metadata::<T, L, B>(),
+                    metadata: self.location.new_node_metadata_with_kind::<T>(Some(crate::ir::StreamKind::Optional), false),
                 },
             )
         } else {
@@ -378,12 +382,10 @@ where
                 HydroNode::Chain {
                     first: Box::new(self.ir_node.into_inner()),
                     second: Box::new(other.ir_node.into_inner()),
-                    metadata: self.location.new_multi_input_metadata::<
-                        T,
-                        Optional<T, L, B>,
-                        Optional<T, L, B>,
-                        Optional<T, L, B>,
-                    >(),
+                    metadata: self.location.new_node_metadata_with_kind::<T>(
+                        Some(crate::ir::StreamKind::Optional),
+                        false, // Chain operations preserve Optional nature
+                    ),
                 },
             )
         }
@@ -403,20 +405,21 @@ where
                     inner: Box::new(HydroNode::CrossSingleton {
                         left: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_optional_metadata::<T, L, B>(),
+                            metadata: self.location.new_node_metadata_with_kind::<T>(Some(crate::ir::StreamKind::Optional), false),
                         }),
                         right: Box::new(HydroNode::Unpersist {
                             inner: Box::new(other.ir_node.into_inner()),
-                            metadata: self.location.new_optional_metadata::<O, L, B>(),
+                            metadata: self.location.new_node_metadata_with_kind::<O>(Some(crate::ir::StreamKind::Optional), false),
                         }),
-                        metadata: self.location.new_multi_input_metadata::<
-                            (T, O),
-                            Optional<(T, O), L, B>,
-                            Optional<T, L, B>,
-                            Optional<O, L, B>,
-                        >(),
+                        metadata: self.location.new_node_metadata_with_kind::<(T, O)>(
+                            Some(crate::ir::StreamKind::Optional),
+                            false, // Cross operations preserve Optional nature
+                        ),
                     }),
-                    metadata: self.location.new_optional_metadata::<(T, O), L, B>(),
+                    metadata: self.location.new_node_metadata_with_kind::<(T, O)>(
+                        Some(crate::ir::StreamKind::Optional),
+                        false,
+                    ),
                 },
             )
         } else {
@@ -425,12 +428,10 @@ where
                 HydroNode::CrossSingleton {
                     left: Box::new(self.ir_node.into_inner()),
                     right: Box::new(other.ir_node.into_inner()),
-                    metadata: self.location.new_multi_input_metadata::<
-                        (T, O),
-                        Optional<(T, O), L, B>,
-                        Optional<T, L, B>,
-                        Optional<O, L, B>,
-                    >(),
+                    metadata: self.location.new_node_metadata_with_kind::<(T, O)>(
+                        Some(crate::ir::StreamKind::Optional),
+                        false, // Cross operations preserve Optional nature
+                    ),
                 },
             )
         }
@@ -480,11 +481,17 @@ where
                 metadata: self
                     .location
                     .root()
-                    .new_optional_metadata::<Option<T>, L::Root, Bounded>(),
+                    .new_node_metadata_with_kind::<Option<T>>(
+                        Some(crate::ir::StreamKind::Optional),
+                        true, // Bounded
+                    ),
             }),
             metadata: self
                 .location
-                .new_singleton_metadata::<Option<T>, L, Bounded>(),
+                .new_node_metadata_with_kind::<Option<T>>(
+                    Some(crate::ir::StreamKind::Singleton),
+                    true, // Bounded
+                ),
         };
 
         let none_singleton = if L::is_top_level() {
@@ -494,7 +501,10 @@ where
                     inner: Box::new(core_ir),
                     metadata: self
                         .location
-                        .new_singleton_metadata::<Option<T>, L, Bounded>(),
+                        .new_node_metadata_with_kind::<Option<T>>(
+                            Some(crate::ir::StreamKind::Singleton),
+                            true, // Bounded
+                        ),
                 },
             )
         } else {
@@ -630,7 +640,13 @@ where
             self.location.outer().clone(),
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_conversion_metadata::<T, Stream<T, L, Unbounded, TotalOrder, ExactlyOnce>, Optional<T, Tick<L>, Bounded>>(),
+                metadata: self.location.new_node_metadata_with_kind::<T>(
+                    Some(crate::ir::StreamKind::Stream {
+                        ordering: crate::ir::StreamOrdering::TotalOrder,
+                        retries: crate::ir::StreamRetries::ExactlyOnce,
+                    }),
+                    false, // Converts to unbounded
+                ),
             },
         )
     }
