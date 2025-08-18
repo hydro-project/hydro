@@ -86,8 +86,6 @@ where
     O: OrderingKind,
     R: RetriesKind,
 {
-    use crate::ir::StreamKind;
-
     let ordering = O::ordering();
     let retries = R::retries();
     let is_bounded = std::any::type_name::<B>().contains("Bounded");
@@ -95,7 +93,6 @@ where
         StreamKind::KeyedStream { ordering, retries },
         is_bounded,
     );
-
     KeyedStream::new(updated_stream)
 }
 
@@ -109,8 +106,6 @@ where
     O: OrderingKind,
     R: RetriesKind,
 {
-    use crate::ir::StreamKind;
-
     let ordering = O::ordering();
     let retries = R::retries();
     let is_bounded = std::any::type_name::<B>().contains("Bounded");
@@ -119,7 +114,6 @@ where
         StreamKind::KeyedStream { ordering, retries },
         is_bounded,
     );
-
     KeyedStream::new(updated_stream)
 }
 
@@ -136,7 +130,6 @@ where
             _phantom_order: Default::default(),
         }
     }
-
     /// Explicitly "casts" the keyed stream to a type with a different ordering
     /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.
@@ -267,9 +260,9 @@ where
         let base = self.underlying.map(q!({
             let orig = f;
             move |(k, v)| (k, orig(v))
-    }));
+        }));
 
-    keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
+        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
@@ -351,32 +344,7 @@ where
         keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
-    /// Creates a stream containing only the elements of each group stream that satisfy a predicate
-    /// `f`, preserving the order of the elements within the group.
-    ///
-    /// The closure `f` receives a reference `&V` rather than an owned value `v` because filtering does
-    /// not modify or take ownership of the values. If you need to modify the values while filtering
-    /// use [`KeyedStream::filter_map`] instead.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
-    ///     .into_keyed()
-    ///     .filter(q!(|&x| x > 2))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: [3], 2: [4] }
-    /// # for w in vec![(1, 3), (2, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// ```
     
-
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
     /// `f` (which receives the key-value tuple), preserving the order of the elements within the group.
     ///
@@ -449,9 +417,9 @@ where
         let base = self.underlying.filter_map(q!({
             let orig = f;
             move |(k, v)| orig(v).map(|o| (k, o))
-        }));
+    }));
 
-        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
+    keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     /// An operator that both filters and maps each key-value pair. The resulting values are **not**
@@ -490,9 +458,9 @@ where
                 let out = orig((k.clone(), v));
                 out.map(|o| (k, o))
             }
-        }));
+    }));
 
-        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
+    keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
@@ -523,9 +491,9 @@ where
         let base = self.underlying.inspect(q!({
             let orig = f;
             move |(_k, v)| orig(v)
-    }));
+        }));
 
-    keyed_stream_with_updated_same_type_metadata(base)
+        keyed_stream_with_updated_same_type_metadata(base)
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
@@ -585,16 +553,15 @@ impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, U
     /// # }
     /// # }));
     /// ```
-    pub fn interleave<O2, R2: MinRetries<R>>(
+    pub fn interleave<O2, R2>(
         self,
         other: KeyedStream<K, V, L, Unbounded, O2, R2>,
     ) -> KeyedStream<K, V, L, Unbounded, NoOrder, R::Min>
     where
-        R: MinRetries<R2, Min = R2::Min>,
         O: OrderingKind,
         O2: OrderingKind,
-        R: RetriesKind,
-        R2: RetriesKind,
+    R: RetriesKind + MinRetries<R2, Min = <R2 as MinRetries<R>>::Min>,
+    R2: RetriesKind + MinRetries<R>,
     {
         self.entries().interleave(other.entries()).into_keyed()
     }

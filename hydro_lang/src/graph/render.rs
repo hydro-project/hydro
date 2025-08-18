@@ -4,9 +4,9 @@ use std::fmt::Write;
 
 use auto_impl::auto_impl;
 
-pub use super::graphviz::{HydroDot, escape_dot};
+pub use super::graphviz::{escape_dot, HydroDot};
 // Re-export specific implementations
-pub use super::mermaid::{HydroMermaid, escape_mermaid};
+pub use super::mermaid::{escape_mermaid, HydroMermaid};
 pub use super::reactflow::HydroReactFlow;
 use crate::ir::{DebugExpr, HydroLeaf, HydroNode, HydroSource};
 
@@ -277,7 +277,6 @@ pub fn extract_short_label(full_label: &str) -> String {
 /// Build a semantic type label from node metadata using stream_kind directly.
 fn type_label_from_metadata(meta: &crate::ir::HydroIrMetadata) -> Option<String> {
     use crate::ir::{StreamKind, StreamOrdering, StreamRetries};
-
     meta.stream_kind.as_ref().map(|kind| {
         let base_name = match kind {
             StreamKind::Stream { ordering, retries } => {
@@ -305,7 +304,6 @@ fn type_label_from_metadata(meta: &crate::ir::HydroIrMetadata) -> Option<String>
             StreamKind::Singleton => "Singleton".to_string(),
             StreamKind::Optional => "Optional".to_string(),
         };
-
         if meta.is_bounded {
             format!("{} (Bounded)", base_name)
         } else {
@@ -605,12 +603,10 @@ impl HydroNode {
             // simple single-input wrappers to find a semantic label.
             let src_lbl = type_label_from_metadata(src_node.metadata())
                 .or_else(|| find_semantic_label_upstream(src_node));
-
             // Since we removed input_collection_types from metadata, we now derive the destination
             // label from the source node's stream_kind and output type, which represents what flows
             // through this edge
             let dst_lbl = type_label_from_metadata(src_node.metadata());
-
             // Auto-detect pass-through: for unnamed, single-input nodes whose output semantics
             // matches the source semantics, we defer showing coercion.
             let auto_lazy = if base.is_none() {
