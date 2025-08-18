@@ -95,7 +95,19 @@ where
         _ => StreamRetries::AtLeastOnce,
     };
 
-    let is_bounded = std::any::type_name::<B>().contains("Bounded");
+    let ordering = if <O as IsTotalOrder>::IS_TOTAL_ORDER {
+        StreamOrdering::TotalOrder
+    } else {
+        StreamOrdering::NoOrder
+    };
+
+    let retries = if <R as IsExactlyOnce>::IS_EXACTLY_ONCE {
+        StreamRetries::ExactlyOnce
+    } else {
+        StreamRetries::AtLeastOnce
+    };
+
+    let is_bounded = <B as IsBounded>::IS_BOUNDED;
     // Use trait-based approach for ordering and retries
     let ordering = <O as HasStreamOrdering>::ordering();
     let retries = <R as HasStreamRetries>::retries();
