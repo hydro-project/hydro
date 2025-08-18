@@ -751,7 +751,7 @@ where
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
-    Stream::new(self.location.clone(), self.ir_node.into_inner())
+        Stream::new(self.location.clone(), self.ir_node.into_inner())
     }
 
     /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
@@ -770,7 +770,7 @@ where
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_retries<R2>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
-    Stream::new(self.location.clone(), self.ir_node.into_inner())
+        Stream::new(self.location.clone(), self.ir_node.into_inner())
     }
 
     /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],

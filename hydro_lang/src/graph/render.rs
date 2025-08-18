@@ -275,28 +275,28 @@ pub fn extract_short_label(full_label: &str) -> String {
 /// Extract semantic label from a syn::Type by analyzing its structure directly.
 fn semantic_label_from_type(ty: &syn::Type) -> Option<String> {
     use syn::{GenericArgument, PathArguments, Type, TypePath};
-    
+
     // Extract the main type path
     let type_path = match ty {
         Type::Path(TypePath { path, .. }) => path,
         _ => return None,
     };
-    
+
     // Get the last segment (the main type name)
     let last_segment = type_path.segments.last()?;
     let type_name = last_segment.ident.to_string();
-    
+
     // Check if this is one of our collection types
     let collection_kind = match type_name.as_str() {
         "Stream" => "Stream",
-        "KeyedStream" => "KeyedStream", 
+        "KeyedStream" => "KeyedStream",
         "Optional" => "Optional",
         "Singleton" => "Singleton",
         _ => return None,
     };
-    
+
     let mut parts = vec![collection_kind.to_string()];
-    
+
     // Extract generic arguments if present
     if let PathArguments::AngleBracketed(args) = &last_segment.arguments {
         for arg in &args.args {
@@ -311,21 +311,21 @@ fn semantic_label_from_type(ty: &syn::Type) -> Option<String> {
             }
         }
     }
-    
+
     Some(parts.join(" "))
 }
 
 /// Helper to extract the simple name from a type (handles paths like hydro_lang::Bounded)
 fn extract_type_name(ty: &syn::Type) -> Option<String> {
     match ty {
-        syn::Type::Path(type_path) => {
-            type_path.path.segments.last().map(|seg| seg.ident.to_string())
-        }
+        syn::Type::Path(type_path) => type_path
+            .path
+            .segments
+            .last()
+            .map(|seg| seg.ident.to_string()),
         _ => None,
     }
 }
-
-
 
 /// Build a semantic type label from node metadata using collection_type directly.
 fn type_label_from_metadata(meta: &crate::ir::HydroIrMetadata) -> Option<String> {
@@ -686,7 +686,7 @@ impl HydroNode {
         }
 
         // Single-input transform with no expressions
-    fn build_simple_transform(params: TransformParams) -> usize {
+        fn build_simple_transform(params: TransformParams) -> usize {
             let input_id = params.input.build_graph_structure(
                 params.structure,
                 params.seen_tees,
@@ -713,7 +713,7 @@ impl HydroNode {
         }
 
         // Single-input transform with one expression
-    fn build_single_expr_transform(params: TransformParams, expr: &DebugExpr) -> usize {
+        fn build_single_expr_transform(params: TransformParams, expr: &DebugExpr) -> usize {
             let input_id = params.input.build_graph_structure(
                 params.structure,
                 params.seen_tees,
@@ -740,7 +740,7 @@ impl HydroNode {
         }
 
         // Single-input transform with two expressions
-    fn build_dual_expr_transform(
+        fn build_dual_expr_transform(
             params: TransformParams,
             expr1: &DebugExpr,
             expr2: &DebugExpr,
@@ -1191,7 +1191,14 @@ impl HydroNode {
                     second_id,
                     chain_id,
                     HydroEdgeType::Stream,
-                    build_edge_label_single_input(Some("second"), second, metadata, 1, config, false),
+                    build_edge_label_single_input(
+                        Some("second"),
+                        second,
+                        metadata,
+                        1,
+                        config,
+                        false,
+                    ),
                 );
                 chain_id
             }
