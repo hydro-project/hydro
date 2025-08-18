@@ -210,7 +210,7 @@ where
     /// # }));
     /// ```
     pub fn entries(self) -> Stream<(K, V), L, B, NoOrder, R> {
-    self.underlying
+        self.underlying
     }
 
     /// Flattens the keyed stream into a single stream of only the values, with non-deterministic

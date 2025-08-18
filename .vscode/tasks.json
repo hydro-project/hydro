@@ -1,0 +1,58 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "cargo check (workspace)",
+			"type": "shell",
+			"command": "cargo",
+			"args": [
+				"check"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "cargo clippy (workspace)",
+			"type": "shell",
+			"command": "cargo",
+			"args": [
+				"clippy",
+				"--workspace",
+				"--all-features",
+				"--no-deps"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "cargo check hydro_lang",
+			"type": "shell",
+			"command": "cargo",
+			"args": [
+				"check",
+				"-p",
+				"hydro_lang"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "cargo check (workspace)",
+			"type": "shell",
+			"command": "cargo",
+			"args": [
+				"check"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		}
+	]
+}
