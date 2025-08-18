@@ -362,18 +362,27 @@ where
                     inner: Box::new(HydroNode::Chain {
                         first: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata_with_kind::<T>(Some(crate::ir::StreamKind::Optional), false),
+                            metadata: self.location.new_node_metadata_with_kind::<T>(
+                                Some(crate::ir::StreamKind::Optional),
+                                false,
+                            ),
                         }),
                         second: Box::new(HydroNode::Unpersist {
                             inner: Box::new(other.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata_with_kind::<T>(Some(crate::ir::StreamKind::Optional), false),
+                            metadata: self.location.new_node_metadata_with_kind::<T>(
+                                Some(crate::ir::StreamKind::Optional),
+                                false,
+                            ),
                         }),
                         metadata: self.location.new_node_metadata_with_kind::<T>(
                             Some(crate::ir::StreamKind::Optional),
                             false, // Multi-input operations typically result in unbounded
                         ),
                     }),
-                    metadata: self.location.new_node_metadata_with_kind::<T>(Some(crate::ir::StreamKind::Optional), false),
+                    metadata: self.location.new_node_metadata_with_kind::<T>(
+                        Some(crate::ir::StreamKind::Optional),
+                        false,
+                    ),
                 },
             )
         } else {
@@ -405,11 +414,17 @@ where
                     inner: Box::new(HydroNode::CrossSingleton {
                         left: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata_with_kind::<T>(Some(crate::ir::StreamKind::Optional), false),
+                            metadata: self.location.new_node_metadata_with_kind::<T>(
+                                Some(crate::ir::StreamKind::Optional),
+                                false,
+                            ),
                         }),
                         right: Box::new(HydroNode::Unpersist {
                             inner: Box::new(other.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata_with_kind::<O>(Some(crate::ir::StreamKind::Optional), false),
+                            metadata: self.location.new_node_metadata_with_kind::<O>(
+                                Some(crate::ir::StreamKind::Optional),
+                                false,
+                            ),
                         }),
                         metadata: self.location.new_node_metadata_with_kind::<(T, O)>(
                             Some(crate::ir::StreamKind::Optional),
@@ -486,12 +501,10 @@ where
                         true, // Bounded
                     ),
             }),
-            metadata: self
-                .location
-                .new_node_metadata_with_kind::<Option<T>>(
-                    Some(crate::ir::StreamKind::Singleton),
-                    true, // Bounded
-                ),
+            metadata: self.location.new_node_metadata_with_kind::<Option<T>>(
+                Some(crate::ir::StreamKind::Singleton),
+                true, // Bounded
+            ),
         };
 
         let none_singleton = if L::is_top_level() {
@@ -499,12 +512,10 @@ where
                 self.location.clone(),
                 HydroNode::Persist {
                     inner: Box::new(core_ir),
-                    metadata: self
-                        .location
-                        .new_node_metadata_with_kind::<Option<T>>(
-                            Some(crate::ir::StreamKind::Singleton),
-                            true, // Bounded
-                        ),
+                    metadata: self.location.new_node_metadata_with_kind::<Option<T>>(
+                        Some(crate::ir::StreamKind::Singleton),
+                        true, // Bounded
+                    ),
                 },
             )
         } else {

@@ -272,65 +272,10 @@ pub fn extract_short_label(full_label: &str) -> String {
     }
 }
 
-/// Extract semantic label from a syn::Type by analyzing its structure directly.
-fn semantic_label_from_type(ty: &syn::Type) -> Option<String> {
-    use syn::{GenericArgument, PathArguments, Type, TypePath};
-
-    // Extract the main type path
-    let type_path = match ty {
-        Type::Path(TypePath { path, .. }) => path,
-        _ => return None,
-    };
-
-    // Get the last segment (the main type name)
-    let last_segment = type_path.segments.last()?;
-    let type_name = last_segment.ident.to_string();
-
-    // Check if this is one of our collection types
-    let collection_kind = match type_name.as_str() {
-        "Stream" => "Stream",
-        "KeyedStream" => "KeyedStream",
-        "Optional" => "Optional",
-        "Singleton" => "Singleton",
-        _ => return None,
-    };
-
-    let mut parts = vec![collection_kind.to_string()];
-
-    // Extract generic arguments if present
-    if let PathArguments::AngleBracketed(args) = &last_segment.arguments {
-        for arg in &args.args {
-            if let GenericArgument::Type(arg_type) = arg {
-                if let Some(arg_name) = extract_type_name(arg_type) {
-                    match arg_name.as_str() {
-                        "Bounded" | "Unbounded" => parts.push(arg_name),
-                        "TotalOrder" | "NoOrder" => parts.push(arg_name),
-                        _ => {} // Skip other generic arguments like the data type
-                    }
-                }
-            }
-        }
-    }
-
-    Some(parts.join(" "))
-}
-
-/// Helper to extract the simple name from a type (handles paths like hydro_lang::Bounded)
-fn extract_type_name(ty: &syn::Type) -> Option<String> {
-    match ty {
-        syn::Type::Path(type_path) => type_path
-            .path
-            .segments
-            .last()
-            .map(|seg| seg.ident.to_string()),
-        _ => None,
-    }
-}
-
 /// Build a semantic type label from node metadata using stream_kind directly.
 fn type_label_from_metadata(meta: &crate::ir::HydroIrMetadata) -> Option<String> {
     use crate::ir::{StreamKind, StreamOrdering, StreamRetries};
-    
+
     meta.stream_kind.as_ref().map(|kind| {
         let base_name = match kind {
             StreamKind::Stream { ordering, retries } => {
@@ -358,7 +303,7 @@ fn type_label_from_metadata(meta: &crate::ir::HydroIrMetadata) -> Option<String>
             StreamKind::Singleton => "Singleton".to_string(),
             StreamKind::Optional => "Optional".to_string(),
         };
-        
+
         if meta.is_bounded {
             format!("{} (Bounded)", base_name)
         } else {
@@ -645,7 +590,7 @@ impl HydroNode {
             base: Option<&str>,
             src_node: &HydroNode,
             dst_metadata: &crate::ir::HydroIrMetadata,
-            input_index: usize,
+            _input_index: usize,
             config: &HydroWriteConfig,
             lazy_coercion: bool,
         ) -> Option<String> {
@@ -658,12 +603,12 @@ impl HydroNode {
             // simple single-input wrappers to find a semantic label.
             let src_lbl = type_label_from_metadata(src_node.metadata())
                 .or_else(|| find_semantic_label_upstream(src_node));
-                
+
             // Since we removed input_collection_types from metadata, we now derive the destination
             // label from the source node's stream_kind and output type, which represents what flows
             // through this edge
             let dst_lbl = type_label_from_metadata(src_node.metadata());
-            
+
             // Auto-detect pass-through: for unnamed, single-input nodes whose output semantics
             // matches the source semantics, we defer showing coercion.
             let auto_lazy = if base.is_none() {

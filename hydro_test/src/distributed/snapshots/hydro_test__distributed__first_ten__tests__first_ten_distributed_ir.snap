@@ -24,6 +24,13 @@ expression: builder.finalize().ir()
                         output_type: Some(
                             std :: string :: String,
                         ),
+                        stream_kind: Some(
+                            Stream {
+                                ordering: TotalOrder,
+                                retries: ExactlyOnce,
+                            },
+                        ),
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -33,6 +40,13 @@ expression: builder.finalize().ir()
                     output_type: Some(
                         std :: string :: String,
                     ),
+                    stream_kind: Some(
+                        Stream {
+                            ordering: TotalOrder,
+                            retries: ExactlyOnce,
+                        },
+                    ),
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -42,6 +56,8 @@ expression: builder.finalize().ir()
                 output_type: Some(
                     std :: string :: String,
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -51,6 +67,8 @@ expression: builder.finalize().ir()
             output_type: Some(
                 std :: string :: String,
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
     ForEach {
@@ -78,6 +96,13 @@ expression: builder.finalize().ir()
                                 output_type: Some(
                                     u32,
                                 ),
+                                stream_kind: Some(
+                                    Stream {
+                                        ordering: TotalOrder,
+                                        retries: ExactlyOnce,
+                                    },
+                                ),
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -87,6 +112,13 @@ expression: builder.finalize().ir()
                             output_type: Some(
                                 u32,
                             ),
+                            stream_kind: Some(
+                                Stream {
+                                    ordering: TotalOrder,
+                                    retries: ExactlyOnce,
+                                },
+                            ),
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -96,6 +128,8 @@ expression: builder.finalize().ir()
                         output_type: Some(
                             hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -105,6 +139,8 @@ expression: builder.finalize().ir()
                     output_type: Some(
                         hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                     ),
+                    stream_kind: None,
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -114,6 +150,8 @@ expression: builder.finalize().ir()
                 output_type: Some(
                     hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -123,6 +161,8 @@ expression: builder.finalize().ir()
             output_type: Some(
                 hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
 ]

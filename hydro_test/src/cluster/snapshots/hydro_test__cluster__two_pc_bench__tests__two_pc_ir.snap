@@ -25,6 +25,13 @@ expression: built.ir()
                                 output_type: Some(
                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                 ),
+                                stream_kind: Some(
+                                    Stream {
+                                        ordering: TotalOrder,
+                                        retries: ExactlyOnce,
+                                    },
+                                ),
+                                is_bounded: true,
                             },
                         },
                         second: Tee {
@@ -69,6 +76,8 @@ expression: built.ir()
                                                             output_type: Some(
                                                                 (u32 , u32),
                                                             ),
+                                                            stream_kind: None,
+                                                            is_bounded: false,
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
@@ -78,6 +87,8 @@ expression: built.ir()
                                                         output_type: Some(
                                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                                         ),
+                                                        stream_kind: None,
+                                                        is_bounded: false,
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
@@ -87,6 +98,8 @@ expression: built.ir()
                                                     output_type: Some(
                                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                                     ),
+                                                    stream_kind: None,
+                                                    is_bounded: false,
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
@@ -96,6 +109,8 @@ expression: built.ir()
                                                 output_type: Some(
                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                                 ),
+                                                stream_kind: None,
+                                                is_bounded: false,
                                             },
                                         },
                                         metadata: HydroIrMetadata {
@@ -105,6 +120,8 @@ expression: built.ir()
                                             output_type: Some(
                                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                             ),
+                                            stream_kind: None,
+                                            is_bounded: false,
                                         },
                                     },
                                     metadata: HydroIrMetadata {
@@ -114,6 +131,8 @@ expression: built.ir()
                                         output_type: Some(
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                         ),
+                                        stream_kind: None,
+                                        is_bounded: false,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
@@ -123,6 +142,8 @@ expression: built.ir()
                                     output_type: Some(
                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                     ),
+                                    stream_kind: None,
+                                    is_bounded: false,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -135,6 +156,8 @@ expression: built.ir()
                                 output_type: Some(
                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                 ),
+                                stream_kind: None,
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -147,6 +170,13 @@ expression: built.ir()
                             output_type: Some(
                                 ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                             ),
+                            stream_kind: Some(
+                                Stream {
+                                    ordering: NoOrder,
+                                    retries: ExactlyOnce,
+                                },
+                            ),
+                            is_bounded: true,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -159,6 +189,8 @@ expression: built.ir()
                         output_type: Some(
                             ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 neg: Tee {
@@ -180,6 +212,8 @@ expression: built.ir()
                                         output_type: Some(
                                             ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                         ),
+                                        stream_kind: None,
+                                        is_bounded: false,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
@@ -192,6 +226,13 @@ expression: built.ir()
                                     output_type: Some(
                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                     ),
+                                    stream_kind: Some(
+                                        KeyedStream {
+                                            ordering: TotalOrder,
+                                            retries: ExactlyOnce,
+                                        },
+                                    ),
+                                    is_bounded: false,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -204,6 +245,8 @@ expression: built.ir()
                                 output_type: Some(
                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                 ),
+                                stream_kind: None,
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -216,6 +259,8 @@ expression: built.ir()
                             output_type: Some(
                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                             ),
+                            stream_kind: None,
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -228,6 +273,8 @@ expression: built.ir()
                         output_type: Some(
                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -240,6 +287,13 @@ expression: built.ir()
                     output_type: Some(
                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                     ),
+                    stream_kind: Some(
+                        Stream {
+                            ordering: TotalOrder,
+                            retries: ExactlyOnce,
+                        },
+                    ),
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -252,6 +306,8 @@ expression: built.ir()
                 output_type: Some(
                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -264,6 +320,8 @@ expression: built.ir()
             output_type: Some(
                 ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
     CycleSink {
@@ -288,6 +346,13 @@ expression: built.ir()
                                 output_type: Some(
                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                 ),
+                                stream_kind: Some(
+                                    Stream {
+                                        ordering: TotalOrder,
+                                        retries: ExactlyOnce,
+                                    },
+                                ),
+                                is_bounded: true,
                             },
                         },
                         second: Tee {
@@ -325,6 +390,8 @@ expression: built.ir()
                                                         output_type: Some(
                                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                                         ),
+                                                        stream_kind: None,
+                                                        is_bounded: false,
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
@@ -334,6 +401,8 @@ expression: built.ir()
                                                     output_type: Some(
                                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                                     ),
+                                                    stream_kind: None,
+                                                    is_bounded: false,
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
@@ -343,6 +412,8 @@ expression: built.ir()
                                                 output_type: Some(
                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                                 ),
+                                                stream_kind: None,
+                                                is_bounded: false,
                                             },
                                         },
                                         metadata: HydroIrMetadata {
@@ -352,6 +423,8 @@ expression: built.ir()
                                             output_type: Some(
                                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                             ),
+                                            stream_kind: None,
+                                            is_bounded: false,
                                         },
                                     },
                                     metadata: HydroIrMetadata {
@@ -361,6 +434,8 @@ expression: built.ir()
                                         output_type: Some(
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                         ),
+                                        stream_kind: None,
+                                        is_bounded: false,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
@@ -370,6 +445,8 @@ expression: built.ir()
                                     output_type: Some(
                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                     ),
+                                    stream_kind: None,
+                                    is_bounded: false,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -382,6 +459,8 @@ expression: built.ir()
                                 output_type: Some(
                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                 ),
+                                stream_kind: None,
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -394,6 +473,13 @@ expression: built.ir()
                             output_type: Some(
                                 ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                             ),
+                            stream_kind: Some(
+                                Stream {
+                                    ordering: NoOrder,
+                                    retries: ExactlyOnce,
+                                },
+                            ),
+                            is_bounded: true,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -406,6 +492,8 @@ expression: built.ir()
                         output_type: Some(
                             ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 neg: Tee {
@@ -427,6 +515,8 @@ expression: built.ir()
                                         output_type: Some(
                                             ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                         ),
+                                        stream_kind: None,
+                                        is_bounded: false,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
@@ -439,6 +529,13 @@ expression: built.ir()
                                     output_type: Some(
                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                     ),
+                                    stream_kind: Some(
+                                        KeyedStream {
+                                            ordering: TotalOrder,
+                                            retries: ExactlyOnce,
+                                        },
+                                    ),
+                                    is_bounded: false,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -451,6 +548,8 @@ expression: built.ir()
                                 output_type: Some(
                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                 ),
+                                stream_kind: None,
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -463,6 +562,8 @@ expression: built.ir()
                             output_type: Some(
                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                             ),
+                            stream_kind: None,
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -475,6 +576,8 @@ expression: built.ir()
                         output_type: Some(
                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -487,6 +590,13 @@ expression: built.ir()
                     output_type: Some(
                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                     ),
+                    stream_kind: Some(
+                        Stream {
+                            ordering: TotalOrder,
+                            retries: ExactlyOnce,
+                        },
+                    ),
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -499,6 +609,8 @@ expression: built.ir()
                 output_type: Some(
                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -511,6 +623,8 @@ expression: built.ir()
             output_type: Some(
                 ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
     CycleSink {
@@ -537,6 +651,10 @@ expression: built.ir()
                                 output_type: Some(
                                     (),
                                 ),
+                                stream_kind: Some(
+                                    Optional,
+                                ),
+                                is_bounded: true,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -549,6 +667,8 @@ expression: built.ir()
                             output_type: Some(
                                 (),
                             ),
+                            stream_kind: None,
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -561,6 +681,8 @@ expression: built.ir()
                         output_type: Some(
                             (u32 , core :: option :: Option < u32 >),
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 second: Tee {
@@ -586,6 +708,8 @@ expression: built.ir()
                                     output_type: Some(
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                     ),
+                                    stream_kind: None,
+                                    is_bounded: false,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -595,6 +719,8 @@ expression: built.ir()
                                 output_type: Some(
                                     (u32 , u32),
                                 ),
+                                stream_kind: None,
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -607,6 +733,8 @@ expression: built.ir()
                             output_type: Some(
                                 (u32 , core :: option :: Option < u32 >),
                             ),
+                            stream_kind: None,
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -619,6 +747,8 @@ expression: built.ir()
                         output_type: Some(
                             (u32 , core :: option :: Option < u32 >),
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -631,6 +761,13 @@ expression: built.ir()
                     output_type: Some(
                         (u32 , core :: option :: Option < u32 >),
                     ),
+                    stream_kind: Some(
+                        Stream {
+                            ordering: NoOrder,
+                            retries: ExactlyOnce,
+                        },
+                    ),
+                    is_bounded: true,
                 },
             },
             metadata: HydroIrMetadata {
@@ -640,6 +777,8 @@ expression: built.ir()
                 output_type: Some(
                     (u32 , u32),
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -649,6 +788,8 @@ expression: built.ir()
             output_type: Some(
                 (u32 , u32),
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
     CycleSink {
@@ -675,6 +816,13 @@ expression: built.ir()
                                     output_type: Some(
                                         (usize , std :: time :: Instant),
                                     ),
+                                    stream_kind: Some(
+                                        Stream {
+                                            ordering: TotalOrder,
+                                            retries: ExactlyOnce,
+                                        },
+                                    ),
+                                    is_bounded: true,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -687,6 +835,8 @@ expression: built.ir()
                                 output_type: Some(
                                     (usize , std :: time :: Instant),
                                 ),
+                                stream_kind: None,
+                                is_bounded: false,
                             },
                         },
                         second: FlatMap {
@@ -705,6 +855,8 @@ expression: built.ir()
                                         output_type: Some(
                                             (),
                                         ),
+                                        stream_kind: None,
+                                        is_bounded: false,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
@@ -717,6 +869,8 @@ expression: built.ir()
                                     output_type: Some(
                                         std :: time :: Instant,
                                     ),
+                                    stream_kind: None,
+                                    is_bounded: false,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -729,6 +883,8 @@ expression: built.ir()
                                 output_type: Some(
                                     (usize , std :: time :: Instant),
                                 ),
+                                stream_kind: None,
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -741,6 +897,13 @@ expression: built.ir()
                             output_type: Some(
                                 (usize , std :: time :: Instant),
                             ),
+                            stream_kind: Some(
+                                Stream {
+                                    ordering: NoOrder,
+                                    retries: ExactlyOnce,
+                                },
+                            ),
+                            is_bounded: true,
                         },
                     },
                     second: Tee {
@@ -758,6 +921,8 @@ expression: built.ir()
                                     output_type: Some(
                                         (u32 , core :: option :: Option < u32 >),
                                     ),
+                                    stream_kind: None,
+                                    is_bounded: false,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -770,6 +935,8 @@ expression: built.ir()
                                 output_type: Some(
                                     (usize , std :: time :: Instant),
                                 ),
+                                stream_kind: None,
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -782,6 +949,8 @@ expression: built.ir()
                             output_type: Some(
                                 (usize , std :: time :: Instant),
                             ),
+                            stream_kind: None,
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -794,6 +963,13 @@ expression: built.ir()
                         output_type: Some(
                             (usize , std :: time :: Instant),
                         ),
+                        stream_kind: Some(
+                            Stream {
+                                ordering: NoOrder,
+                                retries: ExactlyOnce,
+                            },
+                        ),
+                        is_bounded: true,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -806,6 +982,13 @@ expression: built.ir()
                     output_type: Some(
                         (usize , std :: time :: Instant),
                     ),
+                    stream_kind: Some(
+                        KeyedStream {
+                            ordering: TotalOrder,
+                            retries: ExactlyOnce,
+                        },
+                    ),
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -818,6 +1001,8 @@ expression: built.ir()
                 output_type: Some(
                     (usize , std :: time :: Instant),
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -830,6 +1015,8 @@ expression: built.ir()
             output_type: Some(
                 (usize , std :: time :: Instant),
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
     ForEach {
@@ -878,6 +1065,8 @@ expression: built.ir()
                                                                             output_type: Some(
                                                                                 (usize , std :: time :: Instant),
                                                                             ),
+                                                                            stream_kind: None,
+                                                                            is_bounded: false,
                                                                         },
                                                                     },
                                                                     right: Tee {
@@ -892,6 +1081,8 @@ expression: built.ir()
                                                                             output_type: Some(
                                                                                 (usize , std :: time :: Instant),
                                                                             ),
+                                                                            stream_kind: None,
+                                                                            is_bounded: false,
                                                                         },
                                                                     },
                                                                     metadata: HydroIrMetadata {
@@ -904,6 +1095,13 @@ expression: built.ir()
                                                                         output_type: Some(
                                                                             (usize , (std :: time :: Instant , std :: time :: Instant)),
                                                                         ),
+                                                                        stream_kind: Some(
+                                                                            Stream {
+                                                                                ordering: NoOrder,
+                                                                                retries: ExactlyOnce,
+                                                                            },
+                                                                        ),
+                                                                        is_bounded: false,
                                                                     },
                                                                 },
                                                                 metadata: HydroIrMetadata {
@@ -916,6 +1114,8 @@ expression: built.ir()
                                                                     output_type: Some(
                                                                         core :: time :: Duration,
                                                                     ),
+                                                                    stream_kind: None,
+                                                                    is_bounded: false,
                                                                 },
                                                             },
                                                             metadata: HydroIrMetadata {
@@ -928,6 +1128,13 @@ expression: built.ir()
                                                                 output_type: Some(
                                                                     core :: time :: Duration,
                                                                 ),
+                                                                stream_kind: Some(
+                                                                    Stream {
+                                                                        ordering: TotalOrder,
+                                                                        retries: ExactlyOnce,
+                                                                    },
+                                                                ),
+                                                                is_bounded: false,
                                                             },
                                                         },
                                                         metadata: HydroIrMetadata {
@@ -937,6 +1144,8 @@ expression: built.ir()
                                                             output_type: Some(
                                                                 std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > >,
                                                             ),
+                                                            stream_kind: None,
+                                                            is_bounded: false,
                                                         },
                                                     },
                                                     right: Map {
@@ -954,6 +1163,13 @@ expression: built.ir()
                                                                     output_type: Some(
                                                                         hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                                     ),
+                                                                    stream_kind: Some(
+                                                                        Stream {
+                                                                            ordering: TotalOrder,
+                                                                            retries: ExactlyOnce,
+                                                                        },
+                                                                    ),
+                                                                    is_bounded: false,
                                                                 },
                                                             },
                                                             metadata: HydroIrMetadata {
@@ -966,6 +1182,8 @@ expression: built.ir()
                                                                 output_type: Some(
                                                                     hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                                 ),
+                                                                stream_kind: None,
+                                                                is_bounded: false,
                                                             },
                                                         },
                                                         metadata: HydroIrMetadata {
@@ -978,6 +1196,8 @@ expression: built.ir()
                                                             output_type: Some(
                                                                 (),
                                                             ),
+                                                            stream_kind: None,
+                                                            is_bounded: false,
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
@@ -990,6 +1210,8 @@ expression: built.ir()
                                                         output_type: Some(
                                                             (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , ()),
                                                         ),
+                                                        stream_kind: None,
+                                                        is_bounded: false,
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
@@ -1002,6 +1224,8 @@ expression: built.ir()
                                                     output_type: Some(
                                                         std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > >,
                                                     ),
+                                                    stream_kind: None,
+                                                    is_bounded: false,
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
@@ -1011,6 +1235,8 @@ expression: built.ir()
                                                 output_type: Some(
                                                     hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper,
                                                 ),
+                                                stream_kind: None,
+                                                is_bounded: false,
                                             },
                                         },
                                         metadata: HydroIrMetadata {
@@ -1020,6 +1246,8 @@ expression: built.ir()
                                             output_type: Some(
                                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper),
                                             ),
+                                            stream_kind: None,
+                                            is_bounded: false,
                                         },
                                     },
                                     metadata: HydroIrMetadata {
@@ -1029,6 +1257,13 @@ expression: built.ir()
                                         output_type: Some(
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >),
                                         ),
+                                        stream_kind: Some(
+                                            KeyedStream {
+                                                ordering: TotalOrder,
+                                                retries: AtLeastOnce,
+                                            },
+                                        ),
+                                        is_bounded: false,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
@@ -1038,6 +1273,13 @@ expression: built.ir()
                                     output_type: Some(
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >),
                                     ),
+                                    stream_kind: Some(
+                                        KeyedStream {
+                                            ordering: TotalOrder,
+                                            retries: AtLeastOnce,
+                                        },
+                                    ),
+                                    is_bounded: false,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -1047,6 +1289,13 @@ expression: built.ir()
                                 output_type: Some(
                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >),
                                 ),
+                                stream_kind: Some(
+                                    KeyedStream {
+                                        ordering: TotalOrder,
+                                        retries: ExactlyOnce,
+                                    },
+                                ),
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -1059,6 +1308,8 @@ expression: built.ir()
                             output_type: Some(
                                 hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >,
                             ),
+                            stream_kind: None,
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -1071,6 +1322,8 @@ expression: built.ir()
                         output_type: Some(
                             hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >,
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 right: Map {
@@ -1088,6 +1341,13 @@ expression: built.ir()
                                 output_type: Some(
                                     hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                 ),
+                                stream_kind: Some(
+                                    Stream {
+                                        ordering: TotalOrder,
+                                        retries: ExactlyOnce,
+                                    },
+                                ),
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -1100,6 +1360,8 @@ expression: built.ir()
                             output_type: Some(
                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                             ),
+                            stream_kind: None,
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -1112,6 +1374,8 @@ expression: built.ir()
                         output_type: Some(
                             (),
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -1124,6 +1388,10 @@ expression: built.ir()
                     output_type: Some(
                         (hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > , ()),
                     ),
+                    stream_kind: Some(
+                        Optional,
+                    ),
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -1136,6 +1404,8 @@ expression: built.ir()
                 output_type: Some(
                     hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >,
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -1145,6 +1415,8 @@ expression: built.ir()
             output_type: Some(
                 hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >,
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
     ForEach {
@@ -1197,6 +1469,8 @@ expression: built.ir()
                                                                                     output_type: Some(
                                                                                         (u32 , core :: option :: Option < u32 >),
                                                                                     ),
+                                                                                    stream_kind: None,
+                                                                                    is_bounded: false,
                                                                                 },
                                                                             },
                                                                             metadata: HydroIrMetadata {
@@ -1209,6 +1483,8 @@ expression: built.ir()
                                                                                 output_type: Some(
                                                                                     usize,
                                                                                 ),
+                                                                                stream_kind: None,
+                                                                                is_bounded: false,
                                                                             },
                                                                         },
                                                                         right: Map {
@@ -1232,6 +1508,13 @@ expression: built.ir()
                                                                                                     output_type: Some(
                                                                                                         hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                                                                     ),
+                                                                                                    stream_kind: Some(
+                                                                                                        Stream {
+                                                                                                            ordering: TotalOrder,
+                                                                                                            retries: ExactlyOnce,
+                                                                                                        },
+                                                                                                    ),
+                                                                                                    is_bounded: false,
                                                                                                 },
                                                                                             },
                                                                                             metadata: HydroIrMetadata {
@@ -1244,6 +1527,8 @@ expression: built.ir()
                                                                                                 output_type: Some(
                                                                                                     hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                                                                 ),
+                                                                                                stream_kind: None,
+                                                                                                is_bounded: false,
                                                                                             },
                                                                                         },
                                                                                         metadata: HydroIrMetadata {
@@ -1256,6 +1541,8 @@ expression: built.ir()
                                                                                             output_type: Some(
                                                                                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                                                             ),
+                                                                                            stream_kind: None,
+                                                                                            is_bounded: false,
                                                                                         },
                                                                                     },
                                                                                     metadata: HydroIrMetadata {
@@ -1268,6 +1555,8 @@ expression: built.ir()
                                                                                         output_type: Some(
                                                                                             usize,
                                                                                         ),
+                                                                                        stream_kind: None,
+                                                                                        is_bounded: false,
                                                                                     },
                                                                                 },
                                                                                 metadata: HydroIrMetadata {
@@ -1280,6 +1569,8 @@ expression: built.ir()
                                                                                     output_type: Some(
                                                                                         usize,
                                                                                     ),
+                                                                                    stream_kind: None,
+                                                                                    is_bounded: false,
                                                                                 },
                                                                             },
                                                                             metadata: HydroIrMetadata {
@@ -1292,6 +1583,8 @@ expression: built.ir()
                                                                                 output_type: Some(
                                                                                     (),
                                                                                 ),
+                                                                                stream_kind: None,
+                                                                                is_bounded: false,
                                                                             },
                                                                         },
                                                                         metadata: HydroIrMetadata {
@@ -1304,6 +1597,8 @@ expression: built.ir()
                                                                             output_type: Some(
                                                                                 (usize , ()),
                                                                             ),
+                                                                            stream_kind: None,
+                                                                            is_bounded: false,
                                                                         },
                                                                     },
                                                                     metadata: HydroIrMetadata {
@@ -1316,6 +1611,8 @@ expression: built.ir()
                                                                         output_type: Some(
                                                                             usize,
                                                                         ),
+                                                                        stream_kind: None,
+                                                                        is_bounded: false,
                                                                     },
                                                                 },
                                                                 metadata: HydroIrMetadata {
@@ -1328,6 +1625,8 @@ expression: built.ir()
                                                                     output_type: Some(
                                                                         (usize , bool),
                                                                     ),
+                                                                    stream_kind: None,
+                                                                    is_bounded: false,
                                                                 },
                                                             },
                                                             second: DeferTick {
@@ -1345,6 +1644,8 @@ expression: built.ir()
                                                                             output_type: Some(
                                                                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                                             ),
+                                                                            stream_kind: None,
+                                                                            is_bounded: false,
                                                                         },
                                                                     },
                                                                     metadata: HydroIrMetadata {
@@ -1357,6 +1658,8 @@ expression: built.ir()
                                                                         output_type: Some(
                                                                             (usize , bool),
                                                                         ),
+                                                                        stream_kind: None,
+                                                                        is_bounded: false,
                                                                     },
                                                                 },
                                                                 metadata: HydroIrMetadata {
@@ -1369,6 +1672,8 @@ expression: built.ir()
                                                                     output_type: Some(
                                                                         (usize , bool),
                                                                     ),
+                                                                    stream_kind: None,
+                                                                    is_bounded: false,
                                                                 },
                                                             },
                                                             metadata: HydroIrMetadata {
@@ -1381,6 +1686,10 @@ expression: built.ir()
                                                                 output_type: Some(
                                                                     (usize , bool),
                                                                 ),
+                                                                stream_kind: Some(
+                                                                    Optional,
+                                                                ),
+                                                                is_bounded: false,
                                                             },
                                                         },
                                                         metadata: HydroIrMetadata {
@@ -1393,6 +1702,13 @@ expression: built.ir()
                                                             output_type: Some(
                                                                 (usize , bool),
                                                             ),
+                                                            stream_kind: Some(
+                                                                Stream {
+                                                                    ordering: TotalOrder,
+                                                                    retries: ExactlyOnce,
+                                                                },
+                                                            ),
+                                                            is_bounded: false,
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
@@ -1402,6 +1718,8 @@ expression: built.ir()
                                                         output_type: Some(
                                                             (usize , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage),
                                                         ),
+                                                        stream_kind: None,
+                                                        is_bounded: false,
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
@@ -1411,6 +1729,8 @@ expression: built.ir()
                                                     output_type: Some(
                                                         hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                                     ),
+                                                    stream_kind: None,
+                                                    is_bounded: false,
                                                 },
                                             },
                                             right: Map {
@@ -1428,6 +1748,13 @@ expression: built.ir()
                                                             output_type: Some(
                                                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                             ),
+                                                            stream_kind: Some(
+                                                                Stream {
+                                                                    ordering: TotalOrder,
+                                                                    retries: ExactlyOnce,
+                                                                },
+                                                            ),
+                                                            is_bounded: false,
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
@@ -1440,6 +1767,8 @@ expression: built.ir()
                                                         output_type: Some(
                                                             hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                         ),
+                                                        stream_kind: None,
+                                                        is_bounded: false,
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
@@ -1452,6 +1781,8 @@ expression: built.ir()
                                                     output_type: Some(
                                                         (),
                                                     ),
+                                                    stream_kind: None,
+                                                    is_bounded: false,
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
@@ -1464,6 +1795,8 @@ expression: built.ir()
                                                 output_type: Some(
                                                     (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , ()),
                                                 ),
+                                                stream_kind: None,
+                                                is_bounded: false,
                                             },
                                         },
                                         metadata: HydroIrMetadata {
@@ -1476,6 +1809,8 @@ expression: built.ir()
                                             output_type: Some(
                                                 hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                             ),
+                                            stream_kind: None,
+                                            is_bounded: false,
                                         },
                                     },
                                     metadata: HydroIrMetadata {
@@ -1485,6 +1820,8 @@ expression: built.ir()
                                         output_type: Some(
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage),
                                         ),
+                                        stream_kind: None,
+                                        is_bounded: false,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
@@ -1494,6 +1831,8 @@ expression: built.ir()
                                     output_type: Some(
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage),
                                     ),
+                                    stream_kind: None,
+                                    is_bounded: false,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -1503,6 +1842,13 @@ expression: built.ir()
                                 output_type: Some(
                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage),
                                 ),
+                                stream_kind: Some(
+                                    KeyedStream {
+                                        ordering: TotalOrder,
+                                        retries: ExactlyOnce,
+                                    },
+                                ),
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -1515,6 +1861,8 @@ expression: built.ir()
                             output_type: Some(
                                 hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                             ),
+                            stream_kind: None,
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -1527,6 +1875,8 @@ expression: built.ir()
                         output_type: Some(
                             hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 right: Map {
@@ -1544,6 +1894,13 @@ expression: built.ir()
                                 output_type: Some(
                                     hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                 ),
+                                stream_kind: Some(
+                                    Stream {
+                                        ordering: TotalOrder,
+                                        retries: ExactlyOnce,
+                                    },
+                                ),
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -1556,6 +1913,8 @@ expression: built.ir()
                             output_type: Some(
                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                             ),
+                            stream_kind: None,
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -1568,6 +1927,8 @@ expression: built.ir()
                         output_type: Some(
                             (),
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -1580,6 +1941,10 @@ expression: built.ir()
                     output_type: Some(
                         (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , ()),
                     ),
+                    stream_kind: Some(
+                        Optional,
+                    ),
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -1592,6 +1957,8 @@ expression: built.ir()
                 output_type: Some(
                     hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -1601,6 +1968,8 @@ expression: built.ir()
             output_type: Some(
                 hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
 ]

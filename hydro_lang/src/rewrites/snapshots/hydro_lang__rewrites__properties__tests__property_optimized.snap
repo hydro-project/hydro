@@ -21,6 +21,13 @@ expression: built.ir()
                         output_type: Some(
                             std :: string :: String,
                         ),
+                        stream_kind: Some(
+                            Stream {
+                                ordering: TotalOrder,
+                                retries: ExactlyOnce,
+                            },
+                        ),
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -30,6 +37,8 @@ expression: built.ir()
                     output_type: Some(
                         (std :: string :: String , ()),
                     ),
+                    stream_kind: None,
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -42,6 +51,13 @@ expression: built.ir()
                 output_type: Some(
                     (std :: string :: String , i32),
                 ),
+                stream_kind: Some(
+                    KeyedStream {
+                        ordering: TotalOrder,
+                        retries: ExactlyOnce,
+                    },
+                ),
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -51,6 +67,8 @@ expression: built.ir()
             output_type: Some(
                 (std :: string :: String , i32),
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
 ]

@@ -20,6 +20,13 @@ expression: optimized.ir()
                             output_type: Some(
                                 i32,
                             ),
+                            stream_kind: Some(
+                                Stream {
+                                    ordering: TotalOrder,
+                                    retries: ExactlyOnce,
+                                },
+                            ),
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -32,6 +39,8 @@ expression: optimized.ir()
                         output_type: Some(
                             i32,
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -44,6 +53,8 @@ expression: optimized.ir()
                     output_type: Some(
                         i32,
                     ),
+                    stream_kind: None,
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -56,6 +67,8 @@ expression: optimized.ir()
                 output_type: Some(
                     i32,
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -65,6 +78,8 @@ expression: optimized.ir()
             output_type: Some(
                 i32,
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
     ForEach {
@@ -84,6 +99,13 @@ expression: optimized.ir()
                             output_type: Some(
                                 i32,
                             ),
+                            stream_kind: Some(
+                                Stream {
+                                    ordering: TotalOrder,
+                                    retries: ExactlyOnce,
+                                },
+                            ),
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -96,6 +118,8 @@ expression: optimized.ir()
                         output_type: Some(
                             i32,
                         ),
+                        stream_kind: None,
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -108,6 +132,8 @@ expression: optimized.ir()
                     output_type: Some(
                         i32,
                     ),
+                    stream_kind: None,
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -120,6 +146,8 @@ expression: optimized.ir()
                 output_type: Some(
                     i32,
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -129,6 +157,8 @@ expression: optimized.ir()
             output_type: Some(
                 i32,
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
 ]

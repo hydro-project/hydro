@@ -77,7 +77,7 @@ where
 
 /// Helper function to create a KeyedStream from a transformed underlying stream,
 /// updating the metadata to reflect keyed stream type conversions.
-fn keyed_stream_with_updated_metadata<'a, K, V, U, L, B, O, R>(
+fn keyed_stream_with_updated_metadata<'a, K, U, L, B, O, R>(
     underlying: Stream<(K, U), L, B, NoOrder, R>,
 ) -> KeyedStream<K, U, L, B, O, R>
 where
@@ -102,10 +102,7 @@ where
         is_bounded,
     );
 
-    KeyedStream {
-        underlying: updated_stream,
-        _phantom_order: Default::default(),
-    }
+    KeyedStream::new(updated_stream)
 }
 
 /// Helper function to create a KeyedStream from a transformed underlying stream,
@@ -135,13 +132,19 @@ where
         is_bounded,
     );
 
-    KeyedStream {
-        underlying: updated_stream,
-        _phantom_order: Default::default(),
-    }
+    KeyedStream::new(updated_stream)
 }
 
 impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
+    /// Create a new KeyedStream from an underlying stream.
+    /// This constructor is primarily intended for code generation.
+    pub fn new(underlying: Stream<(K, V), L, B, NoOrder, R>) -> Self {
+        KeyedStream {
+            underlying,
+            _phantom_order: Default::default(),
+        }
+    }
+
     /// Explicitly "casts" the keyed stream to a type with a different ordering
     /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.
@@ -251,7 +254,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
             move |(k, v)| (k, orig(v))
         }));
 
-        keyed_stream_with_updated_metadata::<K, V, U, L, B, O, R>(base)
+        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
@@ -331,7 +334,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
             }
         }));
 
-        keyed_stream_with_updated_metadata::<K, V, U, L, B, O, R>(base)
+        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     /// An operator that both filters and maps each value, with keys staying the same.
@@ -368,7 +371,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
             move |(k, v)| orig(v).map(|o| (k, o))
         }));
 
-        keyed_stream_with_updated_metadata::<K, V, U, L, B, O, R>(base)
+        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     /// An operator that both filters and maps each key-value pair. The resulting values are **not**
@@ -409,7 +412,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
             }
         }));
 
-        keyed_stream_with_updated_metadata::<K, V, U, L, B, O, R>(base)
+        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
