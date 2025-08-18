@@ -161,7 +161,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_stream_metadata::<T, Tick<L>, Bounded, O, R>(),
             },
         )
     }
@@ -559,7 +559,12 @@ where
             HydroNode::CrossSingleton {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, O2)>(),
+                metadata: self.location.new_multi_input_metadata::<
+                    (T, O2),
+                    Stream<(T, O2), L, B, O, R>,
+                    Stream<T, L, B, O, R>,
+                    Optional<O2, L, Bounded>,
+                >(),
             },
         )
     }
@@ -607,7 +612,7 @@ where
             HydroNode::CrossProduct {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, T2)>(),
+                metadata: self.location.new_multi_input_metadata::<(T, T2), Stream<(T, T2), L, B, NoOrder, R>, Stream<T, L, B, O, R>, Stream<T2, L, B, O2, R>>(),
             },
         )
     }
@@ -676,7 +681,12 @@ where
             HydroNode::Difference {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_multi_input_metadata::<
+                    T,
+                    Stream<T, L, Bounded, O, R>,
+                    Stream<T, L, Bounded, O, R>,
+                    Stream<T, L, Bounded, O2, R>,
+                >(),
             },
         )
     }
@@ -1566,7 +1576,7 @@ where
             HydroNode::Chain {
                 first: Box::new(self.ir_node.into_inner()),
                 second: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_multi_input_metadata::<T, Stream<T, L, Bounded, O::Min, R>, Stream<T, L, Bounded, O, R>, Stream<T, L, Bounded, O2, R>>(),
             },
         )
     }
@@ -1608,7 +1618,7 @@ where
             HydroNode::Join {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, (V1, V2))>(),
+                metadata: self.location.new_multi_input_metadata::<(K, (V1, V2)), Stream<(K, (V1, V2)), L, B, NoOrder, R>, Stream<(K, V1), L, B, O, R>, Stream<(K, V2), L, B, O2, R>>(),
             },
         )
     }
@@ -1647,7 +1657,12 @@ where
             HydroNode::AntiJoin {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V1)>(),
+                metadata: self.location.new_multi_input_metadata::<
+                    (K, V1),
+                    Stream<(K, V1), L, B, O, R>,
+                    Stream<(K, V1), L, B, O, R>,
+                    Stream<K, L, Bounded, O2, R>,
+                >(),
             },
         )
     }

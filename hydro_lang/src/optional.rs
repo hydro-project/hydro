@@ -60,7 +60,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_optional_metadata::<T, Tick<L>, Bounded>(),
             },
         )
     }
@@ -101,7 +101,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_optional_metadata::<T, Tick<L>, Bounded>(),
             },
         )
     }
@@ -356,15 +356,20 @@ where
                     inner: Box::new(HydroNode::Chain {
                         first: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
+                            metadata: self.location.new_optional_metadata::<T, L, B>(),
                         }),
                         second: Box::new(HydroNode::Unpersist {
                             inner: Box::new(other.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
+                            metadata: self.location.new_optional_metadata::<T, L, B>(),
                         }),
-                        metadata: self.location.new_node_metadata::<T>(),
+                        metadata: self.location.new_multi_input_metadata::<
+                            T,
+                            Optional<T, L, B>,
+                            Optional<T, L, B>,
+                            Optional<T, L, B>,
+                        >(),
                     }),
-                    metadata: self.location.new_node_metadata::<T>(),
+                    metadata: self.location.new_optional_metadata::<T, L, B>(),
                 },
             )
         } else {
@@ -373,7 +378,12 @@ where
                 HydroNode::Chain {
                     first: Box::new(self.ir_node.into_inner()),
                     second: Box::new(other.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<T>(),
+                    metadata: self.location.new_multi_input_metadata::<
+                        T,
+                        Optional<T, L, B>,
+                        Optional<T, L, B>,
+                        Optional<T, L, B>,
+                    >(),
                 },
             )
         }
@@ -393,15 +403,20 @@ where
                     inner: Box::new(HydroNode::CrossSingleton {
                         left: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
+                            metadata: self.location.new_optional_metadata::<T, L, B>(),
                         }),
                         right: Box::new(HydroNode::Unpersist {
                             inner: Box::new(other.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<O>(),
+                            metadata: self.location.new_optional_metadata::<O, L, B>(),
                         }),
-                        metadata: self.location.new_node_metadata::<(T, O)>(),
+                        metadata: self.location.new_multi_input_metadata::<
+                            (T, O),
+                            Optional<(T, O), L, B>,
+                            Optional<T, L, B>,
+                            Optional<O, L, B>,
+                        >(),
                     }),
-                    metadata: self.location.new_node_metadata::<(T, O)>(),
+                    metadata: self.location.new_optional_metadata::<(T, O), L, B>(),
                 },
             )
         } else {
@@ -410,7 +425,12 @@ where
                 HydroNode::CrossSingleton {
                     left: Box::new(self.ir_node.into_inner()),
                     right: Box::new(other.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<(T, O)>(),
+                    metadata: self.location.new_multi_input_metadata::<
+                        (T, O),
+                        Optional<(T, O), L, B>,
+                        Optional<T, L, B>,
+                        Optional<O, L, B>,
+                    >(),
                 },
             )
         }
@@ -457,9 +477,12 @@ where
         let core_ir = HydroNode::Persist {
             inner: Box::new(HydroNode::Source {
                 source: HydroSource::Iter(none.into()),
-                metadata: self.location.root().new_node_metadata::<Option<T>>(),
+                metadata: self
+                    .location
+                    .root()
+                    .new_optional_metadata::<Option<T>, L::Root, Bounded>(),
             }),
-            metadata: self.location.new_node_metadata::<Option<T>>(),
+            metadata: self.location.new_singleton_metadata::<Option<T>, L, Bounded>(),
         };
 
         let none_singleton = if L::is_top_level() {
@@ -467,7 +490,7 @@ where
                 self.location.clone(),
                 HydroNode::Persist {
                     inner: Box::new(core_ir),
-                    metadata: self.location.new_node_metadata::<Option<T>>(),
+                    metadata: self.location.new_singleton_metadata::<Option<T>, L, Bounded>(),
                 },
             )
         } else {
@@ -603,7 +626,7 @@ where
             self.location.outer().clone(),
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_conversion_metadata::<T, Stream<T, L, Unbounded, TotalOrder, ExactlyOnce>, Optional<T, Tick<L>, Bounded>>(),
             },
         )
     }

@@ -963,6 +963,13 @@ pub struct HydroIrMetadata {
     pub location_kind: LocationId,
     pub backtrace: Backtrace,
     pub output_type: Option<DebugType>,
+    /// The conceptual collection type of this operation's output (e.g., Stream<T, L, B, O, R>)
+    pub collection_type: Option<DebugType>,
+    /// The conceptual collection types of the input(s) to this operation.
+    /// Used for visualization to show what the programmer sees on the edges.
+    /// For single-input operations: vec![input_type]
+    /// For multi-input operations: vec![left_type, right_type, ...] in operation order
+    pub input_collection_types: Vec<DebugType>,
     pub cardinality: Option<usize>,
     pub cpu_usage: Option<f64>,
     pub network_recv_cpu_usage: Option<f64>,
@@ -2990,12 +2997,12 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"208");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"240");
     }
 
     #[test]
     fn hydro_leaf_size() {
-        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"200");
+        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"232");
     }
 
     #[test]

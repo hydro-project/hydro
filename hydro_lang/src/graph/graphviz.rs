@@ -267,7 +267,7 @@ pub fn open_browser(
     built_flow: &crate::builder::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let config = super::render::HydroWriteConfig {
-        show_metadata: false,
+        show_metadata: true,
         show_location_groups: true,
         use_short_labels: true, // Default to short labels
         process_id_name: built_flow.process_id_name().clone(),

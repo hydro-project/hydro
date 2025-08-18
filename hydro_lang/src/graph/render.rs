@@ -24,8 +24,8 @@ pub enum NodeLabel {
 
 impl NodeLabel {
     /// Create a static label
-    pub fn static_label(s: String) -> Self {
-        Self::Static(s)
+    pub fn static_label<S: Into<String>>(s: S) -> Self {
+        Self::Static(s.into())
     }
 
     /// Create a label for an operation with multiple expression
@@ -178,6 +178,8 @@ impl Default for HydroWriteConfig {
     }
 }
 
+// No fallback defaults: edge labels rely on recorded metadata and upstream inference only.
+
 /// Graph structure tracker for Hydro IR rendering.
 #[derive(Debug, Default)]
 pub struct HydroGraphStructure {
@@ -268,6 +270,118 @@ pub fn extract_short_label(full_label: &str) -> String {
         } else {
             full_label.to_string()
         }
+    }
+}
+
+// Removed unused pretty-printer helper to satisfy strict clippy settings.
+
+/// Build a semantic label (collection kind + boundedness + order) from a type token string.
+fn semantic_label_from_tokens(tokens: &str) -> Option<String> {
+    // Lightweight, robust scanning: look for known collection kinds and markers anywhere in the token string.
+    // Normalize whitespace without chained replace to keep clippy quiet under strict settings.
+    let s: String = tokens
+        .chars()
+        .map(|c| match c {
+            '\n' | '\t' => ' ',
+            _ => c,
+        })
+        .collect();
+    let kind = if s.contains("KeyedStream") {
+        "KeyedStream"
+    } else if s.contains("Stream") {
+        "Stream"
+    } else if s.contains("Optional") {
+        "Optional"
+    } else if s.contains("Singleton") {
+        "Singleton"
+    } else {
+        return None;
+    };
+
+    let mut parts = vec![kind.to_string()];
+    // Prefer more specific/stronger markers when both appear by accident
+    if s.contains("Unbounded") {
+        parts.push("Unbounded".to_string());
+    } else if s.contains("Bounded") {
+        parts.push("Bounded".to_string());
+    }
+    if s.contains("TotalOrder") {
+        parts.push("TotalOrder".to_string());
+    } else if s.contains("NoOrder") {
+        parts.push("NoOrder".to_string());
+    }
+    Some(parts.join(" "))
+}
+
+/// Build a semantic type label from node metadata using collection_type only.
+fn type_label_from_metadata(meta: &crate::ir::HydroIrMetadata) -> Option<String> {
+    meta.collection_type
+        .as_ref()
+        .and_then(|col| semantic_label_from_tokens(&format!("{:?}", col)))
+}
+
+/// Try to find a semantic label for a node by looking at its own metadata,
+/// falling back to walking upstream through single-input wrappers.
+fn find_semantic_label_upstream(node: &HydroNode) -> Option<String> {
+    use HydroNode::*;
+    // Prevent excessive walking in degenerate cases
+    let mut hops = 0usize;
+    let mut cur = node;
+    loop {
+        if let Some(lbl) = type_label_from_metadata(cur.metadata()) {
+            return Some(lbl);
+        }
+        if hops > 64 {
+            return None;
+        }
+        hops += 1;
+        // Use a temporary variable for tee borrow to avoid returning reference to a temporary.
+        cur = match cur {
+                // Treat persist boundaries as semantic breakpoints; don't walk past them
+                Persist { .. }
+                | Unpersist { .. } => return None,
+                Delta { inner, .. }
+            | Enumerate { input: inner, .. }
+            | Unique { input: inner, .. }
+            | Sort { input: inner, .. }
+            | Map { input: inner, .. }
+            | Filter { input: inner, .. }
+            | FlatMap { input: inner, .. }
+            | FilterMap { input: inner, .. }
+            | Inspect { input: inner, .. }
+            | Reduce { input: inner, .. }
+            | ReduceKeyed { input: inner, .. }
+            | Fold { input: inner, .. }
+            | FoldKeyed { input: inner, .. }
+            | Scan { input: inner, .. }
+            | Counter { input: inner, .. }
+            | DeferTick { input: inner, .. }
+            | ResolveFutures { input: inner, .. }
+            | ResolveFuturesOrdered { input: inner, .. } => inner,
+            Tee { inner, .. } => {
+                // SAFETY: We immediately break out of this arm by cloning the needed info; but since we need a &HydroNode,
+                // we can't hold the Ref across loop iterations. Instead, fall back to using metadata on the Tee itself
+                // and stop walking further if Tee doesn't have it.
+                // Try metadata on the tee one last time, then stop.
+                if let Some(lbl) = type_label_from_metadata(inner.0.borrow().metadata()) {
+                    return Some(lbl);
+                }
+                return None;
+            }
+            // Stop for multi-input and source-like nodes
+            Source { .. }
+            | ExternalInput { .. }
+            | CycleSource { .. }
+            | Join { .. }
+            | CrossProduct { .. }
+            | CrossSingleton { .. }
+            | Difference { .. }
+            | AntiJoin { .. }
+            | Network { .. }
+            | Placeholder
+            | ReduceKeyedWatermark { .. }
+            | Chain { .. } => return None,
+        };
     }
 }
 
@@ -390,7 +504,12 @@ impl HydroLeaf {
             let input_id = input.build_graph_structure(structure, seen_tees, config);
             let location_id = metadata.and_then(|m| setup_location(structure, m));
             let sink_id = structure.add_node(label, HydroNodeType::Sink, location_id);
-            structure.add_edge(input_id, sink_id, edge_type, None);
+            let edge_label = if config.show_metadata {
+                type_label_from_metadata(input.metadata())
+            } else {
+                None
+            };
+            structure.add_edge(input_id, sink_id, edge_type, edge_label);
             sink_id
         }
 
@@ -469,6 +588,63 @@ impl HydroNode {
 
         // Helper functions to reduce duplication, categorized by input/expression patterns
 
+        // Build an edge label for a single input with validation against the source node's output.
+        // If `base` is provided (e.g., "left"/"right"), it will be prefixed on the first line.
+        // Behavior when config.show_metadata is true:
+        // - Prefer the downstream node's recorded input type; if missing, fall back to the source's output type.
+        // - When both exist and differ, annotate with both to surface the mismatch.
+        // When config.show_metadata is false:
+        // - Return only the base label if provided; otherwise, no label.
+        fn build_edge_label_single_input(
+            base: Option<&str>,
+            src_node: &HydroNode,
+            dst_metadata: &crate::ir::HydroIrMetadata,
+            input_index: usize,
+            config: &HydroWriteConfig,
+        ) -> Option<String> {
+            // Always include base when present, even if metadata is hidden (for role labeling)
+            if !config.show_metadata {
+                return base.map(|b| b.to_string());
+            }
+
+            // Prefer direct metadata on the source node; if absent, walk upstream through
+            // simple single-input wrappers to find a semantic label.
+            let src_lbl = type_label_from_metadata(src_node.metadata())
+                .or_else(|| find_semantic_label_upstream(src_node));
+            let dst_lbl = dst_metadata
+                .input_collection_types
+                .get(input_index)
+                .and_then(|ty| semantic_label_from_tokens(&format!("{:?}", ty)));
+
+            // Decide primary label text (prefer destination input type when available)
+            let primary = dst_lbl.as_ref().or(src_lbl.as_ref());
+
+            // Nothing known on either side
+            let Some(primary) = primary else {
+                return base.map(|b| b.to_string());
+            };
+
+            let mut label = match base {
+                Some(b) => format!("{}\n{}", b, primary),
+                None => primary.to_string(),
+            };
+
+            // If both exist and differ, annotate concisely with both for validation visibility
+            if let (Some(d), Some(s)) = (dst_lbl.as_ref(), src_lbl.as_ref()) {
+                if d != s {
+                    // Add a short mismatch note; keep it compact to avoid clutter
+                    // Format: "<base>\n<dst> | out=<src>"
+                    if base.is_some() {
+                        label = format!("{} | out={}", label, s);
+                    } else {
+                        label = format!("{} | out={}", d, s);
+                    }
+                }
+            }
+
+            Some(label)
+        }
+
         /// Common parameters for transform builder functions to reduce argument count
         struct TransformParams<'a> {
             structure: &'a mut HydroGraphStructure,
@@ -494,9 +670,16 @@ impl HydroNode {
                 params.node_type,
                 location_id,
             );
+            let edge_label = build_edge_label_single_input(
+                None,
+                params.input,
+                params.metadata,
+                0,
+                params.config,
+            );
             params
                 .structure
-                .add_edge(input_id, node_id, params.edge_type, None);
+                .add_edge(input_id, node_id, params.edge_type, edge_label);
             node_id
         }
 
@@ -513,9 +696,16 @@ impl HydroNode {
                 params.node_type,
                 location_id,
             );
+            let edge_label = build_edge_label_single_input(
+                None,
+                params.input,
+                params.metadata,
+                0,
+                params.config,
+            );
             params
                 .structure
-                .add_edge(input_id, node_id, params.edge_type, None);
+                .add_edge(input_id, node_id, params.edge_type, edge_label);
             node_id
         }
 
@@ -539,9 +729,16 @@ impl HydroNode {
                 params.node_type,
                 location_id,
             );
+            let edge_label = build_edge_label_single_input(
+                None,
+                params.input,
+                params.metadata,
+                0,
+                params.config,
+            );
             params
                 .structure
-                .add_edge(input_id, node_id, params.edge_type, None);
+                .add_edge(input_id, node_id, params.edge_type, edge_label);
             node_id
         }
 
@@ -609,7 +806,12 @@ impl HydroNode {
 
                 seen_tees.insert(ptr, tee_id);
 
-                structure.add_edge(input_id, tee_id, HydroEdgeType::Stream, None);
+                let edge_label = if config.show_metadata {
+                    find_semantic_label_upstream(&inner.0.borrow())
+                } else {
+                    None
+                };
+                structure.add_edge(input_id, tee_id, HydroEdgeType::Stream, edge_label);
 
                 tee_id
             }
@@ -737,13 +939,13 @@ impl HydroNode {
                     left_id,
                     node_id,
                     HydroEdgeType::Stream,
-                    Some("left".to_string()),
+                    build_edge_label_single_input(Some("left"), left, metadata, 0, config),
                 );
                 structure.add_edge(
                     right_id,
                     node_id,
                     HydroEdgeType::Stream,
-                    Some("right".to_string()),
+                    build_edge_label_single_input(Some("right"), right, metadata, 1, config),
                 );
                 node_id
             }
@@ -771,13 +973,13 @@ impl HydroNode {
                     left_id,
                     node_id,
                     HydroEdgeType::Stream,
-                    Some("pos".to_string()),
+                    build_edge_label_single_input(Some("pos"), left, metadata, 0, config),
                 );
                 structure.add_edge(
                     right_id,
                     node_id,
                     HydroEdgeType::Stream,
-                    Some("neg".to_string()),
+                    build_edge_label_single_input(Some("neg"), right, metadata, 1, config),
                 );
                 node_id
             }
@@ -838,13 +1040,13 @@ impl HydroNode {
                     input_id,
                     join_node_id,
                     HydroEdgeType::Stream,
-                    Some("input".to_string()),
+                    build_edge_label_single_input(Some("input"), input, metadata, 0, config),
                 );
                 structure.add_edge(
                     watermark_id,
                     join_node_id,
                     HydroEdgeType::Stream,
-                    Some("watermark".to_string()),
+                    build_edge_label_single_input(Some("watermark"), watermark, metadata, 1, config),
                 );
 
                 let node_id = structure.add_node(
@@ -855,7 +1057,12 @@ impl HydroNode {
                     HydroNodeType::Aggregation,
                     location_id,
                 );
-                structure.add_edge(join_node_id, node_id, HydroEdgeType::Stream, None);
+                let edge_label = if config.show_metadata {
+                    type_label_from_metadata(metadata)
+                } else {
+                    None
+                };
+                structure.add_edge(join_node_id, node_id, HydroEdgeType::Stream, edge_label);
                 node_id
             }
 
@@ -898,12 +1105,16 @@ impl HydroNode {
                     HydroNodeType::Network,
                     to_location_id,
                 );
-                structure.add_edge(
-                    input_id,
-                    network_id,
-                    HydroEdgeType::Network,
-                    Some(format!("to {:?}", to_location_id)),
-                );
+                let mut net_edge_label = Some(format!("to {:?}", to_location_id));
+                if config.show_metadata {
+                    if let Some(t) = type_label_from_metadata(input.metadata()) {
+                        net_edge_label = Some(match net_edge_label.take() {
+                            Some(base) => format!("{}\n{}", base, t),
+                            None => t,
+                        });
+                    }
+                }
+                structure.add_edge(input_id, network_id, HydroEdgeType::Network, net_edge_label);
                 network_id
             }
 
@@ -930,13 +1141,13 @@ impl HydroNode {
                     first_id,
                     chain_id,
                     HydroEdgeType::Stream,
-                    Some("first".to_string()),
+                    build_edge_label_single_input(Some("first"), first, metadata, 0, config),
                 );
                 structure.add_edge(
                     second_id,
                     chain_id,
                     HydroEdgeType::Stream,
-                    Some("second".to_string()),
+                    build_edge_label_single_input(Some("second"), second, metadata, 1, config),
                 );
                 chain_id
             }

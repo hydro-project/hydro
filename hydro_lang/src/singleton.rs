@@ -115,7 +115,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_singleton_metadata::<T, Tick<L>, Bounded>(),
             },
         )
     }
@@ -157,9 +157,9 @@ where
             HydroNode::Persist {
                 inner: Box::new(HydroNode::CycleSource {
                     ident,
-                    metadata: location.new_node_metadata::<T>(),
+                    metadata: location.new_singleton_metadata::<T, L, B>(),
                 }),
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_singleton_metadata::<T, L, B>(),
             },
         )
     }
@@ -256,7 +256,7 @@ where
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self.location.new_conversion_metadata::<U, Stream<U, L, B, TotalOrder, ExactlyOnce>, Singleton<T, L, B>>(),
             },
         )
     }
