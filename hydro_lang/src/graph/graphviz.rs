@@ -157,10 +157,6 @@ where
 
         // Styling based on edge type
         match edge_type {
-            HydroEdgeType::Persistent => {
-                properties.push("color=\"#008800\"".into());
-                properties.push("style=\"bold\"".into());
-            }
             HydroEdgeType::Network => {
                 properties.push("color=\"#880088\"".into());
                 properties.push("style=\"dashed\"".into());

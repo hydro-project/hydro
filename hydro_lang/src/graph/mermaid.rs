@@ -139,7 +139,6 @@ where
     ) -> Result<(), Self::Err> {
         let arrow_style = match edge_type {
             HydroEdgeType::Stream => "-->",
-            HydroEdgeType::Persistent => "==>",
             HydroEdgeType::Network => "-.->",
             HydroEdgeType::Cycle => "--o",
         };
@@ -161,13 +160,12 @@ where
         )?;
 
         // Add styling for different edge types on a separate line
-        if !matches!(edge_type, HydroEdgeType::Stream) {
+    if !matches!(edge_type, HydroEdgeType::Stream) {
             writeln!(
                 self.base.write,
                 "{b:i$}linkStyle {} stroke:{}",
                 self.link_count,
                 match edge_type {
-                    HydroEdgeType::Persistent => "#008800",
                     HydroEdgeType::Network => "#880088",
                     HydroEdgeType::Cycle => "#ff0000",
                     HydroEdgeType::Stream => "#666666", /* Should not be used here, but for completeness. */

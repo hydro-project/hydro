@@ -751,7 +751,7 @@ where
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
-        Stream::new(self.location, self.ir_node.into_inner())
+    Stream::new(self.location.clone(), self.ir_node.into_inner())
     }
 
     /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
@@ -770,7 +770,7 @@ where
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_retries<R2>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
-        Stream::new(self.location, self.ir_node.into_inner())
+    Stream::new(self.location.clone(), self.ir_node.into_inner())
     }
 
     /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
@@ -1670,8 +1670,9 @@ where
 
 impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R> {
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
+        let underlying = self.weakest_ordering();
         KeyedStream {
-            underlying: self.weakest_ordering(),
+            underlying,
             _phantom_order: Default::default(),
         }
     }
@@ -2172,7 +2173,11 @@ where
             self.location.clone().tick,
             HydroNode::Unpersist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_conversion_metadata::<
+                    T,
+                    Stream<T, Tick<L>, Bounded, O, R>,
+                    Stream<T, L, Unbounded, O, R>,
+                >(),
             },
         )
     }
@@ -2401,7 +2406,11 @@ where
             self.location.outer().clone(),
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_conversion_metadata::<
+                    T,
+                    Stream<T, L, Unbounded, O, R>,
+                    Stream<T, Tick<L>, Bounded, O, R>,
+                >(),
             },
         )
     }
@@ -2413,7 +2422,11 @@ where
             },
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_conversion_metadata::<
+                    T,
+                    Stream<T, Atomic<L>, Unbounded, O, R>,
+                    Stream<T, Tick<L>, Bounded, O, R>,
+                >(),
             },
         )
     }

@@ -92,15 +92,15 @@ impl<'a, K, V, L: Location<'a>, B> KeyedOptional<K, V, L, B> {
 
 impl<'a, K, V, L: Location<'a>> KeyedOptional<K, V, Tick<L>, Bounded> {
     pub fn entries(self) -> Stream<(K, V), Tick<L>, Bounded, NoOrder, ExactlyOnce> {
-        self.underlying
+    self.underlying
     }
 
     pub fn values(self) -> Stream<V, Tick<L>, Bounded, NoOrder, ExactlyOnce> {
-        self.underlying.map(q!(|(_, v)| v))
+    self.underlying.map(q!(|(_, v)| v))
     }
 
     pub fn keys(self) -> Stream<K, Tick<L>, Bounded, NoOrder, ExactlyOnce> {
-        self.underlying.map(q!(|(k, _)| k))
+    self.underlying.map(q!(|(k, _)| k))
     }
 }
 
