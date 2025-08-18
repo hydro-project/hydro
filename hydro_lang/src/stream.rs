@@ -923,10 +923,14 @@ where
 impl<'a, T, L, B, O> Stream<T, L, B, O, ExactlyOnce>
 where
     L: Location<'a>,
+    O: OrderingKind,
 {
     /// Given a stream with [`ExactlyOnce`] retry guarantees, weakens it to an arbitrary guarantee
     /// `R2`, which is safe because all guarantees are equal to or weaker than [`ExactlyOnce`]
-    pub fn weaker_retries<R2>(self) -> Stream<T, L, B, O, R2> {
+    pub fn weaker_retries<R2>(self) -> Stream<T, L, B, O, R2>
+    where
+        R2: RetriesKind,
+    {
         self.assume_retries(
             nondet!(/** any retry ordering is the same or weaker than ExactlyOnce */),
         )

@@ -172,7 +172,11 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     pub fn get_many<O2, R2, V2>(
         self,
         with: KeyedStream<K, V2, Tick<L>, Bounded, O2, R2>,
-    ) -> KeyedStream<K, (V, V2), Tick<L>, Bounded, NoOrder, R2> {
+    ) -> KeyedStream<K, (V, V2), Tick<L>, Bounded, NoOrder, R2>
+    where
+        O2: crate::stream::OrderingKind,
+        R2: crate::stream::RetriesKind,
+    {
         self.entries()
             .weaker_retries()
             .join(with.entries())

@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
-use crate::ir::{HydroNode, StreamKind, StreamOrdering, StreamRetries};
+use crate::ir::{HydroNode, StreamKind};
 use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick, check_matching_location};
@@ -267,9 +267,9 @@ where
         let base = self.underlying.map(q!({
             let orig = f;
             move |(k, v)| (k, orig(v))
-        }));
+    }));
 
-        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
+    keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
@@ -375,19 +375,7 @@ where
     /// # }
     /// # }));
     /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedStream<K, V, L, B, O, R>
-    where
-        F: Fn(&V) -> bool + 'a,
-    {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
-        KeyedStream {
-            underlying: self.underlying.filter(q!({
-                let orig = f;
-                move |(_k, v)| orig(v)
-            })),
-            _phantom_order: Default::default(),
-        }
-    }
+    
 
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
     /// `f` (which receives the key-value tuple), preserving the order of the elements within the group.
@@ -420,10 +408,13 @@ where
     where
         F: Fn(&(K, V)) -> bool + 'a,
     {
-        KeyedStream {
-            underlying: self.underlying.filter(f),
-            _phantom_order: Default::default(),
-        }
+    let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let base = self.underlying.filter(q!({
+            let orig = f;
+            move |kv| orig(kv)
+        }));
+
+        keyed_stream_with_updated_same_type_metadata(base)
     }
 
     /// An operator that both filters and maps each value, with keys staying the same.
@@ -532,9 +523,9 @@ where
         let base = self.underlying.inspect(q!({
             let orig = f;
             move |(_k, v)| orig(v)
-        }));
+    }));
 
-        keyed_stream_with_updated_same_type_metadata(base)
+    keyed_stream_with_updated_same_type_metadata(base)
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
@@ -559,14 +550,14 @@ where
     /// ```
     pub fn inspect_with_key<F>(
         self,
-        f: impl IntoQuotedMut<'a, F, L>,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
     ) -> KeyedStream<K, V, L, B, O, R>
     where
         F: Fn(&(K, V)) + 'a,
     {
-        let base = self.underlying.inspect(f);
+    let base = self.underlying.inspect(f);
 
-        keyed_stream_with_updated_same_type_metadata(base)
+    keyed_stream_with_updated_same_type_metadata(base)
     }
 }
 
@@ -600,6 +591,10 @@ impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, U
     ) -> KeyedStream<K, V, L, Unbounded, NoOrder, R::Min>
     where
         R: MinRetries<R2, Min = R2::Min>,
+        O: OrderingKind,
+        O2: OrderingKind,
+        R: RetriesKind,
+        R2: RetriesKind,
     {
         self.entries().interleave(other.entries()).into_keyed()
     }

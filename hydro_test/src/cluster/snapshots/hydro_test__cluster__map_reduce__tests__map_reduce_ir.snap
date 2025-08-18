@@ -145,10 +145,7 @@ expression: built.ir()
                                         (std :: string :: String , i32),
                                     ),
                                     stream_kind: Some(
-                                        KeyedStream {
-                                            ordering: TotalOrder,
-                                            retries: ExactlyOnce,
-                                        },
+                                        Singleton,
                                     ),
                                     is_bounded: true,
                                 },
@@ -228,10 +225,7 @@ expression: built.ir()
                     (std :: string :: String , i32),
                 ),
                 stream_kind: Some(
-                    KeyedStream {
-                        ordering: TotalOrder,
-                        retries: ExactlyOnce,
-                    },
+                    Singleton,
                 ),
                 is_bounded: true,
             },

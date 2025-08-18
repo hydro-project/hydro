@@ -112,8 +112,7 @@ pub trait HydroGraphWrite {
         location_id: Option<usize>,
         location_type: Option<&str>,
     ) -> Result<(), Self::Err>;
-
-    /// Write an edge between nodes with optional labeling.
+    /// Write an edge between two nodes.
     fn write_edge(
         &mut self,
         src_id: usize,
@@ -150,7 +149,7 @@ pub enum HydroNodeType {
     Sink,
     Tee,
 }
-
+ 
 /// Types of edges in Hydro IR.
 #[derive(Debug, Clone, Copy)]
 pub enum HydroEdgeType {
@@ -182,7 +181,6 @@ impl Default for HydroWriteConfig {
         }
     }
 }
-
 /// Graph structure tracker for Hydro IR rendering.
 #[derive(Debug, Default)]
 pub struct HydroGraphStructure {
@@ -327,7 +325,7 @@ fn find_semantic_label_upstream(node: &HydroNode) -> Option<String> {
         if let Some(lbl) = type_label_from_metadata(cur.metadata()) {
             return Some(lbl);
         }
-        if hops > MAX_UPSTREAM_HOPS {
+    if hops > MAX_UPSTREAM_HOPS {
             return None;
         }
         hops += 1;

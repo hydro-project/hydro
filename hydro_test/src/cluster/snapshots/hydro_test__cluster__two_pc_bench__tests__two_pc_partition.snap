@@ -630,10 +630,7 @@ expression: "&ir"
                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                     ),
                                     stream_kind: Some(
-                                        KeyedStream {
-                                            ordering: TotalOrder,
-                                            retries: ExactlyOnce,
-                                        },
+                                        Singleton,
                                     ),
                                     is_bounded: true,
                                 },
@@ -1121,10 +1118,7 @@ expression: "&ir"
                                                                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                                                                     ),
                                                                                     stream_kind: Some(
-                                                                                        KeyedStream {
-                                                                                            ordering: TotalOrder,
-                                                                                            retries: ExactlyOnce,
-                                                                                        },
+                                                                                        Singleton,
                                                                                     ),
                                                                                     is_bounded: true,
                                                                                 },
@@ -1752,10 +1746,7 @@ expression: "&ir"
                                                                                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                                                                                     ),
                                                                                                     stream_kind: Some(
-                                                                                                        KeyedStream {
-                                                                                                            ordering: TotalOrder,
-                                                                                                            retries: ExactlyOnce,
-                                                                                                        },
+                                                                                                        Singleton,
                                                                                                     ),
                                                                                                     is_bounded: true,
                                                                                                 },
@@ -2014,10 +2005,7 @@ expression: "&ir"
                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                     ),
                                     stream_kind: Some(
-                                        KeyedStream {
-                                            ordering: TotalOrder,
-                                            retries: ExactlyOnce,
-                                        },
+                                        Singleton,
                                     ),
                                     is_bounded: true,
                                 },
@@ -2582,10 +2570,7 @@ expression: "&ir"
                                                                                                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                                                                                                     ),
                                                                                                                     stream_kind: Some(
-                                                                                                                        KeyedStream {
-                                                                                                                            ordering: TotalOrder,
-                                                                                                                            retries: ExactlyOnce,
-                                                                                                                        },
+                                                                                                                        Singleton,
                                                                                                                     ),
                                                                                                                     is_bounded: true,
                                                                                                                 },
@@ -2844,10 +2829,7 @@ expression: "&ir"
                                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                                     ),
                                                     stream_kind: Some(
-                                                        KeyedStream {
-                                                            ordering: TotalOrder,
-                                                            retries: ExactlyOnce,
-                                                        },
+                                                        Singleton,
                                                     ),
                                                     is_bounded: true,
                                                 },
@@ -3549,10 +3531,7 @@ expression: "&ir"
                                                                                                                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                                                                                                                 ),
                                                                                                                                 stream_kind: Some(
-                                                                                                                                    KeyedStream {
-                                                                                                                                        ordering: TotalOrder,
-                                                                                                                                        retries: ExactlyOnce,
-                                                                                                                                    },
+                                                                                                                                    Singleton,
                                                                                                                                 ),
                                                                                                                                 is_bounded: true,
                                                                                                                             },
@@ -3811,10 +3790,7 @@ expression: "&ir"
                                                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                                                 ),
                                                                 stream_kind: Some(
-                                                                    KeyedStream {
-                                                                        ordering: TotalOrder,
-                                                                        retries: ExactlyOnce,
-                                                                    },
+                                                                    Singleton,
                                                                 ),
                                                                 is_bounded: true,
                                                             },
@@ -3994,10 +3970,7 @@ expression: "&ir"
                         (usize , std :: time :: Instant),
                     ),
                     stream_kind: Some(
-                        KeyedStream {
-                            ordering: TotalOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Singleton,
                     ),
                     is_bounded: true,
                 },
@@ -4508,10 +4481,7 @@ expression: "&ir"
                                                                                                                                                                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                                                                                                                                                                 ),
                                                                                                                                                                                 stream_kind: Some(
-                                                                                                                                                                                    KeyedStream {
-                                                                                                                                                                                        ordering: TotalOrder,
-                                                                                                                                                                                        retries: ExactlyOnce,
-                                                                                                                                                                                    },
+                                                                                                                                                                                    Singleton,
                                                                                                                                                                                 ),
                                                                                                                                                                                 is_bounded: true,
                                                                                                                                                                             },
@@ -4770,10 +4740,7 @@ expression: "&ir"
                                                                                                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                                                                                                 ),
                                                                                                                 stream_kind: Some(
-                                                                                                                    KeyedStream {
-                                                                                                                        ordering: TotalOrder,
-                                                                                                                        retries: ExactlyOnce,
-                                                                                                                    },
+                                                                                                                    Singleton,
                                                                                                                 ),
                                                                                                                 is_bounded: true,
                                                                                                             },
@@ -5143,10 +5110,7 @@ expression: "&ir"
                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >),
                                 ),
                                 stream_kind: Some(
-                                    KeyedStream {
-                                        ordering: TotalOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Singleton,
                                 ),
                                 is_bounded: true,
                             },
@@ -5713,10 +5677,7 @@ expression: "&ir"
                                                                                                                                                                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                                                                                                                                                                 ),
                                                                                                                                                                                 stream_kind: Some(
-                                                                                                                                                                                    KeyedStream {
-                                                                                                                                                                                        ordering: TotalOrder,
-                                                                                                                                                                                        retries: ExactlyOnce,
-                                                                                                                                                                                    },
+                                                                                                                                                                                    Singleton,
                                                                                                                                                                                 ),
                                                                                                                                                                                 is_bounded: true,
                                                                                                                                                                             },
@@ -5975,10 +5936,7 @@ expression: "&ir"
                                                                                                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                                                                                                                 ),
                                                                                                                 stream_kind: Some(
-                                                                                                                    KeyedStream {
-                                                                                                                        ordering: TotalOrder,
-                                                                                                                        retries: ExactlyOnce,
-                                                                                                                    },
+                                                                                                                    Singleton,
                                                                                                                 ),
                                                                                                                 is_bounded: true,
                                                                                                             },
@@ -6520,10 +6478,7 @@ expression: "&ir"
                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage),
                                 ),
                                 stream_kind: Some(
-                                    KeyedStream {
-                                        ordering: TotalOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Singleton,
                                 ),
                                 is_bounded: true,
                             },
