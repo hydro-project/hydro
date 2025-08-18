@@ -160,7 +160,7 @@ where
         )?;
 
         // Add styling for different edge types on a separate line
-        if !matches!(edge_type, HydroEdgeType::Stream) {
+    if !matches!(edge_type, HydroEdgeType::Stream) {
             writeln!(
                 self.base.write,
                 "{b:i$}linkStyle {} stroke:{}",

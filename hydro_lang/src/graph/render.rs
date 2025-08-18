@@ -660,7 +660,7 @@ impl HydroNode {
         }
 
         // Single-input transform with no expressions
-        fn build_simple_transform(params: TransformParams) -> usize {
+    fn build_simple_transform(params: TransformParams) -> usize {
             let input_id = params.input.build_graph_structure(
                 params.structure,
                 params.seen_tees,
@@ -687,7 +687,7 @@ impl HydroNode {
         }
 
         // Single-input transform with one expression
-        fn build_single_expr_transform(params: TransformParams, expr: &DebugExpr) -> usize {
+    fn build_single_expr_transform(params: TransformParams, expr: &DebugExpr) -> usize {
             let input_id = params.input.build_graph_structure(
                 params.structure,
                 params.seen_tees,
@@ -714,7 +714,7 @@ impl HydroNode {
         }
 
         // Single-input transform with two expressions
-        fn build_dual_expr_transform(
+    fn build_dual_expr_transform(
             params: TransformParams,
             expr1: &DebugExpr,
             expr2: &DebugExpr,
@@ -1165,14 +1165,7 @@ impl HydroNode {
                     second_id,
                     chain_id,
                     HydroEdgeType::Stream,
-                    build_edge_label_single_input(
-                        Some("second"),
-                        second,
-                        metadata,
-                        1,
-                        config,
-                        false,
-                    ),
+                    build_edge_label_single_input(Some("second"), second, metadata, 1, config, false),
                 );
                 chain_id
             }
