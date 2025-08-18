@@ -365,7 +365,7 @@ where
 {
     /// Helper method to update metadata for keyed stream type conversions.
     /// This avoids the need to match on the node type when the only change is the metadata.
-    pub(crate) fn update_metadata_for_keyed_conversion<KType, VType>(
+    pub fn update_metadata_for_keyed_conversion<KType, VType>(
         mut self,
         target_stream_kind: StreamKind,
         is_bounded: bool,

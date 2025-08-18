@@ -116,7 +116,6 @@ where
     );
     KeyedStream::new(updated_stream)
 }
-
 impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R>
 where
     O: OrderingKind,
@@ -339,9 +338,8 @@ where
                 let out = orig((k.clone(), v));
                 (k, out)
             }
-        }));
-
-        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
+    }));
+    keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     
@@ -376,12 +374,11 @@ where
     where
         F: Fn(&(K, V)) -> bool + 'a,
     {
-    let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
         let base = self.underlying.filter(q!({
             let orig = f;
             move |kv| orig(kv)
         }));
-
         keyed_stream_with_updated_same_type_metadata(base)
     }
 
@@ -418,8 +415,7 @@ where
             let orig = f;
             move |(k, v)| orig(v).map(|o| (k, o))
     }));
-
-    keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
+        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     /// An operator that both filters and maps each key-value pair. The resulting values are **not**
@@ -459,8 +455,7 @@ where
                 out.map(|o| (k, o))
             }
     }));
-
-    keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
+        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
