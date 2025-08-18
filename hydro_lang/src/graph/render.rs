@@ -10,6 +10,8 @@ pub use super::mermaid::{HydroMermaid, escape_mermaid};
 pub use super::reactflow::HydroReactFlow;
 use crate::ir::{DebugExpr, HydroLeaf, HydroNode, HydroSource};
 
+const MAX_UPSTREAM_HOPS: usize = 64;
+
 /// Label for a graph node - can be either a static string or contain expressions.
 #[derive(Debug, Clone)]
 pub enum NodeLabel {
@@ -331,16 +333,15 @@ fn find_semantic_label_upstream(node: &HydroNode) -> Option<String> {
         if let Some(lbl) = type_label_from_metadata(cur.metadata()) {
             return Some(lbl);
         }
-        if hops > 64 {
+        if hops > MAX_UPSTREAM_HOPS {
             return None;
         }
         hops += 1;
         // Use a temporary variable for tee borrow to avoid returning reference to a temporary.
         cur = match cur {
-                // Treat persist boundaries as semantic breakpoints; don't walk past them
-                Persist { .. }
-                | Unpersist { .. } => return None,
-                Delta { inner, .. }
+            // Treat persist boundaries as semantic breakpoints; don't walk past them
+            Persist { .. } | Unpersist { .. } => return None,
+            Delta { inner, .. }
             | Enumerate { input: inner, .. }
             | Unique { input: inner, .. }
             | Sort { input: inner, .. }
@@ -1046,7 +1047,13 @@ impl HydroNode {
                     watermark_id,
                     join_node_id,
                     HydroEdgeType::Stream,
-                    build_edge_label_single_input(Some("watermark"), watermark, metadata, 1, config),
+                    build_edge_label_single_input(
+                        Some("watermark"),
+                        watermark,
+                        metadata,
+                        1,
+                        config,
+                    ),
                 );
 
                 let node_id = structure.add_node(

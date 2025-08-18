@@ -258,9 +258,11 @@ pub trait Location<'a>: Clone {
             HydroNode::Persist {
                 inner: Box::new(HydroNode::Source {
                     source: HydroSource::Spin(),
-                    metadata: self.new_stream_metadata::<(), Self, Unbounded, TotalOrder, ExactlyOnce>(),
+                    metadata: self
+                        .new_stream_metadata::<(), Self, Unbounded, TotalOrder, ExactlyOnce>(),
                 }),
-                metadata: self.new_stream_metadata::<(), Self, Unbounded, TotalOrder, ExactlyOnce>(),
+                metadata: self
+                    .new_stream_metadata::<(), Self, Unbounded, TotalOrder, ExactlyOnce>(),
             },
         )
     }
@@ -280,7 +282,8 @@ pub trait Location<'a>: Clone {
             HydroNode::Persist {
                 inner: Box::new(HydroNode::Source {
                     source: HydroSource::Stream(e.into()),
-                    metadata: self.new_stream_metadata::<T, Self, Unbounded, TotalOrder, ExactlyOnce>(),
+                    metadata: self
+                        .new_stream_metadata::<T, Self, Unbounded, TotalOrder, ExactlyOnce>(),
                 }),
                 metadata: self.new_stream_metadata::<T, Self, Unbounded, TotalOrder, ExactlyOnce>(),
             },
@@ -304,7 +307,8 @@ pub trait Location<'a>: Clone {
             HydroNode::Persist {
                 inner: Box::new(HydroNode::Source {
                     source: HydroSource::Iter(e.into()),
-                    metadata: self.new_stream_metadata::<T, Self, Unbounded, TotalOrder, ExactlyOnce>(),
+                    metadata: self
+                        .new_stream_metadata::<T, Self, Unbounded, TotalOrder, ExactlyOnce>(),
                 }),
                 metadata: self.new_stream_metadata::<T, Self, Unbounded, TotalOrder, ExactlyOnce>(),
             },
@@ -390,9 +394,11 @@ pub trait Location<'a>: Clone {
                         deserialize_fn: Some(
                             crate::stream::networking::deserialize_bincode::<T>(None).into(),
                         ),
-                        metadata: self.new_stream_metadata::<T, Self, Unbounded, TotalOrder, ExactlyOnce>(),
+                        metadata: self
+                            .new_stream_metadata::<T, Self, Unbounded, TotalOrder, ExactlyOnce>(),
                     }),
-                    metadata: self.new_stream_metadata::<T, Self, Unbounded, TotalOrder, ExactlyOnce>(),
+                    metadata: self
+                        .new_stream_metadata::<T, Self, Unbounded, TotalOrder, ExactlyOnce>(),
                 },
             ),
         )

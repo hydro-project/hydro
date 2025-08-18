@@ -482,7 +482,9 @@ where
                     .root()
                     .new_optional_metadata::<Option<T>, L::Root, Bounded>(),
             }),
-            metadata: self.location.new_singleton_metadata::<Option<T>, L, Bounded>(),
+            metadata: self
+                .location
+                .new_singleton_metadata::<Option<T>, L, Bounded>(),
         };
 
         let none_singleton = if L::is_top_level() {
@@ -490,7 +492,9 @@ where
                 self.location.clone(),
                 HydroNode::Persist {
                     inner: Box::new(core_ir),
-                    metadata: self.location.new_singleton_metadata::<Option<T>, L, Bounded>(),
+                    metadata: self
+                        .location
+                        .new_singleton_metadata::<Option<T>, L, Bounded>(),
                 },
             )
         } else {

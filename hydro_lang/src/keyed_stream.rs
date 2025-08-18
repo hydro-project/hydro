@@ -180,12 +180,10 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
         F: Fn(V) -> U + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-    let base = self
-            .underlying
-            .map(q!({
-                let orig = f;
-                move |(k, v)| (k, orig(v))
-            }));
+        let base = self.underlying.map(q!({
+            let orig = f;
+            move |(k, v)| (k, orig(v))
+        }));
         let location = base.location.clone();
         let node = match base.ir_node.into_inner() {
             HydroNode::Map { f, input, .. } => HydroNode::Map {
@@ -235,12 +233,10 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
         F: Fn(&V) -> bool + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
-    let base = self
-            .underlying
-            .filter(q!({
-                let orig = f;
-                move |(_k, v)| orig(v)
-            }));
+        let base = self.underlying.filter(q!({
+            let orig = f;
+            move |(_k, v)| orig(v)
+        }));
         let location = base.location.clone();
         let node = match base.ir_node.into_inner() {
             HydroNode::Filter { f, input, .. } => HydroNode::Filter {
@@ -293,15 +289,13 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
         K: Clone,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-    let base = self
-            .underlying
-            .map(q!({
-                let orig = f;
-        move |(k, v)| {
-            let out = orig((k.clone(), v));
-                    (k, out)
-                }
-            }));
+        let base = self.underlying.map(q!({
+            let orig = f;
+            move |(k, v)| {
+                let out = orig((k.clone(), v));
+                (k, out)
+            }
+        }));
         let location = base.location.clone();
         let node = match base.ir_node.into_inner() {
             HydroNode::Map { f, input, .. } => HydroNode::Map {
@@ -351,12 +345,10 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
         F: Fn(V) -> Option<U> + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-    let base = self
-            .underlying
-            .filter_map(q!({
-                let orig = f;
-                move |(k, v)| orig(v).map(|o| (k, o))
-            }));
+        let base = self.underlying.filter_map(q!({
+            let orig = f;
+            move |(k, v)| orig(v).map(|o| (k, o))
+        }));
         let location = base.location.clone();
         let node = match base.ir_node.into_inner() {
             HydroNode::FilterMap { f, input, .. } => HydroNode::FilterMap {
@@ -407,15 +399,13 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
         K: Clone,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-    let base = self
-            .underlying
-            .filter_map(q!({
-                let orig = f;
-                move |(k, v)| {
-                    let out = orig((k.clone(), v));
-                    out.map(|o| (k, o))
-                }
-            }));
+        let base = self.underlying.filter_map(q!({
+            let orig = f;
+            move |(k, v)| {
+                let out = orig((k.clone(), v));
+                out.map(|o| (k, o))
+            }
+        }));
         let location = base.location.clone();
         let node = match base.ir_node.into_inner() {
             HydroNode::FilterMap { f, input, .. } => HydroNode::FilterMap {
@@ -461,12 +451,10 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
         F: Fn(&V) + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
-    let base = self
-            .underlying
-            .inspect(q!({
-                let orig = f;
-                move |(_k, v)| orig(v)
-            }));
+        let base = self.underlying.inspect(q!({
+            let orig = f;
+            move |(_k, v)| orig(v)
+        }));
         let location = base.location.clone();
         let node = match base.ir_node.into_inner() {
             HydroNode::Inspect { f, input, .. } => HydroNode::Inspect {
@@ -514,7 +502,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     where
         F: Fn(&(K, V)) + 'a,
     {
-    let base = self.underlying.inspect(f);
+        let base = self.underlying.inspect(f);
         let location = base.location.clone();
         let node = match base.ir_node.into_inner() {
             HydroNode::Inspect { f, input, .. } => HydroNode::Inspect {

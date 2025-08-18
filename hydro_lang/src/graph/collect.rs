@@ -21,14 +21,28 @@ impl<'a> CollectedGraph<'a> {
     }
 }
 
-fn collect_leaf<'a>(leaf: &'a HydroLeaf, out: &mut CollectedGraph<'a>) {
-    out.nodes.push(CollectedNode {
-        op: leaf.print_root(),
-        metadata: leaf.metadata(),
-    });
-    for m in leaf.input_metadata() {
-        let _ = m; // ensure we exercise the API
+/// Helper to add a node to the collection and exercise its metadata API
+fn add_node_to_collection<'a>(
+    op: String,
+    metadata: &'a HydroIrMetadata,
+    input_metadata: impl Iterator<Item = &'a HydroIrMetadata>,
+    out: &mut CollectedGraph<'a>,
+) {
+    out.nodes.push(CollectedNode { op, metadata });
+    // Exercise the input metadata API to ensure it works
+    for m in input_metadata {
+        let _ = m;
     }
+}
+
+fn collect_leaf<'a>(leaf: &'a HydroLeaf, out: &mut CollectedGraph<'a>) {
+    add_node_to_collection(
+        leaf.print_root(),
+        leaf.metadata(),
+        leaf.input_metadata(),
+        out,
+    );
+
     match leaf {
         HydroLeaf::ForEach { input, .. }
         | HydroLeaf::DestSink { input, .. }
@@ -38,14 +52,15 @@ fn collect_leaf<'a>(leaf: &'a HydroLeaf, out: &mut CollectedGraph<'a>) {
 }
 
 fn collect_node<'a>(node: &'a HydroNode, out: &mut CollectedGraph<'a>) {
-    out.nodes.push(CollectedNode {
-        op: node.print_root(),
-        metadata: node.metadata(),
-    });
-    for m in node.input_metadata() {
-        let _ = m;
-    }
+    add_node_to_collection(
+        node.print_root(),
+        node.metadata(),
+        node.input_metadata(),
+        out,
+    );
+
     match node {
+        // Single-input nodes (grouped by pattern)
         HydroNode::Persist { inner, .. }
         | HydroNode::Unpersist { inner, .. }
         | HydroNode::Delta { inner, .. }
@@ -61,19 +76,21 @@ fn collect_node<'a>(node: &'a HydroNode, out: &mut CollectedGraph<'a>) {
         | HydroNode::ResolveFutures { input: inner, .. }
         | HydroNode::ResolveFuturesOrdered { input: inner, .. }
         | HydroNode::ReduceKeyed { input: inner, .. }
-        | HydroNode::Counter { input: inner, .. } => collect_node(inner, out),
+        | HydroNode::Counter { input: inner, .. }
+        | HydroNode::Map { input: inner, .. }
+        | HydroNode::FlatMap { input: inner, .. }
+        | HydroNode::Filter { input: inner, .. }
+        | HydroNode::FilterMap { input: inner, .. }
+        | HydroNode::Network { input: inner, .. }
+        | HydroNode::Tee { input: inner, .. } => collect_node(inner, out),
 
+        // Two-input nodes
         HydroNode::ReduceKeyedWatermark {
             input, watermark, ..
         } => {
             collect_node(input, out);
             collect_node(watermark, out);
         }
-
-        HydroNode::Map { input, .. }
-        | HydroNode::FlatMap { input, .. }
-        | HydroNode::Filter { input, .. }
-        | HydroNode::FilterMap { input, .. } => collect_node(input, out),
 
         HydroNode::Join { left, right, .. }
         | HydroNode::CrossProduct { left, right, .. }
@@ -97,8 +114,10 @@ fn collect_node<'a>(node: &'a HydroNode, out: &mut CollectedGraph<'a>) {
             collect_node(right, out);
         }
 
-        HydroNode::Network { input, .. } => collect_node(input, out),
-        HydroNode::Tee { input, .. } => collect_node(input, out),
-        HydroNode::Source { .. } => {}
+        // Leaf nodes (no inputs)
+        HydroNode::Source { .. }
+        | HydroNode::CycleSource { .. }
+        | HydroNode::ExternalInput { .. }
+        | HydroNode::Placeholder => {}
     }
 }
