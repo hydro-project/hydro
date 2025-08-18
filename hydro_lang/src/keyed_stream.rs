@@ -96,7 +96,10 @@ where
     };
 
     let is_bounded = std::any::type_name::<B>().contains("Bounded");
-
+    // Use trait-based approach for ordering and retries
+    let ordering = <O as HasStreamOrdering>::ordering();
+    let retries = <R as HasStreamRetries>::retries();
+    let is_bounded = <B as IsBounded>::is_bounded();
     let updated_stream = underlying.update_metadata_for_keyed_conversion::<K, U>(
         StreamKind::KeyedStream { ordering, retries },
         is_bounded,
