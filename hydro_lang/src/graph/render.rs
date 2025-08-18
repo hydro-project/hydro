@@ -359,7 +359,7 @@ fn find_semantic_label_upstream(node: &HydroNode) -> Option<String> {
             | ResolveFutures { input: inner, .. }
             | ResolveFuturesOrdered { input: inner, .. } => inner,
             Tee { inner, .. } => {
-                // SAFETY: We immediately break out of this arm by cloning the needed info; but since we need a &HydroNode,
+                // Borrow management: We immediately break out of this arm by cloning the needed info; since we need a &HydroNode,
                 // we can't hold the Ref across loop iterations. Instead, fall back to using metadata on the Tee itself
                 // and stop walking further if Tee doesn't have it.
                 // Try metadata on the tee one last time, then stop.
