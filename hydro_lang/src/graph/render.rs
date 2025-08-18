@@ -10,6 +10,10 @@ pub use super::mermaid::{HydroMermaid, escape_mermaid};
 pub use super::reactflow::HydroReactFlow;
 use crate::ir::{DebugExpr, HydroLeaf, HydroNode, HydroSource};
 
+/// Maximum number of upstream hops allowed when traversing the graph.
+/// The value 64 is chosen as a reasonable upper bound to prevent excessive recursion
+/// or stack overflow in deep or cyclic graphs. If this limit is exceeded, traversal
+/// will be aborted and an error may be returned to avoid infinite loops or performance issues.
 const MAX_UPSTREAM_HOPS: usize = 64;
 
 /// Label for a graph node - can be either a static string or contain expressions.
