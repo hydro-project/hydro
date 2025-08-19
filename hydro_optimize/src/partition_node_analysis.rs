@@ -820,7 +820,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .map(q!(|(a, b)| (b, a + 2)))
             .for_each(q!(|(b, a2)| {
@@ -862,7 +862,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .map(q!(|(a, b)| (b, a + 2)))
             .for_each(q!(|(b, a2)| {
@@ -880,7 +880,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, (2, (3, 4)))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .map(q!(|(a, b)| (b.1, a, b.0 - a)))
             .map(q!(|(b1, _a, b0a)| (b0a, b1.0)))
@@ -939,7 +939,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .filter_map(q!(|(a, b)| { if a > 1 { Some((b, a + 2)) } else { None } }))
             .for_each(q!(|(b, a2)| {
@@ -981,7 +981,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .filter_map(q!(|(a, b)| {
                 if a > 1 {
@@ -1026,7 +1026,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .batch(&cluster2.tick(), nondet!(/** test */))
             .delta()
@@ -1065,7 +1065,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .batch(&cluster2.tick(), nondet!(/** test */))
             .delta()
@@ -1085,7 +1085,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
@@ -1155,7 +1155,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
@@ -1179,7 +1179,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
@@ -1257,7 +1257,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
@@ -1281,7 +1281,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
@@ -1371,7 +1371,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
@@ -1399,7 +1399,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .assume_ordering(nondet!(/** test */))
             .enumerate()
@@ -1440,7 +1440,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .assume_ordering(nondet!(/** test */))
             .enumerate()
@@ -1459,7 +1459,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .batch(&cluster2.tick(), nondet!(/** test */))
             .into_keyed()
@@ -1505,7 +1505,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .batch(&cluster2.tick(), nondet!(/** test */))
             .into_keyed()
@@ -1530,7 +1530,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .batch(&cluster2.tick(), nondet!(/** test */))
             .reduce_commutative(q!(|(acc_a, acc_b), (a, b)| {
@@ -1571,7 +1571,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .batch(&cluster2.tick(), nondet!(/** test */))
             .reduce_commutative(q!(|(acc_a, acc_b), (a, b)| {
@@ -1594,7 +1594,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let cluster2_tick = cluster2.tick();
         let (complete_cycle, cycle) =
@@ -1658,7 +1658,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let cluster2_tick = cluster2.tick();
         let (complete_cycle, cycle) =
@@ -1686,7 +1686,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let cluster2_tick = cluster2.tick();
         let (complete_cycle1, cycle1) =
@@ -1783,7 +1783,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let cluster2_tick = cluster2.tick();
         let (complete_cycle1, cycle1) =
@@ -1818,7 +1818,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let tick = cluster2.tick();
         let stream1 = input.map(q!(|(a, b)| (b, a + 2)));
@@ -1870,7 +1870,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let tick = cluster2.tick();
         let stream1 = input.map(q!(|(a, b)| (b, a + 2)));
@@ -1894,11 +1894,11 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let tick = cluster2.tick();
         let stream1 = input1
@@ -1993,11 +1993,11 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let tick = cluster2.tick();
         let stream1 = input1
@@ -2034,11 +2034,11 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let tick = cluster2.tick();
         input1
@@ -2083,11 +2083,11 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let tick = cluster2.tick();
         input1
