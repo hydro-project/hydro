@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
@@ -11,7 +10,7 @@ pub struct HydroJson<W> {
     nodes: Vec<serde_json::Value>,
     edges: Vec<serde_json::Value>,
     locations: HashMap<usize, (String, Vec<usize>)>, // location_id -> (label, node_ids)
-    node_locations: HashMap<usize, usize>, // node_id -> location_id
+    node_locations: HashMap<usize, usize>,           // node_id -> location_id
     edge_count: usize,
     config: super::render::HydroWriteConfig,
     // Type name mappings
@@ -70,10 +69,12 @@ impl<W> HydroJson<W> {
     fn get_legend_items() -> Vec<serde_json::Value> {
         Self::get_node_type_definitions()
             .into_iter()
-            .map(|def| serde_json::json!({
-                "type": def["id"],
-                "label": def["label"]
-            }))
+            .map(|def| {
+                serde_json::json!({
+                    "type": def["id"],
+                    "label": def["label"]
+                })
+            })
             .collect()
     }
 
@@ -92,7 +93,7 @@ impl<W> HydroJson<W> {
                         "animation": "animated"
                     }
                 },
-                
+
                 // Boundedness group - controls line width
                 "BoundednessGroup": {
                     "Unbounded": {
@@ -102,7 +103,7 @@ impl<W> HydroJson<W> {
                         "line-width": 3
                     }
                 },
-                
+
                 // Collection type group - controls arrowhead and rails (line-style)
                 "CollectionGroup": {
                     "Stream": {
@@ -122,7 +123,7 @@ impl<W> HydroJson<W> {
                         "line-style": "single"
                     }
                 },
-                
+
                 // Flow control group - controls halo
                 "FlowGroup": {
                     "Linear": {
@@ -155,14 +156,14 @@ impl<W> HydroJson<W> {
         #[cfg(feature = "build")]
         {
             let elements = backtrace.elements();
-            
+
             // filter out obviously internal frames
             let relevant_frames: Vec<_> = elements
                 .iter()
                 .filter(|elem| {
                     let filename = elem.filename.as_deref().unwrap_or("");
                     let fn_name = &elem.fn_name;
-                    
+
                     // Filter out obviously internal/system frames
                     !(filename.contains(".cargo/registry/")
                         || filename.contains(".rustup/toolchains/")
@@ -177,10 +178,12 @@ impl<W> HydroJson<W> {
                 })
                 .map(|elem| {
                     // Truncate paths and function names for size
-                    let short_filename = elem.filename.as_deref()
+                    let short_filename = elem
+                        .filename
+                        .as_deref()
                         .map(|f| Self::truncate_path(f))
                         .unwrap_or_else(|| "unknown".to_string());
-                    
+
                     let short_fn_name = Self::truncate_function_name(&elem.fn_name);
 
                     serde_json::json!({
@@ -203,7 +206,7 @@ impl<W> HydroJson<W> {
     /// Truncate file paths to keep only the relevant parts
     fn truncate_path(path: &str) -> String {
         let parts: Vec<&str> = path.split('/').collect();
-        
+
         // For paths like "/Users/foo/project/src/main.rs", keep "src/main.rs"
         if let Some(src_idx) = parts.iter().rposition(|&p| p == "src") {
             parts[src_idx..].join("/")
@@ -315,12 +318,12 @@ where
             }
         });
         self.nodes.push(node);
-        
+
         // Track node location for cross-location edge detection
         if let Some(loc_id) = location_id {
             self.node_locations.insert(node_id, loc_id);
         }
-        
+
         Ok(())
     }
 
@@ -335,9 +338,7 @@ where
         self.edge_count += 1;
 
         // Convert edge properties to a JSON array
-        let properties: Vec<String> = edge_properties.iter()
-            .map(|p| format!("{:?}", p))
-            .collect();
+        let properties: Vec<String> = edge_properties.iter().map(|p| format!("{:?}", p)).collect();
 
         let mut edge = serde_json::json!({
             "id": edge_id,
@@ -415,7 +416,10 @@ where
             "name": "Location",
             "children": location_hierarchy
         }));
-        node_assignments_choices.insert("location".to_string(), serde_json::Value::Object(location_assignments));
+        node_assignments_choices.insert(
+            "location".to_string(),
+            serde_json::Value::Object(location_assignments),
+        );
 
         // Add backtrace-based hierarchy if available
         if self.has_backtrace_data() {
@@ -425,44 +429,68 @@ where
                 "name": "Backtrace",
                 "children": backtrace_hierarchy
             }));
-            node_assignments_choices.insert("backtrace".to_string(), serde_json::Value::Object(backtrace_assignments));
+            node_assignments_choices.insert(
+                "backtrace".to_string(),
+                serde_json::Value::Object(backtrace_assignments),
+            );
         }
 
-          // Create the final JSON structure in the format expected by the visualizer
+        // Create the final JSON structure in the format expected by the visualizer
         let node_type_definitions = Self::get_node_type_definitions();
         let legend_items = Self::get_legend_items();
 
         // Build JSON string manually to guarantee field ordering
         let mut json_parts = Vec::new();
-        
+
         // 1. nodes (required field first)
-        json_parts.push(format!("\"nodes\": {}", serde_json::to_string_pretty(&self.nodes).unwrap()));
-        
+        json_parts.push(format!(
+            "\"nodes\": {}",
+            serde_json::to_string_pretty(&self.nodes).unwrap()
+        ));
+
         // 2. edges (required field second)
-        json_parts.push(format!("\"edges\": {}", serde_json::to_string_pretty(&self.edges).unwrap()));
-        
+        json_parts.push(format!(
+            "\"edges\": {}",
+            serde_json::to_string_pretty(&self.edges).unwrap()
+        ));
+
         // 3. hierarchyChoices
-        json_parts.push(format!("\"hierarchyChoices\": {}", serde_json::to_string_pretty(&hierarchy_choices).unwrap()));
-        
+        json_parts.push(format!(
+            "\"hierarchyChoices\": {}",
+            serde_json::to_string_pretty(&hierarchy_choices).unwrap()
+        ));
+
         // 4. nodeAssignments
-        json_parts.push(format!("\"nodeAssignments\": {}", serde_json::to_string_pretty(&node_assignments_choices).unwrap()));
-        
+        json_parts.push(format!(
+            "\"nodeAssignments\": {}",
+            serde_json::to_string_pretty(&node_assignments_choices).unwrap()
+        ));
+
         // 5. edgeStyleConfig
-        json_parts.push(format!("\"edgeStyleConfig\": {}", serde_json::to_string_pretty(&Self::get_edge_style_config()).unwrap()));
-        
+        json_parts.push(format!(
+            "\"edgeStyleConfig\": {}",
+            serde_json::to_string_pretty(&Self::get_edge_style_config()).unwrap()
+        ));
+
         // 6. nodeTypeConfig
         let node_type_config = serde_json::json!({
             "types": node_type_definitions,
             "defaultType": "Transform"
         });
-        json_parts.push(format!("\"nodeTypeConfig\": {}", serde_json::to_string_pretty(&node_type_config).unwrap()));
-        
+        json_parts.push(format!(
+            "\"nodeTypeConfig\": {}",
+            serde_json::to_string_pretty(&node_type_config).unwrap()
+        ));
+
         // 7. legend
         let legend = serde_json::json!({
             "title": "Node Types",
             "items": legend_items
         });
-        json_parts.push(format!("\"legend\": {}", serde_json::to_string_pretty(&legend).unwrap()));
+        json_parts.push(format!(
+            "\"legend\": {}",
+            serde_json::to_string_pretty(&legend).unwrap()
+        ));
 
         let final_json = format!("{{\n  {}\n}}", json_parts.join(",\n  "));
 
@@ -488,7 +516,12 @@ impl<W> HydroJson<W> {
     }
 
     /// Create location-based hierarchy (original behavior)
-    fn create_location_hierarchy(&self) -> (Vec<serde_json::Value>, serde_json::Map<String, serde_json::Value>) {
+    fn create_location_hierarchy(
+        &self,
+    ) -> (
+        Vec<serde_json::Value>,
+        serde_json::Map<String, serde_json::Value>,
+    ) {
         // Create hierarchy structure (single level: locations as parents, nodes as children)
         let hierarchy: Vec<serde_json::Value> = self
             .locations
@@ -506,12 +539,12 @@ impl<W> HydroJson<W> {
         // This is more reliable than using the write_node tracking which depends on HashMap iteration order
         let mut node_assignments = serde_json::Map::new();
         for node in &self.nodes {
-            if let (Some(node_id), Some(location_id)) = (
-                node["id"].as_str(),
-                node["data"]["locationId"].as_u64(),
-            ) {
+            if let (Some(node_id), Some(location_id)) =
+                (node["id"].as_str(), node["data"]["locationId"].as_u64())
+            {
                 let location_key = format!("loc_{}", location_id);
-                node_assignments.insert(node_id.to_string(), serde_json::Value::String(location_key));
+                node_assignments
+                    .insert(node_id.to_string(), serde_json::Value::String(location_key));
             }
         }
 
@@ -519,9 +552,14 @@ impl<W> HydroJson<W> {
     }
 
     /// Create backtrace-based hierarchy using structured backtrace data
-    fn create_backtrace_hierarchy(&self) -> (Vec<serde_json::Value>, serde_json::Map<String, serde_json::Value>) {
+    fn create_backtrace_hierarchy(
+        &self,
+    ) -> (
+        Vec<serde_json::Value>,
+        serde_json::Map<String, serde_json::Value>,
+    ) {
         use std::collections::HashMap;
-        
+
         let mut hierarchy_map: HashMap<String, (String, usize, Option<String>)> = HashMap::new(); // path -> (name, depth, parent_path)
         let mut path_to_node_assignments: HashMap<String, Vec<String>> = HashMap::new(); // path -> [node_ids]
 
@@ -530,14 +568,14 @@ impl<W> HydroJson<W> {
             if let Some(node_id_str) = node["id"].as_str() {
                 if let Ok(node_id) = node_id_str.parse::<usize>() {
                     if let Some(backtrace) = self.node_backtraces.get(&node_id) {
-                    let elements = backtrace.elements();
-                    
-                    if elements.is_empty() {
-                        continue;
-                    }
+                        let elements = backtrace.elements();
 
-                    // Filter to user-relevant frames using structured data
-                    let user_frames: Vec<_> = elements
+                        if elements.is_empty() {
+                            continue;
+                        }
+
+                        // Filter to user-relevant frames using structured data
+                        let user_frames: Vec<_> = elements
                         .iter()
                         .filter(|elem| {
                             let filename = elem.filename.as_deref().unwrap_or("");
@@ -556,57 +594,57 @@ impl<W> HydroJson<W> {
                         .take(5) // Take top 5 user frames for better differentiation
                         .collect();
 
-                    if user_frames.is_empty() {
-                        continue;
-                    }
-
-                    // Build hierarchy path from backtrace frames (reverse order for call stack)
-                    let mut hierarchy_path = Vec::new();
-                    for (i, elem) in user_frames.iter().rev().enumerate() {
-                        let label = if i == 0 {
-                            // Top level: show file (more specific)
-                            if let Some(filename) = &elem.filename {
-                                Self::extract_file_path(filename)
-                            } else {
-                                format!("fn_{}", Self::truncate_function_name(&elem.fn_name))
-                            }
-                        } else {
-                            // Function levels: show function name  
-                            Self::truncate_function_name(&elem.fn_name)
-                        };
-                        hierarchy_path.push(label);
-                    }
-
-                    // Create hierarchy nodes for this path
-                    let mut current_path = String::new();
-                    let mut parent_path: Option<String> = None;
-                    let mut deepest_path = String::new();
-
-                    for (depth, label) in hierarchy_path.iter().enumerate() {
-                        current_path = if current_path.is_empty() {
-                            label.clone()
-                        } else {
-                            format!("{}/{}", current_path, label)
-                        };
-
-                        if !hierarchy_map.contains_key(&current_path) {
-                            hierarchy_map.insert(
-                                current_path.clone(),
-                                (label.clone(), depth, parent_path.clone()),
-                            );
+                        if user_frames.is_empty() {
+                            continue;
                         }
 
-                        deepest_path = current_path.clone();
-                        parent_path = Some(current_path.clone());
-                    }
+                        // Build hierarchy path from backtrace frames (reverse order for call stack)
+                        let mut hierarchy_path = Vec::new();
+                        for (i, elem) in user_frames.iter().rev().enumerate() {
+                            let label = if i == 0 {
+                                // Top level: show file (more specific)
+                                if let Some(filename) = &elem.filename {
+                                    Self::extract_file_path(filename)
+                                } else {
+                                    format!("fn_{}", Self::truncate_function_name(&elem.fn_name))
+                                }
+                            } else {
+                                // Function levels: show function name
+                                Self::truncate_function_name(&elem.fn_name)
+                            };
+                            hierarchy_path.push(label);
+                        }
 
-                    // Assign node to the deepest hierarchy level
-                    if !deepest_path.is_empty() {
-                        path_to_node_assignments
-                            .entry(deepest_path)
-                            .or_default()
-                            .push(node_id_str.to_string());
-                    }
+                        // Create hierarchy nodes for this path
+                        let mut current_path = String::new();
+                        let mut parent_path: Option<String> = None;
+                        let mut deepest_path = String::new();
+
+                        for (depth, label) in hierarchy_path.iter().enumerate() {
+                            current_path = if current_path.is_empty() {
+                                label.clone()
+                            } else {
+                                format!("{}/{}", current_path, label)
+                            };
+
+                            if !hierarchy_map.contains_key(&current_path) {
+                                hierarchy_map.insert(
+                                    current_path.clone(),
+                                    (label.clone(), depth, parent_path.clone()),
+                                );
+                            }
+
+                            deepest_path = current_path.clone();
+                            parent_path = Some(current_path.clone());
+                        }
+
+                        // Assign node to the deepest hierarchy level
+                        if !deepest_path.is_empty() {
+                            path_to_node_assignments
+                                .entry(deepest_path)
+                                .or_default()
+                                .push(node_id_str.to_string());
+                        }
                     }
                 }
             }
@@ -614,25 +652,29 @@ impl<W> HydroJson<W> {
 
         // Build hierarchy tree and create proper ID mapping
         let (hierarchy, path_to_id_map) = self.build_hierarchy_tree_with_ids(&hierarchy_map);
-        
+
         // Create node assignments using the actual hierarchy IDs
         let mut node_assignments = serde_json::Map::new();
         for (path, node_ids) in path_to_node_assignments {
             if let Some(hierarchy_id) = path_to_id_map.get(&path) {
                 for node_id in node_ids {
-                    node_assignments.insert(node_id, serde_json::Value::String(hierarchy_id.clone()));
+                    node_assignments
+                        .insert(node_id, serde_json::Value::String(hierarchy_id.clone()));
                 }
             }
         }
-        
+
         (hierarchy, node_assignments)
     }
 
     /// Build a tree structure and return both the tree and path-to-ID mapping
-    fn build_hierarchy_tree_with_ids(&self, hierarchy_map: &HashMap<String, (String, usize, Option<String>)>) -> (Vec<serde_json::Value>, HashMap<String, String>) {
+    fn build_hierarchy_tree_with_ids(
+        &self,
+        hierarchy_map: &HashMap<String, (String, usize, Option<String>)>,
+    ) -> (Vec<serde_json::Value>, HashMap<String, String>) {
         let mut path_to_id: HashMap<String, String> = HashMap::new();
         let mut id_counter = 1;
-        
+
         for path in hierarchy_map.keys() {
             path_to_id.insert(path.clone(), format!("bt_{}", id_counter));
             id_counter += 1;
@@ -640,14 +682,14 @@ impl<W> HydroJson<W> {
 
         // Find root items (depth 0)
         let mut roots = Vec::new();
-        
+
         for (path, (name, depth, _)) in hierarchy_map {
             if *depth == 0 {
                 let tree_node = Self::build_tree_node(path, name, hierarchy_map, &path_to_id);
                 roots.push(tree_node);
             }
         }
-        
+
         (roots, path_to_id)
     }
 
@@ -659,13 +701,14 @@ impl<W> HydroJson<W> {
         path_to_id: &HashMap<String, String>,
     ) -> serde_json::Value {
         let current_id = path_to_id.get(current_path).unwrap().clone();
-        
+
         // Find children (paths that have this path as parent)
         let mut children = Vec::new();
         for (child_path, (child_name, _, parent_path)) in hierarchy_map {
             if let Some(parent) = parent_path {
                 if parent == current_path {
-                    let child_node = Self::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
+                    let child_node =
+                        Self::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
                     children.push(child_node);
                 }
             }
@@ -690,11 +733,11 @@ impl<W> HydroJson<W> {
         if filename.is_empty() {
             return "unknown".to_string();
         }
-        
+
         // Extract the most relevant part of the file path
         let parts: Vec<&str> = filename.split('/').collect();
         let file_name = parts.last().unwrap_or(&"unknown");
-        
+
         // If it's a source file, include the parent directory for context
         if file_name.ends_with(".rs") && parts.len() > 1 {
             let parent_dir = parts[parts.len() - 2];
@@ -779,5 +822,3 @@ pub fn open_browser(
         built_flow.external_id_name().clone(),
     )
 }
-
-

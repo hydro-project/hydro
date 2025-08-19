@@ -5,7 +5,7 @@
  * in terms of stream properties (Bounded/Unbounded, TotalOrder/NoOrder, etc.)
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { COMPONENT_COLORS, TYPOGRAPHY } from '../shared/config';
 
 interface EdgeStyleLegendProps {
@@ -106,17 +106,9 @@ const EDGE_STYLE_SAMPLES = {
   )
 };
 
-// Property descriptions
-const PROPERTY_DESCRIPTIONS = {
-  'Bounded': 'Fixed-size collections',
-  'Unbounded': 'Infinite streams',
-  'TotalOrder': 'Ordered elements',
-  'NoOrder': 'Unordered elements', 
-  'Keyed': 'Key-value pairs',
-  'Network': 'Network communication'
-};
+// Note: Removed unused PROPERTY_DESCRIPTIONS dead constant
 
-export function EdgeStyleLegend({
+function EdgeStyleLegendInner({
   edgeStyleConfig,
   compact = false,
   className = '',
@@ -137,52 +129,54 @@ export function EdgeStyleLegend({
     );
   }
 
-  const legendStyle: React.CSSProperties = {
+  const legendStyle: React.CSSProperties = useMemo(() => ({
     fontSize: compact ? '9px' : '10px',
     ...style
-  };
+  }), [compact, style]);
 
-  const pairBoxStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'flex-start',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    padding: '6px',
-    margin: '3px 0',
-    backgroundColor: '#fafafa'
-  };
+  const styles = useMemo(() => {
+    const pairBoxStyle: React.CSSProperties = {
+      display: 'flex',
+      alignItems: 'flex-start',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      padding: '6px',
+      margin: '3px 0',
+      backgroundColor: '#fafafa'
+    };
 
-  const numberStyle: React.CSSProperties = {
-    fontSize: '12px',
-    fontWeight: 'bold',
-    marginRight: '8px',
-    minWidth: '16px',
-    color: COMPONENT_COLORS.TEXT_PRIMARY,
-    flexShrink: 0
-  };
+    const numberStyle: React.CSSProperties = {
+      fontSize: '12px',
+      fontWeight: 'bold',
+      marginRight: '8px',
+      minWidth: '16px',
+      color: COMPONENT_COLORS.TEXT_PRIMARY,
+      flexShrink: 0
+    };
 
-  const contentStyle: React.CSSProperties = {
-    flex: 1
-  };
+    const contentStyle: React.CSSProperties = { flex: 1 };
 
-  const edgeRowStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    margin: '1px 0',
-    fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
-  };
+    const edgeRowStyle: React.CSSProperties = {
+      display: 'flex',
+      alignItems: 'center',
+      margin: '1px 0',
+      fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
+    };
 
-  const sampleStyle: React.CSSProperties = {
-  marginRight: '8px',
-  minWidth: '48px',
-    display: 'flex',
-    alignItems: 'center'
-  };
+    const sampleStyle: React.CSSProperties = {
+      marginRight: '8px',
+      minWidth: '48px',
+      display: 'flex',
+      alignItems: 'center'
+    };
 
-  const labelStyle: React.CSSProperties = {
-    fontSize: '10px',
-    color: COMPONENT_COLORS.TEXT_PRIMARY
-  };
+    const labelStyle: React.CSSProperties = {
+      fontSize: '10px',
+      color: COMPONENT_COLORS.TEXT_PRIMARY
+    };
+
+    return { pairBoxStyle, numberStyle, contentStyle, edgeRowStyle, sampleStyle, labelStyle };
+  }, [compact]);
 
   // Helper function to render semantic mapping boxes
   const renderSemanticMappingBoxes = () => {
@@ -194,9 +188,9 @@ export function EdgeStyleLegend({
     // Process each group
     Object.entries(edgeStyleConfig.semanticMappings).forEach(([groupName, group]) => {
       // Create group header
-      const groupHeader = (
+    const groupHeader = (
         <div key={`${groupName}-header`} style={{
-          ...edgeRowStyle,
+      ...styles.edgeRowStyle,
           fontWeight: 'bold',
           marginTop: groupNumber > 1 ? '8px' : '0px',
           marginBottom: '2px',
@@ -214,12 +208,12 @@ export function EdgeStyleLegend({
         
         const box = (
           <div key={`${groupName}-${optionName}`} style={{
-            ...pairBoxStyle,
+            ...styles.pairBoxStyle,
             marginLeft: '16px', // Indent options under group
             marginBottom: '1px'
           }}>
             <div style={{
-              ...numberStyle,
+              ...styles.numberStyle,
               backgroundColor: 'transparent',
               color: COMPONENT_COLORS.TEXT_SECONDARY,
               fontSize: '10px',
@@ -228,12 +222,12 @@ export function EdgeStyleLegend({
               {String.fromCharCode(97 + optionIndex)} {/* 'a', 'b', etc. */}
             </div>
             
-            <div style={contentStyle}>
-              <div style={edgeRowStyle}>
-                <div style={sampleStyle}>
+            <div style={styles.contentStyle}>
+              <div style={styles.edgeRowStyle}>
+                <div style={styles.sampleStyle}>
                   {sample}
                 </div>
-                <span style={labelStyle}>
+                <span style={styles.labelStyle}>
                   {optionName}
                 </span>
               </div>
@@ -389,26 +383,26 @@ export function EdgeStyleLegend({
       const altSample = EDGE_STYLE_SAMPLES[pairConfig.altStyle as keyof typeof EDGE_STYLE_SAMPLES];
 
       return (
-        <div key={`pair-${index}`} style={pairBoxStyle}>
-          <div style={numberStyle}>
+        <div key={`pair-${index}`} style={styles.pairBoxStyle}>
+          <div style={styles.numberStyle}>
             {index + 1}
           </div>
           
-          <div style={contentStyle}>
-            <div style={edgeRowStyle}>
-              <div style={sampleStyle}>
+          <div style={styles.contentStyle}>
+            <div style={styles.edgeRowStyle}>
+              <div style={styles.sampleStyle}>
                 {defaultSample || <span>—</span>}
               </div>
-              <span style={labelStyle}>
+              <span style={styles.labelStyle}>
                 {defaultProp}
               </span>
             </div>
             
-            <div style={edgeRowStyle}>
-              <div style={sampleStyle}>
+            <div style={styles.edgeRowStyle}>
+              <div style={styles.sampleStyle}>
                 {altSample || <span>- -</span>}
               </div>
-              <span style={labelStyle}>
+              <span style={styles.labelStyle}>
                 {altProp}
               </span>
             </div>
@@ -427,17 +421,17 @@ export function EdgeStyleLegend({
       const styleNumber = styleTag.replace('edge_style_', '');
       
       return (
-        <div key={property} style={pairBoxStyle}>
-          <div style={numberStyle}>
+        <div key={property} style={styles.pairBoxStyle}>
+          <div style={styles.numberStyle}>
             {styleNumber}
           </div>
           
-          <div style={contentStyle}>
-            <div style={edgeRowStyle}>
-              <div style={sampleStyle}>
+          <div style={styles.contentStyle}>
+            <div style={styles.edgeRowStyle}>
+              <div style={styles.sampleStyle}>
                 {sample || <span>■</span>}
               </div>
-              <span style={labelStyle}>
+              <span style={styles.labelStyle}>
                 {property}
               </span>
             </div>
@@ -455,17 +449,17 @@ export function EdgeStyleLegend({
       const sample = EDGE_STYLE_SAMPLES[styleTag as keyof typeof EDGE_STYLE_SAMPLES];
       
       return (
-        <div key={property} style={pairBoxStyle}>
-          <div style={numberStyle}>
+        <div key={property} style={styles.pairBoxStyle}>
+          <div style={styles.numberStyle}>
             {index + 1}
           </div>
           
-          <div style={contentStyle}>
-            <div style={edgeRowStyle}>
-              <div style={sampleStyle}>
+          <div style={styles.contentStyle}>
+            <div style={styles.edgeRowStyle}>
+              <div style={styles.sampleStyle}>
                 {sample || <span>■</span>}
               </div>
-              <span style={labelStyle}>
+              <span style={styles.labelStyle}>
                 {property}
               </span>
             </div>
@@ -474,6 +468,12 @@ export function EdgeStyleLegend({
       );
     });
   };
+
+  // Memoize sections to avoid re-computation on unrelated re-renders
+  const semanticBoxes = useMemo(() => renderSemanticMappingBoxes(), [edgeStyleConfig?.semanticMappings, styles]);
+  const booleanPairs = useMemo(() => renderBooleanPairBoxes(), [edgeStyleConfig?.booleanPropertyPairs, styles]);
+  const singleProps = useMemo(() => renderSinglePropertyBoxes(), [edgeStyleConfig?.singlePropertyMappings, styles]);
+  const legacyBoxes = useMemo(() => renderLegacyBoxes(), [edgeStyleConfig?.propertyMappings, styles]);
 
   return (
     <div className={`edge-style-legend ${className}`} style={legendStyle}>
@@ -487,16 +487,18 @@ export function EdgeStyleLegend({
       </div>
       
       {/* New semantic mappings system */}
-      {renderSemanticMappingBoxes()}
+      {semanticBoxes}
       
       {/* Legacy boolean pair system */}
-      {renderBooleanPairBoxes()}
+      {booleanPairs}
       
       {/* Single properties */}
-      {renderSinglePropertyBoxes()}
+      {singleProps}
       
       {/* Legacy support */}
-      {renderLegacyBoxes()}
+      {legacyBoxes}
     </div>
   );
 }
+
+export const EdgeStyleLegend = React.memo(EdgeStyleLegendInner);

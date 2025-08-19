@@ -3,7 +3,6 @@
  * 
  * This bridge converts VisualizationState to ReactFlow's expected data structures.
  * ReactFlow only sees unified edges (hyperedges are included transparently).
- * Uses configurable handle system for maximum layout flexibility.
  */
 
 import type { VisualizationState } from '../core/VisualizationState';

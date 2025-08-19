@@ -9,6 +9,7 @@
 import { VisualizationState } from '../VisualizationState';
 import { GraphNode, Container, GraphEdge, HyperEdge, Edge, isGraphEdge, isHyperEdge } from '../types';
 import { createHyperEdge } from '../EdgeFactory';
+import { HYPEREDGE_CONSTANTS } from '../../shared/config';
 
 export class ContainerOperations {
   private readonly state: any; // Use any to access private methods
@@ -65,7 +66,7 @@ export class ContainerOperations {
    * Handle container expansion by removing hyperEdges and restoring GraphEdge visibility
    */
   handleContainerExpansion(containerId: string): void {
-    // 1. Find all hyperEdges connected to this container and remove them
+    // 1. Find all hyperEdges connected to this container, prep to remove
     const hyperEdgeIds = this.state._collections.nodeToEdges.get(containerId) || new Set();
     const hyperEdgesToRemove: string[] = [];
     
@@ -113,7 +114,7 @@ export class ContainerOperations {
       }
     }
 
-    // 6. CRITICAL: Create hyperEdges for any child containers that should remain collapsed
+    // 6. Create hyperEdges for any child containers that should remain collapsed
     for (const childId of children) {
       const childContainer = this.state.getContainer(childId);
       if (childContainer && this.state.getContainerCollapsed(childId)) {
@@ -122,8 +123,8 @@ export class ContainerOperations {
       }
     }
     
-    // 7. CRITICAL: Other collapsed containers may need new hyperEdges to this container's nodes
-    this.recreateHyperEdgesForAllCollapsedContainers();
+    // 7. Other collapsed containers may need new hyperEdges to this container's nodes
+  this.recreateHyperEdgesForCollapsedNeighbors(new Set(children));
   }
 
   /**
@@ -233,7 +234,7 @@ export class ContainerOperations {
       
       // Create incoming hyperEdge (external -> container)
       if (group.incoming.length > 0) {
-        const hyperEdgeId = `hyper_${externalEndpoint}_to_${containerId}`;
+  const hyperEdgeId = `${HYPEREDGE_CONSTANTS.PREFIX}${externalEndpoint}${HYPEREDGE_CONSTANTS.SEPARATOR}${containerId}`;
         const aggregatedEdges = new Map<string, GraphEdge>();
         for (const edge of group.incoming) {
           aggregatedEdges.set(edge.id, edge);
@@ -250,7 +251,7 @@ export class ContainerOperations {
       
       // Create outgoing hyperEdge (container -> external)
       if (group.outgoing.length > 0) {
-        const hyperEdgeId = `hyper_${containerId}_to_${externalEndpoint}`;
+  const hyperEdgeId = `${HYPEREDGE_CONSTANTS.PREFIX}${containerId}${HYPEREDGE_CONSTANTS.SEPARATOR}${externalEndpoint}`;
         const aggregatedEdges = new Map<string, GraphEdge>();
         for (const edge of group.outgoing) {
           aggregatedEdges.set(edge.id, edge);
@@ -391,6 +392,60 @@ export class ContainerOperations {
         // Then recreate hyperEdges based on current visibility
         this.createHyperEdgesForCollapsedContainer(containerId);
       }
+    }
+  }
+
+  /**
+   * Recreate hyperEdges only for collapsed containers that have crossings with the provided nodes.
+   * This is a targeted alternative to scanning all collapsed containers, improving efficiency
+   * after local visibility changes (e.g., expansion of a single container).
+   */
+  private recreateHyperEdgesForCollapsedNeighbors(changedNodes: Set<string>): void {
+    if (changedNodes.size === 0) return;
+
+    // Collect candidate collapsed containers by checking crossings for each changed node
+    const candidateContainers = new Set<string>();
+
+    // For each collapsed container, quickly filter by whether any changed node is inside it or adjacent by crossing
+    for (const [containerId, container] of this.state._collections.containers.entries()) {
+      if (!container.collapsed) continue;
+
+      // Fast path: if any changed node resides inside this container, it may affect crossings
+      let affects = false;
+      for (const nodeId of changedNodes) {
+        if (this.isNodeInContainerRecursive(nodeId, containerId)) {
+          affects = true;
+          break;
+        }
+      }
+
+      // If not directly inside, check if any edge crossing involves a changed node
+      if (!affects) {
+        const crossings = this.findCrossingEdges(containerId);
+        for (const edge of crossings) {
+          if (changedNodes.has(edge.source) || changedNodes.has(edge.target)) {
+            affects = true;
+            break;
+          }
+        }
+      }
+
+      if (affects) candidateContainers.add(containerId);
+    }
+
+    // Now for each affected collapsed container, rebuild its hyperEdges
+    for (const containerId of candidateContainers) {
+      // Remove existing hyperEdges connected to this container
+      const existingHyperEdges = Array.from(this.state._collections.hyperEdges.entries())
+        .filter(([_, hyperEdge]) => hyperEdge.source === containerId || hyperEdge.target === containerId)
+        .map(([hyperEdgeId, _]) => hyperEdgeId);
+
+      for (const hyperEdgeId of existingHyperEdges) {
+        this.state.removeHyperEdge(hyperEdgeId);
+      }
+
+      // Recreate based on current visibility/crossings
+      this.createHyperEdgesForCollapsedContainer(containerId);
     }
   }
 }

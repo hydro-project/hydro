@@ -165,12 +165,10 @@ where
             properties.push("color=\"#0088ff\"".into());
             properties.push("style=\"bold\"".into());
         }
-        
+
         // Add tooltip with all properties
         if !edge_properties.is_empty() {
-            let props: Vec<String> = edge_properties.iter()
-                .map(|p| format!("{:?}", p))
-                .collect();
+            let props: Vec<String> = edge_properties.iter().map(|p| format!("{:?}", p)).collect();
             properties.push(format!("tooltip=\"{}\"", props.join(", ")).into());
         }
 

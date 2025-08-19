@@ -139,21 +139,22 @@ impl<'a> GraphApi<'a> {
     ) -> Result<(), Box<dyn Error>> {
         let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
         let content = self.render_graph_to_string(format, &config);
-        
+
         // Generate a temporary file name based on format
         let extension = match format {
             GraphFormat::Mermaid => "mmd",
-            GraphFormat::Dot => "dot", 
+            GraphFormat::Dot => "dot",
             GraphFormat::Json => "json",
         };
-        
+
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        
-        let filename = std::env::temp_dir().join(format!("hydro_graph_{}.{}", timestamp, extension));
-        
+
+        let filename =
+            std::env::temp_dir().join(format!("hydro_graph_{}.{}", timestamp, extension));
+
         std::fs::write(&filename, content)?;
         println!("📄 Saved graph to: {}", filename.display());
         println!("💡 You can examine or share this file as needed");
