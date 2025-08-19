@@ -14,6 +14,7 @@ import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import { StyleConfigProvider } from './StyleConfigContext';
 import { GraphDefs } from './GraphDefs';
+import { LoadingView, ErrorView, EmptyView, UpdatingOverlay } from './FallbackViews';
 import { useManualPositions } from '../hooks/useManualPositions';
 import type { VisualizationState } from '../core/VisualizationState';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';
@@ -378,93 +379,17 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
 
   // Loading state
   if (loading && !reactFlowData) {
-    return (
-      <div 
-        className={className}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#f5f5f5',
-          border: '1px solid #ddd',
-          borderRadius: '8px',
-          ...getContainerStyle()
-        }}
-      >
-        <div style={{ textAlign: 'center', color: '#666' }}>
-          <div style={{ 
-            width: '40px',
-            height: '40px',
-            margin: '0 auto 16px',
-            border: '4px solid #f3f3f3',
-            borderTop: '4px solid #3498db',
-            borderRadius: '50%',
-            animation: 'modernSpin 1s linear infinite'
-          }}></div>
-          <div style={{ fontSize: '18px', marginBottom: '8px' }}>
-            Processing Graph Layout...
-          </div>
-          <div style={{ fontSize: '14px', color: '#999' }}>
-            Large graphs may take a moment to compute
-          </div>
-        </div>
-        <style>
-          {`
-            @keyframes modernSpin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}
-        </style>
-      </div>
-    );
+    return <LoadingView className={className} containerStyle={getContainerStyle()} />;
   }
 
   // Error state
   if (error) {
-    return (
-      <div 
-        className={className}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#ffe6e6',
-          border: '1px solid #ff9999',
-          borderRadius: '8px',
-          ...getContainerStyle()
-        }}
-      >
-        <div style={{ textAlign: 'center', color: '#cc0000' }}>
-          <div style={{ fontSize: '24px', marginBottom: '8px' }}>❌</div>
-          <div><strong>Visualization Error:</strong></div>
-          <div style={{ fontSize: '14px', marginTop: '4px' }}>{error}</div>
-        </div>
-      </div>
-    );
+    return <ErrorView className={className} containerStyle={getContainerStyle()} message={error} />;
   }
 
   // No data state
   if (!reactFlowData) {
-    return (
-      <div 
-        className={className}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#f9f9f9',
-          border: '1px solid #ddd',
-          borderRadius: '8px',
-          ...getContainerStyle()
-        }}
-      >
-        <div style={{ textAlign: 'center', color: '#666' }}>
-          <div style={{ fontSize: '24px', marginBottom: '8px' }}>📊</div>
-          <div>No visualization data</div>
-        </div>
-      </div>
-    );
+    return <EmptyView className={className} containerStyle={getContainerStyle()} />;
   }
 
   // Main ReactFlow render
@@ -517,21 +442,7 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         </ReactFlow>
       
       {/* Loading overlay during updates */}
-      {loading && (
-        <div style={{
-          position: 'absolute',
-          top: '10px',
-          right: '10px',
-          background: 'rgba(255, 255, 255, 0.9)',
-          padding: '8px 12px',
-          borderRadius: '4px',
-          border: '1px solid #ddd',
-          fontSize: '12px',
-          color: '#666'
-        }}>
-          🔄 Updating...
-        </div>
-      )}
+  {loading && <UpdatingOverlay />}
   </div>
   </StyleConfigProvider>
   );
