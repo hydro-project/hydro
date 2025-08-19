@@ -127,7 +127,8 @@ docs/src/components/vis/
 │   ├── nodes.tsx          # Custom node components
 │   ├── edges.tsx          # Custom edge components
 │   ├── colorUtils.ts      # Shared color utilities
-│   └── edgeUtils.ts       # Shared edge utilities
+│   ├── edgeStyle.ts       # Edge styling helpers
+│   └── edgePaths.ts       # Edge path generators
 ├── layout/                # Layout engine integration
 │   ├── ELKLayoutEngine.ts # ELK layout coordination
 │   ├── ELKStateManager.ts # State-to-ELK translation
