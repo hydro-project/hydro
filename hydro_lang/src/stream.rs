@@ -1005,7 +1005,7 @@ where
         F: Fn(&mut A, T),
     {
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-    self.assume_ordering(nondet)
+        self.assume_ordering(nondet)
             .assume_retries(nondet)
             .fold(init, comb)
     }
@@ -1042,7 +1042,7 @@ where
         F: Fn(&mut T, T) + 'a,
     {
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-    self.assume_ordering(nondet)
+        self.assume_ordering(nondet)
             .assume_retries(nondet)
             .reduce(comb)
     }

@@ -1,6 +1,5 @@
 use hydro_lang::stream::OrderingKind;
 use hydro_lang::*;
-use hydro_lang::stream::OrderingKind;
 use location::NoTick;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
