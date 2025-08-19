@@ -3,21 +3,18 @@
  * 
  */
 
-import React, { useEffect, useState, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
-import { ReactFlow, Background, Controls, MiniMap, useReactFlow, ReactFlowProvider, applyNodeChanges } from '@xyflow/react';
+import React, { useRef, forwardRef, useImperativeHandle } from 'react';
+import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { createVisualizationEngine } from '../core/VisualizationEngine';
-import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
 import { DEFAULT_RENDER_CONFIG } from './config';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import { StyleConfigProvider } from './StyleConfigContext';
 import { GraphDefs } from './GraphDefs';
 import { LoadingView, ErrorView, EmptyView, UpdatingOverlay } from './FallbackViews';
-import { useManualPositions } from '../hooks/useManualPositions';
+import { useFlowGraphController } from '../hooks/useFlowGraphController';
 import type { VisualizationState } from '../core/VisualizationState';
-import type { ReactFlowData } from '../bridges/ReactFlowBridge';
 import type { RenderConfig, FlowGraphEventHandlers, LayoutConfig } from '../core/types';
 
 export interface FlowGraphProps {
@@ -45,317 +42,23 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   style,
   fillViewport = false
 }, ref) => {
-  const [reactFlowData, setReactFlowData] = useState<ReactFlowData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // ReactFlow instance for programmatic control
-  const { fitView } = useReactFlow();
-  
-  // Expose fitView and refreshLayout methods through ref
+  const {
+    reactFlowData,
+    loading,
+    error,
+    refreshLayout,
+    fitOnce,
+    onNodeClick,
+    onEdgeClick,
+    onNodeDrag,
+    onNodeDragStop,
+    onNodesChange,
+  } = useFlowGraphController({ visualizationState, config, layoutConfig, eventHandlers });
+
   useImperativeHandle(ref, () => ({
-    fitView: () => {
-      try {
-        fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
-        // // console.log((('[FlowGraph] 🎯 Manual fit view called')));
-      } catch (err) {
-        console.warn('[FlowGraph] ⚠️ Manual fit view failed:', err);
-      }
-    },
-    refreshLayout: async () => {
-      try {
-        console.log('[FlowGraph] 🔄 Starting refreshLayout...');
-        setLoading(true);
-        setError(null);
-        
-        console.log('[FlowGraph] 🔄 refreshData called - checking for label updates...');
-
-        // Run layout
-        console.log('[FlowGraph] 🔄 Running ELK layout...');
-        await engine.runLayout();
-        
-        // Convert to ReactFlow format
-        console.log('[FlowGraph] 🔄 Converting to ReactFlow format...');
-        const baseData = bridge.visStateToReactFlow(visualizationState);
-        
-        console.log('[FlowGraph] 🔄 Layout result:', {
-          containers: baseData.nodes.filter(n => n.type === 'container').length,
-          regularNodes: baseData.nodes.filter(n => n.type !== 'container').length,
-          edges: baseData.edges.length
-        });
-        console.log('[FlowGraph] 🔍 First few nodes for label check:', baseData.nodes.slice(0, 3).map(n => ({ 
-          id: n.id, 
-          label: n.data.label, 
-          shortLabel: n.data.shortLabel, 
-          fullLabel: n.data.fullLabel 
-        })));
-        
-        // Store the base data for reference
-        baseReactFlowDataRef.current = baseData;
-        
-        // Apply any existing manual positions
-        const dataWithManualPositions = applyManualPositions(baseData, manualPositions);
-        
-        setReactFlowData(dataWithManualPositions);
-                
-        // Auto-fit if enabled
-        if (config.fitView !== false) {
-          setTimeout(() => {
-            try {
-              fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
-              lastFitTimeRef.current = Date.now();
-              console.log('[FlowGraph] 🎯 Auto-fit applied after refresh');
-            } catch (err) {
-              console.warn('[FlowGraph] ⚠️ Auto-fit failed during refresh:', err);
-            }
-          }, 200);
-        }        
-      } catch (err) {
-        console.error('[FlowGraph] ❌ Failed to refresh layout:', err);
-        setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setLoading(false);
-      }
-    }
+    fitView: () => { fitOnce(); },
+    refreshLayout: async () => { await refreshLayout(); }
   }));
-  
-  // Track the last fit operation to prevent excessive fits
-  const lastFitTimeRef = useRef<number>(0);
-  const autoFitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
-  // Manual position management
-  const { manualPositions, setManualPositions, applyManualPositions } = useManualPositions();
-  
-  // Ref to track the base layout data (before manual positioning)
-  const baseReactFlowDataRef = useRef<ReactFlowData | null>(null);
-
-  // Create bridge and engine
-  const [bridge] = useState(() => new ReactFlowBridge());
-  const [engine] = useState(() => createVisualizationEngine(visualizationState, {
-    autoLayout: true,
-    enableLogging: false,
-    layoutConfig: layoutConfig
-  }));
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (autoFitTimeoutRef.current) {
-        clearTimeout(autoFitTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Listen to layout config changes
-  useEffect(() => {
-    // Only run if we have all dependencies and data already exists
-    if (layoutConfig && engine && bridge && visualizationState && reactFlowData) {
-      engine.updateLayoutConfig(layoutConfig, false); // Update config first
-      
-      // Trigger a re-layout with the new algorithm
-      const runLayoutUpdate = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          
-          // Run layout with new algorithm
-          await engine.runLayout();
-          
-          // Convert to ReactFlow format
-          const baseData = bridge.visStateToReactFlow(visualizationState);
-          
-          // Store the base data for reference
-          baseReactFlowDataRef.current = baseData;
-          
-          // Apply any existing manual positions
-          const dataWithManualPositions = applyManualPositions(baseData, visualizationState.getAllManualPositions());
-          
-          setReactFlowData(dataWithManualPositions);          
-        } catch (err) {
-          console.error('[FlowGraph] ❌ Failed to apply layout change:', err);
-          setError(err instanceof Error ? err.message : String(err));
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      runLayoutUpdate();
-    }
-  }, [layoutConfig]);
-
-  // Listen to config changes (including color palette and edge style config)
-  useEffect(() => {
-    if (config && bridge) {
-      // Update bridge palette for future conversions
-      if (config.colorPalette) {
-        bridge.setColorPalette(config.colorPalette);
-      }
-      
-      // Update bridge edge style config for future conversions
-      if (config.edgeStyleConfig) {
-        bridge.setEdgeStyleConfig(config.edgeStyleConfig);
-      }
-
-      // Also update existing reactFlowData to reflect palette immediately without re-layout
-      if (config.colorPalette) {
-        setReactFlowData(prev => {
-          if (!prev) return prev;
-          const updatedNodes = prev.nodes.map(n => ({
-            ...n,
-            data: {
-              ...n.data,
-              colorPalette: config.colorPalette
-            }
-          }));
-          return { ...prev, nodes: updatedNodes };
-        });
-      }
-    }
-  }, [config?.colorPalette, config?.edgeStyleConfig, bridge]); // Depend on both colorPalette and edgeStyleConfig
-
-  // Listen to visualization state changes
-  useEffect(() => {
-    // Skip the effect entirely if smart collapse is running
-    if (engine.getState().isRunningSmartCollapse) {
-      return;
-    }
-
-    const handleStateChange = async () => {
-      try {
-        // Don't run layout if visualization engine is already running one OR during smart collapse
-        const engineState = engine.getState();
-        if (engineState.phase === 'laying_out' || engineState.isRunningSmartCollapse) {
-          console.warn('[FlowGraph] ⚠️ Skipping layout - engine busy (phase:', engineState.phase, 'smartCollapse:', engineState.isRunningSmartCollapse, ')');
-          return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        // Run layout
-        await engine.runLayout();
-        
-        // Convert to ReactFlow format
-        const baseData = bridge.visStateToReactFlow(visualizationState);
-        
-        // Store the base data for reference
-        baseReactFlowDataRef.current = baseData;
-        
-        // Apply any existing manual positions
-        const dataWithManualPositions = applyManualPositions(baseData, manualPositions);
-        
-        setReactFlowData(dataWithManualPositions);
-                
-        // Auto-fit if enabled (with debouncing to prevent excessive fits)
-        if (config.fitView !== false) {
-          const now = Date.now();
-          const timeSinceLastFit = now - lastFitTimeRef.current;
-          
-          // Clear any existing timeout
-          if (autoFitTimeoutRef.current) {
-            clearTimeout(autoFitTimeoutRef.current);
-          }
-          
-          // Only fit if enough time has passed or this is a significant layout change
-          const shouldFit = timeSinceLastFit > 500; // Minimum 500ms between fits
-          
-          autoFitTimeoutRef.current = setTimeout(() => {
-            try {
-              fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
-              lastFitTimeRef.current = Date.now();
-              // // console.log((('[FlowGraph] 🎯 Auto-fit applied')));
-            } catch (err) {
-              console.warn('[FlowGraph] ⚠️ Auto-fit failed:', err);
-            }
-          }, shouldFit ? 100 : 300); // Short delay for immediate fits, longer for recent ones
-        }        
-      } catch (err) {
-        console.error('[FlowGraph] ❌ Failed to update visualization:', err);
-        setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Initial render
-    handleStateChange();
-
-    // For alpha compatibility, we just do initial render
-    // Real change detection would be implemented with proper state listeners
-    
-  }, [visualizationState, engine, bridge, applyManualPositions]);
-
-  // Separate effect to update positions when manual positions change (without re-running layout)
-  useEffect(() => {
-    if (baseReactFlowDataRef.current && visualizationState.hasAnyManualPositions()) {
-      const updatedData = applyManualPositions(baseReactFlowDataRef.current, visualizationState.getAllManualPositions());
-      setReactFlowData(updatedData);
-    }
-  }, [visualizationState, applyManualPositions]);
-
-  // Handle node events
-  const onNodeClick = useCallback((event: any, node: any) => {
-    eventHandlers?.onNodeClick?.(event, node);
-  }, [eventHandlers]);
-
-  // Handle edge events
-  const onEdgeClick = useCallback((event: any, edge: any) => {
-    eventHandlers?.onEdgeClick?.(event, edge);
-  }, [eventHandlers]);
-
-  // Handle node drag events for debugging
-  const onNodeDrag = useCallback((event: any, node: any) => {
-    // Don't update positions during drag - let ReactFlow handle the visual updates
-    // We'll only store the final position on drag stop
-    eventHandlers?.onNodeDrag?.(event, node);
-  }, [eventHandlers]);
-
-  const onNodeDragStop = useCallback((event: any, node: any) => {
-    // Store the manual position in VisualizationState
-    visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
-    
-    // Auto-fit if enabled (after a brief delay to let the position update settle)
-    if (config.fitView !== false) {
-      const now = Date.now();
-      const timeSinceLastFit = now - lastFitTimeRef.current;
-      
-      // Clear any existing timeout
-      if (autoFitTimeoutRef.current) {
-        clearTimeout(autoFitTimeoutRef.current);
-      }
-      
-      // Only auto-fit if enough time has passed since the last fit
-      if (timeSinceLastFit > 500) {
-        autoFitTimeoutRef.current = setTimeout(() => {
-          try {
-            fitView({ padding: 0.1, maxZoom: 1.2, duration: 300 });
-            lastFitTimeRef.current = Date.now();
-          } catch (err) {
-            console.warn('[FlowGraph] ⚠️ Auto-fit after drag failed:', err);
-          }
-        }, 200); // Brief delay to let drag position settle
-      }
-    }
-  }, [visualizationState, config.fitView, fitView]);
-
-  // Handle ReactFlow node changes (including drag position updates)
-  const onNodesChange = useCallback((changes: any[]) => {
-    // Apply changes using ReactFlow's built-in function
-    if (reactFlowData) {
-      setReactFlowData(prev => {
-        if (!prev) return prev;
-        
-        // Use ReactFlow's built-in applyNodeChanges function
-        // ReactFlow's extent: 'parent' handles boundary constraints automatically
-        const updatedNodes = applyNodeChanges(changes, prev.nodes);
-        
-        return {
-          ...prev,
-          nodes: updatedNodes
-        };
-      });
-    }
-  }, [reactFlowData]);
 
   // Calculate container styles based on fillViewport prop
   const getContainerStyle = (): React.CSSProperties => {
