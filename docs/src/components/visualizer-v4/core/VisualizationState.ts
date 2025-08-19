@@ -400,14 +400,21 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Get a container by ID (core API)
    */
-  getContainer(containerId: string): any | undefined {
+  /**
+   * Get a container by ID
+   * @param containerId - The container ID to look up
+   * @returns Container object if found, undefined otherwise
+   */
+  getContainer(containerId: string): Container | undefined {
     return this._collections.containers.get(containerId);
   }
 
   /**
    * Get a hyperEdge by ID
+   * @param hyperEdgeId - The hyperEdge ID to look up
+   * @returns HyperEdge object if found, undefined otherwise
    */
-  getHyperEdge(hyperEdgeId: string): any | undefined {
+  getHyperEdge(hyperEdgeId: string): HyperEdge | undefined {
     return this._collections.hyperEdges.get(hyperEdgeId);
   }
 

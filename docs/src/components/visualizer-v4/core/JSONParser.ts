@@ -466,6 +466,11 @@ export function validateGraphJSON(jsonData: RawGraphData | string): ValidationRe
 
 // ============ Private Helper Functions ============
 
+/**
+ * Type guard to validate that input data has the required structure for graph parsing
+ * @param data - Input data to validate
+ * @returns true if data has valid graph structure (nodes and edges arrays)
+ */
 function isValidGraphData(data: any): data is RawGraphData {
   return data && 
          typeof data === 'object' && 
