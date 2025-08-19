@@ -268,7 +268,7 @@ mod tests {
     use hydro_deploy::Deployment;
     use hydro_lang::location::LocationId;
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
-    use hydro_lang::{FlowBuilder, Location, ir};
+    use hydro_lang::{FlowBuilder, Location, ir, nondet};
     use stageleft::q;
 
     use crate::decoupler;
@@ -290,7 +290,7 @@ mod tests {
         send_cluster
             .source_iter(q!(0..10))
             .map(q!(|a| a + 1))
-            .broadcast_bincode(&recv_cluster)
+            .broadcast_bincode(&recv_cluster, nondet!(/** test */))
             .values()
             .for_each(q!(|a| println!("Got it: {}", a)));
 
@@ -398,6 +398,10 @@ mod tests {
 
     #[tokio::test]
     async fn move_source_decouple_map() {
+        if true {
+            panic!("currently broken");
+        }
+
         let decoupler = decoupler::Decoupler {
             output_to_decoupled_machine_after: vec![],
             output_to_original_machine_after: vec![1],
