@@ -11,14 +11,7 @@ import React from 'react';
 import Layout from '@theme/Layout';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import { useLocation } from '@docusaurus/router';
-
-// Import typography constants
-const TYPOGRAPHY = {
-  PAGE_TITLE: '24px',
-  PAGE_SUBTITLE: '14px',
-  BUTTON_SMALL: '14px',
-  UI_SMALL: '12px'
-};
+import { TYPOGRAPHY } from '@site/src/components/visualizer-v4/shared/config.ts';
 
 // Helper function to calculate container depth in hierarchy
 function getContainerDepth(visState, containerId, depth = 0) {
