@@ -9,7 +9,11 @@ use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::manual_expr::ManualExpr;
+<<<<<<< HEAD
 use crate::stream::{ExactlyOnce, MinRetries, OrderingKind, RetriesKind, TotalOrder};
+=======
+use crate::stream::{ExactlyOnce, MinRetries, TotalOrder};
+>>>>>>> 740fb7c7a (address copilot comments on PR)
 use crate::unsafety::NonDet;
 use crate::*;
 
@@ -86,8 +90,23 @@ where
     O: OrderingKind,
     R: RetriesKind,
 {
+<<<<<<< HEAD
     let ordering = O::ordering();
     let retries = R::retries();
+=======
+    use crate::ir::{StreamKind, StreamOrdering, StreamRetries};
+
+    let ordering = match std::any::type_name::<O>() {
+        name if name.contains("TotalOrder") => StreamOrdering::TotalOrder,
+        _ => StreamOrdering::NoOrder,
+    };
+
+    let retries = match std::any::type_name::<R>() {
+        name if name.contains("ExactlyOnce") => StreamRetries::ExactlyOnce,
+        _ => StreamRetries::AtLeastOnce,
+    };
+
+>>>>>>> 740fb7c7a (address copilot comments on PR)
     let is_bounded = std::any::type_name::<B>().contains("Bounded");
     let updated_stream = underlying.update_metadata_for_keyed_conversion::<K, U>(
         StreamKind::KeyedStream { ordering, retries },
@@ -137,11 +156,16 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
+<<<<<<< HEAD
     pub fn assume_ordering<O2>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O2, R>
     where
         O2: OrderingKind,
     {
         use crate::ir::StreamKind;
+=======
+    pub fn assume_ordering<O2>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O2, R> {
+        use crate::ir::{StreamKind, StreamOrdering};
+>>>>>>> 740fb7c7a (address copilot comments on PR)
 
         // For KeyedStream, we need to update the metadata to reflect the new ordering
         // but the underlying stream remains NoOrder as KeyedStreams are internally unordered
@@ -155,7 +179,19 @@ where
             .stream_kind
             .as_mut()
         {
+<<<<<<< HEAD
             *ordering = O2::ordering();
+=======
+            let type_name = std::any::type_name::<O2>();
+            *ordering = if type_name.ends_with("TotalOrder") {
+                StreamOrdering::TotalOrder
+            } else if type_name.ends_with("NoOrder") {
+                StreamOrdering::NoOrder
+            } else {
+                // Keep existing ordering if O2 is not a known ordering type
+                *ordering
+            };
+>>>>>>> 740fb7c7a (address copilot comments on PR)
         }
 
         KeyedStream {
