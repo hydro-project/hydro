@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
-use hydro_lang::stream::OrderingKind;
 use hydro_lang::*;
+use hydro_lang::stream::OrderingKind;
 use location::NoTick;
 
 #[expect(clippy::type_complexity, reason = "stream types with ordering")]
