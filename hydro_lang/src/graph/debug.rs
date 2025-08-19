@@ -176,15 +176,15 @@ fn handle_large_graph_fallback(json_content: &str, encoded_size: usize) -> Resul
     );
     println!("� Saved graph to: {}", temp_file.display());
     println!("🌐 Opening visualizer...");
-    
+
     // URL encode the file path
     let file_path_str = temp_file.to_string_lossy();
     let encoded_path = urlencoding::encode(&file_path_str);
-    
+
     // Try to open localhost first with file parameter, fall back to docs site
     let localhost_url = format!("http://localhost:3000/vis?file={}", encoded_path);
     let docs_url = format!("https://hydro.run/docs/vis?file={}", encoded_path);
-    
+
     if webbrowser::open(&localhost_url).is_ok() {
         println!("✅ Opened visualizer: {}", localhost_url);
     } else if webbrowser::open(&docs_url).is_ok() {
@@ -196,7 +196,7 @@ fn handle_large_graph_fallback(json_content: &str, encoded_size: usize) -> Resul
         println!("   2. Drag and drop the JSON file onto the visualizer");
         println!("   3. Or use the file upload button in the visualizer");
     }
-    
+
     println!("💡 The generated file path is shown above for easy loading");
 
     Ok(())

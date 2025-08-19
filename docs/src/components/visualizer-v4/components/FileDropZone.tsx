@@ -1,13 +1,9 @@
 /**
- * File Drop Zone Component for Vis System
- * 
- * Handles file upload via drag-and-drop or file input.
- * Integrates with the new vis system          >
-          → View complete working example
-        </button>   >
-          � View completeexport interface FileDropZoneProps {
-  onFileLoad: (data: any) => void;ng example
-        </button>JSON parser.
+ * FileDropZone Component
+ *
+ * Handles JSON graph upload via drag-and-drop or file input.
+ * Integrates with the visualizer v4 JSON parser and provides
+ * optional inline documentation and a complete example loader.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -317,7 +313,7 @@ const loadingStyles: React.CSSProperties = {
   borderRadius: '8px',
 };
 
-export default function FileDropZone({ 
+function FileDropZone({ 
   onFileLoad, 
   hasData = false, 
   className = '', 
@@ -549,3 +545,7 @@ export default function FileDropZone({
     </div>
   );
 }
+
+// Named and default exports for flexibility
+export { FileDropZone };
+export default FileDropZone;

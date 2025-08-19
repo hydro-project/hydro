@@ -1,10 +1,11 @@
 /**
  * @fileoverview CollapsibleSection Component
- * 
- * A reusable collapsible section component for organizing panel content.
+ *
+ * Refactored to use native <details>/<summary> for accessibility and simplicity,
+ * while keeping a controlled open state via props.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { CollapsibleSectionProps } from './types';
 import { COMPONENT_COLORS, TYPOGRAPHY } from '../shared/config';
 
@@ -17,72 +18,66 @@ export function CollapsibleSection({
   showIcon = true,
   disabled = false,
   className = '',
-  style
+  style,
 }: CollapsibleSectionProps) {
-  const handleClick = () => {
-    if (!disabled) {
-      onToggle();
-    }
-  };
-
-  const sectionStyle: React.CSSProperties = {
-    marginBottom: '12px',
-    ...style
-  };
-
-  const headerStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    cursor: disabled ? 'default' : 'pointer',
-    fontSize: TYPOGRAPHY.UI_MEDIUM,
-    fontWeight: 'bold',
-    marginBottom: isCollapsed ? '0' : '6px',
-    color: disabled ? COMPONENT_COLORS.TEXT_DISABLED : COMPONENT_COLORS.TEXT_PRIMARY,
-    paddingLeft: `${level * 8}px`,
-    padding: '4px 0',
-    borderRadius: '2px',
-    transition: 'background-color 0.15s ease',
-  };
-
-  const contentStyle: React.CSSProperties = {
-    paddingLeft: '12px',
-    paddingTop: '4px',
-  };
+  const isOpen = !isCollapsed;
+  const indent = level * 8;
 
   return (
-    <div className={`collapsible-section ${className}`} style={sectionStyle}>
-      <div 
-        style={headerStyle}
-        onClick={handleClick}
-        onMouseEnter={(e) => {
+    <details
+      open={isOpen}
+      className={`collapsible-section ${className}`}
+      style={{ marginBottom: '12px', ...style }}
+    >
+      {/* Scoped style to hide default markers so we can render our own caret */}
+      <style>{`
+        details > summary.collapsible-summary { list-style: none; }
+        details > summary.collapsible-summary::-webkit-details-marker { display: none; }
+      `}</style>
+
+      <summary
+        className="collapsible-summary"
+        aria-expanded={isOpen}
+        aria-disabled={disabled}
+        title={disabled ? undefined : `${isCollapsed ? 'Expand' : 'Collapse'} ${title}`}
+        onClick={(e) => {
+          // Prevent the browser from toggling <details>; we control via props
+          e.preventDefault();
           if (!disabled) {
-            e.currentTarget.style.backgroundColor = COMPONENT_COLORS.BUTTON_HOVER_BACKGROUND;
+            onToggle();
           }
         }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = 'transparent';
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          cursor: disabled ? 'default' : 'pointer',
+          fontSize: TYPOGRAPHY.UI_MEDIUM,
+          fontWeight: 'bold',
+          color: disabled ? COMPONENT_COLORS.TEXT_DISABLED : COMPONENT_COLORS.TEXT_PRIMARY,
+          paddingLeft: `${indent}px`,
+          padding: '4px 0',
+          userSelect: 'none',
         }}
-        title={disabled ? undefined : `${isCollapsed ? 'Expand' : 'Collapse'} ${title}`}
       >
         {showIcon && (
-          <span style={{ 
-            marginRight: '6px', 
-            fontSize: TYPOGRAPHY.UI_MEDIUM,
-            color: disabled ? COMPONENT_COLORS.TEXT_DISABLED : COMPONENT_COLORS.TEXT_SECONDARY,
-            transition: 'transform 0.15s ease',
-            transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)'
-          }}>
+          <span
+            aria-hidden="true"
+            style={{
+              marginRight: '6px',
+              fontSize: TYPOGRAPHY.UI_MEDIUM,
+              color: disabled ? COMPONENT_COLORS.TEXT_DISABLED : COMPONENT_COLORS.TEXT_SECONDARY,
+              transition: 'transform 0.15s ease',
+              transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+              display: 'inline-block',
+            }}
+          >
             ▶
           </span>
         )}
         <span>{title}</span>
-      </div>
-      
-      {!isCollapsed && (
-        <div style={contentStyle}>
-          {children}
-        </div>
-      )}
-    </div>
+      </summary>
+
+      <div style={{ paddingLeft: `${indent + 12}px`, paddingTop: '4px' }}>{children}</div>
+    </details>
   );
 }

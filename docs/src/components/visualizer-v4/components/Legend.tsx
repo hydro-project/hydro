@@ -4,13 +4,13 @@
  * Displays a color-coded legend for different node types.
  */
 
-import React from 'react';
+import React, { useMemo, memo } from 'react';
 import { LegendProps } from './types';
 import { generateNodeColors } from '../shared/colorUtils';
 import { COLOR_PALETTES, COMPONENT_COLORS } from '../shared/config';
 import { TYPOGRAPHY } from '../shared/config';
 
-export function Legend({
+function LegendInner({
   legendData,
   colorPalette = 'Set3',
   nodeTypeConfig,
@@ -37,17 +37,28 @@ export function Legend({
   const displayTitle = title || legendData.title || 'Legend';
   const paletteKey = (colorPalette in COLOR_PALETTES) ? colorPalette as keyof typeof COLOR_PALETTES : 'Set3';
 
-  const legendStyle: React.CSSProperties = {
+  // Precompute colors for all legend items using a memoized map
+  const colorsByType = useMemo(() => {
+    const map = new Map<string, { primary: string; border: string }>();
+    for (const item of legendData.items) {
+      // generateNodeColors accepts an array of types; use single type per item
+      const colors = generateNodeColors([item.type], paletteKey, nodeTypeConfig);
+      map.set(item.type, colors);
+    }
+    return map;
+  }, [legendData.items, paletteKey, nodeTypeConfig]);
+
+  const legendStyle: React.CSSProperties = useMemo(() => ({
     fontSize: compact ? '9px' : '10px',
     ...style
-  };
+  }), [compact, style]);
 
-  const itemStyle: React.CSSProperties = {
+  const itemStyle: React.CSSProperties = useMemo(() => ({
     display: 'flex',
     alignItems: 'center',
     margin: compact ? '2px 0' : '3px 0',
     fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
-  };
+  }), [compact]);
 
   const colorBoxStyle = (colors: any): React.CSSProperties => ({
     width: compact ? '10px' : '12px',
@@ -73,21 +84,20 @@ export function Legend({
         </div>
       )}
       
-      {legendData.items.map(item => {
-        const colors = generateNodeColors([item.type], paletteKey, nodeTypeConfig);
-        return (
-          <div 
-            key={item.type} 
-            style={itemStyle}
-            title={item.description || `${item.label} nodes`}
-          >
-            <div style={colorBoxStyle(colors)} />
-            <span style={{ color: COMPONENT_COLORS.TEXT_PRIMARY }}>
-              {item.label}
-            </span>
-          </div>
-        );
-      })}
+      {legendData.items.map(item => (
+        <div 
+          key={item.type} 
+          style={itemStyle}
+          title={item.description || `${item.label} nodes`}
+        >
+          <div style={colorBoxStyle(colorsByType.get(item.type)!)} />
+          <span style={{ color: COMPONENT_COLORS.TEXT_PRIMARY }}>
+            {item.label}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
+
+export const Legend = memo(LegendInner);
