@@ -60,80 +60,79 @@
 <a href=#60 id=60 data-nosnippet>60</a>
 <a href=#61 id=61 data-nosnippet>61</a>    <span class="kw">let </span>(r_buffered_payloads_complete_cycle, r_buffered_payloads) = replica_tick.cycle();
 <a href=#62 id=62 data-nosnippet>62</a>    <span class="comment">// p_to_replicas.inspect(q!(|payload: ReplicaPayload| println!("Replica received payload: {:?}", payload)));
-<a href=#63 id=63 data-nosnippet>63</a>    </span><span class="kw">let </span>r_sorted_payloads = <span class="kw">unsafe </span>{
-<a href=#64 id=64 data-nosnippet>64</a>        <span class="comment">// SAFETY: because we fill slots one-by-one, we can safely batch
-<a href=#65 id=65 data-nosnippet>65</a>        // because non-determinism is resolved when we sort by slots
-<a href=#66 id=66 data-nosnippet>66</a>        </span>p_to_replicas.tick_batch(<span class="kw-2">&amp;</span>replica_tick)
-<a href=#67 id=67 data-nosnippet>67</a>    }
-<a href=#68 id=68 data-nosnippet>68</a>        .chain(r_buffered_payloads) <span class="comment">// Combine with all payloads that we've received and not processed yet
-<a href=#69 id=69 data-nosnippet>69</a>        </span>.sort();
-<a href=#70 id=70 data-nosnippet>70</a>    <span class="comment">// Create a cycle since we'll use this seq before we define it
-<a href=#71 id=71 data-nosnippet>71</a>    </span><span class="kw">let </span>(r_next_slot_complete_cycle, r_next_slot) =
-<a href=#72 id=72 data-nosnippet>72</a>        replica_tick.cycle_with_initial(replica_tick.singleton(<span class="macro">q!</span>(<span class="number">0</span>)));
-<a href=#73 id=73 data-nosnippet>73</a>    <span class="comment">// Find highest the sequence number of any payload that can be processed in this tick. This is the payload right before a hole.
-<a href=#74 id=74 data-nosnippet>74</a>    </span><span class="kw">let </span>r_next_slot_after_processing_payloads = r_sorted_payloads
-<a href=#75 id=75 data-nosnippet>75</a>        .clone()
-<a href=#76 id=76 data-nosnippet>76</a>        .cross_singleton(r_next_slot.clone())
-<a href=#77 id=77 data-nosnippet>77</a>        .fold(
-<a href=#78 id=78 data-nosnippet>78</a>            <span class="macro">q!</span>(|| <span class="number">0</span>),
-<a href=#79 id=79 data-nosnippet>79</a>            <span class="macro">q!</span>(|new_next_slot, (sorted_payload, next_slot)| {
-<a href=#80 id=80 data-nosnippet>80</a>                <span class="kw">if </span>sorted_payload.seq == std::cmp::max(<span class="kw-2">*</span>new_next_slot, next_slot) {
-<a href=#81 id=81 data-nosnippet>81</a>                    <span class="kw-2">*</span>new_next_slot = sorted_payload.seq + <span class="number">1</span>;
-<a href=#82 id=82 data-nosnippet>82</a>                }
-<a href=#83 id=83 data-nosnippet>83</a>            }),
-<a href=#84 id=84 data-nosnippet>84</a>        );
-<a href=#85 id=85 data-nosnippet>85</a>    <span class="comment">// Find all payloads that can and cannot be processed in this tick.
-<a href=#86 id=86 data-nosnippet>86</a>    </span><span class="kw">let </span>r_processable_payloads = r_sorted_payloads
-<a href=#87 id=87 data-nosnippet>87</a>        .clone()
-<a href=#88 id=88 data-nosnippet>88</a>        .cross_singleton(r_next_slot_after_processing_payloads.clone())
-<a href=#89 id=89 data-nosnippet>89</a>        .filter(<span class="macro">q!</span>(
-<a href=#90 id=90 data-nosnippet>90</a>            |(sorted_payload, highest_seq)| sorted_payload.seq &lt; <span class="kw-2">*</span>highest_seq
-<a href=#91 id=91 data-nosnippet>91</a>        ))
-<a href=#92 id=92 data-nosnippet>92</a>        .map(<span class="macro">q!</span>(|(sorted_payload, <span class="kw">_</span>)| { sorted_payload }));
-<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">let </span>r_new_non_processable_payloads = r_sorted_payloads
-<a href=#94 id=94 data-nosnippet>94</a>        .clone()
-<a href=#95 id=95 data-nosnippet>95</a>        .cross_singleton(r_next_slot_after_processing_payloads.clone())
-<a href=#96 id=96 data-nosnippet>96</a>        .filter(<span class="macro">q!</span>(
-<a href=#97 id=97 data-nosnippet>97</a>            |(sorted_payload, highest_seq)| sorted_payload.seq &gt; <span class="kw-2">*</span>highest_seq
-<a href=#98 id=98 data-nosnippet>98</a>        ))
-<a href=#99 id=99 data-nosnippet>99</a>        .map(<span class="macro">q!</span>(|(sorted_payload, <span class="kw">_</span>)| { sorted_payload }));
-<a href=#100 id=100 data-nosnippet>100</a>    <span class="comment">// Save these, we can process them once the hole has been filled
-<a href=#101 id=101 data-nosnippet>101</a>    </span>r_buffered_payloads_complete_cycle.complete_next_tick(r_new_non_processable_payloads);
-<a href=#102 id=102 data-nosnippet>102</a>
-<a href=#103 id=103 data-nosnippet>103</a>    <span class="kw">let </span>r_kv_store = r_processable_payloads
-<a href=#104 id=104 data-nosnippet>104</a>        .clone()
-<a href=#105 id=105 data-nosnippet>105</a>        .persist() <span class="comment">// Optimization: all_ticks() + fold() = fold&lt;static&gt;, where the state of the previous fold is saved and persisted values are deleted.
-<a href=#106 id=106 data-nosnippet>106</a>        </span>.fold(<span class="macro">q!</span>(|| (HashMap::new(), <span class="number">0</span>)), <span class="macro">q!</span>(|(kv_store, next_slot), payload| {
-<a href=#107 id=107 data-nosnippet>107</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(kv) = payload.kv {
-<a href=#108 id=108 data-nosnippet>108</a>                kv_store.insert(kv.key, kv.value);
-<a href=#109 id=109 data-nosnippet>109</a>            }
-<a href=#110 id=110 data-nosnippet>110</a>            <span class="kw-2">*</span>next_slot = payload.seq + <span class="number">1</span>;
-<a href=#111 id=111 data-nosnippet>111</a>        }));
-<a href=#112 id=112 data-nosnippet>112</a>    <span class="comment">// Update the highest seq for the next tick
-<a href=#113 id=113 data-nosnippet>113</a>    </span>r_next_slot_complete_cycle
-<a href=#114 id=114 data-nosnippet>114</a>        .complete_next_tick(r_kv_store.map(<span class="macro">q!</span>(|(_kv_store, next_slot)| next_slot)));
-<a href=#115 id=115 data-nosnippet>115</a>
-<a href=#116 id=116 data-nosnippet>116</a>    <span class="comment">// Send checkpoints to the acceptors when we've processed enough payloads
-<a href=#117 id=117 data-nosnippet>117</a>    </span><span class="kw">let </span>(r_checkpointed_seqs_complete_cycle, r_checkpointed_seqs) =
-<a href=#118 id=118 data-nosnippet>118</a>        replica_tick.cycle::&lt;Optional&lt;usize, <span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
-<a href=#119 id=119 data-nosnippet>119</a>    <span class="kw">let </span>r_max_checkpointed_seq = r_checkpointed_seqs.persist().max().into_singleton();
-<a href=#120 id=120 data-nosnippet>120</a>    <span class="kw">let </span>r_checkpoint_seq_new = r_max_checkpointed_seq
-<a href=#121 id=121 data-nosnippet>121</a>        .zip(r_next_slot)
-<a href=#122 id=122 data-nosnippet>122</a>        .filter_map(<span class="macro">q!</span>(
-<a href=#123 id=123 data-nosnippet>123</a>            <span class="kw">move </span>|(max_checkpointed_seq, next_slot)| <span class="kw">if </span>max_checkpointed_seq
-<a href=#124 id=124 data-nosnippet>124</a>                .map(|m| next_slot - m &gt;= checkpoint_frequency)
-<a href=#125 id=125 data-nosnippet>125</a>                .unwrap_or(<span class="bool-val">true</span>)
-<a href=#126 id=126 data-nosnippet>126</a>            {
-<a href=#127 id=127 data-nosnippet>127</a>                <span class="prelude-val">Some</span>(next_slot)
-<a href=#128 id=128 data-nosnippet>128</a>            } <span class="kw">else </span>{
-<a href=#129 id=129 data-nosnippet>129</a>                <span class="prelude-val">None
-<a href=#130 id=130 data-nosnippet>130</a>            </span>}
-<a href=#131 id=131 data-nosnippet>131</a>        ));
-<a href=#132 id=132 data-nosnippet>132</a>    r_checkpointed_seqs_complete_cycle.complete_next_tick(r_checkpoint_seq_new.clone());
-<a href=#133 id=133 data-nosnippet>133</a>
-<a href=#134 id=134 data-nosnippet>134</a>    <span class="comment">// Tell clients that the payload has been committed. All ReplicaPayloads contain the client's machine ID (to string) as value.
-<a href=#135 id=135 data-nosnippet>135</a>    </span><span class="kw">let </span>r_to_clients = r_processable_payloads
-<a href=#136 id=136 data-nosnippet>136</a>        .filter_map(<span class="macro">q!</span>(|payload| payload.kv))
-<a href=#137 id=137 data-nosnippet>137</a>        .all_ticks();
-<a href=#138 id=138 data-nosnippet>138</a>    (r_checkpoint_seq_new.all_ticks(), r_to_clients)
-<a href=#139 id=139 data-nosnippet>139</a>}</code></pre></div></section></main></body></html>
+<a href=#63 id=63 data-nosnippet>63</a>    </span><span class="kw">let </span>r_sorted_payloads = p_to_replicas.batch(<span class="kw-2">&amp;</span>replica_tick, <span class="macro">nondet!</span>(
+<a href=#64 id=64 data-nosnippet>64</a>            <span class="doccomment">/// because we fill slots one-by-one, we can safely batch
+<a href=#65 id=65 data-nosnippet>65</a>            /// because non-determinism is resolved when we sort by slots
+<a href=#66 id=66 data-nosnippet>66</a>        </span>))
+<a href=#67 id=67 data-nosnippet>67</a>        .chain(r_buffered_payloads) <span class="comment">// Combine with all payloads that we've received and not processed yet
+<a href=#68 id=68 data-nosnippet>68</a>        </span>.sort();
+<a href=#69 id=69 data-nosnippet>69</a>    <span class="comment">// Create a cycle since we'll use this seq before we define it
+<a href=#70 id=70 data-nosnippet>70</a>    </span><span class="kw">let </span>(r_next_slot_complete_cycle, r_next_slot) =
+<a href=#71 id=71 data-nosnippet>71</a>        replica_tick.cycle_with_initial(replica_tick.singleton(<span class="macro">q!</span>(<span class="number">0</span>)));
+<a href=#72 id=72 data-nosnippet>72</a>    <span class="comment">// Find highest the sequence number of any payload that can be processed in this tick. This is the payload right before a hole.
+<a href=#73 id=73 data-nosnippet>73</a>    </span><span class="kw">let </span>r_next_slot_after_processing_payloads = r_sorted_payloads
+<a href=#74 id=74 data-nosnippet>74</a>        .clone()
+<a href=#75 id=75 data-nosnippet>75</a>        .cross_singleton(r_next_slot.clone())
+<a href=#76 id=76 data-nosnippet>76</a>        .fold(
+<a href=#77 id=77 data-nosnippet>77</a>            <span class="macro">q!</span>(|| <span class="number">0</span>),
+<a href=#78 id=78 data-nosnippet>78</a>            <span class="macro">q!</span>(|new_next_slot, (sorted_payload, next_slot)| {
+<a href=#79 id=79 data-nosnippet>79</a>                <span class="kw">if </span>sorted_payload.seq == std::cmp::max(<span class="kw-2">*</span>new_next_slot, next_slot) {
+<a href=#80 id=80 data-nosnippet>80</a>                    <span class="kw-2">*</span>new_next_slot = sorted_payload.seq + <span class="number">1</span>;
+<a href=#81 id=81 data-nosnippet>81</a>                }
+<a href=#82 id=82 data-nosnippet>82</a>            }),
+<a href=#83 id=83 data-nosnippet>83</a>        );
+<a href=#84 id=84 data-nosnippet>84</a>    <span class="comment">// Find all payloads that can and cannot be processed in this tick.
+<a href=#85 id=85 data-nosnippet>85</a>    </span><span class="kw">let </span>r_processable_payloads = r_sorted_payloads
+<a href=#86 id=86 data-nosnippet>86</a>        .clone()
+<a href=#87 id=87 data-nosnippet>87</a>        .cross_singleton(r_next_slot_after_processing_payloads.clone())
+<a href=#88 id=88 data-nosnippet>88</a>        .filter(<span class="macro">q!</span>(
+<a href=#89 id=89 data-nosnippet>89</a>            |(sorted_payload, highest_seq)| sorted_payload.seq &lt; <span class="kw-2">*</span>highest_seq
+<a href=#90 id=90 data-nosnippet>90</a>        ))
+<a href=#91 id=91 data-nosnippet>91</a>        .map(<span class="macro">q!</span>(|(sorted_payload, <span class="kw">_</span>)| { sorted_payload }));
+<a href=#92 id=92 data-nosnippet>92</a>    <span class="kw">let </span>r_new_non_processable_payloads = r_sorted_payloads
+<a href=#93 id=93 data-nosnippet>93</a>        .clone()
+<a href=#94 id=94 data-nosnippet>94</a>        .cross_singleton(r_next_slot_after_processing_payloads.clone())
+<a href=#95 id=95 data-nosnippet>95</a>        .filter(<span class="macro">q!</span>(
+<a href=#96 id=96 data-nosnippet>96</a>            |(sorted_payload, highest_seq)| sorted_payload.seq &gt; <span class="kw-2">*</span>highest_seq
+<a href=#97 id=97 data-nosnippet>97</a>        ))
+<a href=#98 id=98 data-nosnippet>98</a>        .map(<span class="macro">q!</span>(|(sorted_payload, <span class="kw">_</span>)| { sorted_payload }));
+<a href=#99 id=99 data-nosnippet>99</a>    <span class="comment">// Save these, we can process them once the hole has been filled
+<a href=#100 id=100 data-nosnippet>100</a>    </span>r_buffered_payloads_complete_cycle.complete_next_tick(r_new_non_processable_payloads);
+<a href=#101 id=101 data-nosnippet>101</a>
+<a href=#102 id=102 data-nosnippet>102</a>    <span class="kw">let </span>r_kv_store = r_processable_payloads
+<a href=#103 id=103 data-nosnippet>103</a>        .clone()
+<a href=#104 id=104 data-nosnippet>104</a>        .persist() <span class="comment">// Optimization: all_ticks() + fold() = fold&lt;static&gt;, where the state of the previous fold is saved and persisted values are deleted.
+<a href=#105 id=105 data-nosnippet>105</a>        </span>.fold(<span class="macro">q!</span>(|| (HashMap::new(), <span class="number">0</span>)), <span class="macro">q!</span>(|(kv_store, next_slot), payload| {
+<a href=#106 id=106 data-nosnippet>106</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(kv) = payload.kv {
+<a href=#107 id=107 data-nosnippet>107</a>                kv_store.insert(kv.key, kv.value);
+<a href=#108 id=108 data-nosnippet>108</a>            }
+<a href=#109 id=109 data-nosnippet>109</a>            <span class="kw-2">*</span>next_slot = payload.seq + <span class="number">1</span>;
+<a href=#110 id=110 data-nosnippet>110</a>        }));
+<a href=#111 id=111 data-nosnippet>111</a>    <span class="comment">// Update the highest seq for the next tick
+<a href=#112 id=112 data-nosnippet>112</a>    </span>r_next_slot_complete_cycle
+<a href=#113 id=113 data-nosnippet>113</a>        .complete_next_tick(r_kv_store.map(<span class="macro">q!</span>(|(_kv_store, next_slot)| next_slot)));
+<a href=#114 id=114 data-nosnippet>114</a>
+<a href=#115 id=115 data-nosnippet>115</a>    <span class="comment">// Send checkpoints to the acceptors when we've processed enough payloads
+<a href=#116 id=116 data-nosnippet>116</a>    </span><span class="kw">let </span>(r_checkpointed_seqs_complete_cycle, r_checkpointed_seqs) =
+<a href=#117 id=117 data-nosnippet>117</a>        replica_tick.cycle::&lt;Optional&lt;usize, <span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
+<a href=#118 id=118 data-nosnippet>118</a>    <span class="kw">let </span>r_max_checkpointed_seq = r_checkpointed_seqs.persist().max().into_singleton();
+<a href=#119 id=119 data-nosnippet>119</a>    <span class="kw">let </span>r_checkpoint_seq_new = r_max_checkpointed_seq
+<a href=#120 id=120 data-nosnippet>120</a>        .zip(r_next_slot)
+<a href=#121 id=121 data-nosnippet>121</a>        .filter_map(<span class="macro">q!</span>(
+<a href=#122 id=122 data-nosnippet>122</a>            <span class="kw">move </span>|(max_checkpointed_seq, next_slot)| <span class="kw">if </span>max_checkpointed_seq
+<a href=#123 id=123 data-nosnippet>123</a>                .map(|m| next_slot - m &gt;= checkpoint_frequency)
+<a href=#124 id=124 data-nosnippet>124</a>                .unwrap_or(<span class="bool-val">true</span>)
+<a href=#125 id=125 data-nosnippet>125</a>            {
+<a href=#126 id=126 data-nosnippet>126</a>                <span class="prelude-val">Some</span>(next_slot)
+<a href=#127 id=127 data-nosnippet>127</a>            } <span class="kw">else </span>{
+<a href=#128 id=128 data-nosnippet>128</a>                <span class="prelude-val">None
+<a href=#129 id=129 data-nosnippet>129</a>            </span>}
+<a href=#130 id=130 data-nosnippet>130</a>        ));
+<a href=#131 id=131 data-nosnippet>131</a>    r_checkpointed_seqs_complete_cycle.complete_next_tick(r_checkpoint_seq_new.clone());
+<a href=#132 id=132 data-nosnippet>132</a>
+<a href=#133 id=133 data-nosnippet>133</a>    <span class="comment">// Tell clients that the payload has been committed. All ReplicaPayloads contain the client's machine ID (to string) as value.
+<a href=#134 id=134 data-nosnippet>134</a>    </span><span class="kw">let </span>r_to_clients = r_processable_payloads
+<a href=#135 id=135 data-nosnippet>135</a>        .filter_map(<span class="macro">q!</span>(|payload| payload.kv))
+<a href=#136 id=136 data-nosnippet>136</a>        .all_ticks();
+<a href=#137 id=137 data-nosnippet>137</a>    (r_checkpoint_seq_new.all_ticks(), r_to_clients)
+<a href=#138 id=138 data-nosnippet>138</a>}</code></pre></div></section></main></body></html>
