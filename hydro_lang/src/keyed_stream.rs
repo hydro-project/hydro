@@ -644,7 +644,7 @@ where
             init,
             acc: comb,
             input: Box::new(self.underlying.ir_node.into_inner()),
-            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+            metadata: self.underlying.location.new_node_metadata::<(K, A)>(),
         };
 
         KeyedSingleton {
