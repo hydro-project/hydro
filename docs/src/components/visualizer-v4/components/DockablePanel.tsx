@@ -39,6 +39,28 @@ export function DockablePanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
 
+  // Initialize floating position based on default position
+  useEffect(() => {
+    if (defaultPosition !== PANEL_POSITIONS.FLOATING && panelRef.current) {
+      // Set a reasonable initial floating position away from corners
+      const offset = 100;
+      switch (defaultPosition) {
+        case PANEL_POSITIONS.TOP_LEFT:
+          setFloatingPosition({ x: offset, y: offset });
+          break;
+        case PANEL_POSITIONS.TOP_RIGHT:
+          setFloatingPosition({ x: window.innerWidth - 320, y: offset });
+          break;
+        case PANEL_POSITIONS.BOTTOM_LEFT:
+          setFloatingPosition({ x: offset, y: window.innerHeight - 300 });
+          break;
+        case PANEL_POSITIONS.BOTTOM_RIGHT:
+          setFloatingPosition({ x: window.innerWidth - 320, y: window.innerHeight - 300 });
+          break;
+      }
+    }
+  }, [defaultPosition]);
+
   // Handle drag start
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!headerRef.current || !panelRef.current) return;
@@ -47,15 +69,33 @@ export function DockablePanel({
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     
-    setDragOffset({
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    });
+    // For floating panels, calculate offset from current position
+    // For docked panels, calculate offset from mouse to panel origin
+    if (position === PANEL_POSITIONS.FLOATING) {
+      setDragOffset({
+        x: clientX - floatingPosition.x,
+        y: clientY - floatingPosition.y,
+      });
+    } else {
+      // For docked panels, use a small offset to avoid jumping
+      setDragOffset({
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+      });
+      // Immediately switch to floating mode when starting to drag a docked panel
+      setFloatingPosition({
+        x: rect.left,
+        y: rect.top,
+      });
+      setPosition(PANEL_POSITIONS.FLOATING);
+      setIsDocked(false);
+    }
+    
     setIsDragging(true);
     
     // Prevent text selection during drag
     e.preventDefault();
-  }, []);
+  }, [position, floatingPosition]);
 
   // Handle drag move
   const handleDragMove = useCallback((e: MouseEvent | TouchEvent) => {
@@ -141,9 +181,7 @@ export function DockablePanel({
     const baseStyles: React.CSSProperties = {
       position: 'absolute',
       minWidth: `${minWidth}px`,
-      minHeight: `${minHeight}px`,
       maxWidth: `${maxWidth}px`,
-      maxHeight: `${maxHeight}px`,
       backgroundColor: COMPONENT_COLORS.PANEL_BACKGROUND,
       border: `1px solid ${COMPONENT_COLORS.BORDER_MEDIUM}`,
       borderRadius: SIZES.BORDER_RADIUS_DEFAULT,
@@ -151,6 +189,16 @@ export function DockablePanel({
       zIndex: isDragging ? 1000 : 100,
       overflow: 'hidden',
     };
+
+    // Adjust height based on collapse state
+    if (isCollapsed) {
+      // When collapsed, use auto height to fit just the header
+      baseStyles.height = 'auto';
+      baseStyles.minHeight = 'auto';
+    } else {
+      baseStyles.minHeight = `${minHeight}px`;
+      baseStyles.maxHeight = `${maxHeight}px`;
+    }
 
     if (isDocked && position !== PANEL_POSITIONS.FLOATING) {
       // Docked positioning
@@ -250,6 +298,9 @@ export function DockablePanel({
             fontSize: TYPOGRAPHY.INFOPANEL_BASE,
             maxHeight: `${maxHeight - 40}px`,
             overflowY: 'auto',
+            // Ensure content area doesn't add extra space
+            margin: 0,
+            border: 'none',
           }}
         >
           {children}

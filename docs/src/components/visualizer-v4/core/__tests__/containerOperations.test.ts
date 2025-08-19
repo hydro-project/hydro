@@ -44,7 +44,7 @@ describe('Container Operations', () => {
       
       const node1 = nodes.find(n => n.id === 'node1');
       expect(node1).toBeDefined();
-      expect(node1!.label).toBe('Test Node 1');
+      expect(node1!.shortLabel).toBe('Test Node 1');
       expect(node1!.style).toBe('default');
     });
 
@@ -107,7 +107,7 @@ describe('Container Operations', () => {
       for (let i = 0; i < 5; i++) {
         const node = state.visibleNodes.find(n => n.id === `node${i}`);
         expect(node).toBeDefined();
-        expect(node!.label).toBe(`Node ${i}`);
+        expect(node!.shortLabel).toBe(`Node ${i}`);
       }
     });
   });

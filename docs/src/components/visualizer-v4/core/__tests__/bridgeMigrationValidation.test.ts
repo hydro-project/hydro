@@ -222,12 +222,12 @@ describe('Bridge Migration Validation', () => {
       
       expect(handles2).toEqual({
         sourceHandle: 'custom-out',
-        targetHandle: 'default-in'  // Original fallback
+        targetHandle: 'in-top'  // Current system uses discrete handles
       });
       
       expect(handles3).toEqual({
-        sourceHandle: 'default-out', // Original fallback
-        targetHandle: 'default-in'   // Original fallback
+        sourceHandle: 'out-bottom', // Current system uses discrete handles
+        targetHandle: 'in-top'   // Current system uses discrete handles
       });
     });
   });
@@ -279,7 +279,7 @@ describe('Bridge Migration Validation', () => {
       
       // ReactFlow would get consistent handle information
       expect(edgeHandles.sourceHandle).toBe('out-port');
-      expect(edgeHandles.targetHandle).toBe('default-in');
+      expect(edgeHandles.targetHandle).toBe('in-top'); // Current system uses discrete handles
     });
   });
 });

@@ -24,7 +24,7 @@ describe('Data Integrity: Container vs Node Collections', () => {
       {
         id: 'test-hierarchy',
         name: 'Test Hierarchy',
-        hierarchy: [
+        children: [
           {
             id: 'container1',
             name: 'Container 1',
@@ -82,8 +82,6 @@ describe('Data Integrity: Container vs Node Collections', () => {
       duplicateIds.slice(0, 3).forEach(id => {
         const nodeData = graphNodes.get(id);
         console.error(`  ${id} in graphNodes:`, {
-          label: nodeData?.label,
-          nodeType: nodeData?.nodeType,
           hasWidth: nodeData?.width !== undefined,
           hasHeight: nodeData?.height !== undefined
         });

@@ -27,9 +27,10 @@ export function HierarchyTree({
   // Convert HierarchyTreeNode to Ant Design TreeDataNode format
   const convertToTreeData = (nodes: HierarchyTreeNode[]): TreeDataNode[] => {
     return nodes.map(node => {
+      const labelToUse = node.shortLabel || node.label;
       const truncatedLabel = truncateLabels 
-        ? truncateLabel(node.label, { maxLength: maxLabelLength, leftTruncate: true })
-        : node.label;
+        ? truncateLabel(labelToUse, { maxLength: maxLabelLength, leftTruncate: true })
+        : labelToUse;
       const leafChildrenCount = Math.max(0, node.nodeCount - (node.children?.length || 0));
       const hasChildren = node.children && node.children.length > 0;
       const hasLeafChildren = leafChildrenCount > 0;
@@ -89,7 +90,7 @@ export function HierarchyTree({
         isLeaf: !hasChildren, // Explicitly mark leaf nodes
         // Add custom properties for styling
         data: {
-          originalLabel: node.label,
+          originalLabel: labelToUse,
           truncatedLabel,
           nodeCount: node.nodeCount,
           leafChildrenCount,
@@ -172,7 +173,10 @@ export function HierarchyTree({
         style={{
           fontSize: TYPOGRAPHY.INFOPANEL_HIERARCHY_NODE,
           color: COMPONENT_COLORS.TEXT_PRIMARY,
-          backgroundColor: 'transparent'
+          backgroundColor: 'transparent',
+          // Ensure proper rendering in Card layout
+          minHeight: '20px',
+          width: '100%'
         }}
         // Enhanced styling through CSS variables for better hierarchy
         rootStyle={{
@@ -180,6 +184,8 @@ export function HierarchyTree({
           '--antd-tree-node-selected-bg': COMPONENT_COLORS.BUTTON_HOVER_BACKGROUND,
           '--antd-tree-indent-size': '16px', // Reduce indent for better space usage
           '--antd-tree-node-padding': '2px 4px', // Better padding
+          width: '100%',
+          overflow: 'visible'
         } as React.CSSProperties}
       />
     </div>

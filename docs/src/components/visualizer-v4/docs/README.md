@@ -8,6 +8,35 @@ Welcome to the comprehensive documentation for the Hydro graph visualization sys
 Get up and running quickly with basic examples and common patterns.
 - Installation and setup
 - Basic graph creation
+
+## 🔄 JSON Schema Documentation System
+
+This directory also contains the automatic schema documentation system for the Hydro JSON format.
+
+### Overview
+The system ensures that the JSON format documentation shown to users is always in sync with the actual TypeScript interfaces used by the parser.
+
+### Files
+- **`generateJSONSchema.ts`** - Main schema documentation generator
+- **`syncSchema.js`** - Build-time script to sync schema from parser interfaces
+
+### How It Works
+1. **Source of Truth**: TypeScript interfaces in `../core/JSONParser.ts`
+2. **Generation**: `syncSchema.js` extracts interfaces and updates `generateJSONSchema.ts`
+3. **Usage**: `FileDropZone.tsx` imports and displays the generated documentation
+
+### Manual Sync
+```bash
+cd docs
+node src/components/visualizer-v4/docs/syncSchema.js
+```
+
+### Features
+- ✅ **Auto-sync**: Documentation stays current with code changes
+- ✅ **Type safety**: Uses actual TypeScript interfaces as source
+- ✅ **Version tracking**: Shows schema version in UI
+- ✅ **Expandable UI**: Clean collapsible documentation panel
+- ✅ **Examples**: Live code examples from real schema
 - React integration
 - Common patterns and examples
 

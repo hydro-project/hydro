@@ -78,6 +78,9 @@ function VisV4Component() {
   // Track if we're currently changing grouping (to prevent DropZone flicker)
   const [isChangingGrouping, setIsChangingGrouping] = React.useState(false);
   
+  // Track which nodes are showing full labels (node ID -> boolean)
+  const [nodesShowingFullLabel, setNodesShowingFullLabel] = React.useState(new Set());
+  
   // Ref for FlowGraph to call fitView directly
   const flowGraphRef = React.useRef(null);
 
@@ -134,9 +137,11 @@ function VisV4Component() {
     if (!parseGraphJSON || !createRenderConfig || !createVisualizationState || !validateGraphJSON || !getAvailableGroupings || loading) return;
     
     const urlParams = new URLSearchParams(location.search);
-    const dataParam = urlParams.get('data');
-    const compressedParam = urlParams.get('compressed');
-    const fileParam = urlParams.get('file');
+    // Also check URL fragment/hash for parameters
+    const hashParams = new URLSearchParams(location.hash.slice(1)); // Remove the '#'
+    const dataParam = urlParams.get('data') || hashParams.get('data');
+    const compressedParam = urlParams.get('compressed') || hashParams.get('compressed');
+    const fileParam = urlParams.get('file') || hashParams.get('file');
     
     // Handle file path parameter (from Rust debug output)
     if (fileParam && !generatedFilePath) {
@@ -178,15 +183,26 @@ function VisV4Component() {
       // Handle compressed data
       loadCompressedData(compressedParam);
     }
-  }, [location.search, parseGraphJSON, createRenderConfig, validateGraphJSON, getAvailableGroupings, createVisualizationState, loading, currentVisualizationState, currentGrouping, generatedFilePath]);
+  }, [location.search, location.hash, parseGraphJSON, createRenderConfig, validateGraphJSON, getAvailableGroupings, createVisualizationState, loading, currentVisualizationState, currentGrouping, generatedFilePath]);
 
   // Load compressed data from URL parameter
   const loadCompressedData = React.useCallback(async (compressedData) => {
     try {
       setLoading(true);
       
+      // Convert URL-safe base64 to standard base64
+      // Replace URL-safe characters and add padding if needed
+      let standardBase64 = compressedData
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+      
+      // Add padding if needed
+      while (standardBase64.length % 4) {
+        standardBase64 += '=';
+      }
+      
       // Decode base64 and decompress
-      const compressedBytes = Uint8Array.from(atob(compressedData), c => c.charCodeAt(0));
+      const compressedBytes = Uint8Array.from(atob(standardBase64), c => c.charCodeAt(0));
       
       // Use browser's built-in decompression (if available) or fallback
       let jsonString;
@@ -289,59 +305,27 @@ function VisV4Component() {
     }
   }, [parseGraphJSON, createRenderConfig, validateGraphJSON, getAvailableGroupings, currentGrouping]);
 
-  // Create test graph
-  const createTestGraph = React.useCallback(() => {
-    if (!createVisualizationState || !NODE_STYLES || !EDGE_STYLES) return;
+  // Event listener for example data loading from CompleteExampleDisplay
+  React.useEffect(() => {
+    const handleLoadExampleData = (event) => {
+      const exampleData = event.detail;
+      if (exampleData) {
+        handleFileLoad(exampleData);
+      }
+    };
+
+    window.addEventListener('load-example-data', handleLoadExampleData);
     
-    try {
-      const visState = createVisualizationState();
-      
-      // Add some test nodes
-      visState.setGraphNode('node1', { 
-        label: 'Source Node', 
-        style: NODE_STYLES.DEFAULT,
-        position: { x: 0, y: 0 }
-      });
-      
-      visState.setGraphNode('node2', { 
-        label: 'Transform Node', 
-        style: NODE_STYLES.DEFAULT,
-        position: { x: 200, y: 100 }
-      });
-      
-      visState.setGraphNode('node3', { 
-        label: 'Sink Node', 
-        style: NODE_STYLES.DEFAULT,
-        position: { x: 400, y: 0 }
-      });
-      
-      // Add edges
-      visState.setGraphEdge('edge1', {
-        source: 'node1',
-        target: 'node2',
-        style: EDGE_STYLES.DEFAULT
-      });
-      
-      visState.setGraphEdge('edge2', {
-        source: 'node2',
-        target: 'node3',
-        style: EDGE_STYLES.DEFAULT
-      });
-      
-      setCurrentVisualizationState(visState);
-      setError(null);
-      
-    } catch (err) {
-      console.error('❌ Error creating test graph:', err);
-      setError(`Failed to create test graph: ${err.message}`);
-    }
-  }, [createVisualizationState, NODE_STYLES, EDGE_STYLES]);
+    return () => {
+      window.removeEventListener('load-example-data', handleLoadExampleData);
+    };
+  }, [handleFileLoad]);
 
   // ============================
   // EVENT HANDLERS
   // ============================
 
-  // Node click handler - handles container collapse/expand
+  // Node click handler - handles container collapse/expand and label toggle
   const handleNodeClick = React.useCallback(async (event, node) => {
     if (!currentVisualizationState) return;
     
@@ -390,8 +374,51 @@ function VisV4Component() {
         // Add a small delay to let the layout complete
         setTimeout(() => setIsLayoutRunning(false), 1000);
       }
+    } else {
+      // Standard node - toggle label display between short and full
+      const nodeData = node.data;
+      if (nodeData && nodeData.shortLabel && nodeData.fullLabel) {
+        const nodeId = node.id;
+        const isShowingFull = nodesShowingFullLabel.has(nodeId);
+        
+        console.log(`🏷️ Toggling label for node ${nodeId}: ${isShowingFull ? 'full→short' : 'short→full'}`);
+        console.log(`🏷️ Before update - shortLabel: "${nodeData.shortLabel}", fullLabel: "${nodeData.fullLabel}"`);
+        
+        // Update the node's display label in the visualization state
+        const currentLabel = isShowingFull ? nodeData.shortLabel : nodeData.fullLabel;
+        console.log(`🏷️ Setting label to: "${currentLabel}"`);
+        currentVisualizationState.updateNode(nodeId, { 
+          label: currentLabel 
+        });
+        
+        // Verify the update worked
+        const updatedNode = currentVisualizationState._collections.graphNodes.get(nodeId);
+        console.log(`🏷️ After update - node.label: "${updatedNode?.label}"`);
+        
+        // Update our tracking state
+        setNodesShowingFullLabel(prev => {
+          const newSet = new Set(prev);
+          if (isShowingFull) {
+            newSet.delete(nodeId);
+          } else {
+            newSet.add(nodeId);
+          }
+          return newSet;
+        });
+        
+        // Trigger layout refresh to show the updated label
+        console.log('🏷️ Triggering layout refresh...');
+        if (flowGraphRef.current && flowGraphRef.current.refreshLayout) {
+          await flowGraphRef.current.refreshLayout();
+          console.log('✅ Layout refresh completed for label toggle');
+        } else {
+          // Fallback: force component update if refreshLayout not available
+          console.log('🏷️ Using forceUpdate fallback');
+          forceUpdate();
+        }
+      }
     }
-  }, [currentVisualizationState, autoFit]);
+  }, [currentVisualizationState, autoFit, nodesShowingFullLabel]);
 
   // Pack all containers (collapse all)
   const handlePackAll = React.useCallback(async () => {
@@ -516,11 +543,12 @@ function VisV4Component() {
       const windowHeight = window.innerHeight;
       const windowWidth = window.innerWidth;
       
-      // Calculate height based on window size - MUCH more aggressive
-      let newHeight = windowHeight - 80; // Almost fullscreen, leaving just 80px for header/controls
+      // Calculate height based on window size - account for page padding (24px total) 
+      // header text (~60px), controls, and margins (~80px total)
+      let newHeight = windowHeight - 160; 
       
-      // Much higher minimum heights - make it impressive!
-      const minHeight = 700;
+      // Minimum height for usability
+      const minHeight = 400;
       newHeight = Math.max(newHeight, minHeight);
       
       setCanvasHeight(newHeight);
@@ -670,42 +698,24 @@ function VisV4Component() {
   // Render main interface
   return (
     <div style={{ 
-      padding: '12px', // Reduced padding
+      padding: '20px', // Increased padding for better spacing
       maxWidth: 'none', // Remove max width constraint 
-      margin: '0',
-      width: '100vw', // Use full viewport width
-      minHeight: '100vh' // Use full viewport height
+      margin: '0 20px 40px 20px', // Add left/right margins and bottom margin
+      width: 'calc(100vw - 80px)', // Full width minus margins (20px * 2 on each side)
+      minHeight: '100vh', // Use minimum height instead of fixed height
+      overflow: 'auto', // Enable scrolling
+      boxSizing: 'border-box'
     }}>
       <div style={{ marginBottom: '16px' }}> {/* Reduced margin */}
-        <h1 style={{ margin: '0 0 4px 0', fontSize: TYPOGRAPHY.PAGE_TITLE }}>Graph Visualizer v4</h1> {/* Using constant */}
+        <h1 style={{ margin: '0 0 4px 0', fontSize: TYPOGRAPHY.PAGE_TITLE }}>HyGraphViz</h1> {/* Using constant */}
         <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: TYPOGRAPHY.PAGE_SUBTITLE }}> {/* Using constant */}
-          Latest version of the Hydro graph visualization system with enhanced architecture and performance.
+          A hierarchical graph visualization tool for complex graphs, originally written for the <a href="https://hydro.run">Hydro project</a>.
         </p>
-        {!currentVisualizationState && (
-          <div style={{ marginBottom: '16px' }}> {/* Reduced margin */}
-            <button 
-              onClick={createTestGraph}
-              style={{
-                padding: '8px 16px', // Smaller button
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                marginRight: '12px',
-                fontSize: TYPOGRAPHY.BUTTON_SMALL
-              }}
-            >
-              Create Test Graph
-            </button>
-            <span style={{ color: '#666', fontSize: TYPOGRAPHY.UI_SMALL }}>or upload a JSON file below</span>
-          </div>
-        )}
       </div>
 
       {/* Controls */}
       {currentVisualizationState && LayoutControls && (
-        <div style={{ marginBottom: '8px' }}> {/* Reduced margin */}
+        <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}> {/* Reduced margin, flex layout */}
           <LayoutControls
             visualizationState={currentVisualizationState}
             currentLayout={layoutAlgorithm}
@@ -716,10 +726,43 @@ function VisV4Component() {
             onExpandAll={handleUnpackAll}
             onFitView={handleFitView}
           />
+          
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              onClick={() => {
+                // Clear React state
+                setCurrentVisualizationState(null);
+                setGraphData(null);
+                setError(null);
+                setGeneratedFilePath(null);
+                setGroupingOptions([]);
+                setCurrentGrouping(null);
+                
+                // Clear URL parameters and reload to ensure clean state
+                const url = new URL(window.location);
+                url.search = ''; // Clear query parameters
+                url.hash = '';   // Clear hash parameters
+                window.history.replaceState({}, '', url.toString());
+                
+                // Reload to ensure completely clean state
+                window.location.reload();
+              }}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#6c757d',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Clear Graph
+            </button>
+          </div>
         </div>
-      )}
-
-      {isChangingGrouping ? (
+      )}      {isChangingGrouping ? (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -775,7 +818,7 @@ function VisV4Component() {
           </div>
         )
       ) : (
-        <div style={{ marginBottom: '8px' }}> {/* Reduced margin */}
+        <div style={{ marginBottom: '24px' }}> {/* Increased margin for better spacing */}
           <div 
             style={{
               width: '100%',
@@ -784,7 +827,8 @@ function VisV4Component() {
               borderRadius: '8px',
               backgroundColor: 'white',
               position: 'relative',
-              display: 'flex' // Use flexbox layout
+              display: 'flex', // Use flexbox layout
+              overflow: 'hidden'
             }}
           >
             {/* InfoPanel - fixed width sidebar */}
@@ -799,6 +843,7 @@ function VisV4Component() {
                 <InfoPanel
                   visualizationState={currentVisualizationState}
                   legendData={graphData && graphData.legend ? graphData.legend : {}}
+                  edgeStyleConfig={graphData && graphData.edgeStyleConfig ? graphData.edgeStyleConfig : null}
                   hierarchyChoices={Array.isArray(groupingOptions) ? groupingOptions : []}
                   currentGrouping={typeof currentGrouping === 'string' ? currentGrouping : null}
                   onGroupingChange={handleGroupingChange}
@@ -815,9 +860,9 @@ function VisV4Component() {
             <div style={{ 
               flex: 1,
               height: '100%',
-              minHeight: `${canvasHeight}px`,
+              width: '100%',
               position: 'relative',
-              padding: '2%' // Add 2% border padding around the ReactFlow canvas
+              overflow: 'hidden'
             }}>
               {FlowGraph && (() => {
                 const fullConfig = {
@@ -916,69 +961,17 @@ function VisV4Component() {
               </div>
             )}
           </div>
-          <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <button 
-              onClick={() => {
-                setCurrentVisualizationState(null);
-                setGraphData(null);
-                setError(null);
-              }}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#6c757d',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Clear Graph
-            </button>
-            {graphData && (
-              <button 
-                onClick={() => {
-                  const dataString = JSON.stringify(graphData);
-                  const encoded = btoa(dataString);
-                  const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
-                  navigator.clipboard.writeText(url).then(() => {
-                    alert('Share URL copied to clipboard!');
-                  });
-                }}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Copy Share URL
-              </button>
-            )}
-            <span style={{ color: '#666', fontSize: '14px' }}>
-              Powered by visualizer-v4 architecture
-            </span>
-          </div>
         </div>
       )}
-
-      <div style={{
-        marginTop: '32px',
-        padding: '16px',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '8px',
-        fontSize: '14px',
-        color: '#666'
+      
+      {/* Version number and attribution displayed underneath canvas */}
+      <div style={{ 
+        textAlign: 'center', 
+        marginTop: '16px', 
+        fontSize: '12px', 
+        color: '#999' 
       }}>
-        <h4 style={{ margin: '0 0 8px 0' }}>About this version:</h4>
-        <ul style={{ margin: 0, paddingLeft: '20px' }}>
-          <li>Latest visualizer-v4 architecture with enhanced performance</li>
-          <li>Improved bridge architecture eliminating layout bugs</li>
-          <li>Full ReactFlow v12 + ELK layout integration</li>
-          <li>Support for URL sharing of graphs</li>
-          <li>Previous versions available at <a href="/vis3">/vis3</a> and <a href="/visualizer">/visualizer</a></li>
-        </ul>
+        <div>HyGraphViz v0.4</div>
       </div>
     </div>
   );
@@ -987,8 +980,8 @@ function VisV4Component() {
 export default function VisPage() {
   return (
     <Layout
-      title="Graph Visualizer v4"
-      description="Latest Hydro graph visualization system with enhanced architecture and performance">
+      title="Hyrarchical Graph Visualizer"
+      description="A hierarchical graph visualization tool for complex graphs, built for the Hydro project.">
       <main>
         <BrowserOnly fallback={<div>Loading...</div>}>
           {() => <VisV4Component />}

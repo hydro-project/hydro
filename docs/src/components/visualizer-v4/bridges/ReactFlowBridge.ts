@@ -63,6 +63,14 @@ export class ReactFlowBridge {
    * TRUST ELK: Use ELK's hierarchical layout results completely
    */
   visStateToReactFlow(visState: VisualizationState): ReactFlowData {
+    console.log(`[Bridge] 🔍 Converting VisualizationState with ${visState.visibleNodes.length} visible nodes`);
+    
+    // Debug: Log first few visible nodes
+    const firstFewNodes = visState.visibleNodes.slice(0, 5);
+    firstFewNodes.forEach(node => {
+      console.log(`[Bridge] 📋 Node ${node.id}: label="${node.label}", shortLabel="${node.shortLabel}", fullLabel="${node.fullLabel}"`);
+    });
+
     const nodes: ReactFlowNode[] = [];
     const edges: ReactFlowEdge[] = [];
     
@@ -75,15 +83,8 @@ export class ReactFlowBridge {
     // Convert regular nodes using ELK positions  
     this.convertNodesFromELK(visState, nodes, parentMap);
     
-    // Convert edges using EdgeBridge for proper styling
-    const visibleEdges = Array.from(visState.visibleEdges);
-    const edgeBridgeOptions: EdgeBridgeOptions = {
-      edgeStyleConfig: this.edgeStyleConfig,
-      showPropertyLabels: true,
-      enableAnimations: true
-    };
-    const convertedEdges = convertEdgesToReactFlow(visibleEdges, edgeBridgeOptions);
-    edges.push(...convertedEdges);
+    // Convert edges using smart handle selection
+    this.convertEdges(visState, edges);
     
     return { nodes, edges };
   }
@@ -114,13 +115,25 @@ export class ReactFlowBridge {
         type: 'standard',
         position,
         data: {
-          label: node.label || node.id,
+          label: node.label || node.shortLabel || node.id, // Respect toggled label field
+          shortLabel: node.shortLabel || node.id,
+          fullLabel: node.fullLabel || node.shortLabel || node.id,
           style: node.style || 'default',
           colorPalette: this.colorPalette,
           ...this.extractCustomProperties(node)
         }
         // NO parentId - completely flat
       };
+      
+      // Debug: Log label data for troubleshooting
+      if (node.id === '0' || node.id === '7') {
+        console.log(`[Bridge] 🏷️ Node ${node.id}: label="${flatNode.data.label}", shortLabel="${flatNode.data.shortLabel}", fullLabel="${flatNode.data.fullLabel}"`);
+      }
+      
+      // Debug: Log node label resolution
+      if (node.label && node.label !== node.shortLabel) {
+        console.log(`🔗 Bridge: Node ${node.id} using toggled label: "${node.label}" (short: "${node.shortLabel}", full: "${node.fullLabel}")`);
+      }
       
       nodes.push(flatNode);
     });
@@ -157,7 +170,7 @@ export class ReactFlowBridge {
         type: 'container',
         position,
         data: {
-          label: (container as any).data?.label || (container as any).label || container.id,
+          label: container.label || container.id, // Use single label field for containers
           style: (container as any).style || 'default',
           collapsed: container.collapsed || false,
           colorPalette: this.colorPalette,
@@ -350,12 +363,15 @@ export class ReactFlowBridge {
       const nodeCount = container.collapsed ? 
         visState.getContainerChildren(container.id)?.size || 0 : 0;
       
+      // Debug: Log container label source
+      console.log(`🏷️ Container ${container.id}: label="${container.label}", id="${container.id}", using="${container.label || container.id}"`);
+      
       const containerNode: ReactFlowNode = {
         id: container.id,
         type: 'container',
         position,
         data: {
-          label: (container as any).label || container.id,
+          label: container.label || container.id, // Use container.label, fallback to id
           style: (container as any).style || 'default',
           collapsed: container.collapsed,
           colorPalette: this.colorPalette,
@@ -429,7 +445,9 @@ export class ReactFlowBridge {
         type: 'standard',
         position,
         data: {
-          label: node.label || node.id,
+          label: node.label || node.shortLabel || node.id, // Respect toggled label field
+          shortLabel: node.shortLabel || node.id,
+          fullLabel: node.fullLabel || node.shortLabel || node.id,
           style: node.style || 'default',
           colorPalette: this.colorPalette,
           ...this.extractCustomProperties(node)
@@ -439,6 +457,11 @@ export class ReactFlowBridge {
         // ReactFlow sub-flow: constrain children within parent bounds
         extent: parentId ? 'parent' : undefined
       };
+
+      // Debug: Log label handling for ELK nodes
+      if (node.label && node.label !== node.shortLabel) {
+        console.log(`🔗 Bridge (ELK): Node ${node.id} using toggled label: "${node.label}" (short: "${node.shortLabel}", full: "${node.fullLabel}")`);
+      }
       
       nodes.push(standardNode);
     });
@@ -448,107 +471,105 @@ export class ReactFlowBridge {
    * Convert regular edges to ReactFlow edges
    */
   private convertEdges(visState: VisualizationState, edges: ReactFlowEdge[]): void {
-    visState.visibleEdges.forEach((edge, index) => {
-      const handleConfig = getHandleConfig();
+    // First, convert edges using EdgeBridge for proper styling
+    const visibleEdges = Array.from(visState.visibleEdges);
+    const edgeBridgeOptions: EdgeBridgeOptions = {
+      edgeStyleConfig: this.edgeStyleConfig,
+      showPropertyLabels: true,
+      enableAnimations: true
+    };
+    const convertedEdges = convertEdgesToReactFlow(visibleEdges, edgeBridgeOptions);
+    
+    // Then, apply smart handle selection to each converted edge
+    convertedEdges.forEach((reactFlowEdge, index) => {
+      const originalEdge = visibleEdges[index];
       
-      // Determine edge type based on handle strategy
-      const edgeType: 'standard' | 'floating' = CURRENT_HANDLE_STRATEGY === 'floating' ? 'floating' : 'standard';
-      
-      // For floating edges, create edge without handle properties
-      // For other edges, create edge with handle properties that can be set
-      let reactFlowEdge: ReactFlowEdge;
-      
-      if (CURRENT_HANDLE_STRATEGY === 'floating') {
-        // Floating edges: completely omit handle properties (don't set them to undefined)
-        reactFlowEdge = {
-          id: edge.id,
-          type: edgeType,
-          source: edge.source,
-          target: edge.target,
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 15,
-            height: 15,
-            color: '#999'
-          },
-          data: {
-            style: edge.style || 'default'
-          } as any
-        };
+      if (CURRENT_HANDLE_STRATEGY === 'discrete') {
+        const smartHandles = this.getEdgeHandles(visState, originalEdge.id);
         
-        // Extra safety: ensure no handle properties exist
-        delete (reactFlowEdge as any).sourceHandle;
-        delete (reactFlowEdge as any).targetHandle;
-        
-      } else {
-        // Standard edges: include handle properties
-        reactFlowEdge = {
-          id: edge.id,
-          type: edgeType,
-          source: edge.source,
-          target: edge.target,
-          sourceHandle: undefined,
-          targetHandle: undefined,
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 15,
-            height: 15,
-            color: '#999'
-          },
-          data: {
-            style: edge.style || 'default'
-          } as any
-        };
+        // Override EdgeBridge handles with smart selection
+        reactFlowEdge.sourceHandle = smartHandles.sourceHandle || 'out-bottom';
+        reactFlowEdge.targetHandle = smartHandles.targetHandle || 'in-top';
       }
-      
-      // Check if this edge has layout/routing information from ELK
-      if (edge.layout && edge.layout.sections && edge.layout.sections.length > 0) {
-        // Handle existing routing sections
-      } else if (edge.sections && edge.sections.length > 0) {
-        // Use the sections directly if layout.sections is not available
-        const sections = edge.sections.map((section, i) => {
-          const startPoint = section.startPoint;
-          const endPoint = section.endPoint;
-          const bendPoints = section.bendPoints || [];
-          
-          return {
-            ...section,
-            startPoint,
-            endPoint,
-            bendPoints
-          };
-        });
-        
-        // Store routing sections in ReactFlow edge data for custom edge renderer
-        (reactFlowEdge.data as any).routing = sections;
-      }
-      
-      // Handle strategy should be determined by edge properties, not hard-coded
-      const edgeHandles = this.getEdgeHandles(visState, edge.id);
-      if (edgeType === 'floating') {
-        // For floating edges, use actual handle IDs but let FloatingEdge component calculate positions
-        // React Flow v12 requires valid handle IDs, even for floating edges
-        reactFlowEdge.sourceHandle = 'out-bottom'; // Default handles that exist on nodes
-        reactFlowEdge.targetHandle = 'in-top';
-      } else if (CURRENT_HANDLE_STRATEGY === 'discrete' || !handleConfig.enableContinuousHandles) {
-        // Use discrete handles with forced top-down flow for consistent edge positioning
-        reactFlowEdge.sourceHandle = edgeHandles.sourceHandle || 'out-bottom';
-        reactFlowEdge.targetHandle = edgeHandles.targetHandle || 'in-top';
-      }
-      
-      edges.push(reactFlowEdge);
     });
+    
+    // Add converted edges to the result array
+    edges.push(...convertedEdges);
   }
 
   /**
    * Get edge handles for ReactFlow bridge (moved from VisualizationState)
    * This is ReactFlow-specific logic for handle assignment
+   * For discrete strategy: intelligently choose handles based on node positions
+   * Prefer: inputs at top or left, outputs at bottom or right
    */
   getEdgeHandles(visState: VisualizationState, edgeId: string): { sourceHandle?: string; targetHandle?: string } {
     const edge = visState.getGraphEdge(edgeId);
-    if (!edge) return {};
+    if (!edge) {
+      return {};
+    }
     
-    // Handle edges with port information
+    if (CURRENT_HANDLE_STRATEGY === 'discrete') {
+      // Get source and target nodes to determine optimal handle positions
+      const sourceNode = visState.getGraphNode(edge.source);
+      const targetNode = visState.getGraphNode(edge.target);
+      
+      if (sourceNode && targetNode && sourceNode.layout && targetNode.layout) {
+        // Fix: Access position coordinates correctly from nested structure
+        const sourcePos = { 
+          x: sourceNode.layout.position?.x || sourceNode.layout.x || 0, 
+          y: sourceNode.layout.position?.y || sourceNode.layout.y || 0,
+          width: sourceNode.layout.dimensions?.width || sourceNode.layout.width || 120,
+          height: sourceNode.layout.dimensions?.height || sourceNode.layout.height || 40
+        };
+        const targetPos = { 
+          x: targetNode.layout.position?.x || targetNode.layout.x || 0, 
+          y: targetNode.layout.position?.y || targetNode.layout.y || 0,
+          width: targetNode.layout.dimensions?.width || targetNode.layout.width || 120,
+          height: targetNode.layout.dimensions?.height || targetNode.layout.height || 40
+        };
+        
+        // Calculate center-to-center distances
+        const sourceCenterX = sourcePos.x + sourcePos.width / 2;
+        const sourceCenterY = sourcePos.y + sourcePos.height / 2;
+        const targetCenterX = targetPos.x + targetPos.width / 2;
+        const targetCenterY = targetPos.y + targetPos.height / 2;
+        
+        const deltaX = targetCenterX - sourceCenterX;
+        const deltaY = targetCenterY - sourceCenterY;
+        
+        // Use absolute distances to determine primary direction
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
+        
+        let sourceHandle: string;
+        let targetHandle: string;
+        
+        // STRICT RULES: 
+        // - Sources only use: out-bottom, out-right (NEVER out-top or out-left)
+        // - Targets only use: in-top, in-left (NEVER in-bottom or in-right)
+        
+        if (absX > absY * 0.8) {
+          // Horizontal relationship is stronger - prefer left/right handles
+          sourceHandle = 'out-right';   // Always use right for horizontal sources
+          targetHandle = 'in-left';     // Always use left for horizontal targets
+        } else {
+          // Vertical or diagonal relationship - use bottom/top handles
+          sourceHandle = 'out-bottom';  // Always use bottom for sources (never top!)
+          targetHandle = 'in-top';      // Always use top for targets
+        }
+        
+        return { sourceHandle, targetHandle };
+      }
+      
+      // Fallback to default if no layout information
+      return {
+        sourceHandle: (edge as any).sourceHandle || 'out-bottom',
+        targetHandle: (edge as any).targetHandle || 'in-top'
+      };
+    }
+    
+    // Handle edges with port information for other strategies
     return {
       sourceHandle: (edge as any).sourceHandle || 'default-out',
       targetHandle: (edge as any).targetHandle || 'default-in'

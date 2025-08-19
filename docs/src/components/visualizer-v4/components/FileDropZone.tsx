@@ -2,10 +2,247 @@
  * File Drop Zone Component for Vis System
  * 
  * Handles file upload via drag-and-drop or file input.
- * Integrates with the new vis system's JSON parser.
+ * Integrates with the new vis system          >
+          → View complete working example
+        </button>   >
+          � View completeexport interface FileDropZoneProps {
+  onFileLoad: (data: any) => void;ng example
+        </button>JSON parser.
  */
 
 import React, { useState, useCallback } from 'react';
+import { generateSchemaDocumentation, SCHEMA_VERSION } from '../docs/generateJSONSchema';
+
+// JSON Format Documentation Component
+function JSONFormatDocumentation() {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const schema = generateSchemaDocumentation();
+
+  const toggleExpanded = () => setIsExpanded(!isExpanded);
+
+  if (!isExpanded) {
+    return (
+      <div style={{ 
+        marginTop: '32px', 
+        paddingTop: '24px', 
+        borderTop: '1px solid #eee', 
+        color: '#777', 
+        fontSize: '14px' 
+      }}>
+        <button
+          onClick={toggleExpanded}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#007acc',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            fontSize: '14px',
+            padding: 0
+          }}
+        >
+          📖 Click here for documentation on our JSON format
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ 
+      marginTop: '32px', 
+      paddingTop: '24px', 
+      borderTop: '1px solid #eee', 
+      color: '#555', 
+      fontSize: '13px',
+      maxHeight: '500px',  // Fixed height instead of viewport-based
+      overflowY: 'auto',
+      border: '1px solid #e0e0e0',
+      borderRadius: '6px',
+      padding: '24px',
+      background: '#fafafa',
+      margin: '32px 10% 10% 10%',  // 10% left/right margins for 80% width
+      width: '80%'  // Use 80% of container width
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h4 style={{ margin: 0, color: '#333', fontSize: '16px' }}>
+          Hydro JSON Format Documentation <span style={{ fontSize: '12px', color: '#666' }}>({SCHEMA_VERSION})</span>
+        </h4>
+        <button
+          onClick={toggleExpanded}
+          style={{
+            background: '#f0f0f0',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            padding: '4px 8px',
+            cursor: 'pointer',
+            fontSize: '12px'
+          }}
+        >
+          ✕ Close
+        </button>
+      </div>
+
+      <div style={{ fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace", fontSize: '13px' }}>
+        <h5 style={{ color: '#333', marginTop: '0' }}>Required Structure:</h5>
+        <pre style={{ 
+          background: '#f8f8f8', 
+          padding: '16px', 
+          borderRadius: '4px', 
+          border: '1px solid #e0e0e0',
+          overflow: 'auto',
+          margin: '8px 0',
+          lineHeight: '1.4',
+          whiteSpace: 'pre',
+          textAlign: 'left',
+          tabSize: 2
+        }}>{schema.requiredExample}</pre>
+
+        <h5 style={{ color: '#333', marginTop: '24px' }}>Optional Configuration:</h5>
+        <pre style={{ 
+          background: '#f8f8f8', 
+          padding: '16px', 
+          borderRadius: '4px', 
+          border: '1px solid #e0e0e0',
+          overflow: 'auto',
+          margin: '8px 0',
+          lineHeight: '1.4',
+          whiteSpace: 'pre',
+          textAlign: 'left',
+          tabSize: 2
+        }}>{schema.optionalExample}</pre>
+
+        <div style={{ marginTop: '12px', fontSize: '11px', color: '#666' }}>
+          <em>This documentation is automatically synchronized with the JSON parser schema ({SCHEMA_VERSION}).</em>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Complete Example Component (separate from documentation)
+function CompleteExampleDisplay() {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const schema = generateSchemaDocumentation();
+
+  const toggleExpanded = () => setIsExpanded(!isExpanded);
+
+  if (!isExpanded) {
+    return (
+      <div style={{ 
+        marginTop: '16px', 
+        color: '#777', 
+        fontSize: '14px' 
+      }}>
+        <button
+          onClick={toggleExpanded}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#007acc',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            fontSize: '14px',
+            padding: 0
+          }}
+        >
+          📝 View complete working example
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ 
+      marginTop: '16px', 
+      paddingTop: '24px', 
+      color: '#555', 
+      fontSize: '13px',
+      maxHeight: '600px',
+      overflowY: 'auto',
+      border: '1px solid #e0e0e0',
+      borderRadius: '6px',
+      padding: '24px',
+      background: '#fafafa',
+      margin: '16px 10% 10% 10%',
+      width: '80%'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h4 style={{ margin: 0, color: '#333', fontSize: '16px' }}>
+          Complete Working Example <span style={{ fontSize: '12px', color: '#666' }}>({SCHEMA_VERSION})</span>
+        </h4>
+        <button
+          onClick={toggleExpanded}
+          style={{
+            background: '#f0f0f0',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            padding: '4px 8px',
+            cursor: 'pointer',
+            fontSize: '12px'
+          }}
+        >
+          ✕ Close
+        </button>
+      </div>
+
+      <div style={{ fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace", fontSize: '13px' }}>
+        <pre style={{ 
+          background: '#f8f8f8', 
+          padding: '16px', 
+          borderRadius: '4px', 
+          border: '1px solid #e0e0e0',
+          overflow: 'auto',
+          margin: '8px 0',
+          lineHeight: '1.4',
+          whiteSpace: 'pre',
+          textAlign: 'left',
+          tabSize: 2,
+          maxHeight: '320px'
+        }}>{schema.completeExample}</pre>
+
+        <div style={{ textAlign: 'center', margin: '16px 0' }}>
+          <button
+            onClick={() => {
+              try {
+                const exampleData = JSON.parse(schema.completeExample);
+                // Trigger the file load with the example data
+                const event = new CustomEvent('load-example-data', { detail: exampleData });
+                window.dispatchEvent(event);
+              } catch (err) {
+                console.error('❌ Error loading example data:', err);
+                alert('Failed to load example data');
+              }
+            }}
+            style={{
+              background: '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'background 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              (e.target as HTMLElement).style.background = '#218838';
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLElement).style.background = '#28a745';
+            }}
+            title="Load this example as your starting graph"
+          >
+            ✨ Create Graph from Example
+          </button>
+        </div>
+
+        <div style={{ marginTop: '12px', fontSize: '11px', color: '#666' }}>
+          <em>This example is automatically validated against the parser ({SCHEMA_VERSION}).</em>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface FileDropZoneProps {
   onFileLoad: (data: any) => void;
@@ -39,7 +276,12 @@ const dragOverStyles: React.CSSProperties = {
 const dropContentStyles: React.CSSProperties = {
   textAlign: 'center',
   padding: '40px',
-  maxWidth: '500px',
+  maxWidth: '90%',  // Increased to 90% for better use of space
+  width: '100%',
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
 };
 
 const fileInputStyles: React.CSSProperties = {
@@ -190,81 +432,116 @@ export default function FileDropZone({
       onDrop={handleDrop}
     >
       <div style={dropContentStyles}>
-        <h3 style={{ marginBottom: '16px', color: '#333', fontSize: '24px' }}>
-          Graph Visualization
-        </h3>
-        <p style={{ marginBottom: '24px', color: '#666', fontSize: '16px' }}>
-          Drop a Hydro ReactFlow JSON file here or click to select
-        </p>
-        <input 
-          type="file" 
-          accept=".json"
-          onChange={handleFileInput}
-          style={fileInputStyles}
-          id="file-input"
-        />
-        <label 
-          htmlFor="file-input" 
-          style={fileInputLabelStyles}
-          onMouseEnter={(e) => {
-            (e.target as HTMLElement).style.background = '#005999';
-          }}
-          onMouseLeave={(e) => {
-            (e.target as HTMLElement).style.background = '#007acc';
-          }}
-        >
-          Choose File
-        </label>
-        {generatedFilePath ? (
+        {/* Top section - main content */}
+        <div>
+          <h3 style={{ marginBottom: '16px', color: '#333', fontSize: '24px' }}>
+            Graph Visualization
+          </h3>
+          <p style={{ marginBottom: '24px', color: '#666', fontSize: '16px' }}>
+            Drop a compatible JSON file here or click to choose.
+          </p>
+          
+          <input 
+            type="file" 
+            accept=".json"
+            onChange={handleFileInput}
+            style={fileInputStyles}
+            id="file-input"
+          />
+          <label 
+            htmlFor="file-input" 
+            style={fileInputLabelStyles}
+            onMouseEnter={(e) => {
+              (e.target as HTMLElement).style.background = '#005999';
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLElement).style.background = '#007acc';
+            }}
+          >
+            Choose File
+          </label>
+          
+          {!generatedFilePath && (
+            <>
+              <JSONFormatDocumentation />
+              <CompleteExampleDisplay />
+            </>
+          )}
+        </div>
+
+        {/* Bottom section - generated file path (positioned 20% from bottom) */}
+        {generatedFilePath && (
           <div style={{ 
-            marginTop: '32px', 
-            paddingTop: '24px', 
+            paddingTop: '24px',
             borderTop: '1px solid #eee', 
             color: '#555', 
-            fontSize: '14px' 
+            fontSize: '14px',
+            marginTop: 'auto',
+            marginBottom: '20%' // This pushes it to 20% from bottom
           }}>
             <p style={{ marginBottom: '12px', color: '#333', fontWeight: 'bold' }}>
               📄 Generated file ready to load:
             </p>
-            <code style={{
-              display: 'block',
-              background: '#e8f5e8',
-              padding: '12px',
-              borderRadius: '6px',
-              marginTop: '8px',
-              fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
-              color: '#2e7d32',
-              fontSize: '13px',
-              wordBreak: 'break-all'
-            }}>
-              {generatedFilePath}
-            </code>
+            <div style={{ position: 'relative' }}>
+              <code style={{
+                display: 'block',
+                background: '#e8f5e8',
+                padding: '12px 50px 12px 12px', // Extra right padding for button
+                borderRadius: '6px',
+                marginTop: '8px',
+                fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
+                color: '#2e7d32',
+                fontSize: '13px',
+                wordBreak: 'break-all'
+              }}>
+                {generatedFilePath}
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedFilePath).then(() => {
+                    // Visual feedback - could be enhanced with a toast
+                    const btn = document.activeElement as HTMLButtonElement;
+                    const originalText = btn.textContent;
+                    btn.textContent = '✓';
+                    btn.style.background = '#4caf50';
+                    setTimeout(() => {
+                      btn.textContent = originalText;
+                      btn.style.background = '#007acc';
+                    }, 1000);
+                  }).catch(err => {
+                    console.error('Failed to copy to clipboard:', err);
+                    alert('Failed to copy to clipboard');
+                  });
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: '8px',
+                  transform: 'translateY(-50%)',
+                  background: '#007acc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLElement).style.background = '#005999';
+                }}
+                onMouseLeave={(e) => {
+                  if ((e.target as HTMLElement).textContent !== '✓') {
+                    (e.target as HTMLElement).style.background = '#007acc';
+                  }
+                }}
+                title="Copy path to clipboard"
+              >
+                ⧉
+              </button>
+            </div>
             <p style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>
               💡 Drag and drop this file here, or click "Choose File" to browse for it
-            </p>
-          </div>
-        ) : (
-          <div style={{ 
-            marginTop: '32px', 
-            paddingTop: '24px', 
-            borderTop: '1px solid #eee', 
-            color: '#777', 
-            fontSize: '14px' 
-          }}>
-            <p>Generate JSON files using:</p>
-            <code style={{
-              display: 'block',
-              background: '#f5f5f5',
-              padding: '8px 12px',
-              borderRadius: '4px',
-              marginTop: '8px',
-              fontFamily: "'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
-              color: '#d73a49'
-            }}>
-              built_flow.reactflow_to_file("graph.json")
-            </code>
-            <p style={{ marginTop: '16px', fontSize: '12px' }}>
-              Supports the new framework-independent visualization system
             </p>
           </div>
         )}

@@ -128,6 +128,24 @@ describe('ReactFlowBridge', () => {
       };
       return edgeLayoutMap[id] || null;
     },
+    // Add the getGraphNode method that the bridge expects for handle calculation
+    getGraphNode: (id: string) => {
+      const nodeMap = {
+        'node1': { 
+          id: 'node1', 
+          layout: { position: { x: 120, y: 180 }, dimensions: { width: 180, height: 60 } }
+        },
+        'node2': { 
+          id: 'node2', 
+          layout: { position: { x: 300, y: 240 }, dimensions: { width: 180, height: 60 } }
+        },
+        'container1': { 
+          id: 'container1', 
+          layout: { position: { x: 50, y: 100 }, dimensions: { width: 350, height: 250 } }
+        }
+      };
+      return nodeMap[id] || null;
+    },
     // Add the getContainerChildren method that the bridge expects
     getContainerChildren: (id: string) => {
       if (id === 'container1') {
@@ -156,7 +174,7 @@ describe('ReactFlowBridge', () => {
       
       const node1 = standardNodes.find(n => n.id === 'node1');
       expect(node1).toBeDefined();
-      expect(node1!.data.label).toBe('Node 1');
+      expect(node1!.data.shortLabel).toBe('Node 1');
       expect(node1!.data.customProp).toBe('test-value');
     });
 

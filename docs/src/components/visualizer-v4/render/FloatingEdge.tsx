@@ -135,7 +135,7 @@ function getEdgePosition(node: any, intersectionPoint: any) {
   return 'top';
 }
 
-export default function FloatingEdge({ id, source, target, markerEnd, style }: EdgeProps) {
+export default function FloatingEdge({ id, source, target, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd }: EdgeProps) {
   const styleCfg = useStyleConfig();
   const sourceNode = useStore(useCallback((store) => store.nodeLookup.get(source), [source]));
   const targetNode = useStore(useCallback((store) => store.nodeLookup.get(target), [target]));
@@ -178,18 +178,59 @@ export default function FloatingEdge({ id, source, target, markerEnd, style }: E
     });
   }
 
+  const stroke = styleCfg.edgeColor || (style as any)?.stroke || '#1976d2';
+  const strokeWidth = styleCfg.edgeWidth ?? (style as any)?.strokeWidth ?? 2;
+  const strokeDasharray = styleCfg.edgeDashed ? '6,6' : (style as any)?.strokeDasharray;
+  const haloColor = (style as any)?.haloColor;
+
+  // Simple rendering for edges without halos
+  if (!haloColor) {
+    return (
+      <path
+        id={id}
+        className="react-flow__edge-path"
+        d={edgePath}
+        markerEnd={markerEnd}
+        style={{
+          ...style,
+          stroke,
+          strokeWidth,
+          strokeDasharray,
+        }}
+      />
+    );
+  }
+
+  // Complex rendering for edges with halos
   return (
-    <path
-      id={id}
-      className="react-flow__edge-path"
-      d={edgePath}
-      markerEnd={markerEnd}
-      style={{
-        ...style,
-        stroke: styleCfg.edgeColor || (style as any)?.stroke || '#1976d2',
-        strokeWidth: styleCfg.edgeWidth ?? (style as any)?.strokeWidth ?? 2,
-        strokeDasharray: styleCfg.edgeDashed ? '6,6' : (style as any)?.strokeDasharray,
-      }}
-    />
+    <g>
+      {/* Render halo layer */}
+      <path
+        className="react-flow__edge-path"
+        d={edgePath}
+        style={{
+          stroke: haloColor,
+          strokeWidth: strokeWidth + 4,
+          strokeDasharray,
+          strokeLinecap: 'round',
+          opacity: 0.6,
+          fill: 'none'
+        }}
+      />
+      
+      {/* Render main edge */}
+      <path
+        id={id}
+        className="react-flow__edge-path"
+        d={edgePath}
+        markerEnd={markerEnd}
+        style={{
+          ...(style && Object.fromEntries(Object.entries(style).filter(([key]) => key !== 'haloColor'))),
+          stroke,
+          strokeWidth,
+          strokeDasharray,
+        }}
+      />
+    </g>
   );
 }

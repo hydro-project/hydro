@@ -60,20 +60,21 @@ export const HANDLE_STRATEGIES = {
   /**
    * Discrete handles - specific connection points
    * More controlled but less flexible
+   * Made barely visible for better UX
    */
   discrete: {
     enableContinuousHandles: false,
     sourceHandles: [
-      { id: 'out-top', position: Position.Top },
-      { id: 'out-right', position: Position.Right },
-      { id: 'out-bottom', position: Position.Bottom },
-      { id: 'out-left', position: Position.Left },
+      { id: 'out-top', position: Position.Top, style: { opacity: 0.1, width: '6px', height: '6px', background: '#666' } },
+      { id: 'out-right', position: Position.Right, style: { opacity: 0.1, width: '6px', height: '6px', background: '#666' } },
+      { id: 'out-bottom', position: Position.Bottom, style: { opacity: 0.1, width: '6px', height: '6px', background: '#666' } },
+      { id: 'out-left', position: Position.Left, style: { opacity: 0.1, width: '6px', height: '6px', background: '#666' } },
     ] as HandleConfig[],
     targetHandles: [
-      { id: 'in-top', position: Position.Top },
-      { id: 'in-right', position: Position.Right },
-      { id: 'in-bottom', position: Position.Bottom },
-      { id: 'in-left', position: Position.Left },
+      { id: 'in-top', position: Position.Top, style: { opacity: 0.1, width: '6px', height: '6px', background: '#666' } },
+      { id: 'in-right', position: Position.Right, style: { opacity: 0.1, width: '6px', height: '6px', background: '#666' } },
+      { id: 'in-bottom', position: Position.Bottom, style: { opacity: 0.1, width: '6px', height: '6px', background: '#666' } },
+      { id: 'in-left', position: Position.Left, style: { opacity: 0.1, width: '6px', height: '6px', background: '#666' } },
     ] as HandleConfig[],
   },
   
@@ -111,9 +112,13 @@ export const HANDLE_STRATEGIES = {
 
 /**
  * Current handle strategy - easily changeable
- * FLOATING: Using floating edges for continuous-handle-like UX
+ * DISCRETE: Using discrete handles with smart routing based on node positions
+ * - Connection points are barely visible (opacity 0.1)
+ * - Intelligent handle selection: prefers horizontal connections when nodes are side-by-side
+ * - Follows the rule: inputs at top/left, outputs at bottom/right
+ * - Uses a 1.2x threshold to determine primary direction (horizontal vs vertical)
  */
-export const CURRENT_HANDLE_STRATEGY: HandleStrategy = 'floating';
+export const CURRENT_HANDLE_STRATEGY: HandleStrategy = 'discrete';
 
 /**
  * Get the current handle configuration

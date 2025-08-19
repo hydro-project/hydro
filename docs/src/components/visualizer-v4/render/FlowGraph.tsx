@@ -24,6 +24,7 @@ export interface FlowGraphProps {
   eventHandlers?: FlowGraphEventHandlers;
   className?: string;
   style?: React.CSSProperties;
+  fillViewport?: boolean; // New prop to control viewport sizing
 }
 
 export interface FlowGraphRef {
@@ -38,7 +39,8 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   layoutConfig,
   eventHandlers,
   className,
-  style
+  style,
+  fillViewport = false
 }, ref) => {
   const [reactFlowData, setReactFlowData] = useState<ReactFlowData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,6 +64,8 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
         console.log('[FlowGraph] 🔄 Starting refreshLayout...');
         setLoading(true);
         setError(null);
+        
+        console.log('[FlowGraph] 🔄 refreshData called - checking for label updates...');
 
         // Run layout
         console.log('[FlowGraph] 🔄 Running ELK layout...');
@@ -76,6 +80,12 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
           regularNodes: baseData.nodes.filter(n => n.type !== 'container').length,
           edges: baseData.edges.length
         });
+        console.log('[FlowGraph] 🔍 First few nodes for label check:', baseData.nodes.slice(0, 3).map(n => ({ 
+          id: n.id, 
+          label: n.data.label, 
+          shortLabel: n.data.shortLabel, 
+          fullLabel: n.data.fullLabel 
+        })));
         
         // Store the base data for reference
         baseReactFlowDataRef.current = baseData;
@@ -363,6 +373,26 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
     }
   }, [reactFlowData]);
 
+  // Calculate container styles based on fillViewport prop
+  const getContainerStyle = (): React.CSSProperties => {
+    if (fillViewport) {
+      return {
+        width: '100vw',
+        height: '100vh',
+        maxWidth: '100vw',
+        maxHeight: '100vh',
+        overflow: 'hidden',
+        ...style
+      };
+    }
+    return {
+      width: '100%',
+      height: '100%',
+      minHeight: '400px',
+      ...style
+    };
+  };
+
   // Loading state
   if (loading && !reactFlowData) {
     return (
@@ -372,13 +402,10 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: '100%',
-          height: '100%',
-          minHeight: '400px',
           background: '#f5f5f5',
           border: '1px solid #ddd',
           borderRadius: '8px',
-          ...style
+          ...getContainerStyle()
         }}
       >
         <div style={{ textAlign: 'center', color: '#666' }}>
@@ -419,13 +446,10 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: '100%',
-          height: '100%',
-          minHeight: '400px',
           background: '#ffe6e6',
           border: '1px solid #ff9999',
           borderRadius: '8px',
-          ...style
+          ...getContainerStyle()
         }}
       >
         <div style={{ textAlign: 'center', color: '#cc0000' }}>
@@ -446,13 +470,10 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: '100%',
-          height: '100%',
-          minHeight: '400px',
           background: '#f9f9f9',
           border: '1px solid #ddd',
           borderRadius: '8px',
-          ...style
+          ...getContainerStyle()
         }}
       >
         <div style={{ textAlign: 'center', color: '#666' }}>
@@ -477,7 +498,36 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
       containerBorderWidth: config.containerBorderWidth,
       containerShadow: config.containerShadow
     }}>
-    <div className={className} style={{ width: '100%', height: '100%', ...style }}>
+    <div className={className} style={getContainerStyle()}>
+      {/* Invisible SVG defs for edge filters/markers */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          {/* Custom arrowhead markers for collection types */}
+          <marker
+            id="circle-filled"
+            markerWidth="8"
+            markerHeight="8"
+            refX="6"
+            refY="4"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <circle cx="4" cy="4" r="3" fill="currentColor" />
+          </marker>
+          
+          <marker
+            id="diamond-open"
+            markerWidth="10"
+            markerHeight="8"
+            refX="8"
+            refY="4"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M2,4 L5,1 L8,4 L5,7 Z" fill="none" stroke="currentColor" strokeWidth="1" />
+          </marker>
+        </defs>
+      </svg>
       <ReactFlow
         nodes={reactFlowData?.nodes || []}
         edges={reactFlowData?.edges || []}

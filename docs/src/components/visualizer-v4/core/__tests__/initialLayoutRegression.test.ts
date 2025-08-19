@@ -36,7 +36,7 @@ describe('Initial Layout Regression Tests', () => {
       hierarchyChoices: [{
         id: 'testGrouping',
         name: 'Test Grouping',
-        hierarchy: [
+        children: [
           {
             id: 'container1',
             name: 'Container 1',
@@ -124,7 +124,7 @@ describe('Initial Layout Regression Tests', () => {
       hierarchyChoices: [{
         id: 'testGrouping',
         name: 'Test Grouping', 
-        hierarchy: [
+        children: [
           {
             id: 'largeContainer',
             name: 'Large Container',
@@ -183,7 +183,7 @@ describe('Initial Layout Regression Tests', () => {
       hierarchyChoices: [{
         id: 'testGrouping',
         name: 'Test Grouping',
-        hierarchy: [
+        children: [
           { id: 'smallContainer', name: 'Small Container', children: [] },
           { id: 'mediumContainer', name: 'Medium Container', children: [] },
           { id: 'largeContainer', name: 'Large Container', children: [] }

@@ -40,7 +40,7 @@ describe('VisualizationState', () => {
       const nodes = state.visibleNodes;
       expect(nodes.length).toBe(1);
       expect(nodes[0].id).toBe('node1');
-      expect(nodes[0].label).toBe('Test Node');
+      expect(nodes[0].shortLabel).toBe('Test Node');
     });
 
     it('should update existing nodes', () => {
@@ -66,7 +66,7 @@ describe('VisualizationState', () => {
       // Check that the node was updated correctly
       const node = nodes.find(n => n.id === 'node1');
       expect(node).toBeDefined();
-      expect(node!.label).toBe('Updated Label');
+      expect(node!.shortLabel).toBe('Updated Label');
       expect(node!.style).toBe('highlighted');
     });
   });

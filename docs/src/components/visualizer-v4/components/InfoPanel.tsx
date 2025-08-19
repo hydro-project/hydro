@@ -7,17 +7,18 @@
 
 import React, { useState, useMemo } from 'react';
 import { InfoPanelProps, HierarchyTreeNode, LegendData } from './types';
-import { PANEL_POSITIONS } from './types';
-import { DockablePanel } from './DockablePanel';
+import { AntDockablePanel } from './AntDockablePanel';
 import { CollapsibleSection } from './CollapsibleSection';
 import { GroupingControls } from './GroupingControls';
 import { HierarchyTree } from './HierarchyTree';
 import { Legend } from './Legend';
+import { EdgeStyleLegend } from './EdgeStyleLegend';
 import { COMPONENT_COLORS, TYPOGRAPHY } from '../shared/config';
 
 export function InfoPanel({
   visualizationState,
   legendData,
+  edgeStyleConfig,
   hierarchyChoices = [],
   currentGrouping,
   onGroupingChange,
@@ -30,6 +31,7 @@ export function InfoPanel({
   style
 }: InfoPanelProps) {
   const [legendCollapsed, setLegendCollapsed] = useState(false); // Start expanded so users can see it
+  const [edgeStyleCollapsed, setEdgeStyleCollapsed] = useState(false);
   const [hierarchyCollapsed, setHierarchyCollapsed] = useState(false);
   const [groupingCollapsed, setGroupingCollapsed] = useState(false);
 
@@ -141,15 +143,11 @@ export function InfoPanel({
   };
 
   return (
-    <DockablePanel
-      id="info"
+    <AntDockablePanel
       title="Graph Info"
-      defaultPosition={PANEL_POSITIONS.TOP_LEFT}
-      defaultDocked={true}
-      defaultCollapsed={defaultCollapsed}
-      onPositionChange={onPositionChange}
-      minWidth={250}
-      minHeight={200}
+      defaultOpen={!defaultCollapsed}
+      placement="left"
+      width={300}
       className={className}
       style={style}
     >
@@ -200,8 +198,22 @@ export function InfoPanel({
             compact={true}
           />
         </CollapsibleSection>
+
+        {/* Edge Style Legend Section */}
+        {(edgeStyleConfig?.semanticMappings || edgeStyleConfig?.booleanPropertyPairs || edgeStyleConfig?.singlePropertyMappings || edgeStyleConfig?.propertyMappings) && (
+          <CollapsibleSection
+            title="Edge Styles"
+            isCollapsed={edgeStyleCollapsed}
+            onToggle={() => setEdgeStyleCollapsed(!edgeStyleCollapsed)}
+          >
+            <EdgeStyleLegend
+              edgeStyleConfig={edgeStyleConfig}
+              compact={true}
+            />
+          </CollapsibleSection>
+        )}
       </div>
-    </DockablePanel>
+    </AntDockablePanel>
   );
 }
 
@@ -210,4 +222,4 @@ export { Legend } from './Legend';
 export { HierarchyTree } from './HierarchyTree';
 export { GroupingControls } from './GroupingControls';
 export { CollapsibleSection } from './CollapsibleSection';
-export { DockablePanel, PANEL_POSITIONS } from './DockablePanel';
+export { AntDockablePanel } from './AntDockablePanel';

@@ -215,12 +215,12 @@ describe('VisualizationState + Clean Bridges Integration', () => {
 
       expect(handles2).toEqual({
         sourceHandle: 'out-port-3',
-        targetHandle: 'default-in'
+        targetHandle: 'in-top' // Current system uses discrete handles
       });
 
       expect(handles3).toEqual({
-        sourceHandle: 'default-out',
-        targetHandle: 'default-in'
+        sourceHandle: 'out-bottom',
+        targetHandle: 'in-top'
       });
     });
   });

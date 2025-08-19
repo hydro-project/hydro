@@ -24,14 +24,14 @@ const exampleHydroJSON = {
       id: 'edge1',
       source: 'node1',
       target: 'node2',
-      edgeProperties: ['Network', 'Bounded'], // Semantic properties from Hydro
+      semanticTags: ['Network', 'Bounded'], // Semantic properties from Hydro
       label: 'data flow'
     },
     {
       id: 'edge2', 
       source: 'node2',
       target: 'node3',
-      edgeProperties: ['Cycle', 'Unbounded'], // Different semantic properties
+      semanticTags: ['Cycle', 'Unbounded'], // Different semantic properties
       label: 'feedback'
     }
   ],

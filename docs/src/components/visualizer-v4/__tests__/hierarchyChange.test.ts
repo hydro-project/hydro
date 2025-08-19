@@ -16,22 +16,40 @@ describe('Hierarchy Change Functionality', () => {
       { id: 'edge1', source: 'node1', target: 'node2' },
       { id: 'edge2', source: 'node2', target: 'node3' }
     ],
-    hierarchies: [
+    hierarchyChoices: [
       {
         id: 'grouping1',
         name: 'Grouping 1',
-        groups: {
-          'container1': ['node1', 'node2']
-        }
+        children: [
+          {
+            id: 'container1',
+            name: 'Container 1',
+            children: []
+          }
+        ]
       },
       {
         id: 'grouping2', 
         name: 'Grouping 2',
-        groups: {
-          'container2': ['node2', 'node3']
-        }
+        children: [
+          {
+            id: 'container2',
+            name: 'Container 2',
+            children: []
+          }
+        ]
       }
-    ]
+    ],
+    nodeAssignments: {
+      'grouping1': {
+        'node1': 'container1',
+        'node2': 'container1'
+      },
+      'grouping2': {
+        'node2': 'container2',
+        'node3': 'container2'
+      }
+    }
   };
 
   it('should parse graph with default grouping', () => {

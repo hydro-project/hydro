@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ant Design Dockable Panel Demo</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/antd@5/dist/antd.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/antd@5/dist/reset.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .demo-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            height: 600px;
+            position: relative;
+        }
+        .demo-content {
+            text-align: center;
+            padding: 100px 20px;
+            color: #666;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .ant-drawer .ant-drawer-header {
+            border-bottom: 1px solid #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Ant Design Dockable Panel Demo</h1>
+    <p>This demo shows how the new Ant Design-based panels solve the dragging and collapsing issues.</p>
+    
+    <div class="demo-container">
+        <div id="react-root"></div>
+        <div class="demo-content">
+            <h3>Main Content Area</h3>
+            <p>The panels on the sides are dockable and collapsible without the jumping or space issues!</p>
+            <p>Try:</p>
+            <ul>
+                <li>✅ <strong>Collapse/Expand</strong> - Click the collapse button (no extra space)</li>
+                <li>✅ <strong>Pin/Unpin</strong> - Pin button controls overlay behavior</li>
+                <li>✅ <strong>No Drag Jumping</strong> - Panels stay put when you interact with them</li>
+                <li>✅ <strong>Smooth Animations</strong> - Built-in Ant Design transitions</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState } = React;
+        const { Drawer, Button, Space, Card, List, Typography } = antd;
+        const { 
+            CloseOutlined, 
+            PushpinOutlined, 
+            PushpinFilled,
+            ExpandOutlined,
+            CompressOutlined,
+            SettingOutlined,
+            InfoCircleOutlined
+        } = icons;
+
+        // Ant Design Dockable Panel Component
+        function AntDockablePanel({
+            title,
+            children,
+            defaultOpen = true,
+            placement = 'right',
+            width = 320,
+            height = '100vh',
+            className = '',
+            style = {},
+            onOpenChange
+        }) {
+            const [open, setOpen] = useState(defaultOpen);
+            const [pinned, setPinned] = useState(true);
+            const [collapsed, setCollapsed] = useState(false);
+
+            const handleOpenChange = (newOpen) => {
+                setOpen(newOpen);
+                onOpenChange?.(newOpen);
+            };
+
+            const handleTogglePin = () => {
+                setPinned(!pinned);
+            };
+
+            const handleToggleCollapse = () => {
+                setCollapsed(!collapsed);
+            };
+
+            // Custom title bar with controls
+            const titleBar = React.createElement('div', {
+                style: { 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    padding: '0 8px'
+                }
+            }, [
+                React.createElement('span', {
+                    key: 'title',
+                    style: { 
+                        fontWeight: 600,
+                        fontSize: '14px',
+                        color: '#262626'
+                    }
+                }, title),
+                React.createElement(Space, {
+                    key: 'controls',
+                    size: 4
+                }, [
+                    React.createElement(Button, {
+                        key: 'collapse',
+                        type: 'text',
+                        size: 'small',
+                        icon: React.createElement(collapsed ? ExpandOutlined : CompressOutlined),
+                        onClick: handleToggleCollapse,
+                        title: collapsed ? "Expand" : "Collapse",
+                        style: { fontSize: '12px' }
+                    }),
+                    React.createElement(Button, {
+                        key: 'pin',
+                        type: 'text',
+                        size: 'small',
+                        icon: React.createElement(pinned ? PushpinFilled : PushpinOutlined),
+                        onClick: handleTogglePin,
+                        title: pinned ? "Unpin" : "Pin",
+                        style: { fontSize: '12px' }
+                    }),
+                    React.createElement(Button, {
+                        key: 'close',
+                        type: 'text',
+                        size: 'small',
+                        icon: React.createElement(CloseOutlined),
+                        onClick: () => handleOpenChange(false),
+                        title: "Close",
+                        style: { fontSize: '12px' }
+                    })
+                ])
+            ]);
+
+            return React.createElement(Drawer, {
+                title: titleBar,
+                placement: placement,
+                width: placement === 'left' || placement === 'right' ? width : '100vw',
+                height: placement === 'top' || placement === 'bottom' ? height : '100vh',
+                open: open,
+                onClose: () => handleOpenChange(false),
+                closable: false,
+                mask: !pinned,
+                maskClosable: !pinned,
+                getContainer: false,
+                style: {
+                    position: pinned ? 'absolute' : 'fixed',
+                    zIndex: pinned ? 1000 : 1001,
+                    ...style
+                },
+                styles: {
+                    header: {
+                        padding: '12px 16px',
+                        borderBottom: '1px solid #f0f0f0',
+                        background: '#fafafa'
+                    },
+                    body: {
+                        padding: collapsed ? 0 : '16px',
+                        height: collapsed ? 0 : 'auto',
+                        overflow: collapsed ? 'hidden' : 'auto'
+                    }
+                },
+                className: className,
+                destroyOnClose: false,
+                forceRender: true
+            }, !collapsed && children);
+        }
+
+        // Demo App
+        function DemoApp() {
+            const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+            const [rightPanelOpen, setRightPanelOpen] = useState(true);
+
+            const graphInfoContent = React.createElement('div', null, [
+                React.createElement(Typography.Title, { key: 'title', level: 5 }, 'Graph Information'),
+                React.createElement(List, {
+                    key: 'list',
+                    size: 'small',
+                    dataSource: [
+                        'Nodes: 125',
+                        'Edges: 240', 
+                        'Containers: 8',
+                        'Layout: Tree'
+                    ],
+                    renderItem: (item) => React.createElement(List.Item, null, item)
+                }),
+                React.createElement('br', { key: 'br' }),
+                React.createElement(Typography.Title, { key: 'hierarchy-title', level: 5 }, 'Hierarchy'),
+                React.createElement('div', { key: 'hierarchy', style: { fontSize: '12px' } }, [
+                    React.createElement('div', { key: 'item1' }, '📁 Root Container'),
+                    React.createElement('div', { key: 'item2', style: { marginLeft: '16px' } }, '📄 Process A'),
+                    React.createElement('div', { key: 'item3', style: { marginLeft: '16px' } }, '📄 Process B'),
+                    React.createElement('div', { key: 'item4', style: { marginLeft: '16px' } }, '📁 Sub Container'),
+                ])
+            ]);
+
+            const styleContent = React.createElement('div', null, [
+                React.createElement(Typography.Title, { key: 'title', level: 5 }, 'Style Controls'),
+                React.createElement('div', { key: 'controls', style: { display: 'flex', flexDirection: 'column', gap: '12px' } }, [
+                    React.createElement('div', { key: 'color-control' }, [
+                        React.createElement('label', { style: { display: 'block', marginBottom: '4px', fontSize: '12px' } }, 'Node Color'),
+                        React.createElement('input', { type: 'color', defaultValue: '#1890ff', style: { width: '100%' } })
+                    ]),
+                    React.createElement('div', { key: 'size-control' }, [
+                        React.createElement('label', { style: { display: 'block', marginBottom: '4px', fontSize: '12px' } }, 'Node Size'),
+                        React.createElement('input', { type: 'range', min: '10', max: '50', defaultValue: '20', style: { width: '100%' } })
+                    ]),
+                    React.createElement('div', { key: 'style-control' }, [
+                        React.createElement('label', { style: { display: 'block', marginBottom: '4px', fontSize: '12px' } }, 'Edge Style'),
+                        React.createElement('select', { style: { width: '100%' } }, [
+                            React.createElement('option', { key: 'bezier', value: 'bezier' }, 'Bezier'),
+                            React.createElement('option', { key: 'straight', value: 'straight' }, 'Straight'),
+                            React.createElement('option', { key: 'step', value: 'step' }, 'Step')
+                        ])
+                    ])
+                ])
+            ]);
+
+            return React.createElement('div', { style: { position: 'relative', height: '100%' } }, [
+                // Left Panel - Graph Info
+                React.createElement(AntDockablePanel, {
+                    key: 'left-panel',
+                    title: 'Graph Info',
+                    placement: 'left',
+                    defaultOpen: leftPanelOpen,
+                    width: 280,
+                    onOpenChange: setLeftPanelOpen
+                }, graphInfoContent),
+
+                // Right Panel - Style Tuner
+                React.createElement(AntDockablePanel, {
+                    key: 'right-panel',
+                    title: 'Style Tuner',
+                    placement: 'right', 
+                    defaultOpen: rightPanelOpen,
+                    width: 300,
+                    onOpenChange: setRightPanelOpen
+                }, styleContent),
+
+                // Control buttons to re-open panels
+                React.createElement('div', {
+                    key: 'controls',
+                    style: { 
+                        position: 'absolute',
+                        top: '10px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 1002
+                    }
+                }, React.createElement(Space, null, [
+                    !leftPanelOpen && React.createElement(Button, {
+                        key: 'open-left',
+                        icon: React.createElement(InfoCircleOutlined),
+                        onClick: () => setLeftPanelOpen(true)
+                    }, 'Graph Info'),
+                    !rightPanelOpen && React.createElement(Button, {
+                        key: 'open-right',
+                        icon: React.createElement(SettingOutlined),
+                        onClick: () => setRightPanelOpen(true)
+                    }, 'Style Tuner')
+                ]))
+            ]);
+        }
+
+        // Render the demo
+        ReactDOM.render(React.createElement(DemoApp), document.getElementById('react-root'));
+    </script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script>
+        // Define icons after Ant Design loads
+        window.icons = window.antd.icons || {};
+        
+        // Re-render after icons are available
+        setTimeout(() => {
+            window.icons = window.antd.icons;
+            const scripts = document.querySelectorAll('script[type="text/babel"]');
+            scripts.forEach(script => {
+                eval(window.Babel.transform(script.textContent, { presets: ['react'] }).code);
+            });
+        }, 100);
+    </script>
+</body>
+</html>

@@ -94,7 +94,8 @@ export { Legend } from './components/Legend';
  */
 export { HierarchyTree } from './components/HierarchyTree';
 export { CollapsibleSection } from './components/CollapsibleSection';
-export { DockablePanel } from './components/DockablePanel';
+export { AntDockablePanel, DockablePanel } from './components/AntDockablePanel';
+export { useDockablePanels } from './hooks/useDockablePanels';
 
 // ============ Architecture Status ============
 

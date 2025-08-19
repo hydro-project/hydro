@@ -283,8 +283,8 @@ describe('VisualizationState Bridge Support Methods', () => {
 
       // Verify
       expect(handles).toEqual({
-        sourceHandle: 'default-out',
-        targetHandle: 'default-in'
+        sourceHandle: 'out-bottom', // Current system uses discrete handles
+        targetHandle: 'in-top'
       });
     });
 
@@ -317,7 +317,7 @@ describe('VisualizationState Bridge Support Methods', () => {
       // Verify
       expect(handles).toEqual({
         sourceHandle: 'custom-out',
-        targetHandle: 'default-in'
+        targetHandle: 'in-top' // Current system uses discrete handles for defaults
       });
     });
   });
@@ -458,7 +458,7 @@ describe('VisualizationState Bridge Support Methods', () => {
       
       expect(edgeHandles).toEqual({
         sourceHandle: 'out-1',
-        targetHandle: 'default-in'
+        targetHandle: 'in-top' // Current system uses discrete handles for defaults
       });
 
       // Verify: All nodes have valid dimensions

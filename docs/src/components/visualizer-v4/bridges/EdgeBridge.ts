@@ -24,8 +24,8 @@ export function convertEdgeToReactFlow(
 ): ReactFlowEdge {
   const { edgeStyleConfig, showPropertyLabels = true, enableAnimations = true } = options;
   
-  // Extract edge properties from the edge data
-  const edgeProperties = (edge as any).edgeProperties || (edge as any).semanticTags || [];
+  // Extract edge properties (mapped from semantic tags) for styling
+  const edgeProperties = (edge as any).edgeProperties || [];
   const originalLabel = (edge as any).label;
   
   // Process the edge style based on properties
@@ -36,32 +36,39 @@ export function convertEdgeToReactFlow(
     ? createEdgeLabel(edgeProperties, edgeStyleConfig, originalLabel)
     : originalLabel;
   
-  // Build the ReactFlow edge - force floating type since that's what we use
+  // Build the ReactFlow edge - use the type determined by style processing
   const reactFlowEdge: ReactFlowEdge = {
     id: edge.id,
     source: edge.source,
     target: edge.target,
-    type: 'floating', // Force floating since that's what the visualizer uses
+    type: processedStyle.reactFlowType || 'standard', // Use type from style processing, fallback to standard
     style: processedStyle.style,
     animated: enableAnimations && processedStyle.animated,
     label: label,
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      width: 15,
-      height: 15,
-      color: processedStyle.style?.stroke || '#999'
-    },
+    markerEnd: typeof processedStyle.markerEndSpec === 'string' 
+      ? processedStyle.markerEndSpec  // For custom URL markers like 'url(#circle-filled)'
+      : processedStyle.markerEndSpec ?? {
+          type: MarkerType.ArrowClosed,
+          width: 15,
+          height: 15,
+          color: processedStyle.style?.stroke || '#999'
+        },
     data: {
       edgeProperties,
       appliedProperties: processedStyle.appliedProperties,
-      originalEdge: edge
+      originalEdge: edge,
+      processedStyle
     }
   };
 
-  // For floating edges, ensure handle properties are completely omitted
-  // (Not set to undefined, but completely absent)
-  delete (reactFlowEdge as any).sourceHandle;
-  delete (reactFlowEdge as any).targetHandle;
+  // Provide sensible default handles as fallback (will be overridden by smart algorithm)
+  // RULE: Sources use out-bottom or out-right, Targets use in-top or in-left
+  if (!reactFlowEdge.sourceHandle) {
+    reactFlowEdge.sourceHandle = 'out-bottom'; // Safe default - never use out-top
+  }
+  if (!reactFlowEdge.targetHandle) {
+    reactFlowEdge.targetHandle = 'in-top';     // Safe default - never use in-bottom
+  }
   
   // Add any additional properties from the original edge
   if (edge.hidden) {
@@ -98,7 +105,7 @@ export function getEdgeStyleStats(
   const unmappedProperties = new Set<string>();
   
   for (const edge of edges) {
-    const edgeProperties = (edge as any).edgeProperties || (edge as any).semanticTags || [];
+    const edgeProperties = (edge as any).edgeProperties || [];
     
     // Count properties
     for (const prop of edgeProperties) {

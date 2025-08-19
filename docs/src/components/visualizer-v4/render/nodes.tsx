@@ -8,7 +8,7 @@ import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { getHandleConfig, CONTINUOUS_HANDLE_STYLE } from './handleConfig';
 import { generateNodeColors } from '../shared/colorUtils';
-import { truncateContainerName } from '../shared/textUtils';
+import { truncateContainerName, truncateLabel } from '../shared/textUtils';
 import { useStyleConfig } from './StyleConfigContext';
 
 /**
@@ -74,6 +74,10 @@ export function StandardNode({ id, data }: NodeProps) {
   const colorPalette = String(data.colorPalette || 'Set3');
   const colors = generateNodeColors([nodeType], colorPalette);
   
+  // Determine which label to display
+  // Priority: data.label (if set by toggle) > data.shortLabel > id
+  const displayLabel = data.label || data.shortLabel || id;
+  
   return (
     <div
       style={{
@@ -85,11 +89,14 @@ export function StandardNode({ id, data }: NodeProps) {
         textAlign: 'center',
         minWidth: '120px',
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        position: 'relative'
+        position: 'relative',
+        cursor: 'pointer', // Indicate that the node is clickable
+        transition: 'all 0.2s ease' // Smooth transition for hover effects
       }}
+      title={data.fullLabel ? `Click to toggle between:\n"${data.shortLabel || id}"\n"${data.fullLabel}"` : undefined} // Tooltip
     >
       {renderHandles()}
-      {String(data.label || id)}
+      {String(displayLabel)}
     </div>
   );
 }
@@ -106,6 +113,9 @@ export function ContainerNode({ id, data }: NodeProps) {
   // Get color palette and node count from data
   const colorPalette = String(data.colorPalette || 'Set3');
   const nodeCount = Number(data.nodeCount || 0);
+  
+  // Get the container label
+  const containerLabel = String(data.label || id);
   
   // Debug: Log container dimensions
   // // console.log(((`[ContainerNode] 📏 Container ${id}: data.width=${data.width}, data.height=${data.height}, using ${width}x${height}`)));
@@ -198,10 +208,15 @@ export function ContainerNode({ id, data }: NodeProps) {
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            marginBottom: '4px'
+            marginBottom: '4px',
+            cursor: 'pointer' // Indicate container is clickable for collapse/expand
           }}
         >
-          {truncateContainerName(String(data.label || id))}
+          {truncateLabel(containerLabel, {
+            maxLength: Math.floor((Number(width) - 16) / 8), // ~8px per character
+            preferDelimiters: true,
+            leftTruncate: true // Keep end for collapsed containers (like Rust paths)
+          })}
         </div>
         
         {/* Node count - smaller text below title */}
@@ -230,7 +245,8 @@ export function ContainerNode({ id, data }: NodeProps) {
         width: `${width}px`,  // Use ELK-calculated width
         height: `${height}px`, // Use ELK-calculated height (now includes label space)
         position: 'relative',
-        boxSizing: 'border-box' // Ensure padding is included in dimensions
+        boxSizing: 'border-box', // Ensure padding is included in dimensions
+        cursor: 'pointer' // Indicate container is clickable for collapse/expand
       }}
     >
       {renderHandles()}
@@ -248,13 +264,18 @@ export function ContainerNode({ id, data }: NodeProps) {
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
+          cursor: 'pointer', // Indicate container is clickable for collapse/expand
           // Text shadow for better legibility over container background
           textShadow: '1px 1px 2px rgba(255, 255, 255, 0.8), -1px -1px 2px rgba(255, 255, 255, 0.8), 1px -1px 2px rgba(255, 255, 255, 0.8), -1px 1px 2px rgba(255, 255, 255, 0.8)',
           // Subtle drop shadow for the text element itself
           filter: 'drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1))'
         }}
       >
-        {String(data.label || id)}
+        {truncateLabel(containerLabel, {
+          maxLength: Math.floor((Number(width) - 36) / 8), // ~8px per character
+          preferDelimiters: true,
+          leftTruncate: false // Keep beginning for expanded containers
+        })}
       </div>
     </div>
   );

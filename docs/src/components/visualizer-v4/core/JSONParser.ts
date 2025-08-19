@@ -59,7 +59,6 @@ export interface ParserOptions {
 // Raw JSON data interfaces (from legacy format)
 interface RawNode {
   id: string;
-  label?: string;
   semanticTags?: string[];
   [key: string]: any;
 }
@@ -82,7 +81,7 @@ interface RawHierarchy {
 interface RawHierarchyChoice {
   id: string;
   name: string;
-  hierarchy: RawHierarchyItem[];
+  children?: RawHierarchyItem[];  // Direct children, no wrapper
 }
 
 interface RawHierarchyItem {
@@ -350,7 +349,7 @@ export function validateGraphJSON(jsonData: RawGraphData | string): ValidationRe
     // Check hierarchyChoices for forbidden fields
     if (data.hierarchyChoices) {
       for (const choice of data.hierarchyChoices) {
-        if (choice.hierarchy) {
+        if (choice.children) {
           // Recursively check hierarchy items
           function validateHierarchyItems(items: any[], hierarchyId: string): void {
             for (const item of items) {
@@ -364,7 +363,7 @@ export function validateGraphJSON(jsonData: RawGraphData | string): ValidationRe
               }
             }
           }
-          validateHierarchyItems(choice.hierarchy, choice.id);
+          validateHierarchyItems(choice.children, choice.id);
         }
       }
     }
@@ -383,8 +382,11 @@ export function validateGraphJSON(jsonData: RawGraphData | string): ValidationRe
           errors.push(`Node at index ${i} missing or invalid id`);
           continue;
         }
-        if (!node.label || typeof node.label !== 'string') {
-          warnings.push(`Node '${node.id}' missing or invalid label`);
+        if (!node.shortLabel || typeof node.shortLabel !== 'string') {
+          warnings.push(`Node '${node.id}' missing or invalid shortLabel`);
+        }
+        if (!node.fullLabel || typeof node.fullLabel !== 'string') {
+          warnings.push(`Node '${node.id}' missing or invalid fullLabel`);
         }
       }
     }
@@ -508,26 +510,19 @@ function selectGrouping(data: RawGraphData, selectedGrouping: string | null): st
 function parseNodes(nodes: RawNode[], state: VisualizationState): void {
   for (const rawNode of nodes) {
     try {
-      const { id, label, semanticTags, ...otherProps } = rawNode;
-      
-      // Extract label with priority: explicit label > data.name > data.label > id
-      let nodeLabel = label;
-      if (!nodeLabel && rawNode.data) {
-        // Use data.name or data.label as fallback
-        nodeLabel = rawNode.data.label || rawNode.data.name;
-      }
-      
-      // Extract nodeType from data
-      const nodeType = rawNode.data?.nodeType || rawNode.data?.type;
+      // Extract immutable properties and filter out UI state fields
+      const { id, shortLabel, fullLabel, nodeType, semanticTags, position, type, expanded, collapsed, hidden, style, ...safeProps } = rawNode;
       
       state.addGraphNode(id, {
-        label: nodeLabel || id,
+        label: shortLabel || id, // Initial display label (starts with short, can be toggled to full)
+        shortLabel: shortLabel || id,
+        fullLabel: fullLabel || shortLabel || id,
         style: NODE_STYLES.DEFAULT, // Default style - will be applied by bridge based on semanticTags
         // ✅ All nodes start visible - VisualizationState manages visibility
         hidden: false,
-        nodeType,
+        nodeType: nodeType || 'default',
         semanticTags: semanticTags || [],
-        ...otherProps
+        ...safeProps // Only include non-UI-state properties
       });
     } catch (error) {
       console.warn(`Failed to parse node '${rawNode.id}':`, error);
@@ -538,7 +533,8 @@ function parseNodes(nodes: RawNode[], state: VisualizationState): void {
 function parseEdges(edges: RawEdge[], state: VisualizationState): void {
   for (const rawEdge of edges) {
     try {
-      const { id, source, target, semanticTags, edgeProperties, ...otherProps } = rawEdge;
+      // Extract immutable properties and filter out UI state fields
+      const { id, source, target, semanticTags, edgeProperties, style, hidden, animated, ...safeProps } = rawEdge;
       
       state.addGraphEdge(id, {
         source,
@@ -548,35 +544,12 @@ function parseEdges(edges: RawEdge[], state: VisualizationState): void {
         hidden: false,
         semanticTags: semanticTags || [],
         edgeProperties: edgeProperties || semanticTags || [], // Use edgeProperties or fall back to semanticTags
-        ...otherProps
+        ...safeProps // Only include non-UI-state properties
       });
     } catch (error) {
       console.warn(`Failed to parse edge '${rawEdge.id}':`, error);
     }
   }
-}
-
-/**
- * Detect edge style from a style object
- */
-function detectEdgeStyleFromObject(styleObj: any): string {
-  // Check for thick edges (strokeWidth >= 3)
-  if (styleObj.strokeWidth && styleObj.strokeWidth >= 3) {
-    return EDGE_STYLES.THICK;
-  }
-  
-  // Check for warning edges (red stroke)
-  if (styleObj.stroke && (styleObj.stroke === 'red' || styleObj.stroke === '#ff0000' || styleObj.stroke === '#f00')) {
-    return EDGE_STYLES.WARNING;
-  }
-  
-  // Check for dashed edges
-  if (styleObj.strokeDasharray) {
-    return EDGE_STYLES.DASHED;
-  }
-  
-  // Default style
-  return EDGE_STYLES.DEFAULT;
 }
 
 function parseHierarchy(data: RawGraphData, groupingId: string, state: VisualizationState): number {
@@ -626,7 +599,7 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
         }
       }
     }
-  } else if (hierarchyChoice.hierarchy) {
+  } else if (hierarchyChoice.children) {
     // New format: hierarchical structure
     // Create containers from the hierarchy structure
     function createContainersFromHierarchy(hierarchyItems: any[], parentId?: string): void {
@@ -670,7 +643,7 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
     }
     
     // Create all containers first
-    createContainersFromHierarchy(hierarchyChoice.hierarchy);
+    createContainersFromHierarchy(hierarchyChoice.children);
     
     // Assign nodes to containers based on nodeAssignments
     const assignments = data.nodeAssignments?.[groupingId];

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DockablePanel, PANEL_POSITIONS } from './DockablePanel';
+import { AntDockablePanel } from './AntDockablePanel';
 
 type EdgeStyleKind = 'bezier' | 'straight' | 'smoothstep';
 
@@ -66,14 +66,11 @@ export function StyleTunerPanel({
   };
 
   return (
-    <DockablePanel
-      id="style-tuner"
+    <AntDockablePanel
       title="Style Tuner"
-      defaultPosition={PANEL_POSITIONS.TOP_RIGHT}
-      defaultDocked={true}
-      defaultCollapsed={defaultCollapsed}
-      minWidth={280}
-      minHeight={200}
+      defaultOpen={!defaultCollapsed}
+      placement="right"
+      width={300}
     >
       <div style={{ fontSize: '12px' }}>
         <div style={rowStyle}>
@@ -193,7 +190,7 @@ export function StyleTunerPanel({
           </select>
         </div>
       </div>
-    </DockablePanel>
+    </AntDockablePanel>
   );
 }
 

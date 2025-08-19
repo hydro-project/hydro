@@ -23,7 +23,7 @@ describe('Edge Styling Integration', () => {
         id: 'e1',
         source: 'n1',
         target: 'n2',
-        edgeProperties: ['Network', 'Bounded'],
+        semanticTags: ['Network', 'Bounded'],
         label: 'test edge'
       }
     ],
@@ -95,7 +95,7 @@ describe('Edge Styling Integration', () => {
     
     const edge = reactFlowEdges[0];
     expect(edge.id).toBe('e1');
-    expect(edge.type).toBe('floating');
+    expect(edge.type).toBe('standard'); // Now using standard edges instead of floating
     expect(edge.animated).toBe(true); // Network property should enable animation
     expect(edge.style?.stroke).toBe('#2563eb'); // Network should take priority
     expect(edge.data?.edgeProperties).toContain('Network');
@@ -117,7 +117,7 @@ describe('Edge Styling Integration', () => {
     expect(edge.animated).toBe(true); // Network animation
   });
 
-  test('Floating edges do not have handle properties', () => {
+  test('Standard edges have handle properties for proper connection', () => {
     const parseResult = parseGraphJSON(testJSON);
     const edges = Array.from(parseResult.state.visibleEdges);
     
@@ -126,9 +126,9 @@ describe('Edge Styling Integration', () => {
     });
     
     const edge = reactFlowEdges[0];
-    expect(edge.sourceHandle).toBeUndefined();
-    expect(edge.targetHandle).toBeUndefined();
-    expect(edge.type).toBe('floating');
+    expect(edge.sourceHandle).toBeDefined(); // Standard edges have handles
+    expect(edge.targetHandle).toBeDefined();
+    expect(edge.type).toBe('standard'); // Now using standard edges
   });
 
   test('Edge labels are created correctly', () => {
@@ -163,7 +163,7 @@ describe('Edge Styling Integration', () => {
     
     expect(reactFlowData.edges).toHaveLength(1);
     const edge = reactFlowData.edges[0];
-    expect(edge.type).toBe('floating');
+    expect(edge.type).toBe('standard'); // Now using standard edges
     expect(edge.style?.stroke).toBe('#2563eb');
     expect(edge.animated).toBe(true);
   });

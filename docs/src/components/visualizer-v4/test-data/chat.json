@@ -1,662 +1,580 @@
 {
-  "edgeStyleConfig": {
-    "combinationRules": {
-      "description": "When multiple properties are present, the highest priority property determines the visual style",
-      "priority": [
-        "Network",
-        "Cycle",
-        "Bounded",
-        "NoOrder",
-        "Keyed",
-        "TotalOrder",
-        "Unbounded"
-      ]
-    },
-    "defaultStyle": {
-      "animated": false,
-      "reactFlowType": "default",
-      "style": {
-        "stroke": "#999999",
-        "strokeWidth": 2
-      }
-    },
-    "propertyMappings": {
-      "Bounded": {
-        "animated": false,
-        "label": "Bounded",
-        "reactFlowType": "default",
-        "style": {
-          "stroke": "#008800",
-          "strokeWidth": 3
-        }
-      },
-      "Cycle": {
-        "animated": true,
-        "label": "Cycle",
-        "reactFlowType": "default",
-        "style": {
-          "stroke": "#ff8800",
-          "strokeDasharray": "3,3",
-          "strokeWidth": 2
-        }
-      },
-      "Keyed": {
-        "animated": false,
-        "label": "Keyed",
-        "reactFlowType": "default",
-        "style": {
-          "stroke": "#0088ff",
-          "strokeDasharray": "10,2",
-          "strokeWidth": 2
-        }
-      },
-      "Network": {
-        "animated": false,
-        "label": "Network",
-        "reactFlowType": "default",
-        "style": {
-          "stroke": "#880088",
-          "strokeDasharray": "5,5",
-          "strokeWidth": 2
-        }
-      },
-      "NoOrder": {
-        "animated": false,
-        "label": "No Order",
-        "reactFlowType": "default",
-        "style": {
-          "stroke": "#ff0000",
-          "strokeDasharray": "8,4",
-          "strokeWidth": 2
-        }
-      },
-      "TotalOrder": {
-        "animated": false,
-        "label": "Total Order",
-        "reactFlowType": "default",
-        "style": {
-          "stroke": "#0066cc",
-          "strokeWidth": 2
-        }
-      },
-      "Unbounded": {
-        "animated": false,
-        "label": "Unbounded",
-        "reactFlowType": "default",
-        "style": {
-          "stroke": "#666666",
-          "strokeWidth": 2
-        }
-      }
-    }
-  },
-  "edges": [
-    {
-      "edgeProperties": [
-        "Unbounded",
-        "TotalOrder"
-      ],
-      "id": "e0",
-      "semanticTags": [
-        "Unbounded",
-        "TotalOrder"
-      ],
-      "source": "0",
-      "target": "1"
-    },
-    {
-      "edgeProperties": [
-        "Unbounded",
-        "TotalOrder",
-        "Network"
-      ],
-      "id": "e1",
-      "label": "to Some(1)",
-      "semanticTags": [
-        "Unbounded",
-        "TotalOrder",
-        "Network"
-      ],
-      "source": "1",
-      "target": "2"
-    },
-    {
-      "edgeProperties": [
-        "Network",
-        "Unbounded",
-        "TotalOrder"
-      ],
-      "id": "e2",
-      "semanticTags": [
-        "Network",
-        "Unbounded",
-        "TotalOrder"
-      ],
-      "source": "2",
-      "target": "3"
-    },
-    {
-      "edgeProperties": [
-        "Unbounded",
-        "TotalOrder"
-      ],
-      "id": "e3",
-      "semanticTags": [
-        "Unbounded",
-        "TotalOrder"
-      ],
-      "source": "3",
-      "target": "4"
-    },
-    {
-      "edgeProperties": [
-        "TotalOrder",
-        "Unbounded"
-      ],
-      "id": "e4",
-      "semanticTags": [
-        "TotalOrder",
-        "Unbounded"
-      ],
-      "source": "4",
-      "target": "5"
-    },
-    {
-      "edgeProperties": [
-        "Unbounded",
-        "TotalOrder"
-      ],
-      "id": "e5",
-      "semanticTags": [
-        "Unbounded",
-        "TotalOrder"
-      ],
-      "source": "5",
-      "target": "6"
-    },
-    {
-      "edgeProperties": [
-        "Unbounded",
-        "Network",
-        "TotalOrder"
-      ],
-      "id": "e6",
-      "label": "to Some(0)",
-      "semanticTags": [
-        "Unbounded",
-        "Network",
-        "TotalOrder"
-      ],
-      "source": "6",
-      "target": "7"
-    },
-    {
-      "edgeProperties": [
-        "TotalOrder",
-        "Unbounded"
-      ],
-      "id": "e7",
-      "semanticTags": [
-        "TotalOrder",
-        "Unbounded"
-      ],
-      "source": "7",
-      "target": "8"
-    }
-  ],
-  "hierarchyChoices": [
-    {
-      "hierarchy": [
+  "nodes": [
+  {
+    "data": {
+      "backtrace": [
         {
-          "children": [],
-          "id": "loc_0",
-          "name": "hydro_test::cluster::chat::Clients"
+          "file": "src/stream.rs",
+          "fn": "broadcast_bincode",
+          "line": 2731
         },
         {
-          "children": [],
-          "id": "loc_1",
-          "name": "hydro_test::cluster::chat::Server"
-        }
-      ],
-      "id": "location",
-      "name": "Location"
-    },
-    {
-      "hierarchy": [
+          "file": "src/cluster/chat.rs",
+          "fn": "chat_server",
+          "line": 42
+        },
         {
-          "children": [
-            {
-              "children": [
-                {
-                  "id": "bt_2",
-                  "name": "unknown"
-                }
-              ],
-              "id": "bt_1",
-              "name": "unknown"
-            }
-          ],
-          "id": "bt_3",
-          "name": "unknown"
+          "file": "examples/chat.rs",
+          "fn": "{{closure}}",
+          "line": 19
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "main",
+          "line": 41
         }
       ],
-      "id": "backtrace",
-      "name": "Backtrace"
-    }
-  ],
-  "legend": {
-    "items": [
+      "fullLabel": "network(ser + deser)",
+      "label": "network(recv)",
+      "locationId": 0,
+      "locationType": "Cluster",
+      "nodeType": "Network",
+      "shortLabel": "network(recv)"
+    },
+    "id": "7",
+    "label": "network(recv)"
+  },
+  {
+    "data": {
+      "backtrace": [
+        {
+          "file": "src/cluster/chat.rs",
+          "fn": "chat_server",
+          "line": 32
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "{{closure}}",
+          "line": 19
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "main",
+          "line": 41
+        }
+      ],
+      "fullLabel": "network(ser + deser)",
+      "label": "network(recv)",
+      "locationId": 1,
+      "locationType": "Process",
+      "nodeType": "Network",
+      "shortLabel": "network(recv)"
+    },
+    "id": "2",
+    "label": "network(recv)"
+  },
+  {
+    "data": {
+      "backtrace": [
+        {
+          "file": "src/cluster/chat.rs",
+          "fn": "chat_server",
+          "line": 32
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "{{closure}}",
+          "line": 19
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "main",
+          "line": 41
+        }
+      ],
+      "fullLabel": "persist [state storage]",
+      "label": "persist",
+      "locationId": 1,
+      "locationType": "Process",
+      "nodeType": "Transform",
+      "shortLabel": "persist"
+    },
+    "id": "5",
+    "label": "persist"
+  },
+  {
+    "data": {
+      "backtrace": [
+        {
+          "file": "src/cluster/chat.rs",
+          "fn": "chat_server",
+          "line": 42
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "{{closure}}",
+          "line": 19
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "main",
+          "line": 41
+        }
+      ],
+      "fullLabel": "for_each(q!(| (id , msg) | println ! (\"From {}: {:}\" , id . raw_id , msg . content . color (crate :: __staged :: cluster :: chat :: hash_to_color (id . raw_id + 10)))))",
+      "label": "for_each",
+      "locationId": 0,
+      "locationType": "Cluster",
+      "nodeType": "Sink",
+      "shortLabel": "for_each"
+    },
+    "id": "8",
+    "label": "for_each"
+  },
+  {
+    "data": {
+      "backtrace": [
+        {
+          "file": "src/cluster/chat.rs",
+          "fn": "chat_server",
+          "line": 32
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "{{closure}}",
+          "line": 19
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "main",
+          "line": 41
+        }
+      ],
+      "fullLabel": "persist [state storage]",
+      "label": "persist",
+      "locationId": 0,
+      "locationType": "Cluster",
+      "nodeType": "Transform",
+      "shortLabel": "persist"
+    },
+    "id": "1",
+    "label": "persist"
+  },
+  {
+    "data": {
+      "backtrace": [
+        {
+          "file": "src/stream.rs",
+          "fn": "broadcast_bincode",
+          "line": 2731
+        },
+        {
+          "file": "src/cluster/chat.rs",
+          "fn": "chat_server",
+          "line": 42
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "{{closure}}",
+          "line": 19
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "main",
+          "line": 41
+        }
+      ],
+      "fullLabel": "flatmap(q!(| v | { ids__free . iter () . map (move | id | (* id , v . clone ())) }))",
+      "label": "flatmap",
+      "locationId": 1,
+      "locationType": "Process",
+      "nodeType": "Transform",
+      "shortLabel": "flatmap"
+    },
+    "id": "6",
+    "label": "flatmap"
+  },
+  {
+    "data": {
+      "backtrace": [
+        {
+          "file": "src/cluster/chat.rs",
+          "fn": "chat_server",
+          "line": 32
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "{{closure}}",
+          "line": 19
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "main",
+          "line": 41
+        }
+      ],
+      "fullLabel": "source_iter(q!({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: chat :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < hydro_test :: __staged :: cluster :: chat :: Clients > :: from_raw (__hydro_lang_cluster_self_id_0) ; [ChatMsg { content : format ! (\"Hi, it's me! Client #{}!\" , CLUSTER_SELF_ID__free . raw_id) }] }))",
+      "label": "source_iter",
+      "locationId": 0,
+      "locationType": "Cluster",
+      "nodeType": "Source",
+      "shortLabel": "source_iter"
+    },
+    "id": "0",
+    "label": "source_iter"
+  },
+  {
+    "data": {
+      "backtrace": [
+        {
+          "file": "src/cluster/chat.rs",
+          "fn": "chat_server",
+          "line": 32
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "{{closure}}",
+          "line": 19
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "main",
+          "line": 41
+        }
+      ],
+      "fullLabel": "inspect(q!(| (id , msg) | println ! (\"...forwarding chat {} from client #{}...\" , msg . content , id)))",
+      "label": "inspect",
+      "locationId": 1,
+      "locationType": "Process",
+      "nodeType": "Transform",
+      "shortLabel": "inspect"
+    },
+    "id": "4",
+    "label": "inspect"
+  },
+  {
+    "data": {
+      "backtrace": [
+        {
+          "file": "src/cluster/chat.rs",
+          "fn": "chat_server",
+          "line": 32
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "{{closure}}",
+          "line": 19
+        },
+        {
+          "file": "examples/chat.rs",
+          "fn": "main",
+          "line": 41
+        }
+      ],
+      "fullLabel": "tee [branch dataflow]",
+      "label": "tee",
+      "locationId": 1,
+      "locationType": "Process",
+      "nodeType": "Tee",
+      "shortLabel": "tee"
+    },
+    "id": "3",
+    "label": "tee"
+  }
+],
+  "edges": [
+  {
+    "edgeProperties": [
+      "TotalOrder",
+      "Unbounded"
+    ],
+    "id": "e0",
+    "semanticTags": [
+      "TotalOrder",
+      "Unbounded"
+    ],
+    "source": "0",
+    "target": "1"
+  },
+  {
+    "edgeProperties": [
+      "Unbounded",
+      "TotalOrder",
+      "Network"
+    ],
+    "id": "e1",
+    "label": "to Some(1)",
+    "semanticTags": [
+      "Unbounded",
+      "TotalOrder",
+      "Network"
+    ],
+    "source": "1",
+    "target": "2"
+  },
+  {
+    "edgeProperties": [
+      "Unbounded",
+      "TotalOrder",
+      "Network"
+    ],
+    "id": "e2",
+    "semanticTags": [
+      "Unbounded",
+      "TotalOrder",
+      "Network"
+    ],
+    "source": "2",
+    "target": "3"
+  },
+  {
+    "edgeProperties": [
+      "TotalOrder",
+      "Unbounded"
+    ],
+    "id": "e3",
+    "semanticTags": [
+      "TotalOrder",
+      "Unbounded"
+    ],
+    "source": "3",
+    "target": "4"
+  },
+  {
+    "edgeProperties": [
+      "Unbounded",
+      "TotalOrder"
+    ],
+    "id": "e4",
+    "semanticTags": [
+      "Unbounded",
+      "TotalOrder"
+    ],
+    "source": "4",
+    "target": "5"
+  },
+  {
+    "edgeProperties": [
+      "Unbounded",
+      "TotalOrder"
+    ],
+    "id": "e5",
+    "semanticTags": [
+      "Unbounded",
+      "TotalOrder"
+    ],
+    "source": "5",
+    "target": "6"
+  },
+  {
+    "edgeProperties": [
+      "Network",
+      "Unbounded",
+      "TotalOrder"
+    ],
+    "id": "e6",
+    "label": "to Some(0)",
+    "semanticTags": [
+      "Network",
+      "Unbounded",
+      "TotalOrder"
+    ],
+    "source": "6",
+    "target": "7"
+  },
+  {
+    "edgeProperties": [
+      "TotalOrder",
+      "Unbounded"
+    ],
+    "id": "e7",
+    "semanticTags": [
+      "TotalOrder",
+      "Unbounded"
+    ],
+    "source": "7",
+    "target": "8"
+  }
+],
+  "hierarchyChoices": [
+  {
+    "children": [
       {
-        "label": "Source",
-        "type": "Source"
+        "children": [],
+        "id": "loc_0",
+        "name": "hydro_test::cluster::chat::Clients"
       },
       {
-        "label": "Transform",
-        "type": "Transform"
-      },
-      {
-        "label": "Join",
-        "type": "Join"
-      },
-      {
-        "label": "Aggregation",
-        "type": "Aggregation"
-      },
-      {
-        "label": "Network",
-        "type": "Network"
-      },
-      {
-        "label": "Sink",
-        "type": "Sink"
-      },
-      {
-        "label": "Tee",
-        "type": "Tee"
+        "children": [],
+        "id": "loc_1",
+        "name": "hydro_test::cluster::chat::Server"
       }
     ],
-    "title": "Node Types"
+    "id": "location",
+    "name": "Location"
   },
-  "nodeAssignments": {
-    "backtrace": {
-      "0": "bt_2",
-      "1": "bt_2",
-      "2": "bt_2",
-      "3": "bt_2",
-      "4": "bt_2",
-      "5": "bt_2",
-      "6": "bt_2",
-      "7": "bt_2",
-      "8": "bt_2"
-    },
-    "location": {
-      "0": "loc_0",
-      "1": "loc_0",
-      "2": "loc_1",
-      "3": "loc_1",
-      "4": "loc_1",
-      "5": "loc_1",
-      "6": "loc_1",
-      "7": "loc_0",
-      "8": "loc_0"
-    }
-  },
-  "nodeTypeConfig": {
-    "defaultType": "Transform",
-    "types": [
+  {
+    "children": [
       {
-        "colorIndex": 0,
-        "id": "Source",
-        "label": "Source"
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "id": "bt_7",
+                        "name": "broadcast_bincode"
+                      }
+                    ],
+                    "id": "bt_5",
+                    "name": "chat_server"
+                  }
+                ],
+                "id": "bt_1",
+                "name": "{{closure}}"
+              }
+            ],
+            "id": "bt_2",
+            "name": "poll"
+          }
+        ],
+        "id": "bt_3",
+        "name": "runtime/park.rs"
       },
       {
-        "colorIndex": 1,
-        "id": "Transform",
-        "label": "Transform"
-      },
-      {
-        "colorIndex": 2,
-        "id": "Join",
-        "label": "Join"
-      },
-      {
-        "colorIndex": 3,
-        "id": "Aggregation",
-        "label": "Aggregation"
-      },
-      {
-        "colorIndex": 4,
-        "id": "Network",
-        "label": "Network"
-      },
-      {
-        "colorIndex": 5,
-        "id": "Sink",
-        "label": "Sink"
-      },
-      {
-        "colorIndex": 6,
-        "id": "Tee",
-        "label": "Tee"
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "id": "bt_6",
+                        "name": "chat_server"
+                      }
+                    ],
+                    "id": "bt_9",
+                    "name": "{{closure}}"
+                  }
+                ],
+                "id": "bt_4",
+                "name": "poll"
+              }
+            ],
+            "id": "bt_10",
+            "name": "{{closure}}"
+          }
+        ],
+        "id": "bt_8",
+        "name": "coop/mod.rs"
       }
-    ]
+    ],
+    "id": "backtrace",
+    "name": "Backtrace"
+  }
+],
+  "nodeAssignments": {
+  "backtrace": {
+    "0": "bt_6",
+    "1": "bt_6",
+    "2": "bt_6",
+    "3": "bt_6",
+    "4": "bt_6",
+    "5": "bt_6",
+    "6": "bt_7",
+    "7": "bt_7",
+    "8": "bt_6"
   },
-  "nodes": [
+  "location": {
+    "0": "loc_0",
+    "1": "loc_0",
+    "2": "loc_1",
+    "3": "loc_1",
+    "4": "loc_1",
+    "5": "loc_1",
+    "6": "loc_1",
+    "7": "loc_0",
+    "8": "loc_0"
+  }
+},
+  "edgeStyleConfig": {
+  "combinationRules": {
+    "mutualExclusions": [],
+    "visualGroups": {}
+  },
+  "propertyMappings": {
+    "Bounded": "thick-stroke",
+    "Keyed": "double-line",
+    "Network": "dashed-animated",
+    "NoOrder": "wavy-line",
+    "TotalOrder": "smooth-line",
+    "Unbounded": "thin-stroke"
+  }
+},
+  "nodeTypeConfig": {
+  "defaultType": "Transform",
+  "types": [
     {
-      "data": {
-        "backtrace": [
-          {
-            "file": "src/cluster/chat.rs",
-            "fn": "chat_server",
-            "line": 32
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "{{closure}}",
-            "line": 19
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "main",
-            "line": 41
-          }
-        ],
-        "expanded": false,
-        "fullLabel": "tee [branch dataflow]",
-        "label": "tee",
-        "locationId": 1,
-        "locationType": "Process",
-        "nodeType": "Tee",
-        "shortLabel": "tee"
-      },
-      "id": "3",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "type": "default"
+      "colorIndex": 0,
+      "id": "Source",
+      "label": "Source"
     },
     {
-      "data": {
-        "backtrace": [
-          {
-            "file": "src/cluster/chat.rs",
-            "fn": "chat_server",
-            "line": 32
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "{{closure}}",
-            "line": 19
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "main",
-            "line": 41
-          }
-        ],
-        "expanded": false,
-        "fullLabel": "persist [state storage]",
-        "label": "persist",
-        "locationId": 1,
-        "locationType": "Process",
-        "nodeType": "Transform",
-        "shortLabel": "persist"
-      },
-      "id": "5",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "type": "default"
+      "colorIndex": 1,
+      "id": "Transform",
+      "label": "Transform"
     },
     {
-      "data": {
-        "backtrace": [
-          {
-            "file": "src/stream.rs",
-            "fn": "broadcast_bincode",
-            "line": 2731
-          },
-          {
-            "file": "src/cluster/chat.rs",
-            "fn": "chat_server",
-            "line": 42
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "{{closure}}",
-            "line": 19
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "main",
-            "line": 41
-          }
-        ],
-        "expanded": false,
-        "fullLabel": "network(ser + deser)",
-        "label": "network(recv)",
-        "locationId": 0,
-        "locationType": "Cluster",
-        "nodeType": "Network",
-        "shortLabel": "network(recv)"
-      },
-      "id": "7",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "type": "default"
+      "colorIndex": 2,
+      "id": "Join",
+      "label": "Join"
     },
     {
-      "data": {
-        "backtrace": [
-          {
-            "file": "src/cluster/chat.rs",
-            "fn": "chat_server",
-            "line": 32
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "{{closure}}",
-            "line": 19
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "main",
-            "line": 41
-          }
-        ],
-        "expanded": false,
-        "fullLabel": "source_iter(q!({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: chat :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < hydro_test :: __staged :: cluster :: chat :: Clients > :: from_raw (__hydro_lang_cluster_self_id_0) ; [ChatMsg { content : format ! (\"Hi, it's me! Client #{}!\" , CLUSTER_SELF_ID__free . raw_id) }] }))",
-        "label": "source_iter",
-        "locationId": 0,
-        "locationType": "Cluster",
-        "nodeType": "Source",
-        "shortLabel": "source_iter"
-      },
-      "id": "0",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "type": "default"
+      "colorIndex": 3,
+      "id": "Aggregation",
+      "label": "Aggregation"
     },
     {
-      "data": {
-        "backtrace": [
-          {
-            "file": "src/cluster/chat.rs",
-            "fn": "chat_server",
-            "line": 32
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "{{closure}}",
-            "line": 19
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "main",
-            "line": 41
-          }
-        ],
-        "expanded": false,
-        "fullLabel": "persist [state storage]",
-        "label": "persist",
-        "locationId": 0,
-        "locationType": "Cluster",
-        "nodeType": "Transform",
-        "shortLabel": "persist"
-      },
-      "id": "1",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "type": "default"
+      "colorIndex": 4,
+      "id": "Network",
+      "label": "Network"
     },
     {
-      "data": {
-        "backtrace": [
-          {
-            "file": "src/stream.rs",
-            "fn": "broadcast_bincode",
-            "line": 2731
-          },
-          {
-            "file": "src/cluster/chat.rs",
-            "fn": "chat_server",
-            "line": 42
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "{{closure}}",
-            "line": 19
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "main",
-            "line": 41
-          }
-        ],
-        "expanded": false,
-        "fullLabel": "flatmap(q!(| v | { ids__free . iter () . map (move | id | (* id , v . clone ())) }))",
-        "label": "flatmap",
-        "locationId": 1,
-        "locationType": "Process",
-        "nodeType": "Transform",
-        "shortLabel": "flatmap"
-      },
-      "id": "6",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "type": "default"
+      "colorIndex": 5,
+      "id": "Sink",
+      "label": "Sink"
     },
     {
-      "data": {
-        "backtrace": [
-          {
-            "file": "src/cluster/chat.rs",
-            "fn": "chat_server",
-            "line": 32
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "{{closure}}",
-            "line": 19
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "main",
-            "line": 41
-          }
-        ],
-        "expanded": false,
-        "fullLabel": "network(ser + deser)",
-        "label": "network(recv)",
-        "locationId": 1,
-        "locationType": "Process",
-        "nodeType": "Network",
-        "shortLabel": "network(recv)"
-      },
-      "id": "2",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "type": "default"
-    },
-    {
-      "data": {
-        "backtrace": [
-          {
-            "file": "src/cluster/chat.rs",
-            "fn": "chat_server",
-            "line": 42
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "{{closure}}",
-            "line": 19
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "main",
-            "line": 41
-          }
-        ],
-        "expanded": false,
-        "fullLabel": "for_each(q!(| (id , msg) | println ! (\"From {}: {:}\" , id . raw_id , msg . content . color (crate :: __staged :: cluster :: chat :: hash_to_color (id . raw_id + 10)))))",
-        "label": "for_each",
-        "locationId": 0,
-        "locationType": "Cluster",
-        "nodeType": "Sink",
-        "shortLabel": "for_each"
-      },
-      "id": "8",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "type": "default"
-    },
-    {
-      "data": {
-        "backtrace": [
-          {
-            "file": "src/cluster/chat.rs",
-            "fn": "chat_server",
-            "line": 32
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "{{closure}}",
-            "line": 19
-          },
-          {
-            "file": "examples/chat.rs",
-            "fn": "main",
-            "line": 41
-          }
-        ],
-        "expanded": false,
-        "fullLabel": "inspect(q!(| (id , msg) | println ! (\"...forwarding chat {} from client #{}...\" , msg . content , id)))",
-        "label": "inspect",
-        "locationId": 1,
-        "locationType": "Process",
-        "nodeType": "Transform",
-        "shortLabel": "inspect"
-      },
-      "id": "4",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "type": "default"
+      "colorIndex": 6,
+      "id": "Tee",
+      "label": "Tee"
     }
   ]
+},
+  "legend": {
+  "items": [
+    {
+      "label": "Source",
+      "type": "Source"
+    },
+    {
+      "label": "Transform",
+      "type": "Transform"
+    },
+    {
+      "label": "Join",
+      "type": "Join"
+    },
+    {
+      "label": "Aggregation",
+      "type": "Aggregation"
+    },
+    {
+      "label": "Network",
+      "type": "Network"
+    },
+    {
+      "label": "Sink",
+      "type": "Sink"
+    },
+    {
+      "label": "Tee",
+      "type": "Tee"
+    }
+  ],
+  "title": "Node Types"
+}
 }

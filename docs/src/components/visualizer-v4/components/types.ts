@@ -5,6 +5,7 @@
  */
 
 import { VisualizationState } from '../core/VisualizationState';
+import { EdgeStyleConfig } from '../core/EdgeStyleProcessor';
 
 // ============ Base Component Props ============
 
@@ -35,6 +36,7 @@ export interface InfoPanelProps extends BaseComponentProps {
   // Data
   visualizationState: VisualizationState;
   legendData?: LegendData;
+  edgeStyleConfig?: EdgeStyleConfig;
   
   // Grouping & Hierarchy
   hierarchyChoices?: GroupingOption[];
@@ -58,6 +60,7 @@ export interface InfoPanelProps extends BaseComponentProps {
 export interface HierarchyTreeNode {
   id: string;
   label: string;
+  shortLabel?: string; // Optional for backward compatibility
   children: HierarchyTreeNode[];
   nodeCount: number;
   isCollapsed?: boolean;
