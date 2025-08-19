@@ -128,7 +128,12 @@ expression: builder.finalize().ir()
                         output_type: Some(
                             hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                         ),
-                        stream_kind: None,
+                        stream_kind: Some(
+                            Stream {
+                                ordering: TotalOrder,
+                                retries: ExactlyOnce,
+                            },
+                        ),
                         is_bounded: false,
                     },
                 },
@@ -139,7 +144,12 @@ expression: builder.finalize().ir()
                     output_type: Some(
                         hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                     ),
-                    stream_kind: None,
+                    stream_kind: Some(
+                        Stream {
+                            ordering: TotalOrder,
+                            retries: ExactlyOnce,
+                        },
+                    ),
                     is_bounded: false,
                 },
             },

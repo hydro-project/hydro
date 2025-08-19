@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
-use hydro_lang::*;
 use hydro_lang::stream::OrderingKind;
+use hydro_lang::*;
 use location::NoTick;
 
 #[expect(clippy::type_complexity, reason = "stream types with ordering")]
@@ -19,7 +19,8 @@ pub fn collect_quorum_with_response<
 ) -> (
     Stream<(K, V), Atomic<L>, Unbounded, Order>,
     Stream<(K, E), Atomic<L>, Unbounded, Order>,
-) where
+)
+where
     Order: OrderingKind,
 {
     let tick = responses.atomic_source();
@@ -96,7 +97,8 @@ pub fn collect_quorum<'a, L: Location<'a> + NoTick, Order, K: Clone + Eq + Hash,
 ) -> (
     Stream<K, Atomic<L>, Unbounded, NoOrder>,
     Stream<(K, E), Atomic<L>, Unbounded, Order>,
-) where
+)
+where
     Order: OrderingKind,
 {
     let tick = responses.atomic_source();

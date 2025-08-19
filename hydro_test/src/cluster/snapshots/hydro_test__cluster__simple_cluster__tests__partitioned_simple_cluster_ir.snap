@@ -61,7 +61,12 @@ expression: built.ir()
                                                     output_type: Some(
                                                         hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                     ),
-                                                    stream_kind: None,
+                                                    stream_kind: Some(
+                                                        Stream {
+                                                            ordering: TotalOrder,
+                                                            retries: ExactlyOnce,
+                                                        },
+                                                    ),
                                                     is_bounded: false,
                                                 },
                                             },
@@ -72,7 +77,12 @@ expression: built.ir()
                                                 output_type: Some(
                                                     hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                 ),
-                                                stream_kind: None,
+                                                stream_kind: Some(
+                                                    Stream {
+                                                        ordering: TotalOrder,
+                                                        retries: ExactlyOnce,
+                                                    },
+                                                ),
                                                 is_bounded: false,
                                             },
                                         },
@@ -152,7 +162,12 @@ expression: built.ir()
                                     output_type: Some(
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                                     ),
-                                    stream_kind: None,
+                                    stream_kind: Some(
+                                        Stream {
+                                            ordering: NoOrder,
+                                            retries: ExactlyOnce,
+                                        },
+                                    ),
                                     is_bounded: false,
                                 },
                             },
@@ -163,7 +178,12 @@ expression: built.ir()
                                 output_type: Some(
                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                                 ),
-                                stream_kind: None,
+                                stream_kind: Some(
+                                    Stream {
+                                        ordering: NoOrder,
+                                        retries: ExactlyOnce,
+                                    },
+                                ),
                                 is_bounded: false,
                             },
                         },
@@ -174,7 +194,12 @@ expression: built.ir()
                             output_type: Some(
                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                             ),
-                            stream_kind: None,
+                            stream_kind: Some(
+                                Stream {
+                                    ordering: NoOrder,
+                                    retries: ExactlyOnce,
+                                },
+                            ),
                             is_bounded: false,
                         },
                     },
@@ -196,7 +221,12 @@ expression: built.ir()
                     output_type: Some(
                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                     ),
-                    stream_kind: None,
+                    stream_kind: Some(
+                        Stream {
+                            ordering: NoOrder,
+                            retries: ExactlyOnce,
+                        },
+                    ),
                     is_bounded: false,
                 },
             },
@@ -207,7 +237,12 @@ expression: built.ir()
                 output_type: Some(
                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                 ),
-                stream_kind: None,
+                stream_kind: Some(
+                    Stream {
+                        ordering: NoOrder,
+                        retries: ExactlyOnce,
+                    },
+                ),
                 is_bounded: false,
             },
         },

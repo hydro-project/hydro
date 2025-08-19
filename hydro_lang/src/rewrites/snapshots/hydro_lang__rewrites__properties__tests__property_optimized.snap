@@ -37,7 +37,12 @@ expression: built.ir()
                     output_type: Some(
                         (std :: string :: String , ()),
                     ),
-                    stream_kind: None,
+                    stream_kind: Some(
+                        Stream {
+                            ordering: TotalOrder,
+                            retries: ExactlyOnce,
+                        },
+                    ),
                     is_bounded: false,
                 },
             },
@@ -57,7 +62,7 @@ expression: built.ir()
                         retries: ExactlyOnce,
                     },
                 ),
-                is_bounded: false,
+                is_bounded: true,
             },
         },
         metadata: HydroIrMetadata {

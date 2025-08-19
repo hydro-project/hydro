@@ -10,7 +10,7 @@ use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::manual_expr::ManualExpr;
-use crate::stream::{ExactlyOnce, TotalOrder, OrderingKind, RetriesKind};
+use crate::stream::{ExactlyOnce, OrderingKind, RetriesKind, TotalOrder};
 use crate::unsafety::NonDet;
 use crate::*;
 
