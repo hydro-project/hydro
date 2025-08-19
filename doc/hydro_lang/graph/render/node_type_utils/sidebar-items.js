@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["all_types_with_strings","to_dot_style","to_mermaid_class","to_mermaid_shape","to_string"]};
