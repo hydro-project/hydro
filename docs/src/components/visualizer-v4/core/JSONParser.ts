@@ -26,8 +26,8 @@ export interface ParseResult {
     styleConfig?: Record<string, any>;
     edgeStyleConfig?: {
       propertyMappings: Record<string, any>;
-      defaultStyle: any;
-      combinationRules: any;
+      defaultStyle?: any;
+      combinationRules?: any;
     };
     nodeTypeConfig?: {
       defaultType?: string;
@@ -102,8 +102,8 @@ interface RawGraphData {
   };
   edgeStyleConfig?: {
     propertyMappings: Record<string, any>;
-    defaultStyle: any;
-    combinationRules: any;
+    defaultStyle?: any;
+    combinationRules?: any;
   };
   nodeTypeConfig?: {
     defaultType?: string;

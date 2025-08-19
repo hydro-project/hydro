@@ -57,10 +57,8 @@ export type { RenderConfig, FlowGraphEventHandlers } from './core/types';
 
 export { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from './shared/config';
 
+export type { NodeStyle, EdgeStyle, ContainerStyle } from './shared/config';
 export type {
-  NodeStyle,
-  EdgeStyle,
-  ContainerStyle,
   Dimensions,
   GraphNode,
   GraphEdge,

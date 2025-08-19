@@ -7,10 +7,8 @@
  * This refactored version delegates to specialized operation classes for better maintainability.
  */
 
-import {
-  NODE_STYLES,
-  EDGE_STYLES, 
-  CONTAINER_STYLES,
+import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES } from '../shared/config';
+import type { 
   CreateNodeProps,
   CreateEdgeProps,
   CreateContainerProps,
