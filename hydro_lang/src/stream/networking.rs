@@ -61,7 +61,11 @@ pub(crate) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type
     deserialize_bincode_with_type(tagged, &quote_type::<T>())
 }
 
-impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R>
+where
+    O: crate::stream::OrderingKind,
+    R: crate::stream::RetriesKind,
+{
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,
@@ -100,7 +104,11 @@ impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     }
 }
 
-impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Process<'a, L>, B, O, R>
+where
+    O: crate::stream::OrderingKind,
+    R: crate::stream::RetriesKind,
+{
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -112,7 +120,11 @@ impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Process<'a, L>, B, O, R> 
     }
 }
 
-impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Process<'a, L>, B, O, R>
+where
+    O: crate::stream::OrderingKind,
+    R: crate::stream::RetriesKind,
+{
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -153,7 +165,11 @@ impl<'a, T, L, B> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
     }
 }
 
-impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Cluster<'a, L>, B, O, R>
+where
+    O: crate::stream::OrderingKind,
+    R: crate::stream::RetriesKind,
+{
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -165,7 +181,11 @@ impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Cluster<'a, L>, B, O, R> 
     }
 }
 
-impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Cluster<'a, L>, B, O, R>
+where
+    O: crate::stream::OrderingKind,
+    R: crate::stream::RetriesKind,
+{
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -192,7 +212,11 @@ impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Cluster<'a, L>, B, O, 
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, Process<'a, L>, B, O, R> {
+impl<'a, T, L, B, O, R> Stream<T, Process<'a, L>, B, O, R>
+where
+    O: crate::stream::OrderingKind,
+    R: crate::stream::RetriesKind,
+{
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,

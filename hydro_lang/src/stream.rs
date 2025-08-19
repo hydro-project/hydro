@@ -64,15 +64,54 @@ pub enum ExactlyOnce {}
 /// means that duplicates may occur, but messages will not be dropped.
 pub enum AtLeastOnce {}
 
+/// Trait for determining the stream ordering kind for metadata
+pub trait OrderingKind {
+    /// Returns the stream ordering for metadata
+    fn ordering() -> StreamOrdering;
+}
+
+impl OrderingKind for TotalOrder {
+    fn ordering() -> StreamOrdering {
+        StreamOrdering::TotalOrder
+    }
+}
+
+impl OrderingKind for NoOrder {
+    fn ordering() -> StreamOrdering {
+        StreamOrdering::NoOrder
+    }
+}
+
+/// Trait for determining the stream retries kind for metadata
+pub trait RetriesKind {
+    /// Returns the stream retries for metadata
+    fn retries() -> StreamRetries;
+}
+
+impl RetriesKind for ExactlyOnce {
+    fn retries() -> StreamRetries {
+        StreamRetries::ExactlyOnce
+    }
+}
+
+impl RetriesKind for AtLeastOnce {
+    fn retries() -> StreamRetries {
+        StreamRetries::AtLeastOnce
+    }
+}
+
 /// Helper trait for determining the weakest of two retry guarantees.
 #[sealed::sealed]
 pub trait MinRetries<Other> {
     /// The weaker of the two retry guarantees.
-    type Min;
+    type Min: RetriesKind;
 }
 
 #[sealed::sealed]
-impl<T> MinRetries<T> for T {
+impl<T> MinRetries<T> for T
+where
+    T: RetriesKind,
+{
     type Min = T;
 }
 
@@ -144,6 +183,8 @@ where
 impl<'a, T, L, O, R> DeferTick for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     fn defer_tick(self) -> Self {
         Stream::defer_tick(self)
@@ -153,6 +194,8 @@ where
 impl<'a, T, L, O, R> CycleCollection<'a, TickCycleMarker> for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     type Location = Tick<L>;
 
@@ -176,6 +219,8 @@ where
 impl<'a, T, L, O, R> CycleComplete<'a, TickCycleMarker> for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
@@ -200,6 +245,8 @@ where
 impl<'a, T, L, B, O, R> CycleCollection<'a, ForwardRefMarker> for Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     type Location = L;
 
@@ -248,8 +295,30 @@ where
 impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
-    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
+    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self
+    where
+        O: OrderingKind,
+        R: RetriesKind,
+    {
+        // Align IR metadata with the type parameters to avoid dual sources of truth.
+        let mut ir_node = ir_node;
+        {
+            let md = ir_node.metadata_mut();
+            // Always set boundedness based on the Bound type parameter.
+            md.is_bounded = std::any::type_name::<B>().contains("Bounded");
+
+            // If the stream kind hasn't been set by the caller, populate from Ordering/Retry type params.
+            if md.stream_kind.is_none() {
+                md.stream_kind = Some(StreamKind::Stream {
+                    ordering: <O as OrderingKind>::ordering(),
+                    retries: <R as RetriesKind>::retries(),
+                });
+            }
+        }
+
         Stream {
             location,
             ir_node: RefCell::new(ir_node),
@@ -291,6 +360,8 @@ where
 impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     /// Helper method to update metadata for keyed stream type conversions.
     /// This avoids the need to match on the node type when the only change is the metadata.
@@ -777,8 +848,11 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_ordering<O2>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
-        use crate::ir::{StreamKind, StreamOrdering};
+    pub fn assume_ordering<O2>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R>
+    where
+        O2: OrderingKind,
+    {
+        use crate::ir::StreamKind;
 
         let mut orig_ir_node = self.ir_node.into_inner();
 
@@ -787,14 +861,7 @@ where
         if let Some(StreamKind::Stream { ordering, .. }) =
             orig_ir_node.metadata_mut().stream_kind.as_mut()
         {
-            let type_name = std::any::type_name::<O2>();
-            *ordering = if type_name.ends_with("TotalOrder") {
-                StreamOrdering::TotalOrder
-            } else if type_name.ends_with("NoOrder") {
-                StreamOrdering::NoOrder
-            } else {
-                *ordering
-            };
+            *ordering = O2::ordering();
         }
 
         Stream::new(self.location.clone(), orig_ir_node)
@@ -815,8 +882,11 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_retries<R2>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
-        use crate::ir::{StreamKind, StreamRetries};
+    pub fn assume_retries<R2>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2>
+    where
+        R2: RetriesKind,
+    {
+        use crate::ir::StreamKind;
 
         let mut orig_ir_node = self.ir_node.into_inner();
 
@@ -825,15 +895,7 @@ where
         if let Some(StreamKind::Stream { retries, .. }) =
             orig_ir_node.metadata_mut().stream_kind.as_mut()
         {
-            let type_name = std::any::type_name::<R2>();
-            *retries = if type_name.ends_with("ExactlyOnce") {
-                StreamRetries::ExactlyOnce
-            } else if type_name.ends_with("AtLeastOnce") {
-                StreamRetries::AtLeastOnce
-            } else {
-                // Keep existing retries if R2 is not a known retries type
-                *retries
-            };
+            *retries = R2::retries();
         }
 
         Stream::new(self.location.clone(), orig_ir_node)
@@ -861,6 +923,8 @@ where
 impl<'a, T, L, B, O, R> Stream<&T, L, B, O, R>
 where
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     /// Clone each element of the stream; akin to `map(q!(|d| d.clone()))`.
     ///
@@ -888,6 +952,8 @@ where
 impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     /// Combines elements of the stream into a [`Singleton`], by starting with an initial value,
     /// generated by the `init` closure, and then applying the `comb` closure to each element in the stream.
@@ -922,7 +988,7 @@ where
         F: Fn(&mut A, T),
     {
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        self.assume_ordering(nondet)
+    self.assume_ordering(nondet)
             .assume_retries(nondet)
             .fold(init, comb)
     }
@@ -959,7 +1025,7 @@ where
         F: Fn(&mut T, T) + 'a,
     {
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        self.assume_ordering(nondet)
+    self.assume_ordering(nondet)
             .assume_retries(nondet)
             .reduce(comb)
     }
@@ -1074,6 +1140,7 @@ where
 impl<'a, T, L, B, O> Stream<T, L, B, O, ExactlyOnce>
 where
     L: Location<'a>,
+    O: OrderingKind,
 {
     /// Combines elements of the stream into a [`Singleton`], by starting with an initial value,
     /// generated by the `init` closure, and then applying the `comb` closure to each element in the stream.
@@ -1165,6 +1232,7 @@ where
 impl<'a, T, L, B, R> Stream<T, L, B, TotalOrder, R>
 where
     L: Location<'a>,
+    R: RetriesKind,
 {
     /// Combines elements of the stream into a [`Singleton`], by starting with an initial value,
     /// generated by the `init` closure, and then applying the `comb` closure to each element in the stream.
@@ -1522,7 +1590,11 @@ where
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O, R> {
+impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O, R>
+where
+    O: OrderingKind,
+    R: RetriesKind,
+{
     /// Produces a new stream that interleaves the elements of the two input streams.
     /// The result has [`NoOrder`] because the order of interleaving is not guaranteed.
     ///
@@ -1543,12 +1615,14 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O
     /// # }
     /// # }));
     /// ```
-    pub fn interleave<O2, R2: MinRetries<R>>(
+    pub fn interleave<O2, R2>(
         self,
         other: Stream<T, L, Unbounded, O2, R2>,
     ) -> Stream<T, L, Unbounded, NoOrder, R::Min>
     where
         R: MinRetries<R2, Min = R2::Min>,
+        O2: OrderingKind,
+        R2: RetriesKind + MinRetries<R>,
     {
         let tick = self.location.tick();
         // Because the outputs are unordered, we can interleave batches from both streams.
@@ -1569,6 +1643,8 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O
 impl<'a, T, L, O, R> Stream<T, L, Bounded, O, R>
 where
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     /// Produces a new stream that emits the input elements in sorted order.
     ///
@@ -1634,6 +1710,7 @@ where
     pub fn chain<O2>(self, other: Stream<T, L, Bounded, O2, R>) -> Stream<T, L, Bounded, O::Min, R>
     where
         O: MinOrder<O2>,
+        <O as MinOrder<O2>>::Min: OrderingKind,
     {
         check_matching_location(&self.location, &other.location);
 
@@ -1657,6 +1734,8 @@ where
 impl<'a, K, V1, L, B, O, R> Stream<(K, V1), L, B, O, R>
 where
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     /// Given two streams of pairs `(K, V1)` and `(K, V2)`, produces a new stream of nested pairs `(K, (V1, V2))`
     /// by equi-joining the two streams on the key attribute `K`.
@@ -1747,7 +1826,11 @@ where
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R> {
+impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R>
+where
+    O: OrderingKind,
+    R: RetriesKind,
+{
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
         let underlying = self.weakest_ordering();
         KeyedStream {
@@ -1970,6 +2053,8 @@ impl<'a, K, V, L, O, R> Stream<(K, V), Tick<L>, Bounded, O, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     #[deprecated = "use .into_keyed().fold_commutative_idempotent(...) instead"]
     /// A special case of [`Stream::fold_commutative_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
@@ -2079,6 +2164,7 @@ impl<'a, K, V, L, O> Stream<(K, V), Tick<L>, Bounded, O, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
+    O: OrderingKind,
 {
     #[deprecated = "use .into_keyed().fold_commutative(...) instead"]
     /// A special case of [`Stream::fold_commutative`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
@@ -2160,6 +2246,7 @@ impl<'a, K, V, L, R> Stream<(K, V), Tick<L>, Bounded, TotalOrder, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
+    R: RetriesKind,
 {
     #[deprecated = "use .into_keyed().fold_idempotent(...) instead"]
     /// A special case of [`Stream::fold_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
@@ -2240,6 +2327,8 @@ where
 impl<'a, T, L, B, O, R> Stream<T, Atomic<L>, B, O, R>
 where
     L: Location<'a> + NoTick,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     /// Returns a stream corresponding to the latest batch of elements being atomically
     /// processed. These batches are guaranteed to be contiguous across ticks and preserve
@@ -2275,6 +2364,8 @@ where
 impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, O, R> {
         Stream::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
@@ -2396,6 +2487,8 @@ where
 impl<'a, F, T, L, B, O, R> Stream<F, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
+    O: OrderingKind,
+    R: RetriesKind,
     F: Future<Output = T>,
 {
     /// Consumes a stream of `Future<T>`, produces a new stream of the resulting `T` outputs.
@@ -2440,6 +2533,8 @@ where
 impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     pub fn for_each<F: Fn(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) {
         let f = f.splice_fn1_ctx(&self.location).into();
@@ -2481,6 +2576,8 @@ where
 impl<'a, T, L, O, R> Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
+    O: OrderingKind,
+    R: RetriesKind,
 {
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, O, R> {
         Stream::new(

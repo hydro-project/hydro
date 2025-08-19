@@ -1,4 +1,5 @@
 use hydro_lang::*;
+use hydro_lang::stream::OrderingKind;
 use location::NoTick;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -16,6 +17,8 @@ pub trait PartitionStream<'a, T, C1, C2, Order> {
 
 impl<'a, T, C1, C2, Order> PartitionStream<'a, T, C1, C2, Order>
     for Stream<(ClusterId<C2>, T), Cluster<'a, C1>, Unbounded, Order>
+where
+    Order: OrderingKind,
 {
     fn send_partitioned<F: Fn((ClusterId<C2>, T)) -> (ClusterId<C2>, T) + 'a>(
         self,
@@ -40,6 +43,8 @@ pub trait DecoupleClusterStream<'a, T, C1, B, Order> {
 
 impl<'a, T, C1, B, Order> DecoupleClusterStream<'a, T, C1, B, Order>
     for Stream<T, Cluster<'a, C1>, B, Order>
+where
+    Order: OrderingKind,
 {
     fn decouple_cluster<C2: 'a>(
         self,
@@ -73,6 +78,8 @@ pub trait DecoupleProcessStream<'a, T, L: Location<'a> + NoTick, B, Order> {
 
 impl<'a, T, L, B, Order> DecoupleProcessStream<'a, T, Process<'a, L>, B, Order>
     for Stream<T, Process<'a, L>, B, Order>
+where
+    Order: OrderingKind,
 {
     fn decouple_process<P2>(
         self,
