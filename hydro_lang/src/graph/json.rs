@@ -77,38 +77,73 @@ impl<W> HydroJson<W> {
             .collect()
     }
 
-    /// Get edge style configuration mapping semantic properties to visual styles
+    /// Get edge style configuration with semantic→style mappings
     fn get_edge_style_config() -> serde_json::Value {
         serde_json::json!({
-            "propertyMappings": {
-                // Network vs Non-Network: dashed/animated vs solid/static
-                "Network": "dashed-animated",
+            "semanticMappings": {
+                // Network communication group - controls line pattern AND animation
+                "NetworkGroup": {
+                    "Local": {
+                        "line-pattern": "solid",
+                        "animation": "static"
+                    },
+                    "Network": {
+                        "line-pattern": "dotted",
+                        "animation": "animated"
+                    }
+                },
                 
-                // Bounded vs Unbounded: thick vs thin stroke (Bounded=thick, Unbounded=thin)
-                "Bounded": "thick-stroke",
-                "Unbounded": "thin-stroke",
+                // Boundedness group - controls line width
+                "BoundednessGroup": {
+                    "Unbounded": {
+                        "line-width": 1
+                    },
+                    "Bounded": {
+                        "line-width": 3
+                    }
+                },
                 
-                // NoOrder vs TotalOrder: wavy vs smooth line
-                "NoOrder": "wavy-line",
-                "TotalOrder": "smooth-line",
+                // Collection type group - controls arrowhead and rails (line-style)
+                "CollectionGroup": {
+                    "Stream": {
+                        "arrowhead": "triangle-filled",
+                        "line-style": "single"
+                    },
+                    "KeyedStream": {
+                        "arrowhead": "triangle-filled",
+                        "line-style": "double"
+                    },
+                    "Singleton": {
+                        "arrowhead": "circle-filled",
+                        "line-style": "single"
+                    },
+                    "Optional": {
+                        "arrowhead": "diamond-open",
+                        "line-style": "single"
+                    }
+                },
                 
-                // Keyed vs Non-Keyed: double vs single line
-                "Keyed": "double-line"
-            },
-            "combinationRules": {
-                "mutualExclusions": [],
-                "visualGroups": {}
+                // Flow control group - controls halo
+                "FlowGroup": {
+                    "Linear": {
+                        "halo": "none"
+                    },
+                    "Cycle": {
+                        "halo": "light-red"
+                    }
+                }
+                ,
+                // Ordering group - waviness channel
+                "OrderingGroup": {
+                    "TotalOrder": {
+                        "waviness": "none"
+                    },
+                    "NoOrder": {
+                        "waviness": "wavy"
+                    }
+                }
             }
         })
-    }
-
-    /// Apply elk.js layout via browser - nodes start at origin for elk.js to position
-    fn apply_layout(&mut self) {
-        // Set all nodes to default position - elk.js will handle layout in browser
-        for node in &mut self.nodes {
-            node["position"]["x"] = serde_json::Value::Number(serde_json::Number::from(0));
-            node["position"]["y"] = serde_json::Value::Number(serde_json::Number::from(0));
-        }
     }
 
     /// Optimize backtrace data for size efficiency
@@ -226,13 +261,6 @@ where
             }
         };
 
-        // Determine what label to display based on config
-        let display_label = if self.config.use_short_labels {
-            super::render::extract_short_label(&full_label)
-        } else {
-            full_label.clone()
-        };
-
         // Always extract short label for UI toggle functionality
         let short_label = super::render::extract_short_label(&full_label);
 
@@ -277,20 +305,13 @@ where
 
         let node = serde_json::json!({
             "id": node_id.to_string(),
-            "type": "default",
+            "nodeType": Self::node_type_to_string(node_type),
+            "fullLabel": enhanced_full_label,
+            "shortLabel": short_label,
             "data": {
-                "label": display_label,
-                "shortLabel": short_label,
-                "fullLabel": enhanced_full_label,
-                "expanded": false,
                 "locationId": location_id,
                 "locationType": location_type,
-                "nodeType": Self::node_type_to_string(node_type),
                 "backtrace": backtrace_json
-            },
-            "position": {
-                "x": 0,
-                "y": 0
             }
         });
         self.nodes.push(node);
@@ -383,58 +404,69 @@ where
     }
 
     fn write_epilogue(&mut self) -> Result<(), Self::Err> {
-        // Apply automatic layout using a simple algorithm
-        self.apply_layout();
-
         // Create multiple hierarchy options
         let mut hierarchy_choices = Vec::new();
         let mut node_assignments_choices = serde_json::Map::new();
-
-       // Add backtrace-based hierarchy if available
-        if self.has_backtrace_data() {
-            let (backtrace_hierarchy, backtrace_assignments) = self.create_backtrace_hierarchy();
-            hierarchy_choices.push(serde_json::json!({
-                "id": "backtrace",
-                "name": "Backtrace",
-                "hierarchy": backtrace_hierarchy
-            }));
-            node_assignments_choices.insert("backtrace".to_string(), serde_json::Value::Object(backtrace_assignments));
-        }
 
         // Always add location-based hierarchy
         let (location_hierarchy, location_assignments) = self.create_location_hierarchy();
         hierarchy_choices.push(serde_json::json!({
             "id": "location",
             "name": "Location",
-            "hierarchy": location_hierarchy
+            "children": location_hierarchy
         }));
         node_assignments_choices.insert("location".to_string(), serde_json::Value::Object(location_assignments));
+
+        // Add backtrace-based hierarchy if available
+        if self.has_backtrace_data() {
+            let (backtrace_hierarchy, backtrace_assignments) = self.create_backtrace_hierarchy();
+            hierarchy_choices.push(serde_json::json!({
+                "id": "backtrace",
+                "name": "Backtrace",
+                "children": backtrace_hierarchy
+            }));
+            node_assignments_choices.insert("backtrace".to_string(), serde_json::Value::Object(backtrace_assignments));
+        }
 
           // Create the final JSON structure in the format expected by the visualizer
         let node_type_definitions = Self::get_node_type_definitions();
         let legend_items = Self::get_legend_items();
 
-        let output = serde_json::json!({
-            "nodes": self.nodes,
-            "edges": self.edges,
-            "hierarchyChoices": hierarchy_choices,
-            "nodeAssignments": node_assignments_choices,
-            "nodeTypeConfig": {
-                "types": node_type_definitions,
-                "defaultType": "Transform"
-            },
-            "legend": {
-                "title": "Node Types",
-                "items": legend_items
-            },
-            "edgeStyleConfig": Self::get_edge_style_config()
+        // Build JSON string manually to guarantee field ordering
+        let mut json_parts = Vec::new();
+        
+        // 1. nodes (required field first)
+        json_parts.push(format!("\"nodes\": {}", serde_json::to_string_pretty(&self.nodes).unwrap()));
+        
+        // 2. edges (required field second)
+        json_parts.push(format!("\"edges\": {}", serde_json::to_string_pretty(&self.edges).unwrap()));
+        
+        // 3. hierarchyChoices
+        json_parts.push(format!("\"hierarchyChoices\": {}", serde_json::to_string_pretty(&hierarchy_choices).unwrap()));
+        
+        // 4. nodeAssignments
+        json_parts.push(format!("\"nodeAssignments\": {}", serde_json::to_string_pretty(&node_assignments_choices).unwrap()));
+        
+        // 5. edgeStyleConfig
+        json_parts.push(format!("\"edgeStyleConfig\": {}", serde_json::to_string_pretty(&Self::get_edge_style_config()).unwrap()));
+        
+        // 6. nodeTypeConfig
+        let node_type_config = serde_json::json!({
+            "types": node_type_definitions,
+            "defaultType": "Transform"
         });
+        json_parts.push(format!("\"nodeTypeConfig\": {}", serde_json::to_string_pretty(&node_type_config).unwrap()));
+        
+        // 7. legend
+        let legend = serde_json::json!({
+            "title": "Node Types",
+            "items": legend_items
+        });
+        json_parts.push(format!("\"legend\": {}", serde_json::to_string_pretty(&legend).unwrap()));
 
-        write!(
-            self.write,
-            "{}",
-            serde_json::to_string_pretty(&output).unwrap()
-        )
+        let final_json = format!("{{\n  {}\n}}", json_parts.join(",\n  "));
+
+        write!(self.write, "{}", final_json)
     }
 }
 

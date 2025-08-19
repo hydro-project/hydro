@@ -9,9 +9,10 @@ use std::io::Result;
 use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
 use crate::ir::HydroLeaf;
 
-/// URLs longer than ~2000 characters may fail in some browsers.
-/// Use a conservative limit of 1800 characters for the base URL + encoded data.
-const MAX_SAFE_URL_LENGTH: usize = 1800;
+/// URLs longer than ~8000 characters may fail in some browsers.
+/// With modern JSON compression, we can afford a higher limit.
+/// Use a limit of 4000 characters for the base URL + encoded data.
+const MAX_SAFE_URL_LENGTH: usize = 4000;
 
 /// Opens Hydro IR leaves as a single mermaid diagram.
 pub fn open_mermaid(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
@@ -70,35 +71,14 @@ pub fn save_dot(
     save_to_file(content, filename, "hydro_graph.dot", "DOT/Graphviz file")
 }
 
-/// Opens Hydro IR leaves by saving JSON to file and opening the visualizer.
-/// Simple approach: save file, open browser, user drags and drops.
+/// Opens Hydro IR leaves by passing JSON to a visualization in a browser.
+/// Uses URL compression when possible, falls back to file approach for large graphs.
 pub fn open_json_visualizer(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
     let json_content = render_with_config(leaves, config, render_hydro_ir_json);
     print_json_debug_info(&json_content);
 
-    // Save to temp file
-    let temp_file = save_json_to_temp(&json_content)?;
-
-    println!("📄 Saved graph to: {}", temp_file.display());
-    println!("🌐 Opening visualizer...");
-
-    // Open the visualizer page with the file path as a URL parameter
-    let file_path_str = temp_file.to_string_lossy();
-    let encoded_path = urlencoding::encode(&file_path_str);
-    let visualizer_url = format!("http://localhost:3000/vis?file={}", encoded_path);
-    match webbrowser::open(&visualizer_url) {
-        Ok(_) => {
-            println!("✅ Opened visualizer: http://localhost:3000/vis");
-            println!("💡 The generated file path is shown in the visualizer for easy loading");
-        }
-        Err(e) => {
-            println!("❌ Failed to open browser: {}", e);
-            println!("💡 Please manually open: http://localhost:3000/vis");
-            println!("💡 Then drag and drop this file: {}", temp_file.display());
-        }
-    }
-
-    Ok(())
+    // Use the centralized compression and URL logic
+    open_json_visualizer_with_fallback(&json_content, "JSON visualizer")
 }
 
 fn open_mermaid_browser(mermaid_src: &str) -> Result<()> {
@@ -194,16 +174,30 @@ fn handle_large_graph_fallback(json_content: &str, encoded_size: usize) -> Resul
         "📊 Graph is too large for URL encoding ({} chars)",
         encoded_size
     );
-    println!("💾 Saved JSON to temporary file: {}", temp_file.display());
-    println!();
-    println!("🎯 To visualize this graph:");
-    println!("   1. Open https://hydro.run/docs/visualizer");
-    println!("   2. Drag and drop the JSON file onto the visualizer");
-    println!("   3. Or use the file upload button in the visualizer");
-    println!();
-    println!(
-        "💡 Alternatively, you can copy the file path above and use it with your preferred method."
-    );
+    println!("� Saved graph to: {}", temp_file.display());
+    println!("🌐 Opening visualizer...");
+    
+    // URL encode the file path
+    let file_path_str = temp_file.to_string_lossy();
+    let encoded_path = urlencoding::encode(&file_path_str);
+    
+    // Try to open localhost first with file parameter, fall back to docs site
+    let localhost_url = format!("http://localhost:3000/vis?file={}", encoded_path);
+    let docs_url = format!("https://hydro.run/docs/vis?file={}", encoded_path);
+    
+    if webbrowser::open(&localhost_url).is_ok() {
+        println!("✅ Opened visualizer: {}", localhost_url);
+    } else if webbrowser::open(&docs_url).is_ok() {
+        println!("✅ Opened visualizer: {}", docs_url);
+    } else {
+        println!("❌ Failed to open browser");
+        println!("🎯 Please manually open the visualizer and load the file:");
+        println!("   1. Open https://hydro.run/docs/vis");
+        println!("   2. Drag and drop the JSON file onto the visualizer");
+        println!("   3. Or use the file upload button in the visualizer");
+    }
+    
+    println!("💡 The generated file path is shown above for easy loading");
 
     Ok(())
 }
@@ -236,14 +230,25 @@ fn try_open_visualizer_urls(
     is_compressed: bool,
 ) -> Result<()> {
     let url_param = if is_compressed { "compressed" } else { "data" };
-    let localhost_url = format!(
-        "http://localhost:3000/visualizer#{}={}",
-        url_param, encoded_data
-    );
-    let docs_url = format!(
-        "https://hydro.run/docs/visualizer#{}={}",
-        url_param, encoded_data
-    );
+    let localhost_url = format!("http://localhost:3000/vis#{}={}", url_param, encoded_data);
+    let docs_url = format!("https://hydro.run/docs/vis#{}={}", url_param, encoded_data);
+
+    // Show the compressed URL for debugging
+    if is_compressed {
+        println!("📦 Compressed URL length: {} characters", docs_url.len());
+        println!(
+            "🔗 Compressed URL: {}",
+            if docs_url.len() > 200 {
+                format!(
+                    "{}...{}",
+                    &docs_url[..100],
+                    &docs_url[docs_url.len() - 50..]
+                )
+            } else {
+                docs_url.clone()
+            }
+        );
+    }
 
     // Try to open localhost first
     match webbrowser::open(&localhost_url) {

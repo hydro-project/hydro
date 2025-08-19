@@ -20,7 +20,7 @@ use crate::location::external_process::{
 };
 use crate::staging_util::get_this_crate;
 use crate::stream::ExactlyOnce;
-use crate::{NoOrder, Singleton, Stream, TotalOrder, Unbounded};
+use crate::{NoOrder, Optional, Singleton, Stream, TotalOrder, Unbounded};
 
 pub mod external_process;
 pub use external_process::External;
@@ -126,6 +126,74 @@ pub trait Location<'a>: Clone {
             location_kind: self.id(),
             backtrace: get_backtrace(2),
             output_type: Some(quote_type::<T>().into()),
+            cardinality: None,
+            cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
+        }
+    }
+
+    /// Create metadata for Stream output type preserving all type parameters
+    #[inline(never)]
+    fn new_stream_metadata<T, B, O, R>(&self) -> HydroIrMetadata 
+    where
+        Self: Sized
+    {
+        HydroIrMetadata {
+            location_kind: self.id(),
+            backtrace: get_backtrace(2),
+            output_type: Some(quote_type::<Stream<T, Self, B, O, R>>().into()),
+            cardinality: None,
+            cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
+        }
+    }
+
+    /// Create metadata for KeyedStream output type preserving all type parameters
+    #[inline(never)]
+    fn new_keyed_stream_metadata<K, V, B, O, R>(&self) -> HydroIrMetadata 
+    where
+        Self: Sized
+    {
+        HydroIrMetadata {
+            location_kind: self.id(),
+            backtrace: get_backtrace(2),
+            output_type: Some(quote_type::<KeyedStream<K, V, Self, B, O, R>>().into()),
+            cardinality: None,
+            cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
+        }
+    }
+
+    /// Create metadata for Singleton output type preserving all type parameters
+    #[inline(never)]
+    fn new_singleton_metadata<T, B>(&self) -> HydroIrMetadata 
+    where
+        Self: Sized
+    {
+        HydroIrMetadata {
+            location_kind: self.id(),
+            backtrace: get_backtrace(2),
+            output_type: Some(quote_type::<Singleton<T, Self, B>>().into()),
+            cardinality: None,
+            cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
+        }
+    }
+
+    /// Create metadata for Optional output type preserving all type parameters
+    #[inline(never)]
+    fn new_optional_metadata<T, B>(&self) -> HydroIrMetadata 
+    where
+        Self: Sized
+    {
+        HydroIrMetadata {
+            location_kind: self.id(),
+            backtrace: get_backtrace(2),
+            output_type: Some(quote_type::<Optional<T, Self, B>>().into()),
             cardinality: None,
             cpu_usage: None,
             network_recv_cpu_usage: None,

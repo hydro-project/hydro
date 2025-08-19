@@ -165,7 +165,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_stream_metadata::<T, Bounded, O, R>(),
             },
         )
     }
@@ -190,7 +190,7 @@ where
             .push(HydroLeaf::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, Bounded, O, R>(),
             });
     }
 }
@@ -207,9 +207,9 @@ where
             HydroNode::Persist {
                 inner: Box::new(HydroNode::CycleSource {
                     ident,
-                    metadata: location.new_node_metadata::<T>(),
+                    metadata: location.new_stream_metadata::<T, B, O, R>(),
                 }),
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_stream_metadata::<T, B, O, R>(),
             },
         )
     }
@@ -225,7 +225,7 @@ where
             expected_location,
             "locations do not match"
         );
-        let metadata = self.location.new_node_metadata::<T>();
+        let metadata = self.location.new_stream_metadata::<T, B, O, R>();
         self.location
             .flow_state()
             .borrow_mut()
@@ -266,7 +266,7 @@ where
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
                 inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, B, O, R>(),
             };
         }
 
@@ -317,7 +317,7 @@ where
             HydroNode::Map {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self.location.new_stream_metadata::<U, B, O, R>(),
             },
         )
     }
@@ -355,7 +355,7 @@ where
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self.location.new_stream_metadata::<U, B, O, R>(),
             },
         )
     }
@@ -398,7 +398,7 @@ where
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self.location.new_stream_metadata::<U, B, NoOrder, R>(),
             },
         )
     }
@@ -492,7 +492,7 @@ where
             HydroNode::Filter {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, B, O, R>(),
             },
         )
     }
@@ -523,7 +523,7 @@ where
             HydroNode::FilterMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self.location.new_stream_metadata::<U, B, O, R>(),
             },
         )
     }
@@ -565,7 +565,7 @@ where
             HydroNode::CrossSingleton {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, O2)>(),
+                metadata: self.location.new_stream_metadata::<(T, O2), B, O, R>(),
             },
         )
     }
@@ -613,7 +613,7 @@ where
             HydroNode::CrossProduct {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, O2)>(),
+                metadata: self.location.new_stream_metadata::<(T, O2), B, NoOrder, R>(),
             },
         )
     }
@@ -641,7 +641,7 @@ where
             self.location.clone(),
             HydroNode::Unique {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, B, O, ExactlyOnce>(),
             },
         )
     }
@@ -686,7 +686,7 @@ where
             HydroNode::Difference {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, B, O, R>(),
             },
         )
     }
@@ -723,11 +723,11 @@ where
                         f,
                         input: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
+                            metadata: self.location.new_stream_metadata::<T, B, O, R>(),
                         }),
-                        metadata: self.location.new_node_metadata::<T>(),
+                        metadata: self.location.new_stream_metadata::<T, B, O, R>(),
                     }),
-                    metadata: self.location.new_node_metadata::<T>(),
+                    metadata: self.location.new_stream_metadata::<T, B, O, R>(),
                 },
             )
         } else {
@@ -736,7 +736,7 @@ where
                 HydroNode::Inspect {
                     f,
                     input: Box::new(self.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<T>(),
+                    metadata: self.location.new_stream_metadata::<T, B, O, R>(),
                 },
             )
         }
@@ -972,13 +972,13 @@ where
         let mut core = HydroNode::Reduce {
             f: wrapped.into(),
             input: Box::new(self.ir_node.into_inner()),
-            metadata: self.location.new_node_metadata::<T>(),
+            metadata: self.location.new_optional_metadata::<T, B>(),
         };
 
         if L::is_top_level() {
             core = HydroNode::Persist {
                 inner: Box::new(core),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_optional_metadata::<T, B>(),
             };
         }
 
@@ -1216,11 +1216,11 @@ where
                         is_static: true,
                         input: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
+                            metadata: self.location.new_stream_metadata::<T, B, TotalOrder, ExactlyOnce>(),
                         }),
-                        metadata: self.location.new_node_metadata::<(usize, T)>(),
+                        metadata: self.location.new_stream_metadata::<(usize, T), B, TotalOrder, ExactlyOnce>(),
                     }),
-                    metadata: self.location.new_node_metadata::<(usize, T)>(),
+                    metadata: self.location.new_stream_metadata::<(usize, T), B, TotalOrder, ExactlyOnce>(),
                 },
             )
         } else {
@@ -1229,7 +1229,7 @@ where
                 HydroNode::Enumerate {
                     is_static: false,
                     input: Box::new(self.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<(usize, T)>(),
+                    metadata: self.location.new_stream_metadata::<(usize, T), B, TotalOrder, ExactlyOnce>(),
                 },
             )
         }
@@ -1318,7 +1318,7 @@ where
             init,
             acc: comb,
             input: Box::new(self.ir_node.into_inner()),
-            metadata: self.location.new_node_metadata::<A>(),
+            metadata: self.location.new_singleton_metadata::<A, B>(),
         };
 
         if L::is_top_level() {
@@ -1327,7 +1327,7 @@ where
             // so Unpersist will always give the lastest aggregation
             core = HydroNode::Persist {
                 inner: Box::new(core),
-                metadata: self.location.new_node_metadata::<A>(),
+                metadata: self.location.new_singleton_metadata::<A, B>(),
             };
         }
 
@@ -1411,11 +1411,11 @@ where
                         acc: f,
                         input: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<U>(),
+                            metadata: self.location.new_stream_metadata::<T, B, TotalOrder, ExactlyOnce>(),
                         }),
-                        metadata: self.location.new_node_metadata::<U>(),
+                        metadata: self.location.new_stream_metadata::<U, B, TotalOrder, ExactlyOnce>(),
                     }),
-                    metadata: self.location.new_node_metadata::<U>(),
+                    metadata: self.location.new_stream_metadata::<U, B, TotalOrder, ExactlyOnce>(),
                 },
             )
         } else {
@@ -1425,7 +1425,7 @@ where
                     init,
                     acc: f,
                     input: Box::new(self.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<U>(),
+                    metadata: self.location.new_stream_metadata::<U, B, TotalOrder, ExactlyOnce>(),
                 },
             )
         }
@@ -1463,13 +1463,13 @@ where
         let mut core = HydroNode::Reduce {
             f,
             input: Box::new(self.ir_node.into_inner()),
-            metadata: self.location.new_node_metadata::<T>(),
+            metadata: self.location.new_optional_metadata::<T, B>(),
         };
 
         if L::is_top_level() {
             core = HydroNode::Persist {
                 inner: Box::new(core),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_optional_metadata::<T, B>(),
             };
         }
 
@@ -1556,7 +1556,7 @@ where
             self.location.clone(),
             HydroNode::Sort {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, Bounded, TotalOrder, R>(),
             },
         )
     }
@@ -1597,7 +1597,7 @@ where
             HydroNode::Chain {
                 first: Box::new(self.ir_node.into_inner()),
                 second: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, Bounded, O::Min, R>(),
             },
         )
     }
@@ -1639,7 +1639,7 @@ where
             HydroNode::Join {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, (V1, V2))>(),
+                metadata: self.location.new_stream_metadata::<(K, (V1, V2)), B, NoOrder, R>(),
             },
         )
     }
@@ -1682,7 +1682,7 @@ where
             HydroNode::AntiJoin {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V1)>(),
+                metadata: self.location.new_stream_metadata::<(K, V1), B, O, R>(),
             },
         )
     }
@@ -1866,7 +1866,7 @@ where
                 init,
                 acc: comb,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, A)>(),
+                metadata: self.location.new_stream_metadata::<(K, A), Bounded, NoOrder, ExactlyOnce>(),
             },
         )
     }
@@ -1909,7 +1909,7 @@ where
             HydroNode::ReduceKeyed {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V)>(),
+                metadata: self.location.new_stream_metadata::<(K, V), Bounded, NoOrder, ExactlyOnce>(),
             },
         )
     }
@@ -2214,7 +2214,7 @@ where
             self.location.clone().tick,
             HydroNode::Unpersist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, B, O, R>(),
             },
         )
     }
@@ -2272,7 +2272,7 @@ where
             self.location.clone(),
             HydroNode::ResolveFutures {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T2>(),
+                metadata: self.location.new_stream_metadata::<T2, B, NoOrder, R>(),
             },
         )
     }
@@ -2393,7 +2393,7 @@ where
             self.location.clone(),
             HydroNode::ResolveFuturesOrdered {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, B, O, R>(),
             },
         )
     }
@@ -2405,7 +2405,7 @@ where
 {
     pub fn for_each<F: Fn(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) {
         let f = f.splice_fn1_ctx(&self.location).into();
-        let metadata = self.location.new_node_metadata::<T>();
+        let metadata = self.location.new_stream_metadata::<T, B, O, R>();
         self.location
             .flow_state()
             .borrow_mut()
@@ -2435,7 +2435,7 @@ where
             .push(HydroLeaf::DestSink {
                 sink: sink.splice_typed_ctx(&self.location).into(),
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, B, O, R>(),
             });
     }
 }
@@ -2449,7 +2449,7 @@ where
             self.location.outer().clone(),
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, Bounded, O, R>(),
             },
         )
     }
@@ -2461,7 +2461,7 @@ where
             },
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, Bounded, O, R>(),
             },
         )
     }
@@ -2474,7 +2474,7 @@ where
             self.location.clone(),
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, Bounded, O, R>(),
             },
         )
     }
@@ -2484,7 +2484,7 @@ where
             self.location.clone(),
             HydroNode::DeferTick {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, Bounded, O, R>(),
             },
         )
     }
@@ -2494,7 +2494,7 @@ where
             self.location.clone(),
             HydroNode::Delta {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, Bounded, O, R>(),
             },
         )
     }
@@ -2612,7 +2612,7 @@ where
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(HydroNode::Unpersist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, B, O, R>(),
             }),
         });
 
@@ -2674,7 +2674,7 @@ where
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(HydroNode::Unpersist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_stream_metadata::<T, B, O, R>(),
             }),
         });
 

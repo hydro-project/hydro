@@ -129,6 +129,37 @@ impl<'a> GraphApi<'a> {
         Ok(())
     }
 
+    /// Generate and save graph to temporary file
+    fn write_graph_to_temp_file(
+        &self,
+        format: GraphFormat,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> Result<(), Box<dyn Error>> {
+        let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
+        let content = self.render_graph_to_string(format, &config);
+        
+        // Generate a temporary file name based on format
+        let extension = match format {
+            GraphFormat::Mermaid => "mmd",
+            GraphFormat::Dot => "dot", 
+            GraphFormat::Json => "json",
+        };
+        
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        
+        let filename = std::env::temp_dir().join(format!("hydro_graph_{}.{}", timestamp, extension));
+        
+        std::fs::write(&filename, content)?;
+        println!("📄 Saved graph to: {}", filename.display());
+        println!("💡 You can examine or share this file as needed");
+        Ok(())
+    }
+
     /// Generate mermaid graph as string
     pub fn mermaid_to_string(
         &self,
@@ -309,13 +340,24 @@ impl<'a> GraphApi<'a> {
                 crate::graph_util::GraphType::Json => GraphFormat::Json,
             };
 
-            self.open_browser(
-                format,
-                !config.no_metadata,
-                !config.no_location_groups,
-                !config.long_labels, // use_short_labels is the inverse of long_labels
-                message_handler,
-            )
+            if config.file {
+                // Force save to temporary file
+                self.write_graph_to_temp_file(
+                    format,
+                    !config.no_metadata,
+                    !config.no_location_groups,
+                    !config.long_labels, // use_short_labels is the inverse of long_labels
+                )
+            } else {
+                // Open in browser (existing behavior)
+                self.open_browser(
+                    format,
+                    !config.no_metadata,
+                    !config.no_location_groups,
+                    !config.long_labels, // use_short_labels is the inverse of long_labels
+                    message_handler,
+                )
+            }
         } else {
             Ok(())
         }

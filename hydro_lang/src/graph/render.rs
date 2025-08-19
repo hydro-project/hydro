@@ -243,6 +243,11 @@ pub enum HydroEdgeType {
     TotalOrder,
     NoOrder,
     Keyed,
+    // Collection type tags for styling
+    Stream,
+    KeyedStream,
+    Singleton,
+    Optional,
     Network,
     Cycle,
 }
@@ -326,42 +331,59 @@ impl HydroGraphStructure {
 pub fn extract_edge_properties_from_type(ty: &syn::Type) -> HashSet<HydroEdgeType> {
     let mut properties = HashSet::new();
 
-    // Debug: Print the type we're analyzing
-    eprintln!("🔍 Extracting properties from type: {}", quote::quote!(#ty));
+    // Fast path: unwrap wrappers and combine properties recursively
+    match ty {
+        // Handle tuples introduced by optimizers like (ClusterId<()>, T)
+        syn::Type::Tuple(t) => {
+            for elem in &t.elems {
+                properties.extend(extract_edge_properties_from_type(elem));
+            }
+            return properties;
+        }
+        // Handle &T
+        syn::Type::Reference(r) => {
+            properties.extend(extract_edge_properties_from_type(&r.elem));
+            return properties;
+        }
+        // Handle (T)
+        syn::Type::Paren(p) => {
+            properties.extend(extract_edge_properties_from_type(&p.elem));
+            return properties;
+        }
+        // Handle grouped types
+        syn::Type::Group(g) => {
+            properties.extend(extract_edge_properties_from_type(&g.elem));
+            return properties;
+        }
+        _ => {}
+    }
 
     // Parse the type to extract stream properties
     if let syn::Type::Path(type_path) = ty {
         if let Some(segment) = type_path.path.segments.last() {
             let type_name = segment.ident.to_string();
-            eprintln!("🔍 Type name: {}", type_name);
 
             match type_name.as_str() {
                 "Stream" => {
-                    eprintln!("🔍 Found Stream type");
+                    // Tag collection type
+                    properties.insert(HydroEdgeType::Stream);
                     // Stream<T, L, Bound, Order, Retries>
                     if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
                         let type_args: Vec<_> = args.args.iter().collect();
-                        eprintln!("🔍 Stream type args count: {}", type_args.len());
 
                         // Extract boundedness (3rd type param: index 2)
                         if let Some(syn::GenericArgument::Type(bound_ty)) = type_args.get(2) {
-                            eprintln!("🔍 Bound type arg: {}", quote::quote!(#bound_ty));
                             if let syn::Type::Path(bound_path) = bound_ty {
                                 if let Some(bound_segment) = bound_path.path.segments.last() {
                                     let bound_name = bound_segment.ident.to_string();
-                                    eprintln!("🔍 Bound name: {}", bound_name);
                                     match bound_name.as_str() {
                                         "Bounded" => {
                                             properties.insert(HydroEdgeType::Bounded);
-                                            eprintln!("🔍 Added Bounded property");
                                         }
                                         "Unbounded" => {
                                             properties.insert(HydroEdgeType::Unbounded);
-                                            eprintln!("🔍 Added Unbounded property");
                                         }
-                                        _ => {
-                                            eprintln!("🔍 Unknown bound type: {}", bound_name);
-                                        }
+                                        _ => {}
                                     }
                                 }
                             }
@@ -369,23 +391,17 @@ pub fn extract_edge_properties_from_type(ty: &syn::Type) -> HashSet<HydroEdgeTyp
 
                         // Extract ordering (4th type param: index 3)
                         if let Some(syn::GenericArgument::Type(order_ty)) = type_args.get(3) {
-                            eprintln!("🔍 Order type arg: {}", quote::quote!(#order_ty));
                             if let syn::Type::Path(order_path) = order_ty {
                                 if let Some(order_segment) = order_path.path.segments.last() {
                                     let order_name = order_segment.ident.to_string();
-                                    eprintln!("🔍 Order name: {}", order_name);
                                     match order_name.as_str() {
                                         "TotalOrder" => {
                                             properties.insert(HydroEdgeType::TotalOrder);
-                                            eprintln!("🔍 Added TotalOrder property");
                                         }
                                         "NoOrder" => {
                                             properties.insert(HydroEdgeType::NoOrder);
-                                            eprintln!("🔍 Added NoOrder property");
                                         }
-                                        _ => {
-                                            eprintln!("🔍 Unknown order type: {}", order_name);
-                                        }
+                                        _ => {}
                                     }
                                 }
                             }
@@ -393,34 +409,26 @@ pub fn extract_edge_properties_from_type(ty: &syn::Type) -> HashSet<HydroEdgeTyp
                     }
                 }
                 "KeyedStream" => {
-                    eprintln!("🔍 Found KeyedStream type");
                     // KeyedStream<K, V, L, Bound, Order, Retries>
+                    properties.insert(HydroEdgeType::KeyedStream);
                     properties.insert(HydroEdgeType::Keyed);
-                    eprintln!("🔍 Added Keyed property");
 
                     if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
                         let type_args: Vec<_> = args.args.iter().collect();
-                        eprintln!("🔍 KeyedStream type args count: {}", type_args.len());
 
                         // Extract boundedness (4th type param: index 3)
                         if let Some(syn::GenericArgument::Type(bound_ty)) = type_args.get(3) {
-                            eprintln!("🔍 Bound type arg: {}", quote::quote!(#bound_ty));
                             if let syn::Type::Path(bound_path) = bound_ty {
                                 if let Some(bound_segment) = bound_path.path.segments.last() {
                                     let bound_name = bound_segment.ident.to_string();
-                                    eprintln!("🔍 Bound name: {}", bound_name);
                                     match bound_name.as_str() {
                                         "Bounded" => {
                                             properties.insert(HydroEdgeType::Bounded);
-                                            eprintln!("🔍 Added Bounded property");
                                         }
                                         "Unbounded" => {
                                             properties.insert(HydroEdgeType::Unbounded);
-                                            eprintln!("🔍 Added Unbounded property");
                                         }
-                                        _ => {
-                                            eprintln!("🔍 Unknown bound type: {}", bound_name);
-                                        }
+                                        _ => {}
                                     }
                                 }
                             }
@@ -428,23 +436,17 @@ pub fn extract_edge_properties_from_type(ty: &syn::Type) -> HashSet<HydroEdgeTyp
 
                         // Extract ordering (5th type param: index 4)
                         if let Some(syn::GenericArgument::Type(order_ty)) = type_args.get(4) {
-                            eprintln!("🔍 Order type arg: {}", quote::quote!(#order_ty));
                             if let syn::Type::Path(order_path) = order_ty {
                                 if let Some(order_segment) = order_path.path.segments.last() {
                                     let order_name = order_segment.ident.to_string();
-                                    eprintln!("🔍 Order name: {}", order_name);
                                     match order_name.as_str() {
                                         "TotalOrder" => {
                                             properties.insert(HydroEdgeType::TotalOrder);
-                                            eprintln!("🔍 Added TotalOrder property");
                                         }
                                         "NoOrder" => {
                                             properties.insert(HydroEdgeType::NoOrder);
-                                            eprintln!("🔍 Added NoOrder property");
                                         }
-                                        _ => {
-                                            eprintln!("🔍 Unknown order type: {}", order_name);
-                                        }
+                                        _ => {}
                                     }
                                 }
                             }
@@ -452,113 +454,101 @@ pub fn extract_edge_properties_from_type(ty: &syn::Type) -> HashSet<HydroEdgeTyp
                     }
                 }
                 "Singleton" | "Optional" => {
-                    eprintln!("🔍 Found Singleton/Optional type");
+                    if type_name == "Singleton" {
+                        properties.insert(HydroEdgeType::Singleton);
+                    } else {
+                        properties.insert(HydroEdgeType::Optional);
+                    }
                     // Singletons/Optionals can have Bound/Order type params too
                     // Singleton<T, L, Bound, Order, Retries>
                     if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
                         let type_args: Vec<_> = args.args.iter().collect();
-                        eprintln!("🔍 Singleton type args count: {}", type_args.len());
 
                         // Extract boundedness (3rd type param: index 2) - defaults to Bounded
                         if let Some(syn::GenericArgument::Type(bound_ty)) = type_args.get(2) {
-                            eprintln!("🔍 Bound type arg: {}", quote::quote!(#bound_ty));
                             if let syn::Type::Path(bound_path) = bound_ty {
                                 if let Some(bound_segment) = bound_path.path.segments.last() {
                                     let bound_name = bound_segment.ident.to_string();
-                                    eprintln!("🔍 Bound name: {}", bound_name);
                                     match bound_name.as_str() {
                                         "Bounded" => {
                                             properties.insert(HydroEdgeType::Bounded);
-                                            eprintln!("🔍 Added Bounded property");
                                         }
                                         "Unbounded" => {
                                             properties.insert(HydroEdgeType::Unbounded);
-                                            eprintln!("🔍 Added Unbounded property");
                                         }
                                         _ => {
                                             // Default for Singleton
                                             properties.insert(HydroEdgeType::Bounded);
-                                            eprintln!("🔍 Added default Bounded property");
                                         }
                                     };
                                 } else {
                                     properties.insert(HydroEdgeType::Bounded);
-                                    eprintln!("🔍 Added default Bounded property (no segment)");
                                 }
                             } else {
                                 properties.insert(HydroEdgeType::Bounded);
-                                eprintln!("🔍 Added default Bounded property (not path)");
                             }
                         } else {
                             properties.insert(HydroEdgeType::Bounded);
-                            eprintln!("🔍 Added default Bounded property (no arg)");
                         }
 
                         // Extract ordering (4th type param: index 3) - defaults to TotalOrder
                         if let Some(syn::GenericArgument::Type(order_ty)) = type_args.get(3) {
-                            eprintln!("🔍 Order type arg: {}", quote::quote!(#order_ty));
                             if let syn::Type::Path(order_path) = order_ty {
                                 if let Some(order_segment) = order_path.path.segments.last() {
                                     let order_name = order_segment.ident.to_string();
-                                    eprintln!("🔍 Order name: {}", order_name);
                                     match order_name.as_str() {
                                         "TotalOrder" => {
                                             properties.insert(HydroEdgeType::TotalOrder);
-                                            eprintln!("🔍 Added TotalOrder property");
                                         }
                                         "NoOrder" => {
                                             properties.insert(HydroEdgeType::NoOrder);
-                                            eprintln!("🔍 Added NoOrder property");
                                         }
                                         _ => {
                                             // Default for Singleton
                                             properties.insert(HydroEdgeType::TotalOrder);
-                                            eprintln!("🔍 Added default TotalOrder property");
                                         }
                                     };
                                 } else {
                                     properties.insert(HydroEdgeType::TotalOrder);
-                                    eprintln!("🔍 Added default TotalOrder property (no segment)");
                                 }
                             } else {
                                 properties.insert(HydroEdgeType::TotalOrder);
-                                eprintln!("🔍 Added default TotalOrder property (not path)");
                             }
                         } else {
                             properties.insert(HydroEdgeType::TotalOrder);
-                            eprintln!("🔍 Added default TotalOrder property (no arg)");
                         }
                     } else {
                         // No type args, use defaults for Singleton
                         properties.insert(HydroEdgeType::Bounded);
                         properties.insert(HydroEdgeType::TotalOrder);
-                        eprintln!("🔍 Added default Bounded + TotalOrder properties (no args)");
                     }
                 }
                 _ => {
-                    eprintln!("🔍 Unknown type: {}", type_name);
-                    // Unknown type - could be a concrete data type, use defaults
-                    properties.insert(HydroEdgeType::Unbounded);
-                    properties.insert(HydroEdgeType::TotalOrder);
-                    eprintln!("🔍 Added default Unbounded + TotalOrder for unknown type");
+                    // Unknown/wrapper type. If it has generic type arguments, recurse into them
+                    // so we can pick up inner Stream/KeyedStream/Singleton/Optional semantics.
+                    if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                        for arg in &args.args {
+                            if let syn::GenericArgument::Type(inner_ty) = arg {
+                                properties.extend(extract_edge_properties_from_type(inner_ty));
+                            }
+                        }
+                    }
+                    // Do not set defaults here; allow final fallback below if still empty.
                 }
             }
         }
     } else {
-        eprintln!("🔍 Not a path type, using defaults");
-        // Non-path type, use defaults
+        // Non-path type (and not covered above), use defaults
         properties.insert(HydroEdgeType::Unbounded);
         properties.insert(HydroEdgeType::TotalOrder);
     }
 
     // If no specific properties were found, assume basic stream properties
     if properties.is_empty() {
-        eprintln!("🔍 No properties found, using fallback defaults");
         properties.insert(HydroEdgeType::Unbounded);
         properties.insert(HydroEdgeType::TotalOrder);
     }
 
-    eprintln!("🔍 Final properties: {:?}", properties);
     properties
 }
 
