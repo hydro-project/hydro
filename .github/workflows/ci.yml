@@ -162,7 +162,6 @@ jobs:
         env:
           # On stable the output messages will often not match pinned-nightly, so we set to 'overwrite'.
           TRYBUILD: ${{ matrix.rust_release == 'pinned-nightly' && 'wip' || 'overwrite' }}
-          DFIR_EXPECT_WARNINGS: ${{ matrix.rust_release == 'pinned-nightly' && 'noop' || 'ignore' }}
 
       - name: Run doctests
         # Not supported by nextest: https://github.com/nextest-rs/nextest/issues/16
