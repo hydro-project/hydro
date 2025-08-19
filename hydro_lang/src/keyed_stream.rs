@@ -5,7 +5,6 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::ir::HydroNode;
-use crate::keyed_optional::KeyedOptional;
 use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick, check_matching_location};
@@ -607,7 +606,7 @@ where
     pub fn reduce<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedOptional<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B> {
         let f = comb
             .splice_fn2_borrow_mut_ctx(&self.underlying.location)
             .into();
@@ -618,7 +617,7 @@ where
             metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
         };
 
-        KeyedOptional {
+        KeyedSingleton {
             underlying: Stream::new(self.underlying.location, out_ir),
         }
     }
@@ -652,7 +651,7 @@ where
         self,
         other: impl Into<Optional<O, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedOptional<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B>
     where
         O: Clone,
         F: Fn(&mut V, V) + 'a,
@@ -673,7 +672,7 @@ where
             },
         );
 
-        KeyedOptional { underlying: out_ir }
+        KeyedSingleton { underlying: out_ir }
     }
 }
 
@@ -747,7 +746,7 @@ where
     pub fn reduce_commutative<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedOptional<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B> {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .reduce(comb)
     }
@@ -780,7 +779,7 @@ where
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedOptional<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B>
     where
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
@@ -860,7 +859,7 @@ where
     pub fn reduce_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedOptional<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B> {
         self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce(comb)
     }
@@ -893,7 +892,7 @@ where
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedOptional<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B>
     where
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
@@ -976,7 +975,7 @@ where
     pub fn reduce_commutative_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedOptional<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B> {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce(comb)
@@ -1011,7 +1010,7 @@ where
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedOptional<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B>
     where
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
