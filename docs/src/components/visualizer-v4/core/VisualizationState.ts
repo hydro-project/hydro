@@ -433,10 +433,23 @@ export class VisualizationState implements ContainerHierarchyView {
       }
     }
     
+    // Ensure label fields exist for legacy API compatibility
+    // Defaults:
+    // - shortLabel: prefer provided shortLabel, else label, else id
+    // - fullLabel: prefer provided fullLabel, else label, else shortLabel
+    // - label (display): prefer provided label, else shortLabel
+    const derivedShortLabel = nodeData.shortLabel ?? nodeData.label ?? nodeId;
+    const derivedFullLabel = nodeData.fullLabel ?? nodeData.label ?? derivedShortLabel;
+    const derivedDisplayLabel = nodeData.label ?? derivedShortLabel;
+
     // Ensure all nodes have default dimensions
     const processedData = { 
       ...nodeData, 
       id: nodeId, 
+      // Provide derived labels if not explicitly set
+      label: nodeData.label ?? derivedDisplayLabel,
+      shortLabel: nodeData.shortLabel ?? derivedShortLabel,
+      fullLabel: nodeData.fullLabel ?? derivedFullLabel,
       hidden: shouldBeHidden,
       width: nodeData.width || LAYOUT_CONSTANTS.DEFAULT_NODE_WIDTH,
       height: nodeData.height || LAYOUT_CONSTANTS.DEFAULT_NODE_HEIGHT 

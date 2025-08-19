@@ -174,7 +174,7 @@ describe('ReactFlowBridge', () => {
       
       const node1 = standardNodes.find(n => n.id === 'node1');
       expect(node1).toBeDefined();
-      expect(node1!.data.shortLabel).toBe('Node 1');
+      expect(node1!.data.shortLabel).toBe('node1');
       expect(node1!.data.customProp).toBe('test-value');
     });
 
