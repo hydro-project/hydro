@@ -14,6 +14,7 @@ import { StyleConfigProvider } from './StyleConfigContext';
 import { GraphDefs } from './GraphDefs';
 import { LoadingView, ErrorView, EmptyView, UpdatingOverlay } from './FallbackViews';
 import { useFlowGraphController } from '../hooks/useFlowGraphController';
+import { useManualPositions } from '../hooks/useManualPositions';
 import type { VisualizationState } from '../core/VisualizationState';
 import type { RenderConfig, FlowGraphEventHandlers, LayoutConfig } from '../core/types';
 
