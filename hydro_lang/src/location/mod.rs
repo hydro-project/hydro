@@ -135,9 +135,9 @@ pub trait Location<'a>: Clone {
 
     /// Create metadata for Stream output type preserving all type parameters
     #[inline(never)]
-    fn new_stream_metadata<T, B, O, R>(&self) -> HydroIrMetadata 
+    fn new_stream_metadata<T, B, O, R>(&self) -> HydroIrMetadata
     where
-        Self: Sized
+        Self: Sized,
     {
         HydroIrMetadata {
             location_kind: self.id(),
@@ -152,9 +152,9 @@ pub trait Location<'a>: Clone {
 
     /// Create metadata for KeyedStream output type preserving all type parameters
     #[inline(never)]
-    fn new_keyed_stream_metadata<K, V, B, O, R>(&self) -> HydroIrMetadata 
+    fn new_keyed_stream_metadata<K, V, B, O, R>(&self) -> HydroIrMetadata
     where
-        Self: Sized
+        Self: Sized,
     {
         HydroIrMetadata {
             location_kind: self.id(),
@@ -169,9 +169,9 @@ pub trait Location<'a>: Clone {
 
     /// Create metadata for Singleton output type preserving all type parameters
     #[inline(never)]
-    fn new_singleton_metadata<T, B>(&self) -> HydroIrMetadata 
+    fn new_singleton_metadata<T, B>(&self) -> HydroIrMetadata
     where
-        Self: Sized
+        Self: Sized,
     {
         HydroIrMetadata {
             location_kind: self.id(),
@@ -186,9 +186,9 @@ pub trait Location<'a>: Clone {
 
     /// Create metadata for Optional output type preserving all type parameters
     #[inline(never)]
-    fn new_optional_metadata<T, B>(&self) -> HydroIrMetadata 
+    fn new_optional_metadata<T, B>(&self) -> HydroIrMetadata
     where
-        Self: Sized
+        Self: Sized,
     {
         HydroIrMetadata {
             location_kind: self.id(),

@@ -613,7 +613,9 @@ where
             HydroNode::CrossProduct {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_stream_metadata::<(T, O2), B, NoOrder, R>(),
+                metadata: self
+                    .location
+                    .new_stream_metadata::<(T, O2), B, NoOrder, R>(),
             },
         )
     }
@@ -1216,11 +1218,17 @@ where
                         is_static: true,
                         input: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_stream_metadata::<T, B, TotalOrder, ExactlyOnce>(),
+                            metadata: self
+                                .location
+                                .new_stream_metadata::<T, B, TotalOrder, ExactlyOnce>(),
                         }),
-                        metadata: self.location.new_stream_metadata::<(usize, T), B, TotalOrder, ExactlyOnce>(),
+                        metadata: self
+                            .location
+                            .new_stream_metadata::<(usize, T), B, TotalOrder, ExactlyOnce>(),
                     }),
-                    metadata: self.location.new_stream_metadata::<(usize, T), B, TotalOrder, ExactlyOnce>(),
+                    metadata: self
+                        .location
+                        .new_stream_metadata::<(usize, T), B, TotalOrder, ExactlyOnce>(),
                 },
             )
         } else {
@@ -1229,7 +1237,9 @@ where
                 HydroNode::Enumerate {
                     is_static: false,
                     input: Box::new(self.ir_node.into_inner()),
-                    metadata: self.location.new_stream_metadata::<(usize, T), B, TotalOrder, ExactlyOnce>(),
+                    metadata: self
+                        .location
+                        .new_stream_metadata::<(usize, T), B, TotalOrder, ExactlyOnce>(),
                 },
             )
         }
@@ -1411,11 +1421,17 @@ where
                         acc: f,
                         input: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_stream_metadata::<T, B, TotalOrder, ExactlyOnce>(),
+                            metadata: self
+                                .location
+                                .new_stream_metadata::<T, B, TotalOrder, ExactlyOnce>(),
                         }),
-                        metadata: self.location.new_stream_metadata::<U, B, TotalOrder, ExactlyOnce>(),
+                        metadata: self
+                            .location
+                            .new_stream_metadata::<U, B, TotalOrder, ExactlyOnce>(),
                     }),
-                    metadata: self.location.new_stream_metadata::<U, B, TotalOrder, ExactlyOnce>(),
+                    metadata: self
+                        .location
+                        .new_stream_metadata::<U, B, TotalOrder, ExactlyOnce>(),
                 },
             )
         } else {
@@ -1425,7 +1441,9 @@ where
                     init,
                     acc: f,
                     input: Box::new(self.ir_node.into_inner()),
-                    metadata: self.location.new_stream_metadata::<U, B, TotalOrder, ExactlyOnce>(),
+                    metadata: self
+                        .location
+                        .new_stream_metadata::<U, B, TotalOrder, ExactlyOnce>(),
                 },
             )
         }
@@ -1556,7 +1574,9 @@ where
             self.location.clone(),
             HydroNode::Sort {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_stream_metadata::<T, Bounded, TotalOrder, R>(),
+                metadata: self
+                    .location
+                    .new_stream_metadata::<T, Bounded, TotalOrder, R>(),
             },
         )
     }
@@ -1639,7 +1659,9 @@ where
             HydroNode::Join {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_stream_metadata::<(K, (V1, V2)), B, NoOrder, R>(),
+                metadata: self
+                    .location
+                    .new_stream_metadata::<(K, (V1, V2)), B, NoOrder, R>(),
             },
         )
     }
@@ -1866,7 +1888,9 @@ where
                 init,
                 acc: comb,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_stream_metadata::<(K, A), Bounded, NoOrder, ExactlyOnce>(),
+                metadata: self
+                    .location
+                    .new_stream_metadata::<(K, A), Bounded, NoOrder, ExactlyOnce>(),
             },
         )
     }
@@ -1909,7 +1933,9 @@ where
             HydroNode::ReduceKeyed {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_stream_metadata::<(K, V), Bounded, NoOrder, ExactlyOnce>(),
+                metadata: self
+                    .location
+                    .new_stream_metadata::<(K, V), Bounded, NoOrder, ExactlyOnce>(),
             },
         )
     }
