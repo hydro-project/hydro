@@ -11,7 +11,8 @@ export interface GraphEdge {
  * No dependencies on alpha.
  */
 
-import type { NodeStyle, EdgeStyle, ContainerStyle, ExternalContainer } from '../shared/types';
+import type { NodeStyle, EdgeStyle, ContainerStyle } from '../shared/config';
+import type { ExternalContainer } from '../shared/types';
 
 // Re-export style types
 export type { NodeStyle, EdgeStyle, ContainerStyle, ExternalContainer } from '../shared/types';

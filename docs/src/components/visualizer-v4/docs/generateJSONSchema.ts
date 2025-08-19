@@ -2,7 +2,7 @@
  * JSON Schema Documentation Generator
  * 
  * AUTO-GENERATED - DO NOT EDIT MANUALLY
- * Last updated: 2025-08-19T18:45:31.597Z
+ * Last updated: 2025-08-19T20:20:04.673Z
  * Source: JSONParser.ts interfaces
  */
 
@@ -197,7 +197,7 @@ Key features:
 - Semantic tags for flexible categorization
 - All additional properties are preserved by the parser
 
-Generated: 2025-08-19T18:45:31.597Z
+Generated: 2025-08-19T20:20:04.673Z
 `;
 
   const completeExample = JSON.stringify(generateCompleteExample(), null, 2);
@@ -404,4 +404,4 @@ export function generateCompleteExample() {
  * Version information for schema tracking
  */
 export const SCHEMA_VERSION = "v4.0.0";
-export const LAST_UPDATED = "2025-08-19T18:45:31.597Z";
+export const LAST_UPDATED = "2025-08-19T20:20:04.673Z";

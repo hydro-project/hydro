@@ -13,6 +13,7 @@ import { DEFAULT_RENDER_CONFIG } from './config';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import { StyleConfigProvider } from './StyleConfigContext';
+import { useManualPositions } from '../hooks/useManualPositions';
 import type { VisualizationState } from '../core/VisualizationState';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';
 import type { RenderConfig, FlowGraphEventHandlers, LayoutConfig } from '../core/types';
@@ -120,8 +121,8 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
   const lastFitTimeRef = useRef<number>(0);
   const autoFitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  // Store manual drag positions to preserve user positioning
-  const [manualPositions, setManualPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  // Manual position management
+  const { manualPositions, setManualPositions, applyManualPositions } = useManualPositions();
   
   // Ref to track the base layout data (before manual positioning)
   const baseReactFlowDataRef = useRef<ReactFlowData | null>(null);
@@ -133,25 +134,6 @@ const FlowGraphInternal = forwardRef<FlowGraphRef, FlowGraphProps>(({
     enableLogging: false,
     layoutConfig: layoutConfig
   }));
-
-  // Function to apply manual positions to existing ReactFlow data
-  const applyManualPositions = useCallback((baseData: ReactFlowData, manualPosMap: Map<string, { x: number; y: number }>) => {
-    if (manualPosMap.size === 0) return baseData;
-    
-    return {
-      ...baseData,
-      nodes: baseData.nodes.map(node => {
-        const manualPos = manualPosMap.get(node.id);
-        if (manualPos) {
-          return {
-            ...node,
-            position: { x: manualPos.x, y: manualPos.y }
-          };
-        }
-        return node;
-      })
-    };
-  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {

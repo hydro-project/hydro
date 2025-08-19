@@ -127,8 +127,4 @@ export function getHandleConfig() {
   return HANDLE_STRATEGIES[CURRENT_HANDLE_STRATEGY];
 }
 
-/**
- * Default handle style for continuous handles
- * @deprecated Use HANDLE_STYLES.continuous instead
- */
-export const CONTINUOUS_HANDLE_STYLE: React.CSSProperties = HANDLE_STYLES.continuous;
+

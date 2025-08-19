@@ -14,16 +14,6 @@ export interface ExternalContainer {
  * These types provide compile-time safety and better developer experience.
  */
 
-import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES } from './config';
-
-// Re-export constants for components that import them from shared/types
-export { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES } from './config';
-
-// Type definitions from constants
-export type NodeStyle = typeof NODE_STYLES[keyof typeof NODE_STYLES];
-export type EdgeStyle = typeof EDGE_STYLES[keyof typeof EDGE_STYLES];
-export type ContainerStyle = typeof CONTAINER_STYLES[keyof typeof CONTAINER_STYLES];
-
 export interface Dimensions {
   width: number;
   height: number;

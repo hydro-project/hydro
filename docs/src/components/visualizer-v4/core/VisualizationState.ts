@@ -400,14 +400,21 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Get a container by ID (core API)
    */
-  getContainer(containerId: string): any | undefined {
+  /**
+   * Get a container by ID
+   * @param containerId - The container ID to look up
+   * @returns Container object if found, undefined otherwise
+   */
+  getContainer(containerId: string): Container | undefined {
     return this._collections.containers.get(containerId);
   }
 
   /**
    * Get a hyperEdge by ID
+   * @param hyperEdgeId - The hyperEdge ID to look up
+   * @returns HyperEdge object if found, undefined otherwise
    */
-  getHyperEdge(hyperEdgeId: string): any | undefined {
+  getHyperEdge(hyperEdgeId: string): HyperEdge | undefined {
     return this._collections.hyperEdges.get(hyperEdgeId);
   }
 
@@ -426,10 +433,23 @@ export class VisualizationState implements ContainerHierarchyView {
       }
     }
     
+    // Ensure label fields exist for legacy API compatibility
+    // Defaults:
+    // - shortLabel: prefer provided shortLabel, else label, else id
+    // - fullLabel: prefer provided fullLabel, else label, else shortLabel
+    // - label (display): prefer provided label, else shortLabel
+    const derivedShortLabel = nodeData.shortLabel ?? nodeData.label ?? nodeId;
+    const derivedFullLabel = nodeData.fullLabel ?? nodeData.label ?? derivedShortLabel;
+    const derivedDisplayLabel = nodeData.label ?? derivedShortLabel;
+
     // Ensure all nodes have default dimensions
     const processedData = { 
       ...nodeData, 
       id: nodeId, 
+      // Provide derived labels if not explicitly set
+      label: nodeData.label ?? derivedDisplayLabel,
+      shortLabel: nodeData.shortLabel ?? derivedShortLabel,
+      fullLabel: nodeData.fullLabel ?? derivedFullLabel,
       hidden: shouldBeHidden,
       width: nodeData.width || LAYOUT_CONSTANTS.DEFAULT_NODE_WIDTH,
       height: nodeData.height || LAYOUT_CONSTANTS.DEFAULT_NODE_HEIGHT 

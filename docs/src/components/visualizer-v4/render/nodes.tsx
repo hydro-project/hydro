@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { getHandleConfig, CONTINUOUS_HANDLE_STYLE } from './handleConfig';
+import { getHandleConfig, HANDLE_STYLES } from './handleConfig';
 import { generateNodeColors } from '../shared/colorUtils';
 import { truncateContainerName, truncateLabel } from '../shared/textUtils';
 import { useStyleConfig } from './StyleConfigContext';
@@ -24,13 +24,13 @@ function renderHandles() {
         <Handle
           type="source"
           position={Position.Top}
-          style={CONTINUOUS_HANDLE_STYLE}
+          style={HANDLE_STYLES.continuous}
           isConnectable={true}
         />
         <Handle
           type="target"
           position={Position.Top}
-          style={CONTINUOUS_HANDLE_STYLE}
+          style={HANDLE_STYLES.continuous}
           isConnectable={true}
         />
       </>
