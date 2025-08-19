@@ -11,6 +11,14 @@ import { LAYOUT_CONSTANTS } from '../shared/config';
 import { MarkerType, Edge as ReactFlowEdge } from '@xyflow/react';
 import { getHandleConfig, CURRENT_HANDLE_STRATEGY } from '../render/handleConfig';
 import { convertEdgesToReactFlow, EdgeBridgeOptions } from './EdgeBridge';
+import {
+  buildParentMap as buildParentMapUtil,
+  sortContainersByHierarchy as sortContainersByHierarchyUtil,
+  computeChildContainerPosition,
+  computeRootContainerPosition,
+  computeNodePosition,
+  getAdjustedContainerDimensionsSafe
+} from './bridgeUtils';
 
 // ReactFlow types
 export interface ReactFlowNode {
@@ -222,50 +230,14 @@ export class ReactFlowBridge {
    * NOTE: VisualizationState should provide this logic via getParentChildMap()
    */
   private buildParentMap(visState: VisualizationState): Map<string, string> {
-    const parentMap = new Map<string, string>();
-    
-    // Create lookup sets for performance
-    const visibleContainerIds = new Set(Array.from(visState.visibleContainers).map(c => c.id));
-    const visibleNodeIds = new Set(Array.from(visState.visibleNodes).map(n => n.id));
-    
-    // Map all containers and nodes to their parent containers for visual hierarchy
-    // This creates the nested structure in ReactFlow regardless of collapsed state
-    visState.visibleContainers.forEach(container => {
-      // Map child containers to this parent container using VisualizationState API
-      const containerChildren = visState.getContainerChildren(container.id);
-      containerChildren.forEach(childId => {
-        // Only set parent relationship if the child is also visible
-        if (visibleContainerIds.has(childId) || visibleNodeIds.has(childId)) {
-          parentMap.set(childId, container.id);
-        }
-      });
-    });
-    
-    // Also map nodes to their containers using the containerId property
-    visState.visibleNodes.forEach(node => {
-      if (node.containerId && visibleContainerIds.has(node.containerId)) {
-        parentMap.set(node.id, node.containerId);
-      }
-    });
-    
-    return parentMap;
+    return buildParentMapUtil(visState);
   }
 
   /**
    * Sort containers by hierarchy level to ensure parents are processed before children
    */
   private sortContainersByHierarchy(containers: any[], parentMap: Map<string, string>): any[] {
-    const getHierarchyLevel = (containerId: string): number => {
-      let level = 0;
-      let currentId = containerId;
-      while (parentMap.has(currentId)) {
-        level++;
-        currentId = parentMap.get(currentId)!;
-      }
-      return level;
-    };
-    
-    return containers.sort((a, b) => getHierarchyLevel(a.id) - getHierarchyLevel(b.id));
+    return sortContainersByHierarchyUtil(containers, parentMap);
   }
 
   /**
@@ -289,75 +261,13 @@ export class ReactFlowBridge {
       let position: { x: number; y: number };
       
       if (parentId) {
-        // CHILD CONTAINER: Convert absolute ELK coordinates to relative coordinates  
-        const parentLayout = visState.getContainerLayout(parentId);
-        
-        // Check if we have meaningful ELK layout data (not just default 0,0 values)
-        const hasRealELKLayout = containerLayout?.position?.x !== undefined && 
-                                containerLayout?.position?.y !== undefined &&
-                                (containerLayout.position.x !== 0 || containerLayout.position.y !== 0);
-        
-        if (hasRealELKLayout) {
-          // Use ELK coordinates converted to relative
-          const absoluteX = containerLayout?.position?.x || container.x || 0;
-          const absoluteY = containerLayout?.position?.y || container.y || 0;
-          const parentX = parentLayout?.position?.x || 0;
-          const parentY = parentLayout?.position?.y || 0;
-          
-                    // Validate coordinates before calculation
-          const validAbsoluteX = (typeof absoluteX === 'number' && !isNaN(absoluteX) && isFinite(absoluteX)) ? absoluteX : 0;
-          const validAbsoluteY = (typeof absoluteY === 'number' && !isNaN(absoluteY) && isFinite(absoluteY)) ? absoluteY : 0;
-          const validParentX = (typeof parentX === 'number' && !isNaN(parentX) && isFinite(parentX)) ? parentX : 0;
-          const validParentY = (typeof parentY === 'number' && !isNaN(parentY) && isFinite(parentY)) ? parentY : 0;
-          
-          // Log if we found invalid coordinates
-          if (absoluteX !== validAbsoluteX || absoluteY !== validAbsoluteY || parentX !== validParentX || parentY !== validParentY) {
-            console.warn(`[ReactFlowBridge] Fixed invalid coordinates for container ${container.id}: abs(${absoluteX},${absoluteY}) -> (${validAbsoluteX},${validAbsoluteY}), parent(${parentX},${parentY}) -> (${validParentX},${validParentY})`);
-          }
-          
-          position = {
-            x: validAbsoluteX - validParentX,
-            y: validAbsoluteY - validParentY
-          };
-        } else {
-          // FALLBACK: Grid positioning when no meaningful ELK layout data
-          const siblingContainers = Array.from(visState.visibleContainers)
-            .filter(c => parentMap.get(c.id) === parentId);
-          const containerIndex = siblingContainers.findIndex(c => c.id === container.id);
-          
-          const cols = LAYOUT_CONSTANTS.CONTAINER_GRID_COLUMNS || 2;
-          const col = containerIndex % cols;
-          const row = Math.floor(containerIndex / cols);
-          const padding = LAYOUT_CONSTANTS.CONTAINER_GRID_PADDING || 20;
-          const titleHeight = LAYOUT_CONSTANTS.CONTAINER_TITLE_HEIGHT || 30;
-          
-          position = {
-            x: padding + col * (LAYOUT_CONSTANTS.CHILD_CONTAINER_WIDTH + padding),
-            y: titleHeight + row * (LAYOUT_CONSTANTS.CHILD_CONTAINER_HEIGHT + padding)
-          };
-        }
+        position = computeChildContainerPosition(visState, container, parentId);
       } else {
-        // ROOT CONTAINER: Use absolute ELK coordinates or fallback
-        const rootX = containerLayout?.position?.x || container.x || 0;
-        const rootY = containerLayout?.position?.y || container.y || 0;
-        
-        // Validate root coordinates
-        const validRootX = (typeof rootX === 'number' && !isNaN(rootX) && isFinite(rootX)) ? rootX : 0;
-        const validRootY = (typeof rootY === 'number' && !isNaN(rootY) && isFinite(rootY)) ? rootY : 0;
-        
-        position = {
-          x: validRootX,
-          y: validRootY
-        };
+        position = computeRootContainerPosition(visState, container);
       }
       
       // Get adjusted dimensions that include label space (matches test expectations)
-      const adjustedDimensions = visState.getContainerAdjustedDimensions(container.id);
-      
-      const width = (typeof adjustedDimensions.width === 'number' && !isNaN(adjustedDimensions.width) && isFinite(adjustedDimensions.width) && adjustedDimensions.width > 0) 
-        ? adjustedDimensions.width : LAYOUT_CONSTANTS.DEFAULT_PARENT_CONTAINER_WIDTH;
-      const height = (typeof adjustedDimensions.height === 'number' && !isNaN(adjustedDimensions.height) && isFinite(adjustedDimensions.height) && adjustedDimensions.height > 0) 
-        ? adjustedDimensions.height : LAYOUT_CONSTANTS.DEFAULT_PARENT_CONTAINER_HEIGHT;
+  const { width, height } = getAdjustedContainerDimensionsSafe(visState, container.id);
       
       const nodeCount = container.collapsed ? 
         visState.getContainerChildren(container.id)?.size || 0 : 0;
@@ -404,40 +314,7 @@ export class ReactFlowBridge {
       
       // Get position from ELK layout (stored in VisualizationState)
       const nodeLayout = visState.getNodeLayout(node.id);
-      let position: { x: number; y: number };
-      
-      if (parentId) {
-        // CHILD NODE: Convert absolute ELK coordinates to relative coordinates
-        const parentLayout = visState.getContainerLayout(parentId);
-        const absoluteX = nodeLayout?.position?.x || node.x || 0;
-        const absoluteY = nodeLayout?.position?.y || node.y || 0;
-        const parentX = parentLayout?.position?.x || 0;
-        const parentY = parentLayout?.position?.y || 0;
-        
-        // Validate all coordinates before calculation
-        const validAbsoluteX = (typeof absoluteX === 'number' && !isNaN(absoluteX) && isFinite(absoluteX)) ? absoluteX : 0;
-        const validAbsoluteY = (typeof absoluteY === 'number' && !isNaN(absoluteY) && isFinite(absoluteY)) ? absoluteY : 0;
-        const validParentX = (typeof parentX === 'number' && !isNaN(parentX) && isFinite(parentX)) ? parentX : 0;
-        const validParentY = (typeof parentY === 'number' && !isNaN(parentY) && isFinite(parentY)) ? parentY : 0;
-        
-        position = {
-          x: validAbsoluteX - validParentX,
-          y: validAbsoluteY - validParentY
-        };
-      } else {
-        // ROOT NODE: Use absolute ELK coordinates
-        const rootX = nodeLayout?.position?.x || node.x || 0;
-        const rootY = nodeLayout?.position?.y || node.y || 0;
-        
-        // Validate root coordinates
-        const validRootX = (typeof rootX === 'number' && !isNaN(rootX) && isFinite(rootX)) ? rootX : 0;
-        const validRootY = (typeof rootY === 'number' && !isNaN(rootY) && isFinite(rootY)) ? rootY : 0;
-        
-        position = {
-          x: validRootX,
-          y: validRootY
-        };
-      }
+  const position: { x: number; y: number } = computeNodePosition(visState, node, parentId);
       
       const standardNode: ReactFlowNode = {
         id: node.id,

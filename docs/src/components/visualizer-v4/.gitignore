@@ -10,6 +10,7 @@ node_modules/
 # Temporary debug files
 debug_*.js
 *.debug.js
+*.log
 
 # Ignore source maps
 *.map

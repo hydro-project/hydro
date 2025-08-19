@@ -4,29 +4,23 @@
  * Compatibility wrappers for alpha event handling.
  */
 
-export function createNodeEventHandlers(config?: any) {
-  // // console.log((('[EventHandlers] ⚠️ createNodeEventHandlers is deprecated, use FlowGraph eventHandlers prop')));
+export function createNodeEventHandlers(_config?: any) {
   return {
-    onClick: (event: any, node: any) => {
-      // // console.log((('Node clicked:', node.id)));
+  onClick: (_event: any, _node: any) => {
     }
   };
 }
 
-export function createEdgeEventHandlers(config?: any) {
-  // // console.log((('[EventHandlers] ⚠️ createEdgeEventHandlers is deprecated, use FlowGraph eventHandlers prop')));
+export function createEdgeEventHandlers(_config?: any) {
   return {
-    onClick: (event: any, edge: any) => {
-      // // console.log((('Edge clicked:', edge.id)));
+  onClick: (_event: any, _edge: any) => {
     }
   };
 }
 
-export function createContainerEventHandlers(config?: any) {
-  // // console.log((('[EventHandlers] ⚠️ createContainerEventHandlers is deprecated, use FlowGraph eventHandlers prop')));
+export function createContainerEventHandlers(_config?: any) {
   return {
-    onClick: (event: any, container: any) => {
-      // // console.log((('Container clicked:', container.id)));
+  onClick: (_event: any, _container: any) => {
     }
   };
 }

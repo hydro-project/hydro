@@ -70,7 +70,7 @@ export type { VisualizationEngineConfig } from './core/VisualizationEngine';
  * ✅ What's Replaced:
  * - ELKLayoutEngine: Now uses bridge architecture with hyperedge fix
  * - FlowGraph: Now uses bridge architecture with coordinate translation
- * - ReactFlowConverter: Now uses bridge architecture
+ * - ReactFlowBridge: Now handles layout-to-ReactFlow translation
  * - All rendering components: Now bridge-based
  *
  * ✅ What's Fixed:

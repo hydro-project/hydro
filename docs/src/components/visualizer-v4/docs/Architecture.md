@@ -54,9 +54,9 @@ VisualizationState → ELK State Manager → ELK Layout Engine
 
 ### 3. Rendering Pipeline
 ```
-Layout Results → ReactFlow Converter → React Components → DOM
-      ↓                ↓                     ↓
-  Positioned     ReactFlow Nodes       Visual Output
+Layout Results → ReactFlowBridge → React Components → DOM
+    ↓                ↓                   ↓
+  Positioned     ReactFlow Nodes     Visual Output
    Elements      & Edges
 ```
 
@@ -84,7 +84,7 @@ Layout Results → ReactFlow Converter → React Components → DOM
 #### Rendering (Render)
 - **FlowGraph**: Main ReactFlow component
 - **Nodes/Edges**: Custom React components
-- **ReactFlowConverter**: Layout-to-ReactFlow translation
+- **ReactFlowBridge**: Layout-to-ReactFlow translation
 
 #### Data (Services/Shared)
 - **JSONParser**: Input data processing
@@ -122,7 +122,8 @@ visualizationState.setContainerLayout(containerId, layoutData);
 ```typescript
 // Layout results converted to ReactFlow format
 const layoutResult = await layoutEngine.layout(nodes, edges, containers);
-const reactFlowData = ReactFlowConverter.convert(layoutResult);
+const bridge = new ReactFlowBridge();
+const reactFlowData = bridge.convert(layoutResult);
 
 // ReactFlow renders the positioned elements
 <ReactFlow nodes={reactFlowData.nodes} edges={reactFlowData.edges} />
