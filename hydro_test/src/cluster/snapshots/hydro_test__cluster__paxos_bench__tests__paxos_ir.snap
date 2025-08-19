@@ -1198,7 +1198,7 @@ expression: built.ir()
                                         ),
                                     ),
                                     output_type: Some(
-                                        (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >),
+                                        (hydro_test :: __staged :: cluster :: paxos :: Ballot , (usize , usize)),
                                     ),
                                 },
                             },
@@ -1551,7 +1551,7 @@ expression: built.ir()
                                                     ),
                                                 ),
                                                 output_type: Some(
-                                                    (hydro_test :: __staged :: cluster :: paxos :: Ballot , (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >)),
+                                                    (hydro_test :: __staged :: cluster :: paxos :: Ballot , std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) >),
                                                 ),
                                             },
                                         },
@@ -2521,7 +2521,7 @@ expression: built.ir()
                                                                                     ),
                                                                                 ),
                                                                                 output_type: Some(
-                                                                                    (usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >),
+                                                                                    (usize , (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >)),
                                                                                 ),
                                                                             },
                                                                         },
@@ -3522,7 +3522,7 @@ expression: built.ir()
                                         ),
                                     ),
                                     output_type: Some(
-                                        ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >),
+                                        ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (usize , usize)),
                                     ),
                                 },
                             },
@@ -5284,7 +5284,7 @@ expression: built.ir()
                                         ),
                                     ),
                                     output_type: Some(
-                                        ((u32 , u32) , core :: result :: Result < () , () >),
+                                        ((u32 , u32) , (usize , usize)),
                                     ),
                                 },
                             },

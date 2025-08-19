@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
@@ -6,7 +8,10 @@ use crate::location::{LocationId, NoTick};
 use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
 use crate::unsafety::NonDet;
-use crate::{Atomic, Bounded, Location, NoOrder, Singleton, Stream, Tick, Unbounded};
+use crate::{
+    Atomic, Bounded, KeyedStream, Location, NoOrder, Optional, Singleton, Stream, Tick, TotalOrder,
+    nondet,
+};
 
 pub struct KeyedSingleton<K, V, Loc, Bound> {
     pub(crate) underlying: Stream<(K, V), Loc, Bound, NoOrder, ExactlyOnce>,
@@ -104,6 +109,77 @@ impl<'a, K, V, L: Location<'a>, B> KeyedSingleton<K, V, L, B> {
     }
 }
 
+impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    /// Gets the value associated with a specific key from the keyed singleton.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let keyed_data = process
+    ///     .source_iter(q!(vec![(1, 2), (2, 3)]))
+    ///     .into_keyed()
+    ///     .batch(&tick, nondet!(/** test */))
+    ///     .fold(q!(|| 0), q!(|acc, x| *acc = x));
+    /// let key = tick.singleton(q!(1));
+    /// keyed_data.get(key).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 2
+    /// # assert_eq!(stream.next().await.unwrap(), 2);
+    /// # }));
+    /// ```
+    pub fn get(self, key: Singleton<K, Tick<L>, Bounded>) -> Optional<V, Tick<L>, Bounded> {
+        self.entries()
+            .join(key.into_stream().map(q!(|k| (k, ()))))
+            .map(q!(|(_, (v, _))| v))
+            .assume_ordering::<TotalOrder>(nondet!(/** only a single key, so totally ordered */))
+            .first()
+    }
+
+    /// Given a keyed stream of lookup requests, where the key is the lookup and the value
+    /// is some additional metadata, emits a keyed stream of lookup results where the key
+    /// is the same as before, but the value is a tuple of the lookup result and the metadata
+    /// of the request.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let keyed_data = process
+    ///     .source_iter(q!(vec![(1, 10), (2, 20)]))
+    ///     .into_keyed()
+    ///     .batch(&tick, nondet!(/** test */))
+    ///     .fold(q!(|| 0), q!(|acc, x| *acc = x));
+    /// let other_data = process
+    ///     .source_iter(q!(vec![(1, 100), (2, 200), (1, 101)]))
+    ///     .into_keyed()
+    ///     .batch(&tick, nondet!(/** test */));
+    /// keyed_data.get_many(other_data).entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: [(10, 100), (10, 101)], 2: [(20, 200)] } in any order
+    /// # let mut results = vec![];
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (10, 100)), (1, (10, 101)), (2, (20, 200))]);
+    /// # }));
+    /// ```
+    pub fn get_many<O2, R2, V2>(
+        self,
+        with: KeyedStream<K, V2, Tick<L>, Bounded, O2, R2>,
+    ) -> KeyedStream<K, (V, V2), Tick<L>, Bounded, NoOrder, R2> {
+        self.entries()
+            .weaker_retries()
+            .join(with.entries())
+            .into_keyed()
+    }
+}
+
 impl<'a, K, V, L, B> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
@@ -148,17 +224,6 @@ where
                 // no need to unpersist due to top-level replay
                 self.underlying.ir_node.into_inner(),
             ),
-        }
-    }
-}
-
-impl<'a, K, V, L> KeyedSingleton<K, V, Tick<L>, Bounded>
-where
-    L: Location<'a>,
-{
-    pub fn all_ticks(self) -> KeyedSingleton<K, V, L, Unbounded> {
-        KeyedSingleton {
-            underlying: self.underlying.all_ticks(),
         }
     }
 }

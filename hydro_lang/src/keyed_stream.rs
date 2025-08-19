@@ -9,7 +9,7 @@ use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::manual_expr::ManualExpr;
-use crate::stream::ExactlyOnce;
+use crate::stream::{ExactlyOnce, MinRetries};
 use crate::unsafety::NonDet;
 use crate::*;
 
@@ -188,44 +188,6 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
         }
     }
 
-    /// Creates a stream containing only the elements of each group stream that satisfy a predicate
-    /// `f`, preserving the order of the elements within the group.
-    ///
-    /// The closure `f` receives a reference `&T` rather than an owned value `T` because filtering does
-    /// not modify or take ownership of the values. If you need to modify the values while filtering
-    /// use [`KeyedStream::filter_map`] instead.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
-    ///     .into_keyed()
-    ///     .filter(q!(|&x| x > 2))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: [3], 2: [4] }
-    /// # for w in vec![(1, 3), (2, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedStream<K, V, L, B, O, R>
-    where
-        F: Fn(&V) -> bool + 'a,
-    {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
-        KeyedStream {
-            underlying: self.underlying.filter(q!({
-                let orig = f;
-                move |(_k, v)| orig(v)
-            })),
-            _phantom_order: Default::default(),
-        }
-    }
-
     /// Transforms each value by invoking `f` on each key-value pair. The resulting values are **not**
     /// re-grouped even they are tuples; instead they will be grouped under the original key.
     ///
@@ -266,6 +228,81 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
                     (k, out)
                 }
             })),
+            _phantom_order: Default::default(),
+        }
+    }
+
+    /// Creates a stream containing only the elements of each group stream that satisfy a predicate
+    /// `f`, preserving the order of the elements within the group.
+    ///
+    /// The closure `f` receives a reference `&V` rather than an owned value `v` because filtering does
+    /// not modify or take ownership of the values. If you need to modify the values while filtering
+    /// use [`KeyedStream::filter_map`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    ///     .filter(q!(|&x| x > 2))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [3], 2: [4] }
+    /// # for w in vec![(1, 3), (2, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedStream<K, V, L, B, O, R>
+    where
+        F: Fn(&V) -> bool + 'a,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        KeyedStream {
+            underlying: self.underlying.filter(q!({
+                let orig = f;
+                move |(_k, v)| orig(v)
+            })),
+            _phantom_order: Default::default(),
+        }
+    }
+
+    /// Creates a stream containing only the elements of each group stream that satisfy a predicate
+    /// `f` (which receives the key-value tuple), preserving the order of the elements within the group.
+    ///
+    /// The closure `f` receives a reference `&(K, V)` rather than an owned value `(K, V)` because filtering does
+    /// not modify or take ownership of the values. If you need to modify the values while filtering
+    /// use [`KeyedStream::filter_map_with_key`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    ///     .filter_with_key(q!(|&(k, v)| v - k == 2))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [3], 2: [4] }
+    /// # for w in vec![(1, 3), (2, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter_with_key<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedStream<K, V, L, B, O, R>
+    where
+        F: Fn(&(K, V)) -> bool + 'a,
+    {
+        KeyedStream {
+            underlying: self.underlying.filter(f),
             _phantom_order: Default::default(),
         }
     }
@@ -415,6 +452,41 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
             underlying: self.underlying.inspect(f),
             _phantom_order: Default::default(),
         }
+    }
+}
+
+impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, Unbounded, O, R> {
+    /// Produces a new keyed stream that "merges" the inputs by interleaving the elements
+    /// of any overlapping groups. The result has [`NoOrder`] on each group because the
+    /// order of interleaving is not guaranteed. If the keys across both inputs do not overlap,
+    /// the ordering will be deterministic and you can safely use [`Self::assume_ordering`].
+    ///
+    /// Currently, both input streams must be [`Unbounded`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let numbers1 = process.source_iter(q!(vec![(1, 2), (3, 4)])).into_keyed();
+    /// let numbers2 = process.source_iter(q!(vec![(1, 3), (3, 5)])).into_keyed();
+    /// numbers1.interleave(numbers2)
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2, 3], 3: [4, 5] } with each group in unknown order
+    /// # for w in vec![(1, 2), (3, 4), (1, 3), (3, 5)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn interleave<O2, R2: MinRetries<R>>(
+        self,
+        other: KeyedStream<K, V, L, Unbounded, O2, R2>,
+    ) -> KeyedStream<K, V, L, Unbounded, NoOrder, R::Min>
+    where
+        R: MinRetries<R2, Min = R2::Min>,
+    {
+        self.entries().interleave(other.entries()).into_keyed()
     }
 }
 
@@ -571,7 +643,7 @@ where
             init,
             acc: comb,
             input: Box::new(self.underlying.ir_node.into_inner()),
-            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+            metadata: self.underlying.location.new_node_metadata::<(K, A)>(),
         };
 
         KeyedSingleton {
@@ -1018,6 +1090,37 @@ where
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce_watermark(other, comb)
+    }
+
+    /// Given a bounded stream of keys `K`, returns a new keyed stream containing only the groups
+    /// whose keys are not in the bounded stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let keyed_stream = process
+    ///     .source_iter(q!(vec![ (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd') ]))
+    ///     .batch(&tick, nondet!(/** test */))
+    ///     .into_keyed();
+    /// let keys_to_remove = process
+    ///     .source_iter(q!(vec![1, 2]))
+    ///     .batch(&tick, nondet!(/** test */));
+    /// keyed_stream.filter_key_not_in(keys_to_remove).all_ticks()
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 3: ['c'], 4: ['d'] }
+    /// # for w in vec![(3, 'c'), (4, 'd')] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    pub fn filter_key_not_in<O2, R2>(self, other: Stream<K, L, Bounded, O2, R2>) -> Self {
+        KeyedStream {
+            underlying: self.entries().anti_join(other),
+            _phantom_order: Default::default(),
+        }
     }
 }
 
