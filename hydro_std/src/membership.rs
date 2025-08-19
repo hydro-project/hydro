@@ -1,4 +1,4 @@
-use hydro_lang::keyed_optional::KeyedOptional;
+use hydro_lang::keyed_singleton::KeyedSingleton;
 use hydro_lang::keyed_stream::KeyedStream;
 use hydro_lang::location::MembershipEvent;
 use hydro_lang::{Location, Unbounded};
@@ -6,7 +6,7 @@ use stageleft::q;
 
 pub fn track_membership<'a, L: Location<'a>>(
     membership: KeyedStream<u64, MembershipEvent, L, Unbounded>,
-) -> KeyedOptional<u64, (), L, Unbounded> {
+) -> KeyedSingleton<u64, (), L, Unbounded> {
     membership
         .fold(
             q!(|| false),
