@@ -1,7 +1,6 @@
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
-use crate::keyed_optional::KeyedOptional;
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick};
 use crate::manual_expr::ManualExpr;
@@ -71,12 +70,12 @@ impl<'a, K, V, L: Location<'a>, B> KeyedSingleton<K, V, L, B> {
         }
     }
 
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedOptional<K, V, L, B>
+    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, V, L, B>
     where
         F: Fn(&V) -> bool + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
-        KeyedOptional {
+        KeyedSingleton {
             underlying: self.underlying.filter(q!({
                 let orig = f;
                 move |(_k, v)| orig(v)
@@ -87,17 +86,21 @@ impl<'a, K, V, L: Location<'a>, B> KeyedSingleton<K, V, L, B> {
     pub fn filter_map<F, U>(
         self,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
-    ) -> KeyedOptional<K, U, L, B>
+    ) -> KeyedSingleton<K, U, L, B>
     where
         F: Fn(V) -> Option<U> + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        KeyedOptional {
+        KeyedSingleton {
             underlying: self.underlying.filter_map(q!({
                 let orig = f;
                 move |(k, v)| orig(v).map(|v| (k, v))
             })),
         }
+    }
+
+    pub fn key_count(self) -> Singleton<usize, L, B> {
+        self.underlying.count()
     }
 }
 
