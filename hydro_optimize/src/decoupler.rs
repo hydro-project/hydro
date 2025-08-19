@@ -398,6 +398,10 @@ mod tests {
 
     #[tokio::test]
     async fn move_source_decouple_map() {
+        if true {
+            panic!("currently broken");
+        }
+
         let decoupler = decoupler::Decoupler {
             output_to_decoupled_machine_after: vec![],
             output_to_original_machine_after: vec![1],
