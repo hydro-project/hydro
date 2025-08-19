@@ -21,7 +21,7 @@ where
 {
     // TODO: Coordinator logs
     // broadcast prepare message to participants
-    let p_prepare = payloads.broadcast_bincode(participants);
+    let p_prepare = payloads.broadcast_bincode(participants, nondet!(/** TODO */));
 
     // participant 1 aborts transaction 1
     // TODO: Participants log
@@ -40,7 +40,9 @@ where
     // TODO: Coordinator log
 
     // broadcast commit transactions to participants.
-    let p_commit = c_all_vote_yes.end_atomic().broadcast_bincode(participants);
+    let p_commit = c_all_vote_yes
+        .end_atomic()
+        .broadcast_bincode(participants, nondet!(/** TODO */));
     // TODO: Participants log
 
     let c_commits = p_commit.send_bincode(coordinator).values();
