@@ -29,7 +29,7 @@ use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
 
 /// Represents the kind of stream/collection type for metadata
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreamKind {
     Stream {
         ordering: StreamOrdering,
@@ -44,14 +44,14 @@ pub enum StreamKind {
 }
 
 /// Represents the ordering guarantees of a stream
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreamOrdering {
     TotalOrder,
     NoOrder,
 }
 
 /// Represents the retry/cardinality guarantees of a stream
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreamRetries {
     ExactlyOnce,
     AtLeastOnce,

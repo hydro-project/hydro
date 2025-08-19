@@ -10,7 +10,7 @@ use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::manual_expr::ManualExpr;
-use crate::stream::ExactlyOnce;
+use crate::stream::{ExactlyOnce, TotalOrder};
 use crate::unsafety::NonDet;
 use crate::*;
 
@@ -95,23 +95,7 @@ where
         _ => StreamRetries::AtLeastOnce,
     };
 
-    let ordering = if <O as IsTotalOrder>::IS_TOTAL_ORDER {
-        StreamOrdering::TotalOrder
-    } else {
-        StreamOrdering::NoOrder
-    };
-
-    let retries = if <R as IsExactlyOnce>::IS_EXACTLY_ONCE {
-        StreamRetries::ExactlyOnce
-    } else {
-        StreamRetries::AtLeastOnce
-    };
-
-    let is_bounded = <B as IsBounded>::IS_BOUNDED;
-    // Use trait-based approach for ordering and retries
-    let ordering = <O as HasStreamOrdering>::ordering();
-    let retries = <R as HasStreamRetries>::retries();
-    let is_bounded = <B as IsBounded>::is_bounded();
+    let is_bounded = std::any::type_name::<B>().contains("Bounded");
     let updated_stream = underlying.update_metadata_for_keyed_conversion::<K, U>(
         StreamKind::KeyedStream { ordering, retries },
         is_bounded,
@@ -169,8 +153,33 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O2, R> {
+        use crate::ir::{StreamKind, StreamOrdering};
+
+        // For KeyedStream, we need to update the metadata to reflect the new ordering
+        // but the underlying stream remains NoOrder as KeyedStreams are internally unordered
+        let mut underlying = self.underlying;
+
+        // Update the metadata to reflect the new ordering guarantee if possible
+        if let Some(StreamKind::KeyedStream { ordering, .. }) = underlying
+            .ir_node
+            .get_mut()
+            .metadata_mut()
+            .stream_kind
+            .as_mut()
+        {
+            let type_name = std::any::type_name::<O2>();
+            *ordering = if type_name.ends_with("TotalOrder") {
+                StreamOrdering::TotalOrder
+            } else if type_name.ends_with("NoOrder") {
+                StreamOrdering::NoOrder
+            } else {
+                // Keep existing ordering if O2 is not a known ordering type
+                *ordering
+            };
+        }
+
         KeyedStream {
-            underlying: self.underlying,
+            underlying,
             _phantom_order: PhantomData,
         }
     }

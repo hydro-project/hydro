@@ -1878,7 +1878,7 @@ expression: built.ir()
                                                     ),
                                                     stream_kind: Some(
                                                         Stream {
-                                                            ordering: TotalOrder,
+                                                            ordering: NoOrder,
                                                             retries: ExactlyOnce,
                                                         },
                                                     ),
@@ -4936,7 +4936,7 @@ expression: built.ir()
                             ),
                             stream_kind: Some(
                                 Stream {
-                                    ordering: TotalOrder,
+                                    ordering: NoOrder,
                                     retries: ExactlyOnce,
                                 },
                             ),

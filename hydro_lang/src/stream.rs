@@ -778,7 +778,26 @@ where
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
-        Stream::new(self.location.clone(), self.ir_node.into_inner())
+        use crate::ir::{StreamKind, StreamOrdering};
+
+        let mut orig_ir_node = self.ir_node.into_inner();
+
+        // Update the metadata to reflect the new ordering guarantee if possible
+        // This ensures graph rendering can show the correct edge type when types are known
+        if let Some(StreamKind::Stream { ordering, .. }) =
+            orig_ir_node.metadata_mut().stream_kind.as_mut()
+        {
+            let type_name = std::any::type_name::<O2>();
+            *ordering = if type_name.ends_with("TotalOrder") {
+                StreamOrdering::TotalOrder
+            } else if type_name.ends_with("NoOrder") {
+                StreamOrdering::NoOrder
+            } else {
+                *ordering
+            };
+        }
+
+        Stream::new(self.location.clone(), orig_ir_node)
     }
 
     /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
@@ -797,7 +816,27 @@ where
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_retries<R2>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
-        Stream::new(self.location.clone(), self.ir_node.into_inner())
+        use crate::ir::{StreamKind, StreamRetries};
+
+        let mut orig_ir_node = self.ir_node.into_inner();
+
+        // Update the metadata to reflect the new retries guarantee if possible
+        // This ensures graph rendering can show the correct edge type when types are known
+        if let Some(StreamKind::Stream { retries, .. }) =
+            orig_ir_node.metadata_mut().stream_kind.as_mut()
+        {
+            let type_name = std::any::type_name::<R2>();
+            *retries = if type_name.ends_with("ExactlyOnce") {
+                StreamRetries::ExactlyOnce
+            } else if type_name.ends_with("AtLeastOnce") {
+                StreamRetries::AtLeastOnce
+            } else {
+                // Keep existing retries if R2 is not a known retries type
+                *retries
+            };
+        }
+
+        Stream::new(self.location.clone(), orig_ir_node)
     }
 
     /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
