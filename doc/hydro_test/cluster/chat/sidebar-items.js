@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["chat_server"],"struct":["ChatMsg","Clients","Server"]};
