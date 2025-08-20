@@ -345,7 +345,6 @@ where
         keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
-    
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
     /// `f` (which receives the key-value tuple), preserving the order of the elements within the group.
     ///
@@ -417,7 +416,7 @@ where
         let base = self.underlying.filter_map(q!({
             let orig = f;
             move |(k, v)| orig(v).map(|o| (k, o))
-    }));
+        }));
         keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
@@ -457,7 +456,7 @@ where
                 let out = orig((k.clone(), v));
                 out.map(|o| (k, o))
             }
-    }));
+        }));
         keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
@@ -521,9 +520,9 @@ where
     where
         F: Fn(&(K, V)) + 'a,
     {
-    let base = self.underlying.inspect(f);
+        let base = self.underlying.inspect(f);
 
-    keyed_stream_with_updated_same_type_metadata(base)
+        keyed_stream_with_updated_same_type_metadata(base)
     }
 }
 
@@ -560,10 +559,10 @@ where
         other: KeyedStream<K, V, L, Unbounded, O2, R2>,
     ) -> KeyedStream<K, V, L, Unbounded, NoOrder, R::Min>
     where
-    O: OrderingKind,
-    O2: OrderingKind,
-    R: RetriesKind + MinRetries<R2, Min = <R2 as MinRetries<R>>::Min>,
-    R2: RetriesKind + MinRetries<R>,
+        O: OrderingKind,
+        O2: OrderingKind,
+        R: RetriesKind + MinRetries<R2, Min = <R2 as MinRetries<R>>::Min>,
+        R2: RetriesKind + MinRetries<R>,
     {
         self.entries().interleave(other.entries()).into_keyed()
     }

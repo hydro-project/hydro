@@ -4,9 +4,9 @@ use std::fmt::Write;
 
 use auto_impl::auto_impl;
 
-pub use super::graphviz::{escape_dot, HydroDot};
+pub use super::graphviz::{HydroDot, escape_dot};
 // Re-export specific implementations
-pub use super::mermaid::{escape_mermaid, HydroMermaid};
+pub use super::mermaid::{HydroMermaid, escape_mermaid};
 pub use super::reactflow::HydroReactFlow;
 use crate::ir::{DebugExpr, HydroLeaf, HydroNode, HydroSource};
 
@@ -149,7 +149,7 @@ pub enum HydroNodeType {
     Sink,
     Tee,
 }
- 
+
 /// Types of edges in Hydro IR.
 #[derive(Debug, Clone, Copy)]
 pub enum HydroEdgeType {
@@ -320,10 +320,10 @@ fn find_semantic_label_upstream(node: &HydroNode) -> Option<String> {
     let mut hops = 0usize;
     let mut cur = node;
     loop {
-    if let Some(lbl) = type_label_from_metadata(cur.metadata()) {
+        if let Some(lbl) = type_label_from_metadata(cur.metadata()) {
             return Some(lbl);
         }
-    if hops > MAX_UPSTREAM_HOPS {
+        if hops > MAX_UPSTREAM_HOPS {
             return None;
         }
         hops += 1;
@@ -656,7 +656,7 @@ impl HydroNode {
         }
 
         // Single-input transform with no expressions
-    fn build_simple_transform(params: TransformParams) -> usize {
+        fn build_simple_transform(params: TransformParams) -> usize {
             let input_id = params.input.build_graph_structure(
                 params.structure,
                 params.seen_tees,
@@ -683,7 +683,7 @@ impl HydroNode {
         }
 
         // Single-input transform with one expression
-    fn build_single_expr_transform(params: TransformParams, expr: &DebugExpr) -> usize {
+        fn build_single_expr_transform(params: TransformParams, expr: &DebugExpr) -> usize {
             let input_id = params.input.build_graph_structure(
                 params.structure,
                 params.seen_tees,
@@ -710,7 +710,7 @@ impl HydroNode {
         }
 
         // Single-input transform with two expressions
-    fn build_dual_expr_transform(
+        fn build_dual_expr_transform(
             params: TransformParams,
             expr1: &DebugExpr,
             expr2: &DebugExpr,
@@ -1161,7 +1161,14 @@ impl HydroNode {
                     second_id,
                     chain_id,
                     HydroEdgeType::Stream,
-                    build_edge_label_single_input(Some("second"), second, metadata, 1, config, false),
+                    build_edge_label_single_input(
+                        Some("second"),
+                        second,
+                        metadata,
+                        1,
+                        config,
+                        false,
+                    ),
                 );
                 chain_id
             }

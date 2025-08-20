@@ -61,7 +61,7 @@ fn collect_node<'a>(node: &'a HydroNode, out: &mut CollectedGraph<'a>) {
     match node {
         // Single-input nodes (grouped by pattern)
         HydroNode::Persist { inner, .. }
-    | HydroNode::Unpersist { inner, .. }
+        | HydroNode::Unpersist { inner, .. }
         | HydroNode::Delta { inner, .. }
         | HydroNode::DeferTick { input: inner, .. }
         | HydroNode::Enumerate { input: inner, .. }
@@ -75,15 +75,15 @@ fn collect_node<'a>(node: &'a HydroNode, out: &mut CollectedGraph<'a>) {
         | HydroNode::ResolveFutures { input: inner, .. }
         | HydroNode::ResolveFuturesOrdered { input: inner, .. }
         | HydroNode::ReduceKeyed { input: inner, .. }
-    | HydroNode::Counter { input: inner, .. }
-    | HydroNode::Map { input: inner, .. }
-    | HydroNode::FlatMap { input: inner, .. }
-    | HydroNode::Filter { input: inner, .. }
-    | HydroNode::FilterMap { input: inner, .. }
-    | HydroNode::Network { input: inner, .. }
-    | HydroNode::Tee { input: inner, .. } => collect_node(inner, out),
+        | HydroNode::Counter { input: inner, .. }
+        | HydroNode::Map { input: inner, .. }
+        | HydroNode::FlatMap { input: inner, .. }
+        | HydroNode::Filter { input: inner, .. }
+        | HydroNode::FilterMap { input: inner, .. }
+        | HydroNode::Network { input: inner, .. }
+        | HydroNode::Tee { input: inner, .. } => collect_node(inner, out),
 
-    // Two-input nodes
+        // Two-input nodes
         HydroNode::ReduceKeyedWatermark {
             input, watermark, ..
         } => {
@@ -111,10 +111,10 @@ fn collect_node<'a>(node: &'a HydroNode, out: &mut CollectedGraph<'a>) {
             collect_node(left, out);
             collect_node(right, out);
         }
-    // Leaf nodes (no inputs)
-    HydroNode::Source { .. }
-    | HydroNode::CycleSource { .. }
-    | HydroNode::ExternalInput { .. }
-    | HydroNode::Placeholder => {}
+        // Leaf nodes (no inputs)
+        HydroNode::Source { .. }
+        | HydroNode::CycleSource { .. }
+        | HydroNode::ExternalInput { .. }
+        | HydroNode::Placeholder => {}
     }
 }
