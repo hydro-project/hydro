@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> tests/compile-fail-stable/surface_demuxenum_port_missing.rs:17:15
+   |
+17 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^
+   |               |
+   |               expected a tuple with 3 elements, found one with 2 elements
+   |               arguments to this function are incorrect
+18 |         my_demux[Rectangle] -> for_each(std::mem::drop);
+   |                                -------- one of the found opaque types
+19 |         my_demux[Circle] -> for_each(std::mem::drop);
+   |                             -------- one of the found opaque types
+   |
+   = note: expected mutable reference `&mut (_, _, _)`
+              found mutable reference `&mut (impl Pusherator<Item = _>, impl Pusherator<Item = _>)`
+note: method defined here
+  --> src/util/demux_enum.rs
+   |
+   |     fn demux_enum(self, outputs: &mut Outputs);
+   |        ^^^^^^^^^^

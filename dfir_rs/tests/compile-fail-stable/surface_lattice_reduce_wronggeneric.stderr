@@ -1,0 +1,5 @@
+error: `lattice_reduce` should have exactly 0 generic type arguments, actually has 1.
+ --> tests/compile-fail-stable/surface_lattice_reduce_wronggeneric.rs:6:33
+  |
+6 |             -> lattice_reduce::<'static, dfir_rs::lattices::set_union::SetUnionHashSet<u32>>()
+  |                                 ^^^^^^^

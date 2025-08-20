@@ -1,0 +1,5 @@
+error: `identity` should have exactly 0 persistence lifetime arguments, actually has 1.
+ --> tests/compile-fail-stable/surface_badgeneric_both.rs:5:42
+  |
+5 |         source_iter(0..10) -> identity::<'static, usize>() -> for_each(std::mem::drop);
+  |                                          ^^^^^^^

@@ -1,0 +1,44 @@
+error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `({integer}, _)`, but it yields `{integer}`
+ --> tests/compile-fail-stable/surface_join_badtypes.rs:7:9
+  |
+5 |         j = join() -> for_each(std::mem::drop);
+  |             ---- required by a bound introduced by this call
+6 |         source_iter(0..10) -> map(|x| (x, x)) -> [0]j;
+7 |         source_iter(0..10) -> [1]j;
+  |         ^^^^^^^^^^^ expected `({integer}, _)`, found integer
+  |
+  = note: expected tuple `({integer}, _)`
+              found type `{integer}`
+note: required by a bound in `check_inputs`
+ --> tests/compile-fail-stable/surface_join_badtypes.rs:5:13
+  |
+5 |         j = join() -> for_each(std::mem::drop);
+  |             ^^^^ required by this bound in `check_inputs`
+
+error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `({integer}, _)`, but it yields `{integer}`
+ --> tests/compile-fail-stable/surface_join_badtypes.rs:5:13
+  |
+5 |         j = join() -> for_each(std::mem::drop);
+  |             ^^^^ expected `({integer}, _)`, found integer
+  |
+  = note: expected tuple `({integer}, _)`
+              found type `{integer}`
+note: required by a bound in `check_inputs`
+ --> tests/compile-fail-stable/surface_join_badtypes.rs:5:13
+  |
+5 |         j = join() -> for_each(std::mem::drop);
+  |             ^^^^ required by this bound in `check_inputs`
+
+error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `({integer}, _)`, but it yields `{integer}`
+ --> tests/compile-fail-stable/surface_join_badtypes.rs:5:23
+  |
+5 |         j = join() -> for_each(std::mem::drop);
+  |                       ^^^^^^^^ expected `({integer}, _)`, found integer
+  |
+  = note: expected tuple `({integer}, _)`
+              found type `{integer}`
+note: required by a bound in `check_inputs`
+ --> tests/compile-fail-stable/surface_join_badtypes.rs:5:13
+  |
+5 |         j = join() -> for_each(std::mem::drop);
+  |             ^^^^ required by this bound in `check_inputs`

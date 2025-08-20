@@ -1,0 +1,5 @@
+error: Output ports from `partition` cannot be blank, must be named or indexed.
+  --> tests/compile-fail-stable/surface_partition_port_elided.rs:14:9
+   |
+14 |         my_partition -> for_each(std::mem::drop);
+   |         ^^^^^^^^^^^^

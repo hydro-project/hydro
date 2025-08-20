@@ -1,0 +1,5 @@
+error: `inspect` should have exactly 0 generic type arguments, actually has 1.
+ --> tests/compile-fail-stable/surface_badgeneric_type.rs:6:41
+  |
+6 |         source_iter(0..10) -> inspect::<usize>(std::mem::drop) -> for_each(std::mem::drop);
+  |                                         ^^^^^

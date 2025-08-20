@@ -1,0 +1,11 @@
+error: Name `f` forms or references an illegal self-referential cycle (1/1).
+ --> tests/compile-fail-stable/surface_forwardref_self3.rs:6:9
+  |
+6 |         f -> for_each(std::mem::drop);
+  |         ^
+
+error: `for_each` must have exactly 1 input(s), actually has 0.
+ --> tests/compile-fail-stable/surface_forwardref_self3.rs:6:14
+  |
+6 |         f -> for_each(std::mem::drop);
+  |              ^^^^^^^^

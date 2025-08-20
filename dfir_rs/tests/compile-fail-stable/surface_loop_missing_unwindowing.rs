@@ -1,0 +1,1 @@
+../compile-fail/surface_loop_missing_unwindowing.rs

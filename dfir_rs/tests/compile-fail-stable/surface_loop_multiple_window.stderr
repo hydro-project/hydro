@@ -1,0 +1,5 @@
+error: Operator input edge may not cross multiple loop contexts.
+ --> tests/compile-fail-stable/surface_loop_multiple_window.rs:6:22
+  |
+6 |                 a -> batch() -> null();
+  |                      ^^^^^
