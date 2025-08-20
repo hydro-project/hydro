@@ -62,7 +62,7 @@ export function useFlowGraphController({
     autoLayout: true,
     enableLogging: false,
     layoutConfig: layoutConfig,
-  }), [visualizationState, layoutConfig]);
+  }), [visualizationState]);
 
   // Cleanup timeout on unmount
   useEffect(() => () => {

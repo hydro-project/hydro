@@ -20,7 +20,8 @@ interface EdgeStyleLegendProps {
     }>;
     singlePropertyMappings?: Record<string, string>;
     combinationRules?: any;
-    propertyMappings?: Record<string, string>;
+    // Accept richer mapping objects used by processors (reactFlowType/style/etc.) as well as plain strings
+    propertyMappings?: Record<string, string | { reactFlowType?: string; style?: Record<string, any>; animated?: boolean; label?: string; styleTag?: string } >;
   };
   compact?: boolean;
   className?: string;

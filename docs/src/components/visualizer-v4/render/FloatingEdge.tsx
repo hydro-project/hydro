@@ -31,7 +31,7 @@ function getEdgeParams(source: any, target: any) {
 
 // geometry helpers moved to ./geometry
 
-export default function FloatingEdge({ id, source, target, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd }: EdgeProps) {
+export default function FloatingEdge({ id, source, target, style = {}, markerEnd }: EdgeProps) {
   const styleCfg = useStyleConfig();
   const sourceNode = useStore(useCallback((store) => store.nodeLookup.get(source), [source]));
   const targetNode = useStore(useCallback((store) => store.nodeLookup.get(target), [target]));

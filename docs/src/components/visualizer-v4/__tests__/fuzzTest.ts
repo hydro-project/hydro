@@ -165,10 +165,10 @@ class InvariantChecker {
     
     // Instead, we can verify that the visible edges only contain regular edges
     const visibleEdges = this.state.visibleEdges;
-    for (const edge of visibleEdges) {
+  for (const edge of visibleEdges) {
       // All visible edges should be regular edges (no hyperedges exposed)
       assert(
-        !isHyperEdge(e),
+    !isHyperEdge(edge),
         `${context}: Found hyperedge ${edge.id} in visibleEdges - hyperedges should be encapsulated!`
       );
     }

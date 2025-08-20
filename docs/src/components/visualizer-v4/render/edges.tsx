@@ -4,9 +4,9 @@
  * Thin module that re-exports edge components and preserves edgeTypes mapping.
  */
 
-import FloatingEdge, { MemoFloatingEdge } from './FloatingEdge';
-import { StandardEdge, MemoStandardEdge } from './StandardEdge';
-import { HyperEdge, MemoHyperEdge } from './HyperEdge';
+import { MemoFloatingEdge } from './FloatingEdge';
+import { MemoStandardEdge } from './StandardEdge';
+import { MemoHyperEdge } from './HyperEdge';
 
 // Re-export individual edge components for compatibility
 export { StandardEdge } from './StandardEdge';

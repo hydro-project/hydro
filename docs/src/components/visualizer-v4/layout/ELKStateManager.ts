@@ -718,9 +718,16 @@ export function createELKStateManager(): ELKStateManager {
       // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🏗️ SELECTIVE_HIERARCHICAL_LAYOUT: Running full layout with position fixing`)));
       
       // Combine regular edges and hyperEdges for ELK layout
-      // Ensure hyperEdges have the hidden property for type compatibility
-      const hyperEdgesWithHidden = hyperEdges.map(he => ({ ...he, hidden: false }));
-      const allEdges = [...edges, ...hyperEdgesWithHidden];
+      // Convert hyperEdges to GraphEdge shape for ELK (ELK doesn't distinguish types)
+      const hyperAsGraph: GraphEdge[] = hyperEdges.map(he => ({
+        id: he.id,
+        source: he.source,
+        target: he.target,
+        hidden: false,
+        style: he.style,
+        type: 'graph'
+      }));
+      const allEdges: GraphEdge[] = [...edges, ...hyperAsGraph];
       
       // Run full hierarchical layout but with position constraints
       const result = await calculateFullLayout(nodes, allEdges, containersWithFixing, layoutType);
@@ -731,9 +738,16 @@ export function createELKStateManager(): ELKStateManager {
       };
     } else {
       // Combine regular edges and hyperEdges for ELK layout
-      // Ensure hyperEdges have the hidden property for type compatibility
-      const hyperEdgesWithHidden = hyperEdges.map(he => ({ ...he, hidden: false }));
-      const allEdges = [...edges, ...hyperEdgesWithHidden];
+      // Convert hyperEdges to GraphEdge shape for ELK (ELK doesn't distinguish types)
+      const hyperAsGraph: GraphEdge[] = hyperEdges.map(he => ({
+        id: he.id,
+        source: he.source,
+        target: he.target,
+        hidden: false,
+        style: he.style,
+        type: 'graph'
+      }));
+      const allEdges: GraphEdge[] = [...edges, ...hyperAsGraph];
       
       const result = await calculateFullLayout(nodes, allEdges, containers, layoutType);
       return {

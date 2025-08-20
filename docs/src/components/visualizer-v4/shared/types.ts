@@ -1,3 +1,5 @@
+import type { NodeStyle, EdgeStyle, ContainerStyle } from './config';
+
 // External-facing container type (no expandedDimensions)
 export interface ExternalContainer {
   id: string;
@@ -96,6 +98,9 @@ export interface CreateContainerProps {
   layout?: LayoutState;
   [key: string]: any;
 }
+
+// Re-export style types for convenience in other modules
+export type { NodeStyle, EdgeStyle, ContainerStyle };
 
 // ============ Parser Types ============
 

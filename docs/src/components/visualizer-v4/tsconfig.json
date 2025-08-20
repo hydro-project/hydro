@@ -25,7 +25,8 @@
     "noImplicitOverride": false,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "jsx": "react-jsx"
+  "jsx": "react-jsx",
+  "resolveJsonModule": true
   },
   "include": [
     "**/*.ts",

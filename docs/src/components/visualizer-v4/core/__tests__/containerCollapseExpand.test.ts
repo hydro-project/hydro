@@ -286,8 +286,8 @@ describe('Container Collapse/Expand Tests', () => {
     );
     expect(nodeToContainerHyperEdges.length).toBeGreaterThan(0); // This was the bug - these were disappearing
     
-    console.log((('  After expanding A: found', afterExpandA.length, 'hyperedges')));
-    console.log((('  Node-to-container hyperedges:', nodeToContainerHyperEdges.map(e => e.id))));
+  console.log('  After expanding A: found %d hyperedges', afterExpandA.length);
+  console.log('  Node-to-container hyperedges: %o', nodeToContainerHyperEdges.map(e => e.id));
     
     // Step 4: Expand containerB to fully restore original state
     state.expandContainer('containerB');

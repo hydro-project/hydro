@@ -89,7 +89,7 @@ export interface RawHierarchyItemSchema {
 export interface RawGraphDataSchema {
   nodes: RawNodeSchema[];
   edges: RawEdgeSchema[];
-  hierarchies?: RawHierarchy[];
+  hierarchies?: RawHierarchySchema[];
   hierarchyChoices?: RawHierarchyChoiceSchema[];
   nodeAssignments?: Record<string, Record<string, string>>;
   styleConfig?: {

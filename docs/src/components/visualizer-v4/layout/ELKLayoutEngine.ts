@@ -7,14 +7,8 @@
 
 import { VisualizationEngine, createVisualizationEngine } from '../core/VisualizationEngine';
 import { createVisualizationState } from '../core/VisualizationState';
-import type { 
-  NodeStyle,
-  EdgeStyle,
-  GraphNode,
-  GraphEdge,
-  ExternalContainer,
-  HyperEdge
-} from '../shared/types';
+import type { GraphNode, GraphEdge, ExternalContainer, HyperEdge } from '../shared/types';
+import type { NodeStyle, EdgeStyle } from '../shared/config';
 import type {
   PositionedNode,
   PositionedEdge, 

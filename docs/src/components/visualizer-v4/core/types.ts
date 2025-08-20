@@ -14,8 +14,9 @@ export interface GraphEdge {
 import type { NodeStyle, EdgeStyle, ContainerStyle } from '../shared/config';
 import type { ExternalContainer } from '../shared/types';
 
-// Re-export style types
-export type { NodeStyle, EdgeStyle, ContainerStyle, ExternalContainer } from '../shared/types';
+// Re-export style types from config and ExternalContainer from shared/types
+export type { NodeStyle, EdgeStyle, ContainerStyle } from '../shared/config';
+export type { ExternalContainer } from '../shared/types';
 
 // Basic dimension types
 export interface Dimensions {
