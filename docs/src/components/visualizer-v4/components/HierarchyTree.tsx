@@ -4,7 +4,7 @@
  * Displays an interactive tree view of container hierarchy for navigation using Ant Design Tree.
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Tree } from 'antd';
 import type { TreeDataNode } from 'antd';
 import { HierarchyTreeProps, HierarchyTreeNode } from './types';
@@ -25,7 +25,7 @@ export function HierarchyTree({
 }: HierarchyTreeProps) {
 
   // Convert HierarchyTreeNode to Ant Design TreeDataNode format
-  const convertToTreeData = (nodes: HierarchyTreeNode[]): TreeDataNode[] => {
+  const convertToTreeData = useCallback((nodes: HierarchyTreeNode[]): TreeDataNode[] => {
     return nodes.map(node => {
       const labelToUse = node.shortLabel || node.label;
       const truncatedLabel = truncateLabels 
@@ -99,7 +99,7 @@ export function HierarchyTree({
         }
       };
     });
-  };
+  }, [showNodeCounts, truncateLabels, maxLabelLength]);
 
   // Convert collapsed containers Set to expanded keys array (Ant Design uses expanded, not collapsed)
   const expandedKeys = useMemo(() => {
@@ -122,9 +122,9 @@ export function HierarchyTree({
 
   const treeData = useMemo(() => {
     return convertToTreeData(hierarchyTree || []);
-  }, [hierarchyTree, maxLabelLength, showNodeCounts, truncateLabels]);
+  }, [hierarchyTree, convertToTreeData]);
 
-  const handleExpand = (expandedKeys: React.Key[], info: any) => {
+  const handleExpand = (expandedKeys: React.Key[], info: { node?: { key?: React.Key } }) => {
     if (onToggleContainer && info.node) {
       // Ant Design expansion is the opposite of our collapse state
       const nodeKey = info.node.key as string;

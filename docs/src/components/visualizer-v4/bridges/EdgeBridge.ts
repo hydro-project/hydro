@@ -25,8 +25,9 @@ export function convertEdgeToReactFlow(
   const { edgeStyleConfig, showPropertyLabels = true, enableAnimations = true } = options;
   
   // Extract edge properties (mapped from semantic tags) for styling
-  const edgeProperties = (edge as any).edgeProperties || [];
-  const originalLabel = (edge as any).label;
+  const edgeUnknown = edge as unknown as { edgeProperties?: string[]; label?: string };
+  const edgeProperties = Array.isArray(edgeUnknown.edgeProperties) ? edgeUnknown.edgeProperties : [];
+  const originalLabel = edgeUnknown.label;
   
   // Process the edge style based on properties
   const processedStyle = processEdgeStyle(edgeProperties, edgeStyleConfig);
@@ -45,14 +46,9 @@ export function convertEdgeToReactFlow(
     style: processedStyle.style,
     animated: enableAnimations && processedStyle.animated,
     label: label,
-    markerEnd: typeof processedStyle.markerEndSpec === 'string' 
-      ? processedStyle.markerEndSpec  // For custom URL markers like 'url(#circle-filled)'
-      : processedStyle.markerEndSpec ?? {
-          type: MarkerType.ArrowClosed,
-          width: 15,
-          height: 15,
-          color: processedStyle.style?.stroke || '#999'
-        },
+      markerEnd: typeof processedStyle.markerEndSpec === 'string'
+        ? { type: MarkerType.ArrowClosed, width: 12, height: 12, color: String(processedStyle.style.stroke || '#999') }
+        : processedStyle.markerEndSpec as { type: MarkerType } | undefined,
     data: {
       edgeProperties,
       appliedProperties: processedStyle.appliedProperties,
@@ -105,7 +101,8 @@ export function getEdgeStyleStats(
   const unmappedProperties = new Set<string>();
   
   for (const edge of edges) {
-    const edgeProperties = (edge as any).edgeProperties || [];
+  const edgeUnknown = edge as unknown as { edgeProperties?: string[] };
+  const edgeProperties = Array.isArray(edgeUnknown.edgeProperties) ? edgeUnknown.edgeProperties : [];
     
     // Count properties
     for (const prop of edgeProperties) {

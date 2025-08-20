@@ -139,7 +139,7 @@ export interface LayoutEngine {
     containers: ExternalContainer[],
     config?: LayoutConfig,
     changedContainerId?: string | null,
-    visualizationState?: any
+  visualizationState?: unknown
   ): Promise<LayoutResult>;
 }
 
@@ -175,7 +175,7 @@ export interface RenderConfig {
   enableSelection?: boolean;
   colorPalette?: string;
   // Edge style configuration from JSON
-  edgeStyleConfig?: any; // Will be EdgeStyleConfig from EdgeStyleProcessor
+  edgeStyleConfig?: import('./EdgeStyleProcessor').EdgeStyleConfig; // typed config
   // Visual style overrides (non-layout)
   edgeStyle?: 'bezier' | 'straight' | 'smoothstep';
   edgeColor?: string;
@@ -190,8 +190,8 @@ export interface RenderConfig {
 }
 
 export interface FlowGraphEventHandlers {
-  onNodeClick?: (event: any, node: any) => void;
-  onEdgeClick?: (event: any, edge: any) => void;
-  onNodeDrag?: (event: any, node: any) => void;
+  onNodeClick?: (event: unknown, node: unknown) => void;
+  onEdgeClick?: (event: unknown, edge: unknown) => void;
+  onNodeDrag?: (event: unknown, node: unknown) => void;
   onFitViewRequested?: () => void;
 }

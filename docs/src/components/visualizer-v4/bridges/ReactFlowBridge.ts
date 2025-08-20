@@ -6,11 +6,12 @@
  */
 
 import type { VisualizationState } from '../core/VisualizationState';
-import type { GraphNode, GraphEdge, Container } from '../shared/types';
+import type { GraphNode, GraphEdge, ExternalContainer as Container } from '../shared/types';
 import { LAYOUT_CONSTANTS } from '../shared/config';
 import { MarkerType, Edge as ReactFlowEdge } from '@xyflow/react';
 import { getHandleConfig, CURRENT_HANDLE_STRATEGY } from '../render/handleConfig';
 import { convertEdgesToReactFlow, EdgeBridgeOptions } from './EdgeBridge';
+import type { EdgeStyleConfig } from '../core/EdgeStyleProcessor';
 import {
   buildParentMap as buildParentMapUtil,
   sortContainersByHierarchy as sortContainersByHierarchyUtil,
@@ -31,7 +32,7 @@ export interface ReactFlowNode {
     collapsed?: boolean;
     width?: number;
     height?: number;
-    [key: string]: any;
+  [key: string]: unknown;
   };
   style?: {
     width?: number;
@@ -49,7 +50,7 @@ export interface ReactFlowData {
 
 export class ReactFlowBridge {
   private colorPalette: string = 'Set3';
-  private edgeStyleConfig?: any; // EdgeStyleConfig from EdgeStyleProcessor
+  private edgeStyleConfig?: EdgeStyleConfig; // EdgeStyleConfig from EdgeStyleProcessor
 
   /**
    * Set the color palette for node styling
@@ -61,7 +62,7 @@ export class ReactFlowBridge {
   /**
    * Set the edge style configuration
    */
-  setEdgeStyleConfig(config: any): void {
+  setEdgeStyleConfig(config: EdgeStyleConfig | undefined): void {
     this.edgeStyleConfig = config;
   }
 
@@ -70,11 +71,13 @@ export class ReactFlowBridge {
    * TRUST ELK: Use ELK's hierarchical layout results completely
    */
   visStateToReactFlow(visState: VisualizationState): ReactFlowData {
-    console.log(`[Bridge] 🔍 Converting VisualizationState with ${visState.visibleNodes.length} visible nodes`);
+  // eslint-disable-next-line no-console
+  console.log(`[Bridge] 🔍 Converting VisualizationState with ${visState.visibleNodes.length} visible nodes`);
     
     // Debug: Log first few visible nodes
     const firstFewNodes = visState.visibleNodes.slice(0, 5);
     firstFewNodes.forEach(node => {
+      // eslint-disable-next-line no-console
       console.log(`[Bridge] 📋 Node ${node.id}: label="${node.label}", shortLabel="${node.shortLabel}", fullLabel="${node.fullLabel}"`);
     });
 
@@ -134,11 +137,13 @@ export class ReactFlowBridge {
       
       // Debug: Log label data for troubleshooting
       if (node.id === '0' || node.id === '7') {
+        // eslint-disable-next-line no-console
         console.log(`[Bridge] 🏷️ Node ${node.id}: label="${flatNode.data.label}", shortLabel="${flatNode.data.shortLabel}", fullLabel="${flatNode.data.fullLabel}"`);
       }
       
       // Debug: Log node label resolution
       if (node.label && node.label !== node.shortLabel) {
+        // eslint-disable-next-line no-console
         console.log(`🔗 Bridge: Node ${node.id} using toggled label: "${node.label}" (short: "${node.shortLabel}", full: "${node.fullLabel}")`);
       }
       
@@ -178,13 +183,13 @@ export class ReactFlowBridge {
         position,
         data: {
           label: container.label || container.id, // Use single label field for containers
-          style: (container as any).style || 'default',
+          style: (container as unknown as { style?: string }).style || 'default',
           collapsed: container.collapsed || false,
           colorPalette: this.colorPalette,
           nodeCount,
           width,
           height,
-          ...this.extractCustomProperties(container as any)
+          ...this.extractCustomProperties(container as unknown as Container)
         },
         style: {
           width,
@@ -236,8 +241,8 @@ export class ReactFlowBridge {
   /**
    * Sort containers by hierarchy level to ensure parents are processed before children
    */
-  private sortContainersByHierarchy(containers: any[], parentMap: Map<string, string>): any[] {
-    return sortContainersByHierarchyUtil(containers, parentMap);
+  private sortContainersByHierarchy<T extends { id: string }>(containers: T[], parentMap: Map<string, string>): T[] {
+    return sortContainersByHierarchyUtil(containers, parentMap) as T[];
   }
 
   /**
@@ -273,7 +278,8 @@ export class ReactFlowBridge {
         visState.getContainerChildren(container.id)?.size || 0 : 0;
       
       // Debug: Log container label source
-      console.log(`🏷️ Container ${container.id}: label="${container.label}", id="${container.id}", using="${container.label || container.id}"`);
+  // eslint-disable-next-line no-console
+  console.log(`🏷️ Container ${container.id}: label="${container.label}", id="${container.id}", using="${container.label || container.id}"`);
       
       const containerNode: ReactFlowNode = {
         id: container.id,
@@ -281,7 +287,7 @@ export class ReactFlowBridge {
         position,
         data: {
           label: container.label || container.id, // Use container.label, fallback to id
-          style: (container as any).style || 'default',
+          style: (container as unknown as { style?: string }).style || 'default',
           collapsed: container.collapsed,
           colorPalette: this.colorPalette,
           width,
@@ -336,6 +342,7 @@ export class ReactFlowBridge {
 
       // Debug: Log label handling for ELK nodes
       if (node.label && node.label !== node.shortLabel) {
+        // eslint-disable-next-line no-console
         console.log(`🔗 Bridge (ELK): Node ${node.id} using toggled label: "${node.label}" (short: "${node.shortLabel}", full: "${node.fullLabel}")`);
       }
       
@@ -439,24 +446,26 @@ export class ReactFlowBridge {
       }
       
       // Fallback to default if no layout information
+      const eh = edge as unknown as { sourceHandle?: string; targetHandle?: string };
       return {
-        sourceHandle: (edge as any).sourceHandle || 'out-bottom',
-        targetHandle: (edge as any).targetHandle || 'in-top'
+        sourceHandle: eh.sourceHandle || 'out-bottom',
+        targetHandle: eh.targetHandle || 'in-top'
       };
     }
     
     // Handle edges with port information for other strategies
+    const eh = edge as unknown as { sourceHandle?: string; targetHandle?: string };
     return {
-      sourceHandle: (edge as any).sourceHandle || 'default-out',
-      targetHandle: (edge as any).targetHandle || 'default-in'
+      sourceHandle: eh.sourceHandle || 'default-out',
+      targetHandle: eh.targetHandle || 'default-in'
     };
   }
 
   /**
    * Extract custom properties from graph elements
    */
-  private extractCustomProperties(element: GraphNode | GraphEdge | Container): Record<string, any> {
-    const customProps: Record<string, any> = {};
+  private extractCustomProperties(element: GraphNode | GraphEdge | Container): Record<string, unknown> {
+    const customProps: Record<string, unknown> = {};
     
     // Filter out known properties to get custom ones
     const knownProps = new Set([

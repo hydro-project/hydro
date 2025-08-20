@@ -15,10 +15,11 @@ import { VisualizationEngine } from '../core/VisualizationEngine';
 import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
 import type { VisualizationState } from '../core/VisualizationState';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';
+import type { RenderConfig } from '../core/types';
 
 export interface VisualizationComponentProps {
   visState: VisualizationState;
-  config?: any;
+  config?: RenderConfig;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -51,7 +52,8 @@ export function VisualizationComponent({
       
       setReactFlowData(reactFlowData);
     } catch (err) {
-      console.error('[VisualizationComponent] Failed to generate visualization:', err);
+  // eslint-disable-next-line no-console
+  console.error('[VisualizationComponent] Failed to generate visualization:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setIsLoading(false);
@@ -273,11 +275,6 @@ export function ExampleVisualization({ visState }: ExampleVisualizationProps): J
 
       <VisualizationComponent 
         visState={visState}
-        config={{
-          autoLayout: true,
-          autoVisualize: true,
-          enableLogging: false
-        }}
         style={{ height: '700px' }}
       />
     </div>

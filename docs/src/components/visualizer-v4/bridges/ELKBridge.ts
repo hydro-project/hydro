@@ -8,20 +8,20 @@
  */
 
 import { VisualizationState } from '../core/VisualizationState';
-import type { 
-  GraphNode, 
-  GraphEdge, 
-  Container,
-  HyperEdge
-} from '../shared/types';
+import type { Container } from '../shared/types';
 import type { LayoutConfig } from '../core/types';
 import { getELKLayoutOptions } from '../shared/config';
 
 import ELK from 'elkjs';
 import type { ElkGraph, ElkNode, ElkEdge } from './elk-types';
 
+// Minimal runtime-accurate type for the ELK instance we use
+type ElkInstance = {
+  layout(graph: ElkGraph): Promise<ElkGraph>;
+};
+
 export class ELKBridge {
-  private elk: any; // ELK instance
+  private elk: ElkInstance; // ELK instance
   private layoutConfig: LayoutConfig;
 
   constructor(layoutConfig: LayoutConfig = {}) {
@@ -122,15 +122,14 @@ export class ELKBridge {
     );
     
     if (containersWithPositions.length > 0) {
-      for (const container of containersWithPositions) { // Log ALL containers with positions!
-      }
+      for (const _container of containersWithPositions) { /* intentional no-op for now */ }
     } else {
+      /* no-op */
     }
     
     // Log ALL container dimensions to see if there are inconsistencies
     const containers = (elkGraph.children || []);
-    for (const container of containers) {
-    }
+  for (const _container of containers) { /* no-op */ }
     
     // CRITICAL: Log the exact layout options being sent
   }
@@ -367,14 +366,14 @@ export class ELKBridge {
     // No custom offset corrections - ELK provides the correct coordinate system
     
     // DIAGNOSTIC: Check if bt_81 and bt_98 are in the ELK result
-    const problemContainers = ['bt_81', 'bt_98'];
+  const problemContainers: string[] = ['bt_81', 'bt_98'];
     problemContainers.forEach(containerId => {
-      const foundAtRoot = elkResult.children?.find(child => child.id === containerId);
+  const foundAtRoot = elkResult.children?.find(child => child.id === containerId);
       if (foundAtRoot) {
       } else {
         // Check if it's nested in any other container
         let foundNested = false;
-        const searchNested = (elkNode: ElkNode, depth: number = 0) => {
+  const searchNested = (elkNode: ElkNode, depth: number = 0) => {
           elkNode.children?.forEach(child => {
             if (child.id === containerId) {
               foundNested = true;
@@ -424,7 +423,10 @@ export class ELKBridge {
    */
   private updateContainerFromELK(elkNode: ElkNode, visState: VisualizationState): void {
     // Use VisState's proper layout methods instead of direct property access
-    const layoutUpdates: any = {};
+    const layoutUpdates: {
+      position?: Partial<{ x: number; y: number }>;
+      dimensions?: Partial<{ width: number; height: number }>;
+    } = {};
     
     // Validate and set position
     if (elkNode.x !== undefined || elkNode.y !== undefined) {
@@ -503,11 +505,14 @@ export class ELKBridge {
           // Update container layout with label position information
           visState.setContainerLayout(containerId, {
             ...containerLayout,
+            // Coerce numeric shapes for TS
+            position: containerLayout.position ? { x: Number(containerLayout.position.x) || 0, y: Number(containerLayout.position.y) || 0 } : undefined,
+            dimensions: containerLayout.dimensions ? { width: Number(containerLayout.dimensions.width) || 0, height: Number(containerLayout.dimensions.height) || 0 } : undefined,
             labelPosition: {
-              x: elkChildNode.x || 0,
-              y: elkChildNode.y || 0,
-              width: elkChildNode.width || 150,
-              height: elkChildNode.height || 20
+              x: Number(elkChildNode.x) || 0,
+              y: Number(elkChildNode.y) || 0,
+              width: Number(elkChildNode.width) || 150,
+              height: Number(elkChildNode.height) || 20
             }
           });
         }
@@ -531,7 +536,10 @@ export class ELKBridge {
   private updateNodeFromELK(elkNode: ElkNode, visState: VisualizationState): void {
     // Try to update as regular node first using VisState's layout methods
     try {
-      const layoutUpdates: any = {};
+      const layoutUpdates: {
+        position?: Partial<{ x: number; y: number }>;
+        dimensions?: Partial<{ width: number; height: number }>;
+      } = {};
       
       // Validate and set position
       if (elkNode.x !== undefined || elkNode.y !== undefined) {
@@ -586,7 +594,10 @@ export class ELKBridge {
     } catch (nodeError) {
       // If not found as node, might be a collapsed container - apply same validation
       try {
-        const layoutUpdates: any = {};
+        const layoutUpdates: {
+          position?: Partial<{ x: number; y: number }>;
+          dimensions?: Partial<{ width: number; height: number }>;
+        } = {};
         
         if (elkNode.x !== undefined || elkNode.y !== undefined) {
           layoutUpdates.position = {};
@@ -646,9 +657,9 @@ export class ELKBridge {
    * Get containers requiring layout (moved from VisualizationState)
    * This is ELK-specific logic for determining which containers need layout
    */
-  getContainersRequiringLayout(visState: VisualizationState, changedContainerId?: string): ReadonlyArray<any> {
+  getContainersRequiringLayout(visState: VisualizationState, changedContainerId?: string): ReadonlyArray<Container> {
     // Return all visible containers that need layout
-    return visState.visibleContainers.filter(container => !container.hidden);
+  return visState.visibleContainers.filter(container => !container.hidden) as ReadonlyArray<Container>;
   }
 
   /**
@@ -658,8 +669,9 @@ export class ELKBridge {
   getContainerELKFixed(visState: VisualizationState, containerId: string): boolean {
     const container = visState.getContainer(containerId);
     if (!container) return false;
-    
-    return container.elkFixed || false;
+
+  const fixed = (container as { elkFixed?: unknown }).elkFixed;
+  return typeof fixed === 'boolean' ? fixed : false;
   }
 
 }

@@ -12,7 +12,7 @@ import { getStroke, getHaloColor, stripHaloStyle } from './edgeStyle';
 import { getNodeIntersection, getEdgePosition } from './geometry';
 
 // Utility function to get edge parameters for floating connection
-function getEdgeParams(source: any, target: any) {
+function getEdgeParams(source: Parameters<typeof getNodeIntersection>[0], target: Parameters<typeof getNodeIntersection>[1]) {
   const sourceIntersectionPoint = getNodeIntersection(source, target);
   const targetIntersectionPoint = getNodeIntersection(target, source);
 
@@ -74,8 +74,8 @@ export default function FloatingEdge({ id, source, target, style = {}, markerEnd
     });
   }
 
-  const { stroke, strokeWidth, strokeDasharray } = getStroke(styleCfg as any, style as any);
-  const haloColor = getHaloColor(style as any);
+  const { stroke, strokeWidth, strokeDasharray } = getStroke(styleCfg, style);
+  const haloColor = getHaloColor(style);
 
   // Simple rendering for edges without halos
   if (!haloColor) {
@@ -102,7 +102,7 @@ export default function FloatingEdge({ id, source, target, style = {}, markerEnd
       <path
         className="react-flow__edge-path"
         d={edgePath}
-        style={{
+  style={{
           stroke: haloColor,
           strokeWidth: strokeWidth + 4,
           strokeDasharray,
@@ -119,11 +119,11 @@ export default function FloatingEdge({ id, source, target, style = {}, markerEnd
         d={edgePath}
         markerEnd={markerEnd}
         style={{
-          ...(stripHaloStyle(style)),
+          ...(stripHaloStyle(style as unknown as Record<string, unknown>)),
           stroke,
           strokeWidth,
           strokeDasharray,
-        }}
+        } as unknown as React.CSSProperties}
       />
     </g>
   );

@@ -61,7 +61,7 @@ export function StandardEdge(props: EdgeProps) {
 
   const { stroke, strokeWidth, strokeDasharray } = getStroke(styleCfg, props.style);
   const isDouble = isDoubleLineEdge(props);
-  const haloColor = getHaloColor(props.style as any);
+  const haloColor = getHaloColor(props.style);
 
   // Use simple rendering for regular edges (no halo, no double line)
   if (!isDouble && !haloColor) {
@@ -96,7 +96,7 @@ export function StandardEdge(props: EdgeProps) {
       <BaseEdge
         path={edgePath}
         markerEnd={props.markerEnd}
-  style={{ stroke, strokeWidth, strokeDasharray, ...(stripHaloStyle(props.style)) }}
+  style={{ stroke, strokeWidth, strokeDasharray, ...(stripHaloStyle(props.style as unknown as Record<string, unknown>)) } as unknown as React.CSSProperties}
       />
       
       {/* Render additional rails for double lines */}

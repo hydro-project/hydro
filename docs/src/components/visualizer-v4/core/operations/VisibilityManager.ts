@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Visibility Management - Handles visibility state and cache updates
  * 

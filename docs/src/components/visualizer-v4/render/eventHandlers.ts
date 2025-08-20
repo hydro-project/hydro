@@ -4,23 +4,23 @@
  * Compatibility wrappers for alpha event handling.
  */
 
-export function createNodeEventHandlers(_config?: any) {
+export function createNodeEventHandlers(_config?: unknown) {
   return {
-  onClick: (_event: any, _node: any) => {
+  onClick: (_event: unknown, _node: unknown) => {
     }
   };
 }
 
-export function createEdgeEventHandlers(_config?: any) {
+export function createEdgeEventHandlers(_config?: unknown) {
   return {
-  onClick: (_event: any, _edge: any) => {
+  onClick: (_event: unknown, _edge: unknown) => {
     }
   };
 }
 
-export function createContainerEventHandlers(_config?: any) {
+export function createContainerEventHandlers(_config?: unknown) {
   return {
-  onClick: (_event: any, _container: any) => {
+  onClick: (_event: unknown, _container: unknown) => {
     }
   };
 }

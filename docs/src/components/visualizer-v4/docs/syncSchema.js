@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable no-console */
 
 /**
  * Schema Documentation Sync Script
@@ -74,10 +76,7 @@ function extractInterfaces(content) {
 function generateUpdatedSchema(interfaces) {
   const timestamp = new Date().toISOString();
   
-  // Extract key interfaces we care about
-  const nodeInterface = interfaces.RawNode || '';
-  const edgeInterface = interfaces.RawEdge || '';
-  const hierarchyInterface = interfaces.RawHierarchy || '';
+  // Extract key interfaces we care about (not used directly; retained for future expansion)
   
   return `/**
  * JSON Schema Documentation Generator

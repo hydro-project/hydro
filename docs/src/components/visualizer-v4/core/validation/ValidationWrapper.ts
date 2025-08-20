@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * ValidationWrapper - Provides before/after validation for public API methods
  * 

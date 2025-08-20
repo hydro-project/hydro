@@ -8,7 +8,7 @@
 interface BaseNode {
   id: string;
   type?: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   position: { x: number; y: number };
 }
 
@@ -17,7 +17,7 @@ interface BaseEdge {
   source: string;
   target: string;
   type?: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 
 // Typed ReactFlow data structures
@@ -25,7 +25,7 @@ export interface TypedReactFlowNode extends BaseNode {
   data: {
     label: string;
     style: string;
-    [key: string]: any;
+  [key: string]: unknown;
   };
   width?: number;
   height?: number;
@@ -34,7 +34,7 @@ export interface TypedReactFlowNode extends BaseNode {
 export interface TypedReactFlowEdge extends BaseEdge {
   data?: {
     style?: string;
-    [key: string]: any;
+  [key: string]: unknown;
   };
 }
 
