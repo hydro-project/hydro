@@ -6,7 +6,7 @@
  */
 
 import { Edge as ReactFlowEdge, MarkerType } from '@xyflow/react';
-import { GraphEdge, HyperEdge, Edge } from '../core/types';
+import type { Edge } from '../core/types';
 import { processEdgeStyle, createEdgeLabel, EdgeStyleConfig } from '../core/EdgeStyleProcessor';
 
 export interface EdgeBridgeOptions {

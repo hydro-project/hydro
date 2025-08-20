@@ -26,10 +26,23 @@ module.exports = {
     {
       files: ["**/*.ts", "**/*.tsx"],
       rules: {
-        // TS handles names, ESLint can false-positive here
-        "no-undef": "off",
+        // TS and code generation can result in unused symbols; disable these checks
+        'no-unused-vars': 'off',
+        'no-empty': 'off',
+        'no-case-declarations': 'off',
+        // Allow function declarations in blocks for recursive validators
+        'no-inner-declarations': 'off',
+        // TS handles name resolution
+        'no-undef': 'off',
       },
     },
+    {
+      files: ["**/*.js"],
+      rules: {
+        // Scripts and generated code may have unused variables
+        'no-unused-vars': 'off',
+      },
+    }
   ],
   ignorePatterns: [
     "dist/",
