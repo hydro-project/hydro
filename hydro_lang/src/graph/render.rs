@@ -322,7 +322,7 @@ fn find_semantic_label_upstream(node: &HydroNode) -> Option<String> {
     let mut hops = 0usize;
     let mut cur = node;
     loop {
-        if let Some(lbl) = type_label_from_metadata(cur.metadata()) {
+    if let Some(lbl) = type_label_from_metadata(cur.metadata()) {
             return Some(lbl);
         }
     if hops > MAX_UPSTREAM_HOPS {
