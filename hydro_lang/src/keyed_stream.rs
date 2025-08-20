@@ -527,7 +527,11 @@ where
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, Unbounded, O, R> {
+impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, Unbounded, O, R>
+where
+    O: OrderingKind,
+    R: RetriesKind,
+{
     /// Produces a new keyed stream that "merges" the inputs by interleaving the elements
     /// of any overlapping groups. The result has [`NoOrder`] on each group because the
     /// order of interleaving is not guaranteed. If the keys across both inputs do not overlap,
@@ -556,8 +560,8 @@ impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, U
         other: KeyedStream<K, V, L, Unbounded, O2, R2>,
     ) -> KeyedStream<K, V, L, Unbounded, NoOrder, R::Min>
     where
-        O: OrderingKind,
-        O2: OrderingKind,
+    O: OrderingKind,
+    O2: OrderingKind,
     R: RetriesKind + MinRetries<R2, Min = <R2 as MinRetries<R>>::Min>,
     R2: RetriesKind + MinRetries<R>,
     {
