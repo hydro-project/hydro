@@ -16,8 +16,11 @@
     "install": "rimraf node_modules/stageleft && git clone https://github.com/hydro-project/stageleft.git node_modules/stageleft",
     "sync-schema": "node src/components/visualizer-v4/docs/syncSchema.js",
     "prebuild": "npm run sync-schema",
-    "test": "cd src/components/visualizer-v4 && npx vitest run",
-    "test:vis": "cd src/components/visualizer-v4 && npx vitest run"
+  "test": "cd src/components/visualizer-v4 && npx vitest run",
+  "test:vis": "cd src/components/visualizer-v4 && npx vitest run",
+  "test:vis:watch": "cd src/components/visualizer-v4 && npx vitest",
+  "lint:vis": "npx eslint 'src/components/visualizer-v4/**/*.{js,ts,tsx}' -c src/components/visualizer-v4/.eslintrc.cjs --no-error-on-unmatched-pattern",
+  "lint:vis:fix": "npx eslint 'src/components/visualizer-v4/**/*.{js,ts,tsx}' -c src/components/visualizer-v4/.eslintrc.cjs --fix --no-error-on-unmatched-pattern"
   },
   "dependencies": {
     "@docusaurus/core": "^3.6.1",
