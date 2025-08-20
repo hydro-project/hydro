@@ -20,7 +20,8 @@
   "test:vis": "cd src/components/visualizer-v4 && npx vitest run",
   "test:vis:watch": "cd src/components/visualizer-v4 && npx vitest",
   "lint:vis": "npx eslint 'src/components/visualizer-v4/**/*.{js,ts,tsx}' -c src/components/visualizer-v4/.eslintrc.cjs --no-error-on-unmatched-pattern",
-  "lint:vis:fix": "npx eslint 'src/components/visualizer-v4/**/*.{js,ts,tsx}' -c src/components/visualizer-v4/.eslintrc.cjs --fix --no-error-on-unmatched-pattern"
+  "lint:vis:fix": "npx eslint 'src/components/visualizer-v4/**/*.{js,ts,tsx}' -c src/components/visualizer-v4/.eslintrc.cjs --fix --no-error-on-unmatched-pattern",
+  "typecheck:vis": "npx tsc -p src/components/visualizer-v4/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@docusaurus/core": "^3.6.1",
@@ -51,7 +52,8 @@
     "madge": "^8.0.0",
     "rimraf": "^6.0.1",
     "ts-prune": "^0.10.3",
-    "vitest": "^3.2.4"
+  "vitest": "^3.2.4",
+  "typescript": "^5.3.3"
   },
   "browserslist": {
     "production": [
