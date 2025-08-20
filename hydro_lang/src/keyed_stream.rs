@@ -5,7 +5,6 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::ir::{HydroNode, StreamKind, StreamOrdering, StreamRetries};
-use crate::keyed_optional::KeyedOptional;
 use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick, check_matching_location};
