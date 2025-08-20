@@ -823,17 +823,17 @@ impl FlatGraphBuilder {
     /// reason).
     fn helper_check_unused_port(diagnostics: &mut Vec<Diagnostic>, ends: &Ends, is_in: bool) {
         let port = if is_in { &ends.inn } else { &ends.out };
-        if let Some((port, _)) = port {
-            if port.is_specified() {
-                diagnostics.push(Diagnostic::spanned(
-                    port.span(),
-                    Level::Error,
-                    format!(
-                        "{} port index is unused. (Is the port on the correct side?)",
-                        if is_in { "Input" } else { "Output" },
-                    ),
-                ));
-            }
+        if let Some((port, _)) = port
+            && port.is_specified()
+        {
+            diagnostics.push(Diagnostic::spanned(
+                port.span(),
+                Level::Error,
+                format!(
+                    "{} port index is unused. (Is the port on the correct side?)",
+                    if is_in { "Input" } else { "Output" },
+                ),
+            ));
         }
     }
 

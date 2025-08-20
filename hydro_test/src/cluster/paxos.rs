@@ -607,10 +607,10 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
         .filter_map(q!(move |(((slot, (count, entry)), ballot), checkpoint)| {
             if count > f {
                 return None;
-            } else if let Some(checkpoint) = checkpoint {
-                if slot <= checkpoint {
-                    return None;
-                }
+            } else if let Some(checkpoint) = checkpoint
+                && slot <= checkpoint
+            {
+                return None;
             }
             Some(((slot, ballot), entry.value))
         }));

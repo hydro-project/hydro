@@ -77,10 +77,10 @@ fn inject_perf_node(
         node.metadata_mut().cpu_usage = Some(*cpu_usage);
     }
     // If this is a Network node, separately get receiver CPU usage
-    if let HydroNode::Network { metadata, .. } = node {
-        if let Some(cpu_usage) = id_to_usage.get(&(*next_stmt_id, true)) {
-            metadata.network_recv_cpu_usage = Some(*cpu_usage);
-        }
+    if let HydroNode::Network { metadata, .. } = node
+        && let Some(cpu_usage) = id_to_usage.get(&(*next_stmt_id, true))
+    {
+        metadata.network_recv_cpu_usage = Some(*cpu_usage);
     }
 }
 
@@ -258,14 +258,14 @@ fn analyze_overheads_node(
     }
     match network_type {
         Some(NetworkType::Recv) | Some(NetworkType::SendRecv) => {
-            if let Some(cardinality) = metadata.cardinality {
-                if let Some(cpu_usage) = metadata.network_recv_cpu_usage {
-                    let overhead = cpu_usage / cardinality as f64;
+            if let Some(cardinality) = metadata.cardinality
+                && let Some(cpu_usage) = metadata.network_recv_cpu_usage
+            {
+                let overhead = cpu_usage / cardinality as f64;
 
-                    println!("New receive overhead: {}", overhead);
-                    if overhead > *max_recv_overhead {
-                        *max_recv_overhead = overhead;
-                    }
+                println!("New receive overhead: {}", overhead);
+                if overhead > *max_recv_overhead {
+                    *max_recv_overhead = overhead;
                 }
             }
         }

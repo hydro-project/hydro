@@ -158,15 +158,14 @@ mod tests {
         let mut found = 0;
         let mut client_out = client_out;
         while let Some(line) = client_out.recv().await {
-            if let Some(caps) = re.captures(&line) {
-                if let Ok(lower) = f64::from_str(&caps[1]) {
-                    if lower > 0.0 {
-                        println!("Found throughput lower-bound: {}", lower);
-                        found += 1;
-                        if found == 2 {
-                            break;
-                        }
-                    }
+            if let Some(caps) = re.captures(&line)
+                && let Ok(lower) = f64::from_str(&caps[1])
+                && 0.0 < lower
+            {
+                println!("Found throughput lower-bound: {}", lower);
+                found += 1;
+                if found == 2 {
+                    break;
                 }
             }
         }

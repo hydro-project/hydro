@@ -211,7 +211,7 @@ pub(crate) enum JoinOptions<'a> {
     Reduce(&'a Expr),
 }
 
-pub(crate) fn parse_argument(arg: &Expr) -> Result<JoinOptions, Diagnostic> {
+pub(crate) fn parse_argument(arg: &Expr) -> Result<JoinOptions<'_>, Diagnostic> {
     let Expr::Call(ExprCall {
         attrs: _,
         func,

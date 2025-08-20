@@ -404,11 +404,11 @@ impl ToTokens for PortIndex {
 struct TypeHintRemover;
 impl syn::visit_mut::VisitMut for TypeHintRemover {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
-        if let Expr::Call(expr_call) = expr {
-            if let Expr::Path(path) = expr_call.func.as_ref() {
+        if let Expr::Call(expr_call) = expr &&
+            let Expr::Path(path) = expr_call.func.as_ref() &&
                 // if it is a call of the form `::...::*_type_hint(xyz)`,
                 // typically `::stageleft::...`, replace it with `xyz`
-                if path
+                path
                     .path
                     .segments
                     .last()
@@ -416,10 +416,8 @@ impl syn::visit_mut::VisitMut for TypeHintRemover {
                     .ident
                     .to_string()
                     .ends_with("_type_hint")
-                {
-                    *expr = expr_call.args.first().unwrap().clone();
-                }
-            }
+        {
+            *expr = expr_call.args.first().unwrap().clone();
         }
 
         syn::visit_mut::visit_expr_mut(self, expr);
