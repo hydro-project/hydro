@@ -1,0 +1,1 @@
+searchState.loadedDescShard("multiplatform_test", 0, "<code>multiplatform_test</code>\nSee the crate docs for usage information.")

@@ -1,0 +1,1 @@
+searchState.loadedDescShard("dfir_macro", 0, "Parse DFIR syntax without emitting code.\nCreate a runnable graph instance using DFIR’s custom …\n<code>dfir_syntax!</code> but will not emit any diagnostics (errors, …\nChecks that the given closure is a monotonic function. For …\nChecks that the given closure is a morphism. For now does …")
