@@ -9,7 +9,7 @@ use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::manual_expr::ManualExpr;
-use crate::stream::{ExactlyOnce, MinRetries, OrderingKind, RetriesKind, TotalOrder};
+use crate::stream::{ExactlyOnce, MinRetries, TotalOrder};
 use crate::unsafety::NonDet;
 use crate::*;
 
@@ -57,8 +57,6 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound, Order, Retries> Clone
 impl<'a, K, V, L, B, O, R> CycleCollection<'a, ForwardRefMarker> for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
-    O: OrderingKind,
-    R: RetriesKind,
 {
     type Location = L;
 
@@ -83,18 +81,10 @@ fn keyed_stream_with_updated_metadata<'a, K, U, L, B, O, R>(
 ) -> KeyedStream<K, U, L, B, O, R>
 where
     L: Location<'a>,
-    O: OrderingKind,
-    R: RetriesKind,
 {
-    use crate::ir::StreamKind;
-
-    let ordering = O::ordering();
-    let retries = R::retries();
     let is_bounded = std::any::type_name::<B>().contains("Bounded");
-    let updated_stream = underlying.update_metadata_for_keyed_conversion::<K, U>(
-        StreamKind::KeyedStream { ordering, retries },
-        is_bounded,
-    );
+    let updated_stream = underlying
+        .update_metadata_for_keyed_conversion::<K, U>(StreamKind::KeyedStream, is_bounded);
     KeyedStream::new(updated_stream)
 }
 
@@ -105,25 +95,14 @@ fn keyed_stream_with_updated_same_type_metadata<'a, K, V, L, B, O, R>(
 ) -> KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a>,
-    O: OrderingKind,
-    R: RetriesKind,
 {
-    use crate::ir::StreamKind;
-    let ordering = O::ordering();
-    let retries = R::retries();
     let is_bounded = std::any::type_name::<B>().contains("Bounded");
 
-    let updated_stream = underlying.update_metadata_for_keyed_conversion::<K, V>(
-        StreamKind::KeyedStream { ordering, retries },
-        is_bounded,
-    );
+    let updated_stream = underlying
+        .update_metadata_for_keyed_conversion::<K, V>(StreamKind::KeyedStream, is_bounded);
     KeyedStream::new(updated_stream)
 }
-impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R>
-where
-    O: OrderingKind,
-    R: RetriesKind,
-{
+impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     /// Create a new KeyedStream from an underlying stream.
     /// This constructor is primarily intended for code generation.
     pub fn new(underlying: Stream<(K, V), L, B, NoOrder, R>) -> Self {
@@ -141,25 +120,13 @@ where
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O2, R>
-    where
-        O2: OrderingKind,
-    {
-        use crate::ir::StreamKind;
-
+where {
         // For KeyedStream, we need to update the metadata to reflect the new ordering
         // but the underlying stream remains NoOrder as KeyedStreams are internally unordered
-        let mut underlying = self.underlying;
+        let underlying = self.underlying;
 
         // Update the metadata to reflect the new ordering guarantee if possible
-        if let Some(StreamKind::KeyedStream { ordering, .. }) = underlying
-            .ir_node
-            .get_mut()
-            .metadata_mut()
-            .stream_kind
-            .as_mut()
-        {
-            *ordering = O2::ordering();
-        }
+        // Note: With simplified StreamKind enum, we don't store ordering metadata directly
 
         KeyedStream {
             underlying,
@@ -176,9 +143,7 @@ where
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_retries<R2>(self, nondet: NonDet) -> KeyedStream<K, V, L, B, O, R2>
-    where
-        R2: RetriesKind,
-    {
+where {
         KeyedStream {
             underlying: self.underlying.assume_retries::<R2>(nondet),
             _phantom_order: PhantomData,
@@ -526,11 +491,7 @@ where
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, Unbounded, O, R>
-where
-    O: OrderingKind,
-    R: RetriesKind,
-{
+impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, Unbounded, O, R> {
     /// Produces a new keyed stream that "merges" the inputs by interleaving the elements
     /// of any overlapping groups. The result has [`NoOrder`] on each group because the
     /// order of interleaving is not guaranteed. If the keys across both inputs do not overlap,
@@ -559,10 +520,8 @@ where
         other: KeyedStream<K, V, L, Unbounded, O2, R2>,
     ) -> KeyedStream<K, V, L, Unbounded, NoOrder, R::Min>
     where
-        O: OrderingKind,
-        O2: OrderingKind,
-        R: RetriesKind + MinRetries<R2, Min = <R2 as MinRetries<R>>::Min>,
-        R2: RetriesKind + MinRetries<R>,
+        R: MinRetries<R2, Min = <R2 as MinRetries<R>>::Min>,
+        R2: MinRetries<R>,
     {
         self.entries().interleave(other.entries()).into_keyed()
     }
@@ -848,7 +807,6 @@ impl<'a, K, V, L, B, O> KeyedStream<K, V, L, B, O, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
-    O: OrderingKind,
 {
     /// Like [`Stream::fold_commutative`], aggregates the values in each group via the `comb` closure.
     ///
@@ -962,7 +920,6 @@ impl<'a, K, V, L, B, R> KeyedStream<K, V, L, B, TotalOrder, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
-    R: RetriesKind,
 {
     /// Like [`Stream::fold_idempotent`], aggregates the values in each group via the `comb` closure.
     ///
@@ -1076,8 +1033,6 @@ impl<'a, K, V, L, B, O, R> KeyedStream<K, V, L, B, O, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
-    O: OrderingKind,
-    R: RetriesKind,
 {
     /// Like [`Stream::fold_commutative_idempotent`], aggregates the values in each group via the `comb` closure.
     ///
@@ -1227,8 +1182,6 @@ where
 impl<'a, K, V, L, B, O, R> KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
-    O: OrderingKind,
-    R: RetriesKind,
 {
     pub fn atomic(self, tick: &Tick<L>) -> KeyedStream<K, V, Atomic<L>, B, O, R> {
         KeyedStream {
@@ -1255,8 +1208,6 @@ where
 impl<'a, K, V, L, B, O, R> KeyedStream<K, V, Atomic<L>, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
-    O: OrderingKind,
-    R: RetriesKind,
 {
     /// Returns a keyed stream corresponding to the latest batch of elements being atomically
     /// processed. These batches are guaranteed to be contiguous across ticks and preserve
@@ -1275,8 +1226,6 @@ where
 impl<'a, K, V, L, O, R> KeyedStream<K, V, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
-    O: OrderingKind,
-    R: RetriesKind,
 {
     pub fn all_ticks(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
         KeyedStream {

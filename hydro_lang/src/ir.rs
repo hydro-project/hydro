@@ -29,32 +29,45 @@ use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
 
 /// Represents the kind of stream/collection type for metadata
+/// Simplified to align with existing Hydro type system
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreamKind {
-    Stream {
-        ordering: StreamOrdering,
-        retries: StreamRetries,
-    },
-    KeyedStream {
-        ordering: StreamOrdering,
-        retries: StreamRetries,
-    },
+    /// Regular stream - ordering/retries determined by type parameters
+    Stream,
+    /// Keyed stream - ordering/retries determined by type parameters  
+    KeyedStream,
+    /// Singleton collection
     Singleton,
+    /// Optional collection
     Optional,
 }
 
-/// Represents the ordering guarantees of a stream
+/// Mirror enum for ordering metadata, corresponding to phantom types
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreamOrdering {
+    /// Corresponds to TotalOrder phantom type
     TotalOrder,
+    /// Corresponds to NoOrder phantom type
     NoOrder,
 }
 
-/// Represents the retry/cardinality guarantees of a stream
+/// Mirror enum for retries metadata, corresponding to phantom types
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreamRetries {
+    /// Corresponds to ExactlyOnce phantom type
     ExactlyOnce,
+    /// Corresponds to AtLeastOnce phantom type
     AtLeastOnce,
+}
+
+/// Trait for extracting ordering metadata from type-level ordering markers
+pub trait OrderingMetadata {
+    fn ordering_metadata() -> StreamOrdering;
+}
+
+/// Trait for extracting retries metadata from type-level retries markers
+pub trait RetriesMetadata {
+    fn retries_metadata() -> StreamRetries;
 }
 
 /// Debug displays the type's tokens.

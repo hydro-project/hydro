@@ -21,10 +21,7 @@ expression: optimized.ir()
                                 i32,
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: TotalOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: false,
                         },
@@ -54,10 +51,7 @@ expression: optimized.ir()
                         i32,
                     ),
                     stream_kind: Some(
-                        Stream {
-                            ordering: TotalOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Stream,
                     ),
                     is_bounded: true,
                 },
@@ -73,10 +67,7 @@ expression: optimized.ir()
                     i32,
                 ),
                 stream_kind: Some(
-                    Stream {
-                        ordering: TotalOrder,
-                        retries: ExactlyOnce,
-                    },
+                    Stream,
                 ),
                 is_bounded: true,
             },
@@ -110,10 +101,7 @@ expression: optimized.ir()
                                 i32,
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: TotalOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: false,
                         },
@@ -143,10 +131,7 @@ expression: optimized.ir()
                         i32,
                     ),
                     stream_kind: Some(
-                        Stream {
-                            ordering: TotalOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Stream,
                     ),
                     is_bounded: true,
                 },
@@ -162,10 +147,7 @@ expression: optimized.ir()
                     i32,
                 ),
                 stream_kind: Some(
-                    Stream {
-                        ordering: TotalOrder,
-                        retries: ExactlyOnce,
-                    },
+                    Stream,
                 ),
                 is_bounded: true,
             },

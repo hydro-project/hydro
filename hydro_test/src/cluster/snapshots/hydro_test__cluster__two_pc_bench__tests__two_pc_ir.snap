@@ -26,10 +26,7 @@ expression: built.ir()
                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                 ),
                                 stream_kind: Some(
-                                    Stream {
-                                        ordering: TotalOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Stream,
                                 ),
                                 is_bounded: true,
                             },
@@ -88,10 +85,7 @@ expression: built.ir()
                                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                                         ),
                                                         stream_kind: Some(
-                                                            Stream {
-                                                                ordering: NoOrder,
-                                                                retries: ExactlyOnce,
-                                                            },
+                                                            Stream,
                                                         ),
                                                         is_bounded: false,
                                                     },
@@ -104,10 +98,7 @@ expression: built.ir()
                                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                                     ),
                                                     stream_kind: Some(
-                                                        Stream {
-                                                            ordering: NoOrder,
-                                                            retries: ExactlyOnce,
-                                                        },
+                                                        Stream,
                                                     ),
                                                     is_bounded: false,
                                                 },
@@ -120,10 +111,7 @@ expression: built.ir()
                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                                 ),
                                                 stream_kind: Some(
-                                                    Stream {
-                                                        ordering: NoOrder,
-                                                        retries: ExactlyOnce,
-                                                    },
+                                                    Stream,
                                                 ),
                                                 is_bounded: false,
                                             },
@@ -136,10 +124,7 @@ expression: built.ir()
                                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                             ),
                                             stream_kind: Some(
-                                                Stream {
-                                                    ordering: NoOrder,
-                                                    retries: ExactlyOnce,
-                                                },
+                                                Stream,
                                             ),
                                             is_bounded: false,
                                         },
@@ -152,10 +137,7 @@ expression: built.ir()
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                         ),
                                         stream_kind: Some(
-                                            Stream {
-                                                ordering: NoOrder,
-                                                retries: ExactlyOnce,
-                                            },
+                                            Stream,
                                         ),
                                         is_bounded: false,
                                     },
@@ -168,10 +150,7 @@ expression: built.ir()
                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                     ),
                                     stream_kind: Some(
-                                        Stream {
-                                            ordering: NoOrder,
-                                            retries: ExactlyOnce,
-                                        },
+                                        Stream,
                                     ),
                                     is_bounded: false,
                                 },
@@ -201,10 +180,7 @@ expression: built.ir()
                                 ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: NoOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: true,
                         },
@@ -243,10 +219,7 @@ expression: built.ir()
                                             ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                         ),
                                         stream_kind: Some(
-                                            Stream {
-                                                ordering: NoOrder,
-                                                retries: ExactlyOnce,
-                                            },
+                                            Stream,
                                         ),
                                         is_bounded: true,
                                     },
@@ -292,10 +265,7 @@ expression: built.ir()
                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: NoOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: true,
                         },
@@ -325,10 +295,7 @@ expression: built.ir()
                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                     ),
                     stream_kind: Some(
-                        Stream {
-                            ordering: TotalOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Stream,
                     ),
                     is_bounded: true,
                 },
@@ -344,10 +311,7 @@ expression: built.ir()
                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                 ),
                 stream_kind: Some(
-                    Stream {
-                        ordering: NoOrder,
-                        retries: ExactlyOnce,
-                    },
+                    Stream,
                 ),
                 is_bounded: true,
             },
@@ -389,10 +353,7 @@ expression: built.ir()
                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                 ),
                                 stream_kind: Some(
-                                    Stream {
-                                        ordering: TotalOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Stream,
                                 ),
                                 is_bounded: true,
                             },
@@ -444,10 +405,7 @@ expression: built.ir()
                                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                                     ),
                                                     stream_kind: Some(
-                                                        Stream {
-                                                            ordering: NoOrder,
-                                                            retries: ExactlyOnce,
-                                                        },
+                                                        Stream,
                                                     ),
                                                     is_bounded: false,
                                                 },
@@ -460,10 +418,7 @@ expression: built.ir()
                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                                 ),
                                                 stream_kind: Some(
-                                                    Stream {
-                                                        ordering: NoOrder,
-                                                        retries: ExactlyOnce,
-                                                    },
+                                                    Stream,
                                                 ),
                                                 is_bounded: false,
                                             },
@@ -476,10 +431,7 @@ expression: built.ir()
                                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                             ),
                                             stream_kind: Some(
-                                                Stream {
-                                                    ordering: NoOrder,
-                                                    retries: ExactlyOnce,
-                                                },
+                                                Stream,
                                             ),
                                             is_bounded: false,
                                         },
@@ -492,10 +444,7 @@ expression: built.ir()
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                         ),
                                         stream_kind: Some(
-                                            Stream {
-                                                ordering: NoOrder,
-                                                retries: ExactlyOnce,
-                                            },
+                                            Stream,
                                         ),
                                         is_bounded: false,
                                     },
@@ -508,10 +457,7 @@ expression: built.ir()
                                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                     ),
                                     stream_kind: Some(
-                                        Stream {
-                                            ordering: NoOrder,
-                                            retries: ExactlyOnce,
-                                        },
+                                        Stream,
                                     ),
                                     is_bounded: false,
                                 },
@@ -541,10 +487,7 @@ expression: built.ir()
                                 ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: NoOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: true,
                         },
@@ -583,10 +526,7 @@ expression: built.ir()
                                             ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                         ),
                                         stream_kind: Some(
-                                            Stream {
-                                                ordering: NoOrder,
-                                                retries: ExactlyOnce,
-                                            },
+                                            Stream,
                                         ),
                                         is_bounded: true,
                                     },
@@ -632,10 +572,7 @@ expression: built.ir()
                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: NoOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: true,
                         },
@@ -665,10 +602,7 @@ expression: built.ir()
                         ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                     ),
                     stream_kind: Some(
-                        Stream {
-                            ordering: TotalOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Stream,
                     ),
                     is_bounded: true,
                 },
@@ -684,10 +618,7 @@ expression: built.ir()
                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                 ),
                 stream_kind: Some(
-                    Stream {
-                        ordering: NoOrder,
-                        retries: ExactlyOnce,
-                    },
+                    Stream,
                 ),
                 is_bounded: true,
             },
@@ -761,10 +692,7 @@ expression: built.ir()
                             (u32 , core :: option :: Option < u32 >),
                         ),
                         stream_kind: Some(
-                            Stream {
-                                ordering: TotalOrder,
-                                retries: ExactlyOnce,
-                            },
+                            Stream,
                         ),
                         is_bounded: true,
                     },
@@ -804,10 +732,7 @@ expression: built.ir()
                                     (u32 , u32),
                                 ),
                                 stream_kind: Some(
-                                    Stream {
-                                        ordering: NoOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Stream,
                                 ),
                                 is_bounded: false,
                             },
@@ -823,10 +748,7 @@ expression: built.ir()
                                 (u32 , core :: option :: Option < u32 >),
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: NoOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: true,
                         },
@@ -856,10 +778,7 @@ expression: built.ir()
                         (u32 , core :: option :: Option < u32 >),
                     ),
                     stream_kind: Some(
-                        Stream {
-                            ordering: NoOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Stream,
                     ),
                     is_bounded: true,
                 },
@@ -872,10 +791,7 @@ expression: built.ir()
                     (u32 , u32),
                 ),
                 stream_kind: Some(
-                    Stream {
-                        ordering: TotalOrder,
-                        retries: ExactlyOnce,
-                    },
+                    Stream,
                 ),
                 is_bounded: false,
             },
@@ -916,10 +832,7 @@ expression: built.ir()
                                         (usize , std :: time :: Instant),
                                     ),
                                     stream_kind: Some(
-                                        Stream {
-                                            ordering: TotalOrder,
-                                            retries: ExactlyOnce,
-                                        },
+                                        Stream,
                                     ),
                                     is_bounded: true,
                                 },
@@ -983,10 +896,7 @@ expression: built.ir()
                                     (usize , std :: time :: Instant),
                                 ),
                                 stream_kind: Some(
-                                    Stream {
-                                        ordering: TotalOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Stream,
                                 ),
                                 is_bounded: true,
                             },
@@ -1002,10 +912,7 @@ expression: built.ir()
                                 (usize , std :: time :: Instant),
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: NoOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: true,
                         },
@@ -1040,10 +947,7 @@ expression: built.ir()
                                     (usize , std :: time :: Instant),
                                 ),
                                 stream_kind: Some(
-                                    Stream {
-                                        ordering: NoOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Stream,
                                 ),
                                 is_bounded: true,
                             },
@@ -1073,10 +977,7 @@ expression: built.ir()
                             (usize , std :: time :: Instant),
                         ),
                         stream_kind: Some(
-                            Stream {
-                                ordering: NoOrder,
-                                retries: ExactlyOnce,
-                            },
+                            Stream,
                         ),
                         is_bounded: true,
                     },
@@ -1108,10 +1009,7 @@ expression: built.ir()
                     (usize , std :: time :: Instant),
                 ),
                 stream_kind: Some(
-                    Stream {
-                        ordering: NoOrder,
-                        retries: ExactlyOnce,
-                    },
+                    Stream,
                 ),
                 is_bounded: true,
             },
@@ -1207,10 +1105,7 @@ expression: built.ir()
                                                                             (usize , (std :: time :: Instant , std :: time :: Instant)),
                                                                         ),
                                                                         stream_kind: Some(
-                                                                            Stream {
-                                                                                ordering: NoOrder,
-                                                                                retries: ExactlyOnce,
-                                                                            },
+                                                                            Stream,
                                                                         ),
                                                                         is_bounded: true,
                                                                     },
@@ -1226,10 +1121,7 @@ expression: built.ir()
                                                                         core :: time :: Duration,
                                                                     ),
                                                                     stream_kind: Some(
-                                                                        Stream {
-                                                                            ordering: NoOrder,
-                                                                            retries: ExactlyOnce,
-                                                                        },
+                                                                        Stream,
                                                                     ),
                                                                     is_bounded: true,
                                                                 },
@@ -1245,10 +1137,7 @@ expression: built.ir()
                                                                     core :: time :: Duration,
                                                                 ),
                                                                 stream_kind: Some(
-                                                                    Stream {
-                                                                        ordering: TotalOrder,
-                                                                        retries: ExactlyOnce,
-                                                                    },
+                                                                    Stream,
                                                                 ),
                                                                 is_bounded: false,
                                                             },
@@ -1280,10 +1169,7 @@ expression: built.ir()
                                                                         hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                                     ),
                                                                     stream_kind: Some(
-                                                                        Stream {
-                                                                            ordering: TotalOrder,
-                                                                            retries: ExactlyOnce,
-                                                                        },
+                                                                        Stream,
                                                                     ),
                                                                     is_bounded: false,
                                                                 },
@@ -1352,10 +1238,7 @@ expression: built.ir()
                                                     hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper,
                                                 ),
                                                 stream_kind: Some(
-                                                    Stream {
-                                                        ordering: TotalOrder,
-                                                        retries: AtLeastOnce,
-                                                    },
+                                                    Stream,
                                                 ),
                                                 is_bounded: false,
                                             },
@@ -1368,10 +1251,7 @@ expression: built.ir()
                                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper),
                                             ),
                                             stream_kind: Some(
-                                                Stream {
-                                                    ordering: NoOrder,
-                                                    retries: AtLeastOnce,
-                                                },
+                                                Stream,
                                             ),
                                             is_bounded: false,
                                         },
@@ -1384,10 +1264,7 @@ expression: built.ir()
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >),
                                         ),
                                         stream_kind: Some(
-                                            KeyedStream {
-                                                ordering: TotalOrder,
-                                                retries: AtLeastOnce,
-                                            },
+                                            KeyedStream,
                                         ),
                                         is_bounded: false,
                                     },
@@ -1400,10 +1277,7 @@ expression: built.ir()
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >),
                                     ),
                                     stream_kind: Some(
-                                        KeyedStream {
-                                            ordering: TotalOrder,
-                                            retries: AtLeastOnce,
-                                        },
+                                        KeyedStream,
                                     ),
                                     is_bounded: false,
                                 },
@@ -1432,10 +1306,7 @@ expression: built.ir()
                                 hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >,
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: TotalOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: true,
                         },
@@ -1470,10 +1341,7 @@ expression: built.ir()
                                     hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                 ),
                                 stream_kind: Some(
-                                    Stream {
-                                        ordering: TotalOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Stream,
                                 ),
                                 is_bounded: false,
                             },
@@ -1598,10 +1466,7 @@ expression: built.ir()
                                                                                         (u32 , core :: option :: Option < u32 >),
                                                                                     ),
                                                                                     stream_kind: Some(
-                                                                                        Stream {
-                                                                                            ordering: TotalOrder,
-                                                                                            retries: ExactlyOnce,
-                                                                                        },
+                                                                                        Stream,
                                                                                     ),
                                                                                     is_bounded: true,
                                                                                 },
@@ -1642,10 +1507,7 @@ expression: built.ir()
                                                                                                         hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                                                                     ),
                                                                                                     stream_kind: Some(
-                                                                                                        Stream {
-                                                                                                            ordering: TotalOrder,
-                                                                                                            retries: ExactlyOnce,
-                                                                                                        },
+                                                                                                        Stream,
                                                                                                     ),
                                                                                                     is_bounded: false,
                                                                                                 },
@@ -1675,10 +1537,7 @@ expression: built.ir()
                                                                                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                                                             ),
                                                                                             stream_kind: Some(
-                                                                                                Stream {
-                                                                                                    ordering: TotalOrder,
-                                                                                                    retries: ExactlyOnce,
-                                                                                                },
+                                                                                                Stream,
                                                                                             ),
                                                                                             is_bounded: true,
                                                                                         },
@@ -1841,10 +1700,7 @@ expression: built.ir()
                                                                 (usize , bool),
                                                             ),
                                                             stream_kind: Some(
-                                                                Stream {
-                                                                    ordering: TotalOrder,
-                                                                    retries: ExactlyOnce,
-                                                                },
+                                                                Stream,
                                                             ),
                                                             is_bounded: false,
                                                         },
@@ -1887,10 +1743,7 @@ expression: built.ir()
                                                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                             ),
                                                             stream_kind: Some(
-                                                                Stream {
-                                                                    ordering: TotalOrder,
-                                                                    retries: ExactlyOnce,
-                                                                },
+                                                                Stream,
                                                             ),
                                                             is_bounded: false,
                                                         },
@@ -1959,10 +1812,7 @@ expression: built.ir()
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage),
                                         ),
                                         stream_kind: Some(
-                                            Stream {
-                                                ordering: NoOrder,
-                                                retries: ExactlyOnce,
-                                            },
+                                            Stream,
                                         ),
                                         is_bounded: false,
                                     },
@@ -1975,10 +1825,7 @@ expression: built.ir()
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage),
                                     ),
                                     stream_kind: Some(
-                                        Stream {
-                                            ordering: NoOrder,
-                                            retries: ExactlyOnce,
-                                        },
+                                        Stream,
                                     ),
                                     is_bounded: false,
                                 },
@@ -2007,10 +1854,7 @@ expression: built.ir()
                                 hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: TotalOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: true,
                         },
@@ -2045,10 +1889,7 @@ expression: built.ir()
                                     hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                 ),
                                 stream_kind: Some(
-                                    Stream {
-                                        ordering: TotalOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Stream,
                                 ),
                                 is_bounded: false,
                             },

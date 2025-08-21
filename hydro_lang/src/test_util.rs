@@ -13,8 +13,6 @@ pub async fn multi_location_test<'a, T, C, O, R>(
 ) where
     T: Serialize + DeserializeOwned + 'static,
     C: Future<Output = ()>,
-    O: crate::stream::OrderingKind,
-    R: crate::stream::RetriesKind,
 {
     let mut deployment = hydro_deploy::Deployment::new();
     let flow = FlowBuilder::new();
@@ -42,8 +40,6 @@ pub async fn stream_transform_test<'a, T, C, O, R>(
 ) where
     T: Serialize + DeserializeOwned + 'static,
     C: Future<Output = ()>,
-    O: crate::stream::OrderingKind,
-    R: crate::stream::RetriesKind,
 {
     let mut deployment = hydro_deploy::Deployment::new();
     let flow = FlowBuilder::new();

@@ -276,31 +276,11 @@ pub fn extract_short_label(full_label: &str) -> String {
 
 /// Build a semantic type label from node metadata using stream_kind directly.
 fn type_label_from_metadata(meta: &crate::ir::HydroIrMetadata) -> Option<String> {
-    use crate::ir::{StreamKind, StreamOrdering, StreamRetries};
+    use crate::ir::StreamKind;
     meta.stream_kind.as_ref().map(|kind| {
         let base_name = match kind {
-            StreamKind::Stream { ordering, retries } => {
-                let order_suffix = match ordering {
-                    StreamOrdering::TotalOrder => "",
-                    StreamOrdering::NoOrder => " (NoOrder)",
-                };
-                let retry_suffix = match retries {
-                    StreamRetries::ExactlyOnce => "",
-                    StreamRetries::AtLeastOnce => " (AtLeastOnce)",
-                };
-                format!("Stream{}{}", order_suffix, retry_suffix)
-            }
-            StreamKind::KeyedStream { ordering, retries } => {
-                let order_suffix = match ordering {
-                    StreamOrdering::TotalOrder => "",
-                    StreamOrdering::NoOrder => " (NoOrder)",
-                };
-                let retry_suffix = match retries {
-                    StreamRetries::ExactlyOnce => "",
-                    StreamRetries::AtLeastOnce => " (AtLeastOnce)",
-                };
-                format!("KeyedStream{}{}", order_suffix, retry_suffix)
-            }
+            StreamKind::Stream => "Stream".to_string(),
+            StreamKind::KeyedStream => "KeyedStream".to_string(),
             StreamKind::Singleton => "Singleton".to_string(),
             StreamKind::Optional => "Optional".to_string(),
         };

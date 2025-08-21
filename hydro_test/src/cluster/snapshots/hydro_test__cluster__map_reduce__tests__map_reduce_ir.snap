@@ -51,10 +51,7 @@ expression: built.ir()
                                                                 & str,
                                                             ),
                                                             stream_kind: Some(
-                                                                Stream {
-                                                                    ordering: TotalOrder,
-                                                                    retries: ExactlyOnce,
-                                                                },
+                                                                Stream,
                                                             ),
                                                             is_bounded: false,
                                                         },
@@ -67,10 +64,7 @@ expression: built.ir()
                                                             std :: string :: String,
                                                         ),
                                                         stream_kind: Some(
-                                                            Stream {
-                                                                ordering: TotalOrder,
-                                                                retries: ExactlyOnce,
-                                                            },
+                                                            Stream,
                                                         ),
                                                         is_bounded: false,
                                                     },
@@ -94,10 +88,7 @@ expression: built.ir()
                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , std :: string :: String),
                                                 ),
                                                 stream_kind: Some(
-                                                    Stream {
-                                                        ordering: NoOrder,
-                                                        retries: ExactlyOnce,
-                                                    },
+                                                    Stream,
                                                 ),
                                                 is_bounded: false,
                                             },
@@ -110,10 +101,7 @@ expression: built.ir()
                                                 std :: string :: String,
                                             ),
                                             stream_kind: Some(
-                                                Stream {
-                                                    ordering: TotalOrder,
-                                                    retries: ExactlyOnce,
-                                                },
+                                                Stream,
                                             ),
                                             is_bounded: false,
                                         },
@@ -126,10 +114,7 @@ expression: built.ir()
                                             (std :: string :: String , ()),
                                         ),
                                         stream_kind: Some(
-                                            Stream {
-                                                ordering: NoOrder,
-                                                retries: ExactlyOnce,
-                                            },
+                                            Stream,
                                         ),
                                         is_bounded: false,
                                     },
@@ -161,10 +146,7 @@ expression: built.ir()
                                     (std :: string :: String , i32),
                                 ),
                                 stream_kind: Some(
-                                    Stream {
-                                        ordering: NoOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Stream,
                                 ),
                                 is_bounded: true,
                             },
@@ -177,10 +159,7 @@ expression: built.ir()
                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , (std :: string :: String , i32)),
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: NoOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: false,
                         },
@@ -193,10 +172,7 @@ expression: built.ir()
                             (std :: string :: String , i32),
                         ),
                         stream_kind: Some(
-                            Stream {
-                                ordering: NoOrder,
-                                retries: ExactlyOnce,
-                            },
+                            Stream,
                         ),
                         is_bounded: false,
                     },
@@ -209,10 +185,7 @@ expression: built.ir()
                         (std :: string :: String , i32),
                     ),
                     stream_kind: Some(
-                        Stream {
-                            ordering: NoOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Stream,
                     ),
                     is_bounded: false,
                 },

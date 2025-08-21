@@ -25,10 +25,7 @@ expression: builder.finalize().ir()
                             std :: string :: String,
                         ),
                         stream_kind: Some(
-                            Stream {
-                                ordering: TotalOrder,
-                                retries: ExactlyOnce,
-                            },
+                            Stream,
                         ),
                         is_bounded: false,
                     },
@@ -41,10 +38,7 @@ expression: builder.finalize().ir()
                         std :: string :: String,
                     ),
                     stream_kind: Some(
-                        Stream {
-                            ordering: TotalOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Stream,
                     ),
                     is_bounded: false,
                 },
@@ -97,10 +91,7 @@ expression: builder.finalize().ir()
                                     u32,
                                 ),
                                 stream_kind: Some(
-                                    Stream {
-                                        ordering: TotalOrder,
-                                        retries: ExactlyOnce,
-                                    },
+                                    Stream,
                                 ),
                                 is_bounded: false,
                             },
@@ -113,10 +104,7 @@ expression: builder.finalize().ir()
                                 u32,
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: TotalOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: false,
                         },
@@ -129,10 +117,7 @@ expression: builder.finalize().ir()
                             hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                         ),
                         stream_kind: Some(
-                            Stream {
-                                ordering: TotalOrder,
-                                retries: ExactlyOnce,
-                            },
+                            Stream,
                         ),
                         is_bounded: false,
                     },
@@ -145,10 +130,7 @@ expression: builder.finalize().ir()
                         hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                     ),
                     stream_kind: Some(
-                        Stream {
-                            ordering: TotalOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Stream,
                     ),
                     is_bounded: false,
                 },

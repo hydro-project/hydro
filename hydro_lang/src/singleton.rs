@@ -266,10 +266,7 @@ where
                 f,
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata_with_kind::<U>(
-                    Some(crate::ir::StreamKind::Stream {
-                        ordering: crate::ir::StreamOrdering::TotalOrder,
-                        retries: crate::ir::StreamRetries::ExactlyOnce,
-                    }),
+                    Some(crate::ir::StreamKind::Stream),
                     false, // Boundedness depends on B parameter
                 ),
             },

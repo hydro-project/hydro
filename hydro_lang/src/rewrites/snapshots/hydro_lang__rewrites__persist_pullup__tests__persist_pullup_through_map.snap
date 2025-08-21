@@ -21,10 +21,7 @@ expression: built.ir()
                                 i32,
                             ),
                             stream_kind: Some(
-                                Stream {
-                                    ordering: TotalOrder,
-                                    retries: ExactlyOnce,
-                                },
+                                Stream,
                             ),
                             is_bounded: false,
                         },
@@ -37,10 +34,7 @@ expression: built.ir()
                             i32,
                         ),
                         stream_kind: Some(
-                            Stream {
-                                ordering: TotalOrder,
-                                retries: ExactlyOnce,
-                            },
+                            Stream,
                         ),
                         is_bounded: false,
                     },
@@ -53,10 +47,7 @@ expression: built.ir()
                         i32,
                     ),
                     stream_kind: Some(
-                        Stream {
-                            ordering: TotalOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Stream,
                     ),
                     is_bounded: false,
                 },

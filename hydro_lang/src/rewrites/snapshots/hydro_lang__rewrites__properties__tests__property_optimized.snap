@@ -22,10 +22,7 @@ expression: built.ir()
                             std :: string :: String,
                         ),
                         stream_kind: Some(
-                            Stream {
-                                ordering: TotalOrder,
-                                retries: ExactlyOnce,
-                            },
+                            Stream,
                         ),
                         is_bounded: false,
                     },
@@ -38,10 +35,7 @@ expression: built.ir()
                         (std :: string :: String , ()),
                     ),
                     stream_kind: Some(
-                        Stream {
-                            ordering: TotalOrder,
-                            retries: ExactlyOnce,
-                        },
+                        Stream,
                     ),
                     is_bounded: false,
                 },

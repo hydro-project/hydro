@@ -1,6 +1,5 @@
 use std::hash::Hash;
 
-use hydro_lang::stream::OrderingKind;
 use hydro_lang::*;
 use location::NoTick;
 
@@ -19,10 +18,7 @@ pub fn collect_quorum_with_response<
 ) -> (
     Stream<(K, V), Atomic<L>, Unbounded, Order>,
     Stream<(K, E), Atomic<L>, Unbounded, Order>,
-)
-where
-    Order: OrderingKind,
-{
+) {
     let tick = responses.atomic_source();
     let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
 
@@ -97,10 +93,7 @@ pub fn collect_quorum<'a, L: Location<'a> + NoTick, Order, K: Clone + Eq + Hash,
 ) -> (
     Stream<K, Atomic<L>, Unbounded, NoOrder>,
     Stream<(K, E), Atomic<L>, Unbounded, Order>,
-)
-where
-    Order: OrderingKind,
-{
+) {
     let tick = responses.atomic_source();
     let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
 
