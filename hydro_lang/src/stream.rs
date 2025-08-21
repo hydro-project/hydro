@@ -273,8 +273,7 @@ impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
-    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self
-where {
+    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
         // Align IR metadata with the type parameters to avoid dual sources of truth.
         let mut ir_node = ir_node;
         {
@@ -806,8 +805,7 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_ordering<O2>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R>
-where {
+    pub fn assume_ordering<O2>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
         let orig_ir_node = self.ir_node.into_inner();
 
         // Update the metadata to reflect the new ordering guarantee if possible
@@ -831,8 +829,7 @@ where {
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_retries<R2>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2>
-where {
+    pub fn assume_retries<R2>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
         let orig_ir_node = self.ir_node.into_inner();
 
         // Update the metadata to reflect the new retries guarantee if possible
