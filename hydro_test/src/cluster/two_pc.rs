@@ -21,11 +21,17 @@ where
 {
     // TODO: Coordinator logs
     // broadcast prepare message to participants
-    let p_prepare = payloads.broadcast_bincode(participants);
+    let p_prepare = payloads
+        .ir_node_named("c_prepare")
+        .broadcast_bincode(participants);
 
     // participant 1 aborts transaction 1
     // TODO: Participants log
-    let c_votes = p_prepare.send_bincode(coordinator).values();
+    let c_votes = p_prepare
+        .ir_node_named("p_prepare")
+        .send_bincode(coordinator)
+        .ir_node_named("c_votes")
+        .values();
 
     // collect votes from participant.
     let coordinator_tick = coordinator.tick();
@@ -43,7 +49,11 @@ where
     let p_commit = c_all_vote_yes.end_atomic().broadcast_bincode(participants);
     // TODO: Participants log
 
-    let c_commits = p_commit.send_bincode(coordinator).values();
+    let c_commits = p_commit
+        .ir_node_named("p_commits")
+        .send_bincode(coordinator)
+        .ir_node_named("c_commits")
+        .values();
     let (c_all_commit, _) = collect_quorum(
         c_commits
             .map(q!(|kv| (kv, Ok::<(), ()>(()))))

@@ -57,6 +57,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
             cpu_usage: None,
             network_recv_cpu_usage: None,
             id: None,
+            tag: None,
         },
     };
 
@@ -81,6 +82,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
             cpu_usage: None,
             network_recv_cpu_usage: None,
             id: None,
+            tag: None,
         },
     };
 
@@ -99,6 +101,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
             cpu_usage: None,
             network_recv_cpu_usage: None,
             id: None,
+            tag: None,
         },
     };
     *node = mapped_node;
@@ -270,57 +273,80 @@ mod tests {
     use std::collections::HashSet;
 
     use hydro_deploy::Deployment;
-    use hydro_lang::location::LocationId;
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
     use hydro_lang::{FlowBuilder, Location, ir};
     use stageleft::q;
 
-    use crate::decoupler;
-    use crate::decoupler::decouple;
+    use crate::debug::name_to_id_map;
+    use crate::decoupler::{Decoupler, decouple};
     use crate::repair::inject_id;
 
-    fn decouple_mini_program(
-        with_decoupler: &decoupler::Decoupler,
+    fn decouple_mini_program<'a>(
+        output_to_decoupled_machine_after: Vec<(&str, i32)>, // name, offset
+        output_to_original_machine_after: Vec<(&str, i32)>,
+        place_on_decoupled_machine: Vec<(&str, i32)>,
     ) -> (
-        hydro_lang::Cluster<'_, ()>,
-        hydro_lang::Cluster<'_, ()>,
-        hydro_lang::Cluster<'_, ()>,
-        hydro_lang::builder::built::BuiltFlow<'_>,
+        hydro_lang::Cluster<'a, ()>,
+        hydro_lang::Cluster<'a, ()>,
+        hydro_lang::Cluster<'a, ()>,
+        hydro_lang::builder::built::BuiltFlow<'a>,
     ) {
         let builder = FlowBuilder::new();
         let send_cluster = builder.cluster::<()>();
         let recv_cluster = builder.cluster::<()>();
+        let decoupled_cluster = builder.cluster::<()>();
 
         send_cluster
             .source_iter(q!(0..10))
             .map(q!(|a| a + 1))
+            .ir_node_named("map")
             .broadcast_bincode(&recv_cluster)
             .values()
             .for_each(q!(|a| println!("Got it: {}", a)));
 
-        let decoupled_cluster = builder.cluster::<()>();
-        let decoupler = decoupler::Decoupler {
-            output_to_decoupled_machine_after: with_decoupler
-                .output_to_decoupled_machine_after
-                .clone(),
-            output_to_original_machine_after: with_decoupler
-                .output_to_original_machine_after
-                .clone(),
-            place_on_decoupled_machine: with_decoupler.place_on_decoupled_machine.clone(),
-            decoupled_location: decoupled_cluster.id().clone(),
-            orig_location: send_cluster.id().clone(),
-        };
-
         let built = builder
             .optimize_with(persist_pullup)
             .optimize_with(inject_id)
-            .optimize_with(|ir| decouple(ir, &decoupler));
+            .optimize_with(|ir| {
+                // Convert named nodes to IDs, accounting for the offset
+                let name_to_id = name_to_id_map(ir);
+                let decoupler = Decoupler {
+                    output_to_decoupled_machine_after: output_to_decoupled_machine_after
+                        .into_iter()
+                        .map(|(name, offset)| {
+                            (name_to_id.get(name).cloned().unwrap() as i32 + offset) as usize
+                        })
+                        .collect(),
+                    output_to_original_machine_after: output_to_original_machine_after
+                        .into_iter()
+                        .map(|(name, offset)| {
+                            (name_to_id.get(name).cloned().unwrap() as i32 + offset) as usize
+                        })
+                        .collect(),
+                    place_on_decoupled_machine: place_on_decoupled_machine
+                        .into_iter()
+                        .map(|(name, offset)| {
+                            (name_to_id.get(name).cloned().unwrap() as i32 + offset) as usize
+                        })
+                        .collect(),
+                    decoupled_location: decoupled_cluster.id().clone(),
+                    orig_location: send_cluster.id().clone(),
+                };
+                decouple(ir, &decoupler)
+            });
         (send_cluster, recv_cluster, decoupled_cluster, built)
     }
 
-    async fn check_decouple_mini_program(with_decoupler: &decoupler::Decoupler) {
-        let (send_cluster, recv_cluster, decoupled_cluster, built) =
-            decouple_mini_program(with_decoupler);
+    async fn check_decouple_mini_program(
+        output_to_decoupled_machine_after: Vec<(&str, i32)>, // name, offset
+        output_to_original_machine_after: Vec<(&str, i32)>,
+        place_on_decoupled_machine: Vec<(&str, i32)>,
+    ) {
+        let (send_cluster, recv_cluster, decoupled_cluster, built) = decouple_mini_program(
+            output_to_decoupled_machine_after,
+            output_to_original_machine_after,
+            place_on_decoupled_machine,
+        );
 
         // Check outputs
         let mut deployment = Deployment::new();
@@ -355,15 +381,16 @@ mod tests {
 
     #[test]
     fn decouple_after_source_ir() {
-        let decoupler = decoupler::Decoupler {
-            output_to_decoupled_machine_after: vec![0],
-            output_to_original_machine_after: vec![],
-            place_on_decoupled_machine: vec![],
-            decoupled_location: LocationId::Cluster(0), // Doesn't matter, will be ignored
-            orig_location: LocationId::Cluster(0),
-        };
+        let output_to_decoupled_machine_after = vec![("map", -1)];
+        let output_to_original_machine_after = vec![];
+        let place_on_decoupled_machine = vec![];
 
-        let built = decouple_mini_program(&decoupler).3;
+        let built = decouple_mini_program(
+            output_to_decoupled_machine_after,
+            output_to_original_machine_after,
+            place_on_decoupled_machine,
+        )
+        .3;
 
         ir::dbg_dedup_tee(|| {
             insta::assert_debug_snapshot!(built.ir());
@@ -372,28 +399,30 @@ mod tests {
 
     #[tokio::test]
     async fn decouple_after_source() {
-        let decoupler = decoupler::Decoupler {
-            output_to_decoupled_machine_after: vec![0],
-            output_to_original_machine_after: vec![],
-            place_on_decoupled_machine: vec![],
-            decoupled_location: LocationId::Cluster(0), // Doesn't matter, will be ignored
-            orig_location: LocationId::Cluster(0),
-        };
+        let output_to_decoupled_machine_after = vec![("map", -1)];
+        let output_to_original_machine_after = vec![];
+        let place_on_decoupled_machine = vec![];
 
-        check_decouple_mini_program(&decoupler).await
+        check_decouple_mini_program(
+            output_to_decoupled_machine_after,
+            output_to_original_machine_after,
+            place_on_decoupled_machine,
+        )
+        .await
     }
 
     #[test]
     fn move_source_decouple_map_ir() {
-        let decoupler = decoupler::Decoupler {
-            output_to_decoupled_machine_after: vec![],
-            output_to_original_machine_after: vec![1],
-            place_on_decoupled_machine: vec![0],
-            decoupled_location: LocationId::Cluster(0), // Doesn't matter, will be ignored
-            orig_location: LocationId::Cluster(0),
-        };
+        let output_to_decoupled_machine_after = vec![];
+        let output_to_original_machine_after = vec![("map", 0)];
+        let place_on_decoupled_machine = vec![("map", -1)];
 
-        let built = decouple_mini_program(&decoupler).3;
+        let built = decouple_mini_program(
+            output_to_decoupled_machine_after,
+            output_to_original_machine_after,
+            place_on_decoupled_machine,
+        )
+        .3;
 
         ir::dbg_dedup_tee(|| {
             insta::assert_debug_snapshot!(built.ir());
@@ -402,14 +431,15 @@ mod tests {
 
     #[tokio::test]
     async fn move_source_decouple_map() {
-        let decoupler = decoupler::Decoupler {
-            output_to_decoupled_machine_after: vec![],
-            output_to_original_machine_after: vec![1],
-            place_on_decoupled_machine: vec![0],
-            decoupled_location: LocationId::Cluster(0), // Doesn't matter, will be ignored
-            orig_location: LocationId::Cluster(0),
-        };
+        let output_to_decoupled_machine_after = vec![];
+        let output_to_original_machine_after = vec![("map", 0)];
+        let place_on_decoupled_machine = vec![("map", -1)];
 
-        check_decouple_mini_program(&decoupler).await
+        check_decouple_mini_program(
+            output_to_decoupled_machine_after,
+            output_to_original_machine_after,
+            place_on_decoupled_machine,
+        )
+        .await
     }
 }

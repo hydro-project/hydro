@@ -24,19 +24,6 @@ pub struct Singleton<Type, Loc, Bound> {
     _phantom: PhantomData<(Type, Loc, Bound)>,
 }
 
-impl<'a, T, L, B> Singleton<T, L, B>
-where
-    L: Location<'a>,
-{
-    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        Singleton {
-            location,
-            ir_node: RefCell::new(ir_node),
-            _phantom: PhantomData,
-        }
-    }
-}
-
 impl<'a, T, L> From<Singleton<T, L, Bounded>> for Singleton<T, L, Unbounded>
 where
     L: Location<'a>,
@@ -236,6 +223,14 @@ impl<'a, T, L, B> Singleton<T, L, B>
 where
     L: Location<'a>,
 {
+    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
+        Singleton {
+            location,
+            ir_node: RefCell::new(ir_node),
+            _phantom: PhantomData,
+        }
+    }
+
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Singleton<U, L, B>
     where
         F: Fn(T) -> U + 'a,
@@ -405,6 +400,17 @@ where
             >,
     {
         self.continue_if(other.into_stream().count().filter(q!(|c| *c == 0)))
+    }
+
+    /// An operator which allows you to "name" a `HydroNode`.
+    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
+    pub fn ir_node_named(self, name: &str) -> Singleton<T, L, B> {
+        {
+            let mut node = self.ir_node.borrow_mut();
+            let metadata = node.metadata_mut();
+            metadata.tag = Some(name.to_string());
+        }
+        self
     }
 }
 

@@ -147,6 +147,7 @@ pub trait Location<'a>: Clone {
             cpu_usage: None,
             network_recv_cpu_usage: None,
             id: None,
+            tag: None,
         }
     }
 

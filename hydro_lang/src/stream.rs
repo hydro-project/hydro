@@ -242,31 +242,6 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
-where
-    L: Location<'a>,
-{
-    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        // Align IR metadata with the type parameters to avoid dual sources of truth.
-        let mut ir_node = ir_node;
-        {
-            let md = ir_node.metadata_mut();
-            // Always set boundedness based on the Bound type parameter.
-            md.is_bounded = std::any::type_name::<B>().contains("Bounded");
-
-            // If the stream kind hasn't been set by the caller, populate as Stream type.
-            if md.stream_kind.is_none() {
-                md.stream_kind = Some(StreamKind::Stream);
-            }
-        }
-
-        Stream {
-            location,
-            ir_node: RefCell::new(ir_node),
-            _phantom: PhantomData,
-        }
-    }
-}
 
 impl<'a, T, L, B, O, R> Clone for Stream<T, L, B, O, R>
 where
@@ -302,17 +277,13 @@ impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
-    /// Helper method to update metadata for keyed stream type conversions.
-    /// This avoids the need to match on the node type when the only change is the metadata.
-    pub fn update_metadata_for_keyed_conversion<KType, VType>(
-        mut self,
-        target_stream_kind: StreamKind,
-        is_bounded: bool,
-    ) -> Self {
-        *self.ir_node.get_mut().metadata_mut() = self
-            .location
-            .new_node_metadata_detailed::<(KType, VType)>(Some(target_stream_kind), is_bounded);
-        self
+    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
+        Stream {
+            location,
+            ir_node: RefCell::new(ir_node),
+            _phantom: PhantomData,
+        }
+    }
     }
 
     /// Produces a stream based on invoking `f` on each element.
@@ -768,6 +739,17 @@ where
                 },
             )
         }
+    }
+
+    /// An operator which allows you to "name" a `HydroNode`.
+    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
+    pub fn ir_node_named(self, name: &str) -> Stream<T, L, B, O, R> {
+        {
+            let mut node = self.ir_node.borrow_mut();
+            let metadata = node.metadata_mut();
+            metadata.tag = Some(name.to_string());
+        }
+        self
     }
 
     /// Explicitly "casts" the stream to a type with a different ordering
