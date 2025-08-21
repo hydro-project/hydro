@@ -685,10 +685,7 @@ where
             metadata: self
                 .underlying
                 .location
-                .new_node_metadata_detailed::<(K, A)>(
-                    Some(StreamKind::Singleton),
-                    B::is_bounded(),
-                ),
+                .new_node_metadata_detailed::<(K, A)>(Some(StreamKind::Singleton), B::is_bounded()),
         };
 
         KeyedSingleton {
@@ -737,10 +734,7 @@ where
             metadata: self
                 .underlying
                 .location
-                .new_node_metadata_detailed::<(K, V)>(
-                    Some(StreamKind::Singleton),
-                    B::is_bounded(),
-                ),
+                .new_node_metadata_detailed::<(K, V)>(Some(StreamKind::Singleton), B::is_bounded()),
         };
 
         KeyedSingleton {

@@ -334,11 +334,12 @@ fn find_semantic_label_upstream(node: &HydroNode) -> Option<String> {
                 // we can't hold the Ref across loop iterations. Instead, fall back to using metadata on the Tee itself
                 // and stop walking further if Tee doesn't have it.
                 // Try metadata on the tee one last time, then stop.
-                if let Ok(borrowed) = inner.0.try_borrow() {
-                    if let Some(lbl) = type_label_from_metadata(borrowed.metadata()) {
-                        return Some(lbl);
-                    }
+                if let Ok(borrowed) = inner.0.try_borrow()
+                    && let Some(lbl) = type_label_from_metadata(borrowed.metadata())
+                {
+                    return Some(lbl);
                 }
+
                 return None;
             }
             // Stop for multi-input and source-like nodes
@@ -1102,13 +1103,13 @@ impl HydroNode {
                     to_location_id,
                 );
                 let mut net_edge_label = Some(format!("to {:?}", to_location_id));
-                if config.show_metadata {
-                    if let Some(t) = type_label_from_metadata(input.metadata()) {
-                        net_edge_label = Some(match net_edge_label.take() {
-                            Some(base) => format!("{}\n{}", base, t),
-                            None => t,
-                        });
-                    }
+                if config.show_metadata
+                    && let Some(t) = type_label_from_metadata(input.metadata())
+                {
+                    net_edge_label = Some(match net_edge_label.take() {
+                        Some(base) => format!("{}\n{}", base, t),
+                        None => t,
+                    });
                 }
                 structure.add_edge(input_id, network_id, HydroEdgeType::Network, net_edge_label);
                 network_id

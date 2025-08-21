@@ -12,9 +12,7 @@ use tokio::time::Instant;
 
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
-use crate::ir::{
-    HydroLeaf, HydroNode, StreamKind, TeeNode,
-};
+use crate::ir::{HydroLeaf, HydroNode, StreamKind, TeeNode};
 use crate::keyed_stream::KeyedStream;
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
