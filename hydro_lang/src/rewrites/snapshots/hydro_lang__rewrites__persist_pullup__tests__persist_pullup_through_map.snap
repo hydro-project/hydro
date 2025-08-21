@@ -46,9 +46,7 @@ expression: built.ir()
                     output_type: Some(
                         i32,
                     ),
-                    stream_kind: Some(
-                        Stream,
-                    ),
+                    stream_kind: None,
                     is_bounded: false,
                 },
             },

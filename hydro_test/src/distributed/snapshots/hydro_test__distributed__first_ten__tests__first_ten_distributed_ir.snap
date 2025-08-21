@@ -116,9 +116,7 @@ expression: builder.finalize().ir()
                         output_type: Some(
                             hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                         ),
-                        stream_kind: Some(
-                            Stream,
-                        ),
+                        stream_kind: None,
                         is_bounded: false,
                     },
                 },
@@ -129,9 +127,7 @@ expression: builder.finalize().ir()
                     output_type: Some(
                         hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                     ),
-                    stream_kind: Some(
-                        Stream,
-                    ),
+                    stream_kind: None,
                     is_bounded: false,
                 },
             },

@@ -97,7 +97,7 @@ impl MinRetries<AtLeastOnce> for ExactlyOnce {
 ///   or [`NoOrder`] (default is [`TotalOrder`])
 pub struct Stream<Type, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
     pub(crate) location: Loc,
-    pub(crate) ir_node: RefCell<HydroNode>,
+    pub ir_node: RefCell<HydroNode>,
 
     _phantom: PhantomData<(Type, Loc, Bound, Order, Retries)>,
 }
@@ -241,7 +241,6 @@ where
             });
     }
 }
-
 
 impl<'a, T, L, B, O, R> Clone for Stream<T, L, B, O, R>
 where

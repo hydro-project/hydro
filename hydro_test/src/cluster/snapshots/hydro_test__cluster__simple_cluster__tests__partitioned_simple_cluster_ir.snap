@@ -58,9 +58,7 @@ expression: built.ir()
                                                     output_type: Some(
                                                         hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                     ),
-                                                    stream_kind: Some(
-                                                        Stream,
-                                                    ),
+                                                    stream_kind: None,
                                                     is_bounded: false,
                                                 },
                                             },
@@ -71,9 +69,7 @@ expression: built.ir()
                                                 output_type: Some(
                                                     hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                 ),
-                                                stream_kind: Some(
-                                                    Stream,
-                                                ),
+                                                stream_kind: None,
                                                 is_bounded: false,
                                             },
                                         },
@@ -141,9 +137,7 @@ expression: built.ir()
                                     output_type: Some(
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                                     ),
-                                    stream_kind: Some(
-                                        Stream,
-                                    ),
+                                    stream_kind: None,
                                     is_bounded: false,
                                 },
                             },
@@ -154,9 +148,7 @@ expression: built.ir()
                                 output_type: Some(
                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                                 ),
-                                stream_kind: Some(
-                                    Stream,
-                                ),
+                                stream_kind: None,
                                 is_bounded: false,
                             },
                         },
@@ -167,9 +159,7 @@ expression: built.ir()
                             output_type: Some(
                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                             ),
-                            stream_kind: Some(
-                                Stream,
-                            ),
+                            stream_kind: None,
                             is_bounded: false,
                         },
                     },
@@ -191,9 +181,7 @@ expression: built.ir()
                     output_type: Some(
                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                     ),
-                    stream_kind: Some(
-                        Stream,
-                    ),
+                    stream_kind: None,
                     is_bounded: false,
                 },
             },
@@ -204,9 +192,7 @@ expression: built.ir()
                 output_type: Some(
                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                 ),
-                stream_kind: Some(
-                    Stream,
-                ),
+                stream_kind: None,
                 is_bounded: false,
             },
         },

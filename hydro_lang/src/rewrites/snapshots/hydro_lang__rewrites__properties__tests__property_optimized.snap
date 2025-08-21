@@ -34,9 +34,7 @@ expression: built.ir()
                     output_type: Some(
                         (std :: string :: String , ()),
                     ),
-                    stream_kind: Some(
-                        Stream,
-                    ),
+                    stream_kind: None,
                     is_bounded: false,
                 },
             },
