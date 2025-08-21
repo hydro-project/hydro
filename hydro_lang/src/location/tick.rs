@@ -141,7 +141,7 @@ where
             self.clone(),
             HydroNode::Source {
                 source: HydroSource::Iter(e.into()),
-                metadata: self.new_node_metadata_with_kind::<T>(
+                metadata: self.new_node_metadata_detailed::<T>(
                     Some(crate::ir::StreamKind::Optional),
                     true, // Bounded
                 ),

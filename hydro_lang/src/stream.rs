@@ -188,7 +188,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata_with_kind::<T>(
+                metadata: location.new_node_metadata_detailed::<T>(
                     Some(StreamKind::Stream),
                     true, // Bounded
                 ),
@@ -339,7 +339,7 @@ where
     ) -> Self {
         *self.ir_node.get_mut().metadata_mut() = self
             .location
-            .new_node_metadata_with_kind::<(KType, VType)>(Some(target_stream_kind), is_bounded);
+            .new_node_metadata_detailed::<(KType, VType)>(Some(target_stream_kind), is_bounded);
         self
     }
 
@@ -616,7 +616,7 @@ where
             HydroNode::CrossSingleton {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata_with_kind::<(T, O2)>(
+                metadata: self.location.new_node_metadata_detailed::<(T, O2)>(
                     Some(StreamKind::Stream),
                     false, // Most cross operations result in unbounded streams
                 ),
@@ -667,7 +667,7 @@ where
             HydroNode::CrossProduct {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata_with_kind::<(T, T2)>(
+                metadata: self.location.new_node_metadata_detailed::<(T, T2)>(
                     Some(StreamKind::Stream),
                     false, // Cross product typically results in unbounded streams
                 ),
@@ -739,7 +739,7 @@ where
             HydroNode::Difference {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata_with_kind::<T>(
+                metadata: self.location.new_node_metadata_detailed::<T>(
                     Some(StreamKind::Stream),
                     true, // Difference operation preserves boundedness
                 ),
@@ -1661,7 +1661,7 @@ where
             HydroNode::Chain {
                 first: Box::new(self.ir_node.into_inner()),
                 second: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata_with_kind::<T>(
+                metadata: self.location.new_node_metadata_detailed::<T>(
                     Some(StreamKind::Stream),
                     true, // Chain preserves boundedness
                 ),
@@ -1706,7 +1706,7 @@ where
             HydroNode::Join {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata_with_kind::<(K, (V1, V2))>(
+                metadata: self.location.new_node_metadata_detailed::<(K, (V1, V2))>(
                     Some(StreamKind::Stream),
                     false, // Join typically results in unbounded streams
                 ),
@@ -1748,7 +1748,7 @@ where
             HydroNode::AntiJoin {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata_with_kind::<(K, V1)>(
+                metadata: self.location.new_node_metadata_detailed::<(K, V1)>(
                     Some(StreamKind::Stream),
                     false, // Anti-join typically results in unbounded streams
                 ),
@@ -2262,7 +2262,7 @@ where
             self.location.clone().tick,
             HydroNode::Unpersist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata_with_kind::<T>(
+                metadata: self.location.new_node_metadata_detailed::<T>(
                     Some(StreamKind::Stream),
                     true, // Batch converts to bounded
                 ),
@@ -2494,7 +2494,7 @@ where
             self.location.outer().clone(),
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata_with_kind::<T>(
+                metadata: self.location.new_node_metadata_detailed::<T>(
                     Some(StreamKind::Stream),
                     false, // Converts to unbounded
                 ),
@@ -2509,7 +2509,7 @@ where
             },
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata_with_kind::<T>(
+                metadata: self.location.new_node_metadata_detailed::<T>(
                     Some(StreamKind::Stream),
                     false, // Converts to unbounded
                 ),

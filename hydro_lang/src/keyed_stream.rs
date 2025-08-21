@@ -683,7 +683,7 @@ where
             metadata: self
                 .underlying
                 .location
-                .new_node_metadata_with_kind::<(K, A)>(
+                .new_node_metadata_detailed::<(K, A)>(
                     Some(StreamKind::Singleton),
                     std::any::type_name::<B>().contains("Bounded"),
                 ),
@@ -732,7 +732,7 @@ where
             metadata: self
                 .underlying
                 .location
-                .new_node_metadata_with_kind::<(K, V)>(
+                .new_node_metadata_detailed::<(K, V)>(
                     Some(StreamKind::Singleton),
                     std::any::type_name::<B>().contains("Bounded"),
                 ),
@@ -792,7 +792,7 @@ where
                 metadata: self
                     .underlying
                     .location
-                    .new_node_metadata_with_kind::<(K, V)>(
+                    .new_node_metadata_detailed::<(K, V)>(
                         Some(StreamKind::Singleton),
                         std::any::type_name::<B>().contains("Bounded"),
                     ),

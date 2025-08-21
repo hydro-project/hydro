@@ -127,12 +127,12 @@ pub trait Location<'a>: Clone {
 
     #[inline(never)]
     fn new_node_metadata<T>(&self) -> HydroIrMetadata {
-        self.new_node_metadata_with_kind::<T>(None, false)
+        self.new_node_metadata_detailed::<T>(None, false)
     }
 
     /// Create metadata with specific stream kind and boundedness information
     #[inline(never)]
-    fn new_node_metadata_with_kind<T>(
+    fn new_node_metadata_detailed<T>(
         &self,
         stream_kind: Option<crate::ir::StreamKind>,
         is_bounded: bool,
@@ -159,12 +159,12 @@ pub trait Location<'a>: Clone {
             HydroNode::Persist {
                 inner: Box::new(HydroNode::Source {
                     source: HydroSource::Spin(),
-                    metadata: self.new_node_metadata_with_kind::<()>(
+                    metadata: self.new_node_metadata_detailed::<()>(
                         Some(crate::ir::StreamKind::Stream),
                         false, // Unbounded
                     ),
                 }),
-                metadata: self.new_node_metadata_with_kind::<()>(
+                metadata: self.new_node_metadata_detailed::<()>(
                     Some(crate::ir::StreamKind::Stream),
                     false, // Unbounded
                 ),
@@ -187,12 +187,12 @@ pub trait Location<'a>: Clone {
             HydroNode::Persist {
                 inner: Box::new(HydroNode::Source {
                     source: HydroSource::Stream(e.into()),
-                    metadata: self.new_node_metadata_with_kind::<T>(
+                    metadata: self.new_node_metadata_detailed::<T>(
                         Some(crate::ir::StreamKind::Stream),
                         false, // Unbounded
                     ),
                 }),
-                metadata: self.new_node_metadata_with_kind::<T>(
+                metadata: self.new_node_metadata_detailed::<T>(
                     Some(crate::ir::StreamKind::Stream),
                     false, // Unbounded
                 ),
@@ -217,12 +217,12 @@ pub trait Location<'a>: Clone {
             HydroNode::Persist {
                 inner: Box::new(HydroNode::Source {
                     source: HydroSource::Iter(e.into()),
-                    metadata: self.new_node_metadata_with_kind::<T>(
+                    metadata: self.new_node_metadata_detailed::<T>(
                         Some(crate::ir::StreamKind::Stream),
                         false, // Unbounded
                     ),
                 }),
-                metadata: self.new_node_metadata_with_kind::<T>(
+                metadata: self.new_node_metadata_detailed::<T>(
                     Some(crate::ir::StreamKind::Stream),
                     false, // Unbounded
                 ),
@@ -264,12 +264,12 @@ pub trait Location<'a>: Clone {
                         port_hint: NetworkHint::Auto,
                         instantiate_fn: DebugInstantiate::Building,
                         deserialize_fn: None,
-                        metadata: self.new_node_metadata_with_kind::<std::io::Result<BytesMut>>(
+                        metadata: self.new_node_metadata_detailed::<std::io::Result<BytesMut>>(
                             Some(crate::ir::StreamKind::Stream),
                             false, // Unbounded
                         ),
                     }),
-                    metadata: self.new_node_metadata_with_kind::<std::io::Result<BytesMut>>(
+                    metadata: self.new_node_metadata_detailed::<std::io::Result<BytesMut>>(
                         Some(crate::ir::StreamKind::Stream),
                         false, // Unbounded
                     ),
@@ -315,12 +315,12 @@ pub trait Location<'a>: Clone {
                         deserialize_fn: Some(
                             crate::stream::networking::deserialize_bincode::<T>(None).into(),
                         ),
-                        metadata: self.new_node_metadata_with_kind::<T>(
+                        metadata: self.new_node_metadata_detailed::<T>(
                             Some(crate::ir::StreamKind::Stream),
                             false, // Unbounded
                         ),
                     }),
-                    metadata: self.new_node_metadata_with_kind::<T>(
+                    metadata: self.new_node_metadata_detailed::<T>(
                         Some(crate::ir::StreamKind::Stream),
                         false, // Unbounded
                     ),
@@ -385,12 +385,12 @@ pub trait Location<'a>: Clone {
                     port_hint,
                     instantiate_fn: DebugInstantiate::Building,
                     deserialize_fn: None,
-                    metadata: self.new_node_metadata_with_kind::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(
+                    metadata: self.new_node_metadata_detailed::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(
                         Some(crate::ir::StreamKind::Stream),
                         false, // Unbounded
                     ),
                 }),
-                metadata: self.new_node_metadata_with_kind::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(
+                metadata: self.new_node_metadata_detailed::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(
                     Some(crate::ir::StreamKind::Stream),
                     false, // Unbounded
                 ),
@@ -411,12 +411,12 @@ pub trait Location<'a>: Clone {
                 HydroNode::Persist {
                     inner: Box::new(HydroNode::Source {
                         source: HydroSource::Stream(membership_stream_expr.into()),
-                        metadata: self.new_node_metadata_with_kind::<(u64, bool)>(
+                        metadata: self.new_node_metadata_detailed::<(u64, bool)>(
                             Some(crate::ir::StreamKind::Stream),
                             false, // Unbounded
                         ),
                     }),
-                    metadata: self.new_node_metadata_with_kind::<(u64, bool)>(
+                    metadata: self.new_node_metadata_detailed::<(u64, bool)>(
                         Some(crate::ir::StreamKind::Stream),
                         false, // Unbounded
                     ),
@@ -518,12 +518,12 @@ pub trait Location<'a>: Clone {
                     port_hint: NetworkHint::Auto,
                     instantiate_fn: DebugInstantiate::Building,
                     deserialize_fn: Some(deser_fn.into()),
-                    metadata: self.new_node_metadata_with_kind::<(u64, InT)>(
+                    metadata: self.new_node_metadata_detailed::<(u64, InT)>(
                         Some(crate::ir::StreamKind::Stream),
                         false, // Unbounded
                     ),
                 }),
-                metadata: self.new_node_metadata_with_kind::<(u64, InT)>(
+                metadata: self.new_node_metadata_detailed::<(u64, InT)>(
                     Some(crate::ir::StreamKind::Stream),
                     false, // Unbounded
                 ),
@@ -544,12 +544,12 @@ pub trait Location<'a>: Clone {
                 HydroNode::Persist {
                     inner: Box::new(HydroNode::Source {
                         source: HydroSource::Stream(membership_stream_expr.into()),
-                        metadata: self.new_node_metadata_with_kind::<(u64, bool)>(
+                        metadata: self.new_node_metadata_detailed::<(u64, bool)>(
                             Some(crate::ir::StreamKind::Stream),
                             false, // Unbounded
                         ),
                     }),
-                    metadata: self.new_node_metadata_with_kind::<(u64, bool)>(
+                    metadata: self.new_node_metadata_detailed::<(u64, bool)>(
                         Some(crate::ir::StreamKind::Stream),
                         false, // Unbounded
                     ),
@@ -601,17 +601,17 @@ pub trait Location<'a>: Clone {
                 inner: Box::new(HydroNode::Persist {
                     inner: Box::new(HydroNode::Source {
                         source: HydroSource::Iter(e.into()),
-                        metadata: self.new_node_metadata_with_kind::<T>(
+                        metadata: self.new_node_metadata_detailed::<T>(
                             Some(crate::ir::StreamKind::Singleton),
                             false, // Unbounded
                         ),
                     }),
-                    metadata: self.new_node_metadata_with_kind::<T>(
+                    metadata: self.new_node_metadata_detailed::<T>(
                         Some(crate::ir::StreamKind::Singleton),
                         false, // Unbounded
                     ),
                 }),
-                metadata: self.new_node_metadata_with_kind::<T>(
+                metadata: self.new_node_metadata_detailed::<T>(
                     Some(crate::ir::StreamKind::Singleton),
                     false, // Unbounded
                 ),
