@@ -644,7 +644,7 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
         self.allocated_ports.borrow_mut().insert(key, port);
     }
 
-    fn raw_port(&self, key: usize) -> <HydroDeploy as Deploy>::ExternalRawPort {
+    fn raw_port(&self, key: usize) -> <HydroDeploy as Deploy<'_>>::ExternalRawPort {
         self.client_ports
             .borrow()
             .get(self.allocated_ports.borrow().get(&key).unwrap())

@@ -29,7 +29,7 @@ impl<T> Handoff for VecHandoff<T> {
         self.input.take()
     }
 
-    fn borrow_mut_swap(&self) -> RefMut<Self::Inner> {
+    fn borrow_mut_swap(&self) -> RefMut<'_, Self::Inner> {
         let mut input = self.input.borrow_mut();
         let mut output = self.output.borrow_mut();
 

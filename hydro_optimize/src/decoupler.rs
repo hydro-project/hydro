@@ -206,12 +206,11 @@ fn fix_cluster_self_id_leaf(leaf: &mut HydroLeaf, mut locations: ClusterSelfIdRe
         decoupled_cluster_id,
         ..
     } = locations
+        && leaf.metadata().location_kind.root().raw_id() == decoupled_cluster_id
     {
-        if leaf.metadata().location_kind.root().raw_id() == decoupled_cluster_id {
-            leaf.visit_debug_expr(|expr| {
-                locations.visit_expr_mut(&mut expr.0);
-            });
-        }
+        leaf.visit_debug_expr(|expr| {
+            locations.visit_expr_mut(&mut expr.0);
+        });
     }
 }
 
@@ -220,12 +219,11 @@ fn fix_cluster_self_id_node(node: &mut HydroNode, mut locations: ClusterSelfIdRe
         decoupled_cluster_id,
         ..
     } = locations
+        && node.metadata().location_kind.root().raw_id() == decoupled_cluster_id
     {
-        if node.metadata().location_kind.root().raw_id() == decoupled_cluster_id {
-            node.visit_debug_expr(|expr| {
-                locations.visit_expr_mut(&mut expr.0);
-            });
-        }
+        node.visit_debug_expr(|expr| {
+            locations.visit_expr_mut(&mut expr.0);
+        });
     }
 }
 

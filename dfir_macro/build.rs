@@ -211,10 +211,10 @@ fn main() {
         println!("cargo:rustc-cfg=nightly");
     }
 
-    if std::env::var_os(DFIR_GENERATE_DOCS).is_some() {
-        if let Err(err) = update_book() {
-            eprintln!("dfir_macro/build.rs error: {:?}", err);
-        }
+    if std::env::var_os(DFIR_GENERATE_DOCS).is_some()
+        && let Err(err) = update_book()
+    {
+        eprintln!("dfir_macro/build.rs error: {:?}", err);
     }
 }
 
