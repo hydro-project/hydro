@@ -80,12 +80,11 @@ fn union(
     tuple2: Option<&StructOrTuple>,
     tuple2index: &StructOrTupleIndex,
 ) -> Option<StructOrTuple> {
-    if let (Some(t1), Some(t2)) = (tuple1, tuple2) {
-        if let Some(t1_child) = t1.get_dependencies(tuple1index) {
-            if let Some(t2_child) = t2.get_dependencies(tuple2index) {
-                return StructOrTuple::union(&t1_child, &t2_child);
-            }
-        }
+    if let (Some(t1), Some(t2)) = (tuple1, tuple2)
+        && let Some(t1_child) = t1.get_dependencies(tuple1index)
+        && let Some(t2_child) = t2.get_dependencies(tuple2index)
+    {
+        return StructOrTuple::union(&t1_child, &t2_child);
     }
     None
 }
@@ -196,11 +195,11 @@ fn input_dependency_analysis_node(
         | HydroNode::ExternalInput { .. } => {
             // For each input the first (and potentially only) parent depends on, take its dependency
             for input_id in input_taint_entry.iter() {
-                if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
-                    if let Some(parent_dependency) = parent_dependencies_on_input.get(&0) {
-                        input_dependencies_entry.insert(*input_id, parent_dependency.clone());
-                        continue;
-                    }
+                if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) &&
+                    let Some(parent_dependency) = parent_dependencies_on_input.get(&0)
+                {
+                    input_dependencies_entry.insert(*input_id, parent_dependency.clone());
+                    continue;
                 }
                 // Parent is tainted by input but has no dependencies, delete
                 input_dependencies_entry.remove(input_id);
@@ -280,14 +279,14 @@ fn input_dependency_analysis_node(
             assert_eq!(parent_ids.len(), 1, "Node {:?} has the wrong number of parents.", node);
             // enumerate [(a,b)] = [(0,a),(1,b)]
             for input_id in input_taint_entry.iter() {
-                if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
-                    if let Some(parent_dependency) = parent_dependencies_on_input.get(&0) {
-                        // Set the 1st index to the parent's dependency
-                        let mut new_dependency = StructOrTuple::default();
-                        new_dependency.set_dependencies(&vec!["1".to_string()], parent_dependency, &vec![]);
-                        input_dependencies_entry.insert(*input_id, new_dependency);
-                        continue;
-                    }
+                if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) &&
+                    let Some(parent_dependency) = parent_dependencies_on_input.get(&0)
+                {
+                    // Set the 1st index to the parent's dependency
+                    let mut new_dependency = StructOrTuple::default();
+                    new_dependency.set_dependencies(&vec!["1".to_string()], parent_dependency, &vec![]);
+                    input_dependencies_entry.insert(*input_id, new_dependency);
+                    continue;
                 }
                 // Parent is tainted by input but has no dependencies, delete
                 input_dependencies_entry.remove(input_id);
@@ -307,15 +306,14 @@ fn input_dependency_analysis_node(
                 analyzer.output_dependencies.remove_none_fields(keep_topmost_none_fields).unwrap_or_default()
             });
             for input_id in input_taint_entry.iter() {
-                if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
-                    if let Some(parent_dependency) = parent_dependencies_on_input.get(&0) {
+                if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) &&
+                    let Some(parent_dependency) = parent_dependencies_on_input.get(&0) &&
                         // Project the parent's dependencies based on how f transforms the output
-                        if let Some(projected_dependencies) = StructOrTuple::project_parent(parent_dependency, syn_analysis_results) {
-                            println!("Node {:?} input {:?} has projected dependencies: {:?}", next_stmt_id, input_id, projected_dependencies);
-                            input_dependencies_entry.insert(*input_id, projected_dependencies);
-                            continue;
-                        }
-                    }
+                    let Some(projected_dependencies) = StructOrTuple::project_parent(parent_dependency, syn_analysis_results)
+                {
+                    println!("Node {:?} input {:?} has projected dependencies: {:?}", next_stmt_id, input_id, projected_dependencies);
+                    input_dependencies_entry.insert(*input_id, projected_dependencies);
+                    continue;
                 }
                 // Parent is tainted by input but has no dependencies, delete
                 input_dependencies_entry.remove(input_id);
@@ -326,14 +324,14 @@ fn input_dependency_analysis_node(
         | HydroNode::FoldKeyed { .. }
         | HydroNode::ReduceKeyedWatermark { .. } => {
             for input_id in input_taint_entry.iter() {
-                if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
-                    if let Some(parent_dependency) = parent_dependencies_on_input.get(&0) {
-                        // Inherit only the 0th index of the parent (the key)
-                        let mut new_dependency = StructOrTuple::default();
-                        new_dependency.set_dependencies(&vec!["0".to_string()], parent_dependency, &vec!["0".to_string()]);
-                        input_dependencies_entry.insert(*input_id, new_dependency);
-                        continue;
-                    }
+                if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id)
+                    && let Some(parent_dependency) = parent_dependencies_on_input.get(&0)
+                {
+                    // Inherit only the 0th index of the parent (the key)
+                    let mut new_dependency = StructOrTuple::default();
+                    new_dependency.set_dependencies(&vec!["0".to_string()], parent_dependency, &vec!["0".to_string()]);
+                    input_dependencies_entry.insert(*input_id, new_dependency);
+                    continue;
                 }
                 // Parent is tainted by input but has no dependencies, delete
                 input_dependencies_entry.remove(input_id);
@@ -398,14 +396,12 @@ fn input_dependency_analysis(
         let mut hasher = DefaultHasher::new();
         metadata.hash(&mut hasher);
         let hash = hasher.finish();
-        if let Some(prev) = prev_hash {
-            if prev == hash {
-                if metadata.optimistic_phase {
-                    println!("Optimistic phase reached fixpoint, starting pessimistic phase");
-                    metadata.optimistic_phase = false;
-                } else {
-                    break;
-                }
+        if prev_hash.is_some_and(|prev| prev == hash) {
+            if metadata.optimistic_phase {
+                println!("Optimistic phase reached fixpoint, starting pessimistic phase");
+                metadata.optimistic_phase = false;
+            } else {
+                break;
             }
         }
         prev_hash = Some(hash);
@@ -481,20 +477,18 @@ fn partitioning_constraint_analysis_node(
                     input_dependencies,
                     parent_ids[0],
                     &vec![],
-                ) {
-                    if let Some((parent1_inputs, parent1_dependencies)) =
-                        get_inputs_and_dependencies(
-                            input_taint,
-                            input_dependencies,
-                            parent_ids[1],
-                            &vec![],
-                        )
-                    {
-                        ordered_inputs.extend(parent0_inputs);
-                        ordered_dependencies.extend(parent0_dependencies);
-                        ordered_inputs.extend(parent1_inputs);
-                        ordered_dependencies.extend(parent1_dependencies);
-                    }
+                ) && let Some((parent1_inputs, parent1_dependencies)) =
+                    get_inputs_and_dependencies(
+                        input_taint,
+                        input_dependencies,
+                        parent_ids[1],
+                        &vec![],
+                    )
+                {
+                    ordered_inputs.extend(parent0_inputs);
+                    ordered_dependencies.extend(parent0_dependencies);
+                    ordered_inputs.extend(parent1_inputs);
+                    ordered_dependencies.extend(parent1_dependencies);
                 }
             }
             HydroNode::AntiJoin { .. } => {
@@ -505,20 +499,18 @@ fn partitioning_constraint_analysis_node(
                     input_dependencies,
                     parent_ids[0],
                     &vec!["0".to_string()],
-                ) {
-                    if let Some((parent1_inputs, parent1_dependencies)) =
-                        get_inputs_and_dependencies(
-                            input_taint,
-                            input_dependencies,
-                            parent_ids[1],
-                            &vec![],
-                        )
-                    {
-                        ordered_inputs.extend(parent0_inputs);
-                        ordered_dependencies.extend(parent0_dependencies);
-                        ordered_inputs.extend(parent1_inputs);
-                        ordered_dependencies.extend(parent1_dependencies);
-                    }
+                ) && let Some((parent1_inputs, parent1_dependencies)) =
+                    get_inputs_and_dependencies(
+                        input_taint,
+                        input_dependencies,
+                        parent_ids[1],
+                        &vec![],
+                    )
+                {
+                    ordered_inputs.extend(parent0_inputs);
+                    ordered_dependencies.extend(parent0_dependencies);
+                    ordered_inputs.extend(parent1_inputs);
+                    ordered_dependencies.extend(parent1_dependencies);
                 }
             }
             HydroNode::Join { .. } => {
@@ -529,20 +521,18 @@ fn partitioning_constraint_analysis_node(
                     input_dependencies,
                     parent_ids[0],
                     &vec!["0".to_string()],
-                ) {
-                    if let Some((parent1_inputs, parent1_dependencies)) =
-                        get_inputs_and_dependencies(
-                            input_taint,
-                            input_dependencies,
-                            parent_ids[1],
-                            &vec!["0".to_string()],
-                        )
-                    {
-                        ordered_inputs.extend(parent0_inputs);
-                        ordered_dependencies.extend(parent0_dependencies);
-                        ordered_inputs.extend(parent1_inputs);
-                        ordered_dependencies.extend(parent1_dependencies);
-                    }
+                ) && let Some((parent1_inputs, parent1_dependencies)) =
+                    get_inputs_and_dependencies(
+                        input_taint,
+                        input_dependencies,
+                        parent_ids[1],
+                        &vec!["0".to_string()],
+                    )
+                {
+                    ordered_inputs.extend(parent0_inputs);
+                    ordered_dependencies.extend(parent0_dependencies);
+                    ordered_inputs.extend(parent1_inputs);
+                    ordered_dependencies.extend(parent1_dependencies);
                 }
             }
             HydroNode::ReduceKeyed { .. }

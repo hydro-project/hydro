@@ -1,7 +1,6 @@
 ---
 source: hydro_test/src/cluster/paxos_bench.rs
 expression: "preview.dfir_for(&proposers).to_mermaid(&WriteConfig\n{\n    no_subgraphs: true, no_pull_push: true, no_handoffs: true,\n    op_text_no_imports: true, ..WriteConfig::default()\n})"
-snapshot_kind: text
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -161,7 +160,7 @@ linkStyle default stroke:#aaa
 153v1["<div style=text-align:center>(153v1)</div> <code><br>chain()</code>"]:::otherClass
 154v1["<div style=text-align:center>(154v1)</div> <code><br>tee()</code>"]:::otherClass
 155v1["<div style=text-align:center>(155v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-156v1["<div style=text-align:center>(156v1)</div> <code><br>filter_map({<br>    let f__free = 1usize;<br>    move |(((slot, (count, entry)), ballot), checkpoint)| {<br>        if count &gt; f__free {<br>            return None;<br>        } else if let Some(checkpoint) = checkpoint {<br>            if slot &lt;= checkpoint {<br>                return None;<br>            }<br>        }<br>        Some(((slot, ballot), entry.value))<br>    }<br>})</code>"]:::otherClass
+156v1["<div style=text-align:center>(156v1)</div> <code><br>filter_map({<br>    let f__free = 1usize;<br>    move |(((slot, (count, entry)), ballot), checkpoint)| {<br>        if count &gt; f__free {<br>            return None;<br>        } else if let Some(checkpoint) = checkpoint &amp;&amp; slot &lt;= checkpoint {<br>            return None;<br>        }<br>        Some(((slot, ballot), entry.value))<br>    }<br>})</code>"]:::otherClass
 157v1["<div style=text-align:center>(157v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 158v1["<div style=text-align:center>(158v1)</div> <code><br>flat_map({<br>    |(max_slot, checkpoint)| {<br>        if let Some(checkpoint) = checkpoint {<br>            (checkpoint + 1)..max_slot<br>        } else {<br>            0..max_slot<br>        }<br>    }<br>})</code>"]:::otherClass
 159v1["<div style=text-align:center>(159v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass

@@ -41,18 +41,18 @@ where
             }
 
             if let Some((k, v1)) = self.lhs.next() {
-                if self.lhs_state.build(k.clone(), &v1) {
-                    if let Some((k, v1, v2)) = self.rhs_state.probe(&k, &v1) {
-                        return Some((k, (v1, v2)));
-                    }
+                if self.lhs_state.build(k.clone(), &v1)
+                    && let Some((k, v1, v2)) = self.rhs_state.probe(&k, &v1)
+                {
+                    return Some((k, (v1, v2)));
                 }
                 continue;
             }
             if let Some((k, v2)) = self.rhs.next() {
-                if self.rhs_state.build(k.clone(), &v2) {
-                    if let Some((k, v2, v1)) = self.lhs_state.probe(&k, &v2) {
-                        return Some((k, (v1, v2)));
-                    }
+                if self.rhs_state.build(k.clone(), &v2)
+                    && let Some((k, v2, v1)) = self.lhs_state.probe(&k, &v2)
+                {
+                    return Some((k, (v1, v2)));
                 }
                 continue;
             }

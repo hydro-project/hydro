@@ -73,10 +73,10 @@ pub fn prioritized_broadcast<T: Stream<Item = std::io::Result<String>> + Send + 
             let mut internal = internal.lock().unwrap();
 
             // Priority receiver
-            if let Some(priority_sender) = internal.priority_sender.take() {
-                if priority_sender.send(line.clone()).is_ok() {
-                    continue; // Skip regular receivers if successfully sent to the priority receiver.
-                }
+            if let Some(priority_sender) = internal.priority_sender.take()
+                && priority_sender.send(line.clone()).is_ok()
+            {
+                continue; // Skip regular receivers if successfully sent to the priority receiver.
             }
 
             // Regular receivers
