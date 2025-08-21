@@ -782,18 +782,18 @@ mod tests {
         let expected_taint_ids = expected_taint.into_iter().map(|(k, v)| {
             println!("Converting IR name {} to ID", k);
             (
-                *name_to_id.get(&k.to_string()).unwrap(),
+                *name_to_id.get(k).unwrap(),
                 v.into_iter()
-                    .map(|e| *name_to_id.get(&e.to_string()).unwrap())
+                    .map(|e| *name_to_id.get(e).unwrap())
                     .collect::<BTreeSet<_>>(),
             )
         });
         let unnamed_expected_taint_ids =
             unnamed_expected_taint.into_iter().map(|((k, offset), v)| {
                 (
-                    (*name_to_id.get(&k.to_string()).unwrap() as i32 + offset) as usize,
+                    (*name_to_id.get(k).unwrap() as i32 + offset) as usize,
                     v.into_iter()
-                        .map(|e| *name_to_id.get(&e.to_string()).unwrap())
+                        .map(|e| *name_to_id.get(e).unwrap())
                         .collect::<BTreeSet<_>>(),
                 )
             });
@@ -801,12 +801,12 @@ mod tests {
             .chain(unnamed_expected_taint_ids)
             .collect::<BTreeMap<_, _>>();
         let expected_dependencies_ids = expected_dependencies.into_iter().map(|(k, v)| {
-            let k_id = *name_to_id.get(&k.to_string()).unwrap();
+            let k_id = *name_to_id.get(k).unwrap();
             let v_id = v
                 .into_iter()
                 .map(|(inner_k, inner_v)| {
                     (
-                        *name_to_id.get(&inner_k.to_string()).unwrap(),
+                        *name_to_id.get(inner_k).unwrap(),
                         inner_v.clone(),
                     )
                 })
@@ -817,12 +817,12 @@ mod tests {
             unnamed_expected_dependencies
                 .into_iter()
                 .map(|((k, offset), v)| {
-                    let k_id = (*name_to_id.get(&k.to_string()).unwrap() as i32 + offset) as usize;
+                    let k_id = (*name_to_id.get(k).unwrap() as i32 + offset) as usize;
                     let v_id = v
                         .into_iter()
                         .map(|(inner_k, inner_v)| {
                             (
-                                *name_to_id.get(&inner_k.to_string()).unwrap(),
+                                *name_to_id.get(inner_k).unwrap(),
                                 inner_v.clone(),
                             )
                         })
@@ -889,7 +889,7 @@ mod tests {
             vec.into_iter()
                 .map(|map| {
                     map.into_iter()
-                        .map(|(k, v)| (*name_to_id.get(&k.to_string()).unwrap(), v.clone()))
+                        .map(|(k, v)| (*name_to_id.get(k).unwrap(), v.clone()))
                         .collect::<BTreeMap<_, _>>()
                 })
                 .collect::<Vec<_>>()
