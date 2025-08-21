@@ -10,7 +10,7 @@ A rough picture of the Hydro stack is below:
 
 Working down from the top:
 
-- [*Hydro*](../hydro) is an end-user-facing high-level [choreographic](https://en.wikipedia.org/wiki/Choreographic_programming) [dataflow](https://en.wikipedia.org/wiki/Dataflow_programming) framework. Hydro is a *global* framework for programming a fleet of processes. Programmers author dataflow pipelines that start with streams of events and data, and span boundaries across multiple `process` and (scalable) `cluster` specifications. [Hydro Deploy](../hydro/deploy) is a service for launching Hydro programs on a variety of platforms.
+- [*Hydro*](../hydro) is an end-user-facing high-level [location-oriented](https://en.wikipedia.org/wiki/Choreographic_programming) [dataflow](https://en.wikipedia.org/wiki/Dataflow_programming) framework. Hydro is a *global* framework for programming a fleet of processes. Programmers author dataflow pipelines that start with streams of events and data, and span boundaries across multiple `process` and (scalable) `cluster` specifications. [Hydro Deploy](../hydro/deploy) is a service for launching Hydro programs on a variety of platforms.
 
 - *Hydrolysis* is a compiler that translates a global Hydro spec to multiple single-threaded DFIR programs, which collectively implement the global spec.
 This compilation phase is currently a part of the Hydro codebase, but will evolve into a standalone optimizing compiler inspired by database query optimizers and [e-graphs](https://en.wikipedia.org/wiki/E-graph).
