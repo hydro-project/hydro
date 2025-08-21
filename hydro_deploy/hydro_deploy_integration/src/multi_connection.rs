@@ -249,10 +249,6 @@ impl<
             conn.is_some()
         });
 
-        if me.poll_cursor == me.active_connections.len() {
-            me.poll_cursor = 0;
-        }
-
         out
     }
 }
