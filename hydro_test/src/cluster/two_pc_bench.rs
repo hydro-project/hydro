@@ -48,6 +48,7 @@ mod tests {
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
     #[cfg(stageleft_runtime)]
     use hydro_lang::{Cluster, Process};
+    use hydro_optimize::debug::name_to_id_map;
     use hydro_optimize::partition_node_analysis::{nodes_to_partition, partitioning_analysis};
     use hydro_optimize::partitioner::{Partitioner, partition};
     use hydro_optimize::repair::{cycle_source_to_sink_input, inject_id, inject_location};
@@ -173,7 +174,7 @@ mod tests {
     }
 
     #[test]
-    fn two_pc_partition() {
+    fn two_pc_partition_coordinator() {
         let builder = hydro_lang::FlowBuilder::new();
         let coordinator = builder.process();
         let partitioned_coordinator = builder.cluster::<()>();
@@ -197,13 +198,20 @@ mod tests {
         // Coordinator
         let coordinator_partitioning =
             partitioning_analysis(&mut ir, &coordinator.id(), &cycle_data);
-        // 7 and 26 are the op_ids of the input nodes from the participants to the coordinator. They will change if the coordinator's logic changes
+        let name_to_id = name_to_id_map(&mut ir);
+        let c_prepare_id = *name_to_id.get("c_prepare").unwrap();
+        let c_votes_id = *name_to_id.get("c_votes").unwrap();
+        let c_commits_id = *name_to_id.get("c_commits").unwrap();
         // 1 is the partitioning index of those inputs. Specifically, given the client sends (sender_id, payload) to the coordinator, we can partition on the entire payload
         let expected_coordinator_partitioning = vec![BTreeMap::from([
-            (5, vec!["1".to_string()]),
-            (22, vec!["1".to_string()]),
+            (c_votes_id, vec!["1".to_string()]),
+            (c_commits_id, vec!["1".to_string()]),
         ])];
-        let expected_coordinator_input_parents = BTreeMap::from([(2, 1), (5, 4), (22, 21)]);
+        let expected_coordinator_input_parents = BTreeMap::from([
+            (c_prepare_id, c_prepare_id - 1),
+            (c_votes_id, c_votes_id - 1),
+            (c_commits_id, c_commits_id - 1),
+        ]);
         assert_eq!(
             coordinator_partitioning,
             Some((
@@ -220,13 +228,42 @@ mod tests {
         };
         partition(&mut ir, &coordinator_partitioner);
 
-        // Participants
-        cycle_data = cycle_source_to_sink_input(&mut ir); // Recompute since IDs have changed
+        insta::assert_debug_snapshot!(&ir);
+    }
+
+    #[test]
+    fn two_pc_partition_participant() {
+        let builder = hydro_lang::FlowBuilder::new();
+        let coordinator = builder.process();
+        let participants = builder.cluster();
+        let clients = builder.cluster();
+        let client_aggregator = builder.process();
+
+        create_two_pc(&coordinator, &participants, &clients, &client_aggregator);
+
+        let mut cycle_data = HashMap::new();
+        let built = builder
+            .optimize_with(persist_pullup)
+            .optimize_with(inject_id)
+            .optimize_with(|ir| {
+                cycle_data = cycle_source_to_sink_input(ir);
+                inject_location(ir, &cycle_data);
+            })
+            .into_deploy::<HydroDeploy>();
+        let mut ir = deep_clone(built.ir());
+
         let participant_partitioning =
             partitioning_analysis(&mut ir, &participants.id(), &cycle_data);
+        // Recalculate node IDs since they've changed as well
+        let name_to_id = name_to_id_map(&mut ir);
+        let p_prepare_id = *name_to_id.get("p_prepare").unwrap();
+        let p_commits_id = *name_to_id.get("p_commits").unwrap();
         // Participants can partition on ANYTHING, since they only execute maps
         let expected_participant_partitionings = vec![];
-        let expected_participant_input_parents = BTreeMap::from([(5, 4), (24, 23)]);
+        let expected_participant_input_parents = BTreeMap::from([
+            (p_prepare_id, p_prepare_id - 1),
+            (p_commits_id, p_commits_id - 1),
+        ]);
         assert_eq!(
             participant_partitioning,
             Some((

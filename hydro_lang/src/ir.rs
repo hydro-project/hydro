@@ -967,6 +967,7 @@ pub struct HydroIrMetadata {
     pub cpu_usage: Option<f64>,
     pub network_recv_cpu_usage: Option<f64>,
     pub id: Option<usize>,
+    pub tag: Option<String>,
 }
 
 // HydroIrMetadata shouldn't be used to hash or compare
@@ -2990,12 +2991,12 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"208");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"232");
     }
 
     #[test]
     fn hydro_leaf_size() {
-        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"200");
+        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"224");
     }
 
     #[test]

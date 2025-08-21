@@ -23,23 +23,6 @@ pub struct Optional<Type, Loc, Bound> {
     _phantom: PhantomData<(Type, Loc, Bound)>,
 }
 
-impl<'a, T, L, B> Optional<T, L, B>
-where
-    L: Location<'a>,
-{
-    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        Optional {
-            location,
-            ir_node: RefCell::new(ir_node),
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn some(singleton: Singleton<T, L, B>) -> Self {
-        Optional::new(singleton.location, singleton.ir_node.into_inner())
-    }
-}
-
 impl<'a, T, L> DeferTick for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
@@ -231,6 +214,18 @@ impl<'a, T, L, B> Optional<T, L, B>
 where
     L: Location<'a>,
 {
+    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
+        Optional {
+            location,
+            ir_node: RefCell::new(ir_node),
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn some(singleton: Singleton<T, L, B>) -> Self {
+        Optional::new(singleton.location, singleton.ir_node.into_inner())
+    }
+
     /// Transforms the optional value by applying a function `f` to it,
     /// continuously as the input is updated.
     ///
@@ -475,6 +470,17 @@ where
         };
 
         self.map(q!(|v| Some(v))).unwrap_or(none_singleton)
+    }
+
+    /// An operator which allows you to "name" a `HydroNode`.
+    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
+    pub fn ir_node_named(self, name: &str) -> Optional<T, L, B> {
+        {
+            let mut node = self.ir_node.borrow_mut();
+            let metadata = node.metadata_mut();
+            metadata.tag = Some(name.to_string());
+        }
+        self
     }
 }
 

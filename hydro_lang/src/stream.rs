@@ -239,19 +239,6 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
-where
-    L: Location<'a>,
-{
-    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        Stream {
-            location,
-            ir_node: RefCell::new(ir_node),
-            _phantom: PhantomData,
-        }
-    }
-}
-
 impl<'a, T, L, B, O, R> Clone for Stream<T, L, B, O, R>
 where
     T: Clone,
@@ -286,6 +273,14 @@ impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
+    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
+        Stream {
+            location,
+            ir_node: RefCell::new(ir_node),
+            _phantom: PhantomData,
+        }
+    }
+
     /// Produces a stream based on invoking `f` on each element.
     /// If you do not want to modify the stream and instead only want to view
     /// each item use [`Stream::inspect`] instead.
@@ -730,6 +725,17 @@ where
                 },
             )
         }
+    }
+
+    /// An operator which allows you to "name" a `HydroNode`.
+    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
+    pub fn ir_node_named(self, name: &str) -> Stream<T, L, B, O, R> {
+        {
+            let mut node = self.ir_node.borrow_mut();
+            let metadata = node.metadata_mut();
+            metadata.tag = Some(name.to_string());
+        }
+        self
     }
 
     /// Explicitly "casts" the stream to a type with a different ordering
