@@ -9,9 +9,9 @@ error[E0271]: type mismatch resolving `<impl Pusherator<Item = u32> as Pusherato
 note: required for `Shape` to implement `DemuxEnum<(impl Pusherator<Item = (f64,)>, impl Pusherator<Item = (f64, f64)>, impl Pusherator<Item = u32>)>`
   --> tests/compile-fail/surface_demuxenum_wrongfields_1.rs:5:14
    |
-5  |     #[derive(DemuxEnum)]
+ 5 |     #[derive(DemuxEnum)]
    |              ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
-6  |     enum Shape {
+ 6 |     enum Shape {
    |          ^^^^^
    = note: associated types for the current `impl` cannot be restricted in `where` clauses
    = note: associated types for the current `impl` cannot be restricted in `where` clauses

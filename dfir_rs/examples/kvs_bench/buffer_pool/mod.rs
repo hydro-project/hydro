@@ -65,11 +65,11 @@ impl<const SIZE: usize> Drop for AutoReturnBuffer<SIZE> {
 }
 
 impl<const SIZE: usize> AutoReturnBuffer<SIZE> {
-    pub fn borrow_mut(&self) -> RefMut<[u8; SIZE]> {
+    pub fn borrow_mut(&self) -> RefMut<'_, [u8; SIZE]> {
         self.inner.borrow_mut()
     }
 
-    pub fn borrow(&self) -> Ref<[u8; SIZE]> {
+    pub fn borrow(&self) -> Ref<'_, [u8; SIZE]> {
         self.inner.borrow()
     }
 }

@@ -10,9 +10,7 @@ use dfir_rs::util::deploy::{
     ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged,
 };
 use dfir_rs::util::{deserialize_from_bytes, serialize_to_bytes};
-
-mod protocol;
-use protocol::*;
+use topolotree::protocol::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 enum GossipOrIncrement {

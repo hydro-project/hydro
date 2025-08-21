@@ -12,12 +12,6 @@ pub struct LineItem {
     pub qty: i16,
 }
 
-#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
-pub struct ClLineItem {
-    pub client: usize,
-    pub li: LineItem,
-}
-
 #[derive(PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Debug)]
 pub enum Request {
     ClLineItem { client: usize, li: LineItem },

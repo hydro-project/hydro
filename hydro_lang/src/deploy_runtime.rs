@@ -16,7 +16,7 @@ pub struct HydroMeta {
 pub fn cluster_members(
     cli: RuntimeData<&DeployPorts<HydroMeta>>,
     of_cluster: usize,
-) -> impl QuotedWithContext<&[u32], ()> + Copy {
+) -> impl QuotedWithContext<'_, &[u32], ()> + Copy {
     q!(cli
         .meta
         .clusters
@@ -27,7 +27,7 @@ pub fn cluster_members(
 
 pub fn cluster_self_id(
     cli: RuntimeData<&DeployPorts<HydroMeta>>,
-) -> impl QuotedWithContext<u32, ()> + Copy {
+) -> impl QuotedWithContext<'_, u32, ()> + Copy {
     q!(cli
         .meta
         .cluster_id
