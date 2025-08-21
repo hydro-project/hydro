@@ -2,7 +2,7 @@
 
 DFIR (Dataflow Intermediate Representation) is a small language and compiler for low-latency
 dataflow programs, written in Rust. DFIR serves as dataflow representation and runtime execution library for the
-[Hydro framework](https://hydro.run/docs/dfir/ecosystem), which is under development
+[Hydro framework](https://hydro.run/docs/hydro/), which is under development
 as a complete framework for distributed programming.
 
 DFIR is designed with two use cases in mind:
