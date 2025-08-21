@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Test graph creation utility for visual tests
  * Separate from test file to avoid importing test framework code in browser

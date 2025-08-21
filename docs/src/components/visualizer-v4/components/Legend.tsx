@@ -19,6 +19,20 @@ function LegendInner({
   className = '',
   style
 }: LegendProps) {
+  // Safety check for legendData and items
+  if (!legendData || !legendData.items || !Array.isArray(legendData.items)) {
+    return (
+      <div className={`legend-empty ${className}`} style={style}>
+        <span style={{ 
+          color: COMPONENT_COLORS.TEXT_DISABLED,
+          fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
+          fontStyle: 'italic'
+        }}>
+          No legend data available
+        </span>
+      </div>
+    );
+  }
 
   const displayTitle = title || legendData.title || 'Legend';
   const paletteKey = (colorPalette in COLOR_PALETTES) ? colorPalette as keyof typeof COLOR_PALETTES : 'Set3';
@@ -26,14 +40,13 @@ function LegendInner({
   // Precompute colors for all legend items using a memoized map
   const colorsByType = useMemo(() => {
     const map = new Map<string, { primary: string; border: string }>();
-    const items = legendData?.items ?? [];
-    for (const item of items) {
+    for (const item of legendData.items) {
       // generateNodeColors accepts an array of types; use single type per item
-      const colors = generateNodeColors([item.type], paletteKey, nodeTypeConfig) as { primary: string; border: string };
+      const colors = generateNodeColors([item.type], paletteKey, nodeTypeConfig);
       map.set(item.type, colors);
     }
     return map;
-  }, [legendData, paletteKey, nodeTypeConfig]);
+  }, [legendData.items, paletteKey, nodeTypeConfig]);
 
   const legendStyle: React.CSSProperties = useMemo(() => ({
     fontSize: compact ? '9px' : '10px',
@@ -47,8 +60,7 @@ function LegendInner({
     fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
   }), [compact]);
 
-  type NodeColors = { primary: string; border: string };
-  const colorBoxStyle = (colors: NodeColors): React.CSSProperties => ({
+  const colorBoxStyle = (colors: any): React.CSSProperties => ({
     width: compact ? '10px' : '12px',
     height: compact ? '10px' : '12px',
     borderRadius: '2px',
@@ -58,21 +70,6 @@ function LegendInner({
     backgroundColor: colors.primary,
     borderColor: colors.border
   });
-
-  // If there are no items, render the empty state after hooks to satisfy rules-of-hooks
-  if (!legendData || !legendData.items || !Array.isArray(legendData.items) || legendData.items.length === 0) {
-    return (
-      <div className={`legend-empty ${className}`} style={style}>
-        <span style={{
-          color: COMPONENT_COLORS.TEXT_DISABLED,
-          fontSize: compact ? TYPOGRAPHY.UI_SMALL : TYPOGRAPHY.UI_MEDIUM,
-          fontStyle: 'italic'
-        }}>
-          No legend data available
-        </span>
-      </div>
-    );
-  }
 
   return (
     <div className={`legend ${className}`} style={legendStyle}>

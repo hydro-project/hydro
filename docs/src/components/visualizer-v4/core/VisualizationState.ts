@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Visualization State - Core Data Structure (Refactored)
  * 
@@ -17,6 +16,7 @@ import type {
   GraphEdge,
   Container
 } from '../shared/types';
+
 import type { Edge, HyperEdge } from './types';
 import { LAYOUT_CONSTANTS, HYPEREDGE_CONSTANTS, SIZES } from '../shared/config';
 import { ContainerPadding } from './ContainerPadding';
@@ -30,7 +30,7 @@ import { CoveredEdgesIndex } from './CoveredEdgesIndex';
 import { LayoutOperations } from './operations/LayoutOperations';
 
 // Simple assertion function that works in both Node.js and browser environments
-function assert(condition: unknown, message?: string): asserts condition {
+function assert(condition: any, message?: string): asserts condition {
   if (!condition) {
     throw new Error(message || 'Assertion failed');
   }
@@ -72,15 +72,15 @@ export interface ContainerHierarchyView {
 export class VisualizationState implements ContainerHierarchyView {
   // Protected state collections - NEVER access directly!
   private readonly _collections = {
-    graphNodes: new Map<string, any>(),
-    graphEdges: new Map<string, any>(),
-    containers: new Map<string, any>(),
-    hyperEdges: new Map<string, any>(),
-    _visibleNodes: new Map<string, any>(),
-    _visibleEdges: new Map<string, any>(),
-    _visibleContainers: new Map<string, any>(),
-    _expandedContainers: new Map<string, any>(),
-    collapsedContainers: new Map<string, any>(),
+    graphNodes: new Map<string, GraphNode>(),
+    graphEdges: new Map<string, GraphEdge>(),
+    containers: new Map<string, Container>(),
+    hyperEdges: new Map<string, HyperEdge>(),
+    _visibleNodes: new Map<string, GraphNode>(),
+    _visibleEdges: new Map<string, Edge>(),
+    _visibleContainers: new Map<string, Container>(),
+    _expandedContainers: new Map<string, Container>(),
+    collapsedContainers: new Map<string, Container>(),
     nodeToEdges: new Map<string, Set<string>>(),
     manualPositions: new Map<string, {x: number, y: number}>(),
     containerChildren: new Map<string, Set<string>>(),
@@ -112,15 +112,15 @@ export class VisualizationState implements ContainerHierarchyView {
   // ============ PROTECTED ACCESSORS (Internal use only) ============
   // These provide controlled access to collections for internal methods
   
-  private get graphNodes(): Map<string, any> { return this._collections.graphNodes; }
-  private get graphEdges(): Map<string, any> { return this._collections.graphEdges; }
-  private get containers(): Map<string, any> { return this._collections.containers; }
-  private get hyperEdges(): Map<string, any> { return this._collections.hyperEdges; }
-  private get _visibleNodes(): Map<string, any> { return this._collections._visibleNodes; }
-  private get _visibleEdges(): Map<string, any> { return this._collections._visibleEdges; }
-  private get _visibleContainers(): Map<string, any> { return this._collections._visibleContainers; }
-  private get _expandedContainers(): Map<string, any> { return this._collections._expandedContainers; }
-  private get collapsedContainers(): Map<string, any> { return this._collections.collapsedContainers; }
+  private get graphNodes(): Map<string, GraphNode> { return this._collections.graphNodes; }
+  private get graphEdges(): Map<string, GraphEdge> { return this._collections.graphEdges; }
+  private get containers(): Map<string, Container> { return this._collections.containers; }
+  private get hyperEdges(): Map<string, HyperEdge> { return this._collections.hyperEdges; }
+  private get _visibleNodes(): Map<string, GraphNode> { return this._collections._visibleNodes; }
+  private get _visibleEdges(): Map<string, Edge> { return this._collections._visibleEdges; }
+  private get _visibleContainers(): Map<string, Container> { return this._collections._visibleContainers; }
+  private get _expandedContainers(): Map<string, Container> { return this._collections._expandedContainers; }
+  private get collapsedContainers(): Map<string, Container> { return this._collections.collapsedContainers; }
   private get nodeToEdges(): Map<string, Set<string>> { return this._collections.nodeToEdges; }
   private get manualPositions(): Map<string, {x: number, y: number}> { return this._collections.manualPositions; }
   
@@ -194,7 +194,9 @@ export class VisualizationState implements ContainerHierarchyView {
   get visibleEdges(): ReadonlyArray<any> {
     // Include both regular visible edges and visible hyperEdges
     const regularEdges = Array.from(this._collections._visibleEdges.values());
-    const hyperEdges = Array.from(this._collections.hyperEdges.values()).filter(edge => !edge.hidden);
+    const hyperEdges = Array.from(this._collections.hyperEdges.values()).filter((edge: any) => {
+      return !edge.hidden;
+    });
     
     const allEdges = [...regularEdges, ...hyperEdges];
     
@@ -210,7 +212,9 @@ export class VisualizationState implements ContainerHierarchyView {
    */
   getVisibleEdges(): any[] {
     const regularEdges = Array.from(this._collections._visibleEdges.values());
-    const hyperEdges = Array.from(this._collections.hyperEdges.values()).filter(edge => !edge.hidden);
+    const hyperEdges = Array.from(this._collections.hyperEdges.values()).filter((edge: any) => {
+      return !edge.hidden;
+    });
     
     const allEdges = [...regularEdges, ...hyperEdges];
     
@@ -258,7 +262,9 @@ export class VisualizationState implements ContainerHierarchyView {
    * Used by tests and debugging - filters out hidden hyperEdges
    */
   get visibleHyperEdges(): ReadonlyArray<any> {
-    return Array.from(this._collections.hyperEdges.values()).filter((edge: any) => !edge.hidden);
+    return Array.from(this._collections.hyperEdges.values()).filter((edge: any) => {
+      return !edge.hidden;
+    });
   }
   
   /**
@@ -337,11 +343,11 @@ export class VisualizationState implements ContainerHierarchyView {
     this.layoutOps.setManualPosition(entityId, x, y);
   }
 
-  setContainerLayout(containerId: string, layout: { position?: Partial<{ x: number; y: number }>; dimensions?: Partial<{ width: number; height: number }>; [key: string]: unknown }): void {
+  setContainerLayout(containerId: string, layout: any): void {
     this.layoutOps.setContainerLayout(containerId, layout);
   }
   
-  setNodeLayout(nodeId: string, layout: { position?: Partial<{ x: number; y: number }>; dimensions?: Partial<{ width: number; height: number }>; [key: string]: unknown }): void {
+  setNodeLayout(nodeId: string, layout: any): void {
     this.layoutOps.setNodeLayout(nodeId, layout);
   }
 
@@ -365,39 +371,11 @@ export class VisualizationState implements ContainerHierarchyView {
     this.layoutOps.validateAndFixDimensions();
   }
 
-  getEdgeLayout(edgeId: string): { 
-    sections?: Array<{ 
-      startPoint?: { x: number; y: number };
-      endPoint?: { x: number; y: number };
-      bendPoints?: Array<{ x: number; y: number }>;
-      [key: string]: unknown;
-    }>;
-    routing?: Array<{
-      startPoint?: { x: number; y: number };
-      endPoint?: { x: number; y: number };
-      bendPoints?: Array<{ x: number; y: number }>;
-      [key: string]: unknown;
-    }>;
-    [key: string]: unknown;
-  } | undefined {
+  getEdgeLayout(edgeId: string): { sections?: any[]; [key: string]: any } | undefined {
     return this.layoutOps.getEdgeLayout(edgeId);
   }
 
-  setEdgeLayout(edgeId: string, layout: { 
-    sections?: Array<{ 
-      startPoint?: { x: number; y: number };
-      endPoint?: { x: number; y: number };
-      bendPoints?: Array<{ x: number; y: number }>;
-      [key: string]: unknown;
-    }>;
-    routing?: Array<{
-      startPoint?: { x: number; y: number };
-      endPoint?: { x: number; y: number };
-      bendPoints?: Array<{ x: number; y: number }>;
-      [key: string]: unknown;
-    }>;
-    [key: string]: unknown;
-  }): void {
+  setEdgeLayout(edgeId: string, layout: { sections?: any[]; [key: string]: any }): void {
     this.layoutOps.setEdgeLayout(edgeId, layout);
   }
 
@@ -441,7 +419,7 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Add a graph node directly (for JSONParser and initial data loading)
    */
-  addGraphNode(nodeId: string, nodeData: { [key: string]: unknown; label?: string; shortLabel?: string; fullLabel?: string; hidden?: boolean; width?: number; height?: number }): void {
+  addGraphNode(nodeId: string, nodeData: any): void {
     // Check if node belongs to a collapsed container and should be hidden
     const parentContainer = this._collections.nodeContainers.get(nodeId);
     let shouldBeHidden = nodeData.hidden || false;
@@ -492,7 +470,7 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Add a graph edge directly (for JSONParser and initial data loading)
    */
-  addGraphEdge(edgeId: string, edgeData: { [key: string]: unknown; source: string; target: string; hidden?: boolean }): void {
+  addGraphEdge(edgeId: string, edgeData: any): void {
     const processedData = { 
       ...edgeData, 
       id: edgeId,
@@ -511,8 +489,7 @@ export class VisualizationState implements ContainerHierarchyView {
     
     // Update CoveredEdgesIndex if it exists
     if (this._coveredEdgesIndex) {
-      // processedData matches GraphEdge shape at runtime; cast for type compatibility
-      this._coveredEdgesIndex.addEdge(edgeId, processedData as unknown as GraphEdge, this._collections.nodeContainers);
+      this._coveredEdgesIndex.addEdge(edgeId, processedData, this._collections.nodeContainers);
     }
     
     // Update visibility cache if edge should be visible
@@ -526,7 +503,7 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Add a container directly (for JSONParser and initial data loading)
    */
-  addContainer(containerId: string, containerData: { [key: string]: unknown; label?: string; children?: Iterable<string> | string[] | Set<string>; collapsed?: boolean; hidden?: boolean; width?: number; height?: number }): void {
+  addContainer(containerId: string, containerData: any): void {
     // Check existing state BEFORE making changes
     const existingContainer = this._collections.containers.get(containerId);
     const wasCollapsed = existingContainer?.collapsed === true;
@@ -550,7 +527,7 @@ export class VisualizationState implements ContainerHierarchyView {
     // Process children relationships
     if (containerData.children) {
       this._collections.containerChildren.set(containerId, new Set(containerData.children));
-      for (const childId of containerData.children as Iterable<string>) {
+      for (const childId of containerData.children) {
         this._collections.nodeContainers.set(childId, containerId);
       }
     }
@@ -655,7 +632,7 @@ export class VisualizationState implements ContainerHierarchyView {
    * Set a graph node (legacy compatibility - forwards to addGraphNode)
    * @deprecated Use addGraphNode() for new code
    */
-  setGraphNode(nodeId: string, nodeData: { [key: string]: unknown }): VisualizationState {
+  setGraphNode(nodeId: string, nodeData: any): VisualizationState {
     this.addGraphNode(nodeId, nodeData);
     return this;
   }
@@ -664,7 +641,7 @@ export class VisualizationState implements ContainerHierarchyView {
    * Set a graph edge (legacy compatibility - forwards to addGraphEdge)
    * @deprecated Use addGraphEdge() for new code
    */
-  setGraphEdge(edgeId: string, edgeData: { [key: string]: unknown; source: string; target: string }): VisualizationState {
+  setGraphEdge(edgeId: string, edgeData: any): VisualizationState {
     this.addGraphEdge(edgeId, edgeData);
     return this;
   }
@@ -673,7 +650,7 @@ export class VisualizationState implements ContainerHierarchyView {
    * Set a container (legacy compatibility - forwards to addContainer)
    * @deprecated Use addContainer() for new code
    */
-  setContainer(containerIdOrData: string | { id: string; [key: string]: unknown }, containerData?: { [key: string]: unknown }): VisualizationState {
+  setContainer(containerIdOrData: string | any, containerData?: any): VisualizationState {
     if (typeof containerIdOrData === 'string') {
       // Old API: setContainer('id', { ... })
       this.addContainer(containerIdOrData, containerData);
@@ -822,7 +799,7 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Update container properties (legacy compatibility method)
    */
-  updateContainer(containerId: string, updates: { [key: string]: unknown }): void {
+  updateContainer(containerId: string, updates: any): void {
     const container = this._collections.containers.get(containerId);
     if (container) {
       Object.assign(container, updates);
@@ -877,7 +854,7 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Get collapsed containers as nodes for ELK bridge
    */
-  getCollapsedContainersAsNodes(): ReadonlyArray<Container & { x: number; y: number; label: string; style: unknown; type: 'container-node'; collapsed: true }> {
+  getCollapsedContainersAsNodes(): ReadonlyArray<any> {
     const collapsedAsNodes = [];
     
     for (const container of this._collections.containers.values()) {
@@ -900,7 +877,7 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Get top-level nodes (nodes not in any expanded container)
    */
-  getTopLevelNodes(): ReadonlyArray<GraphNode> {
+  getTopLevelNodes(): ReadonlyArray<any> {
     const topLevelNodes = [];
     
     for (const node of this.visibleNodes) {
@@ -928,8 +905,8 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Get top-level containers (containers with no visible parent container)
    */
-  getTopLevelContainers(): ReadonlyArray<Container> {
-    const topLevelContainers: Container[] = [];
+  getTopLevelContainers(): ReadonlyArray<any> {
+    const topLevelContainers = [];
     
     for (const container of this.visibleContainers) {
       // Check if this container has a parent container
@@ -956,7 +933,7 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Update edge properties (legacy compatibility method)
    */
-  updateEdge(edgeId: string, updates: { [key: string]: unknown; hidden?: boolean }): void {
+  updateEdge(edgeId: string, updates: any): void {
     const edge = this._collections.graphEdges.get(edgeId);
     if (edge) {
       Object.assign(edge, updates);
@@ -976,7 +953,7 @@ export class VisualizationState implements ContainerHierarchyView {
 
   // ============ MINIMAL COMPATIBILITY METHODS ============
 
-  setHyperEdge(hyperEdgeId: string, hyperEdgeData: HyperEdge): this {
+  setHyperEdge(hyperEdgeId: string, hyperEdgeData: any): this {
     this._collections.hyperEdges.set(hyperEdgeId, hyperEdgeData);
      // Update node-to-edge mappings
     const sourceSet = this._collections.nodeToEdges.get(hyperEdgeData.source) || new Set();
@@ -1012,7 +989,7 @@ export class VisualizationState implements ContainerHierarchyView {
     this._collections.nodeContainers.delete(childId);
   }
 
-  updateNode(nodeId: string, updates: { [key: string]: unknown; hidden?: boolean }): void {
+  updateNode(nodeId: string, updates: any): void {
     const node = this._collections.graphNodes.get(nodeId);
     if (node) {
       Object.assign(node, updates);
@@ -1186,7 +1163,7 @@ export class VisualizationState implements ContainerHierarchyView {
    * Validate render keys to prevent React duplicate key warnings
    * This method checks for duplicate IDs in the edge collection that would cause React warnings
    */
-  private _validateRenderKeys(edges: Array<{ id: string }>): void {
+  private _validateRenderKeys(edges: any[]): void {
     const seenKeys = new Set<string>();
     const duplicateKeys = new Set<string>();
     

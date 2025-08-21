@@ -46,7 +46,7 @@ export function HyperEdge(props: EdgeProps) {
     props.style,
     { color: '#ff5722', width: 3, dash: '5,5' }
   );
-  const haloColor = getHaloColor(props.style);
+  const haloColor = getHaloColor(props.style as any);
 
   // Simple rendering for edges without halos
   if (!haloColor) {
@@ -88,8 +88,8 @@ export function HyperEdge(props: EdgeProps) {
           stroke, 
           strokeWidth, 
           strokeDasharray,
-          ...(stripHaloStyle(props.style as unknown as Record<string, unknown>))
-        } as unknown as React.CSSProperties}
+          ...(stripHaloStyle(props.style))
+        }}
       />
     </g>
   );

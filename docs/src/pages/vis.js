@@ -1,7 +1,7 @@
 /**
- * Vis System v4 - Graph Visualization Homepage
+ * Graph Visualization Homepage
  * 
- * Latest version of the graph visualization system using visualizer-v4 architecture.
+ * Latest version of the graph visualization system using visualizer-v4.
  * Features file upload, JSON parsing, and ReactFlow v12 + ELK layout visualization.
  * 
  * This is the current/latest version - previous versions available at /vis3, /visualizer
@@ -11,7 +11,12 @@ import React from 'react';
 import Layout from '@theme/Layout';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import { useLocation } from '@docusaurus/router';
-import { TYPOGRAPHY } from '@site/src/components/visualizer-v4/shared/config.ts';
+
+// Typography constants for consistent styling
+const TYPOGRAPHY = {
+  PAGE_TITLE: '2.5em',
+  PAGE_SUBTITLE: '0.9em'
+};
 
 // Helper function to calculate container depth in hierarchy
 function getContainerDepth(visState, containerId, depth = 0) {
@@ -24,7 +29,7 @@ function getContainerDepth(visState, containerId, depth = 0) {
   return getContainerDepth(visState, parentId, depth + 1);
 }
 
-function VisV4Component() {
+function HydroscopeComponent() {
   const location = useLocation();
   const [createVisualizationState, setCreateVisualizationState] = React.useState(null);
   const [FlowGraph, setFlowGraph] = React.useState(null);
@@ -79,49 +84,46 @@ function VisV4Component() {
 
   // Load components on mount
   React.useEffect(() => {
-    const loadComponents = async () => {
+    const loadVisualizerComponents = async () => {
       try {
-        // Import v4 components with specific error handling for each
-        const visStateModule = await import('@site/src/components/visualizer-v4/core/VisualizationState.ts');
+        // Import all components from visualizer-v4
+        const { 
+          createVisualizationState,
+          FlowGraph,
+          parseGraphJSON,
+          createRenderConfig,
+          getAvailableGroupings,
+          validateGraphJSON,
+          NODE_STYLES,
+          EDGE_STYLES,
+          InfoPanel,
+          LayoutControls,
+          StyleTunerPanel,
+          FileDropZone
+        } = await import('../components/visualizer-v4');
         
-        const FlowGraphModule = await import('@site/src/components/visualizer-v4/render/FlowGraph.tsx');
-        
-        const configModule = await import('@site/src/components/visualizer-v4/shared/config.ts');
-        
-        const parserModule = await import('@site/src/components/visualizer-v4/core/JSONParser.ts');
-        
-        const layoutModule = await import('@site/src/components/visualizer-v4/layout/index.ts');
-        
-        const InfoPanelModule = await import('@site/src/components/visualizer-v4/components/InfoPanel.tsx');
-        
-  const LayoutControlsModule = await import('@site/src/components/visualizer-v4/components/LayoutControls.tsx');
-  // Import StyleTunerPanel from the package barrel to avoid direct path resolution issues
-  const StyleTunerPanelModule = await import('@site/src/components/visualizer-v4');
-        
-        const FileDropZoneModule = await import('@site/src/components/visualizer-v4/components/FileDropZone.tsx');
-        
-        setCreateVisualizationState(() => visStateModule.createVisualizationState);
-        setFlowGraph(() => FlowGraphModule.FlowGraph);
-        setParseGraphJSON(() => parserModule.parseGraphJSON);
-        setCreateRenderConfig(() => parserModule.createRenderConfig);
-        setGetAvailableGroupings(() => parserModule.getAvailableGroupings);
-        setValidateGraphJSON(() => parserModule.validateGraphJSON);
-        setNodeStyles(configModule.NODE_STYLES);
-        setEdgeStyles(configModule.EDGE_STYLES);
-        setInfoPanel(() => InfoPanelModule.InfoPanel);
-  setLayoutControls(() => LayoutControlsModule.LayoutControls);
-  setStyleTunerPanel(() => StyleTunerPanelModule.StyleTunerPanel);
-        setFileDropZone(() => FileDropZoneModule.default);
+        setCreateVisualizationState(() => createVisualizationState);
+        setFlowGraph(() => FlowGraph);
+        setParseGraphJSON(() => parseGraphJSON);
+        setCreateRenderConfig(() => createRenderConfig);
+        setGetAvailableGroupings(() => getAvailableGroupings);
+        setValidateGraphJSON(() => validateGraphJSON);
+        setNodeStyles(NODE_STYLES);
+        setEdgeStyles(EDGE_STYLES);
+        setInfoPanel(() => InfoPanel);
+        setLayoutControls(() => LayoutControls);
+        setStyleTunerPanel(() => StyleTunerPanel);
+        setFileDropZone(() => FileDropZone);
         // Don't load grouping options here - wait until we have graph data
         setLoading(false);
         setError(null);
       } catch (err) {
-        console.error('❌ Failed to load visualizer-v4 components:', err);
-        setError(`Failed to load v4 components: ${err.message}`);
+        console.error('❌ Failed to load visualizer components:', err);
+        setError(`Failed to load visualizer components: ${err.message}`);
         setLoading(false);
       }
     };
-    loadComponents();
+    loadVisualizerComponents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -652,7 +654,7 @@ function VisV4Component() {
         fontSize: '18px',
         color: '#666'
       }}>
-        Loading visualizer-v4 components...
+        Loading hydroscope components...
       </div>
     );
   }
@@ -700,7 +702,7 @@ function VisV4Component() {
       boxSizing: 'border-box'
     }}>
       <div style={{ marginBottom: '16px' }}> {/* Reduced margin */}
-        <h1 style={{ margin: '0 0 4px 0', fontSize: TYPOGRAPHY.PAGE_TITLE }}>HyGraphViz</h1> {/* Using constant */}
+        <h1 style={{ margin: '0 0 4px 0', fontSize: TYPOGRAPHY.PAGE_TITLE }}>Graph Visualizer</h1> {/* Using constant */}
         <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: TYPOGRAPHY.PAGE_SUBTITLE }}> {/* Using constant */}
           A hierarchical graph visualization tool for complex graphs, originally written for the <a href="https://hydro.run">Hydro project</a>.
         </p>
@@ -977,7 +979,7 @@ export default function VisPage() {
       description="A hierarchical graph visualization tool for complex graphs, built for the Hydro project.">
       <main>
         <BrowserOnly fallback={<div>Loading...</div>}>
-          {() => <VisV4Component />}
+          {() => <HydroscopeComponent />}
         </BrowserOnly>
       </main>
     </Layout>

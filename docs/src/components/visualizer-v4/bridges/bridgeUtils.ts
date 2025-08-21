@@ -4,7 +4,6 @@
 
 import type { VisualizationState } from '../core/VisualizationState';
 import { LAYOUT_CONSTANTS } from '../shared/config';
-import type { ExternalContainer as Container, GraphNode } from '../shared/types';
 
 /** Build parent-child relationship map for visible elements */
 export function buildParentMap(visState: VisualizationState): Map<string, string> {
@@ -23,9 +22,8 @@ export function buildParentMap(visState: VisualizationState): Map<string, string
   });
 
   visState.visibleNodes.forEach(node => {
-    const n = node as unknown as GraphNode & { containerId?: string };
-    if (n.containerId && visibleContainerIds.has(n.containerId)) {
-      parentMap.set(node.id, n.containerId);
+    if ((node as any).containerId && visibleContainerIds.has((node as any).containerId)) {
+      parentMap.set(node.id, (node as any).containerId);
     }
   });
 
@@ -33,7 +31,7 @@ export function buildParentMap(visState: VisualizationState): Map<string, string
 }
 
 /** Sort containers by hierarchy level so parents appear before children */
-export function sortContainersByHierarchy<T extends { id: string }>(containers: T[], parentMap: Map<string, string>): T[] {
+export function sortContainersByHierarchy(containers: any[], parentMap: Map<string, string>): any[] {
   const getHierarchyLevel = (containerId: string): number => {
     let level = 0;
     let currentId = containerId;
@@ -48,22 +46,21 @@ export function sortContainersByHierarchy<T extends { id: string }>(containers: 
 }
 
 /** Ensure a coordinate is a finite number, else 0 */
-export function safeNum(n: unknown): number {
+export function safeNum(n: any): number {
   return typeof n === 'number' && !isNaN(n) && isFinite(n) ? n : 0;
 }
 
 /** Check if ELK layout has meaningful non-zero coordinates */
-export function hasMeaningfulELKPosition(layout: unknown | undefined): boolean {
-  const l = layout as { position?: { x?: number; y?: number } } | undefined;
-  const x = l?.position?.x;
-  const y = l?.position?.y;
+export function hasMeaningfulELKPosition(layout: any | undefined): boolean {
+  const x = layout?.position?.x;
+  const y = layout?.position?.y;
   if (x === undefined || y === undefined) return false;
   // Accept 0 if the other coordinate is non-zero; reject 0,0 default
   return !(x === 0 && y === 0);
 }
 
 /** Compute relative (child) position from absolute child and parent absolute */
-export function toRelativePosition(childAbs: { x: unknown; y: unknown }, parentAbs: { x: unknown; y: unknown }) {
+export function toRelativePosition(childAbs: { x: any; y: any }, parentAbs: { x: any; y: any }) {
   const cx = safeNum(childAbs.x);
   const cy = safeNum(childAbs.y);
   const px = safeNum(parentAbs.x);
@@ -72,14 +69,14 @@ export function toRelativePosition(childAbs: { x: unknown; y: unknown }, parentA
 }
 
 /** Compute absolute/root position safely */
-export function toAbsolutePosition(abs: { x: unknown; y: unknown }) {
+export function toAbsolutePosition(abs: { x: any; y: any }) {
   return { x: safeNum(abs.x), y: safeNum(abs.y) };
 }
 
 /** Compute child-container position using ELK when available, else grid fallback */
 export function computeChildContainerPosition(
   visState: VisualizationState,
-  container: Container,
+  container: any,
   parentId: string
 ) {
   const containerLayout = visState.getContainerLayout(container.id);
@@ -113,7 +110,7 @@ export function computeChildContainerPosition(
 }
 
 /** Compute root container absolute position safely */
-export function computeRootContainerPosition(visState: VisualizationState, container: Container) {
+export function computeRootContainerPosition(visState: VisualizationState, container: any) {
   const containerLayout = visState.getContainerLayout(container.id);
   const rootX = containerLayout?.position?.x ?? container.x ?? 0;
   const rootY = containerLayout?.position?.y ?? container.y ?? 0;
@@ -123,7 +120,7 @@ export function computeRootContainerPosition(visState: VisualizationState, conta
 /** Compute node position from ELK; relative to parent if nested */
 export function computeNodePosition(
   visState: VisualizationState,
-  node: GraphNode,
+  node: any,
   parentId: string | undefined
 ) {
   const nodeLayout = visState.getNodeLayout(node.id);
@@ -142,7 +139,7 @@ export function computeNodePosition(
 
 /** Get adjusted container dimensions, falling back to defaults when invalid */
 export function getAdjustedContainerDimensionsSafe(visState: VisualizationState, containerId: string) {
-  const adjusted = (visState.getContainerAdjustedDimensions(containerId) || {}) as { width?: number; height?: number };
+  const adjusted = visState.getContainerAdjustedDimensions(containerId) || {} as any;
   const width = safeNum(adjusted.width) > 0 ? adjusted.width : LAYOUT_CONSTANTS.DEFAULT_PARENT_CONTAINER_WIDTH;
   const height = safeNum(adjusted.height) > 0 ? adjusted.height : LAYOUT_CONSTANTS.DEFAULT_PARENT_CONTAINER_HEIGHT;
   return { width, height };

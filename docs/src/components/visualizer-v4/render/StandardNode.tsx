@@ -23,7 +23,7 @@ export function StandardNode({ id, data }: NodeProps) {
     <div
       style={{
         padding: `${styleCfg.nodePadding ?? 12}px 16px`,
-  background: String(colors.primary),
+        background: colors.primary,
         border: `1px solid ${colors.border}`,
         borderRadius: `${styleCfg.nodeBorderRadius ?? 4}px`,
         fontSize: `${styleCfg.nodeFontSize ?? 12}px`,

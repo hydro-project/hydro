@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * ELK State Manager (TypeScript port from working visualizer)
  * 
@@ -485,10 +484,9 @@ class ELKHierarchyBuilder {
       // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} from VisState.layout: ${layoutDimensions.width}x${layoutDimensions.height} (collapsed=${container.collapsed})`)));
     }
     // Fallback: check for direct dimensions property
-    else if ((container as any).dimensions) {
-      const dims = (container as any).dimensions as { width?: number; height?: number };
-      if (dims.width !== undefined) elkNode.width = dims.width;
-      if (dims.height !== undefined) elkNode.height = dims.height;
+    else if (container.dimensions) {
+      elkNode.width = container.dimensions.width;
+      elkNode.height = container.dimensions.height;
       // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} from VisState.dimensions: ${container.dimensions.width}x${container.dimensions.height} (collapsed=${container.collapsed})`)));
     } else {
       // // console.log(((`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} NO dimensions in VisState (collapsed=${container.collapsed}) - letting ELK calculate`)));
@@ -499,9 +497,8 @@ class ELKHierarchyBuilder {
   }
 
   private buildRegularNode(node: GraphNode): ELKNode {
-  const dims = (node as any).dimensions as { width?: number; height?: number } | undefined;
-  const width = (dims?.width) || VALIDATION_CONSTANTS.DEFAULT_NODE_WIDTH;
-  const height = (dims?.height) || VALIDATION_CONSTANTS.DEFAULT_NODE_HEIGHT;
+    const width = node.dimensions?.width || VALIDATION_CONSTANTS.DEFAULT_NODE_WIDTH;
+    const height = node.dimensions?.height || VALIDATION_CONSTANTS.DEFAULT_NODE_HEIGHT;
     
     return {
       id: node.id,

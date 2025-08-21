@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * JSON Schema Documentation Generator
  * 
  * AUTO-GENERATED - DO NOT EDIT MANUALLY
- * Last updated: 2025-08-19T20:20:04.673Z
+ * Last updated: 2025-08-21T21:18:53.774Z
  * Source: JSONParser.ts interfaces
  */
 
@@ -24,8 +23,8 @@ export interface ParseResultSchema {
   styleConfig?: Record<string, any>;
   edgeStyleConfig?: {
   propertyMappings: Record<string, any>;
-  defaultStyle: any;
-  combinationRules: any;
+  defaultStyle?: any;
+  combinationRules?: any;
   };
   nodeTypeConfig?: {
   defaultType?: string;
@@ -90,7 +89,7 @@ export interface RawHierarchyItemSchema {
 export interface RawGraphDataSchema {
   nodes: RawNodeSchema[];
   edges: RawEdgeSchema[];
-  hierarchies?: RawHierarchySchema[];
+  hierarchies?: RawHierarchy[];
   hierarchyChoices?: RawHierarchyChoiceSchema[];
   nodeAssignments?: Record<string, Record<string, string>>;
   styleConfig?: {
@@ -99,8 +98,8 @@ export interface RawGraphDataSchema {
   };
   edgeStyleConfig?: {
   propertyMappings: Record<string, any>;
-  defaultStyle: any;
-  combinationRules: any;
+  defaultStyle?: any;
+  combinationRules?: any;
   };
   nodeTypeConfig?: {
   defaultType?: string;
@@ -198,7 +197,7 @@ Key features:
 - Semantic tags for flexible categorization
 - All additional properties are preserved by the parser
 
-Generated: 2025-08-19T20:20:04.673Z
+Generated: 2025-08-21T21:18:53.774Z
 `;
 
   const completeExample = JSON.stringify(generateCompleteExample(), null, 2);
@@ -405,4 +404,4 @@ export function generateCompleteExample() {
  * Version information for schema tracking
  */
 export const SCHEMA_VERSION = "v4.0.0";
-export const LAST_UPDATED = "2025-08-19T20:20:04.673Z";
+export const LAST_UPDATED = "2025-08-21T21:18:53.774Z";

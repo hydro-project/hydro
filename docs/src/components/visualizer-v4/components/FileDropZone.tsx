@@ -241,7 +241,7 @@ function CompleteExampleDisplay() {
 }
 
 interface FileDropZoneProps {
-  onFileLoad: (data: unknown) => void;
+  onFileLoad: (data: any) => void;
   hasData?: boolean;
   className?: string;
   generatedFilePath?: string;
@@ -537,7 +537,7 @@ function FileDropZone({
               </button>
             </div>
             <p style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>
-              💡 Drag and drop this file here, or click &quot;Choose File&quot; to browse for it
+              💡 Drag and drop this file here, or click "Choose File" to browse for it
             </p>
           </div>
         )}

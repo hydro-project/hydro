@@ -89,7 +89,7 @@ export interface LegendProps extends BaseComponentProps {
   
   // Styling
   colorPalette?: string;
-  nodeTypeConfig?: Record<string, unknown>;
+  nodeTypeConfig?: Record<string, any>;
   
   // Display
   title?: string;

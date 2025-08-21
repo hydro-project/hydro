@@ -52,11 +52,10 @@ export function createHyperEdge(props: {
 /**
  * Utility to check if an edge object has the correct type field
  */
-export function validateEdgeType(edge: unknown): edge is GraphEdge | HyperEdge {
-  const e = edge as { type?: unknown; id?: unknown; source?: unknown; target?: unknown };
-  return !!edge && typeof edge === 'object' && 
-         (e.type === 'graph' || e.type === 'hyper') &&
-         typeof e.id === 'string' &&
-         typeof e.source === 'string' &&
-         typeof e.target === 'string';
+export function validateEdgeType(edge: any): edge is GraphEdge | HyperEdge {
+  return edge && typeof edge === 'object' && 
+         (edge.type === 'graph' || edge.type === 'hyper') &&
+         typeof edge.id === 'string' &&
+         typeof edge.source === 'string' &&
+         typeof edge.target === 'string';
 }

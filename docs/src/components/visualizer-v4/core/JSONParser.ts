@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-inner-declarations */
 /**
  * JSON Parser for Graph Data
  * 
@@ -25,8 +23,12 @@ export interface ParseResult {
     edgeCount: number;
     containerCount: number;
     availableGroupings: GroupingOption[];
-  styleConfig?: Record<string, unknown>;
-  edgeStyleConfig?: any;
+    styleConfig?: Record<string, any>;
+    edgeStyleConfig?: {
+      propertyMappings: Record<string, any>;
+      defaultStyle?: any;
+      combinationRules?: any;
+    };
     nodeTypeConfig?: {
       defaultType?: string;
       types?: Array<{
@@ -58,7 +60,7 @@ export interface ParserOptions {
 interface RawNode {
   id: string;
   semanticTags?: string[];
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface RawEdge {
@@ -67,7 +69,7 @@ interface RawEdge {
   target: string;
   semanticTags?: string[];
   edgeProperties?: string[];
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface RawHierarchy {
@@ -95,10 +97,14 @@ interface RawGraphData {
   hierarchyChoices?: RawHierarchyChoice[];
   nodeAssignments?: Record<string, Record<string, string>>;
   styleConfig?: {
-  edgeStyles?: Record<string, unknown>;
-  nodeStyles?: Record<string, unknown>;
+    edgeStyles?: Record<string, any>;
+    nodeStyles?: Record<string, any>;
   };
-  edgeStyleConfig?: any;
+  edgeStyleConfig?: {
+    propertyMappings: Record<string, any>;
+    defaultStyle?: any;
+    combinationRules?: any;
+  };
   nodeTypeConfig?: {
     defaultType?: string;
     types?: Array<{
@@ -107,7 +113,7 @@ interface RawGraphData {
       colorIndex: number;
     }>;
   };
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, any>;
 }
 
 /**
@@ -141,7 +147,7 @@ export function parseGraphJSON(
   const metadata = extractMetadata(data);
   
   // Determine which grouping to use
-  const grouping = selectGrouping(data, selectedGrouping ?? null);
+  const grouping = selectGrouping(data, selectedGrouping);
   
   // Parse nodes first (base graph nodes)
   parseNodes(data.nodes, state);
@@ -465,20 +471,14 @@ export function validateGraphJSON(jsonData: RawGraphData | string): ValidationRe
  * @param data - Input data to validate
  * @returns true if data has valid graph structure (nodes and edges arrays)
  */
-function isValidGraphData(data: unknown): data is RawGraphData {
-  const d = data as { nodes?: unknown; edges?: unknown } | null;
-  return !!d && typeof d === 'object' && Array.isArray(d.nodes) && Array.isArray(d.edges);
+function isValidGraphData(data: any): data is RawGraphData {
+  return data && 
+         typeof data === 'object' && 
+         Array.isArray(data.nodes) && 
+         Array.isArray(data.edges);
 }
 
-type ParserMetadata = {
-  nodeCount: number;
-  edgeCount: number;
-  hasHierarchies: boolean;
-  nodeTypeConfig?: RawGraphData['nodeTypeConfig'] | null;
-  [key: string]: unknown;
-};
-
-function extractMetadata(data: RawGraphData): ParserMetadata {
+function extractMetadata(data: RawGraphData): Record<string, any> {
   return {
     nodeCount: data.nodes.length,
     edgeCount: data.edges.length,
@@ -516,15 +516,12 @@ function parseNodes(nodes: RawNode[], state: VisualizationState): void {
   for (const rawNode of nodes) {
     try {
       // Extract immutable properties and filter out UI state fields
-  const { id, shortLabel, fullLabel, nodeType, semanticTags, position, type, expanded, collapsed, hidden, style, ...safeProps } = rawNode;
-  const idStr = String(id);
-  const short = typeof shortLabel === 'string' ? shortLabel : idStr;
-  const full = typeof fullLabel === 'string' ? fullLabel : short;
+      const { id, shortLabel, fullLabel, nodeType, semanticTags, position, type, expanded, collapsed, hidden, style, ...safeProps } = rawNode;
       
       state.addGraphNode(id, {
-        label: short, // Initial display label (starts with short, can be toggled to full)
-        shortLabel: short,
-        fullLabel: full,
+        label: shortLabel || id, // Initial display label (starts with short, can be toggled to full)
+        shortLabel: shortLabel || id,
+        fullLabel: fullLabel || shortLabel || id,
         style: NODE_STYLES.DEFAULT, // Default style - will be applied by bridge based on semanticTags
         // ✅ All nodes start visible - VisualizationState manages visibility
         hidden: false,
@@ -564,8 +561,8 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
   let containerCount = 0;
   
   // Find the requested hierarchy - check both new and old formats
-  let hierarchyChoice: RawHierarchyChoice | RawHierarchy | null = null;
-  let groupsData: Record<string, string[]> | null = null;
+  let hierarchyChoice: any = null;
+  let groupsData: any = null;
   
   // Check new format (hierarchyChoices)
   if (data.hierarchyChoices) {
@@ -578,7 +575,7 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
     if (oldHierarchy) {
       // Convert old format to expected structure
       hierarchyChoice = oldHierarchy;
-  groupsData = oldHierarchy.groups; // Old format has groups object
+      groupsData = oldHierarchy.groups; // Old format has groups object
     }
   }
   
@@ -607,11 +604,10 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
         }
       }
     }
-  } else if (hierarchyChoice && 'children' in hierarchyChoice && Array.isArray(hierarchyChoice.children)) {
+  } else if (hierarchyChoice.children) {
     // New format: hierarchical structure
     // Create containers from the hierarchy structure
-    type HierItem = { id: string; name?: string; children?: HierItem[] };
-    function createContainersFromHierarchy(hierarchyItems: HierItem[], parentId?: string): void {
+    function createContainersFromHierarchy(hierarchyItems: any[], parentId?: string): void {
       for (const item of hierarchyItems) {
         // Create the container
         const children: string[] = [];
@@ -646,13 +642,13 @@ function parseHierarchy(data: RawGraphData, groupingId: string, state: Visualiza
         
         // Recursively create child containers
         if (item.children && Array.isArray(item.children)) {
-          createContainersFromHierarchy(item.children as HierItem[], item.id);
+          createContainersFromHierarchy(item.children, item.id);
         }
       }
     }
     
     // Create all containers first
-    createContainersFromHierarchy((hierarchyChoice.children as unknown) as HierItem[]);
+    createContainersFromHierarchy(hierarchyChoice.children);
     
     // Assign nodes to containers based on nodeAssignments
     const assignments = data.nodeAssignments?.[groupingId];
@@ -708,7 +704,7 @@ function mapStyleConstant(
  * Create a RenderConfig from ParseResult metadata
  * This helper makes it easy to pass edgeStyleConfig and other metadata to FlowGraph
  */
-export function createRenderConfig(parseResult: ParseResult, baseConfig: Record<string, unknown> = {}): Record<string, unknown> {
+export function createRenderConfig(parseResult: ParseResult, baseConfig: any = {}): any {
   return {
     ...baseConfig,
     edgeStyleConfig: parseResult.metadata.edgeStyleConfig,

@@ -2,6 +2,32 @@
 
 This document outlines a safe, measurable plan to clean up the visualizer code under `docs/src/components/visualizer-v4` and related pages such as `docs/src/pages/vis.js`, without breaking functionality.
 
+## Status update — 2025-08-21
+
+- Tests: 61 files; 282 passed, 2 skipped; 0 failed. SSR warnings from antd’s useLayoutEffect are expected and non-fatal.
+- Smart-collapse guardrails: implemented with regression tests; fuzz/integration suites validate hyperEdge integrity during expand/collapse.
+- Legacy renderers: FloatingEdge/HyperEdge removed from active `edgeTypes`; files retained as deprecated stubs. Internal hyperEdge logic preserved for collapsed routing only.
+- ReactFlow bridge refactor: helpers extracted for containers/nodes/edges; parent-child `extent: 'parent'` and `parentMap` handling corrected; behavior parity confirmed by tests.
+- Page wiring/components: `docs/src/pages/vis.js` simplified to use the visualizer-v4 barrel; effect dependencies corrected. `FileDropZone` split into `JSONFormatDocumentation` and `CompleteExampleDisplay` subcomponents.
+- Config consolidation: `DEFAULT_RENDER_CONFIG` centralized in `shared/config.ts` with a typed wrapper in `render/config.ts`. Edge styling example updated to unified standard edges.
+- ESLint/TypeScript hygiene (in-scope): targeted fixes and scoped disables where needed; no `lint` script currently defined in `docs/package.json`.
+- Dev reports: refreshed under `docs/src/components/visualizer-v4/dev_reports/` via `dev_reports/refresh.sh`:
+  - ts-prune.txt — refreshed
+  - madge.json — refreshed
+  - size-top40.txt — refreshed
+  - knip.json — refreshed (knip may exit non-zero for findings; this is informational)
+
+Quality gates snapshot
+- Build: Vitest executed successfully within docs; no codegen/build regressions observed in tests.
+- Lint/Typecheck: TypeScript compiled during tests; scoped ESLint clean in the modified areas.
+- Tests: PASS (see counts above). Comprehensive fuzz tests remain skipped unless `ENABLE_FUZZ_TESTS=true`.
+
+Optional low-risk next steps
+- Add a docs-level npm `lint` script and (optionally) wire CI to run it.
+- Extract inline styles from `FileDropZone` into a small styles module.
+- Consider safe trims/splitting in `layout/ELKStateManager.ts` without behavior changes.
+- Triage knip findings now that the report is fresh (whitelist expected dynamic/imported items).
+
 ## Status update — 2025-08-20
 
 - Tests: green (npm test clean).
@@ -24,7 +50,7 @@ Next steps
 - Triage knip findings and either whitelist expected items (docs plugins, optional reporters) or address truly unused files/exports.
 - Use size-top40 to guide file-splitting work (FlowGraph, VisualizationState, JSONParser) per Phases 4–5 below.
 - Keep dev reports fresh after meaningful changes (see paths above) and ensure lint stays clean. A helper script is available at `docs/src/components/visualizer-v4/dev_reports/refresh.sh`.
-- Legacy file deletion (safe, not referenced by runtime):
+- Legacy file deletion (safe, not referenced by runtime) — currently deferred: files are stubbed to preserve behavior while remaining out of active use.
   - `docs/src/components/visualizer-v4/render/FloatingEdge.tsx`
   - `docs/src/components/visualizer-v4/render/HyperEdge.tsx`
   - `docs/src/components/visualizer-v4/render/ReactFlowConverter.ts`

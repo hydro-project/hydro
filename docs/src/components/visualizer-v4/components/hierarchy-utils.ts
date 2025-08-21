@@ -6,19 +6,17 @@
  */
 
 import { HierarchyTreeNode } from './types';
-import type { VisualizationState } from '../core/VisualizationState';
-import type { ExternalContainer as Container } from '../shared/types';
 
 /**
  * Build hierarchy tree from VisualizationState
  */
-export function buildHierarchyTree(visualizationState: VisualizationState | null | undefined, grouping: string = 'default'): HierarchyTreeNode[] {
+export function buildHierarchyTree(visualizationState: any, grouping: string = 'default'): HierarchyTreeNode[] {
   if (!visualizationState) {
     return [];
   }
 
   // Get all visible containers and build a map
-  const containers: ReadonlyArray<Container> = visualizationState.visibleContainers || [];
+  const containers = visualizationState.visibleContainers || [];
   const containerMap = new Map<string, {
     id: string;
     label: string;
@@ -28,10 +26,10 @@ export function buildHierarchyTree(visualizationState: VisualizationState | null
   }>();
 
   // Build initial container map with parent relationships
-  containers.forEach((container: Container) => {
+  containers.forEach((container: any) => {
     // Find parent by checking which container has this container as a child
     let parentId: string | null = null;
-  for (const potentialParent of containers) {
+    for (const potentialParent of containers) {
       if (potentialParent.id !== container.id && 
           potentialParent.children && 
           potentialParent.children.has && 
@@ -43,7 +41,7 @@ export function buildHierarchyTree(visualizationState: VisualizationState | null
     
     containerMap.set(container.id, {
       id: container.id,
-  label: (container as unknown as { data?: { label?: string }; label?: string }).data?.label || (container as unknown as { label?: string }).label || container.id,
+      label: (container as any).data?.label || (container as any).label || container.id,
       children: [],
       nodeCount: container.children ? container.children.size : 0,
       parentId: parentId,
@@ -73,15 +71,15 @@ export function buildHierarchyTree(visualizationState: VisualizationState | null
 /**
  * Get collapsed containers set from VisualizationState
  */
-export function getCollapsedContainersSet(visualizationState: VisualizationState | null | undefined): Set<string> {
+export function getCollapsedContainersSet(visualizationState: any): Set<string> {
   if (!visualizationState) {
     return new Set();
   }
 
   return new Set(
-    (visualizationState.visibleContainers as ReadonlyArray<Container>)
-      .filter((container: Container) => container.collapsed)
-      .map((container: Container) => container.id)
+    visualizationState.visibleContainers
+      .filter((container: any) => container.collapsed)
+      .map((container: any) => container.id)
   );
 }
 
@@ -113,7 +111,7 @@ export function getExpandedKeysForHierarchyTree(
  * Validate that HierarchyTree state is synchronized with VisualizationState
  */
 export function validateHierarchyTreeSync(
-  visualizationState: VisualizationState,
+  visualizationState: any,
   hierarchyTree: HierarchyTreeNode[],
   collapsedContainers: Set<string>
 ): {

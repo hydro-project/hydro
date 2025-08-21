@@ -6,8 +6,6 @@
 
 import { COLOR_PALETTES } from './config';
 
-export type NodeColor = { primary: string; border: string; gradient: string };
-
 // Basic color utility functions
 export function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -32,7 +30,7 @@ export function getContrastColor(backgroundColor: string): string {
 }
 
 // Function expected by Legend component
-export function generateNodeColors(nodeTypes: string[], palette: string = 'Set3', _nodeTypeConfig?: unknown): NodeColor | Record<string, NodeColor> {
+export function generateNodeColors(nodeTypes: string[], palette: string = 'Set3', nodeTypeConfig?: any): any {
   // Get the selected palette, fallback to Set3 if not found
   const selectedPalette = COLOR_PALETTES[palette] || COLOR_PALETTES['Set3'] || [];
   
@@ -51,7 +49,7 @@ export function generateNodeColors(nodeTypes: string[], palette: string = 'Set3'
   }
   
   // Multiple node types - return a map
-  const colors: Record<string, NodeColor> = {};
+  const colors: Record<string, any> = {};
   nodeTypes.forEach((nodeType, index) => {
     const paletteColor = selectedPalette[index % selectedPalette.length] || { primary: '#8dd3c7' };
     colors[nodeType] = {

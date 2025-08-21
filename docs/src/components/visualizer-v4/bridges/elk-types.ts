@@ -9,7 +9,7 @@ export interface ElkNode {
   width?: number;
   height?: number;
   children?: ElkNode[];
-  layoutOptions?: Record<string, string>;
+  layoutOptions?: Record<string, any>;
 }
 
 export interface ElkEdgeSection {
@@ -31,7 +31,7 @@ export interface ElkEdge {
 
 export interface ElkGraph {
   id: string;
-  layoutOptions?: Record<string, string>;
+  layoutOptions?: Record<string, any>;
   children?: ElkNode[];
   edges?: ElkEdge[];
 }

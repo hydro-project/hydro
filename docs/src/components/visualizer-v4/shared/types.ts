@@ -7,12 +7,7 @@ export interface ExternalContainer {
   hidden: boolean;
   children: Set<string>;
   layout?: LayoutState;
-  // Optional positional/dimension fields used by layout/bridges
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 /**
  * @fileoverview Type definitions for the Vis component
@@ -34,7 +29,7 @@ export interface Position {
 export interface LayoutState {
   position?: Position;
   dimensions?: Dimensions;
-  sections?: unknown[]; // ELK edge routing sections
+  sections?: any[]; // ELK edge routing sections
   elkFixed?: boolean; // Whether ELK should fix this element's position
   elkLayoutOptions?: Record<string, string>; // ELK-specific layout options
 }
@@ -45,7 +40,7 @@ export interface GraphNode {
   style: NodeStyle;
   hidden: boolean;
   layout?: LayoutState; // Layout-related properties
-  [key: string]: unknown; // Allow custom properties
+  [key: string]: any; // Allow custom properties
 }
 
 export interface GraphEdge {
@@ -64,12 +59,7 @@ export interface Container {
   hidden: boolean;
   children: Set<string>;
   layout?: LayoutState; // Layout-related properties
-  // Optional positional/dimension fields used by layout/bridges
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  [key: string]: unknown; // Allow custom properties
+  [key: string]: any; // Allow custom properties
 }
 
 export interface HyperEdge {
@@ -78,7 +68,7 @@ export interface HyperEdge {
   target: string;
   style: EdgeStyle;
   type: 'hyper';
-  [key: string]: unknown; // Allow custom properties
+  [key: string]: any; // Allow custom properties
 }
 
 // ============ Input Types for Methods ============
@@ -88,7 +78,7 @@ export interface CreateNodeProps {
   style?: NodeStyle;
   hidden?: boolean;
   layout?: LayoutState;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 export interface CreateEdgeProps {
@@ -97,7 +87,7 @@ export interface CreateEdgeProps {
   style?: EdgeStyle;
   hidden?: boolean;
   layout?: LayoutState;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 export interface CreateContainerProps {
@@ -106,7 +96,7 @@ export interface CreateContainerProps {
   hidden?: boolean;
   children?: string[];
   layout?: LayoutState;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // Re-export style types for convenience in other modules
@@ -115,7 +105,7 @@ export type { NodeStyle, EdgeStyle, ContainerStyle };
 // ============ Parser Types ============
 
 export interface ParseResult {
-  state: VisualizationState; // Parsed visualization state
+  state: any; // Will be replaced with actual VisualizationState type
   metadata: {
     selectedGrouping: string | null;
     nodeCount: number;

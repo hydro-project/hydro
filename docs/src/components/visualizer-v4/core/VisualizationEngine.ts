@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @fileoverview Visualization Engine - Orchestrates the entire visualization pipeline
  * 

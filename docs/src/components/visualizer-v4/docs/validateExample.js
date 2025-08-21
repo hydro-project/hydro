@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-var-requires */
-/* eslint-disable no-console */
 
 /**
  * Example Validation Script
@@ -35,6 +33,7 @@ function validateExampleStructure() {
     
     // Basic structural validation
     const requiredFields = ['nodes', 'edges'];
+    const optionalFields = ['hierarchyChoices', 'nodeAssignments', 'edgeStyleConfig'];
     
     for (const field of requiredFields) {
       if (!exampleStr.includes(`"${field}"`)) {

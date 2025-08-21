@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Layout Operations - Handles layout-related operations
  * 
@@ -216,20 +215,12 @@ export class LayoutOperations {
   /**
    * Get edge layout information (sections, routing)
    */
-  getEdgeLayout(edgeId: string): { 
-    sections?: Array<{
-      startPoint?: { x: number; y: number };
-      endPoint?: { x: number; y: number };
-      bendPoints?: Array<{ x: number; y: number }>;
-      [key: string]: any;
-    }>;
-    [key: string]: any;
-  } | undefined {
+  getEdgeLayout(edgeId: string): { sections?: any[]; [key: string]: any } | undefined {
     const edge = this.state._collections.graphEdges.get(edgeId);
     if (!edge) return undefined;
     
     return {
-  sections: edge.sections || [],
+      sections: edge.sections || [],
       ...edge
     };
   }
@@ -237,15 +228,7 @@ export class LayoutOperations {
   /**
    * Set edge layout information
    */
-  setEdgeLayout(edgeId: string, layout: { 
-    sections?: Array<{
-      startPoint?: { x: number; y: number };
-      endPoint?: { x: number; y: number };
-      bendPoints?: Array<{ x: number; y: number }>;
-      [key: string]: any;
-    }>;
-    [key: string]: any;
-  }): void {
+  setEdgeLayout(edgeId: string, layout: { sections?: any[]; [key: string]: any }): void {
     const edge = this.state._collections.graphEdges.get(edgeId);
     if (!edge) return;
     

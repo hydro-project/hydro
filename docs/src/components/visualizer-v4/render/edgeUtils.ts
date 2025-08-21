@@ -5,12 +5,10 @@
  */
 
 // Placeholder edge utilities
-import type { Edge } from '@xyflow/react';
-
-export function processEdges<T extends Edge = Edge>(edges: T[]): T[] {
+export function processEdges(edges: any[]): any[] {
   return edges;
 }
 
-export function validateEdges(edges: unknown): edges is Edge[] {
+export function validateEdges(edges: any[]): boolean {
   return Array.isArray(edges);
 }

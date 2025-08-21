@@ -3,12 +3,7 @@
  */
 
 /** Calculate intersection point on node rectangle */
-type RFLikeNode = {
-  measured?: { width?: number; height?: number };
-  internals?: { positionAbsolute?: { x?: number; y?: number } };
-};
-
-export function getNodeIntersection(intersectionNode: RFLikeNode, targetNode: RFLikeNode): { x: number; y: number } {
+export function getNodeIntersection(intersectionNode: any, targetNode: any) {
   const {
     measured: { width: intersectionNodeWidth = 120, height: intersectionNodeHeight = 40 },
     internals: { positionAbsolute: intersectionNodePosition },
@@ -67,7 +62,7 @@ export function getNodeIntersection(intersectionNode: RFLikeNode, targetNode: RF
 }
 
 /** Determine which side of a node a point lies on */
-export function getEdgePosition(node: RFLikeNode, intersectionPoint: { x?: number; y?: number }): 'left' | 'right' | 'top' | 'bottom' {
+export function getEdgePosition(node: any, intersectionPoint: any) {
   const nodePos = node.internals?.positionAbsolute;
   const nodeWidth = node.measured?.width || 120;
   const nodeHeight = node.measured?.height || 40;

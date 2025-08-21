@@ -49,8 +49,7 @@ export function InfoPanel({
     
     // Collect all unique node types from visible nodes
     visualizationState.visibleNodes.forEach(node => {
-      const anyNode = node as unknown as { nodeType?: string; style?: unknown };
-      const nodeType = anyNode.nodeType || (typeof anyNode.style === 'string' ? anyNode.style : 'default');
+      const nodeType = (node as any).nodeType || (node as any).style || 'default';
       nodeTypes.add(nodeType);
     });
     
@@ -100,7 +99,7 @@ export function InfoPanel({
       
       containerMap.set(container.id, {
         id: container.id,
-        label: (container as unknown as { data?: { label?: string }; label?: string }).data?.label || (container as unknown as { label?: string }).label || container.id, // Try data.label, then label, then fallback to id
+        label: (container as any).data?.label || (container as any).label || container.id, // Try data.label, then label, then fallback to id
         children: [],
         nodeCount: container.children ? container.children.size : 0,
         parentId: parentId,

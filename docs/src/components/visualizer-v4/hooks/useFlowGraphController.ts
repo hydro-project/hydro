@@ -27,11 +27,11 @@ export interface UseFlowGraphControllerReturn {
   refreshLayout: () => Promise<void>;
   fitOnce: () => void;
   // Handlers
-  onNodeClick: (event: unknown, node: unknown) => void;
-  onEdgeClick: (event: unknown, edge: unknown) => void;
-  onNodeDrag: (event: unknown, node: unknown) => void;
-  onNodeDragStop: (event: unknown, node: { id: string; position: { x: number; y: number } }) => void;
-  onNodesChange: (changes: import('@xyflow/react').NodeChange[]) => void;
+  onNodeClick: (event: any, node: any) => void;
+  onEdgeClick: (event: any, edge: any) => void;
+  onNodeDrag: (event: any, node: any) => void;
+  onNodeDragStop: (event: any, node: any) => void;
+  onNodesChange: (changes: any[]) => void;
 }
 
 export function useFlowGraphController({
@@ -59,6 +59,7 @@ export function useFlowGraphController({
   // Create bridge and engine (stable instances)
   const bridge = useMemo(() => new ReactFlowBridge(), []);
   const engine = useMemo(() => createVisualizationEngine(visualizationState, {
+    autoLayout: true,
     enableLogging: false,
     layoutConfig: layoutConfig,
   }), [visualizationState]);
@@ -207,19 +208,19 @@ export function useFlowGraphController({
   }, [visualizationState, applyManualPositions]);
 
   // Event handlers
-  const onNodeClick = useCallback((event: unknown, node: unknown) => {
+  const onNodeClick = useCallback((event: any, node: any) => {
     eventHandlers?.onNodeClick?.(event, node);
   }, [eventHandlers]);
 
-  const onEdgeClick = useCallback((event: unknown, edge: unknown) => {
+  const onEdgeClick = useCallback((event: any, edge: any) => {
     eventHandlers?.onEdgeClick?.(event, edge);
   }, [eventHandlers]);
 
-  const onNodeDrag = useCallback((event: unknown, node: unknown) => {
+  const onNodeDrag = useCallback((event: any, node: any) => {
     eventHandlers?.onNodeDrag?.(event, node);
   }, [eventHandlers]);
 
-  const onNodeDragStop = useCallback((event: unknown, node: { id: string; position: { x: number; y: number } }) => {
+  const onNodeDragStop = useCallback((event: any, node: any) => {
     visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
 
     if (config.fitView !== false) {
@@ -239,11 +240,10 @@ export function useFlowGraphController({
     }
   }, [visualizationState, config.fitView, fitView]);
 
-  const onNodesChange = useCallback((changes: import('@xyflow/react').NodeChange[]) => {
+  const onNodesChange = useCallback((changes: any[]) => {
     setReactFlowData(prev => {
       if (!prev) return prev;
-      const updatedNodes = applyNodeChanges(changes, prev.nodes);
-      return { ...prev, nodes: updatedNodes } as ReactFlowData;
+      return { ...prev, nodes: applyNodeChanges(changes, prev.nodes) };
     });
   }, []);
 

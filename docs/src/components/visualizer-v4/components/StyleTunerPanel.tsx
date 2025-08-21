@@ -181,7 +181,7 @@ export function StyleTunerPanel({
           <select
             value={local.containerShadow || 'LIGHT'}
             style={inputStyle}
-            onChange={(e) => update({ containerShadow: e.target.value as 'NONE' | 'LIGHT' | 'MEDIUM' | 'LARGE' })}
+            onChange={(e) => update({ containerShadow: e.target.value as any })}
           >
             <option value="NONE">None</option>
             <option value="LIGHT">Light</option>

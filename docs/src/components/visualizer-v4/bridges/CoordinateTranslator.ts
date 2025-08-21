@@ -113,7 +113,7 @@ export class CoordinateTranslator {
    * @param visState - VisState instance to extract container info from
    * @returns Container info for coordinate translation
    */
-  static getContainerInfo(containerId: string, visState: { getContainer: (id: string) => { layout?: { position?: { x?: number; y?: number }; dimensions?: { width?: number; height?: number } } } | undefined }): ContainerInfo | undefined {
+  static getContainerInfo(containerId: string, visState: any): ContainerInfo | undefined {
     const container = visState.getContainer(containerId);
     if (!container || !container.layout) {
       return undefined;

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Visualization State Invari  validateInvariants(): ValidationResult {
     const errors: ValidationError[] = [];
