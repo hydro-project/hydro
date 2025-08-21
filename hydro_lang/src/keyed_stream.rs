@@ -84,10 +84,13 @@ where
     L: Location<'a>,
     B: Boundedness,
 {
-    let is_bounded = B::is_bounded();
-    let updated_stream = underlying
-        .update_metadata_for_keyed_conversion::<K, U>(StreamKind::KeyedStream, is_bounded);
-    KeyedStream::new(updated_stream)
+    {
+        let mut node = underlying.ir_node.borrow_mut();
+        let metadata = node.metadata_mut();
+        metadata.stream_kind = Some(StreamKind::KeyedStream);
+        metadata.is_bounded = B::is_bounded();
+    }
+    KeyedStream::new(underlying)
 }
 
 /// Helper function to create a KeyedStream from a transformed underlying stream,
@@ -99,11 +102,13 @@ where
     L: Location<'a>,
     B: Boundedness,
 {
-    let is_bounded = B::is_bounded();
-
-    let updated_stream = underlying
-        .update_metadata_for_keyed_conversion::<K, V>(StreamKind::KeyedStream, is_bounded);
-    KeyedStream::new(updated_stream)
+    {
+        let mut node = underlying.ir_node.borrow_mut();
+        let metadata = node.metadata_mut();
+        metadata.stream_kind = Some(StreamKind::KeyedStream);
+        metadata.is_bounded = B::is_bounded();
+    }
+    KeyedStream::new(underlying)
 }
 impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R> {
     /// Create a new KeyedStream from an underlying stream.

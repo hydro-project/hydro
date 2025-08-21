@@ -284,7 +284,6 @@ where
             _phantom: PhantomData,
         }
     }
-    }
 
     /// Produces a stream based on invoking `f` on each element.
     /// If you do not want to modify the stream and instead only want to view
