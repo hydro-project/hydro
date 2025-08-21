@@ -812,7 +812,6 @@ where {
 
         // Update the metadata to reflect the new ordering guarantee if possible
         // This ensures graph rendering can show the correct edge type when types are known
-        // Note: With simplified StreamKind enum, we don't store ordering metadata directly
 
         Stream::new(self.location.clone(), orig_ir_node)
     }
@@ -838,7 +837,6 @@ where {
 
         // Update the metadata to reflect the new retries guarantee if possible
         // This ensures graph rendering can show the correct edge type when types are known
-        // Note: With simplified StreamKind enum, we don't store retries metadata directly
 
         Stream::new(self.location.clone(), orig_ir_node)
     }

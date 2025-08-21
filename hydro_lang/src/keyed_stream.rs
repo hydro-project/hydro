@@ -126,7 +126,6 @@ where {
         let underlying = self.underlying;
 
         // Update the metadata to reflect the new ordering guarantee if possible
-        // Note: With simplified StreamKind enum, we don't store ordering metadata directly
 
         KeyedStream {
             underlying,

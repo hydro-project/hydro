@@ -29,7 +29,6 @@ use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
 
 /// Represents the kind of stream/collection type for metadata
-/// Simplified to align with existing Hydro type system
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreamKind {
     /// Regular stream - ordering/retries determined by type parameters
