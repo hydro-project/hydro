@@ -804,12 +804,7 @@ mod tests {
             let k_id = *name_to_id.get(k).unwrap();
             let v_id = v
                 .into_iter()
-                .map(|(inner_k, inner_v)| {
-                    (
-                        *name_to_id.get(inner_k).unwrap(),
-                        inner_v.clone(),
-                    )
-                })
+                .map(|(inner_k, inner_v)| (*name_to_id.get(inner_k).unwrap(), inner_v.clone()))
                 .collect::<BTreeMap<_, _>>();
             (k_id, v_id)
         });
@@ -821,10 +816,7 @@ mod tests {
                     let v_id = v
                         .into_iter()
                         .map(|(inner_k, inner_v)| {
-                            (
-                                *name_to_id.get(inner_k).unwrap(),
-                                inner_v.clone(),
-                            )
+                            (*name_to_id.get(inner_k).unwrap(), inner_v.clone())
                         })
                         .collect::<BTreeMap<_, _>>();
                     (k_id, v_id)
