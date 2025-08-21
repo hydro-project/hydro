@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
+use crate::boundedness::Boundedness;
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::ir::{HydroNode, StreamKind};
 use crate::keyed_singleton::KeyedSingleton;
@@ -81,8 +82,9 @@ fn keyed_stream_with_updated_metadata<'a, K, U, L, B, O, R>(
 ) -> KeyedStream<K, U, L, B, O, R>
 where
     L: Location<'a>,
+    B: Boundedness,
 {
-    let is_bounded = std::any::type_name::<B>().contains("Bounded");
+    let is_bounded = B::is_bounded();
     let updated_stream = underlying
         .update_metadata_for_keyed_conversion::<K, U>(StreamKind::KeyedStream, is_bounded);
     KeyedStream::new(updated_stream)
@@ -95,14 +97,15 @@ fn keyed_stream_with_updated_same_type_metadata<'a, K, V, L, B, O, R>(
 ) -> KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a>,
+    B: Boundedness,
 {
-    let is_bounded = std::any::type_name::<B>().contains("Bounded");
+    let is_bounded = B::is_bounded();
 
     let updated_stream = underlying
         .update_metadata_for_keyed_conversion::<K, V>(StreamKind::KeyedStream, is_bounded);
     KeyedStream::new(updated_stream)
 }
-impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R> {
     /// Create a new KeyedStream from an underlying stream.
     /// This constructor is primarily intended for code generation.
     pub fn new(underlying: Stream<(K, V), L, B, NoOrder, R>) -> Self {
@@ -523,7 +526,7 @@ impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, U
     }
 }
 
-impl<'a, K, V, L, B> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
+impl<'a, K, V, L, B: Boundedness> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -666,7 +669,10 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B>
+    where
+        B: Boundedness,
+    {
         let init = init.splice_fn0_ctx(&self.underlying.location).into();
         let comb = comb
             .splice_fn2_borrow_mut_ctx(&self.underlying.location)
@@ -681,7 +687,7 @@ where
                 .location
                 .new_node_metadata_detailed::<(K, A)>(
                     Some(StreamKind::Singleton),
-                    std::any::type_name::<B>().contains("Bounded"),
+                    B::is_bounded(),
                 ),
         };
 
@@ -717,7 +723,10 @@ where
     pub fn reduce<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B>
+    where
+        B: Boundedness,
+    {
         let f = comb
             .splice_fn2_borrow_mut_ctx(&self.underlying.location)
             .into();
@@ -730,7 +739,7 @@ where
                 .location
                 .new_node_metadata_detailed::<(K, V)>(
                     Some(StreamKind::Singleton),
-                    std::any::type_name::<B>().contains("Bounded"),
+                    B::is_bounded(),
                 ),
         };
 
@@ -772,6 +781,7 @@ where
     where
         O: Clone,
         F: Fn(&mut V, V) + 'a,
+        B: Boundedness,
     {
         let other: Optional<O, Tick<L::Root>, Bounded> = other.into();
         check_matching_location(&self.underlying.location.root(), other.location.outer());
@@ -790,7 +800,7 @@ where
                     .location
                     .new_node_metadata_detailed::<(K, V)>(
                         Some(StreamKind::Singleton),
-                        std::any::type_name::<B>().contains("Bounded"),
+                        B::is_bounded(),
                     ),
             },
         );
@@ -799,7 +809,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B, O> KeyedStream<K, V, L, B, O, ExactlyOnce>
+impl<'a, K, V, L, B: Boundedness, O> KeyedStream<K, V, L, B, O, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -835,7 +845,10 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B>
+    where
+        B: Boundedness,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .fold(init, comb)
     }
@@ -869,7 +882,10 @@ where
     pub fn reduce_commutative<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B>
+    where
+        B: Boundedness,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .reduce(comb)
     }
@@ -912,7 +928,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B, R> KeyedStream<K, V, L, B, TotalOrder, R>
+impl<'a, K, V, L, B: Boundedness, R> KeyedStream<K, V, L, B, TotalOrder, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -948,7 +964,10 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B>
+    where
+        B: Boundedness,
+    {
         self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .fold(init, comb)
     }
@@ -982,7 +1001,10 @@ where
     pub fn reduce_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B>
+    where
+        B: Boundedness,
+    {
         self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce(comb)
     }
@@ -1025,7 +1047,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B, O, R> KeyedStream<K, V, L, B, O, R>
+impl<'a, K, V, L, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -1061,8 +1083,11 @@ where
     pub fn fold_commutative_idempotent<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+        comb: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedSingleton<K, A, L, B>
+    where
+        B: Boundedness,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .fold(init, comb)
@@ -1098,7 +1123,10 @@ where
     pub fn reduce_commutative_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B>
+    where
+        B: Boundedness,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce(comb)
@@ -1167,6 +1195,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// ```
     pub fn filter_key_not_in<O2, R2>(self, other: Stream<K, L, Bounded, O2, R2>) -> Self {
         KeyedStream {
             underlying: self.entries().anti_join(other),
@@ -1175,7 +1204,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B, O, R> KeyedStream<K, V, L, B, O, R>
+impl<'a, K, V, L, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {

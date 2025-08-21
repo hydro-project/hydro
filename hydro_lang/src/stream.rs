@@ -1981,7 +1981,7 @@ where
     pub fn fold_keyed_commutative_idempotent<A, I, F>(
         self,
         init: impl IntoQuotedMut<'a, I, Tick<L>>,
-        comb: impl IntoQuotedMut<'a, F, Tick<L>>,
+        comb: impl IntoQuotedMut<'a, F, Tick<L>> + Copy,
     ) -> Stream<(K, A), Tick<L>, Bounded, NoOrder, ExactlyOnce>
     where
         I: Fn() -> A + 'a,
