@@ -1,0 +1,1 @@
+../compile-fail/surface_partition_badarg.rs

@@ -1,0 +1,1 @@
+../compile-fail/surface_forwardref_chain_single.rs

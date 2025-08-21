@@ -1,0 +1,11 @@
+error: Operator uses `'tick` persistence, which is not allowed within a `loop { ... }` context.
+ --> tests/compile-fail-stable/surface_loop_badlifetime.rs:5:36
+  |
+5 |             a -> batch() -> fold::<'tick>(|| 0, |old: &mut _, val| {
+  |                                    ^^^^^
+
+error: Operator uses `'static` persistence, which is not allowed within a `loop { ... }` context.
+ --> tests/compile-fail-stable/surface_loop_badlifetime.rs:9:36
+  |
+9 |             a -> batch() -> fold::<'static>(|| 0, |old: &mut _, val| {
+  |                                    ^^^^^^^

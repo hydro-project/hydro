@@ -1,0 +1,5 @@
+error: Argument must be a two-argument closure expression
+ --> tests/compile-fail-stable/surface_partition_badarg.rs:5:56
+  |
+5 |         my_partition = source_iter(0..10) -> partition(std::mem::drop);
+  |                                                        ^^^

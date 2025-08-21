@@ -1324,6 +1324,7 @@ dependencies = [
  "ref-cast",
  "regex",
  "rustc-hash 1.1.0",
+ "rustc_version 0.4.1",
  "sealed 0.5.0",
  "serde",
  "serde_json",

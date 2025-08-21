@@ -1,0 +1,11 @@
+error: expected 1 argument(s), found 0
+ --> tests/compile-fail-stable/surface_missing_args.rs:5:9
+  |
+5 |         source_iter() -> for_each();
+  |         ^^^^^^^^^^^
+
+error: expected 1 argument(s), found 0
+ --> tests/compile-fail-stable/surface_missing_args.rs:5:26
+  |
+5 |         source_iter() -> for_each();
+  |                          ^^^^^^^^

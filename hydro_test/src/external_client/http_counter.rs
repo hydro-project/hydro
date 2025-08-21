@@ -118,7 +118,7 @@ pub fn http_counter_server<'a, P>(
             // handle response for keys that are not in the map
             batch_of_get
                 .filter_key_not_in(lookup_result.entries().map(q!(|(_, (_, cid))| cid)))
-                .map(q!(|key| format!(
+                .map(q!(|key| (format!(
                     "HTTP/1.1 200 OK\r\n\
                         Content-Type: application/json\r\n\
                         Content-Length: {}\r\n\
@@ -127,7 +127,7 @@ pub fn http_counter_server<'a, P>(
                         {{\"key\": {}, \"count\": 0}}",
                     format!("{{\"key\": {}, \"count\": 0}}", key).len(),
                     key
-                )))
+                ))))
                 .entries(),
         )
         .into_keyed()

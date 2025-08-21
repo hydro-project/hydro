@@ -231,42 +231,6 @@ where {
         keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
     }
 
-    /// Creates a stream containing only the elements of each group stream that satisfy a predicate
-    /// `f`, preserving the order of the elements within the group.
-    ///
-    /// The closure `f` receives a reference `&T` rather than an owned value `T` because filtering does
-    /// not modify or take ownership of the values. If you need to modify the values while filtering
-    /// use [`KeyedStream::filter_map`] instead.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
-    ///     .into_keyed()
-    ///     .filter(q!(|&x| x > 2))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: [3], 2: [4] }
-    /// # for w in vec![(1, 3), (2, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedStream<K, V, L, B, O, R>
-    where
-        F: Fn(&V) -> bool + 'a,
-    {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
-        let base = self.underlying.filter(q!({
-            let orig = f;
-            move |(_k, v)| orig(v)
-        }));
-
-        keyed_stream_with_updated_same_type_metadata(base)
-    }
     /// Transforms each value by invoking `f` on each key-value pair. The resulting values are **not**
     /// re-grouped even they are tuples; instead they will be grouped under the original key.
     ///
@@ -299,16 +263,54 @@ where {
         K: Clone,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        let base = self.underlying.map(q!({
-            let orig = f;
-            move |(k, v)| {
-                let out = orig((k.clone(), v));
-                (k, out)
-            }
-        }));
-        keyed_stream_with_updated_metadata::<K, U, L, B, O, R>(base)
+        KeyedStream {
+            underlying: self.underlying.map(q!({
+                let orig = f;
+                move |(k, v)| {
+                    let out = orig((k.clone(), v));
+                    (k, out)
+                }
+            })),
+            _phantom_order: Default::default(),
+        }
     }
 
+    /// Creates a stream containing only the elements of each group stream that satisfy a predicate
+    /// `f`, preserving the order of the elements within the group.
+    ///
+    /// The closure `f` receives a reference `&V` rather than an owned value `v` because filtering does
+    /// not modify or take ownership of the values. If you need to modify the values while filtering
+    /// use [`KeyedStream::filter_map`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    ///     .filter(q!(|&x| x > 2))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [3], 2: [4] }
+    /// # for w in vec![(1, 3), (2, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedStream<K, V, L, B, O, R>
+    where
+        F: Fn(&V) -> bool + 'a,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let base = self.underlying.filter(q!({
+            let orig = f;
+            move |(_k, v)| orig(v)
+        }));
+
+        keyed_stream_with_updated_same_type_metadata(base)
+    }
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
     /// `f` (which receives the key-value tuple), preserving the order of the elements within the group.
     ///
@@ -340,12 +342,10 @@ where {
     where
         F: Fn(&(K, V)) -> bool + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
-        let base = self.underlying.filter(q!({
-            let orig = f;
-            move |kv| orig(kv)
-        }));
-        keyed_stream_with_updated_same_type_metadata(base)
+        KeyedStream {
+            underlying: self.underlying.filter(f),
+            _phantom_order: Default::default(),
+        }
     }
 
     /// An operator that both filters and maps each value, with keys staying the same.
@@ -514,13 +514,12 @@ impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, U
     /// # }
     /// # }));
     /// ```
-    pub fn interleave<O2, R2>(
+    pub fn interleave<O2, R2: MinRetries<R>>(
         self,
         other: KeyedStream<K, V, L, Unbounded, O2, R2>,
     ) -> KeyedStream<K, V, L, Unbounded, NoOrder, R::Min>
     where
-        R: MinRetries<R2, Min = <R2 as MinRetries<R>>::Min>,
-        R2: MinRetries<R>,
+        R: MinRetries<R2, Min = R2::Min>,
     {
         self.entries().interleave(other.entries()).into_keyed()
     }

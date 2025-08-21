@@ -1,0 +1,17 @@
+error: `union` must have exactly 1 output(s), actually has 0.
+ --> tests/compile-fail-stable/surface_degenerate_merge.rs:5:9
+  |
+5 |         union();
+  |         ^^^^^
+
+warning: use of deprecated struct `main::diagnostic_6596552317419952228::Warning`: `union` should have at least 2 input(s), actually has 0.
+ --> tests/compile-fail-stable/surface_degenerate_merge.rs:5:9
+  |
+5 |         union();
+  |         ^^^^^
+  |
+note: the lint level is defined here
+ --> tests/compile-fail-stable/surface_degenerate_merge.rs:5:9
+  |
+5 |         union();
+  |         ^^^^^

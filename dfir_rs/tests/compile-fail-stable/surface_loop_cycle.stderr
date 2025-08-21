@@ -1,0 +1,23 @@
+error: Operator forms an illegal cycle within a `loop { ... }` block. Use `next_iteration()` to pass data across loop iterations. (1/4)
+ --> tests/compile-fail-stable/surface_loop_cycle.rs:4:31
+  |
+4 |             a = identity() -> identity() -> identity() -> identity();
+  |                               ^^^^^^^^
+
+error: Operator forms an illegal cycle within a `loop { ... }` block. Use `next_iteration()` to pass data across loop iterations. (2/4)
+ --> tests/compile-fail-stable/surface_loop_cycle.rs:4:45
+  |
+4 |             a = identity() -> identity() -> identity() -> identity();
+  |                                             ^^^^^^^^
+
+error: Operator forms an illegal cycle within a `loop { ... }` block. Use `next_iteration()` to pass data across loop iterations. (3/4)
+ --> tests/compile-fail-stable/surface_loop_cycle.rs:4:59
+  |
+4 |             a = identity() -> identity() -> identity() -> identity();
+  |                                                           ^^^^^^^^
+
+error: Operator forms an illegal cycle within a `loop { ... }` block. Use `next_iteration()` to pass data across loop iterations. (4/4)
+ --> tests/compile-fail-stable/surface_loop_cycle.rs:4:17
+  |
+4 |             a = identity() -> identity() -> identity() -> identity();
+  |                 ^^^^^^^^

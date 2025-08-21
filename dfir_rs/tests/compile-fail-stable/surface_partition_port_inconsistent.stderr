@@ -1,0 +1,11 @@
+error: Output ports from `partition` must either be all integer indices or all identifiers.
+  --> tests/compile-fail-stable/surface_partition_port_inconsistent.rs:14:22
+   |
+14 |         my_partition[0] -> for_each(std::mem::drop);
+   |                      ^
+
+error: Output ports from `partition` must either be all integer indices or all identifiers.
+  --> tests/compile-fail-stable/surface_partition_port_inconsistent.rs:13:22
+   |
+13 |         my_partition[evens] -> for_each(std::mem::drop);
+   |                      ^^^^^

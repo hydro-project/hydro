@@ -1,0 +1,5 @@
+error: Operator `null(...)` exiting a loop context must be an un-windowing operator, but is not.
+ --> tests/compile-fail-stable/surface_loop_missing_unwindowing.rs:7:14
+  |
+7 |         b -> null();
+  |              ^^^^

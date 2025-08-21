@@ -1,0 +1,83 @@
+error: Name `b` forms or references an illegal self-referential cycle (1/13).
+ --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:5:13
+  |
+5 |         a = b -> k;
+  |             ^
+
+error: Name `c` forms or references an illegal self-referential cycle (2/13).
+ --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:7:13
+  |
+7 |         b = c;
+  |             ^
+
+error: Name `d` forms or references an illegal self-referential cycle (3/13).
+ --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:8:13
+  |
+8 |         c = d;
+  |             ^
+
+error: Name `e` forms or references an illegal self-referential cycle (4/13).
+ --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:9:13
+  |
+9 |         d = e;
+  |             ^
+
+error: Name `f` forms or references an illegal self-referential cycle (5/13).
+  --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:10:13
+   |
+10 |         e = f;
+   |             ^
+
+error: Name `g` forms or references an illegal self-referential cycle (6/13).
+  --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:11:13
+   |
+11 |         f = g;
+   |             ^
+
+error: Name `h` forms or references an illegal self-referential cycle (7/13).
+  --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:12:13
+   |
+12 |         g = h;
+   |             ^
+
+error: Name `i` forms or references an illegal self-referential cycle (8/13).
+  --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:13:13
+   |
+13 |         h = i;
+   |             ^
+
+error: Name `j` forms or references an illegal self-referential cycle (9/13).
+  --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:14:13
+   |
+14 |         i = j;
+   |             ^
+
+error: Name `a` forms or references an illegal self-referential cycle (10/13).
+  --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:15:13
+   |
+15 |         j = a;
+   |             ^
+
+error: Name `k` forms or references an illegal self-referential cycle (11/13).
+ --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:5:18
+  |
+5 |         a = b -> k;
+  |                  ^
+
+error: Name `l` forms or references an illegal self-referential cycle (12/13).
+  --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:17:13
+   |
+17 |         k = l;
+   |             ^
+
+error: Name `m` forms or references an illegal self-referential cycle (13/13).
+  --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:18:13
+   |
+18 |         l = m;
+   |             ^
+
+error: Name `k` forms or references an illegal self-referential cycle (1/1).
+ --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:5:18
+  |
+5 |         a = b -> k;
+  |                  ^

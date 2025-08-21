@@ -1,0 +1,1 @@
+../compile-fail/surface_syntax_paren_missingop.rs

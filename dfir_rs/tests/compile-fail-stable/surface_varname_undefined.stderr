@@ -1,0 +1,11 @@
+error: Cannot find name `hydro_lab`; name was never assigned.
+ --> tests/compile-fail-stable/surface_varname_undefined.rs:5:9
+  |
+5 |         hydro_lab -> for_each(std::mem::drop);
+  |         ^^^^^^^^^
+
+error: `for_each` must have exactly 1 input(s), actually has 0.
+ --> tests/compile-fail-stable/surface_varname_undefined.rs:5:22
+  |
+5 |         hydro_lab -> for_each(std::mem::drop);
+  |                      ^^^^^^^^

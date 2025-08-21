@@ -1,0 +1,5 @@
+error: Closure provided to `partition(..)` must have two arguments: the first argument is the item, and for named ports the second argument must contain a Rust 'slice pattern' to determine the port names and order. For example, the second argument could be `[foo, bar, baz]` for ports `foo`, `bar`, and `baz`.
+ --> tests/compile-fail-stable/surface_partition_badclosure.rs:5:57
+  |
+5 |         my_partition = source_iter(0..10) -> partition(|[a, b, c]| {
+  |                                                         ^^^^^^^^^

@@ -1,0 +1,5 @@
+error: Missing `::` before `<...>` generic arguments
+ --> tests/compile-fail-stable/surface_badgeneric_nocolon.rs:5:31
+  |
+5 |         source_iter(0..10) -> identity<usize>() -> for_each(std::mem::drop);
+  |                               ^^^^^^^^^^^^^^^

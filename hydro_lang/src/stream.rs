@@ -866,8 +866,7 @@ where
 {
     /// Given a stream with [`ExactlyOnce`] retry guarantees, weakens it to an arbitrary guarantee
     /// `R2`, which is safe because all guarantees are equal to or weaker than [`ExactlyOnce`]
-    pub fn weaker_retries<R2>(self) -> Stream<T, L, B, O, R2>
-where {
+    pub fn weaker_retries<R2>(self) -> Stream<T, L, B, O, R2> {
         self.assume_retries(
             nondet!(/** any retry ordering is the same or weaker than ExactlyOnce */),
         )
