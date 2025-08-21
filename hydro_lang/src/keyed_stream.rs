@@ -141,8 +141,7 @@ where {
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_retries<R2>(self, nondet: NonDet) -> KeyedStream<K, V, L, B, O, R2>
-where {
+    pub fn assume_retries<R2>(self, nondet: NonDet) -> KeyedStream<K, V, L, B, O, R2> {
         KeyedStream {
             underlying: self.underlying.assume_retries::<R2>(nondet),
             _phantom_order: PhantomData,
