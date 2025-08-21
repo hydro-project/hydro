@@ -11,8 +11,8 @@ pub use super::reactflow::HydroReactFlow;
 use crate::ir::{DebugExpr, HydroLeaf, HydroNode, HydroSource};
 
 /// Maximum number of upstream hops allowed when traversing the graph.
-/// The value 64 is chosen as a reasonable upper bound to prevent excessive recursion
-/// or stack overflow in deep or cyclic graphs. If this limit is exceeded, traversal
+/// The value 64 is chosen as a reasonable upper bound to prevent excessive iteration
+/// or infinite loops in deep or cyclic graphs. If this limit is exceeded, traversal
 /// will be aborted and an error may be returned to avoid infinite loops or performance issues.
 const MAX_UPSTREAM_HOPS: usize = 64;
 
@@ -334,8 +334,10 @@ fn find_semantic_label_upstream(node: &HydroNode) -> Option<String> {
                 // we can't hold the Ref across loop iterations. Instead, fall back to using metadata on the Tee itself
                 // and stop walking further if Tee doesn't have it.
                 // Try metadata on the tee one last time, then stop.
-                if let Some(lbl) = type_label_from_metadata(inner.0.borrow().metadata()) {
-                    return Some(lbl);
+                if let Ok(borrowed) = inner.0.try_borrow() {
+                    if let Some(lbl) = type_label_from_metadata(borrowed.metadata()) {
+                        return Some(lbl);
+                    }
                 }
                 return None;
             }

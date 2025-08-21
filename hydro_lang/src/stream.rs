@@ -13,8 +13,7 @@ use tokio::time::Instant;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{
-    HydroLeaf, HydroNode, OrderingMetadata, RetriesMetadata, StreamKind, StreamOrdering,
-    StreamRetries, TeeNode,
+    HydroLeaf, HydroNode, StreamKind, TeeNode,
 };
 use crate::keyed_stream::KeyedStream;
 use crate::location::tick::{Atomic, NoAtomic};
@@ -30,24 +29,12 @@ pub mod networking;
 /// affect the order of elements.
 pub enum TotalOrder {}
 
-impl OrderingMetadata for TotalOrder {
-    fn ordering_metadata() -> StreamOrdering {
-        StreamOrdering::TotalOrder
-    }
-}
-
 /// Marks the stream as having no order, which means that the order of
 /// elements may be affected by non-determinism.
 ///
 /// This restricts certain operators, such as `fold` and `reduce`, to only
 /// be used with commutative aggregation functions.
 pub enum NoOrder {}
-
-impl OrderingMetadata for NoOrder {
-    fn ordering_metadata() -> StreamOrdering {
-        StreamOrdering::NoOrder
-    }
-}
 
 /// Helper trait for determining the weakest of two orderings.
 #[sealed::sealed]
@@ -75,21 +62,9 @@ impl MinOrder<TotalOrder> for NoOrder {
 /// possibility of duplicates.
 pub enum ExactlyOnce {}
 
-impl RetriesMetadata for ExactlyOnce {
-    fn retries_metadata() -> StreamRetries {
-        StreamRetries::ExactlyOnce
-    }
-}
-
 /// Marks the stream as having non-deterministic message cardinality, which
 /// means that duplicates may occur, but messages will not be dropped.
 pub enum AtLeastOnce {}
-
-impl RetriesMetadata for AtLeastOnce {
-    fn retries_metadata() -> StreamRetries {
-        StreamRetries::AtLeastOnce
-    }
-}
 
 /// Helper trait for determining the weakest of two retry guarantees.
 #[sealed::sealed]

@@ -31,9 +31,9 @@ use crate::location::LocationId;
 /// Represents the kind of stream/collection type for metadata
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreamKind {
-    /// Regular stream - ordering/retries determined by type parameters
+    /// Regular stream
     Stream,
-    /// Keyed stream - ordering/retries determined by type parameters  
+    /// Keyed stream
     KeyedStream,
     /// Singleton collection
     Singleton,
@@ -57,16 +57,6 @@ pub enum StreamRetries {
     ExactlyOnce,
     /// Corresponds to AtLeastOnce phantom type
     AtLeastOnce,
-}
-
-/// Trait for extracting ordering metadata from type-level ordering markers
-pub trait OrderingMetadata {
-    fn ordering_metadata() -> StreamOrdering;
-}
-
-/// Trait for extracting retries metadata from type-level retries markers
-pub trait RetriesMetadata {
-    fn retries_metadata() -> StreamRetries;
 }
 
 /// Debug displays the type's tokens.
