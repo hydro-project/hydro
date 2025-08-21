@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/two_pc_bench.rs`."><title>two_pc_bench.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-20739d33.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0-nightly (10fa3c449 2025-04-26)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>two_pc_bench.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/two_pc_bench.rs`."><title>two_pc_bench.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-528d32ef.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.0-nightly (05f5a58e8 2025-08-19)" data-channel="nightly" data-search-js="search-5f24b69e.js" data-stringdex-js="stringdex-0e748618.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-1b37d467.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-b6a35c53.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>two_pc_bench.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>hydro_std::bench_client::{bench_client, print_bench_results};
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">super</span>::two_pc::{Coordinator, Participant};
@@ -158,91 +158,90 @@
 <a href=#158 id=158 data-nosnippet>158</a>        <span class="kw">let </span><span class="kw-2">mut </span>found = <span class="number">0</span>;
 <a href=#159 id=159 data-nosnippet>159</a>        <span class="kw">let </span><span class="kw-2">mut </span>client_out = client_out;
 <a href=#160 id=160 data-nosnippet>160</a>        <span class="kw">while let </span><span class="prelude-val">Some</span>(line) = client_out.recv().<span class="kw">await </span>{
-<a href=#161 id=161 data-nosnippet>161</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(caps) = re.captures(<span class="kw-2">&amp;</span>line) {
-<a href=#162 id=162 data-nosnippet>162</a>                <span class="kw">if let </span><span class="prelude-val">Ok</span>(lower) = f64::from_str(<span class="kw-2">&amp;</span>caps[<span class="number">1</span>]) {
-<a href=#163 id=163 data-nosnippet>163</a>                    <span class="kw">if </span>lower &gt; <span class="number">0.0 </span>{
-<a href=#164 id=164 data-nosnippet>164</a>                        <span class="macro">println!</span>(<span class="string">"Found throughput lower-bound: {}"</span>, lower);
-<a href=#165 id=165 data-nosnippet>165</a>                        found += <span class="number">1</span>;
-<a href=#166 id=166 data-nosnippet>166</a>                        <span class="kw">if </span>found == <span class="number">2 </span>{
-<a href=#167 id=167 data-nosnippet>167</a>                            <span class="kw">break</span>;
-<a href=#168 id=168 data-nosnippet>168</a>                        }
-<a href=#169 id=169 data-nosnippet>169</a>                    }
-<a href=#170 id=170 data-nosnippet>170</a>                }
-<a href=#171 id=171 data-nosnippet>171</a>            }
-<a href=#172 id=172 data-nosnippet>172</a>        }
-<a href=#173 id=173 data-nosnippet>173</a>    }
-<a href=#174 id=174 data-nosnippet>174</a>
-<a href=#175 id=175 data-nosnippet>175</a>    <span class="attr">#[test]
-<a href=#176 id=176 data-nosnippet>176</a>    </span><span class="kw">fn </span>two_pc_partition() {
-<a href=#177 id=177 data-nosnippet>177</a>        <span class="kw">let </span>builder = hydro_lang::FlowBuilder::new();
-<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span>coordinator = builder.process();
-<a href=#179 id=179 data-nosnippet>179</a>        <span class="kw">let </span>partitioned_coordinator = builder.cluster::&lt;()&gt;();
-<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let </span>participants = builder.cluster();
-<a href=#181 id=181 data-nosnippet>181</a>        <span class="kw">let </span>clients = builder.cluster();
-<a href=#182 id=182 data-nosnippet>182</a>        <span class="kw">let </span>client_aggregator = builder.process();
-<a href=#183 id=183 data-nosnippet>183</a>
-<a href=#184 id=184 data-nosnippet>184</a>        create_two_pc(<span class="kw-2">&amp;</span>coordinator, <span class="kw-2">&amp;</span>participants, <span class="kw-2">&amp;</span>clients, <span class="kw-2">&amp;</span>client_aggregator);
-<a href=#185 id=185 data-nosnippet>185</a>
-<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span><span class="kw-2">mut </span>cycle_data = HashMap::new();
-<a href=#187 id=187 data-nosnippet>187</a>        <span class="kw">let </span>built = builder
-<a href=#188 id=188 data-nosnippet>188</a>            .optimize_with(persist_pullup)
-<a href=#189 id=189 data-nosnippet>189</a>            .optimize_with(inject_id)
-<a href=#190 id=190 data-nosnippet>190</a>            .optimize_with(|ir| {
-<a href=#191 id=191 data-nosnippet>191</a>                cycle_data = cycle_source_to_sink_input(ir);
-<a href=#192 id=192 data-nosnippet>192</a>                inject_location(ir, <span class="kw-2">&amp;</span>cycle_data);
-<a href=#193 id=193 data-nosnippet>193</a>            })
-<a href=#194 id=194 data-nosnippet>194</a>            .into_deploy::&lt;HydroDeploy&gt;();
-<a href=#195 id=195 data-nosnippet>195</a>        <span class="kw">let </span><span class="kw-2">mut </span>ir = deep_clone(built.ir());
-<a href=#196 id=196 data-nosnippet>196</a>
-<a href=#197 id=197 data-nosnippet>197</a>        <span class="comment">// Coordinator
-<a href=#198 id=198 data-nosnippet>198</a>        </span><span class="kw">let </span>coordinator_partitioning =
-<a href=#199 id=199 data-nosnippet>199</a>            partitioning_analysis(<span class="kw-2">&amp;mut </span>ir, <span class="kw-2">&amp;</span>coordinator.id(), <span class="kw-2">&amp;</span>cycle_data);
-<a href=#200 id=200 data-nosnippet>200</a>        <span class="comment">// 7 and 26 are the op_ids of the input nodes from the participants to the coordinator. They will change if the coordinator's logic changes
-<a href=#201 id=201 data-nosnippet>201</a>        // 1 is the partitioning index of those inputs. Specifically, given the client sends (sender_id, payload) to the coordinator, we can partition on the entire payload
-<a href=#202 id=202 data-nosnippet>202</a>        </span><span class="kw">let </span>expected_coordinator_partitioning = <span class="macro">vec!</span>[BTreeMap::from([
-<a href=#203 id=203 data-nosnippet>203</a>            (<span class="number">5</span>, <span class="macro">vec!</span>[<span class="string">"1"</span>.to_string()]),
-<a href=#204 id=204 data-nosnippet>204</a>            (<span class="number">22</span>, <span class="macro">vec!</span>[<span class="string">"1"</span>.to_string()]),
-<a href=#205 id=205 data-nosnippet>205</a>        ])];
-<a href=#206 id=206 data-nosnippet>206</a>        <span class="kw">let </span>expected_coordinator_input_parents = BTreeMap::from([(<span class="number">2</span>, <span class="number">1</span>), (<span class="number">5</span>, <span class="number">4</span>), (<span class="number">22</span>, <span class="number">21</span>)]);
-<a href=#207 id=207 data-nosnippet>207</a>        <span class="macro">assert_eq!</span>(
-<a href=#208 id=208 data-nosnippet>208</a>            coordinator_partitioning,
-<a href=#209 id=209 data-nosnippet>209</a>            <span class="prelude-val">Some</span>((
-<a href=#210 id=210 data-nosnippet>210</a>                expected_coordinator_partitioning,
-<a href=#211 id=211 data-nosnippet>211</a>                expected_coordinator_input_parents
-<a href=#212 id=212 data-nosnippet>212</a>            ))
-<a href=#213 id=213 data-nosnippet>213</a>        );
-<a href=#214 id=214 data-nosnippet>214</a>        <span class="kw">let </span>coordinator_nodes_to_partition = nodes_to_partition(coordinator_partitioning).unwrap();
-<a href=#215 id=215 data-nosnippet>215</a>        <span class="kw">let </span>coordinator_partitioner = Partitioner {
-<a href=#216 id=216 data-nosnippet>216</a>            nodes_to_partition: coordinator_nodes_to_partition,
-<a href=#217 id=217 data-nosnippet>217</a>            num_partitions: <span class="number">3</span>,
-<a href=#218 id=218 data-nosnippet>218</a>            location_id: coordinator.id().raw_id(),
-<a href=#219 id=219 data-nosnippet>219</a>            new_cluster_id: <span class="prelude-val">Some</span>(partitioned_coordinator.id().raw_id()),
-<a href=#220 id=220 data-nosnippet>220</a>        };
-<a href=#221 id=221 data-nosnippet>221</a>        partition(<span class="kw-2">&amp;mut </span>ir, <span class="kw-2">&amp;</span>coordinator_partitioner);
-<a href=#222 id=222 data-nosnippet>222</a>
-<a href=#223 id=223 data-nosnippet>223</a>        <span class="comment">// Participants
-<a href=#224 id=224 data-nosnippet>224</a>        </span>cycle_data = cycle_source_to_sink_input(<span class="kw-2">&amp;mut </span>ir); <span class="comment">// Recompute since IDs have changed
-<a href=#225 id=225 data-nosnippet>225</a>        </span><span class="kw">let </span>participant_partitioning =
-<a href=#226 id=226 data-nosnippet>226</a>            partitioning_analysis(<span class="kw-2">&amp;mut </span>ir, <span class="kw-2">&amp;</span>participants.id(), <span class="kw-2">&amp;</span>cycle_data);
-<a href=#227 id=227 data-nosnippet>227</a>        <span class="comment">// Participants can partition on ANYTHING, since they only execute maps
-<a href=#228 id=228 data-nosnippet>228</a>        </span><span class="kw">let </span>expected_participant_partitionings = <span class="macro">vec!</span>[];
-<a href=#229 id=229 data-nosnippet>229</a>        <span class="kw">let </span>expected_participant_input_parents = BTreeMap::from([(<span class="number">5</span>, <span class="number">4</span>), (<span class="number">24</span>, <span class="number">23</span>)]);
-<a href=#230 id=230 data-nosnippet>230</a>        <span class="macro">assert_eq!</span>(
-<a href=#231 id=231 data-nosnippet>231</a>            participant_partitioning,
-<a href=#232 id=232 data-nosnippet>232</a>            <span class="prelude-val">Some</span>((
-<a href=#233 id=233 data-nosnippet>233</a>                expected_participant_partitionings,
-<a href=#234 id=234 data-nosnippet>234</a>                expected_participant_input_parents
-<a href=#235 id=235 data-nosnippet>235</a>            ))
-<a href=#236 id=236 data-nosnippet>236</a>        );
-<a href=#237 id=237 data-nosnippet>237</a>        <span class="kw">let </span>participant_nodes_to_partition = nodes_to_partition(participant_partitioning).unwrap();
-<a href=#238 id=238 data-nosnippet>238</a>        <span class="kw">let </span>participant_partitioner = Partitioner {
-<a href=#239 id=239 data-nosnippet>239</a>            nodes_to_partition: participant_nodes_to_partition,
-<a href=#240 id=240 data-nosnippet>240</a>            num_partitions: <span class="number">3</span>,
-<a href=#241 id=241 data-nosnippet>241</a>            location_id: participants.id().raw_id(),
-<a href=#242 id=242 data-nosnippet>242</a>            new_cluster_id: <span class="prelude-val">None</span>,
-<a href=#243 id=243 data-nosnippet>243</a>        };
-<a href=#244 id=244 data-nosnippet>244</a>        partition(<span class="kw-2">&amp;mut </span>ir, <span class="kw-2">&amp;</span>participant_partitioner);
-<a href=#245 id=245 data-nosnippet>245</a>
-<a href=#246 id=246 data-nosnippet>246</a>        <span class="macro">insta::assert_debug_snapshot!</span>(<span class="kw-2">&amp;</span>ir);
-<a href=#247 id=247 data-nosnippet>247</a>    }
-<a href=#248 id=248 data-nosnippet>248</a>}</code></pre></div></section></main></body></html>
+<a href=#161 id=161 data-nosnippet>161</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(caps) = re.captures(<span class="kw-2">&amp;</span>line)
+<a href=#162 id=162 data-nosnippet>162</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Ok</span>(lower) = f64::from_str(<span class="kw-2">&amp;</span>caps[<span class="number">1</span>])
+<a href=#163 id=163 data-nosnippet>163</a>                &amp;&amp; <span class="number">0.0 </span>&lt; lower
+<a href=#164 id=164 data-nosnippet>164</a>            {
+<a href=#165 id=165 data-nosnippet>165</a>                <span class="macro">println!</span>(<span class="string">"Found throughput lower-bound: {}"</span>, lower);
+<a href=#166 id=166 data-nosnippet>166</a>                found += <span class="number">1</span>;
+<a href=#167 id=167 data-nosnippet>167</a>                <span class="kw">if </span>found == <span class="number">2 </span>{
+<a href=#168 id=168 data-nosnippet>168</a>                    <span class="kw">break</span>;
+<a href=#169 id=169 data-nosnippet>169</a>                }
+<a href=#170 id=170 data-nosnippet>170</a>            }
+<a href=#171 id=171 data-nosnippet>171</a>        }
+<a href=#172 id=172 data-nosnippet>172</a>    }
+<a href=#173 id=173 data-nosnippet>173</a>
+<a href=#174 id=174 data-nosnippet>174</a>    <span class="attr">#[test]
+<a href=#175 id=175 data-nosnippet>175</a>    </span><span class="kw">fn </span>two_pc_partition() {
+<a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">let </span>builder = hydro_lang::FlowBuilder::new();
+<a href=#177 id=177 data-nosnippet>177</a>        <span class="kw">let </span>coordinator = builder.process();
+<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span>partitioned_coordinator = builder.cluster::&lt;()&gt;();
+<a href=#179 id=179 data-nosnippet>179</a>        <span class="kw">let </span>participants = builder.cluster();
+<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let </span>clients = builder.cluster();
+<a href=#181 id=181 data-nosnippet>181</a>        <span class="kw">let </span>client_aggregator = builder.process();
+<a href=#182 id=182 data-nosnippet>182</a>
+<a href=#183 id=183 data-nosnippet>183</a>        create_two_pc(<span class="kw-2">&amp;</span>coordinator, <span class="kw-2">&amp;</span>participants, <span class="kw-2">&amp;</span>clients, <span class="kw-2">&amp;</span>client_aggregator);
+<a href=#184 id=184 data-nosnippet>184</a>
+<a href=#185 id=185 data-nosnippet>185</a>        <span class="kw">let </span><span class="kw-2">mut </span>cycle_data = HashMap::new();
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span>built = builder
+<a href=#187 id=187 data-nosnippet>187</a>            .optimize_with(persist_pullup)
+<a href=#188 id=188 data-nosnippet>188</a>            .optimize_with(inject_id)
+<a href=#189 id=189 data-nosnippet>189</a>            .optimize_with(|ir| {
+<a href=#190 id=190 data-nosnippet>190</a>                cycle_data = cycle_source_to_sink_input(ir);
+<a href=#191 id=191 data-nosnippet>191</a>                inject_location(ir, <span class="kw-2">&amp;</span>cycle_data);
+<a href=#192 id=192 data-nosnippet>192</a>            })
+<a href=#193 id=193 data-nosnippet>193</a>            .into_deploy::&lt;HydroDeploy&gt;();
+<a href=#194 id=194 data-nosnippet>194</a>        <span class="kw">let </span><span class="kw-2">mut </span>ir = deep_clone(built.ir());
+<a href=#195 id=195 data-nosnippet>195</a>
+<a href=#196 id=196 data-nosnippet>196</a>        <span class="comment">// Coordinator
+<a href=#197 id=197 data-nosnippet>197</a>        </span><span class="kw">let </span>coordinator_partitioning =
+<a href=#198 id=198 data-nosnippet>198</a>            partitioning_analysis(<span class="kw-2">&amp;mut </span>ir, <span class="kw-2">&amp;</span>coordinator.id(), <span class="kw-2">&amp;</span>cycle_data);
+<a href=#199 id=199 data-nosnippet>199</a>        <span class="comment">// 7 and 26 are the op_ids of the input nodes from the participants to the coordinator. They will change if the coordinator's logic changes
+<a href=#200 id=200 data-nosnippet>200</a>        // 1 is the partitioning index of those inputs. Specifically, given the client sends (sender_id, payload) to the coordinator, we can partition on the entire payload
+<a href=#201 id=201 data-nosnippet>201</a>        </span><span class="kw">let </span>expected_coordinator_partitioning = <span class="macro">vec!</span>[BTreeMap::from([
+<a href=#202 id=202 data-nosnippet>202</a>            (<span class="number">5</span>, <span class="macro">vec!</span>[<span class="string">"1"</span>.to_string()]),
+<a href=#203 id=203 data-nosnippet>203</a>            (<span class="number">22</span>, <span class="macro">vec!</span>[<span class="string">"1"</span>.to_string()]),
+<a href=#204 id=204 data-nosnippet>204</a>        ])];
+<a href=#205 id=205 data-nosnippet>205</a>        <span class="kw">let </span>expected_coordinator_input_parents = BTreeMap::from([(<span class="number">2</span>, <span class="number">1</span>), (<span class="number">5</span>, <span class="number">4</span>), (<span class="number">22</span>, <span class="number">21</span>)]);
+<a href=#206 id=206 data-nosnippet>206</a>        <span class="macro">assert_eq!</span>(
+<a href=#207 id=207 data-nosnippet>207</a>            coordinator_partitioning,
+<a href=#208 id=208 data-nosnippet>208</a>            <span class="prelude-val">Some</span>((
+<a href=#209 id=209 data-nosnippet>209</a>                expected_coordinator_partitioning,
+<a href=#210 id=210 data-nosnippet>210</a>                expected_coordinator_input_parents
+<a href=#211 id=211 data-nosnippet>211</a>            ))
+<a href=#212 id=212 data-nosnippet>212</a>        );
+<a href=#213 id=213 data-nosnippet>213</a>        <span class="kw">let </span>coordinator_nodes_to_partition = nodes_to_partition(coordinator_partitioning).unwrap();
+<a href=#214 id=214 data-nosnippet>214</a>        <span class="kw">let </span>coordinator_partitioner = Partitioner {
+<a href=#215 id=215 data-nosnippet>215</a>            nodes_to_partition: coordinator_nodes_to_partition,
+<a href=#216 id=216 data-nosnippet>216</a>            num_partitions: <span class="number">3</span>,
+<a href=#217 id=217 data-nosnippet>217</a>            location_id: coordinator.id().raw_id(),
+<a href=#218 id=218 data-nosnippet>218</a>            new_cluster_id: <span class="prelude-val">Some</span>(partitioned_coordinator.id().raw_id()),
+<a href=#219 id=219 data-nosnippet>219</a>        };
+<a href=#220 id=220 data-nosnippet>220</a>        partition(<span class="kw-2">&amp;mut </span>ir, <span class="kw-2">&amp;</span>coordinator_partitioner);
+<a href=#221 id=221 data-nosnippet>221</a>
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="comment">// Participants
+<a href=#223 id=223 data-nosnippet>223</a>        </span>cycle_data = cycle_source_to_sink_input(<span class="kw-2">&amp;mut </span>ir); <span class="comment">// Recompute since IDs have changed
+<a href=#224 id=224 data-nosnippet>224</a>        </span><span class="kw">let </span>participant_partitioning =
+<a href=#225 id=225 data-nosnippet>225</a>            partitioning_analysis(<span class="kw-2">&amp;mut </span>ir, <span class="kw-2">&amp;</span>participants.id(), <span class="kw-2">&amp;</span>cycle_data);
+<a href=#226 id=226 data-nosnippet>226</a>        <span class="comment">// Participants can partition on ANYTHING, since they only execute maps
+<a href=#227 id=227 data-nosnippet>227</a>        </span><span class="kw">let </span>expected_participant_partitionings = <span class="macro">vec!</span>[];
+<a href=#228 id=228 data-nosnippet>228</a>        <span class="kw">let </span>expected_participant_input_parents = BTreeMap::from([(<span class="number">5</span>, <span class="number">4</span>), (<span class="number">24</span>, <span class="number">23</span>)]);
+<a href=#229 id=229 data-nosnippet>229</a>        <span class="macro">assert_eq!</span>(
+<a href=#230 id=230 data-nosnippet>230</a>            participant_partitioning,
+<a href=#231 id=231 data-nosnippet>231</a>            <span class="prelude-val">Some</span>((
+<a href=#232 id=232 data-nosnippet>232</a>                expected_participant_partitionings,
+<a href=#233 id=233 data-nosnippet>233</a>                expected_participant_input_parents
+<a href=#234 id=234 data-nosnippet>234</a>            ))
+<a href=#235 id=235 data-nosnippet>235</a>        );
+<a href=#236 id=236 data-nosnippet>236</a>        <span class="kw">let </span>participant_nodes_to_partition = nodes_to_partition(participant_partitioning).unwrap();
+<a href=#237 id=237 data-nosnippet>237</a>        <span class="kw">let </span>participant_partitioner = Partitioner {
+<a href=#238 id=238 data-nosnippet>238</a>            nodes_to_partition: participant_nodes_to_partition,
+<a href=#239 id=239 data-nosnippet>239</a>            num_partitions: <span class="number">3</span>,
+<a href=#240 id=240 data-nosnippet>240</a>            location_id: participants.id().raw_id(),
+<a href=#241 id=241 data-nosnippet>241</a>            new_cluster_id: <span class="prelude-val">None</span>,
+<a href=#242 id=242 data-nosnippet>242</a>        };
+<a href=#243 id=243 data-nosnippet>243</a>        partition(<span class="kw-2">&amp;mut </span>ir, <span class="kw-2">&amp;</span>participant_partitioner);
+<a href=#244 id=244 data-nosnippet>244</a>
+<a href=#245 id=245 data-nosnippet>245</a>        <span class="macro">insta::assert_debug_snapshot!</span>(<span class="kw-2">&amp;</span>ir);
+<a href=#246 id=246 data-nosnippet>246</a>    }
+<a href=#247 id=247 data-nosnippet>247</a>}</code></pre></div></section></main></body></html>
