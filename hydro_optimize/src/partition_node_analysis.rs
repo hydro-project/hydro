@@ -897,7 +897,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("the map following network")
@@ -948,7 +948,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .map(q!(|(a, b)| (b, a + 2)))
             .for_each(q!(|(b, a2)| {
@@ -966,7 +966,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, (2, (3, 4)))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network")
@@ -1038,7 +1038,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network")
@@ -1089,7 +1089,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network")
@@ -1140,7 +1140,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network")
@@ -1188,7 +1188,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .batch(&cluster2.tick(), nondet!(/** test */))
             .delta()
@@ -1208,7 +1208,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network");
@@ -1303,7 +1303,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
@@ -1327,7 +1327,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network");
@@ -1433,7 +1433,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a + 2)));
         let stream2 = input.map(q!(|(a, b)| ((b.1, b.1), a + 3)));
@@ -1457,7 +1457,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network");
@@ -1572,7 +1572,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, (2, 3))]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values();
         let stream1 = input.clone().map(q!(|(a, b)| (b, a)));
@@ -1607,7 +1607,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             // Batching is unnecessary, but otherwise enumerate will be implicitly wrapped with a Persist (removed with persist_pullup)
             .batch(&cluster1.tick(), nondet!(/** test */))
@@ -1660,7 +1660,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .assume_ordering(nondet!(/** test */))
             .enumerate()
@@ -1679,7 +1679,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network")
@@ -1734,7 +1734,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .batch(&cluster2.tick(), nondet!(/** test */))
@@ -1760,7 +1760,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network")
@@ -1807,7 +1807,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values()
             .batch(&cluster2.tick(), nondet!(/** test */))
             .reduce_commutative(q!(|(acc_a, acc_b), (a, b)| {
@@ -1830,7 +1830,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network");
@@ -1936,7 +1936,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let cluster2_tick = cluster2.tick();
         let (complete_cycle, cycle) =
@@ -1964,7 +1964,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network");
@@ -2007,7 +2007,7 @@ mod tests {
             ("teed map (a,b) to (b,b) 2", BTreeSet::from(["network"])), // Tee(map)
         ]);
         let unnamed_expected_taint = BTreeMap::from([
-            (("network", -3), BTreeSet::from(["network"])), /* CycleSource(cycle1), parent = DeferTick(cycle1) */
+            (("network", -8), BTreeSet::from(["network"])), /* CycleSource(cycle1), parent = DeferTick(cycle1) */
             (("map (x,(a,b)) to (a,b)", 1), BTreeSet::from(["network"])), // CycleSource(cycle2)
             (("teed chain 1", -1), BTreeSet::from(["network"])), // Chain
             (("teed chain 1", 1), BTreeSet::from(["network"])), // DeferTick(cycle1)
@@ -2080,7 +2080,7 @@ mod tests {
         ]);
         let unnamed_expected_dependencies = BTreeMap::from([
             (
-                ("network", -3),
+                ("network", -8),
                 BTreeMap::from([("network", other_dependencies.clone())]),
             ), // CycleSource(cycle1), parent = DeferTick(cycle1)
             (
@@ -2122,7 +2122,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values();
         let cluster2_tick = cluster2.tick();
@@ -2158,7 +2158,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("network")
             .values()
             .ir_node_named("map after network");
@@ -2181,7 +2181,7 @@ mod tests {
             ("chain", BTreeSet::from(["network"])),
         ]);
         let unnamed_expected_taint = BTreeMap::from([
-            (("network", -3), BTreeSet::from([])), // Source
+            (("network", -8), BTreeSet::from([])), // Source
         ]);
 
         let mut implicit_map_dependencies = StructOrTuple::default();
@@ -2205,7 +2205,7 @@ mod tests {
             ("chain", BTreeMap::from([("network", map_dependencies)])),
         ]);
         let unnamed_expected_dependencies = BTreeMap::from([
-            (("network", -3), BTreeMap::from([])), // Source
+            (("network", -8), BTreeMap::from([])), // Source
         ]);
 
         test_input_with_unnamed_ir_nodes(
@@ -2225,7 +2225,7 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .values();
         let tick = cluster2.tick();
         let stream1 = input.map(q!(|(a, b)| (b, a + 2)));
@@ -2249,13 +2249,13 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("input1")
             .values()
             .ir_node_named("map after input1");
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("input2")
             .values()
             .ir_node_named("map after input2");
@@ -2389,12 +2389,12 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("input1")
             .values();
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("input2")
             .values();
         let tick = cluster2.tick();
@@ -2432,13 +2432,13 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("input1")
             .values()
             .ir_node_named("map after input1");
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("input2")
             .values()
             .ir_node_named("map after input2");
@@ -2495,12 +2495,12 @@ mod tests {
         let cluster2 = builder.cluster::<()>();
         let input1 = cluster1
             .source_iter(q!([(1, 2)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("input1")
             .values();
         let input2 = cluster1
             .source_iter(q!([(3, 4)]))
-            .broadcast_bincode(&cluster2)
+            .broadcast_bincode(&cluster2, nondet!(/** test */))
             .ir_node_named("input2")
             .values();
         let tick = cluster2.tick();

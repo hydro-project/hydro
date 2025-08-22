@@ -304,7 +304,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
         .then(p_ballot.clone())
         .all_ticks()
         .inspect(q!(|_| println!("Proposer leader expired, sending P1a")))
-        .broadcast_bincode(acceptors)
+        .broadcast_bincode(acceptors, nondet!(/** TODO */))
         .values();
 
     let (a_max_ballot, a_to_proposers_p1b) = acceptor_p1(
@@ -412,7 +412,7 @@ fn p_leader_heartbeat<'a>(
                 nondet_reelection
             ),
         )
-        .broadcast_bincode(proposers)
+        .broadcast_bincode(proposers, nondet!(/** TODO */))
         .values();
 
     let p_leader_expired = p_to_proposers_i_am_leader
@@ -712,7 +712,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
                 slot,
                 value
             }))
-            .broadcast_bincode(acceptors)
+            .broadcast_bincode(acceptors, nondet!(/** TODO */))
             .values(),
         a_checkpoint,
         proposers,

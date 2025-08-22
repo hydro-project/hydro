@@ -16,6 +16,7 @@ use crate::backtrace::get_backtrace;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
 use crate::ir::{DebugInstantiate, HydroIrMetadata, HydroLeaf, HydroNode, HydroSource};
 use crate::keyed_stream::KeyedStream;
+use crate::location::cluster::ClusterIds;
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many,
 };
@@ -199,6 +200,23 @@ pub trait Location<'a>: Clone {
                 metadata: self.new_node_metadata::<T>(),
             },
         )
+    }
+
+    fn source_cluster_members<C: 'a>(
+        &self,
+        cluster: &Cluster<'a, C>,
+    ) -> KeyedStream<ClusterId<C>, MembershipEvent, Self, Unbounded>
+    where
+        Self: Sized + NoTick,
+    {
+        let underlying_clusterids: ClusterIds<'a, C> = ClusterIds {
+            id: cluster.id,
+            _phantom: PhantomData,
+        };
+
+        self.source_iter(q!(underlying_clusterids))
+            .map(q!(|id| (*id, MembershipEvent::Joined)))
+            .into_keyed()
     }
 
     fn source_external_bytes<L>(

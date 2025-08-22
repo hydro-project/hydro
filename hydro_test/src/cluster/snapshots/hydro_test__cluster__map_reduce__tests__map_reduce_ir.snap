@@ -34,21 +34,31 @@ expression: built.ir()
                                             | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& res . unwrap ()) . unwrap () },
                                         ),
                                         input: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , std :: string :: String) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , std :: string :: String) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker >] > (__hydro_lang_cluster_ids_1) } ; | (i , w) | (ids__free [i % ids__free . len ()] , w) }),
-                                            input: Enumerate {
-                                                is_static: true,
-                                                input: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < & str , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | s | s . to_string () }),
-                                                    input: Source {
-                                                        source: Iter(
-                                                            { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; vec ! ["abc" , "abc" , "xyz" , "abc"] },
-                                                        ),
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , std :: string :: String) , std :: vec :: Vec < hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > >) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , std :: string :: String) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | (data , members) | (members [data . 0 % members . len ()] , data . 1) }),
+                                            input: CrossSingleton {
+                                                left: Enumerate {
+                                                    is_static: true,
+                                                    input: Map {
+                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & str , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | s | s . to_string () }),
+                                                        input: Source {
+                                                            source: Iter(
+                                                                { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; vec ! ["abc" , "abc" , "xyz" , "abc"] },
+                                                            ),
+                                                            metadata: HydroIrMetadata {
+                                                                location_kind: Process(
+                                                                    0,
+                                                                ),
+                                                                output_type: Some(
+                                                                    & str,
+                                                                ),
+                                                            },
+                                                        },
                                                         metadata: HydroIrMetadata {
                                                             location_kind: Process(
                                                                 0,
                                                             ),
                                                             output_type: Some(
-                                                                & str,
+                                                                std :: string :: String,
                                                             ),
                                                         },
                                                     },
@@ -57,22 +67,117 @@ expression: built.ir()
                                                             0,
                                                         ),
                                                         output_type: Some(
-                                                            std :: string :: String,
+                                                            (usize , std :: string :: String),
+                                                        ),
+                                                    },
+                                                },
+                                                right: Fold {
+                                                    init: stageleft :: runtime_support :: fn0_type_hint :: < std :: vec :: Vec < hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | | vec ! [] }),
+                                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: vec :: Vec < hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | acc , v | { acc . push (v) ; } }),
+                                                    input: Map {
+                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; | (k , _) | k }),
+                                                        input: FilterMap {
+                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | (k , v) | if v { Some ((k , ())) } else { None } }),
+                                                            input: FoldKeyed {
+                                                                init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | | false }),
+                                                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
+                                                                input: Persist {
+                                                                    inner: Map {
+                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
+                                                                        input: Source {
+                                                                            source: Iter(
+                                                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_clusterids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker >] > (__hydro_lang_cluster_ids_1) } ; underlying_clusterids__free },
+                                                                            ),
+                                                                            metadata: HydroIrMetadata {
+                                                                                location_kind: Process(
+                                                                                    0,
+                                                                                ),
+                                                                                output_type: Some(
+                                                                                    & hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker >,
+                                                                                ),
+                                                                            },
+                                                                        },
+                                                                        metadata: HydroIrMetadata {
+                                                                            location_kind: Process(
+                                                                                0,
+                                                                            ),
+                                                                            output_type: Some(
+                                                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
+                                                                            ),
+                                                                        },
+                                                                    },
+                                                                    metadata: HydroIrMetadata {
+                                                                        location_kind: Process(
+                                                                            0,
+                                                                        ),
+                                                                        output_type: Some(
+                                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
+                                                                        ),
+                                                                    },
+                                                                },
+                                                                metadata: HydroIrMetadata {
+                                                                    location_kind: Process(
+                                                                        0,
+                                                                    ),
+                                                                    output_type: Some(
+                                                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , bool),
+                                                                    ),
+                                                                },
+                                                            },
+                                                            metadata: HydroIrMetadata {
+                                                                location_kind: Tick(
+                                                                    0,
+                                                                    Process(
+                                                                        0,
+                                                                    ),
+                                                                ),
+                                                                output_type: Some(
+                                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , ()),
+                                                                ),
+                                                            },
+                                                        },
+                                                        metadata: HydroIrMetadata {
+                                                            location_kind: Tick(
+                                                                1,
+                                                                Process(
+                                                                    0,
+                                                                ),
+                                                            ),
+                                                            output_type: Some(
+                                                                hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker >,
+                                                            ),
+                                                        },
+                                                    },
+                                                    metadata: HydroIrMetadata {
+                                                        location_kind: Tick(
+                                                            1,
+                                                            Process(
+                                                                0,
+                                                            ),
+                                                        ),
+                                                        output_type: Some(
+                                                            std :: vec :: Vec < hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > >,
                                                         ),
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
-                                                    location_kind: Process(
-                                                        0,
+                                                    location_kind: Tick(
+                                                        1,
+                                                        Process(
+                                                            0,
+                                                        ),
                                                     ),
                                                     output_type: Some(
-                                                        (usize , std :: string :: String),
+                                                        ((usize , std :: string :: String) , std :: vec :: Vec < hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > >),
                                                     ),
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
-                                                location_kind: Process(
-                                                    0,
+                                                location_kind: Tick(
+                                                    1,
+                                                    Process(
+                                                        0,
+                                                    ),
                                                 ),
                                                 output_type: Some(
                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , std :: string :: String),
@@ -99,7 +204,7 @@ expression: built.ir()
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
-                                        0,
+                                        2,
                                         Cluster(
                                             1,
                                         ),
@@ -111,7 +216,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    0,
+                                    2,
                                     Cluster(
                                         1,
                                     ),
