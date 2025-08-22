@@ -28,6 +28,37 @@ use crate::backtrace::Backtrace;
 use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
 
+/// Represents the kind of stream/collection type for metadata
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum StreamKind {
+    /// Regular stream
+    Stream,
+    /// Keyed stream
+    KeyedStream,
+    /// Singleton collection
+    Singleton,
+    /// Optional collection
+    Optional,
+}
+
+/// Mirror enum for ordering metadata, corresponding to phantom types
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum StreamOrdering {
+    /// Corresponds to TotalOrder phantom type
+    TotalOrder,
+    /// Corresponds to NoOrder phantom type
+    NoOrder,
+}
+
+/// Mirror enum for retries metadata, corresponding to phantom types
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum StreamRetries {
+    /// Corresponds to ExactlyOnce phantom type
+    ExactlyOnce,
+    /// Corresponds to AtLeastOnce phantom type
+    AtLeastOnce,
+}
+
 /// Debug displays the type's tokens.
 ///
 /// Boxes `syn::Type` which is ~240 bytes.
@@ -960,6 +991,10 @@ pub struct HydroIrMetadata {
     pub location_kind: LocationId,
     pub backtrace: Backtrace,
     pub output_type: Option<DebugType>,
+    /// The kind of stream/collection and its properties (ordering, retries, etc.)
+    pub stream_kind: Option<StreamKind>,
+    /// Whether this collection is bounded (finite) or unbounded (potentially infinite)
+    pub is_bounded: bool,
     pub cardinality: Option<usize>,
     pub cpu_usage: Option<f64>,
     pub network_recv_cpu_usage: Option<f64>,
@@ -985,6 +1020,8 @@ impl Debug for HydroIrMetadata {
         f.debug_struct("HydroIrMetadata")
             .field("location_kind", &self.location_kind)
             .field("output_type", &self.output_type)
+            .field("stream_kind", &self.stream_kind)
+            .field("is_bounded", &self.is_bounded)
             .finish()
     }
 }
@@ -2988,12 +3025,12 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"232");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"240");
     }
 
     #[test]
     fn hydro_leaf_size() {
-        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"224");
+        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"232");
     }
 
     #[test]

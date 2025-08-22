@@ -43,7 +43,10 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_node_metadata_detailed::<T>(
+                    Some(crate::ir::StreamKind::Optional),
+                    true, // Bounded
+                ),
             },
         )
     }
@@ -84,7 +87,10 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_node_metadata_detailed::<T>(
+                    Some(crate::ir::StreamKind::Optional),
+                    true, // Bounded
+                ),
             },
         )
     }
@@ -351,15 +357,27 @@ where
                     inner: Box::new(HydroNode::Chain {
                         first: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
+                            metadata: self.location.new_node_metadata_detailed::<T>(
+                                Some(crate::ir::StreamKind::Optional),
+                                false,
+                            ),
                         }),
                         second: Box::new(HydroNode::Unpersist {
                             inner: Box::new(other.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
+                            metadata: self.location.new_node_metadata_detailed::<T>(
+                                Some(crate::ir::StreamKind::Optional),
+                                false,
+                            ),
                         }),
-                        metadata: self.location.new_node_metadata::<T>(),
+                        metadata: self.location.new_node_metadata_detailed::<T>(
+                            Some(crate::ir::StreamKind::Optional),
+                            false, // Multi-input operations typically result in unbounded
+                        ),
                     }),
-                    metadata: self.location.new_node_metadata::<T>(),
+                    metadata: self.location.new_node_metadata_detailed::<T>(
+                        Some(crate::ir::StreamKind::Optional),
+                        false,
+                    ),
                 },
             )
         } else {
@@ -368,7 +386,10 @@ where
                 HydroNode::Chain {
                     first: Box::new(self.ir_node.into_inner()),
                     second: Box::new(other.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<T>(),
+                    metadata: self.location.new_node_metadata_detailed::<T>(
+                        Some(crate::ir::StreamKind::Optional),
+                        false, // Chain operations preserve Optional nature
+                    ),
                 },
             )
         }
@@ -388,15 +409,27 @@ where
                     inner: Box::new(HydroNode::CrossSingleton {
                         left: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
+                            metadata: self.location.new_node_metadata_detailed::<T>(
+                                Some(crate::ir::StreamKind::Optional),
+                                false,
+                            ),
                         }),
                         right: Box::new(HydroNode::Unpersist {
                             inner: Box::new(other.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<O>(),
+                            metadata: self.location.new_node_metadata_detailed::<O>(
+                                Some(crate::ir::StreamKind::Optional),
+                                false,
+                            ),
                         }),
-                        metadata: self.location.new_node_metadata::<(T, O)>(),
+                        metadata: self.location.new_node_metadata_detailed::<(T, O)>(
+                            Some(crate::ir::StreamKind::Optional),
+                            false, // Cross operations preserve Optional nature
+                        ),
                     }),
-                    metadata: self.location.new_node_metadata::<(T, O)>(),
+                    metadata: self.location.new_node_metadata_detailed::<(T, O)>(
+                        Some(crate::ir::StreamKind::Optional),
+                        false,
+                    ),
                 },
             )
         } else {
@@ -405,7 +438,10 @@ where
                 HydroNode::CrossSingleton {
                     left: Box::new(self.ir_node.into_inner()),
                     right: Box::new(other.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<(T, O)>(),
+                    metadata: self.location.new_node_metadata_detailed::<(T, O)>(
+                        Some(crate::ir::StreamKind::Optional),
+                        false, // Cross operations preserve Optional nature
+                    ),
                 },
             )
         }
@@ -452,9 +488,18 @@ where
         let core_ir = HydroNode::Persist {
             inner: Box::new(HydroNode::Source {
                 source: HydroSource::Iter(none.into()),
-                metadata: self.location.root().new_node_metadata::<Option<T>>(),
+                metadata: self
+                    .location
+                    .root()
+                    .new_node_metadata_detailed::<Option<T>>(
+                        Some(crate::ir::StreamKind::Optional),
+                        true, // Bounded
+                    ),
             }),
-            metadata: self.location.new_node_metadata::<Option<T>>(),
+            metadata: self.location.new_node_metadata_detailed::<Option<T>>(
+                Some(crate::ir::StreamKind::Singleton),
+                true, // Bounded
+            ),
         };
 
         let none_singleton = if L::is_top_level() {
@@ -462,7 +507,10 @@ where
                 self.location.clone(),
                 HydroNode::Persist {
                     inner: Box::new(core_ir),
-                    metadata: self.location.new_node_metadata::<Option<T>>(),
+                    metadata: self.location.new_node_metadata_detailed::<Option<T>>(
+                        Some(crate::ir::StreamKind::Singleton),
+                        true, // Bounded
+                    ),
                 },
             )
         } else {
@@ -609,7 +657,10 @@ where
             self.location.outer().clone(),
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata_detailed::<T>(
+                    Some(crate::ir::StreamKind::Stream),
+                    false, // Converts to unbounded
+                ),
             },
         )
     }

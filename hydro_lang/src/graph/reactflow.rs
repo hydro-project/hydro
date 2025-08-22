@@ -80,10 +80,6 @@ impl<W> HydroReactFlow<W> {
             HydroEdgeType::Stream => {
                 style["stroke"] = serde_json::Value::String("#666666".to_string());
             }
-            HydroEdgeType::Persistent => {
-                style["stroke"] = serde_json::Value::String("#008800".to_string());
-                style["strokeWidth"] = serde_json::Value::Number(serde_json::Number::from(3));
-            }
             HydroEdgeType::Network => {
                 style["stroke"] = serde_json::Value::String("#880088".to_string());
                 style["strokeDasharray"] = serde_json::Value::String("5,5".to_string());
