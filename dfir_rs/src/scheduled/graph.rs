@@ -405,13 +405,13 @@ impl<'a> Dfir<'a> {
                     .stratum_stack
                     .push(sg_data.loop_depth, sg_data.stratum);
             }
-            if reschedule || allow_another {
-                if let Some(loop_id) = sg_data.loop_id {
-                    self.loop_data
-                        .get_mut(loop_id)
-                        .unwrap()
-                        .allow_another_iteration = true;
-                }
+            if (reschedule || allow_another)
+                && let Some(loop_id) = sg_data.loop_id
+            {
+                self.loop_data
+                    .get_mut(loop_id)
+                    .unwrap()
+                    .allow_another_iteration = true;
             }
 
             work_done = true;

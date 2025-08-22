@@ -1,0 +1,29 @@
+error[E0271]: expected `Drain<'_, Option<{integer}>>` to be an iterator that yields `(_, _)`, but it yields `Option<{integer}>`
+ --> tests/compile-fail-stable/surface_fold_keyed_badtype_option.rs:3:9
+  |
+3 |         source_iter([ Some(5), None, Some(12) ])
+  |         ^^^^^^^^^^^ expected `(_, _)`, found `Option<{integer}>`
+4 |             -> reduce_keyed(|old: &mut u32, val: u32| { *old += val; })
+  |                ------------ required by a bound introduced by this call
+  |
+  = note: expected tuple `(_, _)`
+              found enum `std::option::Option<{integer}>`
+note: required by a bound in `check_input`
+ --> tests/compile-fail-stable/surface_fold_keyed_badtype_option.rs:4:16
+  |
+4 |             -> reduce_keyed(|old: &mut u32, val: u32| { *old += val; })
+  |                ^^^^^^^^^^^^ required by this bound in `check_input`
+
+error[E0271]: expected `Drain<'_, Option<{integer}>>` to be an iterator that yields `(_, _)`, but it yields `Option<{integer}>`
+ --> tests/compile-fail-stable/surface_fold_keyed_badtype_option.rs:4:16
+  |
+4 |             -> reduce_keyed(|old: &mut u32, val: u32| { *old += val; })
+  |                ^^^^^^^^^^^^ expected `(_, _)`, found `Option<{integer}>`
+  |
+  = note: expected tuple `(_, _)`
+              found enum `std::option::Option<{integer}>`
+note: required by a bound in `check_input`
+ --> tests/compile-fail-stable/surface_fold_keyed_badtype_option.rs:4:16
+  |
+4 |             -> reduce_keyed(|old: &mut u32, val: u32| { *old += val; })
+  |                ^^^^^^^^^^^^ required by this bound in `check_input`

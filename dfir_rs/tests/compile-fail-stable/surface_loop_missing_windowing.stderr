@@ -1,0 +1,5 @@
+error: Operator `null(...)` entering a loop context must be a windowing operator, but is not.
+ --> tests/compile-fail-stable/surface_loop_missing_windowing.rs:5:18
+  |
+5 |             a -> null();
+  |                  ^^^^

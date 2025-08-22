@@ -1,0 +1,5 @@
+error: expected `->`
+ --> tests/compile-fail-stable/surface_syntax_noarrow_indexing.rs:6:28
+  |
+6 |         source_iter(0..10) [0]x;
+  |                            ^

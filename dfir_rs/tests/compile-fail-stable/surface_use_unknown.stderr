@@ -1,0 +1,5 @@
+error[E0432]: unresolved import `x`
+ --> tests/compile-fail-stable/surface_use_unknown.rs:5:13
+  |
+5 |         use x;
+  |             ^ no external crate `x`

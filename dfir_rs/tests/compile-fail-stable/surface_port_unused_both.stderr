@@ -1,0 +1,11 @@
+error: Input port index is unused. (Is the port on the correct side?)
+ --> tests/compile-fail-stable/surface_port_unused_both.rs:7:10
+  |
+7 |         [0]src -> dst[0];
+  |          ^
+
+error: Output port index is unused. (Is the port on the correct side?)
+ --> tests/compile-fail-stable/surface_port_unused_both.rs:7:23
+  |
+7 |         [0]src -> dst[0];
+  |                       ^

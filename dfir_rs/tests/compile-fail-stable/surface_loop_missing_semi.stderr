@@ -1,0 +1,13 @@
+error: expected `;`
+ --> tests/compile-fail-stable/surface_loop_missing_semi.rs:2:18
+  |
+2 |       let mut df = dfir_rs::dfir_syntax! {
+  |  __________________^
+3 | |         a = source_iter(0..10);
+4 | |         loop {
+5 | |             a -> batch();
+6 | |         }
+7 | |     };
+  | |_____^
+  |
+  = note: this error originates in the macro `dfir_rs::dfir_syntax` (in Nightly builds, run with -Z macro-backtrace for more info)

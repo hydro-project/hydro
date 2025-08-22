@@ -1,0 +1,5 @@
+error: Output port index is unused. (Is the port on the correct side?)
+ --> tests/compile-fail-stable/surface_port_unused_out.rs:5:35
+  |
+5 |         source_iter(0..10) -> dst[0];
+  |                                   ^

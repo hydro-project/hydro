@@ -11,16 +11,15 @@ use std::time::Duration;
 use dfir_rs::bytes::{Bytes, BytesMut};
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph::Dfir;
+use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::deploy::{
     ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged,
 };
-use futures::{SinkExt, Stream};
-
-mod protocol;
-use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::{deserialize_from_bytes, serialize_to_bytes};
+use futures::{SinkExt, Stream};
 use protocol::*;
 use tokio::time::Instant;
+use topolotree::protocol;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct NodeId(pub u32);

@@ -1,0 +1,11 @@
+error: Name `f` forms or references an illegal self-referential cycle (1/1).
+ --> tests/compile-fail-stable/surface_forwardref_self1.rs:5:13
+  |
+5 |         f = f -> f;
+  |             ^
+
+error: Name `f` forms or references an illegal self-referential cycle (1/1).
+ --> tests/compile-fail-stable/surface_forwardref_self1.rs:5:18
+  |
+5 |         f = f -> f;
+  |                  ^

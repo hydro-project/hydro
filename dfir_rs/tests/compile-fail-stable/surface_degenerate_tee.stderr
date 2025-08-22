@@ -1,0 +1,17 @@
+error: `tee` must have exactly 1 input(s), actually has 0.
+ --> tests/compile-fail-stable/surface_degenerate_tee.rs:5:9
+  |
+5 |         tee();
+  |         ^^^
+
+warning: use of deprecated struct `main::diagnostic_3248366533697933275::Warning`: `tee` should have at least 2 output(s), actually has 0.
+ --> tests/compile-fail-stable/surface_degenerate_tee.rs:5:9
+  |
+5 |         tee();
+  |         ^^^
+  |
+note: the lint level is defined here
+ --> tests/compile-fail-stable/surface_degenerate_tee.rs:5:9
+  |
+5 |         tee();
+  |         ^^^

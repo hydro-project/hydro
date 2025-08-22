@@ -1,0 +1,5 @@
+error: `join` should have at least 0 and at most 2 persistence lifetime arguments, actually has 3.
+ --> tests/compile-fail-stable/surface_join_persistence_extra.rs:5:20
+  |
+5 |         j = join::<'static, 'static, 'static>() -> for_each(std::mem::drop);
+  |                    ^^^^^^^

@@ -52,7 +52,7 @@ pub trait Handoff: Default + HandoffMeta {
     /// Take the inner datastructure by swapping input and output buffers.
     ///
     /// For better performance over [`Self::take_inner`].
-    fn borrow_mut_swap(&self) -> RefMut<Self::Inner>;
+    fn borrow_mut_swap(&self) -> RefMut<'_, Self::Inner>;
 
     /// See [`CanReceive::give`].
     fn give<T>(&self, item: T) -> T

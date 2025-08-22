@@ -608,7 +608,7 @@ impl DfirGraph {
     }
 
     /// Iterator of all edge IDs `GraphEdgeId`.
-    pub fn edge_ids(&self) -> slotmap::basic::Keys<GraphEdgeId, (GraphNodeId, GraphNodeId)> {
+    pub fn edge_ids(&self) -> slotmap::basic::Keys<'_, GraphEdgeId, (GraphNodeId, GraphNodeId)> {
         self.graph.edge_ids()
     }
 
@@ -1391,10 +1391,10 @@ impl DfirGraph {
                     let pred_sg = self.node_subgraph(pred_node);
                     let succ_node = self.node_successor_nodes(node_id).next().unwrap();
                     let succ_sg = self.node_subgraph(succ_node);
-                    if let Some((pred_sg, succ_sg)) = pred_sg.zip(succ_sg) {
-                        if pred_sg == succ_sg {
-                            subgraph_handoffs.entry(pred_sg).or_default().push(node_id);
-                        }
+                    if let Some((pred_sg, succ_sg)) = pred_sg.zip(succ_sg)
+                        && pred_sg == succ_sg
+                    {
+                        subgraph_handoffs.entry(pred_sg).or_default().push(node_id);
                     }
                 }
             }

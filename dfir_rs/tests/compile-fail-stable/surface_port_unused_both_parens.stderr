@@ -1,0 +1,11 @@
+error: Output port index is unused. (Is the port on the correct side?)
+ --> tests/compile-fail-stable/surface_port_unused_both_parens.rs:6:32
+  |
+6 |         dst = (for_each(drop))[0];
+  |                                ^
+
+error: Input port index is unused. (Is the port on the correct side?)
+ --> tests/compile-fail-stable/surface_port_unused_both_parens.rs:5:16
+  |
+5 |         src = [0](source_iter(0..10));
+  |                ^

@@ -9,9 +9,7 @@ use dfir_rs::bytes::Bytes;
 use dfir_rs::util::deploy::{ConnectedDirect, ConnectedSink, ConnectedSource};
 use dfir_rs::util::{deserialize_from_bytes, serialize_to_bytes};
 use futures::{SinkExt, StreamExt};
-
-mod protocol;
-use protocol::*;
+pub use topolotree::protocol::*;
 
 #[tokio::main]
 async fn main() {
@@ -96,7 +94,7 @@ async fn main() {
                     assert_eq!(*count, received);
                 }
 
-                if next_base % 100 == 0 {
+                if next_base.is_multiple_of(100) {
                     latency_sender.send(start.elapsed().as_micros()).unwrap();
                 }
 

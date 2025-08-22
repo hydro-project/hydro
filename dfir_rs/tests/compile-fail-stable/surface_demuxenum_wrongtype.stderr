@@ -1,0 +1,11 @@
+error[E0271]: type mismatch resolving `<impl Pusherator<Item = Shape> as Pusherator>::Item == {integer}`
+  --> tests/compile-fail-stable/surface_demuxenum_wrongtype.rs:13:41
+   |
+13 |         my_demux = source_iter(0..5) -> demux_enum::<Shape>();
+   |                                         ^^^^^^^^^^ expected integer, found `Shape`
+   |
+note: required by a bound in `pivot_run_sg_1v1`
+  --> tests/compile-fail-stable/surface_demuxenum_wrongtype.rs:13:41
+   |
+13 |         my_demux = source_iter(0..5) -> demux_enum::<Shape>();
+   |                                         ^^^^^^^^^^ required by this bound in `pivot_run_sg_1v1`

@@ -13,7 +13,7 @@ Hydro integrates naturally with standard Rust constructs and IDEs, providing typ
 <b>Get started today at <a href="https://hydro.run">hydro.run</a>!</b>
 
 # Learn More
-- **Docs**: There are docs for the [high-level Hydro language](https://hydro.run/docs/hydro/) and the low-level dataflow IR, [DFIR](https://hydro.run/docs/dfir), as well as the [Hydro Deploy](https://hydro.run/docs/deploy) framework for launching Hydro programs.
+- **Docs**: There are docs for the [high-level Hydro framework](https://hydro.run/docs/hydro/) and the low-level dataflow IR, [DFIR](https://hydro.run/docs/dfir), as well as the [Hydro Deploy](https://hydro.run/docs/deploy) framework for launching Hydro programs.
 
 - **Research Papers**: Our [research publications](https://hydro.run/research) are available on the project website. Some notable selections:
     - The original Hydro vision paper from CIDR 2021: [New Directions in Cloud Programming](https://hydro.run/papers/new-directions.pdf)

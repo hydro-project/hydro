@@ -1,0 +1,1 @@
+../compile-fail/surface_singleton_nostate.rs

@@ -10,9 +10,7 @@ use dfir_rs::util::deploy::{
     ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged,
 };
 use dfir_rs::util::{deserialize_from_bytes, serialize_to_bytes};
-
-mod protocol;
-use protocol::*;
+pub use topolotree::protocol::*;
 
 type NextStateType = (u64, Rc<RefCell<(Vec<u64>, Vec<u64>)>>);
 

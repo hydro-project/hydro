@@ -870,7 +870,6 @@ mod test {
 
     type MyList = var_type!(u8, u16, u32, u64);
     type MyPrefix = var_type!(u8, u16);
-    #[expect(dead_code, reason = "compilation test")]
     type MySuffix = <MyList as Split<MyPrefix>>::Suffix;
 
     const _: MySuffix = var_expr!(0_u32, 0_u64);

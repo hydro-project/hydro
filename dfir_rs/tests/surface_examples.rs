@@ -21,7 +21,7 @@ fn test_all() {
         let name = example_file.strip_suffix(".rs").unwrap();
 
         let output = Command::new("cargo")
-            .args(["run", "-p", "dfir_rs", "--example"])
+            .args(["run", "-p", env!("CARGO_PKG_NAME"), "--example"])
             .arg(name)
             .output()
             .expect("Failed to run example.");

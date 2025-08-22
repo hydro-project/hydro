@@ -1,0 +1,5 @@
+error: expected one of: identifier, `self`, `super`, `crate`, `try`, `*`, curly braces
+ --> tests/compile-fail-stable/surface_use_bad1.rs:5:16
+  |
+5 |         use x::;
+  |                ^

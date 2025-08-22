@@ -1,0 +1,26 @@
+error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
+  --> tests/compile-fail-stable/surface_demuxenum_port_missing_one.rs:15:28
+   |
+15 |         ]) -> demux_enum::<Shape>();
+   |                            ^^^^^ the trait `SingleVariant` is not implemented for `Shape`
+   |
+   = note: requires that the enum have only one variant.
+   = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.
+
+error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
+  --> tests/compile-fail-stable/surface_demuxenum_port_missing_one.rs:15:15
+   |
+15 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^ the trait `SingleVariant` is not implemented for `Shape`
+   |
+   = note: requires that the enum have only one variant.
+   = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.
+
+error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
+  --> tests/compile-fail-stable/surface_demuxenum_port_missing_one.rs:16:32
+   |
+16 |         my_demux[Rectangle] -> for_each(std::mem::drop);
+   |                                ^^^^^^^^ the trait `SingleVariant` is not implemented for `Shape`
+   |
+   = note: requires that the enum have only one variant.
+   = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.

@@ -47,8 +47,8 @@ authors:
 repository-code: 'https://github.com/hydro-project/hydro/'
 url: 'https://hydro.run/'
 abstract: >-
-  Hydro is a language stack for programming distributed systems,
-  buil on top of DFIR, a lattice-aware dataflow system.
+  Hydro is a framework for programming distributed systems,
+  built on top of DFIR, a lattice-aware dataflow system.
 keywords:
   - dataflow
   - distributed systems

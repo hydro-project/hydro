@@ -1,0 +1,19 @@
+error[E0271]: type mismatch resolving `<impl Pusherator<Item = u32> as Pusherator>::Item == (f64,)`
+  --> tests/compile-fail-stable/surface_demuxenum_wrongfields_1.rs:17:15
+   |
+17 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^ expected `(f64,)`, found `u32`
+   |
+   = note: expected tuple `(f64,)`
+               found type `u32`
+note: required for `Shape` to implement `DemuxEnum<(impl Pusherator<Item = (f64,)>, impl Pusherator<Item = (f64, f64)>, impl Pusherator<Item = u32>)>`
+  --> tests/compile-fail-stable/surface_demuxenum_wrongfields_1.rs:5:14
+   |
+5  |     #[derive(DemuxEnum)]
+   |              ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+6  |     enum Shape {
+   |          ^^^^^
+   = note: associated types for the current `impl` cannot be restricted in `where` clauses
+   = note: associated types for the current `impl` cannot be restricted in `where` clauses
+   = note: associated types for the current `impl` cannot be restricted in `where` clauses
+   = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -1,0 +1,13 @@
+error: `fold_keyed` should have at least 0 and at most 2 generic type arguments, actually has 3.
+ --> tests/compile-fail-stable/surface_fold_keyed_generics_extra.rs:6:29
+  |
+6 |             -> fold_keyed::<'tick, &str, String, ()>(String::new, |old: &mut _, val| {
+  |                             ^^^^^
+
+warning: unused import: `dfir_rs::dfir_syntax`
+ --> tests/compile-fail-stable/surface_fold_keyed_generics_extra.rs:1:5
+  |
+1 | use dfir_rs::dfir_syntax;
+  |     ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default

@@ -1,0 +1,5 @@
+error: Operator uses `'loop` persistence, but is not within a `loop { ... }` context.
+ --> tests/compile-fail-stable/surface_loop_badlifetime_loop_outside_loop.rs:4:23
+  |
+4 |             -> fold::<'loop>(|| 0, |old: &mut _, val| {
+  |                       ^^^^^

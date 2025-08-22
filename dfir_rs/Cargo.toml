@@ -97,3 +97,6 @@ zipf = "7"
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 # Rayon (rust data-parallelism library) does not compile on WASM.
 criterion = { version = "0.5.0", features = [ "async_tokio", "html_reports" ] }
+
+[build-dependencies]
+rustc_version = "0.4.0"

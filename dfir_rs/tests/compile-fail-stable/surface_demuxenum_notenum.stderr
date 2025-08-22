@@ -1,0 +1,65 @@
+error[E0277]: the trait bound `Shape: DemuxEnumBase` is not satisfied
+  --> tests/compile-fail-stable/surface_demuxenum_notenum.rs:12:28
+   |
+12 |         ]) -> demux_enum::<Shape>();
+   |                            ^^^^^ the trait `DemuxEnumBase` is not implemented for `Shape`
+   |
+   = note: use `#[derive(dfir_rs::DemuxEnum)]`
+note: required by a bound in `check_impl_demux_enum`
+  --> tests/compile-fail-stable/surface_demuxenum_notenum.rs:12:28
+   |
+12 |         ]) -> demux_enum::<Shape>();
+   |                            ^^^^^ required by this bound in `check_impl_demux_enum`
+
+error[E0223]: ambiguous associated type
+  --> tests/compile-fail-stable/surface_demuxenum_notenum.rs:14:18
+   |
+14 |         my_demux[Circle] -> for_each(std::mem::drop);
+   |                  ^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Circle` implemented for `Shape`, you could use the fully-qualified path
+   |
+14 |         my_demux[<Shape as Example>::Circle] -> for_each(std::mem::drop);
+   |                  ++++++++++++++++++++
+
+error[E0223]: ambiguous associated type
+  --> tests/compile-fail-stable/surface_demuxenum_notenum.rs:16:18
+   |
+16 |         my_demux[Ellipse] -> for_each(std::mem::drop);
+   |                  ^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Ellipse` implemented for `Shape`, you could use the fully-qualified path
+   |
+16 |         my_demux[<Shape as Example>::Ellipse] -> for_each(std::mem::drop);
+   |                  ++++++++++++++++++++
+
+error[E0223]: ambiguous associated type
+  --> tests/compile-fail-stable/surface_demuxenum_notenum.rs:13:18
+   |
+13 |         my_demux[Rectangle] -> for_each(std::mem::drop);
+   |                  ^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Rectangle` implemented for `Shape`, you could use the fully-qualified path
+   |
+13 |         my_demux[<Shape as Example>::Rectangle] -> for_each(std::mem::drop);
+   |                  ++++++++++++++++++++
+
+error[E0223]: ambiguous associated type
+  --> tests/compile-fail-stable/surface_demuxenum_notenum.rs:15:18
+   |
+15 |         my_demux[Square] -> for_each(std::mem::drop);
+   |                  ^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Square` implemented for `Shape`, you could use the fully-qualified path
+   |
+15 |         my_demux[<Shape as Example>::Square] -> for_each(std::mem::drop);
+   |                  ++++++++++++++++++++
+
+error[E0277]: the trait bound `Shape: DemuxEnum<_>` is not satisfied
+  --> tests/compile-fail-stable/surface_demuxenum_notenum.rs:12:15
+   |
+12 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^ the trait `DemuxEnum<_>` is not implemented for `Shape`
+   |
+   = note: ensure there is exactly one output for each enum variant.
+   = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.

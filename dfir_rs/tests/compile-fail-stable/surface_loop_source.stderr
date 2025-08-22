@@ -1,0 +1,5 @@
+error: Source operator `source_iter(...)` must be at the root level, not within any `loop { ... }` contexts.
+ --> tests/compile-fail-stable/surface_loop_source.rs:4:13
+  |
+4 |             source_iter(0..10) -> null();
+  |             ^^^^^^^^^^^

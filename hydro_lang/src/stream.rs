@@ -239,19 +239,6 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
-where
-    L: Location<'a>,
-{
-    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        Stream {
-            location,
-            ir_node: RefCell::new(ir_node),
-            _phantom: PhantomData,
-        }
-    }
-}
-
 impl<'a, T, L, B, O, R> Clone for Stream<T, L, B, O, R>
 where
     T: Clone,
@@ -286,6 +273,14 @@ impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
+    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
+        Stream {
+            location,
+            ir_node: RefCell::new(ir_node),
+            _phantom: PhantomData,
+        }
+    }
+
     /// Produces a stream based on invoking `f` on each element.
     /// If you do not want to modify the stream and instead only want to view
     /// each item use [`Stream::inspect`] instead.
@@ -730,6 +725,17 @@ where
                 },
             )
         }
+    }
+
+    /// An operator which allows you to "name" a `HydroNode`.
+    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
+    pub fn ir_node_named(self, name: &str) -> Stream<T, L, B, O, R> {
+        {
+            let mut node = self.ir_node.borrow_mut();
+            let metadata = node.metadata_mut();
+            metadata.tag = Some(name.to_string());
+        }
+        self
     }
 
     /// Explicitly "casts" the stream to a type with a different ordering
@@ -1316,6 +1322,15 @@ where
         Singleton::new(self.location, core)
     }
 
+    pub fn collect_vec(self) -> Singleton<Vec<T>, L, B> {
+        self.fold(
+            q!(|| vec![]),
+            q!(|acc, v| {
+                acc.push(v);
+            }),
+        )
+    }
+
     /// Applies a function to each element of the stream, maintaining an internal state (accumulator)
     /// and emitting each intermediate result.
     ///
@@ -1580,6 +1595,30 @@ where
                 first: Box::new(self.ir_node.into_inner()),
                 second: Box::new(other.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata::<T>(),
+            },
+        )
+    }
+
+    /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams.
+    /// Unlike [`Stream::cross_product`], the output order is totally ordered when the inputs are
+    /// because this is compiled into a nested loop.
+    pub fn cross_product_nested_loop<T2, O2>(
+        self,
+        other: Stream<T2, L, Bounded, O2, R>,
+    ) -> Stream<(T, T2), L, Bounded, O::Min, R>
+    where
+        T: Clone,
+        T2: Clone,
+        O: MinOrder<O2>,
+    {
+        check_matching_location(&self.location, &other.location);
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::CrossProduct {
+                left: Box::new(self.ir_node.into_inner()),
+                right: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(T, T2)>(),
             },
         )
     }

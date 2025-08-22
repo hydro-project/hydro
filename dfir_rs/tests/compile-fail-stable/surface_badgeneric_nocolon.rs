@@ -1,0 +1,1 @@
+../compile-fail/surface_badgeneric_nocolon.rs

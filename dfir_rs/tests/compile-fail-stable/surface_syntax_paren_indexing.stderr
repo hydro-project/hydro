@@ -1,0 +1,5 @@
+error: unexpected end of input, expected one of: parentheses, identifier, `mod`
+ --> tests/compile-fail-stable/surface_syntax_paren_indexing.rs:5:35
+  |
+5 |         (source_iter(0..10) -> [0]);
+  |                                   ^

@@ -1,0 +1,11 @@
+error: `lattice_fold` should have exactly 0 generic type arguments, actually has 1.
+ --> tests/compile-fail-stable/surface_lattice_fold_noarg.rs:6:31
+  |
+6 |             -> lattice_fold::<dfir_rs::lattices::set_union::SetUnionHashSet<u32>>()
+  |                               ^^^^^^^
+
+error: expected 1 argument(s), found 0
+ --> tests/compile-fail-stable/surface_lattice_fold_noarg.rs:6:16
+  |
+6 |             -> lattice_fold::<dfir_rs::lattices::set_union::SetUnionHashSet<u32>>()
+  |                ^^^^^^^^^^^^

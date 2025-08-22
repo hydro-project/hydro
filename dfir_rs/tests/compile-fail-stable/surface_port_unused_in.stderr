@@ -1,0 +1,5 @@
+error: Input port index is unused. (Is the port on the correct side?)
+ --> tests/compile-fail-stable/surface_port_unused_in.rs:6:10
+  |
+6 |         [0]src -> for_each(drop);
+  |          ^

@@ -183,28 +183,27 @@ fn replace_receiver_src_id(node: &mut HydroNode, partitioner: &Partitioner, op_i
     if let HydroNode::Network {
         input, metadata, ..
     } = node
+        && input.metadata().location_kind.root().raw_id() == *location_id
     {
-        if input.metadata().location_kind.root().raw_id() == *location_id {
-            println!(
-                "Rewriting network on op {} so the sender's ID is mapped from the partition to the original sender",
-                op_id
-            );
+        println!(
+            "Rewriting network on op {} so the sender's ID is mapped from the partition to the original sender",
+            op_id
+        );
 
-            let metadata = metadata.clone();
-            let node_content = std::mem::replace(node, HydroNode::Placeholder);
-            let f: syn::Expr = syn::parse_quote!(|(sender_id, b)| (
-                ::hydro_lang::ClusterId::<_>::from_raw(sender_id.raw_id / #num_partitions as u32),
-                b
-            ));
+        let metadata = metadata.clone();
+        let node_content = std::mem::replace(node, HydroNode::Placeholder);
+        let f: syn::Expr = syn::parse_quote!(|(sender_id, b)| (
+            ::hydro_lang::ClusterId::<_>::from_raw(sender_id.raw_id / #num_partitions as u32),
+            b
+        ));
 
-            let mapped_node = HydroNode::Map {
-                f: f.into(),
-                input: Box::new(node_content),
-                metadata: metadata.clone(),
-            };
+        let mapped_node = HydroNode::Map {
+            f: f.into(),
+            input: Box::new(node_content),
+            metadata: metadata.clone(),
+        };
 
-            *node = mapped_node;
-        }
+        *node = mapped_node;
     }
 }
 

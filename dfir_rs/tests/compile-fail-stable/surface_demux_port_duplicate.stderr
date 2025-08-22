@@ -1,0 +1,19 @@
+error: Output connection conflicts with below (unknown:0:0) (1/2)
+  --> tests/compile-fail-stable/surface_demux_port_duplicate.rs:14:18
+   |
+14 |         my_demux[c] -> for_each(std::mem::drop);
+   |                  ^
+
+error: Output connection conflicts with above (unknown:0:0) (2/2)
+  --> tests/compile-fail-stable/surface_demux_port_duplicate.rs:15:18
+   |
+15 |         my_demux[c] -> for_each(std::mem::drop);
+   |                  ^
+
+warning: unused import: `var_args`
+ --> tests/compile-fail-stable/surface_demux_port_duplicate.rs:1:28
+  |
+1 | use dfir_rs::{dfir_syntax, var_args};
+  |                            ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default

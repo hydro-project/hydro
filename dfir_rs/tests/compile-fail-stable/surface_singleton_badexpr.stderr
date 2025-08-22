@@ -1,0 +1,5 @@
+error: `persist` should have exactly 1 persistence lifetime arguments, actually has 0.
+ --> tests/compile-fail-stable/surface_singleton_badexpr.rs:6:16
+  |
+6 |             -> persist()
+  |                ^^^^^^^

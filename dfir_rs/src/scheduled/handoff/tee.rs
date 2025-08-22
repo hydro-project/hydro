@@ -91,7 +91,7 @@ impl<T> Handoff for TeeingHandoff<T> {
         )
     }
 
-    fn borrow_mut_swap(&self) -> std::cell::RefMut<Self::Inner> {
+    fn borrow_mut_swap(&self) -> std::cell::RefMut<'_, Self::Inner> {
         todo!()
     }
 }

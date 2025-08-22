@@ -1,0 +1,5 @@
+error: Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator.
+ --> tests/compile-fail-stable/surface_negative_loop.rs:7:18
+  |
+7 |         diff -> [neg]diff;
+  |                  ^^^

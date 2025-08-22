@@ -104,7 +104,7 @@ impl<H: Handoff> RecvCtx<H> {
     }
 
     /// See [`Handoff::borrow_mut_swap`].
-    pub fn borrow_mut_swap(&self) -> RefMut<H::Inner> {
+    pub fn borrow_mut_swap(&self) -> RefMut<'_, H::Inner> {
         self.handoff.borrow_mut_swap()
     }
 }

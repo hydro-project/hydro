@@ -1,0 +1,29 @@
+error[E0271]: expected `Drain<'_, {integer}>` to be an iterator that yields `(_, _)`, but it yields `{integer}`
+ --> tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:3:9
+  |
+3 |         source_iter(0..1)
+  |         ^^^^^^^^^^^ expected `(_, _)`, found integer
+4 |             -> fold_keyed(|| 0, |old: &mut u32, val: u32| { *old += val; })
+  |                ---------- required by a bound introduced by this call
+  |
+  = note: expected tuple `(_, _)`
+              found type `{integer}`
+note: required by a bound in `check_input`
+ --> tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:16
+  |
+4 |             -> fold_keyed(|| 0, |old: &mut u32, val: u32| { *old += val; })
+  |                ^^^^^^^^^^ required by this bound in `check_input`
+
+error[E0271]: expected `Drain<'_, {integer}>` to be an iterator that yields `(_, _)`, but it yields `{integer}`
+ --> tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:16
+  |
+4 |             -> fold_keyed(|| 0, |old: &mut u32, val: u32| { *old += val; })
+  |                ^^^^^^^^^^ expected `(_, _)`, found integer
+  |
+  = note: expected tuple `(_, _)`
+              found type `{integer}`
+note: required by a bound in `check_input`
+ --> tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:16
+  |
+4 |             -> fold_keyed(|| 0, |old: &mut u32, val: u32| { *old += val; })
+  |                ^^^^^^^^^^ required by this bound in `check_input`

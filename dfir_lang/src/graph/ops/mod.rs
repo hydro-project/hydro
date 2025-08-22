@@ -125,9 +125,9 @@ pub struct OperatorWriteOutput {
     /// Iterator (or pusherator) code inside the subgraphs. The code for each
     /// operator is emitted in order.
     ///
-    /// Emitted code should assign to [`WriteContextArgs.ident`] and use
-    /// [`WriteIteratorArgs.inputs`] (pull iterators) or
-    /// [`WriteIteratorArgs.outputs`] (pusherators).
+    /// Emitted code should assign to [`WriteContextArgs::ident`] and use
+    /// [`WriteContextArgs::inputs`] (pull iterators) or
+    /// [`WriteContextArgs::outputs`] (pusherators).
     pub write_iterator: TokenStream,
     /// Code which runs after iterators have been run. Mainly for flushing IO.
     pub write_iterator_after: TokenStream,

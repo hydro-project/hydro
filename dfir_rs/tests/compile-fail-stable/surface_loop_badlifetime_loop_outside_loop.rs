@@ -1,0 +1,1 @@
+../compile-fail/surface_loop_badlifetime_loop_outside_loop.rs

@@ -1,0 +1,5 @@
+error: `partition(..)` closure argument `c` missing corresponding output port.
+ --> tests/compile-fail-stable/surface_partition_port_missing.rs:5:70
+  |
+5 |         my_partition = source_iter(0..10) -> partition(|item, [a, b, c]| {
+  |                                                                      ^

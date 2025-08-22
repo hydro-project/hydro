@@ -1,0 +1,1 @@
+../compile-fail/surface_fold_keyed_badtype_option.rs

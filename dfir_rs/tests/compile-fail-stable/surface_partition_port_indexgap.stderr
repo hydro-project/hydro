@@ -1,0 +1,5 @@
+error: Output port indices from `partition` must be consecutive from zero, missing 2.
+ --> tests/compile-fail-stable/surface_partition_port_indexgap.rs:8:22
+  |
+8 |         my_partition[3] -> for_each(std::mem::drop);
+  |                      ^

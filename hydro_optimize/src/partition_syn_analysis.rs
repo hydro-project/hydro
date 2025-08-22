@@ -557,10 +557,10 @@ impl Visit<'_> for StructOrTupleUseRhs {
 
     fn visit_expr_call(&mut self, call: &syn::ExprCall) {
         // Allow "Some" keyword (for Options)
-        if let syn::Expr::Path(func) = call.func.as_ref() {
-            if func.path.is_ident("Some") {
-                self.visit_expr(&call.args[0]); // Visit the argument of Some
-            }
+        if let syn::Expr::Path(func) = call.func.as_ref()
+            && func.path.is_ident("Some")
+        {
+            self.visit_expr(&call.args[0]); // Visit the argument of Some
         }
     }
 
@@ -694,21 +694,20 @@ impl Visit<'_> for EqualityAnalysis {
         for (i, stmt) in block.stmts.iter().enumerate() {
             self.visit_stmt(stmt);
 
-            if i == block.stmts.len() - 1 {
+            if i == block.stmts.len() - 1 &&
                 // If this is the last statement, it is the output if there is no semicolon
-                if let syn::Stmt::Expr(expr, semicolon) = stmt {
-                    if semicolon.is_none() {
-                        // Output only exists if there is no semicolon
-                        let mut analysis = StructOrTupleUseRhs {
-                            existing_dependencies: self.dependencies.clone(),
-                            ..Default::default()
-                        };
-                        analysis.visit_expr(expr);
+                let syn::Stmt::Expr(expr, semicolon) = stmt &&
+                    semicolon.is_none()
+            {
+                // Output only exists if there is no semicolon
+                let mut analysis = StructOrTupleUseRhs {
+                    existing_dependencies: self.dependencies.clone(),
+                    ..Default::default()
+                };
+                analysis.visit_expr(expr);
 
-                        self.output_dependencies = analysis.rhs_tuple;
-                        println!("Output dependency: {:?}", self.output_dependencies);
-                    }
-                }
+                self.output_dependencies = analysis.rhs_tuple;
+                println!("Output dependency: {:?}", self.output_dependencies);
             }
         }
     }

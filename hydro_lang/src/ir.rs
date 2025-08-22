@@ -105,17 +105,14 @@ impl VisitMut for QMacroSimplifier {
             return;
         }
 
-        if let syn::Expr::Call(call) = expr {
-            if let syn::Expr::Path(path_expr) = call.func.as_ref() {
-                // Look for calls to stageleft::runtime_support::fn*
-                if self.is_stageleft_runtime_support_call(&path_expr.path) {
-                    // Try to extract the closure from the arguments
-                    if let Some(closure) = self.extract_closure_from_args(&call.args) {
-                        self.simplified_result = Some(closure);
-                        return;
-                    }
-                }
-            }
+        if let syn::Expr::Call(call) = expr && let syn::Expr::Path(path_expr) = call.func.as_ref()
+            // Look for calls to stageleft::runtime_support::fn*
+            && self.is_stageleft_runtime_support_call(&path_expr.path)
+            // Try to extract the closure from the arguments
+            && let Some(closure) = self.extract_closure_from_args(&call.args)
+        {
+            self.simplified_result = Some(closure);
+            return;
         }
 
         // Continue visiting child expressions using the default implementation
@@ -186,19 +183,19 @@ impl<'ast> Visit<'ast> for ClosureFinder {
             syn::Expr::Block(block) if self.prefer_inner_blocks => {
                 // Special handling for blocks - look for inner blocks that contain closures
                 for stmt in &block.block.stmts {
-                    if let syn::Stmt::Expr(stmt_expr, _) = stmt {
-                        if let syn::Expr::Block(_) = stmt_expr {
-                            // Check if this nested block contains a closure
-                            let mut inner_visitor = ClosureFinder {
-                                found_closure: None,
-                                prefer_inner_blocks: false, // Avoid infinite recursion
-                            };
-                            inner_visitor.visit_expr(stmt_expr);
-                            if inner_visitor.found_closure.is_some() {
-                                // Found a closure in an inner block, return that block
-                                self.found_closure = Some(stmt_expr.clone());
-                                return;
-                            }
+                    if let syn::Stmt::Expr(stmt_expr, _) = stmt
+                        && let syn::Expr::Block(_) = stmt_expr
+                    {
+                        // Check if this nested block contains a closure
+                        let mut inner_visitor = ClosureFinder {
+                            found_closure: None,
+                            prefer_inner_blocks: false, // Avoid infinite recursion
+                        };
+                        inner_visitor.visit_expr(stmt_expr);
+                        if inner_visitor.found_closure.is_some() {
+                            // Found a closure in an inner block, return that block
+                            self.found_closure = Some(stmt_expr.clone());
+                            return;
                         }
                     }
                 }
@@ -967,6 +964,7 @@ pub struct HydroIrMetadata {
     pub cpu_usage: Option<f64>,
     pub network_recv_cpu_usage: Option<f64>,
     pub id: Option<usize>,
+    pub tag: Option<String>,
 }
 
 // HydroIrMetadata shouldn't be used to hash or compare
@@ -1206,7 +1204,13 @@ impl HydroNode {
                 _ => {
                     self.input_metadata().iter().for_each(|i| {
                         if i.location_kind.root() != self_location {
-                            panic!("Mismatching IR locations, node: {:?}", self)
+                            panic!(
+                                "Mismatching IR locations, child: {:?} ({:?}) of: {:?} ({:?})",
+                                i,
+                                i.location_kind.root(),
+                                self,
+                                self_location
+                            )
                         }
                     });
                 }
@@ -2990,12 +2994,12 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"208");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"232");
     }
 
     #[test]
     fn hydro_leaf_size() {
-        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"200");
+        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"224");
     }
 
     #[test]

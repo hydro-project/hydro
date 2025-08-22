@@ -453,27 +453,20 @@ pub(crate) fn decouple_analysis(
         if let Some(op_var) = op_id_to_var.get(op_id) {
             let op_value = solution.value(*op_var).round();
             let mut input_value = None;
-            if let Some(input) = inputs.first() {
-                if let Some(input_var) = op_id_to_var.get(input) {
-                    input_value = Some(solution.value(*input_var).round());
-                }
+            if let Some(input) = inputs.first()
+                && let Some(input_var) = op_id_to_var.get(input)
+            {
+                input_value = Some(solution.value(*input_var).round());
             };
 
             // Don't insert network if this is Source or already a Network
             let network_type = network_ids.get(op_id);
-            if input_value.is_none() || network_type.is_some() {
-                if op_value == 0.0 {
-                    orig_machine.push(*op_id);
-                } else {
-                    decoupled_machine.push(*op_id);
-                    // Don't modify the destination if we're sending to someone else
-                    if !network_type.is_some_and(|t| *t == NetworkType::Send) {
-                        place_on_decoupled.push(*op_id);
-                    }
-                }
-            } else {
+
+            #[expect(clippy::collapsible_else_if, reason = "code symmetry")]
+            if network_type.is_none()
+                && let Some(input_unwrapped) = input_value
+            {
                 // Figure out if we should insert Network nodes
-                let input_unwrapped = input_value.unwrap();
                 match (input_unwrapped, op_value) {
                     (0.0, 1.0) => {
                         orig_to_decoupled.push(*op_id);
@@ -488,6 +481,16 @@ pub(crate) fn decouple_analysis(
                     orig_machine.push(*op_id);
                 } else {
                     decoupled_machine.push(*op_id);
+                }
+            } else {
+                if op_value == 0.0 {
+                    orig_machine.push(*op_id);
+                } else {
+                    decoupled_machine.push(*op_id);
+                    // Don't modify the destination if we're sending to someone else
+                    if !network_type.is_some_and(|t| *t == NetworkType::Send) {
+                        place_on_decoupled.push(*op_id);
+                    }
                 }
             }
         }

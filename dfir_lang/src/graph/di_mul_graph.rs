@@ -205,7 +205,7 @@ where
     }
 
     /// Return an iterator over all edge IDs `E`.
-    pub fn edge_ids(&self) -> slotmap::basic::Keys<E, (V, V)> {
+    pub fn edge_ids(&self) -> slotmap::basic::Keys<'_, E, (V, V)> {
         self.edges.keys()
     }
 

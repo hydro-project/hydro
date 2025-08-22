@@ -21,7 +21,7 @@ static WORDS: LazyLock<String> = LazyLock::new(|| {
 fn words() -> impl Iterator<Item = String> + Clone {
     WORDS
         .lines()
-        .filter(|&s| 0 != hash_code(s) % 2)
+        .filter(|&s| !hash_code(s).is_multiple_of(2))
         .map(|s| s.to_owned())
 }
 fn hash_code(s: &str) -> u32 {

@@ -1,0 +1,9 @@
+use dfir_rs::dfir_syntax;
+
+fn main() {
+    let sink = "not a sink";
+    let mut df = dfir_syntax! {
+        source_iter(0..10) -> dest_sink(sink);
+    };
+    df.run_available();
+}

@@ -181,7 +181,7 @@ pub fn run_server<RX>(
                             KvsRequest::Put {key, value} => {
                                 throughput_internal += 1;
                                 const GATE: usize = 2 * 1024;
-                                if throughput_internal % GATE == 0 {
+                                if throughput_internal.is_multiple_of(GATE) {
                                     throughput.fetch_add(GATE, Ordering::SeqCst);
                                 }
                                 let marker = create_unique_id(server_id as u128, context.current_tick(), e as u128);

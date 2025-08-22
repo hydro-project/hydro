@@ -1,0 +1,8 @@
+error[E0599]: no variant named `Triangle` found for enum `Shape`
+  --> tests/compile-fail-stable/surface_demuxenum_port_extramissing.rs:20:18
+   |
+6  |     enum Shape {
+   |     ---------- variant `Triangle` not found here
+...
+20 |         my_demux[Triangle] -> for_each(std::mem::drop);
+   |                  ^^^^^^^^ variant not found in `Shape`

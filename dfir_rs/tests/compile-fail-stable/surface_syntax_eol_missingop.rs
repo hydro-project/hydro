@@ -1,0 +1,1 @@
+../compile-fail/surface_syntax_eol_missingop.rs

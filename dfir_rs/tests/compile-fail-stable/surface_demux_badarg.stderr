@@ -1,0 +1,5 @@
+error: Argument must be a two-argument closure expression
+ --> tests/compile-fail-stable/surface_demux_badarg.rs:5:48
+  |
+5 |         my_demux = source_iter(0..10) -> demux(std::mem::drop);
+  |                                                ^^^

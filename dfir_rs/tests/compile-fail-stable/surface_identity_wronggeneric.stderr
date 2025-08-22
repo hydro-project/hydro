@@ -1,0 +1,37 @@
+error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `String`, but it yields `{integer}`
+ --> tests/compile-fail-stable/surface_identity_wronggeneric.rs:5:9
+  |
+5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
+  |         ^^^^^^^^^^^           -------- required by a bound introduced by this call
+  |         |
+  |         expected `String`, found integer
+  |
+note: required by a bound in `check_input`
+ --> tests/compile-fail-stable/surface_identity_wronggeneric.rs:5:31
+  |
+5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
+  |                               ^^^^^^^^ required by this bound in `check_input`
+
+error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `String`, but it yields `{integer}`
+ --> tests/compile-fail-stable/surface_identity_wronggeneric.rs:5:31
+  |
+5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
+  |                               ^^^^^^^^ expected `String`, found integer
+  |
+note: required by a bound in `check_input`
+ --> tests/compile-fail-stable/surface_identity_wronggeneric.rs:5:31
+  |
+5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
+  |                               ^^^^^^^^ required by this bound in `check_input`
+
+error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `String`, but it yields `{integer}`
+ --> tests/compile-fail-stable/surface_identity_wronggeneric.rs:5:55
+  |
+5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
+  |                                                       ^^^^^^^^ expected `String`, found integer
+  |
+note: required by a bound in `check_input`
+ --> tests/compile-fail-stable/surface_identity_wronggeneric.rs:5:31
+  |
+5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
+  |                               ^^^^^^^^ required by this bound in `check_input`

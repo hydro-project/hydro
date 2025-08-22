@@ -1,6 +1,6 @@
-#![allow(
-    unexpected_cfgs,
-    reason = "https://github.com/BrynCooke/buildstructor/issues/192"
+#![expect(
+    mismatched_lifetime_syntaxes,
+    reason = "https://github.com/BrynCooke/buildstructor/issues/200"
 )]
 
 use std::collections::HashMap;

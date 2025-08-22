@@ -1,0 +1,5 @@
+error: expected `;`
+ --> tests/compile-fail-stable/surface_use_bad2.rs:7:20
+  |
+7 |         source_iter(0..10) -> for_each(std::mem::drop);
+  |                    ^

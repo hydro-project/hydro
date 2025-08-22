@@ -43,16 +43,16 @@ note: required by a bound in `check_input`
 error[E0271]: expected `new` to return `usize`, but it returns `String`
  --> tests/compile-fail/surface_fold_keyed_generics_bad.rs:4:49
   |
-4 |               -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
-  |                  -                                ^^^^^^^^^^^ expected `usize`, found `String`
-  |  ________________|
-  | |
-5 | |                 *old += val;
-6 | |             })
-  | |______________- required by a bound introduced by this call
-  |
+   4 |               -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
+     |                  -                                ^^^^^^^^^^^ expected `usize`, found `String`
+     |  ________________|
+     | |
+   5 | |                 *old += val;
+   6 | |             })
+     | |______________- required by a bound introduced by this call
+     |
 note: required by a bound in `std::collections::hash_map::Entry::<'a, K, V>::or_insert_with`
- --> $RUST/std/src/collections/hash/map.rs
-  |
-  |     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
-  |                                          ^ required by this bound in `Entry::<'a, K, V>::or_insert_with`
+    --> $RUST/std/src/collections/hash/map.rs
+     |
+     |     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+     |                                          ^ required by this bound in `Entry::<'a, K, V>::or_insert_with`

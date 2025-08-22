@@ -1,0 +1,5 @@
+error: Degenerate subgraph detected, is there a disconnected `null()` or other degenerate pipeline somewhere?
+ --> tests/compile-fail-stable/surface_null.rs:5:9
+  |
+5 |         null();
+  |         ^^^^

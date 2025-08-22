@@ -1,0 +1,5 @@
+error: `demux_enum` should have exactly 1 generic type arguments, actually has 0.
+  --> tests/compile-fail-stable/surface_demuxenum_missingtypeparam.rs:17:15
+   |
+17 |         ]) -> demux_enum();
+   |               ^^^^^^^^^^
