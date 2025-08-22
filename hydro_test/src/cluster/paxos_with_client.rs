@@ -57,7 +57,7 @@ pub trait PaxosLike<'a>: Sized {
             move |new_leader_elected| {
                 let cur_leader_id = Self::get_recipient_from_ballot(
                     new_leader_elected
-                        .broadcast_bincode(clients)
+                        .broadcast_bincode(clients, nondet!(/** TODO */))
                         .values()
                         .inspect(q!(|ballot| println!(
                             "Client notified that leader was elected: {:?}",

@@ -140,6 +140,9 @@ fn decouple_node(
     new_inners: &mut HashMap<(usize, LocationId), Rc<RefCell<HydroNode>>>,
 ) {
     // Replace location of sources, if necessary
+    // dbg!(&node);
+    // dbg!(&next_stmt_id);
+    // dbg!(&decoupler.place_on_decoupled_machine);
     if decoupler.place_on_decoupled_machine.contains(next_stmt_id) {
         match node {
             HydroNode::Source { metadata, .. } | HydroNode::Network { metadata, .. } => {
@@ -268,7 +271,7 @@ mod tests {
 
     use hydro_deploy::Deployment;
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
-    use hydro_lang::{FlowBuilder, Location, ir};
+    use hydro_lang::{FlowBuilder, Location, ir, nondet};
     use stageleft::q;
 
     use crate::debug::name_to_id_map;
@@ -294,10 +297,11 @@ mod tests {
             .source_iter(q!(0..10))
             .map(q!(|a| a + 1))
             .ir_node_named("map")
-            .broadcast_bincode(&recv_cluster)
+            .broadcast_bincode(&recv_cluster, nondet!(/** test */))
             .values()
             .for_each(q!(|a| println!("Got it: {}", a)));
 
+        dbg!(&place_on_decoupled_machine);
         let built = builder
             .optimize_with(persist_pullup)
             .optimize_with(inject_id)
@@ -377,7 +381,10 @@ mod tests {
     fn decouple_after_source_ir() {
         let output_to_decoupled_machine_after = vec![("map", -1)];
         let output_to_original_machine_after = vec![];
-        let place_on_decoupled_machine = vec![];
+        let place_on_decoupled_machine = vec![
+            // the source of cluster membership (TODO(shadaj): should have a better way of identifying)
+            ("map", -6),
+        ];
 
         let built = decouple_mini_program(
             output_to_decoupled_machine_after,
@@ -395,7 +402,10 @@ mod tests {
     async fn decouple_after_source() {
         let output_to_decoupled_machine_after = vec![("map", -1)];
         let output_to_original_machine_after = vec![];
-        let place_on_decoupled_machine = vec![];
+        let place_on_decoupled_machine = vec![
+            // the source of cluster membership (TODO(shadaj): should have a better way of identifying)
+            ("map", -6),
+        ];
 
         check_decouple_mini_program(
             output_to_decoupled_machine_after,
