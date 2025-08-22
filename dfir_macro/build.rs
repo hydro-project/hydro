@@ -207,7 +207,7 @@ fn main() {
     if matches!(
         version_meta().map(|meta| meta.channel),
         Ok(Channel::Nightly)
-    ) {
+    )|| option_env!("RUSTC_BOOTSTRAP") == Some("1") {
         println!("cargo:rustc-cfg=nightly");
     }
 

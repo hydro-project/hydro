@@ -1,0 +1,43 @@
+name: build-website
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+  schedule:
+    - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
+  workflow_dispatch:
+    inputs:
+      should_bench:
+        description: "Should Benchmark? (`true`)"
+        required: true
+        default: "false"
+
+jobs:
+  pre_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5.3.1
+        with:
+          cancel_others: "true"
+
+  build-website:
+    name: Build Website
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    timeout-minutes: 25
+    needs: pre_job
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18.18.0
+
+      - name: Build Website
+        run: bash build_docs.bash x86_64-linux-gnu-ubuntu-20.04

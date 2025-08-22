@@ -1,0 +1,21 @@
+name: "install nexttest"
+description: "installs nexttest"
+inputs:
+  os:
+    description: "operating system, one of {windpws-latest, linux-latest}"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install cargo-nextest (linux)
+      if: ${{ input.os == 'ubuntu-latest' }}
+      run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+
+    - name: Install cargo-nextest (windows)
+      if: ${{ input.os == 'windows-latest' }}
+      shell: bash
+      run: curl -LsSf https://get.nexte.st/latest/windows-tar | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+
+    - name: Invalid Choice
+      if: ${{ input.os != 'ubuntu-latest' && input.os != 'windows-latest' }}
+      run: exit 1

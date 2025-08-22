@@ -9,15 +9,17 @@ on:
   schedule:
     - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
   workflow_dispatch:
-    inputs:
-      should_bench:
-        description: "Should Benchmark? (`true`)"
-        required: true
-        default: "false"
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_STRIP: "debuginfo"
+  CARGO_PROFILE_TEST_STRIP: "debuginfo"
+  CARGO_PROFILE_RELEASE_STRIP: "debuginfo"
 
 jobs:
   pre_job:
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest, windows-latest]
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -26,9 +28,9 @@ jobs:
         with:
           cancel_others: "true"
 
-  check:
-    name: Lint and Check
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
+  test:
+    name: All tests, lints, and checks
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     timeout-minutes: 20
     needs: pre_job
     runs-on: ${{ matrix.os }}
@@ -36,161 +38,63 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        rust_release: [pinned-nightly, latest-stable]
+        rust_release: [latest-nightly, latest-stable]
         exclude:
           # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
           # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
           # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
-          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
+          - rust_release: ${{ (github.event_name != 'pull_request' && github.event_name != 'push' && 'nothing') || 'latest-nightly' }}
+          - os: ${{ (github.event_name != 'pull_request' && github.event_name != 'push' && 'nothing') || 'windows-latest' }}
 
     env:
-      CARGO_TERM_COLOR: always
-      CARGO_INCREMENTAL: 0
-      CARGO_PROFILE_DEV_STRIP: "debuginfo"
-      CARGO_PROFILE_TEST_STRIP: "debuginfo"
-      CARGO_PROFILE_RELEASE_STRIP: "debuginfo"
-      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-nightly' && 'nightly' || '' }}
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Run sccache-cache
-        if: matrix.rust_release == 'pinned-nightly'
-        uses: mozilla-actions/sccache-action@v0.0.8
+      - if: matrix.rust_release == 'latest-stable'
+        uses: ./.github/actions/use-sccache
 
-      - name: Set Rust caching env vars
-        if: matrix.rust_release == 'pinned-nightly'
-        uses: actions/github-script@v6
+      - uses: ./.github/actions/install-nexttest
         with:
-          script: |
-            core.exportVariable('SCCACHE_GHA_ENABLED', 'true');
-            core.exportVariable('RUSTC_WRAPPER', 'sccache');
-            core.exportVariable('ACTIONS_CACHE_SERVICE_V2', 'on');
-
-      - if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: cargo fmt --all -- --check
-
-      - run: cargo clippy --all-targets --features python -- -D warnings
-      - run: cargo check --all-targets --features python
-      - run: cargo check --all-targets --no-default-features
-
-  check-wasm:
-    name: Check WebAssembly
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
-    timeout-minutes: 10
-    needs: pre_job
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust_release: [pinned-nightly, latest-stable]
-        exclude:
-          # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
-          # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
-          # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
-          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
-
-    env:
-      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Install wasm toolchain
-        run: rustup target add wasm32-unknown-unknown
-
-      - run: cargo check -p dfir_rs --target wasm32-unknown-unknown
-
-  test:
-    name: Test Suite
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
-    timeout-minutes: 50
-    needs: pre_job
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        rust_release: [pinned-nightly, latest-stable]
-        exclude:
-          # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
-          # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
-          # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ ((needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request') && 'nothing') || 'pinned-nightly' }}
-          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
-          - os: ${{ (github.event_name != 'pull_request' && 'nothing') || 'windows-latest' }}
-
-    env:
-      CARGO_TERM_COLOR: always
-      CARGO_INCREMENTAL: 0
-      CARGO_PROFILE_DEV_STRIP: "debuginfo"
-      CARGO_PROFILE_TEST_STRIP: "debuginfo"
-      CARGO_PROFILE_RELEASE_STRIP: "debuginfo"
-      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Run sccache-cache
-        if: matrix.rust_release == 'pinned-nightly'
-        uses: mozilla-actions/sccache-action@v0.0.8
-
-      - name: Set Rust caching env vars
-        if: matrix.rust_release == 'pinned-nightly'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('SCCACHE_GHA_ENABLED', 'true');
-            core.exportVariable('RUSTC_WRAPPER', 'sccache');
-            core.exportVariable('ACTIONS_CACHE_SERVICE_V2', 'on');
-
-      - name: Install cargo-nextest (linux)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
-
-      - name: Install cargo-nextest (windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        shell: bash
-        run: curl -LsSf https://get.nexte.st/latest/windows-tar | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+          os: ${{ matrix.os }}
 
       - name: Run cargo nextest on all targets
         run: cargo nextest run --no-fail-fast --features python --features hydro_lang/deploy --all-targets
-        env:
-          # On stable the output messages will often not match pinned-nightly, so we set to 'overwrite'.
-          TRYBUILD: ${{ matrix.rust_release == 'pinned-nightly' && 'wip' || 'overwrite' }}
 
       - name: Run doctests
         # Not supported by nextest: https://github.com/nextest-rs/nextest/issues/16
         run: cargo test --no-fail-fast --features python --features hydro_lang/deploy --doc
 
+      - run: cargo clippy --all-targets --features python -- -D warnings
+      - run: cargo check --all-targets --features python
+      - run: cargo check --all-targets --no-default-features
+      - run: cargo fmt --all -- --check
+
   test-wasm:
     name: Test Suite (WebAssembly)
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     timeout-minutes: 15
     needs: pre_job
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust_release: [pinned-nightly, latest-stable]
+        rust_release: [latest-nightly, latest-stable]
         exclude:
           # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
           # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
           # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
-          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
+          - rust_release: ${{ (github.event_name != 'pull_request' && github.event_name != 'push' && 'nothing') || 'latest-nightly' }}
 
     env:
-      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-nightly' && 'nightly' || '' }}
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install wasm toolchain
+      - name: Install wasm target
         run: rustup target add wasm32-unknown-unknown
 
       - name: Determine wasm-bindgen version
@@ -205,146 +109,4 @@ jobs:
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
         run: cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
 
-  build-website:
-    name: Build Website
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
-    timeout-minutes: 25
-    needs: pre_job
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18.18.0
-
-      - name: Build Website
-        run: bash build_docs.bash x86_64-linux-gnu-ubuntu-20.04
-
-  docs:
-    name: Docs (rustdoc)
-    timeout-minutes: 10
-    needs: pre_job
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    runs-on: ubuntu-latest
-    env:
-      WWW_DIR: target
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - env:
-          RUSTDOCFLAGS: --cfg docsrs -Dwarnings
-        run: cargo doc --no-deps --all-features
-
-      - name: Move design docs to output
-        shell: bash
-        run: |
-          mv design_docs "$WWW_DIR/"
-
-      - name: Push to gh-pages
-        # Do not deploy PRs.
-        if: ${{ github.event_name != 'pull_request' }}
-        shell: bash
-        run: |
-          git -C "$WWW_DIR" init -q
-          git -C "$WWW_DIR" remote add origin "$(git remote get-url origin)"
-          git -C "$WWW_DIR" config credential.helper "$(git config credential.helper)"
-          git -C "$WWW_DIR" config 'http.https://github.com/.extraheader' "$(git config 'http.https://github.com/.extraheader')"
-          git -C "$WWW_DIR" config core.autocrlf input
-          git -C "$WWW_DIR" config core.safecrlf false
-          git -C "$WWW_DIR" fetch origin gh-pages:gh-pages || true
-          git -C "$WWW_DIR" symbolic-ref HEAD refs/heads/gh-pages
-          git -C "$WWW_DIR" reset
-          git -C "$WWW_DIR" add doc design_docs
-          if git -C "$WWW_DIR" -c 'user.name=github-actions[bot]' -c 'user.email=41898282+github-actions[bot]@users.noreply.github.com' \
-            commit -m "Update rustdoc $(date -I) $(git rev-parse HEAD)";
-          then
-            git -C "$WWW_DIR" push -u origin gh-pages --quiet
-          else
-            echo 'No changes to commit'
-          fi
-
-  benches:
-    name: Benchmarks
-    timeout-minutes: 30
-    needs: pre_job
-    if: |
-      needs.pre_job.outputs.should_skip != 'true' &&
-      (
-        github.event_name == 'schedule'
-        || (github.event_name == 'workflow_dispatch' && github.event.inputs.should_bench == 'true')
-        || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-bench]'))
-        || (
-          github.event_name == 'pull_request'
-          && (
-            contains(github.event.pull_request.title, '[ci-bench]')
-            || contains(github.event.pull_request.body, '[ci-bench]')
-          )
-        )
-      )
-    runs-on: ubuntu-latest
-    env:
-      WWW_DIR: target
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Checkout gh-pages
-        shell: bash
-        run: |
-          mkdir -p "$WWW_DIR"
-          git -C "$WWW_DIR" init -q
-          git -C "$WWW_DIR" remote add origin "$(git remote get-url origin)"
-          git -C "$WWW_DIR" config credential.helper "$(git config credential.helper)"
-          git -C "$WWW_DIR" config 'http.https://github.com/.extraheader' "$(git config 'http.https://github.com/.extraheader')"
-          git -C "$WWW_DIR" config core.autocrlf input
-          git -C "$WWW_DIR" config core.safecrlf false
-          git -C "$WWW_DIR" checkout -b gh-pages
-          git -C "$WWW_DIR" fetch origin gh-pages
-          git -C "$WWW_DIR" reset --soft origin/gh-pages
-          git -C "$WWW_DIR" reset
-          git -C "$WWW_DIR" checkout -- bench criterion
-          mkdir -p "$WWW_DIR/bench"
-
-      - name: Run benchmark
-        run: |
-          time cargo bench -p benches -- dfir --output-format bencher | tee output.txt
-          time cargo bench -p benches -- micro/ops/ --output-format bencher | tee -a output.txt
-
-      - name: Generate benchmark page
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          tool: cargo
-          output-file-path: output.txt
-          external-data-json-path: target/bench/data.json
-
-      - name: Write benchmark JSON
-        run: echo 'window.BENCHMARK_DATA = ' | cat - "$WWW_DIR/bench/data.json" > "$WWW_DIR/bench/data.js"
-
-      - name: Write benchmark HTML
-        shell: bash
-        run: |
-          node --input-type=module -e "$(curl -sSL https://raw.githubusercontent.com/benchmark-action/github-action-benchmark/master/src/default_index_html.ts) console.log(DEFAULT_INDEX_HTML)" > "$WWW_DIR/bench/index.html"
-          sed -i '/          const data = window.BENCHMARK_DATA;/a\
-                    data.entries.Benchmark = data.entries.Benchmark.slice(-365)' "$WWW_DIR/bench/index.html"
-
-      - name: Push to gh-pages
-        # Do not deploy PRs, only benchmark main branch.
-        if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
-        shell: bash
-        run: |
-          cp -r .github/gh-pages/* .github/gh-pages/.gitignore "$WWW_DIR/"
-          git -C "$WWW_DIR" fetch origin gh-pages
-          git -C "$WWW_DIR" reset --soft origin/gh-pages
-          git -C "$WWW_DIR" reset
-          git -C "$WWW_DIR" add bench criterion $(ls .github/gh-pages)
-          if git -C "$WWW_DIR" -c 'user.name=github-actions[bot]' -c 'user.email=41898282+github-actions[bot]@users.noreply.github.com' \
-            commit -m "Update Benchmarks $(date -I) $(git rev-parse HEAD)";
-          then
-            git -C "$WWW_DIR" push -u origin gh-pages --quiet
-          else
-            echo 'No changes to commit'
-          fi
+      - run: cargo check -p dfir_rs --target wasm32-unknown-unknown
