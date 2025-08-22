@@ -94,9 +94,7 @@ expression: built.ir()
                             output_type: Some(
                                 i32,
                             ),
-                            stream_kind: Some(
-                                Stream,
-                            ),
+                            stream_kind: None,
                             is_bounded: false,
                         },
                     },
@@ -107,9 +105,7 @@ expression: built.ir()
                         output_type: Some(
                             (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                         ),
-                        stream_kind: Some(
-                            Stream,
-                        ),
+                        stream_kind: None,
                         is_bounded: false,
                     },
                 },
@@ -120,9 +116,7 @@ expression: built.ir()
                     output_type: Some(
                         (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                     ),
-                    stream_kind: Some(
-                        Stream,
-                    ),
+                    stream_kind: None,
                     is_bounded: false,
                 },
             },
@@ -133,9 +127,7 @@ expression: built.ir()
                 output_type: Some(
                     i32,
                 ),
-                stream_kind: Some(
-                    Stream,
-                ),
+                stream_kind: None,
                 is_bounded: false,
             },
         },

@@ -3025,12 +3025,12 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"232");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"240");
     }
 
     #[test]
     fn hydro_leaf_size() {
-        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"224");
+        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"232");
     }
 
     #[test]
