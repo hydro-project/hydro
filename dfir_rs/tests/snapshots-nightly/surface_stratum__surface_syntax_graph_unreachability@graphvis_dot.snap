@@ -1,0 +1,90 @@
+---
+source: dfir_rs/tests/surface_stratum.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) union()", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) map(|v| (v, ()))", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) source_iter(vec![0])", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) source_stream(pairs_recv)", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) tee()", shape=house, fillcolor="#ffff88"]
+    n6v1 [label="(n6v1) join()", shape=invhouse, fillcolor="#88aaff"]
+    n7v1 [label="(n7v1) map(|(_src, ((), dst))| dst)", shape=invhouse, fillcolor="#88aaff"]
+    n8v1 [label="(n8v1) map(|x| x)", shape=invhouse, fillcolor="#88aaff"]
+    n9v1 [label="(n9v1) map(|x| x)", shape=invhouse, fillcolor="#88aaff"]
+    n10v1 [label="(n10v1) tee()", shape=house, fillcolor="#ffff88"]
+    n11v1 [label="(n11v1) difference()", shape=invhouse, fillcolor="#88aaff"]
+    n12v1 [label="(n12v1) for_each(|x| println!(\"Not reached: {}\", x))", shape=house, fillcolor="#ffff88"]
+    n13v1 [label="(n13v1) flat_map(|(a, b)| [a, b])", shape=invhouse, fillcolor="#88aaff"]
+    n14v1 [label="(n14v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n15v1 [label="(n15v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n16v1 [label="(n16v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n17v1 [label="(n17v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n1v1 -> n2v1
+    n3v1 -> n1v1 [label="0"]
+    n4v1 -> n5v1
+    n9v1 -> n10v1
+    n8v1 -> n9v1
+    n7v1 -> n8v1
+    n6v1 -> n7v1
+    n2v1 -> n6v1 [label="0"]
+    n5v1 -> n14v1 [label="1"]
+    n10v1 -> n15v1 [label="0"]
+    n11v1 -> n12v1
+    n13v1 -> n11v1 [label="pos"]
+    n5v1 -> n16v1 [label="0"]
+    n10v1 -> n17v1 [label="1"]
+    n14v1 -> n6v1 [label="1"]
+    n15v1 -> n1v1 [label="1"]
+    n16v1 -> n13v1
+    n17v1 -> n11v1 [label="neg", color=red]
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_edges {
+            cluster=true
+            label="var edges"
+            n4v1
+            n5v1
+        }
+    }
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 0"
+        n3v1
+        subgraph sg_2v1_var_my_join_tee {
+            cluster=true
+            label="var my_join_tee"
+            n6v1
+            n7v1
+            n8v1
+            n9v1
+            n10v1
+        }
+        subgraph sg_2v1_var_reached_vertices {
+            cluster=true
+            label="var reached_vertices"
+            n1v1
+            n2v1
+        }
+    }
+    subgraph sg_3v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_3v1\nstratum 1"
+        n13v1
+        subgraph sg_3v1_var_diff {
+            cluster=true
+            label="var diff"
+            n11v1
+            n12v1
+        }
+    }
+}

@@ -390,7 +390,7 @@ mod tests {
         .3;
 
         ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(built.ir());
+            hydro_build_utils::assert_debug_snapshot!(built.ir());
         });
     }
 
@@ -425,7 +425,7 @@ mod tests {
         .3;
 
         ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(built.ir());
+            hydro_build_utils::assert_debug_snapshot!(built.ir());
         });
     }
 

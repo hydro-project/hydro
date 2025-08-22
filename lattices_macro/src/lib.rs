@@ -505,7 +505,7 @@ mod test {
                 };
                 let process_item_struct = process_item_struct(item);
                 let derive_lattice = derive_lattice(&process_item_struct);
-                insta::assert_snapshot!(prettyplease::unparse(&parse_quote! { #derive_lattice }));
+                hydro_build_utils::assert_snapshot!(prettyplease::unparse(&parse_quote! { #derive_lattice }));
             }
         };
     }

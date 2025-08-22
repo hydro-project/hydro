@@ -83,17 +83,22 @@ webbrowser = { version = "1.0.2", optional = true }
 data-encoding = { version = "2.6.0", optional = true }
 serde_json = { version = "1.0.132", optional = true }
 
+# coax cargo-smart-release into publishing this crate.
+# https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
+# https://github.com/GitoxideLabs/cargo-smart-release/issues/36
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1", optional = true }
+
 [target.'cfg(target_os = "linux")'.dependencies]
 chrono = { version = "0.4.39", optional = true }
 procfs = { version = "0.17.0", optional = true }
 
 [build-dependencies]
 stageleft_tool.workspace = true
-rustc_version = "0.4.0"
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
 
 [dev-dependencies]
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0" }
 ctor = "0.2"
-insta = "1.39"
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
 tokio-test = "0.4.4"
 trybuild = "1"

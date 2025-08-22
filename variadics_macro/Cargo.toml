@@ -19,5 +19,4 @@ syn = { version = "2.0.0", features = ["full", "parsing", "visit-mut"] }
 variadics = { path = "../variadics", version = "^0.0.9" }
 
 [dev-dependencies]
-insta = "1.7.1"
 prettyplease = "0.2.0"

@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::{BufWriter, Error, ErrorKind, Result, Write};
 use std::path::PathBuf;
 
-use rustc_version::{Channel, version_meta};
 use syn::{AttrStyle, Expr, ExprLit, Item, Lit, Member, Meta, MetaNameValue, Path, parse_quote};
 
 const OPS_PATH: &str = "src/graph/ops";
@@ -15,13 +14,7 @@ fn main() {
     println!("cargo::rerun-if-changed={}", OPS_PATH);
     println!("cargo::rerun-if-env-changed={}", DFIR_GENERATE_DOCS);
 
-    println!("cargo::rustc-check-cfg=cfg(nightly)");
-    if matches!(
-        version_meta().map(|meta| meta.channel),
-        Ok(Channel::Nightly)
-    ) {
-        println!("cargo:rustc-cfg=nightly");
-    }
+    hydro_build_utils::emit_nightly_configuration!();
 
     if std::env::var_os(DFIR_GENERATE_DOCS).is_some()
         && let Err(err) = generate_op_docs()

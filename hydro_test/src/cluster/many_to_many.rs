@@ -22,7 +22,7 @@ mod tests {
         let _ = super::many_to_many(&builder);
         let built = builder.finalize();
 
-        insta::assert_debug_snapshot!(built.ir());
+        hydro_build_utils::assert_debug_snapshot!(built.ir());
     }
 
     #[tokio::test]

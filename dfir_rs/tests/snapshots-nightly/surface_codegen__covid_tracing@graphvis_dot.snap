@@ -1,0 +1,85 @@
+---
+source: dfir_rs/tests/surface_codegen.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) source_stream(contacts_recv)", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) flat_map(|(pid_a, pid_b, time)| [(pid_a, (pid_b, time)), (pid_b, (pid_a, time))])", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) union()", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) source_stream(diagnosed_recv)", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) join::<'static>()", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) filter(|(_pid_a, ((_pid_b, t_contact), (t_from, t_to)))| {\l    (t_from..=t_to).contains(&t_contact)\l})\l", shape=invhouse, fillcolor="#88aaff"]
+    n7v1 [label="(n7v1) map(|(_pid_a, (pid_b_t_contact, _t_from_to))| pid_b_t_contact)", shape=invhouse, fillcolor="#88aaff"]
+    n8v1 [label="(n8v1) tee()", shape=house, fillcolor="#ffff88"]
+    n9v1 [label="(n9v1) map(|(pid, t)| (pid, (t, t + TRANSMISSIBLE_DURATION)))", shape=invhouse, fillcolor="#88aaff"]
+    n10v1 [label="(n10v1) join::<'static>()", shape=invhouse, fillcolor="#88aaff"]
+    n11v1 [label="(n11v1) map(|(_pid, ((name, phone), exposure))| {\l    format!(\"[{}] To {}: Possible Exposure at t = {}\", name, phone, exposure)\l})\l", shape=invhouse, fillcolor="#88aaff"]
+    n12v1 [label="(n12v1) tee()", shape=house, fillcolor="#ffff88"]
+    n13v1 [label="(n13v1) for_each(|msg| println!(\"{}\", msg))", shape=house, fillcolor="#ffff88"]
+    n14v1 [label="(n14v1) for_each(|msg| out_send.send(msg).unwrap())", shape=house, fillcolor="#ffff88"]
+    n15v1 [label="(n15v1) source_stream(people_recv)", shape=invhouse, fillcolor="#88aaff"]
+    n16v1 [label="(n16v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n17v1 [label="(n17v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n1v1 -> n2v1
+    n4v1 -> n3v1 [label="0"]
+    n7v1 -> n8v1
+    n6v1 -> n7v1
+    n5v1 -> n6v1
+    n2v1 -> n5v1 [label="0"]
+    n3v1 -> n5v1 [label="1"]
+    n9v1 -> n3v1 [label="1"]
+    n8v1 -> n16v1 [label="0"]
+    n11v1 -> n12v1
+    n10v1 -> n11v1
+    n12v1 -> n13v1
+    n12v1 -> n14v1
+    n15v1 -> n10v1 [label="0"]
+    n8v1 -> n17v1 [label="1"]
+    n16v1 -> n9v1
+    n17v1 -> n10v1 [label="1"]
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        n4v1
+        n9v1
+        subgraph sg_1v1_var_contacts {
+            cluster=true
+            label="var contacts"
+            n1v1
+            n2v1
+        }
+        subgraph sg_1v1_var_exposed {
+            cluster=true
+            label="var exposed"
+            n3v1
+        }
+        subgraph sg_1v1_var_new_exposed {
+            cluster=true
+            label="var new_exposed"
+            n5v1
+            n6v1
+            n7v1
+            n8v1
+        }
+    }
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 0"
+        n15v1
+        n13v1
+        n14v1
+        subgraph sg_2v1_var_notifs {
+            cluster=true
+            label="var notifs"
+            n10v1
+            n11v1
+            n12v1
+        }
+    }
+}

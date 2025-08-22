@@ -82,7 +82,7 @@ clap = { version = "4.5.4", features = [ "derive" ] }
 colored = "2.0"
 example_test = { path = "../example_test", version = "^0.0.0" }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
-insta = "1.39"
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
 multiplatform_test = { path = "../multiplatform_test", version = "^0.5.0" }
 rand = { version = "0.8.0", features = [ "small_rng" ] }
 rand_distr = "0.4.3"
@@ -99,4 +99,4 @@ zipf = "7"
 criterion = { version = "0.5.0", features = [ "async_tokio", "html_reports" ] }
 
 [build-dependencies]
-rustc_version = "0.4.0"
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }

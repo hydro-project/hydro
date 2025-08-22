@@ -2994,12 +2994,12 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"232");
+        assert_eq!(size_of::<HydroNode>(), 232);
     }
 
     #[test]
     fn hydro_leaf_size() {
-        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"224");
+        assert_eq!(size_of::<HydroLeaf>(), 224);
     }
 
     #[test]
@@ -3017,7 +3017,7 @@ mod test {
         let result = simplify_q_macro(stageleft_call);
         // This should be processed by our visitor and simplified to q!(...)
         // since we detect the stageleft::runtime_support::fn_* pattern
-        insta::assert_snapshot!(result.to_token_stream().to_string());
+        hydro_build_utils::assert_snapshot!(result.to_token_stream().to_string());
     }
 
     #[test]
@@ -3029,6 +3029,6 @@ mod test {
         })
         .splice_fn1_ctx(&());
         let result = simplify_q_macro(stageleft_call);
-        insta::assert_snapshot!(result.to_token_stream().to_string());
+        hydro_build_utils::assert_snapshot!(result.to_token_stream().to_string());
     }
 }

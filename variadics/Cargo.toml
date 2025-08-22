@@ -17,3 +17,6 @@ hashbrown = "0.14.0"
 
 [dev-dependencies]
 trybuild = "1.0"
+
+[build-dependencies]
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
