@@ -10,7 +10,7 @@ use crate::stream::ExactlyOnce;
 use crate::unsafety::NonDet;
 use crate::{
     Atomic, Bounded, KeyedStream, Location, NoOrder, Optional, Singleton, Stream, Tick, TotalOrder,
-    nondet,
+    Unbounded, nondet,
 };
 
 pub struct KeyedSingleton<K, V, Loc, Bound> {
@@ -188,6 +188,16 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
             .weaker_retries()
             .join(with.entries())
             .into_keyed()
+    }
+
+    pub fn latest(self) -> KeyedSingleton<K, V, L, Unbounded> {
+        KeyedSingleton {
+            underlying: Stream::new(
+                self.underlying.location.outer().clone(),
+                // no need to persist due to top-level replay
+                self.underlying.ir_node.into_inner(),
+            ),
+        }
     }
 }
 

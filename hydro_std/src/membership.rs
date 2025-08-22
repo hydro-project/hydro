@@ -1,12 +1,14 @@
+use std::hash::Hash;
+
 use hydro_lang::keyed_singleton::KeyedSingleton;
 use hydro_lang::keyed_stream::KeyedStream;
 use hydro_lang::location::MembershipEvent;
 use hydro_lang::{Location, Unbounded};
 use stageleft::q;
 
-pub fn track_membership<'a, L: Location<'a>>(
-    membership: KeyedStream<u64, MembershipEvent, L, Unbounded>,
-) -> KeyedSingleton<u64, (), L, Unbounded> {
+pub fn track_membership<'a, K: Hash + Eq, L: Location<'a>>(
+    membership: KeyedStream<K, MembershipEvent, L, Unbounded>,
+) -> KeyedSingleton<K, (), L, Unbounded> {
     membership
         .fold(
             q!(|| false),
