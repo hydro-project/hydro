@@ -109,7 +109,7 @@ A common pattern in distributed systems is to broadcast data to all members of a
 # let p1 = flow.process::<()>();
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
-let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast_bincode(&workers);
+let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast_bincode(&workers, nondet!(/** assuming stable membership */));
 on_worker.send_bincode(&p2)
 # .entries()
 // if there are 4 members in the cluster, we should receive 4 elements
@@ -124,36 +124,27 @@ on_worker.send_bincode(&p2)
 # }));
 ```
 
-:::warning
-
-The current broadcast implementation assumes a static configuration where members cannot be added or removed at runtime. This will change in the future as Hydro will support dynamically scaled clusters.
-
-:::
-
-Under the hood, the `broadcast_bincode` API uses a list of members of the cluster provided by the deployment system. To manually access this list, you can use the `members` method on a cluster to get a value that can be used inside `q!(...)` blocks:
+This API requires a [non-determinism guard](../live-collections/determinism.md#unsafe-operations-in-hydro), because the set of cluster members may asynchronously change over time. Depending on when we are notified of membership changes, we will broadcast to different members. Under the hood, the `broadcast_bincode` API uses a list of members of the cluster provided by the deployment system. To manually access this list, you can use the `source_cluster_members` method to get a stream of membership events (cluster members joining or leaving):
 
 ```rust
 # use hydro_lang::*;
 # use futures::StreamExt;
 # tokio_test::block_on(test_util::multi_location_test(|flow, p2| {
-# let p1 = flow.process::<()>();
-# let workers: Cluster<()> = flow.cluster::<()>();
+let p1 = flow.process::<()>();
+let workers: Cluster<()> = flow.cluster::<()>();
 # // do nothing on each worker
 # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
-let cluster_members = workers.members();
-let members_stream: Stream<ClusterId<_>, Process<_>, _> = p1
-    .source_iter(q!(cluster_members /* : &[ClusterId<Worker>] */))
-    .cloned();
-members_stream.send_bincode(&p2)
-// if there are 4 members in the cluster, we should receive 4 elements
-// ClusterId::<Worker>(0), ClusterId::<Worker>(1), ClusterId::<Worker>(2), ClusterId::<Worker>(3)
+let cluster_members = p1.source_cluster_members(&workers);
+# cluster_members.entries().send_bincode(&p2)
+// if there are 4 members in the cluster, we would see a join event for each
+// { ClusterId::<Worker>(0): [MembershipEvent::Join], ClusterId::<Worker>(2): [MembershipEvent::Join], ... }
 # }, |mut stream| async move {
 # let mut results = Vec::new();
 # for w in 0..4 {
 #     results.push(format!("{:?}", stream.next().await.unwrap()));
 # }
 # results.sort();
-# assert_eq!(results, vec!["ClusterId::<()>(0)", "ClusterId::<()>(1)", "ClusterId::<()>(2)", "ClusterId::<()>(3)"]);
+# assert_eq!(results, vec!["(ClusterId::<()>(0), Joined)", "(ClusterId::<()>(1), Joined)", "(ClusterId::<()>(2), Joined)", "(ClusterId::<()>(3), Joined)"]);
 # }));
 ```
 

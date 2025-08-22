@@ -12,7 +12,7 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
         .map(q!(|s| s.to_string()));
 
     let partitioned_words = words
-        .round_robin_bincode(&cluster)
+        .round_robin_bincode(&cluster, nondet!(/** test */))
         .map(q!(|string| (string, ())))
         .into_keyed();
 

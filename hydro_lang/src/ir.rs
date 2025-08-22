@@ -1204,7 +1204,13 @@ impl HydroNode {
                 _ => {
                     self.input_metadata().iter().for_each(|i| {
                         if i.location_kind.root() != self_location {
-                            panic!("Mismatching IR locations, node: {:?}", self)
+                            panic!(
+                                "Mismatching IR locations, child: {:?} ({:?}) of: {:?} ({:?})",
+                                i,
+                                i.location_kind.root(),
+                                self,
+                                self_location
+                            )
                         }
                     });
                 }

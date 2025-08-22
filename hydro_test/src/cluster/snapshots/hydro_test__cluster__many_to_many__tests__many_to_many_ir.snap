@@ -22,8 +22,11 @@ expression: built.ir()
                                 { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 },
                             ),
                             metadata: HydroIrMetadata {
-                                location_kind: Cluster(
+                                location_kind: Tick(
                                     0,
+                                    Cluster(
+                                        0,
+                                    ),
                                 ),
                                 output_type: Some(
                                     i32,
@@ -31,17 +34,23 @@ expression: built.ir()
                             },
                         },
                         metadata: HydroIrMetadata {
-                            location_kind: Cluster(
+                            location_kind: Tick(
                                 0,
+                                Cluster(
+                                    0,
+                                ),
                             ),
                             output_type: Some(
-                                i32,
+                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                             ),
                         },
                     },
                     metadata: HydroIrMetadata {
-                        location_kind: Cluster(
+                        location_kind: Tick(
                             0,
+                            Cluster(
+                                0,
+                            ),
                         ),
                         output_type: Some(
                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),

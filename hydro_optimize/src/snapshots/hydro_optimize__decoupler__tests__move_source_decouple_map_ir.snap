@@ -15,9 +15,79 @@ expression: built.ir()
                 deserialize_fn: Some(
                     | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
                 ),
-                input: FlatMap {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: iter :: Map < std :: slice :: Iter < '_ , hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > > , _ > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_1) } ; | v | { ids__free . iter () . map (move | id | (* id , v . clone ())) } }),
-                    input: Map {
+                input: CrossProduct {
+                    left: Map {
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , ()) , hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; | (k , _) | k }),
+                        input: FilterMap {
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , bool) , core :: option :: Option < (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
+                            input: FoldKeyed {
+                                init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | | false }),
+                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_lang :: __staged :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
+                                input: Persist {
+                                    inner: Map {
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , hydro_lang :: __staged :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
+                                        input: Source {
+                                            source: Iter(
+                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_clusterids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_1) } ; underlying_clusterids__free },
+                                            ),
+                                            metadata: HydroIrMetadata {
+                                                location_kind: Cluster(
+                                                    0,
+                                                ),
+                                                output_type: Some(
+                                                    & hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () >,
+                                                ),
+                                            },
+                                        },
+                                        metadata: HydroIrMetadata {
+                                            location_kind: Cluster(
+                                                0,
+                                            ),
+                                            output_type: Some(
+                                                (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , hydro_lang :: __staged :: location :: MembershipEvent),
+                                            ),
+                                        },
+                                    },
+                                    metadata: HydroIrMetadata {
+                                        location_kind: Cluster(
+                                            0,
+                                        ),
+                                        output_type: Some(
+                                            (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , hydro_lang :: __staged :: location :: MembershipEvent),
+                                        ),
+                                    },
+                                },
+                                metadata: HydroIrMetadata {
+                                    location_kind: Cluster(
+                                        0,
+                                    ),
+                                    output_type: Some(
+                                        (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , bool),
+                                    ),
+                                },
+                            },
+                            metadata: HydroIrMetadata {
+                                location_kind: Cluster(
+                                    0,
+                                ),
+                                output_type: Some(
+                                    (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , ()),
+                                ),
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_kind: Tick(
+                                0,
+                                Cluster(
+                                    0,
+                                ),
+                            ),
+                            output_type: Some(
+                                hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () >,
+                            ),
+                        },
+                    },
+                    right: Map {
                         f: | (_ , b) | b,
                         input: Network {
                             serialize_fn: Some(
@@ -81,8 +151,11 @@ expression: built.ir()
                         },
                     },
                     metadata: HydroIrMetadata {
-                        location_kind: Cluster(
+                        location_kind: Tick(
                             0,
+                            Cluster(
+                                0,
+                            ),
                         ),
                         output_type: Some(
                             (hydro_lang :: __staged :: location :: cluster :: cluster_id :: ClusterId < () > , i32),

@@ -42,7 +42,9 @@ pub fn paxos_bench<'a>(
             ),
         );
 
-        let sequenced_to_replicas = sequenced_payloads.broadcast_bincode(replicas).values();
+        let sequenced_to_replicas = sequenced_payloads
+            .broadcast_bincode(replicas, nondet!(/** TODO */))
+            .values();
 
         // Replicas
         let (replica_checkpoint, processed_payloads) =
@@ -53,7 +55,7 @@ pub fn paxos_bench<'a>(
         let a_checkpoint = {
             // TODO(shadaj): once we can reduce keyed over unbounded streams, this should be safe
             let a_checkpoint_largest_seqs = replica_checkpoint
-                .broadcast_bincode(&acceptors)
+                .broadcast_bincode(&acceptors, nondet!(/** TODO */))
                 .entries()
                 .into_keyed()
                 .reduce_commutative(q!(|curr_seq, seq| {
