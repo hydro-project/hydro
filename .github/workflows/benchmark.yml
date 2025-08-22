@@ -1,0 +1,110 @@
+name: benchmark
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+  pull_request:
+  schedule:
+    - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
+  workflow_dispatch:
+    inputs:
+      should_bench:
+        description: "Should Benchmark? (`true`)"
+        required: true
+        default: "false"
+
+jobs:
+  pre_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5.3.1
+        with:
+          cancel_others: "true"
+
+  benches:
+    name: Benchmarks
+    timeout-minutes: 30
+    needs: pre_job
+    if: |
+      needs.pre_job.outputs.should_skip != 'true' &&
+      (
+        github.event_name == 'schedule'
+        || (github.event_name == 'workflow_dispatch' && github.event.inputs.should_bench == 'true')
+        || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-bench]'))
+        || (
+          github.event_name == 'pull_request'
+          && (
+            contains(github.event.pull_request.title, '[ci-bench]')
+            || contains(github.event.pull_request.body, '[ci-bench]')
+          )
+        )
+      )
+    runs-on: ubuntu-latest
+    env:
+      WWW_DIR: target
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Checkout gh-pages
+        shell: bash
+        run: |
+          mkdir -p "$WWW_DIR"
+          git -C "$WWW_DIR" init -q
+          git -C "$WWW_DIR" remote add origin "$(git remote get-url origin)"
+          git -C "$WWW_DIR" config credential.helper "$(git config credential.helper)"
+          git -C "$WWW_DIR" config 'http.https://github.com/.extraheader' "$(git config 'http.https://github.com/.extraheader')"
+          git -C "$WWW_DIR" config core.autocrlf input
+          git -C "$WWW_DIR" config core.safecrlf false
+          git -C "$WWW_DIR" checkout -b gh-pages
+          git -C "$WWW_DIR" fetch origin gh-pages
+          git -C "$WWW_DIR" reset --soft origin/gh-pages
+          git -C "$WWW_DIR" reset
+          git -C "$WWW_DIR" checkout -- bench criterion
+          mkdir -p "$WWW_DIR/bench"
+
+      - name: Run benchmark
+        run: |
+          time cargo bench -p benches -- dfir --output-format bencher | tee output.txt
+          time cargo bench -p benches -- micro/ops/ --output-format bencher | tee -a output.txt
+
+      - name: Generate benchmark page
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          tool: cargo
+          output-file-path: output.txt
+          external-data-json-path: target/bench/data.json
+
+      - name: Write benchmark JSON
+        run: echo 'window.BENCHMARK_DATA = ' | cat - "$WWW_DIR/bench/data.json" > "$WWW_DIR/bench/data.js"
+
+      - name: Write benchmark HTML
+        shell: bash
+        run: |
+          node --input-type=module -e "$(curl -sSL https://raw.githubusercontent.com/benchmark-action/github-action-benchmark/master/src/default_index_html.ts) console.log(DEFAULT_INDEX_HTML)" > "$WWW_DIR/bench/index.html"
+          sed -i '/          const data = window.BENCHMARK_DATA;/a\
+                    data.entries.Benchmark = data.entries.Benchmark.slice(-365)' "$WWW_DIR/bench/index.html"
+
+      - name: Push to gh-pages
+        # Do not deploy PRs, only benchmark main branch.
+        if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          cp -r .github/gh-pages/* .github/gh-pages/.gitignore "$WWW_DIR/"
+          git -C "$WWW_DIR" fetch origin gh-pages
+          git -C "$WWW_DIR" reset --soft origin/gh-pages
+          git -C "$WWW_DIR" reset
+          git -C "$WWW_DIR" add bench criterion $(ls .github/gh-pages)
+          if git -C "$WWW_DIR" -c 'user.name=github-actions[bot]' -c 'user.email=41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "Update Benchmarks $(date -I) $(git rev-parse HEAD)";
+          then
+            git -C "$WWW_DIR" push -u origin gh-pages --quiet
+          else
+            echo 'No changes to commit'
+          fi

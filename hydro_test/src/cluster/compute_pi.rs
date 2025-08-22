@@ -68,10 +68,15 @@ mod tests {
         let _ = super::compute_pi(&builder, 8192);
         let built = builder.with_default_optimize::<HydroDeploy>();
 
-        insta::assert_debug_snapshot!(built.ir());
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(built.ir());
+        });
 
         for (id, ir) in built.preview_compile().all_dfir() {
-            insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
+            insta::with_settings!({
+                snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+                snapshot_suffix => format!("surface_graph_{id}"),
+            }, {
                 insta::assert_snapshot!(ir.surface_syntax_string());
             });
         }
@@ -94,10 +99,15 @@ mod tests {
             .optimize_with(|leaves| decoupler::decouple(leaves, &decoupler))
             .into_deploy::<HydroDeploy>();
 
-        insta::assert_debug_snapshot!(built.ir());
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(built.ir());
+        });
 
         for (id, ir) in built.preview_compile().all_dfir() {
-            insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
+            insta::with_settings!({
+                snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+                snapshot_suffix => format!("surface_graph_{id}"),
+            }, {
                 insta::assert_snapshot!(ir.surface_syntax_string());
             });
         }

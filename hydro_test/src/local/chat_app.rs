@@ -67,12 +67,14 @@ mod tests {
 
         let built = builder.with_default_optimize();
 
-        insta::assert_snapshot!(
-            built
-                .preview_compile()
-                .dfir_for(&p1)
-                .to_mermaid(&Default::default())
-        );
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_snapshot!(
+                built
+                    .preview_compile()
+                    .dfir_for(&p1)
+                    .to_mermaid(&Default::default())
+            );
+        });
 
         let nodes = built
             .with_process(&p1, deployment.Localhost())
@@ -132,12 +134,14 @@ mod tests {
 
         let built = builder.with_default_optimize();
 
-        insta::assert_snapshot!(
-            built
-                .preview_compile()
-                .dfir_for(&p1)
-                .to_mermaid(&Default::default())
-        );
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_snapshot!(
+                built
+                    .preview_compile()
+                    .dfir_for(&p1)
+                    .to_mermaid(&Default::default())
+            );
+        });
 
         let nodes = built
             .with_process(&p1, deployment.Localhost())

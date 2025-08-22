@@ -100,6 +100,9 @@ mod tests {
     fn test_backtrace() {
         let backtrace = get_backtrace(0);
         let elements = backtrace.elements();
-        insta::assert_debug_snapshot!(elements);
+
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(elements);
+        });
     }
 }

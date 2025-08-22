@@ -1,0 +1,70 @@
+---
+source: dfir_rs/tests/surface_stratum.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>union()</code>"/]:::pullClass
+2v1[/"(2v1) <code>tee()</code>"\]:::pushClass
+3v1[\"(3v1) <code>union()</code>"/]:::pullClass
+4v1[/"(4v1) <code>tee()</code>"\]:::pushClass
+5v1[\"(5v1) <code>union()</code>"/]:::pullClass
+6v1[/"(6v1) <code>tee()</code>"\]:::pushClass
+7v1[\"(7v1) <code>union()</code>"/]:::pullClass
+8v1[/"(8v1) <code>for_each(|x| output_inner.borrow_mut().push(x))</code>"\]:::pushClass
+9v1[\"(9v1) <code>source_iter([0])</code>"/]:::pullClass
+10v1[\"(10v1) <code>source_iter([1])</code>"/]:::pullClass
+11v1["(11v1) <code>handoff</code>"]:::otherClass
+12v1["(12v1) <code>handoff</code>"]:::otherClass
+13v1["(13v1) <code>handoff</code>"]:::otherClass
+14v1["(14v1) <code>handoff</code>"]:::otherClass
+15v1["(15v1) <code>handoff</code>"]:::otherClass
+16v1["(16v1) <code>handoff</code>"]:::otherClass
+1v1-->2v1
+3v1-->4v1
+5v1-->6v1
+7v1-->8v1
+6v1-->|0|11v1
+4v1-->|0|12v1
+2v1-->|0|13v1
+9v1-->|0|1v1
+6v1-->|1|14v1
+4v1-->|1|15v1
+2v1-->|1|16v1
+10v1-->|1|1v1
+11v1-->|0|7v1
+12v1-->|0|5v1
+13v1-->|0|3v1
+14v1-->|1|7v1
+15v1-->|1|5v1
+16v1-->|1|3v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    9v1
+    10v1
+    subgraph sg_1v1_var_a ["var <tt>a</tt>"]
+        1v1
+        2v1
+    end
+end
+subgraph sg_2v1 ["sg_2v1 stratum 0"]
+    subgraph sg_2v1_var_b ["var <tt>b</tt>"]
+        3v1
+        4v1
+    end
+end
+subgraph sg_3v1 ["sg_3v1 stratum 0"]
+    subgraph sg_3v1_var_c ["var <tt>c</tt>"]
+        5v1
+        6v1
+    end
+end
+subgraph sg_4v1 ["sg_4v1 stratum 0"]
+    subgraph sg_4v1_var_d ["var <tt>d</tt>"]
+        7v1
+        8v1
+    end
+end

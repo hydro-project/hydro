@@ -1,0 +1,26 @@
+---
+source: dfir_rs/tests/surface_forwardref.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) source_iter(0..10)", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) for_each(|v| out_send.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
+    n3v1 [label="(n3v1) identity()", shape=invhouse, fillcolor="#88aaff"]
+    n1v1 -> n3v1
+    n3v1 -> n2v1
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        n1v1
+        n2v1
+        subgraph sg_1v1_var_forward_ref {
+            cluster=true
+            label="var forward_ref"
+            n3v1
+        }
+    }
+}

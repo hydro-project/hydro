@@ -41,7 +41,9 @@ mod tests {
         let p2 = builder.process();
         super::first_ten_distributed(&external, &p1, &p2);
 
-        insta::assert_debug_snapshot!(builder.finalize().ir());
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(builder.finalize().ir());
+        });
     }
 
     #[tokio::test]

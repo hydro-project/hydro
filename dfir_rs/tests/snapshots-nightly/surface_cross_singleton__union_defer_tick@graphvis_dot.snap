@@ -1,0 +1,164 @@
+---
+source: dfir_rs/tests/surface_cross_singleton.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) source_stream(cross_rx)", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) sort()", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) tee()", shape=house, fillcolor="#ffff88"]
+    n4v1 [label="(n4v1) defer_tick_lazy()", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) source_iter([0])", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) persist::<'static>()", shape=invhouse, fillcolor="#88aaff"]
+    n7v1 [label="(n7v1) union()", shape=invhouse, fillcolor="#88aaff"]
+    n8v1 [label="(n8v1) cross_singleton()", shape=invhouse, fillcolor="#88aaff"]
+    n9v1 [label="(n9v1) tee()", shape=house, fillcolor="#ffff88"]
+    n10v1 [label="(n10v1) for_each(|x| egress_tx.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
+    n11v1 [label="(n11v1) fold(|| 0, |_, _| {})", shape=invhouse, fillcolor="#88aaff"]
+    n12v1 [label="(n12v1) cross_singleton()", shape=invhouse, fillcolor="#88aaff"]
+    n13v1 [label="(n13v1) fold(|| 0, |_, _| {})", shape=invhouse, fillcolor="#88aaff"]
+    n14v1 [label="(n14v1) flat_map(|_| [])", shape=invhouse, fillcolor="#88aaff"]
+    n15v1 [label="(n15v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n16v1 [label="(n16v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n17v1 [label="(n17v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n18v1 [label="(n18v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n19v1 [label="(n19v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n20v1 [label="(n20v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n21v1 [label="(n21v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n22v1 [label="(n22v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n23v1 [label="(n23v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n24v1 [label="(n24v1) identity()", shape=invhouse, fillcolor="#88aaff"]
+    n25v1 [label="(n25v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n2v1 -> n3v1
+    n1v1 -> n15v1
+    n3v1 -> n16v1
+    n4v1 -> n7v1 [label="0"]
+    n14v1 -> n17v1
+    n5v1 -> n6v1
+    n6v1 -> n7v1 [label="1"]
+    n7v1 -> n18v1
+    n8v1 -> n9v1
+    n9v1 -> n10v1
+    n9v1 -> n19v1
+    n3v1 -> n20v1
+    n11v1 -> n21v1
+    n13v1 -> n22v1
+    n12v1 -> n23v1
+    n15v1 -> n2v1 [color=red]
+    n16v1 -> n8v1 [label="input"]
+    n17v1 -> n24v1
+    n18v1 -> n8v1 [label="single", color=red]
+    n19v1 -> n11v1 [color=red]
+    n20v1 -> n12v1 [label="input"]
+    n21v1 -> n12v1 [label="single", color=red]
+    n22v1 -> n14v1
+    n23v1 -> n13v1 [color=red]
+    n24v1 -> n25v1
+    n25v1 -> n4v1 [color=red]
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_teed_in {
+            cluster=true
+            label="var teed_in"
+            n1v1
+        }
+    }
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 1"
+        subgraph sg_2v1_var_teed_in {
+            cluster=true
+            label="var teed_in"
+            n2v1
+            n3v1
+        }
+    }
+    subgraph sg_3v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_3v1\nstratum 0"
+        n4v1
+        subgraph sg_3v1_var_persisted_stream {
+            cluster=true
+            label="var persisted_stream"
+            n5v1
+            n6v1
+        }
+        subgraph sg_3v1_var_unioned_stream {
+            cluster=true
+            label="var unioned_stream"
+            n7v1
+        }
+    }
+    subgraph sg_4v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_4v1\nstratum 1"
+        n10v1
+        subgraph sg_4v1_var_join {
+            cluster=true
+            label="var join"
+            n8v1
+            n9v1
+        }
+    }
+    subgraph sg_5v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_5v1\nstratum 2"
+        subgraph sg_5v1_var_folded_thing {
+            cluster=true
+            label="var folded_thing"
+            n11v1
+        }
+    }
+    subgraph sg_6v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_6v1\nstratum 3"
+        subgraph sg_6v1_var_joined_folded {
+            cluster=true
+            label="var joined_folded"
+            n12v1
+        }
+    }
+    subgraph sg_7v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_7v1\nstratum 4"
+        subgraph sg_7v1_var_deferred_stream {
+            cluster=true
+            label="var deferred_stream"
+            n13v1
+        }
+    }
+    subgraph sg_8v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_8v1\nstratum 4"
+        subgraph sg_8v1_var_deferred_stream {
+            cluster=true
+            label="var deferred_stream"
+            n14v1
+        }
+    }
+    subgraph sg_9v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_9v1\nstratum 5"
+        n24v1
+    }
+}

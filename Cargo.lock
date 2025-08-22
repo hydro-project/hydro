@@ -2335,6 +2335,7 @@ dependencies = [
  "insta",
  "proc-macro2",
  "regex",
+ "rustc_version 0.4.1",
  "serde",
  "stageleft",
  "syn 2.0.101",
@@ -2376,6 +2377,7 @@ dependencies = [
  "palette",
  "rand 0.8.5",
  "regex",
+ "rustc_version 0.4.1",
  "serde",
  "stageleft",
  "stageleft_tool",
@@ -2898,6 +2900,7 @@ dependencies = [
  "cc-traits",
  "lattices_macro",
  "ref-cast",
+ "rustc_version 0.4.1",
  "sealed 0.5.0",
  "serde",
  "trybuild",
@@ -2914,6 +2917,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
+ "rustc_version 0.4.1",
  "syn 2.0.101",
 ]
 
@@ -6129,6 +6133,7 @@ name = "variadics"
 version = "0.0.9"
 dependencies = [
  "hashbrown 0.14.5",
+ "rustc_version 0.4.1",
  "sealed 0.5.0",
  "trybuild",
 ]

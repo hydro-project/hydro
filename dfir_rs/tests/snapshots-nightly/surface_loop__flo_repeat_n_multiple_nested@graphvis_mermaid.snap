@@ -1,0 +1,74 @@
+---
+source: dfir_rs/tests/surface_loop.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_iter([&quot;alice&quot;, &quot;bob&quot;])</code>"/]:::pullClass
+2v1[\"(2v1) <code>batch()</code>"/]:::pullClass
+3v1[\"(3v1) <code>repeat_n(3)</code>"/]:::pullClass
+4v1[\"(4v1) <code>inspect(|x| println!(&quot;{:?} {}&quot;, x, context.loop_iter_count()))</code>"/]:::pullClass
+5v1[/"(5v1) <code>tee()</code>"\]:::pushClass
+6v1[\"(6v1) <code>repeat_n(3)</code>"/]:::pullClass
+7v1[\"(7v1) <code>inspect(|x| println!(&quot;{} {:?} {}&quot;, line!(), x, context.loop_iter_count()))</code>"/]:::pullClass
+8v1[/"(8v1) <code>for_each(|x| result1_send.send(x).unwrap())</code>"\]:::pushClass
+9v1[\"(9v1) <code>repeat_n(3)</code>"/]:::pullClass
+10v1[\"(10v1) <code>inspect(|x| println!(&quot;{} {:?} {}&quot;, line!(), x, context.loop_iter_count()))</code>"/]:::pullClass
+11v1[/"(11v1) <code>for_each(|x| result2_send.send(x).unwrap())</code>"\]:::pushClass
+12v1["(12v1) <code>handoff</code>"]:::otherClass
+13v1["(13v1) <code>handoff</code>"]:::otherClass
+14v1["(14v1) <code>handoff</code>"]:::otherClass
+15v1["(15v1) <code>handoff</code>"]:::otherClass
+1v1-->12v1
+4v1-->5v1
+3v1-->4v1
+2v1-->13v1
+7v1-->8v1
+6v1-->7v1
+5v1-->14v1
+10v1-->11v1
+9v1-->10v1
+5v1-->15v1
+12v1-->2v1
+13v1-->3v1
+14v1-->6v1
+15v1-->9v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    subgraph sg_1v1_var_usrs1 ["var <tt>usrs1</tt>"]
+        1v1
+    end
+end
+subgraph loop_1v1 ["loop_1v1"]
+    subgraph sg_2v1 ["sg_2v1 stratum 1"]
+        subgraph sg_2v1_var_usrs2 ["var <tt>usrs2</tt>"]
+            2v1
+        end
+    end
+end
+subgraph loop_2v1 ["loop_2v1"]
+    subgraph sg_3v1 ["sg_3v1 stratum 2"]
+        subgraph sg_3v1_var_usrs3 ["var <tt>usrs3</tt>"]
+            3v1
+            4v1
+            5v1
+        end
+    end
+end
+subgraph loop_3v1 ["loop_3v1"]
+    subgraph sg_4v1 ["sg_4v1 stratum 3"]
+        6v1
+        7v1
+        8v1
+    end
+end
+subgraph loop_4v1 ["loop_4v1"]
+    subgraph sg_5v1 ["sg_5v1 stratum 3"]
+        9v1
+        10v1
+        11v1
+    end
+end

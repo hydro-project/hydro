@@ -1,0 +1,67 @@
+---
+source: dfir_rs/tests/surface_singleton.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) source_iter(1..=10)", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) source_iter(3..=5)", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) fold(|| 0, |a, b| *a = std::cmp::max(*a, b))", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) filter(|&value| { value <= max_of_stream2 })", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) map(|x| (context.current_tick(), x))", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) for_each(|x| filter_send.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
+    n7v1 [label="(n7v1) map(|x| (context.current_tick(), x))", shape=invhouse, fillcolor="#88aaff"]
+    n8v1 [label="(n8v1) for_each(|x| max_send.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
+    n9v1 [label="(n9v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n2v1 -> n9v1
+    n5v1 -> n6v1
+    n4v1 -> n5v1
+    n1v1 -> n4v1
+    n7v1 -> n8v1
+    n3v1 -> n7v1
+    n9v1 -> n3v1 [color=red]
+    n3v1 -> n4v1 [color=red]
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_stream2 {
+            cluster=true
+            label="var stream2"
+            n2v1
+        }
+    }
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 2"
+        subgraph sg_2v1_var_filtered_stream1 {
+            cluster=true
+            label="var filtered_stream1"
+            n4v1
+            n5v1
+            n6v1
+        }
+        subgraph sg_2v1_var_stream1 {
+            cluster=true
+            label="var stream1"
+            n1v1
+        }
+    }
+    subgraph sg_3v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_3v1\nstratum 1"
+        n7v1
+        n8v1
+        subgraph sg_3v1_var_max_of_stream2 {
+            cluster=true
+            label="var max_of_stream2"
+            n3v1
+        }
+    }
+}

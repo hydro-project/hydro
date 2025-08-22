@@ -1,0 +1,1 @@
+../compile-fail/var_args_spread_middle.rs

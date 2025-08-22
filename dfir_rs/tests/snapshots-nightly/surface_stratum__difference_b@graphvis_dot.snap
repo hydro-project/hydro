@@ -1,0 +1,55 @@
+---
+source: dfir_rs/tests/surface_stratum.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) difference()", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) source_stream(inp_recv)", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) tee()", shape=house, fillcolor="#ffff88"]
+    n4v1 [label="(n4v1) defer_tick()", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) for_each(|x| output_inner.borrow_mut().insert(x))", shape=house, fillcolor="#ffff88"]
+    n6v1 [label="(n6v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n7v1 [label="(n7v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n8v1 [label="(n8v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n2v1 -> n8v1
+    n1v1 -> n3v1
+    n4v1 -> n6v1
+    n3v1 -> n7v1 [label="0"]
+    n3v1 -> n5v1 [label="1"]
+    n6v1 -> n1v1 [label="neg", color=red]
+    n7v1 -> n4v1 [color=red]
+    n8v1 -> n1v1 [label="pos"]
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        n4v1
+    }
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 1"
+        n5v1
+        subgraph sg_2v1_var_a {
+            cluster=true
+            label="var a"
+            n1v1
+        }
+        subgraph sg_2v1_var_b {
+            cluster=true
+            label="var b"
+            n3v1
+        }
+    }
+    subgraph sg_3v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_3v1\nstratum 0"
+        n2v1
+    }
+}

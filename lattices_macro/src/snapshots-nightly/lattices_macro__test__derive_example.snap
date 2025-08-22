@@ -1,0 +1,152 @@
+---
+source: lattices_macro/src/lib.rs
+expression: "prettyplease :: unparse(& parse_quote! { # derive_lattice })"
+---
+impl<
+    KeySet,
+    Epoch,
+    __KeySetOther,
+    __EpochOther,
+> lattices::Merge<MyLattice<__KeySetOther, __EpochOther>> for MyLattice<KeySet, Epoch>
+where
+    SetUnion<KeySet>: lattices::Merge<SetUnion<__KeySetOther>>,
+    Max<Epoch>: lattices::Merge<Max<__EpochOther>>,
+{
+    fn merge(&mut self, other: MyLattice<__KeySetOther, __EpochOther>) -> bool {
+        let mut changed = false;
+        changed |= lattices::Merge::merge(&mut self.keys, other.keys);
+        changed |= lattices::Merge::merge(&mut self.epoch, other.epoch);
+        changed
+    }
+}
+impl<
+    KeySet,
+    Epoch,
+    __KeySetOther,
+    __EpochOther,
+> ::core::cmp::PartialEq<MyLattice<__KeySetOther, __EpochOther>>
+for MyLattice<KeySet, Epoch>
+where
+    SetUnion<KeySet>: ::core::cmp::PartialEq<SetUnion<__KeySetOther>>,
+    Max<Epoch>: ::core::cmp::PartialEq<Max<__EpochOther>>,
+{
+    fn eq(&self, other: &MyLattice<__KeySetOther, __EpochOther>) -> bool {
+        if !::core::cmp::PartialEq::eq(&self.keys, &other.keys) {
+            return false;
+        }
+        if !::core::cmp::PartialEq::eq(&self.epoch, &other.epoch) {
+            return false;
+        }
+        true
+    }
+}
+impl<
+    KeySet,
+    Epoch,
+    __KeySetOther,
+    __EpochOther,
+> ::core::cmp::PartialOrd<MyLattice<__KeySetOther, __EpochOther>>
+for MyLattice<KeySet, Epoch>
+where
+    SetUnion<KeySet>: ::core::cmp::PartialOrd<SetUnion<__KeySetOther>>,
+    Max<Epoch>: ::core::cmp::PartialOrd<Max<__EpochOther>>,
+{
+    fn partial_cmp(
+        &self,
+        other: &MyLattice<__KeySetOther, __EpochOther>,
+    ) -> ::core::option::Option<::core::cmp::Ordering> {
+        let mut self_any_greater = false;
+        let mut othr_any_greater = false;
+        match ::core::cmp::PartialOrd::partial_cmp(&self.keys, &other.keys)? {
+            ::core::cmp::Ordering::Less => {
+                othr_any_greater = true;
+            }
+            ::core::cmp::Ordering::Greater => {
+                self_any_greater = true;
+            }
+            ::core::cmp::Ordering::Equal => {}
+        }
+        if self_any_greater && othr_any_greater {
+            return ::core::option::Option::None;
+        }
+        match ::core::cmp::PartialOrd::partial_cmp(&self.epoch, &other.epoch)? {
+            ::core::cmp::Ordering::Less => {
+                othr_any_greater = true;
+            }
+            ::core::cmp::Ordering::Greater => {
+                self_any_greater = true;
+            }
+            ::core::cmp::Ordering::Equal => {}
+        }
+        if self_any_greater && othr_any_greater {
+            return ::core::option::Option::None;
+        }
+        ::core::option::Option::Some(
+            match (self_any_greater, othr_any_greater) {
+                (false, false) => ::core::cmp::Ordering::Equal,
+                (false, true) => ::core::cmp::Ordering::Less,
+                (true, false) => ::core::cmp::Ordering::Greater,
+                (true, true) => ::core::unreachable!(),
+            },
+        )
+    }
+}
+impl<
+    KeySet,
+    Epoch,
+    __KeySetOther,
+    __EpochOther,
+> lattices::LatticeOrd<MyLattice<__KeySetOther, __EpochOther>>
+for MyLattice<KeySet, Epoch>
+where
+    SetUnion<KeySet>: ::core::cmp::PartialOrd<SetUnion<__KeySetOther>>,
+    Max<Epoch>: ::core::cmp::PartialOrd<Max<__EpochOther>>,
+{}
+impl<KeySet, Epoch> lattices::IsBot for MyLattice<KeySet, Epoch>
+where
+    SetUnion<KeySet>: lattices::IsBot,
+    Max<Epoch>: lattices::IsBot,
+{
+    fn is_bot(&self) -> bool {
+        if !lattices::IsBot::is_bot(&self.keys) {
+            return false;
+        }
+        if !lattices::IsBot::is_bot(&self.epoch) {
+            return false;
+        }
+        true
+    }
+}
+impl<KeySet, Epoch> lattices::IsTop for MyLattice<KeySet, Epoch>
+where
+    SetUnion<KeySet>: lattices::IsTop,
+    Max<Epoch>: lattices::IsTop,
+{
+    fn is_top(&self) -> bool {
+        if !lattices::IsTop::is_top(&self.keys) {
+            return false;
+        }
+        if !lattices::IsTop::is_top(&self.epoch) {
+            return false;
+        }
+        true
+    }
+}
+impl<
+    KeySet,
+    Epoch,
+    __KeySetOther,
+    __EpochOther,
+> lattices::LatticeFrom<MyLattice<__KeySetOther, __EpochOther>>
+for MyLattice<KeySet, Epoch>
+where
+    SetUnion<KeySet>: lattices::LatticeFrom<SetUnion<__KeySetOther>>,
+    Max<Epoch>: lattices::LatticeFrom<Max<__EpochOther>>,
+{
+    fn lattice_from(other: MyLattice<__KeySetOther, __EpochOther>) -> Self {
+        Self {
+            keys: lattices::LatticeFrom::lattice_from(other.keys),
+            epoch: lattices::LatticeFrom::lattice_from(other.epoch),
+        }
+    }
+}

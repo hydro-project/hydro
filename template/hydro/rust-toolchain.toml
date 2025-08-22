@@ -1,4 +1,0 @@
-[toolchain]
-channel = "nightly-2025-08-20"
-components = ["rustfmt", "clippy"]
-targets = ["x86_64-unknown-linux-musl"]
