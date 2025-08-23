@@ -41,7 +41,6 @@ pub enum StreamKind {
     Optional,
 }
 
-/// Mirror enum for ordering metadata, corresponding to phantom types
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StreamOrdering {
     /// Corresponds to TotalOrder phantom type
@@ -991,7 +990,7 @@ pub struct HydroIrMetadata {
     pub location_kind: LocationId,
     pub backtrace: Backtrace,
     pub output_type: Option<DebugType>,
-    /// The kind of stream/collection and its properties (ordering, retries, etc.)
+    /// The kind of stream/collection
     pub stream_kind: Option<StreamKind>,
     /// Whether this collection is bounded (finite) or unbounded (potentially infinite)
     pub is_bounded: bool,
