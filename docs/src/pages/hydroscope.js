@@ -36,6 +36,7 @@ function HydroscopeDemo() {
   const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [graphData, setGraphData] = React.useState(null);
+  const [filePath, setFilePath] = React.useState(null);
 
   // Load HydroscopeFull component from npm package
   React.useEffect(() => {
@@ -81,14 +82,15 @@ function HydroscopeDemo() {
     const hashParams = new URLSearchParams(location.hash.slice(1));
     const dataParam = urlParams.get('data') || hashParams.get('data');
     const compressedParam = urlParams.get('compressed') || hashParams.get('compressed');
-    const fileParam = urlParams.get('file') || hashParams.get('file');
+  const fileParam = urlParams.get('file') || hashParams.get('file');
     
     // Handle file path parameter (from Rust debug output)
     if (fileParam && !graphData) {
-      const filePath = decodeURIComponent(fileParam);
-      console.log('📁 Loading graph from file path:', filePath);
-      // For now, just show a message about file loading
-      setError(`File loading from ${filePath} not yet implemented. Please drag and drop the file instead.`);
+      const decodedPath = decodeURIComponent(fileParam);
+      console.log('📁 Received file path param:', decodedPath);
+      // We cannot read arbitrary local files in-browser; pass the path to the UI for display/copy
+      setFilePath(decodedPath);
+      setError(null);
       return;
     }
     
@@ -219,6 +221,7 @@ function HydroscopeDemo() {
               autoFit={true}
               initialLayoutAlgorithm="mrtree"
               initialColorPalette="Set3"
+              generatedFilePath={filePath}
               generateCompleteExample={generateCompleteExample}
               onFileUpload={handleFileUpload}
               onExampleGenerated={handleExampleGenerated}
