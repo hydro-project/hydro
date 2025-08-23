@@ -79,7 +79,7 @@ class SimpleRandom {
 }
 
 /**
- * Edge integrity validation (from BUG HUNTER)
+ * Edge integrity validation
  */
 async function validateEdgeIntegrity(state: VisualizationState, context: string): Promise<void> {
   const visibleNodes = state.getVisibleNodes();

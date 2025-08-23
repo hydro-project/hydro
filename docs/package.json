@@ -25,6 +25,7 @@
     "@docusaurus/plugin-ideal-image": "^3.6.1",
     "@docusaurus/preset-classic": "^3.6.1",
     "@docusaurus/theme-mermaid": "^3.6.1",
+    "@hydro-project/hydroscope": "file:../../hydroscope",
     "@mdx-js/react": "^3.1.0",
     "@monaco-editor/react": "^4.4.6",
     "@xyflow/react": "^12.8.4",

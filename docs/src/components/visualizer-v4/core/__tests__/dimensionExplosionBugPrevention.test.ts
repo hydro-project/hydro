@@ -832,7 +832,7 @@ describe('ELK Dimension Explosion Bug Prevention (Regression Tests)', () => {
       console.log(`\n✅ All edge dimension validations passed!`);
     });
 
-    test('🐛 DISCONNECTED EDGES BUG HUNTER: stress test expand/collapse with comprehensive edge monitoring', async () => {
+    test('🐛 Light fuzz test: stress expand/collapse with comprehensive edge monitoring', async () => {
       // Load paxos-flipped data - the file that's causing disconnected edges
       const paxosFilePath = join(__dirname, '../../test-data/paxos-flipped.json');
       const paxosJsonString = readFileSync(paxosFilePath, 'utf-8');

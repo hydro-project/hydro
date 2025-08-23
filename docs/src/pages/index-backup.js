@@ -1,51 +1,11 @@
 import Link from "@docusaurus/Link";
 import Layout from "@theme/Layout";
 import CodeBlock from '@theme/CodeBlock';
-import React from 'react';
-import BrowserOnly from '@docusaurus/BrowserOnly';
-import { useHistory } from '@docusaurus/router';
 
 import styles from "./index.module.css";
 import Head from "@docusaurus/Head";
 
-// Typography constants for consistent styling
-const TYPOGRAPHY = {
-  PAGE_TITLE: '2.5em',
-  PAGE_SUBTITLE: '0.9em'
-};
-
-function HomePageWithVisualization() {
-  const history = useHistory();
-  const [FileDropZone, setFileDropZone] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-
-  // Load FileDropZone component
-  React.useEffect(() => {
-    const loadFileDropZone = async () => {
-      try {
-        const { FileDropZone } = await import('../components/visualizer-v4');
-        setFileDropZone(() => FileDropZone);
-        setLoading(false);
-        setError(null);
-      } catch (err) {
-        console.error('❌ Failed to load FileDropZone component:', err);
-        setError(`Failed to load file upload component: ${err.message}`);
-        setLoading(false);
-      }
-    };
-    loadFileDropZone();
-  }, []);
-
-  // Handle file load - redirect to hydroscope page with data
-  const handleFileLoad = (data) => {
-    console.log('📁 File loaded on homepage, redirecting to hydroscope...');
-    
-    // Convert data to base64 encoded URL parameter for hydroscope page
-    const encodedData = btoa(JSON.stringify(data));
-    history.push(`/hydroscope?data=${encodedData}`);
-  };
-
+export default function Home() {
   return (
     <Layout>
       <Head>
@@ -102,81 +62,7 @@ function HomePageWithVisualization() {
               >
                 Learn More
               </Link>
-
-              <Link
-                to="/hydroscope"
-                className="button button--outline button--primary button--lg"
-                style={{
-                  margin: "10px",
-                  marginTop: 0,
-                  fontSize: "1.4em",
-                }}
-              >
-                Graph Visualization
-              </Link>
             </div>
-          </div>
-        </div>
-
-        {/* File Upload Section */}
-        <div className={styles["panel"]} style={{ flexDirection: 'column', textAlign: 'center' }}>
-          <h1>Visualize Your Graph Data</h1>
-          <p style={{ maxWidth: '650px', margin: '0 auto 20px auto' }}>
-            Upload your graph data to visualize it with Hydro's interactive graph visualization tool. 
-            Supports JSON format with nodes, edges, and optional container groupings.
-          </p>
-          
-          <div style={{ 
-            width: '100%', 
-            maxWidth: '800px', 
-            margin: '0 auto',
-            minHeight: '200px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            {loading ? (
-              <div style={{
-                border: '2px dashed #ccc',
-                borderRadius: '8px',
-                padding: '48px',
-                textAlign: 'center',
-                backgroundColor: '#fafafa',
-                width: '100%'
-              }}>
-                <p>Loading file upload component...</p>
-              </div>
-            ) : error ? (
-              <div style={{
-                border: '2px solid #ff6b6b',
-                borderRadius: '8px',
-                padding: '48px',
-                textAlign: 'center',
-                backgroundColor: '#ffe6e6',
-                width: '100%'
-              }}>
-                <p style={{ color: '#d63031', margin: 0 }}>
-                  Error loading file upload: {error}
-                </p>
-              </div>
-            ) : FileDropZone ? (
-              <FileDropZone 
-                onFileLoad={handleFileLoad}
-                hasData={false}
-                className="homepage-file-drop"
-              />
-            ) : (
-              <div style={{
-                border: '2px dashed #ccc',
-                borderRadius: '8px',
-                padding: '48px',
-                textAlign: 'center',
-                backgroundColor: '#fafafa',
-                width: '100%'
-              }}>
-                <p>File upload component not available</p>
-              </div>
-            )}
           </div>
         </div>
         <div className={styles["panel"]}>
@@ -307,13 +193,5 @@ function HomePageWithVisualization() {
         </div>
       </main>
     </Layout>
-  );
-}
-
-export default function Home() {
-  return (
-    <BrowserOnly fallback={<div>Loading...</div>}>
-      {() => <HomePageWithVisualization />}
-    </BrowserOnly>
   );
 }

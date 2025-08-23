@@ -143,9 +143,9 @@ fn open_json_visualizer_with_fallback(json_content: &str, context_name: &str) ->
         };
 
         let base_url_length = if is_compressed {
-            "https://hydro.run/docs/visualizer#compressed=".len()
+            "https://hydro.run/docs/hydroscope#compressed=".len()
         } else {
-            "https://hydro.run/docs/visualizer#data=".len()
+            "https://hydro.run/docs/hydroscope#data=".len()
         };
 
         if base_url_length + encoded_data.len() > MAX_SAFE_URL_LENGTH {
@@ -182,8 +182,8 @@ fn handle_large_graph_fallback(json_content: &str, encoded_size: usize) -> Resul
     let encoded_path = urlencoding::encode(&file_path_str);
 
     // Try to open localhost first with file parameter, fall back to docs site
-    let localhost_url = format!("http://localhost:3000/vis?file={}", encoded_path);
-    let docs_url = format!("https://hydro.run/docs/vis?file={}", encoded_path);
+    let localhost_url = format!("http://localhost:3000/hydroscope?file={}", encoded_path);
+    let docs_url = format!("https://hydro.run/docs/hydroscope?file={}", encoded_path);
 
     if webbrowser::open(&localhost_url).is_ok() {
         println!("✅ Opened visualizer: {}", localhost_url);
@@ -192,7 +192,7 @@ fn handle_large_graph_fallback(json_content: &str, encoded_size: usize) -> Resul
     } else {
         println!("❌ Failed to open browser");
         println!("🎯 Please manually open the visualizer and load the file:");
-        println!("   1. Open https://hydro.run/docs/vis");
+        println!("   1. Open https://hydro.run/docs/hydroscope");
         println!("   2. Drag and drop the JSON file onto the visualizer");
         println!("   3. Or use the file upload button in the visualizer");
     }
@@ -230,8 +230,8 @@ fn try_open_visualizer_urls(
     is_compressed: bool,
 ) -> Result<()> {
     let url_param = if is_compressed { "compressed" } else { "data" };
-    let localhost_url = format!("http://localhost:3000/vis#{}={}", url_param, encoded_data);
-    let docs_url = format!("https://hydro.run/docs/vis#{}={}", url_param, encoded_data);
+    let localhost_url = format!("http://localhost:3000/hydroscope#{}={}", url_param, encoded_data);
+    let docs_url = format!("https://hydro.run/docs/hydroscope#{}={}", url_param, encoded_data);
 
     // Show the compressed URL for debugging
     if is_compressed {
