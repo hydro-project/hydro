@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["name_to_id_map","print_id"]};
+window.SIDEBAR_ITEMS = {"fn":["print_id"]};

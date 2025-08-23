@@ -1,0 +1,1 @@
+searchState.loadedDescShard("lattices_macro", 0, "Macros for the <code>lattices</code> crate.\nDerives lattice <code>IsBot</code>.\nDerives lattice <code>IsTop</code>.\n<code>#[derive(Lattice)]</code> Macro\nDerives <code>LatticeFrom</code>.\nDerives <code>PartialEq</code>, <code>PartialOrd</code>, and <code>LatticeOrd</code> together.\nDerives lattice <code>Merge</code>.")

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["AtLeastOnce","ExactlyOnce","NoOrder","TotalOrder"],"mod":["networking"],"struct":["Stream"],"trait":["MinOrder","MinRetries"]};
+window.SIDEBAR_ITEMS = {"enum":["AtLeastOnce","ExactlyOnce","NoOrder","TotalOrder"],"fn":["deserialize_bincode_with_type","serialize_bincode_with_type"],"struct":["Stream"],"trait":["MinOrder","MinRetries"]};
