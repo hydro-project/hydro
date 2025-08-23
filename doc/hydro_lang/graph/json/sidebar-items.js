@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["hydro_ir_to_json","open_browser","open_json_browser","save_json"],"struct":["HydroJson"]};
