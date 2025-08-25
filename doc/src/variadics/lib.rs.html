@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `variadics/src/lib.rs`."><title>lib.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-528d32ef.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="variadics" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.0-nightly (05f5a58e8 2025-08-19)" data-channel="nightly" data-search-js="search-5f24b69e.js" data-stringdex-js="stringdex-0e748618.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-1b37d467.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-b6a35c53.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">variadics/</div>lib.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![warn(missing_docs)]
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `variadics/src/lib.rs`."><title>lib.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-20739d33.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="variadics" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0-nightly (10fa3c449 2025-04-26)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-63605ae7.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">variadics/</div>lib.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![warn(missing_docs)]
 <a href=#2 id=2 data-nosnippet>2</a>#![doc = <span class="macro">include_str!</span>(<span class="string">"../README.md"</span>)]
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="doccomment">//! &amp;nbsp;
 <a href=#4 id=4 data-nosnippet>4</a>//!
@@ -870,139 +870,140 @@
 <a href=#870 id=870 data-nosnippet>870</a>
 <a href=#871 id=871 data-nosnippet>871</a>    <span class="kw">type </span>MyList = <span class="macro">var_type!</span>(u8, u16, u32, u64);
 <a href=#872 id=872 data-nosnippet>872</a>    <span class="kw">type </span>MyPrefix = <span class="macro">var_type!</span>(u8, u16);
-<a href=#873 id=873 data-nosnippet>873</a>    <span class="kw">type </span>MySuffix = &lt;MyList <span class="kw">as </span>Split&lt;MyPrefix&gt;&gt;::Suffix;
-<a href=#874 id=874 data-nosnippet>874</a>
-<a href=#875 id=875 data-nosnippet>875</a>    <span class="kw">const _</span>: MySuffix = <span class="macro">var_expr!</span>(<span class="number">0_u32</span>, <span class="number">0_u64</span>);
-<a href=#876 id=876 data-nosnippet>876</a>
-<a href=#877 id=877 data-nosnippet>877</a>    <span class="attr">#[test]
-<a href=#878 id=878 data-nosnippet>878</a>    </span><span class="comment">// #[expect(clippy::let_unit_value, reason = "var_expr macro test")]
-<a href=#879 id=879 data-nosnippet>879</a>    </span><span class="kw">fn </span>test_basic_expr() {
-<a href=#880 id=880 data-nosnippet>880</a>        <span class="kw">let _ </span>= <span class="macro">var_expr!</span>();
-<a href=#881 id=881 data-nosnippet>881</a>        <span class="kw">let _ </span>= <span class="macro">var_expr!</span>(<span class="number">1</span>);
-<a href=#882 id=882 data-nosnippet>882</a>        <span class="kw">let _ </span>= <span class="macro">var_expr!</span>(<span class="number">1</span>, <span class="string">"b"</span>,);
-<a href=#883 id=883 data-nosnippet>883</a>        <span class="kw">let _ </span>= <span class="macro">var_expr!</span>(<span class="string">"a"</span>,);
-<a href=#884 id=884 data-nosnippet>884</a>        <span class="kw">let _ </span>= <span class="macro">var_expr!</span>(<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="number">1 </span>+ <span class="number">2</span>);
-<a href=#885 id=885 data-nosnippet>885</a>    }
-<a href=#886 id=886 data-nosnippet>886</a>
-<a href=#887 id=887 data-nosnippet>887</a>    <span class="comment">// commented out because neither #[allow(dead_code)] nor #[expect(dead_code)] made clippy happy
-<a href=#888 id=888 data-nosnippet>888</a>    // variadic_trait! {
-<a href=#889 id=889 data-nosnippet>889</a>    //     /// Variaidic list of futures.
-<a href=#890 id=890 data-nosnippet>890</a>    //     pub variadic&lt;F&gt; FuturesList where F: std::future::Future {
-<a href=#891 id=891 data-nosnippet>891</a>    //     }
-<a href=#892 id=892 data-nosnippet>892</a>    // }
-<a href=#893 id=893 data-nosnippet>893</a>
-<a href=#894 id=894 data-nosnippet>894</a>    </span><span class="kw">type </span>_ListA = <span class="macro">var_type!</span>(u32, u8, i32);
-<a href=#895 id=895 data-nosnippet>895</a>    <span class="kw">type </span>_ListB = <span class="macro">var_type!</span>(..._ListA, bool, <span class="prelude-ty">Option</span>&lt;()&gt;);
-<a href=#896 id=896 data-nosnippet>896</a>    <span class="kw">type </span>_ListC = <span class="macro">var_type!</span>(..._ListA, bool, <span class="prelude-ty">Option</span>::&lt;()&gt;);
-<a href=#897 id=897 data-nosnippet>897</a>
-<a href=#898 id=898 data-nosnippet>898</a>    <span class="attr">#[test]
-<a href=#899 id=899 data-nosnippet>899</a>    </span><span class="kw">fn </span>test_as_ref_var() {
-<a href=#900 id=900 data-nosnippet>900</a>        <span class="kw">let </span>my_owned = <span class="macro">var_expr!</span>(<span class="string">"Hello"</span>.to_owned(), Box::new(<span class="number">5</span>));
-<a href=#901 id=901 data-nosnippet>901</a>        <span class="kw">let </span>my_ref_a = my_owned.as_ref_var();
-<a href=#902 id=902 data-nosnippet>902</a>        <span class="kw">let </span>my_ref_b = my_owned.as_ref_var();
-<a href=#903 id=903 data-nosnippet>903</a>        <span class="macro">assert_eq!</span>(my_ref_a, my_ref_b);
-<a href=#904 id=904 data-nosnippet>904</a>    }
-<a href=#905 id=905 data-nosnippet>905</a>
-<a href=#906 id=906 data-nosnippet>906</a>    <span class="attr">#[test]
-<a href=#907 id=907 data-nosnippet>907</a>    </span><span class="kw">fn </span>test_as_mut_var() {
-<a href=#908 id=908 data-nosnippet>908</a>        <span class="kw">let </span><span class="kw-2">mut </span>my_owned = <span class="macro">var_expr!</span>(<span class="string">"Hello"</span>.to_owned(), Box::new(<span class="number">5</span>));
-<a href=#909 id=909 data-nosnippet>909</a>        <span class="kw">let </span><span class="macro">var_args!</span>(mut_str, mut_box) = my_owned.as_mut_var();
-<a href=#910 id=910 data-nosnippet>910</a>        <span class="kw-2">*</span>mut_str += <span class="string">" World"</span>;
-<a href=#911 id=911 data-nosnippet>911</a>        <span class="kw-2">*</span>mut_box.as_mut() += <span class="number">1</span>;
-<a href=#912 id=912 data-nosnippet>912</a>
-<a href=#913 id=913 data-nosnippet>913</a>        <span class="macro">assert_eq!</span>(<span class="macro">var_expr!</span>(<span class="string">"Hello World"</span>.to_owned(), Box::new(<span class="number">6</span>)), my_owned);
-<a href=#914 id=914 data-nosnippet>914</a>    }
-<a href=#915 id=915 data-nosnippet>915</a>
-<a href=#916 id=916 data-nosnippet>916</a>    <span class="attr">#[test]
-<a href=#917 id=917 data-nosnippet>917</a>    </span><span class="kw">fn </span>test_iter_any() {
-<a href=#918 id=918 data-nosnippet>918</a>        <span class="kw">let </span><span class="kw-2">mut </span>var = <span class="macro">var_expr!</span>(<span class="number">1_i32</span>, <span class="bool-val">false</span>, <span class="string">"Hello"</span>.to_owned());
-<a href=#919 id=919 data-nosnippet>919</a>
-<a href=#920 id=920 data-nosnippet>920</a>        <span class="kw">let </span><span class="kw-2">mut </span>mut_iter = var.iter_any_mut();
-<a href=#921 id=921 data-nosnippet>921</a>        <span class="kw-2">*</span>mut_iter.next().unwrap().downcast_mut::&lt;i32&gt;().unwrap() += <span class="number">1</span>;
-<a href=#922 id=922 data-nosnippet>922</a>        <span class="kw-2">*</span>mut_iter.next().unwrap().downcast_mut::&lt;bool&gt;().unwrap() |= <span class="bool-val">true</span>;
-<a href=#923 id=923 data-nosnippet>923</a>        <span class="kw-2">*</span>mut_iter.next().unwrap().downcast_mut::&lt;String&gt;().unwrap() += <span class="string">" World"</span>;
-<a href=#924 id=924 data-nosnippet>924</a>        <span class="macro">assert!</span>(mut_iter.next().is_none());
-<a href=#925 id=925 data-nosnippet>925</a>
-<a href=#926 id=926 data-nosnippet>926</a>        <span class="kw">let </span><span class="kw-2">mut </span>ref_iter = var.iter_any_ref();
-<a href=#927 id=927 data-nosnippet>927</a>        <span class="macro">assert_eq!</span>(
-<a href=#928 id=928 data-nosnippet>928</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">2</span>),
-<a href=#929 id=929 data-nosnippet>929</a>            ref_iter
-<a href=#930 id=930 data-nosnippet>930</a>                .next()
-<a href=#931 id=931 data-nosnippet>931</a>                .map(&lt;<span class="kw">dyn </span>Any&gt;::downcast_ref)
-<a href=#932 id=932 data-nosnippet>932</a>                .map(Option::unwrap)
-<a href=#933 id=933 data-nosnippet>933</a>        );
-<a href=#934 id=934 data-nosnippet>934</a>        <span class="macro">assert_eq!</span>(
-<a href=#935 id=935 data-nosnippet>935</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="bool-val">true</span>),
-<a href=#936 id=936 data-nosnippet>936</a>            ref_iter
-<a href=#937 id=937 data-nosnippet>937</a>                .next()
-<a href=#938 id=938 data-nosnippet>938</a>                .map(&lt;<span class="kw">dyn </span>Any&gt;::downcast_ref)
-<a href=#939 id=939 data-nosnippet>939</a>                .map(Option::unwrap)
-<a href=#940 id=940 data-nosnippet>940</a>        );
-<a href=#941 id=941 data-nosnippet>941</a>        <span class="macro">assert_eq!</span>(
-<a href=#942 id=942 data-nosnippet>942</a>            <span class="prelude-val">Some</span>(<span class="string">"Hello World"</span>),
-<a href=#943 id=943 data-nosnippet>943</a>            ref_iter
-<a href=#944 id=944 data-nosnippet>944</a>                .next()
-<a href=#945 id=945 data-nosnippet>945</a>                .map(|any| <span class="kw-2">&amp;**</span>any.downcast_ref::&lt;String&gt;().unwrap())
-<a href=#946 id=946 data-nosnippet>946</a>        );
-<a href=#947 id=947 data-nosnippet>947</a>        <span class="macro">assert!</span>(ref_iter.next().is_none());
-<a href=#948 id=948 data-nosnippet>948</a>    }
-<a href=#949 id=949 data-nosnippet>949</a>
-<a href=#950 id=950 data-nosnippet>950</a>    <span class="attr">#[test]
-<a href=#951 id=951 data-nosnippet>951</a>    </span><span class="kw">fn </span>test_homogenous_get() {
-<a href=#952 id=952 data-nosnippet>952</a>        <span class="kw">let </span><span class="kw-2">mut </span>var = <span class="macro">var_expr!</span>(<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>);
-<a href=#953 id=953 data-nosnippet>953</a>        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">5 </span>{
-<a href=#954 id=954 data-nosnippet>954</a>            <span class="macro">assert_eq!</span>(<span class="prelude-val">Some</span>(i), var.get(i).copied());
-<a href=#955 id=955 data-nosnippet>955</a>            <span class="macro">assert_eq!</span>(<span class="prelude-val">Some</span>(i), var.get_mut(i).copied());
-<a href=#956 id=956 data-nosnippet>956</a>        }
-<a href=#957 id=957 data-nosnippet>957</a>    }
-<a href=#958 id=958 data-nosnippet>958</a>
-<a href=#959 id=959 data-nosnippet>959</a>    <span class="attr">#[test]
-<a href=#960 id=960 data-nosnippet>960</a>    </span><span class="kw">fn </span>test_into_vec() {
-<a href=#961 id=961 data-nosnippet>961</a>        <span class="kw">use </span><span class="kw">crate</span>::VecVariadic;
-<a href=#962 id=962 data-nosnippet>962</a>
-<a href=#963 id=963 data-nosnippet>963</a>        <span class="kw">type </span>Item = <span class="macro">var_type!</span>(i32, String);
-<a href=#964 id=964 data-nosnippet>964</a>        <span class="kw">let </span>first: Item = <span class="macro">var_expr!</span>(<span class="number">1</span>, <span class="string">"Joe"</span>.to_string());
-<a href=#965 id=965 data-nosnippet>965</a>        <span class="kw">let </span>second: Item = <span class="macro">var_expr!</span>(<span class="number">2</span>, <span class="string">"Mingwei"</span>.to_string());
-<a href=#966 id=966 data-nosnippet>966</a>        <span class="kw">let </span><span class="kw-2">mut </span>column_store = first.clone().into_singleton_vec();
-<a href=#967 id=967 data-nosnippet>967</a>        column_store.push(second.clone());
-<a href=#968 id=968 data-nosnippet>968</a>        <span class="macro">assert_eq!</span>(column_store.len(), <span class="number">2</span>);
-<a href=#969 id=969 data-nosnippet>969</a>        <span class="macro">assert_eq!</span>(column_store.get(<span class="number">0</span>).unwrap(), first.as_ref_var());
-<a href=#970 id=970 data-nosnippet>970</a>        <span class="macro">assert_eq!</span>(column_store.get(<span class="number">1</span>).unwrap(), second.as_ref_var());
-<a href=#971 id=971 data-nosnippet>971</a>    }
-<a href=#972 id=972 data-nosnippet>972</a>}
-<a href=#973 id=973 data-nosnippet>973</a>
-<a href=#974 id=974 data-nosnippet>974</a><span class="attr">#[test]
-<a href=#975 id=975 data-nosnippet>975</a></span><span class="kw">fn </span>test_eq_ref_vec() {
-<a href=#976 id=976 data-nosnippet>976</a>    <span class="kw">type </span>MyVar = <span class="macro">var_type!</span>(i32, bool, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str);
-<a href=#977 id=977 data-nosnippet>977</a>    <span class="kw">let </span>vec: Vec&lt;MyVar&gt; = <span class="macro">vec!</span>[
-<a href=#978 id=978 data-nosnippet>978</a>        <span class="macro">var_expr!</span>(<span class="number">0</span>, <span class="bool-val">true</span>, <span class="string">"hello"</span>),
-<a href=#979 id=979 data-nosnippet>979</a>        <span class="macro">var_expr!</span>(<span class="number">1</span>, <span class="bool-val">true</span>, <span class="string">"world"</span>),
-<a href=#980 id=980 data-nosnippet>980</a>        <span class="macro">var_expr!</span>(<span class="number">2</span>, <span class="bool-val">false</span>, <span class="string">"goodnight"</span>),
-<a href=#981 id=981 data-nosnippet>981</a>        <span class="macro">var_expr!</span>(<span class="number">3</span>, <span class="bool-val">false</span>, <span class="string">"moon"</span>),
-<a href=#982 id=982 data-nosnippet>982</a>    ];
-<a href=#983 id=983 data-nosnippet>983</a>    <span class="kw">let </span>needle: &lt;MyVar <span class="kw">as </span>VariadicExt&gt;::AsRefVar&lt;<span class="lifetime">'_</span>&gt; =
-<a href=#984 id=984 data-nosnippet>984</a>        <span class="macro">var_expr!</span>(<span class="number">2</span>, <span class="bool-val">false</span>, <span class="string">"goodnight"</span>).as_ref_var();
-<a href=#985 id=985 data-nosnippet>985</a>    <span class="macro">assert_eq!</span>(
-<a href=#986 id=986 data-nosnippet>986</a>        <span class="prelude-val">Some</span>(<span class="number">2</span>),
-<a href=#987 id=987 data-nosnippet>987</a>        vec.iter()
-<a href=#988 id=988 data-nosnippet>988</a>            .position(|item| &lt;MyVar <span class="kw">as </span>PartialEqVariadic&gt;::eq_ref(needle, item.as_ref_var()))
-<a href=#989 id=989 data-nosnippet>989</a>    );
-<a href=#990 id=990 data-nosnippet>990</a>
-<a href=#991 id=991 data-nosnippet>991</a>    <span class="kw">let </span>missing: &lt;MyVar <span class="kw">as </span>VariadicExt&gt;::AsRefVar&lt;<span class="lifetime">'_</span>&gt; =
-<a href=#992 id=992 data-nosnippet>992</a>        <span class="macro">var_expr!</span>(<span class="number">3</span>, <span class="bool-val">false</span>, <span class="string">"goodnight"</span>).as_ref_var();
-<a href=#993 id=993 data-nosnippet>993</a>    <span class="macro">assert_eq!</span>(
-<a href=#994 id=994 data-nosnippet>994</a>        <span class="prelude-val">None</span>,
-<a href=#995 id=995 data-nosnippet>995</a>        vec.iter()
-<a href=#996 id=996 data-nosnippet>996</a>            .position(|item| &lt;MyVar <span class="kw">as </span>PartialEqVariadic&gt;::eq_ref(missing, item.as_ref_var()))
-<a href=#997 id=997 data-nosnippet>997</a>    );
-<a href=#998 id=998 data-nosnippet>998</a>}
-<a href=#999 id=999 data-nosnippet>999</a>
-<a href=#1000 id=1000 data-nosnippet>1000</a><span class="attr">#[test]
-<a href=#1001 id=1001 data-nosnippet>1001</a></span><span class="kw">fn </span>clone_var_test() {
-<a href=#1002 id=1002 data-nosnippet>1002</a>    <span class="kw">let </span>ref_var = <span class="macro">var_expr!</span>(<span class="kw-2">&amp;</span><span class="number">1</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"hello {}"</span>, <span class="string">"world"</span>), <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#1003 id=1003 data-nosnippet>1003</a>    <span class="kw">let </span>clone_var = CloneVariadic::clone_ref_var(ref_var);
-<a href=#1004 id=1004 data-nosnippet>1004</a>    <span class="macro">assert_eq!</span>(
-<a href=#1005 id=1005 data-nosnippet>1005</a>        <span class="macro">var_expr!</span>(<span class="number">1</span>, <span class="string">"hello world"</span>.to_owned(), <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]),
-<a href=#1006 id=1006 data-nosnippet>1006</a>        clone_var
-<a href=#1007 id=1007 data-nosnippet>1007</a>    );
-<a href=#1008 id=1008 data-nosnippet>1008</a>}</code></pre></div></section></main></body></html>
+<a href=#873 id=873 data-nosnippet>873</a>    <span class="attr">#[expect(dead_code, reason = <span class="string">"compilation test"</span>)]
+<a href=#874 id=874 data-nosnippet>874</a>    </span><span class="kw">type </span>MySuffix = &lt;MyList <span class="kw">as </span>Split&lt;MyPrefix&gt;&gt;::Suffix;
+<a href=#875 id=875 data-nosnippet>875</a>
+<a href=#876 id=876 data-nosnippet>876</a>    <span class="kw">const _</span>: MySuffix = <span class="macro">var_expr!</span>(<span class="number">0_u32</span>, <span class="number">0_u64</span>);
+<a href=#877 id=877 data-nosnippet>877</a>
+<a href=#878 id=878 data-nosnippet>878</a>    <span class="attr">#[test]
+<a href=#879 id=879 data-nosnippet>879</a>    </span><span class="comment">// #[expect(clippy::let_unit_value, reason = "var_expr macro test")]
+<a href=#880 id=880 data-nosnippet>880</a>    </span><span class="kw">fn </span>test_basic_expr() {
+<a href=#881 id=881 data-nosnippet>881</a>        <span class="kw">let _ </span>= <span class="macro">var_expr!</span>();
+<a href=#882 id=882 data-nosnippet>882</a>        <span class="kw">let _ </span>= <span class="macro">var_expr!</span>(<span class="number">1</span>);
+<a href=#883 id=883 data-nosnippet>883</a>        <span class="kw">let _ </span>= <span class="macro">var_expr!</span>(<span class="number">1</span>, <span class="string">"b"</span>,);
+<a href=#884 id=884 data-nosnippet>884</a>        <span class="kw">let _ </span>= <span class="macro">var_expr!</span>(<span class="string">"a"</span>,);
+<a href=#885 id=885 data-nosnippet>885</a>        <span class="kw">let _ </span>= <span class="macro">var_expr!</span>(<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="number">1 </span>+ <span class="number">2</span>);
+<a href=#886 id=886 data-nosnippet>886</a>    }
+<a href=#887 id=887 data-nosnippet>887</a>
+<a href=#888 id=888 data-nosnippet>888</a>    <span class="comment">// commented out because neither #[allow(dead_code)] nor #[expect(dead_code)] made clippy happy
+<a href=#889 id=889 data-nosnippet>889</a>    // variadic_trait! {
+<a href=#890 id=890 data-nosnippet>890</a>    //     /// Variaidic list of futures.
+<a href=#891 id=891 data-nosnippet>891</a>    //     pub variadic&lt;F&gt; FuturesList where F: std::future::Future {
+<a href=#892 id=892 data-nosnippet>892</a>    //     }
+<a href=#893 id=893 data-nosnippet>893</a>    // }
+<a href=#894 id=894 data-nosnippet>894</a>
+<a href=#895 id=895 data-nosnippet>895</a>    </span><span class="kw">type </span>_ListA = <span class="macro">var_type!</span>(u32, u8, i32);
+<a href=#896 id=896 data-nosnippet>896</a>    <span class="kw">type </span>_ListB = <span class="macro">var_type!</span>(..._ListA, bool, <span class="prelude-ty">Option</span>&lt;()&gt;);
+<a href=#897 id=897 data-nosnippet>897</a>    <span class="kw">type </span>_ListC = <span class="macro">var_type!</span>(..._ListA, bool, <span class="prelude-ty">Option</span>::&lt;()&gt;);
+<a href=#898 id=898 data-nosnippet>898</a>
+<a href=#899 id=899 data-nosnippet>899</a>    <span class="attr">#[test]
+<a href=#900 id=900 data-nosnippet>900</a>    </span><span class="kw">fn </span>test_as_ref_var() {
+<a href=#901 id=901 data-nosnippet>901</a>        <span class="kw">let </span>my_owned = <span class="macro">var_expr!</span>(<span class="string">"Hello"</span>.to_owned(), Box::new(<span class="number">5</span>));
+<a href=#902 id=902 data-nosnippet>902</a>        <span class="kw">let </span>my_ref_a = my_owned.as_ref_var();
+<a href=#903 id=903 data-nosnippet>903</a>        <span class="kw">let </span>my_ref_b = my_owned.as_ref_var();
+<a href=#904 id=904 data-nosnippet>904</a>        <span class="macro">assert_eq!</span>(my_ref_a, my_ref_b);
+<a href=#905 id=905 data-nosnippet>905</a>    }
+<a href=#906 id=906 data-nosnippet>906</a>
+<a href=#907 id=907 data-nosnippet>907</a>    <span class="attr">#[test]
+<a href=#908 id=908 data-nosnippet>908</a>    </span><span class="kw">fn </span>test_as_mut_var() {
+<a href=#909 id=909 data-nosnippet>909</a>        <span class="kw">let </span><span class="kw-2">mut </span>my_owned = <span class="macro">var_expr!</span>(<span class="string">"Hello"</span>.to_owned(), Box::new(<span class="number">5</span>));
+<a href=#910 id=910 data-nosnippet>910</a>        <span class="kw">let </span><span class="macro">var_args!</span>(mut_str, mut_box) = my_owned.as_mut_var();
+<a href=#911 id=911 data-nosnippet>911</a>        <span class="kw-2">*</span>mut_str += <span class="string">" World"</span>;
+<a href=#912 id=912 data-nosnippet>912</a>        <span class="kw-2">*</span>mut_box.as_mut() += <span class="number">1</span>;
+<a href=#913 id=913 data-nosnippet>913</a>
+<a href=#914 id=914 data-nosnippet>914</a>        <span class="macro">assert_eq!</span>(<span class="macro">var_expr!</span>(<span class="string">"Hello World"</span>.to_owned(), Box::new(<span class="number">6</span>)), my_owned);
+<a href=#915 id=915 data-nosnippet>915</a>    }
+<a href=#916 id=916 data-nosnippet>916</a>
+<a href=#917 id=917 data-nosnippet>917</a>    <span class="attr">#[test]
+<a href=#918 id=918 data-nosnippet>918</a>    </span><span class="kw">fn </span>test_iter_any() {
+<a href=#919 id=919 data-nosnippet>919</a>        <span class="kw">let </span><span class="kw-2">mut </span>var = <span class="macro">var_expr!</span>(<span class="number">1_i32</span>, <span class="bool-val">false</span>, <span class="string">"Hello"</span>.to_owned());
+<a href=#920 id=920 data-nosnippet>920</a>
+<a href=#921 id=921 data-nosnippet>921</a>        <span class="kw">let </span><span class="kw-2">mut </span>mut_iter = var.iter_any_mut();
+<a href=#922 id=922 data-nosnippet>922</a>        <span class="kw-2">*</span>mut_iter.next().unwrap().downcast_mut::&lt;i32&gt;().unwrap() += <span class="number">1</span>;
+<a href=#923 id=923 data-nosnippet>923</a>        <span class="kw-2">*</span>mut_iter.next().unwrap().downcast_mut::&lt;bool&gt;().unwrap() |= <span class="bool-val">true</span>;
+<a href=#924 id=924 data-nosnippet>924</a>        <span class="kw-2">*</span>mut_iter.next().unwrap().downcast_mut::&lt;String&gt;().unwrap() += <span class="string">" World"</span>;
+<a href=#925 id=925 data-nosnippet>925</a>        <span class="macro">assert!</span>(mut_iter.next().is_none());
+<a href=#926 id=926 data-nosnippet>926</a>
+<a href=#927 id=927 data-nosnippet>927</a>        <span class="kw">let </span><span class="kw-2">mut </span>ref_iter = var.iter_any_ref();
+<a href=#928 id=928 data-nosnippet>928</a>        <span class="macro">assert_eq!</span>(
+<a href=#929 id=929 data-nosnippet>929</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">2</span>),
+<a href=#930 id=930 data-nosnippet>930</a>            ref_iter
+<a href=#931 id=931 data-nosnippet>931</a>                .next()
+<a href=#932 id=932 data-nosnippet>932</a>                .map(&lt;<span class="kw">dyn </span>Any&gt;::downcast_ref)
+<a href=#933 id=933 data-nosnippet>933</a>                .map(Option::unwrap)
+<a href=#934 id=934 data-nosnippet>934</a>        );
+<a href=#935 id=935 data-nosnippet>935</a>        <span class="macro">assert_eq!</span>(
+<a href=#936 id=936 data-nosnippet>936</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="bool-val">true</span>),
+<a href=#937 id=937 data-nosnippet>937</a>            ref_iter
+<a href=#938 id=938 data-nosnippet>938</a>                .next()
+<a href=#939 id=939 data-nosnippet>939</a>                .map(&lt;<span class="kw">dyn </span>Any&gt;::downcast_ref)
+<a href=#940 id=940 data-nosnippet>940</a>                .map(Option::unwrap)
+<a href=#941 id=941 data-nosnippet>941</a>        );
+<a href=#942 id=942 data-nosnippet>942</a>        <span class="macro">assert_eq!</span>(
+<a href=#943 id=943 data-nosnippet>943</a>            <span class="prelude-val">Some</span>(<span class="string">"Hello World"</span>),
+<a href=#944 id=944 data-nosnippet>944</a>            ref_iter
+<a href=#945 id=945 data-nosnippet>945</a>                .next()
+<a href=#946 id=946 data-nosnippet>946</a>                .map(|any| <span class="kw-2">&amp;**</span>any.downcast_ref::&lt;String&gt;().unwrap())
+<a href=#947 id=947 data-nosnippet>947</a>        );
+<a href=#948 id=948 data-nosnippet>948</a>        <span class="macro">assert!</span>(ref_iter.next().is_none());
+<a href=#949 id=949 data-nosnippet>949</a>    }
+<a href=#950 id=950 data-nosnippet>950</a>
+<a href=#951 id=951 data-nosnippet>951</a>    <span class="attr">#[test]
+<a href=#952 id=952 data-nosnippet>952</a>    </span><span class="kw">fn </span>test_homogenous_get() {
+<a href=#953 id=953 data-nosnippet>953</a>        <span class="kw">let </span><span class="kw-2">mut </span>var = <span class="macro">var_expr!</span>(<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>);
+<a href=#954 id=954 data-nosnippet>954</a>        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">5 </span>{
+<a href=#955 id=955 data-nosnippet>955</a>            <span class="macro">assert_eq!</span>(<span class="prelude-val">Some</span>(i), var.get(i).copied());
+<a href=#956 id=956 data-nosnippet>956</a>            <span class="macro">assert_eq!</span>(<span class="prelude-val">Some</span>(i), var.get_mut(i).copied());
+<a href=#957 id=957 data-nosnippet>957</a>        }
+<a href=#958 id=958 data-nosnippet>958</a>    }
+<a href=#959 id=959 data-nosnippet>959</a>
+<a href=#960 id=960 data-nosnippet>960</a>    <span class="attr">#[test]
+<a href=#961 id=961 data-nosnippet>961</a>    </span><span class="kw">fn </span>test_into_vec() {
+<a href=#962 id=962 data-nosnippet>962</a>        <span class="kw">use </span><span class="kw">crate</span>::VecVariadic;
+<a href=#963 id=963 data-nosnippet>963</a>
+<a href=#964 id=964 data-nosnippet>964</a>        <span class="kw">type </span>Item = <span class="macro">var_type!</span>(i32, String);
+<a href=#965 id=965 data-nosnippet>965</a>        <span class="kw">let </span>first: Item = <span class="macro">var_expr!</span>(<span class="number">1</span>, <span class="string">"Joe"</span>.to_string());
+<a href=#966 id=966 data-nosnippet>966</a>        <span class="kw">let </span>second: Item = <span class="macro">var_expr!</span>(<span class="number">2</span>, <span class="string">"Mingwei"</span>.to_string());
+<a href=#967 id=967 data-nosnippet>967</a>        <span class="kw">let </span><span class="kw-2">mut </span>column_store = first.clone().into_singleton_vec();
+<a href=#968 id=968 data-nosnippet>968</a>        column_store.push(second.clone());
+<a href=#969 id=969 data-nosnippet>969</a>        <span class="macro">assert_eq!</span>(column_store.len(), <span class="number">2</span>);
+<a href=#970 id=970 data-nosnippet>970</a>        <span class="macro">assert_eq!</span>(column_store.get(<span class="number">0</span>).unwrap(), first.as_ref_var());
+<a href=#971 id=971 data-nosnippet>971</a>        <span class="macro">assert_eq!</span>(column_store.get(<span class="number">1</span>).unwrap(), second.as_ref_var());
+<a href=#972 id=972 data-nosnippet>972</a>    }
+<a href=#973 id=973 data-nosnippet>973</a>}
+<a href=#974 id=974 data-nosnippet>974</a>
+<a href=#975 id=975 data-nosnippet>975</a><span class="attr">#[test]
+<a href=#976 id=976 data-nosnippet>976</a></span><span class="kw">fn </span>test_eq_ref_vec() {
+<a href=#977 id=977 data-nosnippet>977</a>    <span class="kw">type </span>MyVar = <span class="macro">var_type!</span>(i32, bool, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str);
+<a href=#978 id=978 data-nosnippet>978</a>    <span class="kw">let </span>vec: Vec&lt;MyVar&gt; = <span class="macro">vec!</span>[
+<a href=#979 id=979 data-nosnippet>979</a>        <span class="macro">var_expr!</span>(<span class="number">0</span>, <span class="bool-val">true</span>, <span class="string">"hello"</span>),
+<a href=#980 id=980 data-nosnippet>980</a>        <span class="macro">var_expr!</span>(<span class="number">1</span>, <span class="bool-val">true</span>, <span class="string">"world"</span>),
+<a href=#981 id=981 data-nosnippet>981</a>        <span class="macro">var_expr!</span>(<span class="number">2</span>, <span class="bool-val">false</span>, <span class="string">"goodnight"</span>),
+<a href=#982 id=982 data-nosnippet>982</a>        <span class="macro">var_expr!</span>(<span class="number">3</span>, <span class="bool-val">false</span>, <span class="string">"moon"</span>),
+<a href=#983 id=983 data-nosnippet>983</a>    ];
+<a href=#984 id=984 data-nosnippet>984</a>    <span class="kw">let </span>needle: &lt;MyVar <span class="kw">as </span>VariadicExt&gt;::AsRefVar&lt;<span class="lifetime">'_</span>&gt; =
+<a href=#985 id=985 data-nosnippet>985</a>        <span class="macro">var_expr!</span>(<span class="number">2</span>, <span class="bool-val">false</span>, <span class="string">"goodnight"</span>).as_ref_var();
+<a href=#986 id=986 data-nosnippet>986</a>    <span class="macro">assert_eq!</span>(
+<a href=#987 id=987 data-nosnippet>987</a>        <span class="prelude-val">Some</span>(<span class="number">2</span>),
+<a href=#988 id=988 data-nosnippet>988</a>        vec.iter()
+<a href=#989 id=989 data-nosnippet>989</a>            .position(|item| &lt;MyVar <span class="kw">as </span>PartialEqVariadic&gt;::eq_ref(needle, item.as_ref_var()))
+<a href=#990 id=990 data-nosnippet>990</a>    );
+<a href=#991 id=991 data-nosnippet>991</a>
+<a href=#992 id=992 data-nosnippet>992</a>    <span class="kw">let </span>missing: &lt;MyVar <span class="kw">as </span>VariadicExt&gt;::AsRefVar&lt;<span class="lifetime">'_</span>&gt; =
+<a href=#993 id=993 data-nosnippet>993</a>        <span class="macro">var_expr!</span>(<span class="number">3</span>, <span class="bool-val">false</span>, <span class="string">"goodnight"</span>).as_ref_var();
+<a href=#994 id=994 data-nosnippet>994</a>    <span class="macro">assert_eq!</span>(
+<a href=#995 id=995 data-nosnippet>995</a>        <span class="prelude-val">None</span>,
+<a href=#996 id=996 data-nosnippet>996</a>        vec.iter()
+<a href=#997 id=997 data-nosnippet>997</a>            .position(|item| &lt;MyVar <span class="kw">as </span>PartialEqVariadic&gt;::eq_ref(missing, item.as_ref_var()))
+<a href=#998 id=998 data-nosnippet>998</a>    );
+<a href=#999 id=999 data-nosnippet>999</a>}
+<a href=#1000 id=1000 data-nosnippet>1000</a>
+<a href=#1001 id=1001 data-nosnippet>1001</a><span class="attr">#[test]
+<a href=#1002 id=1002 data-nosnippet>1002</a></span><span class="kw">fn </span>clone_var_test() {
+<a href=#1003 id=1003 data-nosnippet>1003</a>    <span class="kw">let </span>ref_var = <span class="macro">var_expr!</span>(<span class="kw-2">&amp;</span><span class="number">1</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"hello {}"</span>, <span class="string">"world"</span>), <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#1004 id=1004 data-nosnippet>1004</a>    <span class="kw">let </span>clone_var = CloneVariadic::clone_ref_var(ref_var);
+<a href=#1005 id=1005 data-nosnippet>1005</a>    <span class="macro">assert_eq!</span>(
+<a href=#1006 id=1006 data-nosnippet>1006</a>        <span class="macro">var_expr!</span>(<span class="number">1</span>, <span class="string">"hello world"</span>.to_owned(), <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]),
+<a href=#1007 id=1007 data-nosnippet>1007</a>        clone_var
+<a href=#1008 id=1008 data-nosnippet>1008</a>    );
+<a href=#1009 id=1009 data-nosnippet>1009</a>}</code></pre></div></section></main></body></html>

@@ -1,0 +1,1 @@
+searchState.loadedDescShard("variadics_macro", 0, "<code>tuple!</code> Macro")

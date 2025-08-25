@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["TopolotreeMessage"],"fn":["main"],"struct":["OperationPayload","Payload","QueryResponse","Timestamped"]};
+window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["protocol"]};
