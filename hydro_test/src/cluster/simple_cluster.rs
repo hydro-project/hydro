@@ -1,3 +1,4 @@
+use hydro_lang::location::MembershipEvent;
 use hydro_lang::*;
 use hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
 use stageleft::IntoQuotedMut;
@@ -51,7 +52,13 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
     let cluster = flow.cluster();
 
     let numbers = process.source_iter(q!(0..5));
-    let ids = process.source_iter(cluster.members()).map(q!(|&id| id));
+    let ids = process
+        .source_cluster_members(&cluster)
+        .entries()
+        .filter_map(q!(|(i, e)| match e {
+            MembershipEvent::Joined => Some(i),
+            MembershipEvent::Left => None,
+        }));
 
     ids.cross_product(numbers)
         .map(q!(|(id, n)| (id, (id, n))))

@@ -738,12 +738,11 @@ pub struct AnalyzeClosure {
 impl Visit<'_> for AnalyzeClosure {
     fn visit_expr_closure(&mut self, closure: &syn::ExprClosure) {
         if self.found_closure {
-            panic!(
-                "Multiple top-level closures found in a single Expr during partitioning analysis, likely due to running analysis over a function such as reduce."
-            );
+            panic!("Nested closures found in a single Expr during partitioning analysis.");
         }
 
         // Find all input vars
+        self.output_dependencies = StructOrTuple::default();
         self.found_closure = true;
         if closure.inputs.len() > 1 {
             panic!(
@@ -764,6 +763,7 @@ impl Visit<'_> for AnalyzeClosure {
             ..Default::default()
         };
         analyzer.visit_expr(&closure.body);
+        self.found_closure = false;
         self.output_dependencies = analyzer.output_dependencies;
 
         println!(

@@ -4,7 +4,7 @@ pub fn many_to_many<'a>(flow: &FlowBuilder<'a>) -> Cluster<'a, ()> {
     let cluster = flow.cluster();
     cluster
         .source_iter(q!(0..2))
-        .broadcast_bincode(&cluster)
+        .broadcast_bincode(&cluster, nondet!(/** test */))
         .entries()
         .for_each(q!(|n| println!("cluster received: {:?}", n)));
 

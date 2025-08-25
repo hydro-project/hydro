@@ -32,15 +32,6 @@ impl<C> PartialEq for Cluster<'_, C> {
     }
 }
 
-impl<'a, C> Cluster<'a, C> {
-    pub fn members(&self) -> ClusterIds<'a, C> {
-        ClusterIds {
-            id: self.id,
-            _phantom: PhantomData,
-        }
-    }
-}
-
 impl<C> Clone for Cluster<'_, C> {
     fn clone(&self) -> Self {
         Cluster {
@@ -73,7 +64,7 @@ impl<'a, C> Location<'a> for Cluster<'a, C> {
 
 pub struct ClusterIds<'a, C> {
     pub(crate) id: usize,
-    _phantom: Invariant<'a, C>,
+    pub(crate) _phantom: Invariant<'a, C>,
 }
 
 impl<C> Clone for ClusterIds<'_, C> {

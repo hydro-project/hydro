@@ -6,11 +6,33 @@ use stageleft::{q, quote_type};
 use syn::parse_quote;
 
 use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode};
+use crate::keyed_singleton::KeyedSingleton;
 use crate::keyed_stream::KeyedStream;
 use crate::location::external_process::ExternalBincodeStream;
+use crate::location::tick::NoAtomic;
+use crate::location::{MembershipEvent, NoTick};
 use crate::staging_util::get_this_crate;
 use crate::stream::ExactlyOnce;
-use crate::{Cluster, ClusterId, External, Location, Process, Stream, TotalOrder, Unbounded};
+use crate::{
+    Cluster, ClusterId, External, Location, NonDet, Process, Stream, TotalOrder, Unbounded, nondet,
+};
+
+// same as the one in `hydro_std`, but internal use only
+fn track_membership<'a, C, L: Location<'a> + NoTick + NoAtomic>(
+    membership: KeyedStream<ClusterId<C>, MembershipEvent, L, Unbounded>,
+) -> KeyedSingleton<ClusterId<C>, (), L, Unbounded> {
+    membership
+        .fold(
+            q!(|| false),
+            q!(|present, event| {
+                match event {
+                    MembershipEvent::Joined => *present = true,
+                    MembershipEvent::Left => *present = false,
+                }
+            }),
+        )
+        .filter_map(q!(|v| if v { Some(()) } else { None }))
+}
 
 pub fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr {
     let root = get_this_crate();
@@ -90,12 +112,28 @@ impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     pub fn broadcast_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
+        nondet_membership: NonDet,
     ) -> KeyedStream<ClusterId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        let ids = other.members();
-        self.flat_map_ordered(q!(|v| { ids.iter().map(move |id| (*id, v.clone())) }))
+        let ids = track_membership(self.location.source_cluster_members(other));
+        let join_tick = self.location.tick();
+        let current_members = ids.snapshot(&join_tick, nondet_membership).keys();
+
+        current_members
+            .weaker_retries()
+            .assume_ordering::<TotalOrder>(
+                nondet!(/** we send to each member independently, order does not matter */),
+            )
+            .cross_product_nested_loop(
+                self.batch(&join_tick, nondet_membership)
+                    .assume_ordering::<TotalOrder>(
+                        nondet!(/** we weaken the ordering back later */),
+                    ),
+            )
+            .assume_ordering::<O>(nondet!(/** strictly weaker than TotalOrder */))
+            .all_ticks()
             .demux_bincode(other)
     }
 }
@@ -141,14 +179,29 @@ impl<'a, T, L, B> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
     pub fn round_robin_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
+        nondet_membership: NonDet,
     ) -> Stream<T, Cluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
     where
         T: Serialize + DeserializeOwned,
     {
-        let ids = other.members();
+        let ids = track_membership(self.location.source_cluster_members(other));
+        let join_tick = self.location.tick();
+        let current_members = ids
+            .snapshot(&join_tick, nondet_membership)
+            .keys()
+            .assume_ordering(
+                nondet!(/** safe to assume ordering because each output is independent */),
+            )
+            .collect_vec();
 
         self.enumerate()
-            .map(q!(|(i, w)| (ids[i % ids.len()], w)))
+            .batch(&join_tick, nondet_membership)
+            .cross_singleton(current_members)
+            .map(q!(|(data, members)| (
+                members[data.0 % members.len()],
+                data.1
+            )))
+            .all_ticks()
             .demux_bincode(other)
     }
 }
@@ -219,12 +272,28 @@ impl<'a, T, L, B, O, R> Stream<T, Process<'a, L>, B, O, R> {
     pub fn broadcast_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
+        nondet_membership: NonDet,
     ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        let ids = other.members();
-        self.flat_map_ordered(q!(|v| { ids.iter().map(move |id| (*id, v.clone())) }))
+        let ids = track_membership(self.location.source_cluster_members(other));
+        let join_tick = self.location.tick();
+        let current_members = ids.snapshot(&join_tick, nondet_membership).keys();
+
+        current_members
+            .weaker_retries()
+            .assume_ordering::<TotalOrder>(
+                nondet!(/** we send to each member independently, order does not matter */),
+            )
+            .cross_product_nested_loop(
+                self.batch(&join_tick, nondet_membership)
+                    .assume_ordering::<TotalOrder>(
+                        nondet!(/** we weaken the ordering back later */),
+                    ),
+            )
+            .assume_ordering::<O>(nondet!(/** strictly weaker than TotalOrder */))
+            .all_ticks()
             .demux_bincode(other)
     }
 
