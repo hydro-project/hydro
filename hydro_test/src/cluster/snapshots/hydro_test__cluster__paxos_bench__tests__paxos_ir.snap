@@ -383,7 +383,7 @@ expression: built.ir()
                         left: Map {
                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; | (k , _) | k }),
                             input: FilterMap {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | (k , v) | if v { Some ((k , ())) } else { None } }),
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
                                 input: FoldKeyed {
                                     init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | | false }),
                                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
@@ -431,11 +431,8 @@ expression: built.ir()
                                     },
                                 },
                                 metadata: HydroIrMetadata {
-                                    location_kind: Tick(
-                                        6,
-                                        Cluster(
-                                            0,
-                                        ),
+                                    location_kind: Cluster(
+                                        0,
                                     ),
                                     output_type: Some(
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , ()),
@@ -444,7 +441,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    7,
+                                    6,
                                     Cluster(
                                         0,
                                     ),
@@ -635,7 +632,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                7,
+                                6,
                                 Cluster(
                                     0,
                                 ),
@@ -745,7 +742,7 @@ expression: built.ir()
                                                                                     left: Map {
                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; | (k , _) | k }),
                                                                                         input: FilterMap {
-                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | (k , v) | if v { Some ((k , ())) } else { None } }),
+                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
                                                                                             input: FoldKeyed {
                                                                                                 init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | | false }),
                                                                                                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
@@ -793,11 +790,8 @@ expression: built.ir()
                                                                                                 },
                                                                                             },
                                                                                             metadata: HydroIrMetadata {
-                                                                                                location_kind: Tick(
-                                                                                                    9,
-                                                                                                    Cluster(
-                                                                                                        0,
-                                                                                                    ),
+                                                                                                location_kind: Cluster(
+                                                                                                    0,
                                                                                                 ),
                                                                                                 output_type: Some(
                                                                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()),
@@ -806,7 +800,7 @@ expression: built.ir()
                                                                                         },
                                                                                         metadata: HydroIrMetadata {
                                                                                             location_kind: Tick(
-                                                                                                10,
+                                                                                                8,
                                                                                                 Cluster(
                                                                                                     0,
                                                                                                 ),
@@ -880,7 +874,7 @@ expression: built.ir()
                                                                                                                         },
                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                             location_kind: Tick(
-                                                                                                                                8,
+                                                                                                                                7,
                                                                                                                                 Cluster(
                                                                                                                                     0,
                                                                                                                                 ),
@@ -1083,7 +1077,7 @@ expression: built.ir()
                                                                                     },
                                                                                     metadata: HydroIrMetadata {
                                                                                         location_kind: Tick(
-                                                                                            10,
+                                                                                            8,
                                                                                             Cluster(
                                                                                                 0,
                                                                                             ),
@@ -1993,7 +1987,7 @@ expression: built.ir()
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
-                                        13,
+                                        10,
                                         Cluster(
                                             2,
                                         ),
@@ -2029,7 +2023,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    13,
+                                    10,
                                     Cluster(
                                         2,
                                     ),
@@ -2041,7 +2035,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                13,
+                                10,
                                 Cluster(
                                     2,
                                 ),
@@ -2080,7 +2074,7 @@ expression: built.ir()
                                                                 left: Map {
                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; | (k , _) | k }),
                                                                     input: FilterMap {
-                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | (k , v) | if v { Some ((k , ())) } else { None } }),
+                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
                                                                         input: FoldKeyed {
                                                                             init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | | false }),
                                                                             acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
@@ -2128,11 +2122,8 @@ expression: built.ir()
                                                                             },
                                                                         },
                                                                         metadata: HydroIrMetadata {
-                                                                            location_kind: Tick(
-                                                                                11,
-                                                                                Cluster(
-                                                                                    0,
-                                                                                ),
+                                                                            location_kind: Cluster(
+                                                                                0,
                                                                             ),
                                                                             output_type: Some(
                                                                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ()),
@@ -2141,7 +2132,7 @@ expression: built.ir()
                                                                     },
                                                                     metadata: HydroIrMetadata {
                                                                         location_kind: Tick(
-                                                                            12,
+                                                                            9,
                                                                             Cluster(
                                                                                 0,
                                                                             ),
@@ -2332,7 +2323,7 @@ expression: built.ir()
                                                                 },
                                                                 metadata: HydroIrMetadata {
                                                                     location_kind: Tick(
-                                                                        12,
+                                                                        9,
                                                                         Cluster(
                                                                             0,
                                                                         ),
@@ -2398,7 +2389,7 @@ expression: built.ir()
                                     },
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
-                                            13,
+                                            10,
                                             Cluster(
                                                 2,
                                             ),
@@ -2410,7 +2401,7 @@ expression: built.ir()
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
-                                        13,
+                                        10,
                                         Cluster(
                                             2,
                                         ),
@@ -2422,7 +2413,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    13,
+                                    10,
                                     Cluster(
                                         2,
                                     ),
@@ -2434,7 +2425,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                13,
+                                10,
                                 Cluster(
                                     2,
                                 ),
@@ -2446,7 +2437,7 @@ expression: built.ir()
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
-                            13,
+                            10,
                             Cluster(
                                 2,
                             ),
@@ -2458,7 +2449,7 @@ expression: built.ir()
                 },
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
-                        13,
+                        10,
                         Cluster(
                             2,
                         ),
@@ -2470,7 +2461,7 @@ expression: built.ir()
             },
             metadata: HydroIrMetadata {
                 location_kind: Tick(
-                    13,
+                    10,
                     Cluster(
                         2,
                     ),
@@ -2482,7 +2473,7 @@ expression: built.ir()
         },
         metadata: HydroIrMetadata {
             location_kind: Tick(
-                13,
+                10,
                 Cluster(
                     2,
                 ),
@@ -2530,7 +2521,7 @@ expression: built.ir()
                                                                         inner: <tee 14>,
                                                                         metadata: HydroIrMetadata {
                                                                             location_kind: Tick(
-                                                                                13,
+                                                                                10,
                                                                                 Cluster(
                                                                                     2,
                                                                                 ),
@@ -2544,7 +2535,7 @@ expression: built.ir()
                                                                         inner: <tee 15>,
                                                                         metadata: HydroIrMetadata {
                                                                             location_kind: Tick(
-                                                                                13,
+                                                                                10,
                                                                                 Cluster(
                                                                                     2,
                                                                                 ),
@@ -2556,7 +2547,7 @@ expression: built.ir()
                                                                     },
                                                                     metadata: HydroIrMetadata {
                                                                         location_kind: Tick(
-                                                                            13,
+                                                                            10,
                                                                             Cluster(
                                                                                 2,
                                                                             ),
@@ -3140,7 +3131,7 @@ expression: built.ir()
                                                                             left: Map {
                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; | (k , _) | k }),
                                                                                 input: FilterMap {
-                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | (k , v) | if v { Some ((k , ())) } else { None } }),
+                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
                                                                                     input: FoldKeyed {
                                                                                         init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | | false }),
                                                                                         acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
@@ -3188,11 +3179,8 @@ expression: built.ir()
                                                                                         },
                                                                                     },
                                                                                     metadata: HydroIrMetadata {
-                                                                                        location_kind: Tick(
-                                                                                            14,
-                                                                                            Cluster(
-                                                                                                0,
-                                                                                            ),
+                                                                                        location_kind: Cluster(
+                                                                                            0,
                                                                                         ),
                                                                                         output_type: Some(
                                                                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()),
@@ -3201,7 +3189,7 @@ expression: built.ir()
                                                                                 },
                                                                                 metadata: HydroIrMetadata {
                                                                                     location_kind: Tick(
-                                                                                        15,
+                                                                                        11,
                                                                                         Cluster(
                                                                                             0,
                                                                                         ),
@@ -3686,7 +3674,7 @@ expression: built.ir()
                                                                             },
                                                                             metadata: HydroIrMetadata {
                                                                                 location_kind: Tick(
-                                                                                    15,
+                                                                                    11,
                                                                                     Cluster(
                                                                                         0,
                                                                                     ),
@@ -4509,7 +4497,7 @@ expression: built.ir()
                                                     left: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; | (k , _) | k }),
                                                         input: FilterMap {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | (k , v) | if v { Some ((k , ())) } else { None } }),
+                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
                                                             input: FoldKeyed {
                                                                 init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | | false }),
                                                                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
@@ -4557,11 +4545,8 @@ expression: built.ir()
                                                                 },
                                                             },
                                                             metadata: HydroIrMetadata {
-                                                                location_kind: Tick(
-                                                                    16,
-                                                                    Cluster(
-                                                                        0,
-                                                                    ),
+                                                                location_kind: Cluster(
+                                                                    0,
                                                                 ),
                                                                 output_type: Some(
                                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , ()),
@@ -4570,7 +4555,7 @@ expression: built.ir()
                                                         },
                                                         metadata: HydroIrMetadata {
                                                             location_kind: Tick(
-                                                                17,
+                                                                12,
                                                                 Cluster(
                                                                     0,
                                                                 ),
@@ -4648,7 +4633,7 @@ expression: built.ir()
                                                     },
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Tick(
-                                                            17,
+                                                            12,
                                                             Cluster(
                                                                 0,
                                                             ),
@@ -4691,7 +4676,7 @@ expression: built.ir()
                                         },
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
-                                                18,
+                                                13,
                                                 Cluster(
                                                     4,
                                                 ),
@@ -4703,7 +4688,7 @@ expression: built.ir()
                                     },
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
-                                            18,
+                                            13,
                                             Cluster(
                                                 4,
                                             ),
@@ -4715,7 +4700,7 @@ expression: built.ir()
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
-                                        18,
+                                        13,
                                         Cluster(
                                             4,
                                         ),
@@ -4727,7 +4712,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    18,
+                                    13,
                                     Cluster(
                                         4,
                                     ),
@@ -4746,7 +4731,7 @@ expression: built.ir()
                                         inner: <tee 34>,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
-                                                18,
+                                                13,
                                                 Cluster(
                                                     4,
                                                 ),
@@ -4764,7 +4749,7 @@ expression: built.ir()
                                                 },
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
-                                                        18,
+                                                        13,
                                                         Cluster(
                                                             4,
                                                         ),
@@ -4808,7 +4793,7 @@ expression: built.ir()
                                                             ),
                                                             metadata: HydroIrMetadata {
                                                                 location_kind: Tick(
-                                                                    18,
+                                                                    13,
                                                                     Cluster(
                                                                         4,
                                                                     ),
@@ -4820,7 +4805,7 @@ expression: built.ir()
                                                         },
                                                         metadata: HydroIrMetadata {
                                                             location_kind: Tick(
-                                                                18,
+                                                                13,
                                                                 Cluster(
                                                                     4,
                                                                 ),
@@ -4832,7 +4817,7 @@ expression: built.ir()
                                                     },
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Tick(
-                                                            18,
+                                                            13,
                                                             Cluster(
                                                                 4,
                                                             ),
@@ -4844,7 +4829,7 @@ expression: built.ir()
                                                 },
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
-                                                        18,
+                                                        13,
                                                         Cluster(
                                                             4,
                                                         ),
@@ -4856,7 +4841,7 @@ expression: built.ir()
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
-                                                    18,
+                                                    13,
                                                     Cluster(
                                                         4,
                                                     ),
@@ -4868,7 +4853,7 @@ expression: built.ir()
                                         },
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
-                                                18,
+                                                13,
                                                 Cluster(
                                                     4,
                                                 ),
@@ -4880,7 +4865,7 @@ expression: built.ir()
                                     },
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
-                                            18,
+                                            13,
                                             Cluster(
                                                 4,
                                             ),
@@ -4892,7 +4877,7 @@ expression: built.ir()
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
-                                        18,
+                                        13,
                                         Cluster(
                                             4,
                                         ),
@@ -4904,7 +4889,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    18,
+                                    13,
                                     Cluster(
                                         4,
                                     ),
@@ -4916,7 +4901,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                18,
+                                13,
                                 Cluster(
                                     4,
                                 ),
@@ -4928,7 +4913,7 @@ expression: built.ir()
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
-                            18,
+                            13,
                             Cluster(
                                 4,
                             ),
@@ -4940,7 +4925,7 @@ expression: built.ir()
                 },
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
-                        18,
+                        13,
                         Cluster(
                             4,
                         ),
@@ -4952,7 +4937,7 @@ expression: built.ir()
             },
             metadata: HydroIrMetadata {
                 location_kind: Tick(
-                    18,
+                    13,
                     Cluster(
                         4,
                     ),
@@ -4964,7 +4949,7 @@ expression: built.ir()
         },
         metadata: HydroIrMetadata {
             location_kind: Tick(
-                18,
+                13,
                 Cluster(
                     4,
                 ),
@@ -4995,7 +4980,7 @@ expression: built.ir()
                                             inner: <tee 34>,
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
-                                                    18,
+                                                    13,
                                                     Cluster(
                                                         4,
                                                     ),
@@ -5009,7 +4994,7 @@ expression: built.ir()
                                             inner: <tee 35>,
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
-                                                    18,
+                                                    13,
                                                     Cluster(
                                                         4,
                                                     ),
@@ -5021,7 +5006,7 @@ expression: built.ir()
                                         },
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
-                                                18,
+                                                13,
                                                 Cluster(
                                                     4,
                                                 ),
@@ -5033,7 +5018,7 @@ expression: built.ir()
                                     },
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
-                                            18,
+                                            13,
                                             Cluster(
                                                 4,
                                             ),
@@ -5045,7 +5030,7 @@ expression: built.ir()
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
-                                        18,
+                                        13,
                                         Cluster(
                                             4,
                                         ),
@@ -5057,7 +5042,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    18,
+                                    13,
                                     Cluster(
                                         4,
                                     ),
@@ -5069,7 +5054,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                18,
+                                13,
                                 Cluster(
                                     4,
                                 ),
@@ -5081,7 +5066,7 @@ expression: built.ir()
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
-                            18,
+                            13,
                             Cluster(
                                 4,
                             ),
@@ -5093,7 +5078,7 @@ expression: built.ir()
                 },
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
-                        18,
+                        13,
                         Cluster(
                             4,
                         ),
@@ -5105,7 +5090,7 @@ expression: built.ir()
             },
             metadata: HydroIrMetadata {
                 location_kind: Tick(
-                    18,
+                    13,
                     Cluster(
                         4,
                     ),
@@ -5117,7 +5102,7 @@ expression: built.ir()
         },
         metadata: HydroIrMetadata {
             location_kind: Tick(
-                18,
+                13,
                 Cluster(
                     4,
                 ),
@@ -5148,7 +5133,7 @@ expression: built.ir()
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
-                                                    18,
+                                                    13,
                                                     Cluster(
                                                         4,
                                                     ),
@@ -5160,7 +5145,7 @@ expression: built.ir()
                                         },
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
-                                                18,
+                                                13,
                                                 Cluster(
                                                     4,
                                                 ),
@@ -5172,7 +5157,7 @@ expression: built.ir()
                                     },
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
-                                            18,
+                                            13,
                                             Cluster(
                                                 4,
                                             ),
@@ -5184,7 +5169,7 @@ expression: built.ir()
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
-                                        18,
+                                        13,
                                         Cluster(
                                             4,
                                         ),
@@ -5210,7 +5195,7 @@ expression: built.ir()
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
-                                        18,
+                                        13,
                                         Cluster(
                                             4,
                                         ),
@@ -5222,7 +5207,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    18,
+                                    13,
                                     Cluster(
                                         4,
                                     ),
@@ -5236,7 +5221,7 @@ expression: built.ir()
                             inner: <tee 36>,
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    18,
+                                    13,
                                     Cluster(
                                         4,
                                     ),
@@ -5248,7 +5233,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                18,
+                                13,
                                 Cluster(
                                     4,
                                 ),
@@ -5260,7 +5245,7 @@ expression: built.ir()
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
-                            18,
+                            13,
                             Cluster(
                                 4,
                             ),
@@ -5272,7 +5257,7 @@ expression: built.ir()
                 },
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
-                        18,
+                        13,
                         Cluster(
                             4,
                         ),
@@ -5284,7 +5269,7 @@ expression: built.ir()
             },
             metadata: HydroIrMetadata {
                 location_kind: Tick(
-                    18,
+                    13,
                     Cluster(
                         4,
                     ),
@@ -5296,7 +5281,7 @@ expression: built.ir()
         },
         metadata: HydroIrMetadata {
             location_kind: Tick(
-                18,
+                13,
                 Cluster(
                     4,
                 ),
@@ -5333,7 +5318,7 @@ expression: built.ir()
                                             left: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; | (k , _) | k }),
                                                 input: FilterMap {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | (k , v) | if v { Some ((k , ())) } else { None } }),
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
                                                     input: FoldKeyed {
                                                         init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | | false }),
                                                         acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
@@ -5381,11 +5366,8 @@ expression: built.ir()
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
-                                                        location_kind: Tick(
-                                                            20,
-                                                            Cluster(
-                                                                4,
-                                                            ),
+                                                        location_kind: Cluster(
+                                                            4,
                                                         ),
                                                         output_type: Some(
                                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ()),
@@ -5394,7 +5376,7 @@ expression: built.ir()
                                                 },
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
-                                                        21,
+                                                        15,
                                                         Cluster(
                                                             4,
                                                         ),
@@ -5408,7 +5390,7 @@ expression: built.ir()
                                                 inner: <tee 38>,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
-                                                        18,
+                                                        13,
                                                         Cluster(
                                                             4,
                                                         ),
@@ -5420,7 +5402,7 @@ expression: built.ir()
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
-                                                    21,
+                                                    15,
                                                     Cluster(
                                                         4,
                                                     ),
@@ -5459,7 +5441,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    19,
+                                    14,
                                     Cluster(
                                         1,
                                     ),
@@ -5480,7 +5462,7 @@ expression: built.ir()
                                         inner: <tee 39>,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
-                                                19,
+                                                14,
                                                 Cluster(
                                                     1,
                                                 ),
@@ -5492,7 +5474,7 @@ expression: built.ir()
                                     },
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
-                                            19,
+                                            14,
                                             Cluster(
                                                 1,
                                             ),
@@ -5504,7 +5486,7 @@ expression: built.ir()
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
-                                        19,
+                                        14,
                                         Cluster(
                                             1,
                                         ),
@@ -5516,7 +5498,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    19,
+                                    14,
                                     Cluster(
                                         1,
                                     ),
@@ -5528,7 +5510,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                19,
+                                14,
                                 Cluster(
                                     1,
                                 ),
@@ -5540,7 +5522,7 @@ expression: built.ir()
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
-                            19,
+                            14,
                             Cluster(
                                 1,
                             ),
@@ -5552,7 +5534,7 @@ expression: built.ir()
                 },
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
-                        19,
+                        14,
                         Cluster(
                             1,
                         ),
@@ -5564,7 +5546,7 @@ expression: built.ir()
             },
             metadata: HydroIrMetadata {
                 location_kind: Tick(
-                    19,
+                    14,
                     Cluster(
                         1,
                     ),
@@ -5597,7 +5579,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    22,
+                                    16,
                                     Cluster(
                                         2,
                                     ),
@@ -5626,7 +5608,7 @@ expression: built.ir()
                                                 inner: <tee 37>,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
-                                                        18,
+                                                        13,
                                                         Cluster(
                                                             4,
                                                         ),
@@ -5638,7 +5620,7 @@ expression: built.ir()
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
-                                                    18,
+                                                    13,
                                                     Cluster(
                                                         4,
                                                     ),
@@ -5677,7 +5659,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    22,
+                                    16,
                                     Cluster(
                                         2,
                                     ),
@@ -5689,7 +5671,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                22,
+                                16,
                                 Cluster(
                                     2,
                                 ),
@@ -5701,7 +5683,7 @@ expression: built.ir()
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
-                            22,
+                            16,
                             Cluster(
                                 2,
                             ),
@@ -5722,7 +5704,7 @@ expression: built.ir()
                                     inner: <tee 40>,
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
-                                            22,
+                                            16,
                                             Cluster(
                                                 2,
                                             ),
@@ -5734,7 +5716,7 @@ expression: built.ir()
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
-                                        22,
+                                        16,
                                         Cluster(
                                             2,
                                         ),
@@ -5746,7 +5728,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    22,
+                                    16,
                                     Cluster(
                                         2,
                                     ),
@@ -5758,7 +5740,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                22,
+                                16,
                                 Cluster(
                                     2,
                                 ),
@@ -5770,7 +5752,7 @@ expression: built.ir()
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
-                            22,
+                            16,
                             Cluster(
                                 2,
                             ),
@@ -5782,7 +5764,7 @@ expression: built.ir()
                 },
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
-                        22,
+                        16,
                         Cluster(
                             2,
                         ),
@@ -5794,7 +5776,7 @@ expression: built.ir()
             },
             metadata: HydroIrMetadata {
                 location_kind: Tick(
-                    22,
+                    16,
                     Cluster(
                         2,
                     ),
@@ -5806,7 +5788,7 @@ expression: built.ir()
         },
         metadata: HydroIrMetadata {
             location_kind: Tick(
-                22,
+                16,
                 Cluster(
                     2,
                 ),
@@ -5873,7 +5855,7 @@ expression: built.ir()
                             inner: <tee 42>,
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    22,
+                                    16,
                                     Cluster(
                                         2,
                                     ),
@@ -6244,7 +6226,7 @@ expression: built.ir()
                                                             },
                                                             metadata: HydroIrMetadata {
                                                                 location_kind: Tick(
-                                                                    23,
+                                                                    17,
                                                                     Cluster(
                                                                         2,
                                                                     ),
@@ -6256,7 +6238,7 @@ expression: built.ir()
                                                         },
                                                         metadata: HydroIrMetadata {
                                                             location_kind: Tick(
-                                                                23,
+                                                                17,
                                                                 Cluster(
                                                                     2,
                                                                 ),
@@ -6268,7 +6250,7 @@ expression: built.ir()
                                                     },
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Tick(
-                                                            23,
+                                                            17,
                                                             Cluster(
                                                                 2,
                                                             ),
@@ -6280,7 +6262,7 @@ expression: built.ir()
                                                 },
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
-                                                        23,
+                                                        17,
                                                         Cluster(
                                                             2,
                                                         ),
@@ -6337,7 +6319,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                24,
+                                18,
                                 Process(
                                     3,
                                 ),
@@ -6349,7 +6331,7 @@ expression: built.ir()
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
-                            24,
+                            18,
                             Process(
                                 3,
                             ),
@@ -6378,7 +6360,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                25,
+                                19,
                                 Process(
                                     3,
                                 ),
@@ -6390,7 +6372,7 @@ expression: built.ir()
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
-                            25,
+                            19,
                             Process(
                                 3,
                             ),
@@ -6402,7 +6384,7 @@ expression: built.ir()
                 },
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
-                        25,
+                        19,
                         Process(
                             3,
                         ),
@@ -6414,7 +6396,7 @@ expression: built.ir()
             },
             metadata: HydroIrMetadata {
                 location_kind: Tick(
-                    25,
+                    19,
                     Process(
                         3,
                     ),
@@ -6719,7 +6701,7 @@ expression: built.ir()
                                                         },
                                                         metadata: HydroIrMetadata {
                                                             location_kind: Tick(
-                                                                26,
+                                                                20,
                                                                 Cluster(
                                                                     2,
                                                                 ),
@@ -6731,7 +6713,7 @@ expression: built.ir()
                                                     },
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Tick(
-                                                            26,
+                                                            20,
                                                             Cluster(
                                                                 2,
                                                             ),
@@ -6743,7 +6725,7 @@ expression: built.ir()
                                                 },
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
-                                                        26,
+                                                        20,
                                                         Cluster(
                                                             2,
                                                         ),
@@ -6755,7 +6737,7 @@ expression: built.ir()
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
-                                                    26,
+                                                    20,
                                                     Cluster(
                                                         2,
                                                     ),
@@ -6794,7 +6776,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    27,
+                                    21,
                                     Process(
                                         3,
                                     ),
@@ -6806,7 +6788,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                27,
+                                21,
                                 Process(
                                     3,
                                 ),
@@ -6835,7 +6817,7 @@ expression: built.ir()
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
-                                    29,
+                                    23,
                                     Process(
                                         3,
                                     ),
@@ -6847,7 +6829,7 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
-                                29,
+                                23,
                                 Process(
                                     3,
                                 ),
@@ -6859,7 +6841,7 @@ expression: built.ir()
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
-                            29,
+                            23,
                             Process(
                                 3,
                             ),
@@ -6871,7 +6853,7 @@ expression: built.ir()
                 },
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
-                        29,
+                        23,
                         Process(
                             3,
                         ),
@@ -6952,7 +6934,7 @@ expression: built.ir()
             },
             metadata: HydroIrMetadata {
                 location_kind: Tick(
-                    28,
+                    22,
                     Process(
                         3,
                     ),

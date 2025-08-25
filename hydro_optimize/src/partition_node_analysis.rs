@@ -353,7 +353,7 @@ fn input_dependency_analysis_node(
 
     // If there is no input taint, remove it
     if input_taint_entry.is_empty() {
-        input_taint.remove(&next_stmt_id);
+        input_taint.remove(next_stmt_id);
     }
 
     println!(
@@ -914,7 +914,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("the map following network", BTreeSet::from(["network"])),
             ("the operator being tested", BTreeSet::from(["network"])),
         ]);
@@ -985,7 +984,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("map 1", BTreeSet::from(["network"])),
             ("map 2", BTreeSet::from(["network"])),
@@ -1055,7 +1053,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("operator", BTreeSet::from(["network"])),
         ]);
@@ -1114,7 +1111,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("operator", BTreeSet::from(["network"])),
         ]);
@@ -1159,7 +1155,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("operator", BTreeSet::from(["network"])),
         ]);
@@ -1238,7 +1233,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("teed input 2", BTreeSet::from(["network"])),
             ("map 2", BTreeSet::from(["network"])),
@@ -1357,7 +1351,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("teed input 2", BTreeSet::from(["network"])),
             ("map 2", BTreeSet::from(["network"])),
@@ -1487,7 +1480,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("teed input 2", BTreeSet::from(["network"])),
             ("map 2", BTreeSet::from(["network"])),
@@ -1628,7 +1620,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("enumerate", BTreeSet::from(["network"])),
         ]);
@@ -1700,7 +1691,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("reduce keyed", BTreeSet::from(["network"])),
         ]);
@@ -1782,7 +1772,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("reduce", BTreeSet::from(["network"])),
         ]);
@@ -1867,7 +1856,6 @@ mod tests {
             ("teed cycle 1", BTreeSet::from(["network"])),
             ("filter", BTreeSet::from(["network"])),
             ("map", BTreeSet::from(["network"])),
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("chain", BTreeSet::from(["network"])),
             ("teed cycle 2", BTreeSet::from(["network"])),
@@ -2003,7 +1991,6 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("join", BTreeSet::from(["network"])),
             ("map (x,(a,b)) to (a,b)", BTreeSet::from(["network"])), // map (x,(a,b)) to (a,b)
@@ -2181,14 +2168,11 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("network", BTreeSet::from([])),
             ("map after network", BTreeSet::from(["network"])),
             ("map", BTreeSet::from(["network"])),
             ("chain", BTreeSet::from(["network"])),
         ]);
-        let unnamed_expected_taint = BTreeMap::from([
-            (("network", -8), BTreeSet::from([])), // Source
-        ]);
+        let unnamed_expected_taint = BTreeMap::from([]);
 
         let mut implicit_map_dependencies = StructOrTuple::default();
         implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
@@ -2291,10 +2275,8 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("input2", BTreeSet::from([])),
             ("map after input2", BTreeSet::from(["input2"])),
             ("teed map2 1", BTreeSet::from(["input2"])),
-            ("input1", BTreeSet::from([])),
             ("map after input1", BTreeSet::from(["input1"])),
             ("teed map1 1", BTreeSet::from(["input1"])),
             ("chain", BTreeSet::from(["input1", "input2"])),
@@ -2459,9 +2441,7 @@ mod tests {
             }));
 
         let expected_taint = BTreeMap::from([
-            ("input1", BTreeSet::new()),
             ("map after input1", BTreeSet::from(["input1"])),
-            ("input2", BTreeSet::new()),
             ("map after input2", BTreeSet::from(["input2"])),
             ("difference", BTreeSet::from(["input1"])), // Isn't tainted by anti-joined parent
         ]);

@@ -21,28 +21,17 @@ use crate::{
 fn track_membership<'a, C, L: Location<'a> + NoTick + NoAtomic>(
     membership: KeyedStream<ClusterId<C>, MembershipEvent, L, Unbounded>,
 ) -> KeyedSingleton<ClusterId<C>, (), L, Unbounded> {
-    let local_tick = membership.underlying.location.tick();
-
-    let out_tick = KeyedSingleton {
-        underlying: membership
-            .fold(
-                q!(|| false),
-                q!(|present, event| {
-                    match event {
-                        MembershipEvent::Joined => *present = true,
-                        MembershipEvent::Left => *present = false,
-                    }
-                }),
-            )
-            .snapshot(
-                &local_tick,
-                nondet!(/** manual filter map without nested closures */),
-            )
-            .entries()
-            .filter_map(q!(|(k, v)| if v { Some((k, ())) } else { None })),
-    };
-
-    out_tick.latest()
+    membership
+        .fold(
+            q!(|| false),
+            q!(|present, event| {
+                match event {
+                    MembershipEvent::Joined => *present = true,
+                    MembershipEvent::Left => *present = false,
+                }
+            }),
+        )
+        .filter_map(q!(|v| if v { Some(()) } else { None }))
 }
 
 pub fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr {

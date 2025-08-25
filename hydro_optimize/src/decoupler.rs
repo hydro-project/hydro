@@ -140,9 +140,6 @@ fn decouple_node(
     new_inners: &mut HashMap<(usize, LocationId), Rc<RefCell<HydroNode>>>,
 ) {
     // Replace location of sources, if necessary
-    // dbg!(&node);
-    // dbg!(&next_stmt_id);
-    // dbg!(&decoupler.place_on_decoupled_machine);
     if decoupler.place_on_decoupled_machine.contains(next_stmt_id) {
         match node {
             HydroNode::Source { metadata, .. } | HydroNode::Network { metadata, .. } => {
@@ -301,7 +298,6 @@ mod tests {
             .values()
             .for_each(q!(|a| println!("Got it: {}", a)));
 
-        dbg!(&place_on_decoupled_machine);
         let built = builder
             .optimize_with(persist_pullup)
             .optimize_with(inject_id)
