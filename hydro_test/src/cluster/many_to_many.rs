@@ -22,7 +22,9 @@ mod tests {
         let _ = super::many_to_many(&builder);
         let built = builder.finalize();
 
-        insta::assert_debug_snapshot!(built.ir());
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(built.ir());
+        });
     }
 
     #[tokio::test]

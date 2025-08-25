@@ -505,7 +505,9 @@ mod test {
                 };
                 let process_item_struct = process_item_struct(item);
                 let derive_lattice = derive_lattice(&process_item_struct);
-                insta::assert_snapshot!(prettyplease::unparse(&parse_quote! { #derive_lattice }));
+                insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+                    insta::assert_snapshot!(prettyplease::unparse(&parse_quote! { #derive_lattice }));
+                });
             }
         };
     }

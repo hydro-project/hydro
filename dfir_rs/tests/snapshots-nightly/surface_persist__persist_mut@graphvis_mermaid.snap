@@ -1,0 +1,44 @@
+---
+source: dfir_rs/tests/surface_persist.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_iter([Persist(1), Persist(2), Persist(3), Persist(4), Delete(2)])</code>"/]:::pullClass
+2v1[\"(2v1) <code>persist_mut::&lt;'mutable&gt;()</code>"/]:::pullClass
+3v1[/"(3v1) <code>tee()</code>"\]:::pushClass
+4v1[/"(4v1) <code>for_each(|v| pull_tx.send(v).unwrap())</code>"\]:::pushClass
+5v1[/"(5v1) <code>flat_map(|x| if x == 3 { vec![Persist(x), Delete(x)] } else { vec![Persist(x)] })</code>"\]:::pushClass
+6v1[\"(6v1) <code>persist_mut::&lt;'mutable&gt;()</code>"/]:::pullClass
+7v1[/"(7v1) <code>for_each(|v| push_tx.send(v).unwrap())</code>"\]:::pushClass
+8v1["(8v1) <code>handoff</code>"]:::otherClass
+9v1["(9v1) <code>handoff</code>"]:::otherClass
+2v1-->3v1
+1v1-->8v1
+3v1-->4v1
+6v1-->7v1
+5v1-->9v1
+3v1-->5v1
+8v1--x2v1; linkStyle 6 stroke:red
+9v1--x6v1; linkStyle 7 stroke:red
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    subgraph sg_1v1_var_my_tee ["var <tt>my_tee</tt>"]
+        1v1
+    end
+end
+subgraph sg_2v1 ["sg_2v1 stratum 1"]
+    4v1
+    5v1
+    subgraph sg_2v1_var_my_tee ["var <tt>my_tee</tt>"]
+        2v1
+        3v1
+    end
+end
+subgraph sg_3v1 ["sg_3v1 stratum 2"]
+    6v1
+    7v1
+end

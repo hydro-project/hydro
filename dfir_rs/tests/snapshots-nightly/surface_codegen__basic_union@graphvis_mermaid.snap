@@ -1,0 +1,25 @@
+---
+source: dfir_rs/tests/surface_codegen.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>union()</code>"/]:::pullClass
+2v1[/"(2v1) <code>for_each(|v| out_send.send(v).unwrap())</code>"\]:::pushClass
+3v1[\"(3v1) <code>source_iter([1])</code>"/]:::pullClass
+4v1[\"(4v1) <code>source_iter([2])</code>"/]:::pullClass
+1v1-->2v1
+3v1-->|0|1v1
+4v1-->|1|1v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    3v1
+    4v1
+    subgraph sg_1v1_var_m ["var <tt>m</tt>"]
+        1v1
+        2v1
+    end
+end

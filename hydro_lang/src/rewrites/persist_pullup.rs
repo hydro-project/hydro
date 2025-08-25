@@ -223,17 +223,24 @@ mod tests {
 
         let built = flow.finalize();
 
-        insta::assert_debug_snapshot!(built.ir());
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(built.ir());
+        });
 
         let optimized = built.optimize_with(super::persist_pullup);
 
-        insta::assert_debug_snapshot!(optimized.ir());
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(optimized.ir());
+        });
         for (id, graph) in optimized
             .into_deploy::<HydroDeploy>()
             .preview_compile()
             .all_dfir()
         {
-            insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
+            insta::with_settings!({
+                snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+                snapshot_suffix => format!("surface_graph_{id}"),
+            }, {
                 insta::assert_snapshot!(graph.surface_syntax_string());
             });
         }
@@ -264,18 +271,25 @@ mod tests {
 
         let built = flow.finalize();
 
-        insta::assert_debug_snapshot!(built.ir());
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(built.ir());
+        });
 
         let optimized = built.optimize_with(super::persist_pullup);
 
-        insta::assert_debug_snapshot!(optimized.ir());
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(optimized.ir());
+        });
 
         for (id, graph) in optimized
             .into_deploy::<HydroDeploy>()
             .preview_compile()
             .all_dfir()
         {
-            insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
+            insta::with_settings!({
+                snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+                snapshot_suffix => format!("surface_graph_{id}"),
+            }, {
                 insta::assert_snapshot!(graph.surface_syntax_string());
             });
         }

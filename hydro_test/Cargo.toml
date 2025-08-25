@@ -24,6 +24,7 @@ example_test = { path = "../example_test", version = "^0.0.0", optional = true }
 
 [build-dependencies]
 stageleft_tool.workspace = true
+rustc_version = "0.4.0"
 
 [dev-dependencies]
 clap = { version = "4.4", features = ["derive"] }

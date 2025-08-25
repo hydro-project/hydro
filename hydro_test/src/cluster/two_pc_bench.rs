@@ -90,11 +90,16 @@ mod tests {
         let built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(built.ir());
+            insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+                insta::assert_debug_snapshot!(built.ir());
+            });
         });
 
         let preview = built.preview_compile();
-        insta::with_settings!({snapshot_suffix => "coordinator_mermaid"}, {
+        insta::with_settings!({
+            snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+            snapshot_suffix => "coordinator_mermaid"
+        }, {
             insta::assert_snapshot!(
                 preview.dfir_for(&coordinator).to_mermaid(&WriteConfig {
                     no_subgraphs: true,
@@ -107,7 +112,10 @@ mod tests {
         });
 
         let preview = built.preview_compile();
-        insta::with_settings!({snapshot_suffix => "participants_mermaid"}, {
+        insta::with_settings!({
+            snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+            snapshot_suffix => "participants_mermaid"
+        }, {
             insta::assert_snapshot!(
                 preview.dfir_for(&participants).to_mermaid(&WriteConfig {
                     no_subgraphs: true,
@@ -227,7 +235,9 @@ mod tests {
         };
         partition(&mut ir, &coordinator_partitioner);
 
-        insta::assert_debug_snapshot!(&ir);
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(&ir);
+        });
     }
 
     #[test]
@@ -279,6 +289,8 @@ mod tests {
         };
         partition(&mut ir, &participant_partitioner);
 
-        insta::assert_debug_snapshot!(&ir);
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(&ir);
+        });
     }
 }

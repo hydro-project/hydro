@@ -1,0 +1,44 @@
+---
+source: dfir_rs/tests/surface_unique.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) source_iter(0..10)", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) persist::<'static>()", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) source_iter(5..15)", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) persist::<'static>()", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) union()", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) tee()", shape=house, fillcolor="#ffff88"]
+    n7v1 [label="(n7v1) unique::<'tick>()", shape=house, fillcolor="#ffff88"]
+    n8v1 [label="(n8v1) for_each(|v| out_send.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
+    n9v1 [label="(n9v1) for_each(std::mem::drop)", shape=house, fillcolor="#ffff88"]
+    n2v1 -> n5v1
+    n1v1 -> n2v1
+    n4v1 -> n5v1
+    n3v1 -> n4v1
+    n5v1 -> n6v1
+    n7v1 -> n8v1
+    n6v1 -> n7v1
+    n6v1 -> n9v1
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        n1v1
+        n2v1
+        n3v1
+        n4v1
+        n7v1
+        n8v1
+        n9v1
+        subgraph sg_1v1_var_pivot {
+            cluster=true
+            label="var pivot"
+            n5v1
+            n6v1
+        }
+    }
+}

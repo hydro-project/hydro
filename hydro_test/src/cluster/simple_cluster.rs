@@ -84,7 +84,9 @@ mod tests {
         let _ = super::simple_cluster(&builder);
         let built = builder.finalize();
 
-        insta::assert_debug_snapshot!(built.ir());
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(built.ir());
+        });
     }
 
     #[tokio::test]
@@ -269,10 +271,15 @@ mod tests {
             .optimize_with(|leaves| partitioner::partition(leaves, &partitioner))
             .into_deploy::<HydroDeploy>();
 
-        insta::assert_debug_snapshot!(built.ir());
+        insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+            insta::assert_debug_snapshot!(built.ir());
+        });
 
         for (id, ir) in built.preview_compile().all_dfir() {
-            insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
+            insta::with_settings!({
+                snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+                snapshot_suffix => format!("surface_graph_{id}")
+            }, {
                 insta::assert_snapshot!(ir.surface_syntax_string());
             });
         }

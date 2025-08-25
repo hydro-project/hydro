@@ -387,7 +387,9 @@ mod tests {
         .3;
 
         ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(built.ir());
+            insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+                insta::assert_debug_snapshot!(built.ir());
+            });
         });
     }
 
@@ -419,7 +421,9 @@ mod tests {
         .3;
 
         ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(built.ir());
+            insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+                insta::assert_debug_snapshot!(built.ir());
+            });
         });
     }
 

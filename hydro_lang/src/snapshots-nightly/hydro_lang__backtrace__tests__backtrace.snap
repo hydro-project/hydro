@@ -1,0 +1,9 @@
+---
+source: hydro_lang/src/backtrace.rs
+expression: elements
+---
+[
+    hydro_lang::backtrace::tests::test_backtrace,
+    hydro_lang::backtrace::tests::test_backtrace::{{closure}},
+    core::ops::function::FnOnce::call_once,
+]

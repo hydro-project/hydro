@@ -191,11 +191,16 @@ mod tests {
         let built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(built.ir());
+            insta::with_settings!({ snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" } }, {
+                insta::assert_debug_snapshot!(built.ir());
+            });
         });
 
         let preview = built.preview_compile();
-        insta::with_settings!({snapshot_suffix => "proposer_mermaid"}, {
+        insta::with_settings!({
+            snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+            snapshot_suffix => "proposer_mermaid"
+        }, {
             insta::assert_snapshot!(
                 preview.dfir_for(&proposers).to_mermaid(&WriteConfig {
                     no_subgraphs: true,
@@ -206,7 +211,10 @@ mod tests {
                 })
             );
         });
-        insta::with_settings!({snapshot_suffix => "acceptor_mermaid"}, {
+        insta::with_settings!({
+            snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
+            snapshot_suffix => "acceptor_mermaid"
+        }, {
             insta::assert_snapshot!(
                 preview.dfir_for(&acceptors).to_mermaid(&WriteConfig {
                     no_subgraphs: true,
