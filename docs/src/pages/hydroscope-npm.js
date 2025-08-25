@@ -221,7 +221,7 @@ function HydroscopeNpmDemo() {
               <HydroscopeFull
                 data={graphData}
                 showFileUpload={true}
-                showSidebar={true}
+                showInfoPanel={true}
                 enableCollapse={true}
                 autoFit={true}
                 initialLayoutAlgorithm="mrtree"

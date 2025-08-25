@@ -37,16 +37,27 @@ function HydroscopeDemo() {
   const [loading, setLoading] = React.useState(true);
   const [graphData, setGraphData] = React.useState(null);
   const [filePath, setFilePath] = React.useState(null);
+  const [availableHeight, setAvailableHeight] = React.useState('100vh');
+
+  // Calculate available height dynamically
+  React.useEffect(() => {
+    const calculateHeight = () => {
+      // Get the navbar height dynamically
+      const navbar = document.querySelector('.navbar');
+      const navbarHeight = navbar ? navbar.offsetHeight : 60;
+      setAvailableHeight(`calc(100vh - ${navbarHeight}px)`);
+    };
+
+    calculateHeight();
+    window.addEventListener('resize', calculateHeight);
+    return () => window.removeEventListener('resize', calculateHeight);
+  }, []);
 
   // Load HydroscopeFull component from npm package
   React.useEffect(() => {
     const loadHydroscopeFull = async () => {
       try {
-        console.log('🔍 Loading Hydroscope component from npm package...');
-        
         const hydroscopeModule = await import('@hydro-project/hydroscope');
-        
-        console.log('📦 Hydroscope module loaded:', Object.keys(hydroscopeModule));
         
         const { HydroscopeFull, generateCompleteExample, parseDataFromUrl } = hydroscopeModule;
         
@@ -87,7 +98,6 @@ function HydroscopeDemo() {
     // Handle file path parameter (from Rust debug output)
     if (fileParam && !graphData) {
       const decodedPath = decodeURIComponent(fileParam);
-      console.log('📁 Received file path param:', decodedPath);
       // We cannot read arbitrary local files in-browser; pass the path to the UI for display/copy
       setFilePath(decodedPath);
       setError(null);
@@ -95,43 +105,33 @@ function HydroscopeDemo() {
     }
     
     // Handle compressed or uncompressed data parameter using the hydroscope API
-    if ((compressedParam || dataParam) && !graphData) {
-      parseDataFromUrl(dataParam, compressedParam)
-        .then(jsonData => {
-          console.log('📊 Loading graph from URL parameter');
-          setGraphData(jsonData);
-          setError(null);
-        })
-        .catch(err => {
-          console.error('❌ Failed to load graph from URL:', err);
-          setError(`Failed to load graph from URL: ${err.message}`);
-        });
+        if ((compressedParam || dataParam) && !graphData) {
+          parseDataFromUrl(dataParam, compressedParam)
+            .then(jsonData => {
+              // Diagnostic: Log the parsed graphData and edgeStyleConfig
+              console.log('[Hydro GraphData]', jsonData);
+              if (jsonData && jsonData.edgeStyleConfig) {
+                console.log('[Hydro EdgeStyleConfig]', jsonData.edgeStyleConfig);
+              } else {
+                console.warn('[Hydro EdgeStyleConfig] MISSING in parsed graphData');
+              }
+              setGraphData(jsonData);
+              setError(null);
+            })
+            .catch(err => {
+              console.error('❌ Failed to load graph from URL:', err);
+              setError(`Failed to load graph from URL: ${err.message}`);
+            });
     }
   }, [loading, location.search, location.hash, graphData, parseDataFromUrl]);
 
-  // Generate example data when no data is provided - DISABLED to show FileDropZone by default
-  // React.useEffect(() => {
-  //   if (!loading && !graphData && generateCompleteExample) {
-  //     try {
-  //       console.log('🎲 Generating example graph data...');
-  //       const exampleData = generateCompleteExample();
-  //       setGraphData(exampleData);
-  //     } catch (err) {
-  //       console.error('❌ Failed to generate example data:', err);
-  //       setError(`Failed to generate example: ${err.message}`);
-  //     }
-  //   }
-  // }, [loading, graphData, generateCompleteExample]);
-
   // Handle file upload
   const handleFileUpload = React.useCallback((data, filename) => {
-    console.log(`📁 File uploaded: ${filename}`);
     setGraphData(data);
   }, []);
 
   // Handle example generation
   const handleExampleGenerated = React.useCallback((data) => {
-    console.log('🎲 Example generated, updating graph data');
     setGraphData(data);
   }, []);
 
@@ -139,7 +139,6 @@ function HydroscopeDemo() {
   const handleCreateExample = React.useCallback(() => {
     if (generateCompleteExample) {
       try {
-        console.log('🎲 Manually generating example graph data...');
         const exampleData = generateCompleteExample();
         setGraphData(exampleData);
       } catch (err) {
@@ -149,24 +148,11 @@ function HydroscopeDemo() {
     }
   }, [generateCompleteExample]);
 
-  // Handle container interactions
-  const handleContainerExpand = React.useCallback((containerId, visualizationState) => {
-    console.log(`🔄 Container expanded: ${containerId}`);
-  }, []);
-
-  const handleContainerCollapse = React.useCallback((containerId, visualizationState) => {
-    console.log(`🔄 Container collapsed: ${containerId}`);
-  }, []);
-
-  // Handle parsing events
-  const handleParsed = React.useCallback((metadata, visualizationState) => {
-    console.log('🎯 Graph parsed successfully:', metadata);
-  }, []);
-
   const containerStyle = {
-    minHeight: '100vh',
+    height: availableHeight,
     display: 'flex',
     flexDirection: 'column',
+    overflow: 'hidden',
   };
 
   const headerStyle = {
@@ -174,19 +160,22 @@ function HydroscopeDemo() {
     textAlign: 'center',
     borderBottom: '1px solid #e0e0e0',
     background: 'white',
+    flexShrink: 0, // Prevent header from shrinking
   };
 
   const contentStyle = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    minHeight: 0,
+    minHeight: 0, // Allow content to shrink
+    overflow: 'hidden',
   };
 
   return (
     <Layout 
       title="Hydroscope" 
       description="Complete graph visualization interface"
+      noFooter={true}
     >
       <div style={containerStyle}>
         <div style={headerStyle}>
@@ -212,25 +201,29 @@ function HydroscopeDemo() {
         )}
 
         {!loading && !error && HydroscopeFull && (
-          <div style={contentStyle}>
-            <HydroscopeFull
-              data={graphData}
-              showFileUpload={true}
-              showSidebar={true}
-              enableCollapse={true}
-              autoFit={true}
-              initialLayoutAlgorithm="mrtree"
-              initialColorPalette="Set3"
-              generatedFilePath={filePath}
-              generateCompleteExample={generateCompleteExample}
-              onFileUpload={handleFileUpload}
-              onExampleGenerated={handleExampleGenerated}
-              onCreateExample={handleCreateExample}
-              onContainerExpand={handleContainerExpand}
-              onContainerCollapse={handleContainerCollapse}
-              onParsed={handleParsed}
-            />
-          </div>
+          <>
+            <div style={contentStyle}>
+              <HydroscopeFull
+                data={graphData}
+                showFileUpload={true}
+                showInfoPanel={true}
+                showStylePanel={true}
+                enableCollapse={true}
+                autoFit={true}
+                initialLayoutAlgorithm="mrtree"
+                initialColorPalette="Set3"
+                generatedFilePath={filePath}
+                generateCompleteExample={generateCompleteExample}
+                onFileUpload={handleFileUpload}
+                onExampleGenerated={handleExampleGenerated}
+                onCreateExample={handleCreateExample}
+                style={{ 
+                  height: '100%',
+                  width: '100%',
+                }}
+              />
+            </div>
+          </>
         )}
 
         {!loading && !error && !HydroscopeFull && (
