@@ -350,6 +350,12 @@ fn input_dependency_analysis_node(
             panic!("Unexpected node type {:?} in input dependency analysis.", node);
         }
     }
+
+    // If there is no input taint, remove it
+    if input_taint_entry.is_empty() {
+        input_taint.remove(&next_stmt_id);
+    }
+
     println!(
         "Input dependencies for node {}: {:?}",
         next_stmt_id, input_dependencies_entry
