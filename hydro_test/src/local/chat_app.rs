@@ -67,7 +67,7 @@ mod tests {
 
         let built = builder.with_default_optimize();
 
-        insta::assert_snapshot!(
+        hydro_build_utils::assert_snapshot!(
             built
                 .preview_compile()
                 .dfir_for(&p1)
@@ -132,7 +132,7 @@ mod tests {
 
         let built = builder.with_default_optimize();
 
-        insta::assert_snapshot!(
+        hydro_build_utils::assert_snapshot!(
             built
                 .preview_compile()
                 .dfir_for(&p1)

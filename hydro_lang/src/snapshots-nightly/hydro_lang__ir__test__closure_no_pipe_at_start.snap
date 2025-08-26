@@ -1,0 +1,5 @@
+---
+source: hydro_lang/src/ir.rs
+expression: result.to_token_stream().to_string()
+---
+{ let foo = 123 ; move | b : usize | b + foo }

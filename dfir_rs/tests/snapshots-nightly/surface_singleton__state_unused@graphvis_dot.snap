@@ -1,0 +1,30 @@
+---
+source: dfir_rs/tests/surface_singleton.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) source_iter(15..=25)", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) map(Max::new)", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) state::<'static, Max<_>>()", shape=house, fillcolor="#ffff88"]
+    n1v1 -> n2v1
+    n2v1 -> n3v1
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_max_of_stream2 {
+            cluster=true
+            label="var max_of_stream2"
+            n3v1
+        }
+        subgraph sg_1v1_var_stream2 {
+            cluster=true
+            label="var stream2"
+            n1v1
+            n2v1
+        }
+    }
+}

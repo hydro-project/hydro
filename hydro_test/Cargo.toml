@@ -24,6 +24,7 @@ example_test = { path = "../example_test", version = "^0.0.0", optional = true }
 
 [build-dependencies]
 stageleft_tool.workspace = true
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
 
 [dev-dependencies]
 clap = { version = "4.4", features = ["derive"] }
@@ -38,7 +39,7 @@ hydro_lang = { path = "../hydro_lang", version = "^0.14.0", features = [
     "viz",
 ] }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
-insta = "1.39"
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
 regex = "1"
 tokio = { version = "1.29.0", features = ["full"] }
 tokio-test = "0.4.4"

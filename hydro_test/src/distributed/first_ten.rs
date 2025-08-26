@@ -41,7 +41,7 @@ mod tests {
         let p2 = builder.process();
         super::first_ten_distributed(&external, &p1, &p2);
 
-        insta::assert_debug_snapshot!(builder.finalize().ir());
+        hydro_build_utils::assert_debug_snapshot!(builder.finalize().ir());
     }
 
     #[tokio::test]

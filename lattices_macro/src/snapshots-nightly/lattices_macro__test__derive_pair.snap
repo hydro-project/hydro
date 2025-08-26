@@ -1,0 +1,148 @@
+---
+source: lattices_macro/src/lib.rs
+expression: "prettyplease :: unparse(& parse_quote! { # derive_lattice })"
+---
+impl<
+    LatA,
+    LatB,
+    __LatAOther,
+    __LatBOther,
+> lattices::Merge<Pair<__LatAOther, __LatBOther>> for Pair<LatA, LatB>
+where
+    LatA: lattices::Merge<__LatAOther>,
+    LatB: lattices::Merge<__LatBOther>,
+{
+    fn merge(&mut self, other: Pair<__LatAOther, __LatBOther>) -> bool {
+        let mut changed = false;
+        changed |= lattices::Merge::merge(&mut self.a, other.a);
+        changed |= lattices::Merge::merge(&mut self.b, other.b);
+        changed
+    }
+}
+impl<
+    LatA,
+    LatB,
+    __LatAOther,
+    __LatBOther,
+> ::core::cmp::PartialEq<Pair<__LatAOther, __LatBOther>> for Pair<LatA, LatB>
+where
+    LatA: ::core::cmp::PartialEq<__LatAOther>,
+    LatB: ::core::cmp::PartialEq<__LatBOther>,
+{
+    fn eq(&self, other: &Pair<__LatAOther, __LatBOther>) -> bool {
+        if !::core::cmp::PartialEq::eq(&self.a, &other.a) {
+            return false;
+        }
+        if !::core::cmp::PartialEq::eq(&self.b, &other.b) {
+            return false;
+        }
+        true
+    }
+}
+impl<
+    LatA,
+    LatB,
+    __LatAOther,
+    __LatBOther,
+> ::core::cmp::PartialOrd<Pair<__LatAOther, __LatBOther>> for Pair<LatA, LatB>
+where
+    LatA: ::core::cmp::PartialOrd<__LatAOther>,
+    LatB: ::core::cmp::PartialOrd<__LatBOther>,
+{
+    fn partial_cmp(
+        &self,
+        other: &Pair<__LatAOther, __LatBOther>,
+    ) -> ::core::option::Option<::core::cmp::Ordering> {
+        let mut self_any_greater = false;
+        let mut othr_any_greater = false;
+        match ::core::cmp::PartialOrd::partial_cmp(&self.a, &other.a)? {
+            ::core::cmp::Ordering::Less => {
+                othr_any_greater = true;
+            }
+            ::core::cmp::Ordering::Greater => {
+                self_any_greater = true;
+            }
+            ::core::cmp::Ordering::Equal => {}
+        }
+        if self_any_greater && othr_any_greater {
+            return ::core::option::Option::None;
+        }
+        match ::core::cmp::PartialOrd::partial_cmp(&self.b, &other.b)? {
+            ::core::cmp::Ordering::Less => {
+                othr_any_greater = true;
+            }
+            ::core::cmp::Ordering::Greater => {
+                self_any_greater = true;
+            }
+            ::core::cmp::Ordering::Equal => {}
+        }
+        if self_any_greater && othr_any_greater {
+            return ::core::option::Option::None;
+        }
+        ::core::option::Option::Some(
+            match (self_any_greater, othr_any_greater) {
+                (false, false) => ::core::cmp::Ordering::Equal,
+                (false, true) => ::core::cmp::Ordering::Less,
+                (true, false) => ::core::cmp::Ordering::Greater,
+                (true, true) => ::core::unreachable!(),
+            },
+        )
+    }
+}
+impl<
+    LatA,
+    LatB,
+    __LatAOther,
+    __LatBOther,
+> lattices::LatticeOrd<Pair<__LatAOther, __LatBOther>> for Pair<LatA, LatB>
+where
+    LatA: ::core::cmp::PartialOrd<__LatAOther>,
+    LatB: ::core::cmp::PartialOrd<__LatBOther>,
+{}
+impl<LatA, LatB> lattices::IsBot for Pair<LatA, LatB>
+where
+    LatA: lattices::IsBot,
+    LatB: lattices::IsBot,
+{
+    fn is_bot(&self) -> bool {
+        if !lattices::IsBot::is_bot(&self.a) {
+            return false;
+        }
+        if !lattices::IsBot::is_bot(&self.b) {
+            return false;
+        }
+        true
+    }
+}
+impl<LatA, LatB> lattices::IsTop for Pair<LatA, LatB>
+where
+    LatA: lattices::IsTop,
+    LatB: lattices::IsTop,
+{
+    fn is_top(&self) -> bool {
+        if !lattices::IsTop::is_top(&self.a) {
+            return false;
+        }
+        if !lattices::IsTop::is_top(&self.b) {
+            return false;
+        }
+        true
+    }
+}
+impl<
+    LatA,
+    LatB,
+    __LatAOther,
+    __LatBOther,
+> lattices::LatticeFrom<Pair<__LatAOther, __LatBOther>> for Pair<LatA, LatB>
+where
+    LatA: lattices::LatticeFrom<__LatAOther>,
+    LatB: lattices::LatticeFrom<__LatBOther>,
+{
+    fn lattice_from(other: Pair<__LatAOther, __LatBOther>) -> Self {
+        Self {
+            a: lattices::LatticeFrom::lattice_from(other.a),
+            b: lattices::LatticeFrom::lattice_from(other.b),
+        }
+    }
+}

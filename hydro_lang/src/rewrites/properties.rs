@@ -113,7 +113,7 @@ mod tests {
             .optimize_with(|ir| properties_optimize(ir, &mut database))
             .with_default_optimize::<HydroDeploy>();
 
-        insta::assert_debug_snapshot!(built.ir());
+        hydro_build_utils::assert_debug_snapshot!(built.ir());
 
         let _ = built.compile_no_network();
     }

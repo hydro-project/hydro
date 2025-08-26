@@ -2,8 +2,6 @@ use std::collections::BTreeSet;
 use std::fs::read_dir;
 use std::process::Command;
 
-use insta::assert_snapshot;
-
 /// Bit of a jank test, runs `cargo run -p dfir --example <EXAMPLE>` for all the
 /// `example_*.rs` examples and uses `insta` to snapshot tests the stdout.
 #[test]
@@ -26,6 +24,6 @@ fn test_all() {
             .output()
             .expect("Failed to run example.");
         let output = String::from_utf8_lossy(&output.stdout);
-        assert_snapshot!(name, output);
+        hydro_build_utils::assert_snapshot!(output);
     }
 }

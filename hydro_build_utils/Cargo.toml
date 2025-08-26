@@ -1,0 +1,13 @@
+[package]
+name = "hydro_build_utils"
+publish = true
+version = "0.0.1"
+description = "build and test utils for hydro"
+documentation = "https://docs.rs/hydro_build_utils/"
+edition = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+rustc_version = "0.4.0"
+insta = "1.39"

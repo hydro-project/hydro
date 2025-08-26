@@ -31,4 +31,7 @@ tokio = { version = "1.29.0", features = ["full"] }
 
 [dev-dependencies]
 ctor = "0.2"
-insta = "1.39"
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
+
+[build-dependencies]
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }

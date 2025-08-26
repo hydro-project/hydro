@@ -1,0 +1,1 @@
+../compile-fail/non_lattice_field.rs
