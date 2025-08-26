@@ -6,12 +6,9 @@ use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
 use stageleft::{QuotedWithContext, quote_type};
 
-use super::{Location, LocationId};
+use super::{Location, LocationId, MemberId};
 use crate::builder::FlowState;
 use crate::staging_util::{Invariant, get_this_crate};
-
-pub mod cluster_id;
-pub use cluster_id::ClusterId;
 
 pub struct Cluster<'a, ClusterTag> {
     pub(crate) id: usize,
@@ -76,7 +73,7 @@ impl<C> Clone for ClusterIds<'_, C> {
 impl<C> Copy for ClusterIds<'_, C> {}
 
 impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
-    type O = &'a Vec<ClusterId<C>>;
+    type O = &'a Vec<MemberId<C>>;
 
     fn to_tokens(self, _ctx: &Ctx) -> QuoteTokens
     where
@@ -92,13 +89,13 @@ impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
         QuoteTokens {
             prelude: None,
             expr: Some(
-                quote! { unsafe { ::std::mem::transmute::<_, &[#root::ClusterId<#c_type>]>(#ident) } },
+                quote! { unsafe { ::std::mem::transmute::<_, &[#root::MemberId<#c_type>]>(#ident) } },
             ),
         }
     }
 }
 
-impl<'a, C, Ctx> QuotedWithContext<'a, &'a Vec<ClusterId<C>>, Ctx> for ClusterIds<'a, C> {}
+impl<'a, C, Ctx> QuotedWithContext<'a, &'a Vec<MemberId<C>>, Ctx> for ClusterIds<'a, C> {}
 
 pub trait IsCluster {
     type Tag;
@@ -109,7 +106,7 @@ impl<C> IsCluster for Cluster<'_, C> {
 }
 
 /// A free variable representing the cluster's own ID. When spliced in
-/// a quoted snippet that will run on a cluster, this turns into a [`ClusterId`].
+/// a quoted snippet that will run on a cluster, this turns into a [`MemberId`].
 pub static CLUSTER_SELF_ID: ClusterSelfId = ClusterSelfId { _private: &() };
 
 #[derive(Clone, Copy)]
@@ -122,7 +119,7 @@ where
     L: Location<'a>,
     <L as Location<'a>>::Root: IsCluster,
 {
-    type O = ClusterId<<<L as Location<'a>>::Root as IsCluster>::Tag>;
+    type O = MemberId<<<L as Location<'a>>::Root as IsCluster>::Tag>;
 
     fn to_tokens(self, ctx: &L) -> QuoteTokens
     where
@@ -143,12 +140,12 @@ where
 
         QuoteTokens {
             prelude: None,
-            expr: Some(quote! { #root::ClusterId::<#c_type>::from_raw(#ident) }),
+            expr: Some(quote! { #root::MemberId::<#c_type>::from_raw(#ident) }),
         }
     }
 }
 
-impl<'a, L> QuotedWithContext<'a, ClusterId<<<L as Location<'a>>::Root as IsCluster>::Tag>, L>
+impl<'a, L> QuotedWithContext<'a, MemberId<<<L as Location<'a>>::Root as IsCluster>::Tag>, L>
     for ClusterSelfId<'a>
 where
     L: Location<'a>,

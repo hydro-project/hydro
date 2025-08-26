@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use stageleft::IntoQuotedMut;
 
 pub trait PartitionStream<'a, T, C1, C2, Order> {
-    fn send_partitioned<F: Fn((ClusterId<C2>, T)) -> (ClusterId<C2>, T) + 'a>(
+    fn send_partitioned<F: Fn((MemberId<C2>, T)) -> (MemberId<C2>, T) + 'a>(
         self,
         other: &Cluster<'a, C2>,
         dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, C1>>,
@@ -15,9 +15,9 @@ pub trait PartitionStream<'a, T, C1, C2, Order> {
 }
 
 impl<'a, T, C1, C2, Order> PartitionStream<'a, T, C1, C2, Order>
-    for Stream<(ClusterId<C2>, T), Cluster<'a, C1>, Unbounded, Order>
+    for Stream<(MemberId<C2>, T), Cluster<'a, C1>, Unbounded, Order>
 {
-    fn send_partitioned<F: Fn((ClusterId<C2>, T)) -> (ClusterId<C2>, T) + 'a>(
+    fn send_partitioned<F: Fn((MemberId<C2>, T)) -> (MemberId<C2>, T) + 'a>(
         self,
         other: &Cluster<'a, C2>,
         dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, C1>>,
@@ -50,7 +50,7 @@ impl<'a, T, C1, B, Order> DecoupleClusterStream<'a, T, C1, B, Order>
     {
         let sent = self
             .map(q!(move |b| (
-                ClusterId::from_raw(CLUSTER_SELF_ID.raw_id),
+                MemberId::from_raw(CLUSTER_SELF_ID.raw_id),
                 b.clone()
             )))
             .demux_bincode(other)

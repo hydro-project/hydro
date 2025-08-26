@@ -34,17 +34,17 @@ When sending a live collection from a cluster to another location, **each** memb
 # tokio_test::block_on(test_util::multi_location_test(|flow, process| {
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
-numbers.send_bincode(&process) // KeyedStream<ClusterId<()>, i32, ...>
+numbers.send_bincode(&process) // KeyedStream<MemberId<()>, i32, ...>
 # .entries()
 # }, |mut stream| async move {
 // if there are 4 members in the cluster, we should receive 4 elements
-// { ClusterId::<Worker>(0): [1], ClusterId::<Worker>(1): [1], ClusterId::<Worker>(2): [1], ClusterId::<Worker>(3): [1] }
+// { MemberId::<Worker>(0): [1], MemberId::<Worker>(1): [1], MemberId::<Worker>(2): [1], MemberId::<Worker>(3): [1] }
 # let mut results = Vec::new();
 # for w in 0..4 {
 #     results.push(format!("{:?}", stream.next().await.unwrap()));
 # }
 # results.sort();
-# assert_eq!(results, vec!["(ClusterId::<()>(0), 1)", "(ClusterId::<()>(1), 1)", "(ClusterId::<()>(2), 1)", "(ClusterId::<()>(3), 1)"]);
+# assert_eq!(results, vec!["(MemberId::<()>(0), 1)", "(MemberId::<()>(1), 1)", "(MemberId::<()>(2), 1)", "(MemberId::<()>(3), 1)"]);
 # }));
 ```
 
@@ -83,19 +83,19 @@ In the reverse direction, when sending a stream _to_ a cluster, the sender must 
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
 let on_worker: Stream<_, Cluster<_>, _> = numbers
-    .map(q!(|x| (ClusterId::from_raw(x), x)))
+    .map(q!(|x| (MemberId::from_raw(x), x)))
     .demux_bincode(&workers);
 on_worker.send_bincode(&p2)
 # .entries()
 // if there are 4 members in the cluster, we should receive 4 elements
-// { ClusterId::<Worker>(0): [0], ClusterId::<Worker>(1): [1], ClusterId::<Worker>(2): [2], ClusterId::<Worker>(3): [3] }
+// { MemberId::<Worker>(0): [0], MemberId::<Worker>(1): [1], MemberId::<Worker>(2): [2], MemberId::<Worker>(3): [3] }
 # }, |mut stream| async move {
 # let mut results = Vec::new();
 # for w in 0..4 {
 #     results.push(format!("{:?}", stream.next().await.unwrap()));
 # }
 # results.sort();
-# assert_eq!(results, vec!["(ClusterId::<()>(0), 0)", "(ClusterId::<()>(1), 1)", "(ClusterId::<()>(2), 2)", "(ClusterId::<()>(3), 3)"]);
+# assert_eq!(results, vec!["(MemberId::<()>(0), 0)", "(MemberId::<()>(1), 1)", "(MemberId::<()>(2), 2)", "(MemberId::<()>(3), 3)"]);
 # }));
 ```
 
@@ -113,14 +113,14 @@ let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast_bincode(&workers, no
 on_worker.send_bincode(&p2)
 # .entries()
 // if there are 4 members in the cluster, we should receive 4 elements
-// { ClusterId::<Worker>(0): [123], ClusterId::<Worker>(1): [123], ClusterId::<Worker>(2): [123, ClusterId::<Worker>(3): [123] }
+// { MemberId::<Worker>(0): [123], MemberId::<Worker>(1): [123], MemberId::<Worker>(2): [123, MemberId::<Worker>(3): [123] }
 # }, |mut stream| async move {
 # let mut results = Vec::new();
 # for w in 0..4 {
 #     results.push(format!("{:?}", stream.next().await.unwrap()));
 # }
 # results.sort();
-# assert_eq!(results, vec!["(ClusterId::<()>(0), 123)", "(ClusterId::<()>(1), 123)", "(ClusterId::<()>(2), 123)", "(ClusterId::<()>(3), 123)"]);
+# assert_eq!(results, vec!["(MemberId::<()>(0), 123)", "(MemberId::<()>(1), 123)", "(MemberId::<()>(2), 123)", "(MemberId::<()>(3), 123)"]);
 # }));
 ```
 
@@ -137,14 +137,14 @@ let workers: Cluster<()> = flow.cluster::<()>();
 let cluster_members = p1.source_cluster_members(&workers);
 # cluster_members.entries().send_bincode(&p2)
 // if there are 4 members in the cluster, we would see a join event for each
-// { ClusterId::<Worker>(0): [MembershipEvent::Join], ClusterId::<Worker>(2): [MembershipEvent::Join], ... }
+// { MemberId::<Worker>(0): [MembershipEvent::Join], MemberId::<Worker>(2): [MembershipEvent::Join], ... }
 # }, |mut stream| async move {
 # let mut results = Vec::new();
 # for w in 0..4 {
 #     results.push(format!("{:?}", stream.next().await.unwrap()));
 # }
 # results.sort();
-# assert_eq!(results, vec!["(ClusterId::<()>(0), Joined)", "(ClusterId::<()>(1), Joined)", "(ClusterId::<()>(2), Joined)", "(ClusterId::<()>(3), Joined)"]);
+# assert_eq!(results, vec!["(MemberId::<()>(0), Joined)", "(MemberId::<()>(1), Joined)", "(MemberId::<()>(2), Joined)", "(MemberId::<()>(3), Joined)"]);
 # }));
 ```
 
