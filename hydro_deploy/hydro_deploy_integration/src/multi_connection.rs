@@ -203,6 +203,7 @@ impl<
 
         // Poll all active connections for data using fair round-robin cursor
         let mut out = Poll::Pending;
+        let mut any_removed = false;
 
         if !me.active_connections.is_empty() {
             let start_cursor = me.poll_cursor;
@@ -223,6 +224,7 @@ impl<
                         // Mark connection as removed
                         let _ = me.membership_sender.send((connection_id, false));
                         me.active_connections[me.poll_cursor] = None;
+                        any_removed = true;
                     }
                     Poll::Pending => {}
                 }
@@ -241,13 +243,15 @@ impl<
         let mut current_index = 0;
         let original_cursor = me.poll_cursor;
 
-        me.active_connections.retain(|conn| {
-            if conn.is_none() && current_index < original_cursor {
-                me.poll_cursor -= 1;
-            }
-            current_index += 1;
-            conn.is_some()
-        });
+        if any_removed {
+            me.active_connections.retain(|conn| {
+                if conn.is_none() && current_index < original_cursor {
+                    me.poll_cursor -= 1;
+                }
+                current_index += 1;
+                conn.is_some()
+            });
+        }
 
         if me.poll_cursor == me.active_connections.len() {
             me.poll_cursor = 0;
