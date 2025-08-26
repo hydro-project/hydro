@@ -63,7 +63,7 @@ mod tests {
                 for value in 0..2 {
                     assert_eq!(
                         node_outs.next().unwrap(),
-                        format!("cluster received: (ClusterId::<()>({}), {})", sender, value)
+                        format!("cluster received: (MemberId::<()>({}), {})", sender, value)
                     );
                 }
             }

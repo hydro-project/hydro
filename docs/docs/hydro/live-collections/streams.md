@@ -91,7 +91,7 @@ let words_concat = all_words
 
 :::tip
 
-We use `values()` here to drop the cluster IDs which are included in `send_bincode`. See [Clusters](../locations/clusters) for more details.
+We use `values()` here to drop the member IDs which are included in `send_bincode`. See [Clusters](../locations/clusters) for more details.
 
 Running an aggregation (`fold`, `reduce`) converts a `Stream` into a `Singleton`, as we see in the type signature here. The `Singleton` type is still "live" in the sense of a [Live Collection](./), so updates to the `Stream` input cause updates to the `Singleton` output. See [Singletons and Optionals](./singletons-optionals) for more information.
 

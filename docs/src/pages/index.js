@@ -127,7 +127,7 @@ export default function Home() {
 ) -> Singleton<usize, Process<Leader>, Unbounded> {
   data
     .send_bincode(leader)
-    // Stream<(ClusterId<Worker>, usize), Process<Leader>, ..., NoOrder>
+    // Stream<(MemberId<Worker>, usize), Process<Leader>, ..., NoOrder>
     .map(q!(|v| v.1)) // drop the ID
     .fold_commutative(q!(0), q!(|acc, v| *acc += v))
 }`}
