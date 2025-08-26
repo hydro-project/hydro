@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use hydro_lang::ClusterId;
+use hydro_lang::MemberId;
 use hydro_lang::ir::{
     DebugInstantiate, DebugType, HydroIrMetadata, HydroLeaf, HydroNode, TeeNode,
     transform_bottom_up, traverse_dfir,
@@ -33,16 +33,16 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
     let parent_id = metadata.location_kind.root().raw_id();
     let node_content = std::mem::replace(node, HydroNode::Placeholder);
 
-    // Map from b to (ClusterId, b), where ClusterId is the id of the decoupled (or original) node we're sending to
+    // Map from b to (MemberId, b), where MemberId is the id of the decoupled (or original) node we're sending to
     let ident = syn::Ident::new(
         &format!("__hydro_lang_cluster_self_id_{}", parent_id),
         Span::call_site(),
     );
     let f: syn::Expr = syn::parse_quote!(|b| (
-        ClusterId::<()>::from_raw(#ident),
+        MemberId::<()>::from_raw(#ident),
         b
     ));
-    let cluster_id_type = quote_type::<ClusterId<()>>();
+    let cluster_id_type = quote_type::<MemberId<()>>();
     let mapped_output_type: syn::Type = syn::parse_quote!((#cluster_id_type, #output_debug_type));
     let mapped_node = HydroNode::Map {
         f: f.into(),
@@ -82,7 +82,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         },
     };
 
-    // Map again to remove the cluster Id (mimicking send_anonymous)
+    // Map again to remove the member Id (mimicking send_anonymous)
     let f: syn::Expr = syn::parse_quote!(|(_, b)| b);
     let mapped_node = HydroNode::Map {
         f: f.into(),

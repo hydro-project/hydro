@@ -22,7 +22,7 @@ pub trait PaxosLike<'a>: Sized {
 
     fn get_recipient_from_ballot<L: Location<'a>>(
         ballot: Optional<Self::Ballot, L, Unbounded>,
-    ) -> Optional<ClusterId<Self::PaxosIn>, L, Unbounded>;
+    ) -> Optional<MemberId<Self::PaxosIn>, L, Unbounded>;
 
     /// # Non-Determinism
     /// During leader-reelection, the latest known leader may be stale, which may

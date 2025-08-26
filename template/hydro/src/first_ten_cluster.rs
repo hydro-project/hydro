@@ -12,7 +12,7 @@ pub fn first_ten_cluster<'a>(leader: &Process<'a, Leader>, workers: &Cluster<'a,
         ) // : Stream<i32, Cluster<Worker>, ...>
         .map(q!(|n| n * 2)) // : Stream<i32, Cluster<Worker>, ...>
         .inspect(q!(|n| println!("{}", n))) // : Stream<i32, Cluster<Worker>, ...>
-        .send_bincode(leader) // : KeyedStream<ClusterId<Worker>, i32, Process<Leader>, ...>
+        .send_bincode(leader) // : KeyedStream<MemberId<Worker>, i32, Process<Leader>, ...>
         .values() // : Stream<i32, Process<Leader>, ...>
         .for_each(q!(|n| println!("{}", n)));
 }

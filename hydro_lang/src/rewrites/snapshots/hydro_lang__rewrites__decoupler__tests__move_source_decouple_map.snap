@@ -6,7 +6,7 @@ expression: ir
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , () > ({ use crate :: __staged :: rewrites :: decoupler :: tests :: * ; | a | println ! ("Got it: {}" , a) }),
         input: Map {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , i32 > ({ use crate :: __staged :: stream :: * ; | (_ , b) | b }),
+            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: MemberId < () > , i32) , i32 > ({ use crate :: __staged :: stream :: * ; | (_ , b) | b }),
             input: Network {
                 from_key: None,
                 to_location: Cluster(
@@ -14,14 +14,14 @@ expression: ir
                 ),
                 to_key: None,
                 serialize_fn: Some(
-                    | (id , data) : (hydro_lang :: ClusterId < _ > , i32) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < i32 > (& data) . unwrap () . into ()) },
+                    | (id , data) : (hydro_lang :: MemberId < _ > , i32) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < i32 > (& data) . unwrap () . into ()) },
                 ),
                 instantiate_fn: <network instantiate>,
                 deserialize_fn: Some(
-                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
+                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: MemberId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
                 ),
                 input: FlatMap {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: iter :: Map < std :: slice :: Iter < hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > , _ > > ({ use crate :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_1) } ; | b | ids__free . iter () . map (move | id | (:: std :: clone :: Clone :: clone (id) , :: std :: clone :: Clone :: clone (& b))) }),
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: iter :: Map < std :: slice :: Iter < hydro_lang :: location :: cluster :: cluster_id :: MemberId < () > > , _ > > ({ use crate :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: MemberId < () >] > (__hydro_lang_cluster_ids_1) } ; | b | ids__free . iter () . map (move | id | (:: std :: clone :: Clone :: clone (id) , :: std :: clone :: Clone :: clone (& b))) }),
                     input: Chain {
                         first: Filter {
                             f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < i32 , bool > ({ use crate :: __staged :: rewrites :: decoupler :: tests :: * ; | a | * a < 5 }),
@@ -35,14 +35,14 @@ expression: ir
                                         ),
                                         to_key: None,
                                         serialize_fn: Some(
-                                            | (id , data) : (hydro_lang :: ClusterId < _ > , i32) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < i32 > (& data) . unwrap () . into ()) },
+                                            | (id , data) : (hydro_lang :: MemberId < _ > , i32) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < i32 > (& data) . unwrap () . into ()) },
                                         ),
                                         instantiate_fn: <network instantiate>,
                                         deserialize_fn: Some(
-                                            | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
+                                            | res | { let (id , b) = res . unwrap () ; (hydro_lang :: MemberId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
                                         ),
                                         input: Map {
-                                            f: | b | (ClusterId :: < () > :: from_raw (__hydro_lang_cluster_self_id_2) , b),
+                                            f: | b | (MemberId :: < () > :: from_raw (__hydro_lang_cluster_self_id_2) , b),
                                             input: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , i32 > ({ use crate :: __staged :: rewrites :: decoupler :: tests :: * ; | a | a + 1 }),
                                                 input: Source {
@@ -87,7 +87,7 @@ expression: ir
                                                     2,
                                                 ),
                                                 output_type: Some(
-                                                    (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                                                    (hydro_lang :: location :: cluster :: cluster_id :: MemberId < () > , i32),
                                                 ),
                                                 cardinality: None,
                                                 cpu_usage: None,
@@ -102,7 +102,7 @@ expression: ir
                                                 0,
                                             ),
                                             output_type: Some(
-                                                (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                                                (hydro_lang :: location :: cluster :: cluster_id :: MemberId < () > , i32),
                                             ),
                                             cardinality: None,
                                             cpu_usage: None,
@@ -211,7 +211,7 @@ expression: ir
                             0,
                         ),
                         output_type: Some(
-                            (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                            (hydro_lang :: location :: cluster :: cluster_id :: MemberId < () > , i32),
                         ),
                         cardinality: None,
                         cpu_usage: None,
