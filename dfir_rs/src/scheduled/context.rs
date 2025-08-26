@@ -80,7 +80,7 @@ pub struct Context {
     /// not being forwarded to a running operator, this field is meaningless.
     pub(super) subgraph_id: SubgraphId,
 
-    tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>>,
+    tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
     /// Join handles for spawned tasks.
     task_join_handles: Vec<JoinHandle<()>>,
 }
@@ -269,7 +269,7 @@ impl Context {
     /// Prepares an async task to be launched by [`Self::spawn_tasks`].
     pub fn request_task<Fut>(&mut self, future: Fut)
     where
-        Fut: Future<Output = ()> + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
     {
         self.tasks_to_spawn.push(Box::pin(future));
     }
@@ -277,7 +277,7 @@ impl Context {
     /// Launches all tasks requested with [`Self::request_task`] on the internal Tokio executor.
     pub fn spawn_tasks(&mut self) {
         for task in self.tasks_to_spawn.drain(..) {
-            self.task_join_handles.push(tokio::task::spawn_local(task));
+            self.task_join_handles.push(tokio::task::spawn(task));
         }
     }
 

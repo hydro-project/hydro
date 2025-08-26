@@ -68,14 +68,14 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
         let duration_ident = wc.make_ident("duration");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #write_ident = ::std::rc::Rc::new(::std::cell::Cell::new(0_u64));
+            let #write_ident = ::std::sync::Arc::new(::std::sync::atomic::AtomicU64::new(0));
 
-            let #read_ident = ::std::rc::Rc::clone(&#write_ident);
+            let #read_ident = ::std::sync::Arc::clone(&#write_ident);
             let #duration_ident = #duration_expr;
             let #tag_ident = #tag_expr;
             #df_ident.request_task(async move {
                 loop {
-                    println!("_counter({}): {}", #tag_ident, #read_ident.get());
+                    println!("_counter({}): {}", #tag_ident, #read_ident.load(::std::sync::atomic::Ordering::Relaxed));
                     #root::tokio::time::sleep(#duration_ident).await;
                 }
             });
@@ -103,7 +103,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator_after = quote_spanned! {op_span=>
-            #write_ident.set(#write_ident.get() + #count_ident);
+            #write_ident.fetch_add(#count_ident, ::std::sync::atomic::Ordering::Relaxed);
         };
 
         Ok(OperatorWriteOutput {

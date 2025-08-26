@@ -984,7 +984,7 @@ impl Dfir<'_> {
     /// Alias for [`Context::request_task`].
     pub fn request_task<Fut>(&mut self, future: Fut)
     where
-        Fut: Future<Output = ()> + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
     {
         self.context.request_task(future);
     }
