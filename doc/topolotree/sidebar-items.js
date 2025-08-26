@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["main","run_topolotree"],"mod":["protocol"],"struct":["NodeId"],"type":["ContributionAgg","PostNeighborJoin"]};
+window.SIDEBAR_ITEMS = {"mod":["protocol"]};
