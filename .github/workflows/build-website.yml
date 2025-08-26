@@ -7,6 +7,7 @@ on:
       - feature/**
   schedule:
     - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
+  pull_request:
   workflow_dispatch:
     inputs:
       should_bench:

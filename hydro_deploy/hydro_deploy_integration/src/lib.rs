@@ -896,10 +896,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use futures::stream;
     use std::sync::Arc;
     use std::task::{Context, Poll};
+
+    use futures::stream;
+
+    use super::*;
 
     struct TestWaker;
     impl std::task::Wake for TestWaker {
