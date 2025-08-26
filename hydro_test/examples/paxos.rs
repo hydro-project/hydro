@@ -47,8 +47,8 @@ async fn main() {
 
     let builder = hydro_lang::FlowBuilder::new();
     let f = 1;
-    let num_clients = 3;
-    let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
+    let num_clients = 10;
+    let num_clients_per_node = 5000; // Change based on experiment between 1, 50, 100.
     let checkpoint_frequency = 1000; // Num log entries
     let i_am_leader_send_timeout = 5; // Sec
     let i_am_leader_check_timeout = 10; // Sec
