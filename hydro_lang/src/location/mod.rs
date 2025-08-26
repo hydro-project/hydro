@@ -32,7 +32,10 @@ pub mod process;
 pub use process::Process;
 
 pub mod cluster;
-pub use cluster::{Cluster, ClusterId};
+pub use cluster::Cluster;
+
+pub mod member_id;
+pub use member_id::MemberId;
 
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
@@ -205,16 +208,16 @@ pub trait Location<'a>: Clone {
     fn source_cluster_members<C: 'a>(
         &self,
         cluster: &Cluster<'a, C>,
-    ) -> KeyedStream<ClusterId<C>, MembershipEvent, Self, Unbounded>
+    ) -> KeyedStream<MemberId<C>, MembershipEvent, Self, Unbounded>
     where
         Self: Sized + NoTick,
     {
-        let underlying_clusterids: ClusterIds<'a, C> = ClusterIds {
+        let underlying_memberids: ClusterIds<'a, C> = ClusterIds {
             id: cluster.id,
             _phantom: PhantomData,
         };
 
-        self.source_iter(q!(underlying_clusterids))
+        self.source_iter(q!(underlying_memberids))
             .map(q!(|id| (*id, MembershipEvent::Joined)))
             .into_keyed()
     }

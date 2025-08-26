@@ -31,7 +31,7 @@ pub fn cluster_self_id(
     q!(cli
         .meta
         .cluster_id
-        .expect("Tried to read Cluster ID on a non-cluster node"))
+        .expect("Tried to read Cluster Self ID on a non-cluster node"))
 }
 
 pub fn deploy_o2o(
