@@ -10,6 +10,7 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 use tokio::time::Instant;
 
+use crate::boundedness::Boundedness;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{HydroLeaf, HydroNode, TeeNode};
@@ -95,7 +96,7 @@ impl MinRetries<AtLeastOnce> for ExactlyOnce {
 ///   or [`Unbounded`]
 /// - `Order`: the ordering of the stream, which is either [`TotalOrder`]
 ///   or [`NoOrder`] (default is [`TotalOrder`])
-pub struct Stream<Type, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
+pub struct Stream<Type, Loc, Bound: Boundedness, Order = TotalOrder, Retries = ExactlyOnce> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
@@ -115,7 +116,8 @@ where
     }
 }
 
-impl<'a, T, L, B, R> From<Stream<T, L, B, TotalOrder, R>> for Stream<T, L, B, NoOrder, R>
+impl<'a, T, L, B: Boundedness, R> From<Stream<T, L, B, TotalOrder, R>>
+    for Stream<T, L, B, NoOrder, R>
 where
     L: Location<'a>,
 {
@@ -128,7 +130,8 @@ where
     }
 }
 
-impl<'a, T, L, B, O> From<Stream<T, L, B, O, ExactlyOnce>> for Stream<T, L, B, O, AtLeastOnce>
+impl<'a, T, L, B: Boundedness, O> From<Stream<T, L, B, O, ExactlyOnce>>
+    for Stream<T, L, B, O, AtLeastOnce>
 where
     L: Location<'a>,
 {
@@ -191,7 +194,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> CycleCollection<'a, ForwardRefMarker> for Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRefMarker> for Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -211,7 +214,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> CycleComplete<'a, ForwardRefMarker> for Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> CycleComplete<'a, ForwardRefMarker> for Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -239,7 +242,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Clone for Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> Clone for Stream<T, L, B, O, R>
 where
     T: Clone,
     L: Location<'a>,
@@ -269,7 +272,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
@@ -788,7 +791,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O> Stream<T, L, B, O, ExactlyOnce>
+impl<'a, T, L, B: Boundedness, O> Stream<T, L, B, O, ExactlyOnce>
 where
     L: Location<'a>,
 {
@@ -801,7 +804,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<&T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> Stream<&T, L, B, O, R>
 where
     L: Location<'a>,
 {
@@ -828,7 +831,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
@@ -1014,7 +1017,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O> Stream<T, L, B, O, ExactlyOnce>
+impl<'a, T, L, B: Boundedness, O> Stream<T, L, B, O, ExactlyOnce>
 where
     L: Location<'a>,
 {
@@ -1105,7 +1108,7 @@ where
     }
 }
 
-impl<'a, T, L, B, R> Stream<T, L, B, TotalOrder, R>
+impl<'a, T, L, B: Boundedness, R> Stream<T, L, B, TotalOrder, R>
 where
     L: Location<'a>,
 {
@@ -1222,7 +1225,7 @@ where
     }
 }
 
-impl<'a, T, L, B> Stream<T, L, B, TotalOrder, ExactlyOnce>
+impl<'a, T, L, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce>
 where
     L: Location<'a>,
 {
@@ -1624,7 +1627,7 @@ where
     }
 }
 
-impl<'a, K, V1, L, B, O, R> Stream<(K, V1), L, B, O, R>
+impl<'a, K, V1, L, B: Boundedness, O, R> Stream<(K, V1), L, B, O, R>
 where
     L: Location<'a>,
 {
@@ -1705,7 +1708,7 @@ where
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R> {
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> Stream<(K, V), L, B, O, R> {
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
         KeyedStream {
             underlying: self.weakest_ordering(),
@@ -1714,7 +1717,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R> {
     }
 }
 
-impl<'a, K, V, L, B> Stream<(K, V), L, B, TotalOrder, ExactlyOnce>
+impl<'a, K, V, L, B: Boundedness> Stream<(K, V), L, B, TotalOrder, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -2194,7 +2197,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, Atomic<L>, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> Stream<T, Atomic<L>, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -2223,7 +2226,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
@@ -2344,7 +2347,7 @@ where
     }
 }
 
-impl<'a, F, T, L, B, O, R> Stream<F, L, B, O, R>
+impl<'a, F, T, L, B: Boundedness, O, R> Stream<F, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
     F: Future<Output = T>,
@@ -2388,7 +2391,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {

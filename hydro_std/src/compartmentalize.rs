@@ -1,3 +1,4 @@
+use hydro_lang::boundedness::Boundedness;
 use hydro_lang::*;
 use location::NoTick;
 use serde::Serialize;
@@ -38,7 +39,7 @@ pub trait DecoupleClusterStream<'a, T, C1, B, Order> {
         T: Clone + Serialize + DeserializeOwned;
 }
 
-impl<'a, T, C1, B, Order> DecoupleClusterStream<'a, T, C1, B, Order>
+impl<'a, T, C1, B: Boundedness, Order> DecoupleClusterStream<'a, T, C1, B, Order>
     for Stream<T, Cluster<'a, C1>, B, Order>
 {
     fn decouple_cluster<C2: 'a>(
@@ -71,7 +72,7 @@ pub trait DecoupleProcessStream<'a, T, L: Location<'a> + NoTick, B, Order> {
         T: Clone + Serialize + DeserializeOwned;
 }
 
-impl<'a, T, L, B, Order> DecoupleProcessStream<'a, T, Process<'a, L>, B, Order>
+impl<'a, T, L, B: Boundedness, Order> DecoupleProcessStream<'a, T, Process<'a, L>, B, Order>
     for Stream<T, Process<'a, L>, B, Order>
 {
     fn decouple_process<P2>(

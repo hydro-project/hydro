@@ -6,6 +6,7 @@ use std::rc::Rc;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 
+use crate::boundedness::Boundedness;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{HydroLeaf, HydroNode, HydroSource, TeeNode};
@@ -16,7 +17,7 @@ use crate::stream::{AtLeastOnce, ExactlyOnce, NoOrder};
 use crate::unsafety::NonDet;
 use crate::{Bounded, Location, Singleton, Stream, Tick, TotalOrder, Unbounded};
 
-pub struct Optional<Type, Loc, Bound> {
+pub struct Optional<Type, Loc, Bound: Boundedness> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
@@ -114,7 +115,7 @@ where
     }
 }
 
-impl<'a, T, L, B> CycleCollection<'a, ForwardRefMarker> for Optional<T, L, B>
+impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRefMarker> for Optional<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -134,7 +135,7 @@ where
     }
 }
 
-impl<'a, T, L, B> CycleComplete<'a, ForwardRefMarker> for Optional<T, L, B>
+impl<'a, T, L, B: Boundedness> CycleComplete<'a, ForwardRefMarker> for Optional<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -171,7 +172,7 @@ where
     }
 }
 
-impl<'a, T, L, B> From<Singleton<T, L, B>> for Optional<T, L, B>
+impl<'a, T, L, B: Boundedness> From<Singleton<T, L, B>> for Optional<T, L, B>
 where
     L: Location<'a>,
 {
@@ -180,7 +181,7 @@ where
     }
 }
 
-impl<'a, T, L, B> Clone for Optional<T, L, B>
+impl<'a, T, L, B: Boundedness> Clone for Optional<T, L, B>
 where
     T: Clone,
     L: Location<'a>,
@@ -210,7 +211,7 @@ where
     }
 }
 
-impl<'a, T, L, B> Optional<T, L, B>
+impl<'a, T, L, B: Boundedness> Optional<T, L, B>
 where
     L: Location<'a>,
 {
@@ -517,7 +518,7 @@ where
     }
 }
 
-impl<'a, T, L, B> Optional<T, Atomic<L>, B>
+impl<'a, T, L, B: Boundedness> Optional<T, Atomic<L>, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -544,7 +545,7 @@ where
     }
 }
 
-impl<'a, T, L, B> Optional<T, L, B>
+impl<'a, T, L, B: Boundedness> Optional<T, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
