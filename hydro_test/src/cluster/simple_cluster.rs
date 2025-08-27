@@ -3,7 +3,7 @@ use hydro_lang::*;
 use hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
 use stageleft::IntoQuotedMut;
 
-pub fn partition<'a, F: Fn((ClusterId<()>, String)) -> (ClusterId<()>, String) + 'a>(
+pub fn partition<'a, F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + 'a>(
     cluster1: Cluster<'a, ()>,
     cluster2: Cluster<'a, ()>,
     dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, ()>>,
@@ -11,7 +11,7 @@ pub fn partition<'a, F: Fn((ClusterId<()>, String)) -> (ClusterId<()>, String) +
     cluster1
         .source_iter(q!(vec!(CLUSTER_SELF_ID)))
         .map(q!(move |id| (
-            ClusterId::<()>::from_raw(id.raw_id),
+            MemberId::<()>::from_raw(id.raw_id),
             format!("Hello from {}", id.raw_id)
         )))
         .send_partitioned(&cluster2, dist_policy)
@@ -81,7 +81,7 @@ mod tests {
     use hydro_deploy::Deployment;
     use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy};
     use hydro_lang::rewrites::persist_pullup;
-    use hydro_lang::{ClusterId, Location};
+    use hydro_lang::{Location, MemberId};
     use hydro_optimize::partitioner::{self, Partitioner};
     use stageleft::q;
 
@@ -126,7 +126,7 @@ mod tests {
                 assert_eq!(
                     stdout.recv().await.unwrap(),
                     format!(
-                        "cluster received: (ClusterId::<()>({}), {}) (self cluster id: ClusterId::<()>({}))",
+                        "cluster received: (MemberId::<()>({}), {}) (self cluster id: MemberId::<()>({}))",
                         i, j, i
                     )
                 );
@@ -143,7 +143,7 @@ mod tests {
             assert_eq!(
                 n,
                 format!(
-                    "node received: (ClusterId::<()>({}), (ClusterId::<()>({}), {}))",
+                    "node received: (MemberId::<()>({}), (MemberId::<()>({}), {}))",
                     i / 5,
                     i / 5,
                     i % 5
@@ -203,7 +203,7 @@ mod tests {
         for (i, mut stdout) in cluster2_stdouts.into_iter().enumerate() {
             for _j in 0..1 {
                 let expected_message = format!(
-                    "My self id is ClusterId::<()>({}), my message is ClusterId::<()>({})",
+                    "My self id is MemberId::<()>({}), my message is MemberId::<()>({})",
                     i, i
                 );
                 assert_eq!(stdout.recv().await.unwrap(), expected_message);
@@ -222,7 +222,7 @@ mod tests {
             builder.cluster::<()>(),
             builder.cluster::<()>(),
             q!(move |(id, msg)| (
-                ClusterId::<()>::from_raw(id.raw_id * num_partitions as u32),
+                MemberId::<()>::from_raw(id.raw_id * num_partitions as u32),
                 msg
             )),
         );

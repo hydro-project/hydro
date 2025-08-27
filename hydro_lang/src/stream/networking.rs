@@ -14,13 +14,13 @@ use crate::location::{MembershipEvent, NoTick};
 use crate::staging_util::get_this_crate;
 use crate::stream::ExactlyOnce;
 use crate::{
-    Cluster, ClusterId, External, Location, NonDet, Process, Stream, TotalOrder, Unbounded, nondet,
+    Cluster, External, Location, MemberId, NonDet, Process, Stream, TotalOrder, Unbounded, nondet,
 };
 
 // same as the one in `hydro_std`, but internal use only
 fn track_membership<'a, C, L: Location<'a> + NoTick + NoAtomic>(
-    membership: KeyedStream<ClusterId<C>, MembershipEvent, L, Unbounded>,
-) -> KeyedSingleton<ClusterId<C>, (), L, Unbounded> {
+    membership: KeyedStream<MemberId<C>, MembershipEvent, L, Unbounded>,
+) -> KeyedSingleton<MemberId<C>, (), L, Unbounded> {
     membership
         .fold(
             q!(|| false),
@@ -39,7 +39,7 @@ pub fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::E
 
     if is_demux {
         parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::ClusterId<_>, #t_type), _>(
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::MemberId<_>, #t_type), _>(
                 |(id, data)| {
                     (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
@@ -67,7 +67,7 @@ pub fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::T
         parse_quote! {
             |res| {
                 let (id, b) = res.unwrap();
-                (#root::ClusterId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                (#root::MemberId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
             }
         }
     } else {
@@ -87,7 +87,7 @@ impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,
-    ) -> KeyedStream<ClusterId<L>, T, Process<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<MemberId<L>, T, Process<'a, L2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -95,14 +95,14 @@ impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
 
         let deserialize_pipeline = Some(deserialize_bincode::<T>(Some(&quote_type::<L>())));
 
-        let raw_stream: Stream<(ClusterId<L>, T), Process<'a, L2>, Unbounded, O, R> = Stream::new(
+        let raw_stream: Stream<(MemberId<L>, T), Process<'a, L2>, Unbounded, O, R> = Stream::new(
             other.clone(),
             HydroNode::Network {
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<(ClusterId<L>, T)>(),
+                metadata: other.new_node_metadata::<(MemberId<L>, T)>(),
             },
         );
 
@@ -113,7 +113,7 @@ impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
         self,
         other: &Cluster<'a, L2>,
         nondet_membership: NonDet,
-    ) -> KeyedStream<ClusterId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
@@ -138,7 +138,7 @@ impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     }
 }
 
-impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -150,7 +150,7 @@ impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Process<'a, L>, B, O, R> 
     }
 }
 
-impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -206,11 +206,11 @@ impl<'a, T, L, B> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
     }
 }
 
-impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
-    ) -> KeyedStream<ClusterId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -218,11 +218,11 @@ impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Cluster<'a, L>, B, O, R> 
     }
 }
 
-impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
-    ) -> KeyedStream<ClusterId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -230,14 +230,14 @@ impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Cluster<'a, L>, B, O, 
 
         let deserialize_pipeline = Some(deserialize_bincode::<T>(Some(&quote_type::<L>())));
 
-        let raw_stream: Stream<(ClusterId<L>, T), Cluster<'a, L2>, Unbounded, O, R> = Stream::new(
+        let raw_stream: Stream<(MemberId<L>, T), Cluster<'a, L2>, Unbounded, O, R> = Stream::new(
             other.clone(),
             HydroNode::Network {
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.underlying.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<(ClusterId<L>, T)>(),
+                metadata: other.new_node_metadata::<(MemberId<L>, T)>(),
             },
         );
 
