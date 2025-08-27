@@ -203,32 +203,32 @@ impl<
 
         // Poll all active connections for data using fair round-robin cursor
         let mut out = Poll::Pending;
+        let mut any_removed = false;
 
         if !me.active_connections.is_empty() {
             let start_cursor = me.poll_cursor;
 
             loop {
-                let (connection_id, stream) =
-                    me.active_connections[me.poll_cursor].as_mut().unwrap();
+                let current_length = me.active_connections.len();
+                let id_and_stream = &mut me.active_connections[me.poll_cursor];
+                let (connection_id, stream) = id_and_stream.as_mut().unwrap();
                 let connection_id = *connection_id; // Copy the ID before borrowing stream
+
+                // Move cursor to next source for next poll
+                me.poll_cursor = (me.poll_cursor + 1) % current_length;
 
                 match stream.as_mut().poll_next(cx) {
                     Poll::Ready(Some(Ok(data))) => {
                         out = Poll::Ready(Some(Ok((connection_id, data))));
-                        // Move cursor to next connection for next poll
-                        me.poll_cursor = (me.poll_cursor + 1) % me.active_connections.len();
                         break;
                     }
                     Poll::Ready(Some(Err(_))) | Poll::Ready(None) => {
-                        // Mark connection as removed
                         let _ = me.membership_sender.send((connection_id, false));
-                        me.active_connections[me.poll_cursor] = None;
+                        *id_and_stream = None; // Mark connection as removed
+                        any_removed = true;
                     }
                     Poll::Pending => {}
                 }
-
-                // Move to next connection
-                me.poll_cursor = (me.poll_cursor + 1) % me.active_connections.len();
 
                 // Check if we've completed a full round
                 if me.poll_cursor == start_cursor {
@@ -241,13 +241,15 @@ impl<
         let mut current_index = 0;
         let original_cursor = me.poll_cursor;
 
-        me.active_connections.retain(|conn| {
-            if conn.is_none() && current_index < original_cursor {
-                me.poll_cursor -= 1;
-            }
-            current_index += 1;
-            conn.is_some()
-        });
+        if any_removed {
+            me.active_connections.retain(|conn| {
+                if conn.is_none() && current_index < original_cursor {
+                    me.poll_cursor -= 1;
+                }
+                current_index += 1;
+                conn.is_some()
+            });
+        }
 
         if me.poll_cursor == me.active_connections.len() {
             me.poll_cursor = 0;
