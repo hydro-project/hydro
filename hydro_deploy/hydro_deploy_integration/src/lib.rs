@@ -382,12 +382,13 @@ fn accept(bound: AcceptedServer) -> ConnectedDirect {
         AcceptedServer::Merge(merge) => {
             let mut sources = vec![];
             for bound in merge {
-                sources.push(accept(bound).into_source());
+                sources.push(Some(Box::pin(accept(bound).into_source())));
             }
 
             let merge_source: DynStream = Box::pin(MergeSource {
                 marker: PhantomData,
                 sources,
+                poll_cursor: 0,
             });
 
             ConnectedDirect {
@@ -501,13 +502,16 @@ impl Connected for ConnectedDirect {
                 let sources = merge
                     .into_iter()
                     .map(|port| {
-                        ConnectedDirect::from_defn(Connection::AsClient(port)).into_source()
+                        Some(Box::pin(
+                            ConnectedDirect::from_defn(Connection::AsClient(port)).into_source(),
+                        ))
                     })
                     .collect::<Vec<_>>();
 
                 let merged = MergeSource {
                     marker: PhantomData,
                     sources,
+                    poll_cursor: 0,
                 };
 
                 ConnectedDirect {
@@ -700,39 +704,71 @@ where
 
 pub struct MergeSource<T: Unpin, S: Stream<Item = T> + Send + Sync + ?Sized> {
     marker: PhantomData<T>,
-    sources: Vec<Pin<Box<S>>>,
+    /// Ordered list for fair polling, will never be `None` at the beginning of a poll
+    sources: Vec<Option<Pin<Box<S>>>>,
+    /// Cursor for fair round-robin polling
+    poll_cursor: usize,
 }
 
 impl<T: Unpin, S: Stream<Item = T> + Send + Sync + ?Sized> Stream for MergeSource<T, S> {
     type Item = T;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let sources = &mut self.get_mut().sources;
-        let mut next = None;
+        let me = self.get_mut();
+        let mut out = Poll::Pending;
+        let mut any_removed = false;
 
-        let mut i = 0;
-        while i < sources.len() {
-            match sources[i].as_mut().poll_next(cx) {
-                Poll::Ready(Some(v)) => {
-                    next = Some(v);
+        if !me.sources.is_empty() {
+            let start_cursor = me.poll_cursor;
+
+            loop {
+                let current_length = me.sources.len();
+                let source = &mut me.sources[me.poll_cursor];
+
+                // Move cursor to next source for next poll
+                me.poll_cursor = (me.poll_cursor + 1) % current_length;
+
+                match source.as_mut().unwrap().as_mut().poll_next(cx) {
+                    Poll::Ready(Some(data)) => {
+                        out = Poll::Ready(Some(data));
+                        break;
+                    }
+                    Poll::Ready(None) => {
+                        *source = None; // Mark source as removed
+                        any_removed = true;
+                    }
+                    Poll::Pending => {}
+                }
+
+                // Check if we've completed a full round
+                if me.poll_cursor == start_cursor {
                     break;
-                }
-                Poll::Ready(None) => {
-                    // this happens infrequently, so OK to be O(n)
-                    sources.remove(i);
-                }
-                Poll::Pending => {
-                    i += 1;
                 }
             }
         }
 
-        if sources.is_empty() {
+        // Clean up None entries and adjust cursor
+        let mut current_index = 0;
+        let original_cursor = me.poll_cursor;
+
+        if any_removed {
+            me.sources.retain(|source| {
+                if source.is_none() && current_index < original_cursor {
+                    me.poll_cursor -= 1;
+                }
+                current_index += 1;
+                source.is_some()
+            });
+        }
+
+        if me.poll_cursor == me.sources.len() {
+            me.poll_cursor = 0;
+        }
+
+        if me.sources.is_empty() {
             Poll::Ready(None)
-        } else if next.is_none() {
-            Poll::Pending
         } else {
-            Poll::Ready(next)
+            out
         }
     }
 }
@@ -829,16 +865,17 @@ where
 
         let mut connected_mux = Vec::new();
         for (pipe, id) in sources {
-            connected_mux.push(Box::pin(TaggedSource {
+            connected_mux.push(Some(Box::pin(TaggedSource {
                 marker: PhantomData,
                 id,
                 source: pipe,
-            }));
+            })));
         }
 
         let muxer = MergeSource {
             marker: PhantomData,
             sources: connected_mux,
+            poll_cursor: 0,
         };
 
         ConnectedTagged { source: muxer }
@@ -854,5 +891,51 @@ where
 
     fn into_source(self) -> Self::Stream {
         self.source
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use std::task::{Context, Poll};
+
+    use futures::stream;
+
+    use super::*;
+
+    struct TestWaker;
+    impl std::task::Wake for TestWaker {
+        fn wake(self: Arc<Self>) {}
+    }
+
+    #[test]
+    fn test_merge_source_fair_polling() {
+        // Create test streams that yield values in a predictable pattern
+        let stream1 = Box::pin(stream::iter(vec![1, 4, 7]));
+        let stream2 = Box::pin(stream::iter(vec![2, 5, 8]));
+        let stream3 = Box::pin(stream::iter(vec![3, 6, 9]));
+
+        let mut merge_source = MergeSource {
+            marker: PhantomData,
+            sources: vec![Some(stream1), Some(stream2), Some(stream3)],
+            poll_cursor: 0,
+        };
+
+        let waker = Arc::new(TestWaker).into();
+        let mut cx = Context::from_waker(&waker);
+
+        let mut results = Vec::new();
+
+        // Poll until all streams are exhausted
+        loop {
+            match Pin::new(&mut merge_source).poll_next(&mut cx) {
+                Poll::Ready(Some(value)) => results.push(value),
+                Poll::Ready(None) => break,
+                Poll::Pending => break, // Shouldn't happen with our test streams
+            }
+        }
+
+        // With fair polling, we should get values in round-robin order: 1, 2, 3, 4, 5, 6, 7, 8, 9
+        assert_eq!(results, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
     }
 }

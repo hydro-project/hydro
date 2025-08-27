@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/**
+  pull_request:
   schedule:
     - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
   workflow_dispatch:
@@ -32,6 +33,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
+      - name: Install rust channel and set it as default
+        run: |
+          rustup toolchain add nightly && \
+          rustup default nightly
+
       - env:
           RUSTDOCFLAGS: --cfg docsrs -Dwarnings
         run: cargo doc --no-deps --all-features
@@ -42,6 +48,7 @@ jobs:
           mv design_docs "$WWW_DIR/"
 
       - name: Push to gh-pages
+        if: ${{ github.event_name != 'pull_request' }}
         shell: bash
         run: |
           git -C "$WWW_DIR" init -q
