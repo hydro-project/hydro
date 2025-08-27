@@ -2,8 +2,13 @@ error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
   --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:15:28
    |
 15 |         ]) -> demux_enum::<Shape>();
-   |                            ^^^^^ the trait `SingleVariant` is not implemented for `Shape`
+   |                            ^^^^^ unsatisfied trait bound
    |
+help: the trait `SingleVariant` is not implemented for `Shape`
+  --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:6:5
+   |
+ 6 |     enum Shape {
+   |     ^^^^^^^^^^
    = note: requires that the enum have only one variant.
    = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.
 
@@ -11,8 +16,13 @@ error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
   --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:15:15
    |
 15 |         ]) -> demux_enum::<Shape>();
-   |               ^^^^^^^^^^^^^^^^^^^^^ the trait `SingleVariant` is not implemented for `Shape`
+   |               ^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `SingleVariant` is not implemented for `Shape`
+  --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:6:5
+   |
+ 6 |     enum Shape {
+   |     ^^^^^^^^^^
    = note: requires that the enum have only one variant.
    = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.
 
@@ -22,7 +32,12 @@ error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
 15 |           ]) -> demux_enum::<Shape>();
    |  _______________^
 16 | |         my_demux[Rectangle] -> for_each(std::mem::drop);
-   | |_______________________________________________________^ the trait `SingleVariant` is not implemented for `Shape`
+   | |_______________________________________________________^ unsatisfied trait bound
    |
+help: the trait `SingleVariant` is not implemented for `Shape`
+  --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:6:5
+   |
+ 6 |     enum Shape {
+   |     ^^^^^^^^^^
    = note: requires that the enum have only one variant.
    = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.
