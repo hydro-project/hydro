@@ -87,38 +87,26 @@ pub fn http_counter_server<'a, P>(
         .into_keyed()
         .fold_commutative(q!(|| 0i32), q!(|acc, _| *acc += 1));
 
-    let batch_of_get = get_stream.batch(&increment_lookup_tick, nondet!(/** batch get requests */));
-    let lookup_result = counters
-        .snapshot(nondet!(/** snapshot for join */))
-        .get_many(
-            batch_of_get
-                .clone()
-                .entries()
-                .map(q!(|(cid, key)| (key, cid)))
-                .into_keyed(),
-        );
+    let lookup_result = get_stream
+        .batch(&increment_lookup_tick, nondet!(/** batch get requests */))
+        .get_from(counters.snapshot(nondet!(/** intentional non-determinism for get timing */)));
     let get_responses = lookup_result
         .clone()
-        .entries()
-        .map(q!(|(key, (count, cid))| {
-            let response = format!(
-                "HTTP/1.1 200 OK\r\n\
-                 Content-Type: application/json\r\n\
-                 Content-Length: {}\r\n\
-                 Connection: close\r\n\
-                 \r\n\
-                 {{\"key\": {}, \"count\": {}}}",
-                format!("{{\"key\": {}, \"count\": {}}}", key, count).len(),
-                key,
-                count
-            );
-            (cid, response)
-        }))
-        .chain(
-            // handle response for keys that are not in the map
-            batch_of_get
-                .filter_key_not_in(lookup_result.entries().map(q!(|(_, (_, cid))| cid)))
-                .map(q!(|key| format!(
+        .map(q!(|(key, maybe_count)| {
+            if let Some(count) = maybe_count {
+                format!(
+                    "HTTP/1.1 200 OK\r\n\
+                    Content-Type: application/json\r\n\
+                    Content-Length: {}\r\n\
+                    Connection: close\r\n\
+                    \r\n\
+                    {{\"key\": {}, \"count\": {}}}",
+                    format!("{{\"key\": {}, \"count\": {}}}", key, count).len(),
+                    key,
+                    count
+                )
+            } else {
+                format!(
                     "HTTP/1.1 200 OK\r\n\
                         Content-Type: application/json\r\n\
                         Content-Length: {}\r\n\
@@ -127,15 +115,14 @@ pub fn http_counter_server<'a, P>(
                         {{\"key\": {}, \"count\": 0}}",
                     format!("{{\"key\": {}, \"count\": 0}}", key).len(),
                     key
-                )))
-                .entries(),
-        )
-        .into_keyed()
+                )
+            }
+        }))
+        .into_keyed_stream()
         .all_ticks();
 
     // Handle increment responses (just acknowledge)
     let increment_responses = increment_stream
-        .batch(nondet!(/** atomic waits for the increment to process */))
         .map(q!(|key| {
             format!(
                 "HTTP/1.1 200 OK\r\n\
@@ -148,7 +135,7 @@ pub fn http_counter_server<'a, P>(
                 key
             )
         }))
-        .all_ticks();
+        .end_atomic();
 
     let invalid_responses = invalid_requests.map(q!(|_raw_request| {
         let error_body =
@@ -166,6 +153,6 @@ pub fn http_counter_server<'a, P>(
     }));
 
     get_responses
-        .interleave(increment_responses)
-        .interleave(invalid_responses)
+        .interleave(increment_responses.into_keyed_stream())
+        .interleave(invalid_responses.into_keyed_stream())
 }

@@ -5,11 +5,11 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::ir::HydroNode;
-use crate::keyed_singleton::KeyedSingleton;
+use crate::keyed_singleton::{KeyedSingleton, KeyedSingletonBound, ValueBounded};
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::manual_expr::ManualExpr;
-use crate::stream::{ExactlyOnce, MinRetries};
+use crate::stream::{ExactlyOnce, MinOrder, MinRetries};
 use crate::unsafety::NonDet;
 use crate::*;
 
@@ -501,6 +501,21 @@ impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, U
     }
 }
 
+#[sealed::sealed]
+pub trait KeyedBoundFoldLike {
+    type KeyedBound: KeyedSingletonBound;
+}
+
+#[sealed::sealed]
+impl KeyedBoundFoldLike for Unbounded {
+    type KeyedBound = Unbounded;
+}
+
+#[sealed::sealed]
+impl KeyedBoundFoldLike for Bounded {
+    type KeyedBound = ValueBounded<Bounded>;
+}
+
 impl<'a, K, V, L, B> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
 where
     K: Eq + Hash,
@@ -593,22 +608,21 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L> + Copy,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
-    ) -> KeyedStream<K, A, L, B, TotalOrder, ExactlyOnce>
+    ) -> KeyedSingleton<K, A, L, ValueBounded<B>>
     where
         K: Clone,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> bool + 'a,
     {
-        KeyedStream {
+        KeyedSingleton {
             underlying: {
                 self.underlying
                     .assume_ordering::<TotalOrder>(
-                        nondet!(/** keyed scan does not rely on order of keys */),
+                        nondet!(/** keyed fold does not rely on order of keys */),
                     )
                     .fold_keyed_early_stop(init, f)
                     .into()
             },
-            _phantom_order: Default::default(),
         }
     }
 
@@ -644,7 +658,10 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B::KeyedBound>
+    where
+        B: KeyedBoundFoldLike,
+    {
         let init = init.splice_fn0_ctx(&self.underlying.location).into();
         let comb = comb
             .splice_fn2_borrow_mut_ctx(&self.underlying.location)
@@ -689,7 +706,10 @@ where
     pub fn reduce<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B::KeyedBound>
+    where
+        B: KeyedBoundFoldLike,
+    {
         let f = comb
             .splice_fn2_borrow_mut_ctx(&self.underlying.location)
             .into();
@@ -734,8 +754,9 @@ where
         self,
         other: impl Into<Optional<O, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B::KeyedBound>
     where
+        B: KeyedBoundFoldLike,
         O: Clone,
         F: Fn(&mut V, V) + 'a,
     {
@@ -795,7 +816,10 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B::KeyedBound>
+    where
+        B: KeyedBoundFoldLike,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .fold(init, comb)
     }
@@ -829,7 +853,10 @@ where
     pub fn reduce_commutative<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B::KeyedBound>
+    where
+        B: KeyedBoundFoldLike,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .reduce(comb)
     }
@@ -862,8 +889,9 @@ where
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B::KeyedBound>
     where
+        B: KeyedBoundFoldLike,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
     {
@@ -908,7 +936,10 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B::KeyedBound>
+    where
+        B: KeyedBoundFoldLike,
+    {
         self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .fold(init, comb)
     }
@@ -942,7 +973,10 @@ where
     pub fn reduce_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B::KeyedBound>
+    where
+        B: KeyedBoundFoldLike,
+    {
         self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce(comb)
     }
@@ -975,8 +1009,9 @@ where
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B::KeyedBound>
     where
+        B: KeyedBoundFoldLike,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
     {
@@ -1022,7 +1057,10 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B::KeyedBound>
+    where
+        B: KeyedBoundFoldLike,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .fold(init, comb)
@@ -1058,7 +1096,10 @@ where
     pub fn reduce_commutative_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B::KeyedBound>
+    where
+        B: KeyedBoundFoldLike,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce(comb)
@@ -1093,8 +1134,9 @@ where
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B::KeyedBound>
     where
+        B: KeyedBoundFoldLike,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
     {
@@ -1174,6 +1216,24 @@ where
     pub fn batch(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
         KeyedStream {
             underlying: self.underlying.batch(nondet),
+            _phantom_order: Default::default(),
+        }
+    }
+}
+
+impl<'a, K, V, L, O, R> KeyedStream<K, V, L, Bounded, O, R>
+where
+    L: Location<'a>,
+{
+    pub fn chain<O2>(
+        self,
+        other: KeyedStream<K, V, L, Bounded, O2, R>,
+    ) -> KeyedStream<K, V, L, Bounded, O::Min, R>
+    where
+        O: MinOrder<O2>,
+    {
+        KeyedStream {
+            underlying: self.underlying.chain(other.underlying),
             _phantom_order: Default::default(),
         }
     }

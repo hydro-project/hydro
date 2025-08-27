@@ -1,4 +1,5 @@
 use std::hash::Hash;
+use std::marker::PhantomData;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
@@ -13,11 +14,30 @@ use crate::{
     Unbounded, nondet,
 };
 
-pub struct KeyedSingleton<K, V, Loc, Bound> {
-    pub(crate) underlying: Stream<(K, V), Loc, Bound, NoOrder, ExactlyOnce>,
+pub trait KeyedSingletonBound {
+    type UnderlyingBound;
 }
 
-impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound> Clone for KeyedSingleton<K, V, Loc, Bound> {
+impl KeyedSingletonBound for Unbounded {
+    type UnderlyingBound = Unbounded;
+}
+
+/// A variation of boundedness specific to [`KeyedSingleton`], which indicates that the set of keys
+/// is unbounded (asynchronously updated), but once a key appears its value is bounded and will never
+/// change.
+pub struct ValueBounded<KeyBound>(PhantomData<KeyBound>);
+
+impl<KeyBound> KeyedSingletonBound for ValueBounded<KeyBound> {
+    type UnderlyingBound = KeyBound;
+}
+
+pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
+    pub(crate) underlying: Stream<(K, V), Loc, Bound::UnderlyingBound, NoOrder, ExactlyOnce>,
+}
+
+impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clone
+    for KeyedSingleton<K, V, Loc, Bound>
+{
     fn clone(&self) -> Self {
         KeyedSingleton {
             underlying: self.underlying.clone(),
@@ -25,7 +45,8 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound> Clone for KeyedSingleton<
     }
 }
 
-impl<'a, K, V, L, B> CycleCollection<'a, ForwardRefMarker> for KeyedSingleton<K, V, L, B>
+impl<'a, K, V, L, B: KeyedSingletonBound> CycleCollection<'a, ForwardRefMarker>
+    for KeyedSingleton<K, V, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -38,7 +59,8 @@ where
     }
 }
 
-impl<'a, K, V, L, B> CycleComplete<'a, ForwardRefMarker> for KeyedSingleton<K, V, L, B>
+impl<'a, K, V, L, B: KeyedSingletonBound> CycleComplete<'a, ForwardRefMarker>
+    for KeyedSingleton<K, V, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -47,21 +69,64 @@ where
     }
 }
 
-impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
-    pub fn entries(self) -> Stream<(K, V), Tick<L>, Bounded, NoOrder, ExactlyOnce> {
+impl<'a, K, V, L: Location<'a>, B> KeyedSingleton<K, V, L, ValueBounded<B>> {
+    pub fn entries(self) -> Stream<(K, V), L, B, NoOrder, ExactlyOnce> {
         self.underlying
     }
 
-    pub fn values(self) -> Stream<V, Tick<L>, Bounded, NoOrder, ExactlyOnce> {
-        self.underlying.map(q!(|(_, v)| v))
+    pub fn values(self) -> Stream<V, L, B, NoOrder, ExactlyOnce> {
+        self.entries().map(q!(|(_, v)| v))
     }
 
-    pub fn keys(self) -> Stream<K, Tick<L>, Bounded, NoOrder, ExactlyOnce> {
-        self.underlying.map(q!(|(k, _)| k))
+    pub fn keys(self) -> Stream<K, L, B, NoOrder, ExactlyOnce> {
+        self.entries().map(q!(|(k, _)| k))
+    }
+
+    pub fn filter_key_not_in<O2, R2>(self, other: Stream<K, L, Bounded, O2, R2>) -> Self
+    where
+        K: Hash + Eq,
+    {
+        KeyedSingleton {
+            underlying: self.entries().anti_join(other),
+        }
+    }
+
+    pub fn inspect<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedSingleton<K, V, L, ValueBounded<B>>
+    where
+        F: Fn(&V) + 'a,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        KeyedSingleton {
+            underlying: self.underlying.inspect(q!({
+                let orig = f;
+                move |(_k, v)| orig(v)
+            })),
+        }
+    }
+
+    pub fn inspect_with_key<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> KeyedSingleton<K, V, L, ValueBounded<B>>
+    where
+        F: Fn(&(K, V)) + 'a,
+    {
+        KeyedSingleton {
+            underlying: self.underlying.inspect(f),
+        }
+    }
+
+    pub fn into_keyed_stream(self) -> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce> {
+        self.underlying
+            .into_keyed()
+            .assume_ordering(nondet!(/** only one element per key */))
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B> KeyedSingleton<K, V, L, B> {
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, U, L, B>
     where
         F: Fn(V) -> U + 'a,
@@ -71,6 +136,26 @@ impl<'a, K, V, L: Location<'a>, B> KeyedSingleton<K, V, L, B> {
             underlying: self.underlying.map(q!({
                 let orig = f;
                 move |(k, v)| (k, orig(v))
+            })),
+        }
+    }
+
+    pub fn map_with_key<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedSingleton<K, U, L, B>
+    where
+        F: Fn((K, V)) -> U + 'a,
+        K: Clone,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        KeyedSingleton {
+            underlying: self.underlying.map(q!({
+                let orig = f;
+                move |(k, v)| {
+                    let out = orig((k.clone(), v));
+                    (k, out)
+                }
             })),
         }
     }
@@ -104,7 +189,7 @@ impl<'a, K, V, L: Location<'a>, B> KeyedSingleton<K, V, L, B> {
         }
     }
 
-    pub fn key_count(self) -> Singleton<usize, L, B> {
+    pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
         self.underlying.count()
     }
 
@@ -120,7 +205,19 @@ impl<'a, K, V, L: Location<'a>, B> KeyedSingleton<K, V, L, B> {
     }
 }
 
-impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
+impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, ValueBounded<Bounded>> {
+    pub fn latest(self) -> KeyedSingleton<K, V, L, Unbounded> {
+        KeyedSingleton {
+            underlying: Stream::new(
+                self.underlying.location.outer().clone(),
+                // no need to persist due to top-level replay
+                self.underlying.ir_node.into_inner(),
+            ),
+        }
+    }
+}
+
+impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, ValueBounded<Bounded>> {
     /// Gets the value associated with a specific key from the keyed singleton.
     ///
     /// # Example
@@ -152,7 +249,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     /// Given a keyed stream of lookup requests, where the key is the lookup and the value
     /// is some additional metadata, emits a keyed stream of lookup results where the key
     /// is the same as before, but the value is a tuple of the lookup result and the metadata
-    /// of the request.
+    /// of the request. If the key is not found, no output will be produced.
     ///
     /// # Example
     /// ```rust
@@ -169,7 +266,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     ///     .source_iter(q!(vec![(1, 100), (2, 200), (1, 101)]))
     ///     .into_keyed()
     ///     .batch(&tick, nondet!(/** test */));
-    /// keyed_data.get_many(other_data).entries().all_ticks()
+    /// keyed_data.get_many_if_present(other_data).entries().all_ticks()
     /// # }, |mut stream| async move {
     /// // { 1: [(10, 100), (10, 101)], 2: [(20, 200)] } in any order
     /// # let mut results = vec![];
@@ -180,28 +277,38 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     /// # assert_eq!(results, vec![(1, (10, 100)), (1, (10, 101)), (2, (20, 200))]);
     /// # }));
     /// ```
-    pub fn get_many<O2, R2, V2>(
+    pub fn get_many_if_present<O2, R2, V2>(
         self,
-        with: KeyedStream<K, V2, Tick<L>, Bounded, O2, R2>,
+        requests: KeyedStream<K, V2, Tick<L>, Bounded, O2, R2>,
     ) -> KeyedStream<K, (V, V2), Tick<L>, Bounded, NoOrder, R2> {
         self.entries()
             .weaker_retries()
-            .join(with.entries())
+            .join(requests.entries())
             .into_keyed()
     }
 
-    pub fn latest(self) -> KeyedSingleton<K, V, L, Unbounded> {
+    pub fn get_from<V2: Clone>(
+        self,
+        from: KeyedSingleton<V, V2, Tick<L>, ValueBounded<Bounded>>,
+    ) -> KeyedSingleton<K, (V, Option<V2>), Tick<L>, ValueBounded<Bounded>>
+    where
+        K: Clone,
+        V: Hash + Eq + Clone,
+    {
+        let to_lookup = self.entries().map(q!(|(k, v)| (v, k))).into_keyed();
+        let lookup_result = from.get_many_if_present(to_lookup.clone());
+        let missing_values =
+            to_lookup.filter_key_not_in(lookup_result.clone().entries().map(q!(|t| t.0)));
         KeyedSingleton {
-            underlying: Stream::new(
-                self.underlying.location.outer().clone(),
-                // no need to persist due to top-level replay
-                self.underlying.ir_node.into_inner(),
-            ),
+            underlying: lookup_result
+                .entries()
+                .map(q!(|(v, (v2, k))| (k, (v, Some(v2)))))
+                .chain(missing_values.entries().map(q!(|(v, k)| (k, (v, None))))),
         }
     }
 }
 
-impl<'a, K, V, L, B> KeyedSingleton<K, V, L, B>
+impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
@@ -222,12 +329,31 @@ where
         self,
         tick: &Tick<L>,
         nondet: NonDet,
-    ) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    ) -> KeyedSingleton<K, V, Tick<L>, ValueBounded<Bounded>> {
         self.atomic(tick).snapshot(nondet)
     }
 }
 
-impl<'a, K, V, L, B> KeyedSingleton<K, V, Atomic<L>, B>
+impl<'a, K, V, L, B> KeyedSingleton<K, V, L, ValueBounded<B>>
+where
+    L: Location<'a> + NoTick + NoAtomic,
+{
+    /// Returns a keyed singleton with entries consisting of _new_ key-value pairs that have
+    /// arrived since the previous batch was released.
+    ///
+    /// # Non-Determinism
+    /// Because this picks a batch of asynchronously added entries, each output keyed singleton
+    /// has a non-deterministic set of key-value pairs.
+    pub fn batch(
+        self,
+        tick: &Tick<L>,
+        nondet: NonDet,
+    ) -> KeyedSingleton<K, V, Tick<L>, ValueBounded<Bounded>> {
+        self.atomic(tick).batch(nondet)
+    }
+}
+
+impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, Atomic<L>, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
@@ -238,13 +364,36 @@ where
     /// Because this picks a snapshot of each singleton whose value is continuously changing,
     /// each output singleton has a non-deterministic value since each snapshot can be at an
     /// arbitrary point in time.
-    pub fn snapshot(self, _nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    pub fn snapshot(self, _nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, ValueBounded<Bounded>> {
         KeyedSingleton {
             underlying: Stream::new(
                 self.underlying.location.tick,
                 // no need to unpersist due to top-level replay
                 self.underlying.ir_node.into_inner(),
             ),
+        }
+    }
+
+    pub fn end_atomic(self) -> KeyedSingleton<K, V, L, B> {
+        KeyedSingleton {
+            underlying: self.underlying.end_atomic(),
+        }
+    }
+}
+
+impl<'a, K, V, L, B> KeyedSingleton<K, V, Atomic<L>, ValueBounded<B>>
+where
+    L: Location<'a> + NoTick + NoAtomic,
+{
+    /// Returns a keyed singleton with entries consisting of _new_ key-value pairs that have
+    /// arrived since the previous batch was released.
+    ///
+    /// # Non-Determinism
+    /// Because this picks a batch of asynchronously added entries, each output keyed singleton
+    /// has a non-deterministic set of key-value pairs.
+    pub fn batch(self, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, ValueBounded<Bounded>> {
+        KeyedSingleton {
+            underlying: self.underlying.batch(nondet),
         }
     }
 }
