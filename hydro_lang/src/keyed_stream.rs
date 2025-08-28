@@ -93,23 +93,6 @@ where
     KeyedStream::new(underlying)
 }
 
-/// Helper function to create a KeyedStream from a transformed underlying stream,
-/// updating the metadata to reflect keyed stream type conversions where input and output types are the same.
-fn keyed_stream_with_updated_same_type_metadata<'a, K, V, L, B, O, R>(
-    underlying: Stream<(K, V), L, B, NoOrder, R>,
-) -> KeyedStream<K, V, L, B, O, R>
-where
-    L: Location<'a>,
-    B: Boundedness,
-{
-    {
-        let mut node = underlying.ir_node.borrow_mut();
-        let metadata = node.metadata_mut();
-        metadata.stream_kind = Some(StreamKind::KeyedStream);
-        metadata.is_bounded = B::is_bounded();
-    }
-    KeyedStream::new(underlying)
-}
 impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R> {
     /// Create a new KeyedStream from an underlying stream.
     /// This constructor is primarily intended for code generation.
@@ -315,7 +298,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O,
             move |(_k, v)| orig(v)
         }));
 
-        keyed_stream_with_updated_same_type_metadata(base)
+        keyed_stream_with_updated_metadata(base)
     }
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
     /// `f` (which receives the key-value tuple), preserving the order of the elements within the group.
@@ -460,7 +443,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O,
             move |(_k, v)| orig(v)
         }));
 
-        keyed_stream_with_updated_same_type_metadata(base)
+        keyed_stream_with_updated_metadata(base)
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
@@ -492,7 +475,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O,
     {
         let base = self.underlying.inspect(f);
 
-        keyed_stream_with_updated_same_type_metadata(base)
+        keyed_stream_with_updated_metadata(base)
     }
 
     /// An operator which allows you to "name" a `HydroNode`.

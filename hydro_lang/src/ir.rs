@@ -41,23 +41,6 @@ pub enum StreamKind {
     Optional,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum StreamOrdering {
-    /// Corresponds to TotalOrder phantom type
-    TotalOrder,
-    /// Corresponds to NoOrder phantom type
-    NoOrder,
-}
-
-/// Mirror enum for retries metadata, corresponding to phantom types
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum StreamRetries {
-    /// Corresponds to ExactlyOnce phantom type
-    ExactlyOnce,
-    /// Corresponds to AtLeastOnce phantom type
-    AtLeastOnce,
-}
-
 /// Debug displays the type's tokens.
 ///
 /// Boxes `syn::Type` which is ~240 bytes.
