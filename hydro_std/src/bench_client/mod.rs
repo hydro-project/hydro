@@ -186,7 +186,80 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     aggregator: &Process<'a, Aggregator>,
     clients: &Cluster<'a, Client>,
 ) {
+    let nondet_client_count = nondet!(/** client count is stable in bench */);
     let nondet_sampling = nondet!(/** non-deterministic samping only affects logging */);
+    let print_tick = aggregator.tick();
+    let client_members = aggregator.source_cluster_members(clients);
+    let client_count = track_membership(client_members)
+        .key_count()
+        .snapshot(&print_tick, nondet_client_count);
+
+    let keyed_throughputs = results
+        .throughput
+        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .send_bincode(aggregator);
+
+    let latest_throughputs = keyed_throughputs
+        .reduce_idempotent(q!(|combined, new| {
+            *combined = new;
+        }))
+        // Remove throughputs from clients that have yet to actually record process
+        .filter(q!(|throughputs| throughputs.sample_mean() > 0.0));
+
+    let clients_with_throughputs_count = latest_throughputs
+        .clone()
+        .key_count()
+        .snapshot(&print_tick, nondet_client_count);
+
+    let waiting_for_clients = client_count
+        .clone()
+        .zip(clients_with_throughputs_count)
+        .filter_map(q!(|(num_clients, num_clients_with_throughput)| {
+            if num_clients > num_clients_with_throughput {
+                Some(num_clients - num_clients_with_throughput)
+            } else {
+                None
+            }
+        }));
+
+    waiting_for_clients
+        .clone()
+        .all_ticks()
+        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .for_each(q!(|num_clients_not_responded| println!(
+            "Awaiting {} clients",
+            num_clients_not_responded
+        )));
+
+    let combined_throughputs = latest_throughputs
+        .snapshot(&aggregator.tick(), nondet_sampling)
+        .values()
+        .reduce_commutative(q!(|combined, new| {
+            combined.add(new);
+        }))
+        .latest();
+
+    combined_throughputs
+        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .batch(&print_tick, nondet_client_count)
+        .cross_singleton(client_count.clone())
+        .continue_unless(waiting_for_clients.clone())
+        .all_ticks()
+        .for_each(q!(move |(throughputs, num_client_machines)| {
+            if throughputs.sample_count() >= 2 {
+                let mean = throughputs.sample_mean() * num_client_machines as f64;
+
+                if let Some((lower, upper)) = throughputs.confidence_interval_99() {
+                    println!(
+                        "Throughput: {:.2} - {:.2} - {:.2} requests/s",
+                        lower * num_client_machines as f64,
+                        mean,
+                        upper * num_client_machines as f64
+                    );
+                }
+            }
+        }));
+
     let keyed_latencies = results
         .latency_histogram
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
@@ -212,56 +285,17 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
 
     combined_latencies
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .batch(&print_tick, nondet_client_count)
+        .continue_unless(waiting_for_clients)
+        .all_ticks()
         .for_each(q!(move |latencies| {
             println!(
-                "Latency p50: {:.3} | p99 {:.3} ms | p999 {:.3} ms ({:} samples)",
+                "Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)",
                 Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64 / 1000.0,
                 Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64 / 1000.0,
                 Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64
                     / 1000.0,
                 latencies.len()
             );
-        }));
-
-    let keyed_throughputs = results
-        .throughput
-        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
-        .send_bincode(aggregator);
-
-    let combined_throughputs = keyed_throughputs
-        .reduce_idempotent(q!(|combined, new| {
-            *combined = new;
-        }))
-        .snapshot(&aggregator.tick(), nondet_sampling)
-        .values()
-        .reduce_commutative(q!(|combined, new| {
-            combined.add(new);
-        }))
-        .latest();
-
-    let client_members = aggregator.source_cluster_members(clients);
-    let client_count = track_membership(client_members).key_count();
-    let print_tick = aggregator.tick();
-
-    combined_throughputs
-        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
-        .batch(&print_tick, nondet!(/** client count is stable in bench */))
-        .cross_singleton(
-            client_count.snapshot(&print_tick, nondet!(/** client count is stable in bench */)),
-        )
-        .all_ticks()
-        .for_each(q!(move |(throughputs, num_client_machines)| {
-            if throughputs.sample_count() >= 2 {
-                let mean = throughputs.sample_mean() * num_client_machines as f64;
-
-                if let Some((lower, upper)) = throughputs.confidence_interval_99() {
-                    println!(
-                        "Throughput: {:.2} - {:.2} - {:.2} requests/s",
-                        lower * num_client_machines as f64,
-                        mean,
-                        upper * num_client_machines as f64
-                    );
-                }
-            }
         }));
 }
