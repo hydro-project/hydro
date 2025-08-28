@@ -18,7 +18,6 @@ meta = [ "dep:dfir_lang" ]
 macros = [ "dfir_macro" ]
 dfir_macro = [ "dep:dfir_macro" ]
 deploy_integration = [ "dep:hydro_deploy_integration" ]
-python = [ "dep:pyo3" ]
 debugging = [ "dfir_lang/debugging" ]
 
 [package.metadata.docs.rs]
@@ -26,10 +25,6 @@ all-features = true
 
 [[example]]
 name = "kvs_bench"
-
-[[example]]
-name = "python_udf"
-required-features = [ "python" ]
 
 [dependencies]
 bincode = "1.3.1"
@@ -42,7 +37,6 @@ hydro_deploy_integration = { optional = true, path = "../hydro_deploy/hydro_depl
 itertools = "0.13.0"
 lattices = { path = "../lattices", version = "^0.6.1", features = [ "serde" ] }
 pusherator = { path = "../pusherator", version = "^0.0.12" }
-pyo3 = { optional = true, version = "0.21.0", features = [ "gil-refs" ] }
 ref-cast = "1.0.0"
 rustc-hash = "1.1.0"
 sealed = "0.5.0"

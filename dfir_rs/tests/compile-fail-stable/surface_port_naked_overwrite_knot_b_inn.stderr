@@ -1,22 +1,22 @@
-error: Indexing on input is overwritten below (unknown:0:0) (1/2).
+error: Indexing on input is overwritten below (unknown:10:16) (1/2).
  --> tests/compile-fail-stable/surface_port_naked_overwrite_knot_b_inn.rs:7:16
   |
 7 |         x_0 = [0]pivot;
   |                ^
 
-error: Cannot index on already-indexed input, previously indexed above (unknown:0:0) (2/2).
+error: Cannot index on already-indexed input, previously indexed above (unknown:7:15) (2/2).
   --> tests/compile-fail-stable/surface_port_naked_overwrite_knot_b_inn.rs:10:17
    |
 10 |         x_0 -> [0]x_0;
    |                 ^
 
-error: Indexing on input is overwritten below (unknown:0:0) (1/2).
+error: Indexing on input is overwritten below (unknown:11:19) (1/2).
  --> tests/compile-fail-stable/surface_port_naked_overwrite_knot_b_inn.rs:8:16
   |
 8 |         x_1 = [1]pivot;
   |                ^
 
-error: Cannot index on already-indexed input, previously indexed above (unknown:0:0) (2/2).
+error: Cannot index on already-indexed input, previously indexed above (unknown:8:15) (2/2).
   --> tests/compile-fail-stable/surface_port_naked_overwrite_knot_b_inn.rs:11:20
    |
 11 |         x_1[0] -> [1]x_1; // Error: `[1][1]pivot`

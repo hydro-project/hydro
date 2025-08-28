@@ -9,9 +9,6 @@ RUST_LOG = "info,hydro_lang=debug,dfir_rs=trace,walrus=info,wasm_bindgen_cli_sup
 # DFIR generate for `/docs/` website.
 DFIR_GENERATE_DOCS = "1"
 DFIR_BASE_DIR = { value = ".", relative = true }
-# https://github.com/PyO3/pyo3/pull/3821
-# https://github.com/PyO3/maturin/issues/1960#issuecomment-1969773463
-PYO3_USE_ABI3_FORWARD_COMPATIBILITY = "1"
 
 [target.aarch64-apple-darwin]
 linker = "rust-lld"

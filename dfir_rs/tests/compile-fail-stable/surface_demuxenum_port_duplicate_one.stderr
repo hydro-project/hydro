@@ -1,10 +1,10 @@
-error: Output connection conflicts with below (unknown:0:0) (1/2)
+error: Output connection conflicts with below (unknown:15:17) (1/2)
   --> tests/compile-fail-stable/surface_demuxenum_port_duplicate_one.rs:14:18
    |
 14 |         my_demux[Square] -> for_each(std::mem::drop);
    |                  ^^^^^^
 
-error: Output connection conflicts with above (unknown:0:0) (2/2)
+error: Output connection conflicts with above (unknown:14:17) (2/2)
   --> tests/compile-fail-stable/surface_demuxenum_port_duplicate_one.rs:15:18
    |
 15 |         my_demux[Square] -> for_each(std::mem::drop);

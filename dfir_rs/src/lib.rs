@@ -24,9 +24,6 @@ pub mod util;
 #[cfg(feature = "meta")]
 #[cfg_attr(docsrs, doc(cfg(feature = "meta")))]
 pub use dfir_lang as lang;
-#[cfg(feature = "python")]
-#[cfg_attr(docsrs, doc(cfg(feature = "python")))]
-pub use pyo3;
 pub use variadics::{self, var_args, var_expr, var_type};
 pub use {
     bincode, bytes, futures, itertools, lattices, pusherator, rustc_hash, serde, serde_json, tokio,
