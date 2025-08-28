@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/stream/networking.rs`."><title>networking.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-528d32ef.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.0-nightly (05f5a58e8 2025-08-19)" data-channel="nightly" data-search-js="search-5f24b69e.js" data-stringdex-js="stringdex-0e748618.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-1b37d467.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-b6a35c53.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/stream/</div>networking.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::marker::PhantomData;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/stream/networking.rs`."><title>networking.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-7dc20aaa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.0-nightly (cdb45c87e 2025-08-27)" data-channel="nightly" data-search-js="search-5fc2c5c0.js" data-stringdex-js="stringdex-0e748618.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-17c00ba7.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/stream/</div>networking.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::marker::PhantomData;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>serde::Serialize;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>serde::de::DeserializeOwned;
@@ -14,13 +14,13 @@
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::staging_util::get_this_crate;
 <a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::stream::ExactlyOnce;
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use crate</span>::{
-<a href=#17 id=17 data-nosnippet>17</a>    Cluster, ClusterId, External, Location, NonDet, Process, Stream, TotalOrder, Unbounded, nondet,
+<a href=#17 id=17 data-nosnippet>17</a>    Cluster, External, Location, MemberId, NonDet, Process, Stream, TotalOrder, Unbounded, nondet,
 <a href=#18 id=18 data-nosnippet>18</a>};
 <a href=#19 id=19 data-nosnippet>19</a>
 <a href=#20 id=20 data-nosnippet>20</a><span class="comment">// same as the one in `hydro_std`, but internal use only
 <a href=#21 id=21 data-nosnippet>21</a></span><span class="kw">fn </span>track_membership&lt;<span class="lifetime">'a</span>, C, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick + NoAtomic&gt;(
-<a href=#22 id=22 data-nosnippet>22</a>    membership: KeyedStream&lt;ClusterId&lt;C&gt;, MembershipEvent, L, Unbounded&gt;,
-<a href=#23 id=23 data-nosnippet>23</a>) -&gt; KeyedSingleton&lt;ClusterId&lt;C&gt;, (), L, Unbounded&gt; {
+<a href=#22 id=22 data-nosnippet>22</a>    membership: KeyedStream&lt;MemberId&lt;C&gt;, MembershipEvent, L, Unbounded&gt;,
+<a href=#23 id=23 data-nosnippet>23</a>) -&gt; KeyedSingleton&lt;MemberId&lt;C&gt;, (), L, Unbounded&gt; {
 <a href=#24 id=24 data-nosnippet>24</a>    membership
 <a href=#25 id=25 data-nosnippet>25</a>        .fold(
 <a href=#26 id=26 data-nosnippet>26</a>            <span class="macro">q!</span>(|| <span class="bool-val">false</span>),
@@ -39,7 +39,7 @@
 <a href=#39 id=39 data-nosnippet>39</a>
 <a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">if </span>is_demux {
 <a href=#41 id=41 data-nosnippet>41</a>        <span class="macro">parse_quote!</span> {
-<a href=#42 id=42 data-nosnippet>42</a>            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::&lt;(#root::ClusterId&lt;<span class="kw">_</span>&gt;, #t_type), <span class="kw">_</span>&gt;(
+<a href=#42 id=42 data-nosnippet>42</a>            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::&lt;(#root::MemberId&lt;<span class="kw">_</span>&gt;, #t_type), <span class="kw">_</span>&gt;(
 <a href=#43 id=43 data-nosnippet>43</a>                |(id, data)| {
 <a href=#44 id=44 data-nosnippet>44</a>                    (id.raw_id, #root::runtime_support::bincode::serialize(<span class="kw-2">&amp;</span>data).unwrap().into())
 <a href=#45 id=45 data-nosnippet>45</a>                }
@@ -67,7 +67,7 @@
 <a href=#67 id=67 data-nosnippet>67</a>        <span class="macro">parse_quote!</span> {
 <a href=#68 id=68 data-nosnippet>68</a>            |res| {
 <a href=#69 id=69 data-nosnippet>69</a>                <span class="kw">let </span>(id, b) = res.unwrap();
-<a href=#70 id=70 data-nosnippet>70</a>                (#root::ClusterId::&lt;#c_type&gt;::from_raw(id), #root::runtime_support::bincode::deserialize::&lt;#t_type&gt;(<span class="kw-2">&amp;</span>b).unwrap())
+<a href=#70 id=70 data-nosnippet>70</a>                (#root::MemberId::&lt;#c_type&gt;::from_raw(id), #root::runtime_support::bincode::deserialize::&lt;#t_type&gt;(<span class="kw-2">&amp;</span>b).unwrap())
 <a href=#71 id=71 data-nosnippet>71</a>            }
 <a href=#72 id=72 data-nosnippet>72</a>        }
 <a href=#73 id=73 data-nosnippet>73</a>    } <span class="kw">else </span>{
@@ -87,7 +87,7 @@
 <a href=#87 id=87 data-nosnippet>87</a>    <span class="kw">pub fn </span>send_bincode&lt;L2&gt;(
 <a href=#88 id=88 data-nosnippet>88</a>        <span class="self">self</span>,
 <a href=#89 id=89 data-nosnippet>89</a>        other: <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>, L2&gt;,
-<a href=#90 id=90 data-nosnippet>90</a>    ) -&gt; KeyedStream&lt;ClusterId&lt;L&gt;, T, Process&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;
+<a href=#90 id=90 data-nosnippet>90</a>    ) -&gt; KeyedStream&lt;MemberId&lt;L&gt;, T, Process&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;
 <a href=#91 id=91 data-nosnippet>91</a>    <span class="kw">where
 <a href=#92 id=92 data-nosnippet>92</a>        </span>T: Serialize + DeserializeOwned,
 <a href=#93 id=93 data-nosnippet>93</a>    {
@@ -95,14 +95,14 @@
 <a href=#95 id=95 data-nosnippet>95</a>
 <a href=#96 id=96 data-nosnippet>96</a>        <span class="kw">let </span>deserialize_pipeline = <span class="prelude-val">Some</span>(deserialize_bincode::&lt;T&gt;(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>quote_type::&lt;L&gt;())));
 <a href=#97 id=97 data-nosnippet>97</a>
-<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span>raw_stream: Stream&lt;(ClusterId&lt;L&gt;, T), Process&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt; = Stream::new(
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span>raw_stream: Stream&lt;(MemberId&lt;L&gt;, T), Process&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt; = Stream::new(
 <a href=#99 id=99 data-nosnippet>99</a>            other.clone(),
 <a href=#100 id=100 data-nosnippet>100</a>            HydroNode::Network {
 <a href=#101 id=101 data-nosnippet>101</a>                serialize_fn: serialize_pipeline.map(|e| e.into()),
 <a href=#102 id=102 data-nosnippet>102</a>                instantiate_fn: DebugInstantiate::Building,
 <a href=#103 id=103 data-nosnippet>103</a>                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
 <a href=#104 id=104 data-nosnippet>104</a>                input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#105 id=105 data-nosnippet>105</a>                metadata: other.new_node_metadata::&lt;(ClusterId&lt;L&gt;, T)&gt;(),
+<a href=#105 id=105 data-nosnippet>105</a>                metadata: other.new_node_metadata::&lt;(MemberId&lt;L&gt;, T)&gt;(),
 <a href=#106 id=106 data-nosnippet>106</a>            },
 <a href=#107 id=107 data-nosnippet>107</a>        );
 <a href=#108 id=108 data-nosnippet>108</a>
@@ -113,7 +113,7 @@
 <a href=#113 id=113 data-nosnippet>113</a>        <span class="self">self</span>,
 <a href=#114 id=114 data-nosnippet>114</a>        other: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, L2&gt;,
 <a href=#115 id=115 data-nosnippet>115</a>        nondet_membership: NonDet,
-<a href=#116 id=116 data-nosnippet>116</a>    ) -&gt; KeyedStream&lt;ClusterId&lt;L&gt;, T, Cluster&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;
+<a href=#116 id=116 data-nosnippet>116</a>    ) -&gt; KeyedStream&lt;MemberId&lt;L&gt;, T, Cluster&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;
 <a href=#117 id=117 data-nosnippet>117</a>    <span class="kw">where
 <a href=#118 id=118 data-nosnippet>118</a>        </span>T: Clone + Serialize + DeserializeOwned,
 <a href=#119 id=119 data-nosnippet>119</a>    {
@@ -138,7 +138,7 @@
 <a href=#138 id=138 data-nosnippet>138</a>    }
 <a href=#139 id=139 data-nosnippet>139</a>}
 <a href=#140 id=140 data-nosnippet>140</a>
-<a href=#141 id=141 data-nosnippet>141</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, L2, B, O, R&gt; Stream&lt;(ClusterId&lt;L2&gt;, T), Process&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt; {
+<a href=#141 id=141 data-nosnippet>141</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, L2, B, O, R&gt; Stream&lt;(MemberId&lt;L2&gt;, T), Process&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt; {
 <a href=#142 id=142 data-nosnippet>142</a>    <span class="kw">pub fn </span>demux_bincode(
 <a href=#143 id=143 data-nosnippet>143</a>        <span class="self">self</span>,
 <a href=#144 id=144 data-nosnippet>144</a>        other: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, L2&gt;,
@@ -150,7 +150,7 @@
 <a href=#150 id=150 data-nosnippet>150</a>    }
 <a href=#151 id=151 data-nosnippet>151</a>}
 <a href=#152 id=152 data-nosnippet>152</a>
-<a href=#153 id=153 data-nosnippet>153</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, L2, B, O, R&gt; KeyedStream&lt;ClusterId&lt;L2&gt;, T, Process&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt; {
+<a href=#153 id=153 data-nosnippet>153</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, L2, B, O, R&gt; KeyedStream&lt;MemberId&lt;L2&gt;, T, Process&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt; {
 <a href=#154 id=154 data-nosnippet>154</a>    <span class="kw">pub fn </span>demux_bincode(
 <a href=#155 id=155 data-nosnippet>155</a>        <span class="self">self</span>,
 <a href=#156 id=156 data-nosnippet>156</a>        other: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, L2&gt;,
@@ -206,11 +206,11 @@
 <a href=#206 id=206 data-nosnippet>206</a>    }
 <a href=#207 id=207 data-nosnippet>207</a>}
 <a href=#208 id=208 data-nosnippet>208</a>
-<a href=#209 id=209 data-nosnippet>209</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, L2, B, O, R&gt; Stream&lt;(ClusterId&lt;L2&gt;, T), Cluster&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt; {
+<a href=#209 id=209 data-nosnippet>209</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, L2, B, O, R&gt; Stream&lt;(MemberId&lt;L2&gt;, T), Cluster&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt; {
 <a href=#210 id=210 data-nosnippet>210</a>    <span class="kw">pub fn </span>demux_bincode(
 <a href=#211 id=211 data-nosnippet>211</a>        <span class="self">self</span>,
 <a href=#212 id=212 data-nosnippet>212</a>        other: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, L2&gt;,
-<a href=#213 id=213 data-nosnippet>213</a>    ) -&gt; KeyedStream&lt;ClusterId&lt;L&gt;, T, Cluster&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;
+<a href=#213 id=213 data-nosnippet>213</a>    ) -&gt; KeyedStream&lt;MemberId&lt;L&gt;, T, Cluster&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;
 <a href=#214 id=214 data-nosnippet>214</a>    <span class="kw">where
 <a href=#215 id=215 data-nosnippet>215</a>        </span>T: Serialize + DeserializeOwned,
 <a href=#216 id=216 data-nosnippet>216</a>    {
@@ -218,11 +218,11 @@
 <a href=#218 id=218 data-nosnippet>218</a>    }
 <a href=#219 id=219 data-nosnippet>219</a>}
 <a href=#220 id=220 data-nosnippet>220</a>
-<a href=#221 id=221 data-nosnippet>221</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, L2, B, O, R&gt; KeyedStream&lt;ClusterId&lt;L2&gt;, T, Cluster&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt; {
+<a href=#221 id=221 data-nosnippet>221</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, L2, B, O, R&gt; KeyedStream&lt;MemberId&lt;L2&gt;, T, Cluster&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt; {
 <a href=#222 id=222 data-nosnippet>222</a>    <span class="kw">pub fn </span>demux_bincode(
 <a href=#223 id=223 data-nosnippet>223</a>        <span class="self">self</span>,
 <a href=#224 id=224 data-nosnippet>224</a>        other: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, L2&gt;,
-<a href=#225 id=225 data-nosnippet>225</a>    ) -&gt; KeyedStream&lt;ClusterId&lt;L&gt;, T, Cluster&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;
+<a href=#225 id=225 data-nosnippet>225</a>    ) -&gt; KeyedStream&lt;MemberId&lt;L&gt;, T, Cluster&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;
 <a href=#226 id=226 data-nosnippet>226</a>    <span class="kw">where
 <a href=#227 id=227 data-nosnippet>227</a>        </span>T: Serialize + DeserializeOwned,
 <a href=#228 id=228 data-nosnippet>228</a>    {
@@ -230,14 +230,14 @@
 <a href=#230 id=230 data-nosnippet>230</a>
 <a href=#231 id=231 data-nosnippet>231</a>        <span class="kw">let </span>deserialize_pipeline = <span class="prelude-val">Some</span>(deserialize_bincode::&lt;T&gt;(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>quote_type::&lt;L&gt;())));
 <a href=#232 id=232 data-nosnippet>232</a>
-<a href=#233 id=233 data-nosnippet>233</a>        <span class="kw">let </span>raw_stream: Stream&lt;(ClusterId&lt;L&gt;, T), Cluster&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt; = Stream::new(
+<a href=#233 id=233 data-nosnippet>233</a>        <span class="kw">let </span>raw_stream: Stream&lt;(MemberId&lt;L&gt;, T), Cluster&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt; = Stream::new(
 <a href=#234 id=234 data-nosnippet>234</a>            other.clone(),
 <a href=#235 id=235 data-nosnippet>235</a>            HydroNode::Network {
 <a href=#236 id=236 data-nosnippet>236</a>                serialize_fn: serialize_pipeline.map(|e| e.into()),
 <a href=#237 id=237 data-nosnippet>237</a>                instantiate_fn: DebugInstantiate::Building,
 <a href=#238 id=238 data-nosnippet>238</a>                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
 <a href=#239 id=239 data-nosnippet>239</a>                input: Box::new(<span class="self">self</span>.underlying.ir_node.into_inner()),
-<a href=#240 id=240 data-nosnippet>240</a>                metadata: other.new_node_metadata::&lt;(ClusterId&lt;L&gt;, T)&gt;(),
+<a href=#240 id=240 data-nosnippet>240</a>                metadata: other.new_node_metadata::&lt;(MemberId&lt;L&gt;, T)&gt;(),
 <a href=#241 id=241 data-nosnippet>241</a>            },
 <a href=#242 id=242 data-nosnippet>242</a>        );
 <a href=#243 id=243 data-nosnippet>243</a>

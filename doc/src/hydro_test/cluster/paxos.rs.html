@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/paxos.rs`."><title>paxos.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-528d32ef.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.0-nightly (05f5a58e8 2025-08-19)" data-channel="nightly" data-search-js="search-5f24b69e.js" data-stringdex-js="stringdex-0e748618.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-1b37d467.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-b6a35c53.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>paxos.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::HashMap;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/paxos.rs`."><title>paxos.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-7dc20aaa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.0-nightly (cdb45c87e 2025-08-27)" data-channel="nightly" data-search-js="search-5fc2c5c0.js" data-stringdex-js="stringdex-0e748618.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-17c00ba7.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>paxos.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::HashMap;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>std::fmt::Debug;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>std::hash::Hash;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>std::time::Duration;
@@ -34,7 +34,7 @@
 <a href=#34 id=34 data-nosnippet>34</a><span class="attr">#[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Hash)]
 <a href=#35 id=35 data-nosnippet>35</a></span><span class="kw">pub struct </span>Ballot {
 <a href=#36 id=36 data-nosnippet>36</a>    <span class="kw">pub </span>num: u32,
-<a href=#37 id=37 data-nosnippet>37</a>    <span class="kw">pub </span>proposer_id: ClusterId&lt;Proposer&gt;,
+<a href=#37 id=37 data-nosnippet>37</a>    <span class="kw">pub </span>proposer_id: MemberId&lt;Proposer&gt;,
 <a href=#38 id=38 data-nosnippet>38</a>}
 <a href=#39 id=39 data-nosnippet>39</a>
 <a href=#40 id=40 data-nosnippet>40</a><span class="kw">impl </span>Ord <span class="kw">for </span>Ballot {
@@ -59,7 +59,7 @@
 <a href=#59 id=59 data-nosnippet>59</a>
 <a href=#60 id=60 data-nosnippet>60</a><span class="attr">#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 <a href=#61 id=61 data-nosnippet>61</a></span><span class="kw">pub struct </span>P2a&lt;P, S&gt; {
-<a href=#62 id=62 data-nosnippet>62</a>    <span class="kw">pub </span>sender: ClusterId&lt;S&gt;,
+<a href=#62 id=62 data-nosnippet>62</a>    <span class="kw">pub </span>sender: MemberId&lt;S&gt;,
 <a href=#63 id=63 data-nosnippet>63</a>    <span class="kw">pub </span>ballot: Ballot,
 <a href=#64 id=64 data-nosnippet>64</a>    <span class="kw">pub </span>slot: usize,
 <a href=#65 id=65 data-nosnippet>65</a>    <span class="kw">pub </span>value: <span class="prelude-ty">Option</span>&lt;P&gt;, <span class="comment">// might be a re-committed hole
@@ -87,7 +87,7 @@
 <a href=#87 id=87 data-nosnippet>87</a>
 <a href=#88 id=88 data-nosnippet>88</a>    <span class="kw">fn </span>get_recipient_from_ballot&lt;L: Location&lt;<span class="lifetime">'a</span>&gt;&gt;(
 <a href=#89 id=89 data-nosnippet>89</a>        ballot: Optional&lt;<span class="self">Self</span>::Ballot, L, Unbounded&gt;,
-<a href=#90 id=90 data-nosnippet>90</a>    ) -&gt; Optional&lt;ClusterId&lt;<span class="self">Self</span>::PaxosIn&gt;, L, Unbounded&gt; {
+<a href=#90 id=90 data-nosnippet>90</a>    ) -&gt; Optional&lt;MemberId&lt;<span class="self">Self</span>::PaxosIn&gt;, L, Unbounded&gt; {
 <a href=#91 id=91 data-nosnippet>91</a>        ballot.map(<span class="macro">q!</span>(|ballot| ballot.proposer_id))
 <a href=#92 id=92 data-nosnippet>92</a>    }
 <a href=#93 id=93 data-nosnippet>93</a>
@@ -270,7 +270,7 @@
 <a href=#270 id=270 data-nosnippet>270</a>        .max()
 <a href=#271 id=271 data-nosnippet>271</a>        .unwrap_or(proposers.singleton(<span class="macro">q!</span>(Ballot {
 <a href=#272 id=272 data-nosnippet>272</a>            num: <span class="number">0</span>,
-<a href=#273 id=273 data-nosnippet>273</a>            proposer_id: ClusterId::from_raw(<span class="number">0</span>)
+<a href=#273 id=273 data-nosnippet>273</a>            proposer_id: MemberId::from_raw(<span class="number">0</span>)
 <a href=#274 id=274 data-nosnippet>274</a>        })));
 <a href=#275 id=275 data-nosnippet>275</a>
 <a href=#276 id=276 data-nosnippet>276</a>    <span class="kw">let </span>(p_ballot, p_has_largest_ballot) = p_ballot_calc(
@@ -468,7 +468,7 @@
 <a href=#468 id=468 data-nosnippet>468</a>        .max()
 <a href=#469 id=469 data-nosnippet>469</a>        .unwrap_or(acceptor_tick.singleton(<span class="macro">q!</span>(Ballot {
 <a href=#470 id=470 data-nosnippet>470</a>            num: <span class="number">0</span>,
-<a href=#471 id=471 data-nosnippet>471</a>            proposer_id: ClusterId::from_raw(<span class="number">0</span>)
+<a href=#471 id=471 data-nosnippet>471</a>            proposer_id: MemberId::from_raw(<span class="number">0</span>)
 <a href=#472 id=472 data-nosnippet>472</a>        })));
 <a href=#473 id=473 data-nosnippet>473</a>
 <a href=#474 id=474 data-nosnippet>474</a>    (

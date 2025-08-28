@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Channel","Error","LlvmVersionParseError"],"fn":["version","version_meta","version_meta_for"],"struct":["LlvmVersion","Version","VersionMeta"],"type":["Result"]};

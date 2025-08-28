@@ -1,9 +1,9 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/simple_cluster.rs`."><title>simple_cluster.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-528d32ef.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.0-nightly (05f5a58e8 2025-08-19)" data-channel="nightly" data-search-js="search-5f24b69e.js" data-stringdex-js="stringdex-0e748618.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-1b37d467.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-b6a35c53.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>simple_cluster.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_lang::location::MembershipEvent;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/simple_cluster.rs`."><title>simple_cluster.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-7dc20aaa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.91.0-nightly (cdb45c87e 2025-08-27)" data-channel="nightly" data-search-js="search-5fc2c5c0.js" data-stringdex-js="stringdex-0e748618.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-17c00ba7.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>simple_cluster.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_lang::location::MembershipEvent;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>stageleft::IntoQuotedMut;
 <a href=#5 id=5 data-nosnippet>5</a>
-<a href=#6 id=6 data-nosnippet>6</a><span class="kw">pub fn </span>partition&lt;<span class="lifetime">'a</span>, F: Fn((ClusterId&lt;()&gt;, String)) -&gt; (ClusterId&lt;()&gt;, String) + <span class="lifetime">'a</span>&gt;(
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">pub fn </span>partition&lt;<span class="lifetime">'a</span>, F: Fn((MemberId&lt;()&gt;, String)) -&gt; (MemberId&lt;()&gt;, String) + <span class="lifetime">'a</span>&gt;(
 <a href=#7 id=7 data-nosnippet>7</a>    cluster1: Cluster&lt;<span class="lifetime">'a</span>, ()&gt;,
 <a href=#8 id=8 data-nosnippet>8</a>    cluster2: Cluster&lt;<span class="lifetime">'a</span>, ()&gt;,
 <a href=#9 id=9 data-nosnippet>9</a>    dist_policy: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, Cluster&lt;<span class="lifetime">'a</span>, ()&gt;&gt;,
@@ -11,7 +11,7 @@
 <a href=#11 id=11 data-nosnippet>11</a>    cluster1
 <a href=#12 id=12 data-nosnippet>12</a>        .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>(CLUSTER_SELF_ID)))
 <a href=#13 id=13 data-nosnippet>13</a>        .map(<span class="macro">q!</span>(<span class="kw">move </span>|id| (
-<a href=#14 id=14 data-nosnippet>14</a>            ClusterId::&lt;()&gt;::from_raw(id.raw_id),
+<a href=#14 id=14 data-nosnippet>14</a>            MemberId::&lt;()&gt;::from_raw(id.raw_id),
 <a href=#15 id=15 data-nosnippet>15</a>            <span class="macro">format!</span>(<span class="string">"Hello from {}"</span>, id.raw_id)
 <a href=#16 id=16 data-nosnippet>16</a>        )))
 <a href=#17 id=17 data-nosnippet>17</a>        .send_partitioned(<span class="kw-2">&amp;</span>cluster2, dist_policy)
@@ -81,7 +81,7 @@
 <a href=#81 id=81 data-nosnippet>81</a>    <span class="kw">use </span>hydro_deploy::Deployment;
 <a href=#82 id=82 data-nosnippet>82</a>    <span class="kw">use </span>hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy};
 <a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">use </span>hydro_lang::rewrites::persist_pullup;
-<a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">use </span>hydro_lang::{ClusterId, Location};
+<a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">use </span>hydro_lang::{Location, MemberId};
 <a href=#85 id=85 data-nosnippet>85</a>    <span class="kw">use </span>hydro_optimize::partitioner::{<span class="self">self</span>, Partitioner};
 <a href=#86 id=86 data-nosnippet>86</a>    <span class="kw">use </span>stageleft::q;
 <a href=#87 id=87 data-nosnippet>87</a>
@@ -91,7 +91,7 @@
 <a href=#91 id=91 data-nosnippet>91</a>        <span class="kw">let _ </span>= <span class="kw">super</span>::simple_cluster(<span class="kw-2">&amp;</span>builder);
 <a href=#92 id=92 data-nosnippet>92</a>        <span class="kw">let </span>built = builder.finalize();
 <a href=#93 id=93 data-nosnippet>93</a>
-<a href=#94 id=94 data-nosnippet>94</a>        <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
+<a href=#94 id=94 data-nosnippet>94</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(built.ir());
 <a href=#95 id=95 data-nosnippet>95</a>    }
 <a href=#96 id=96 data-nosnippet>96</a>
 <a href=#97 id=97 data-nosnippet>97</a>    <span class="attr">#[tokio::test]
@@ -126,7 +126,7 @@
 <a href=#126 id=126 data-nosnippet>126</a>                <span class="macro">assert_eq!</span>(
 <a href=#127 id=127 data-nosnippet>127</a>                    stdout.recv().<span class="kw">await</span>.unwrap(),
 <a href=#128 id=128 data-nosnippet>128</a>                    <span class="macro">format!</span>(
-<a href=#129 id=129 data-nosnippet>129</a>                        <span class="string">"cluster received: (ClusterId::&lt;()&gt;({}), {}) (self cluster id: ClusterId::&lt;()&gt;({}))"</span>,
+<a href=#129 id=129 data-nosnippet>129</a>                        <span class="string">"cluster received: (MemberId::&lt;()&gt;({}), {}) (self cluster id: MemberId::&lt;()&gt;({}))"</span>,
 <a href=#130 id=130 data-nosnippet>130</a>                        i, j, i
 <a href=#131 id=131 data-nosnippet>131</a>                    )
 <a href=#132 id=132 data-nosnippet>132</a>                );
@@ -143,7 +143,7 @@
 <a href=#143 id=143 data-nosnippet>143</a>            <span class="macro">assert_eq!</span>(
 <a href=#144 id=144 data-nosnippet>144</a>                n,
 <a href=#145 id=145 data-nosnippet>145</a>                <span class="macro">format!</span>(
-<a href=#146 id=146 data-nosnippet>146</a>                    <span class="string">"node received: (ClusterId::&lt;()&gt;({}), (ClusterId::&lt;()&gt;({}), {}))"</span>,
+<a href=#146 id=146 data-nosnippet>146</a>                    <span class="string">"node received: (MemberId::&lt;()&gt;({}), (MemberId::&lt;()&gt;({}), {}))"</span>,
 <a href=#147 id=147 data-nosnippet>147</a>                    i / <span class="number">5</span>,
 <a href=#148 id=148 data-nosnippet>148</a>                    i / <span class="number">5</span>,
 <a href=#149 id=149 data-nosnippet>149</a>                    i % <span class="number">5
@@ -203,7 +203,7 @@
 <a href=#203 id=203 data-nosnippet>203</a>        <span class="kw">for </span>(i, <span class="kw-2">mut </span>stdout) <span class="kw">in </span>cluster2_stdouts.into_iter().enumerate() {
 <a href=#204 id=204 data-nosnippet>204</a>            <span class="kw">for </span>_j <span class="kw">in </span><span class="number">0</span>..<span class="number">1 </span>{
 <a href=#205 id=205 data-nosnippet>205</a>                <span class="kw">let </span>expected_message = <span class="macro">format!</span>(
-<a href=#206 id=206 data-nosnippet>206</a>                    <span class="string">"My self id is ClusterId::&lt;()&gt;({}), my message is ClusterId::&lt;()&gt;({})"</span>,
+<a href=#206 id=206 data-nosnippet>206</a>                    <span class="string">"My self id is MemberId::&lt;()&gt;({}), my message is MemberId::&lt;()&gt;({})"</span>,
 <a href=#207 id=207 data-nosnippet>207</a>                    i, i
 <a href=#208 id=208 data-nosnippet>208</a>                );
 <a href=#209 id=209 data-nosnippet>209</a>                <span class="macro">assert_eq!</span>(stdout.recv().<span class="kw">await</span>.unwrap(), expected_message);
@@ -222,7 +222,7 @@
 <a href=#222 id=222 data-nosnippet>222</a>            builder.cluster::&lt;()&gt;(),
 <a href=#223 id=223 data-nosnippet>223</a>            builder.cluster::&lt;()&gt;(),
 <a href=#224 id=224 data-nosnippet>224</a>            <span class="macro">q!</span>(<span class="kw">move </span>|(id, msg)| (
-<a href=#225 id=225 data-nosnippet>225</a>                ClusterId::&lt;()&gt;::from_raw(id.raw_id * num_partitions <span class="kw">as </span>u32),
+<a href=#225 id=225 data-nosnippet>225</a>                MemberId::&lt;()&gt;::from_raw(id.raw_id * num_partitions <span class="kw">as </span>u32),
 <a href=#226 id=226 data-nosnippet>226</a>                msg
 <a href=#227 id=227 data-nosnippet>227</a>            )),
 <a href=#228 id=228 data-nosnippet>228</a>        );
@@ -276,12 +276,14 @@
 <a href=#276 id=276 data-nosnippet>276</a>            .optimize_with(|leaves| partitioner::partition(leaves, <span class="kw-2">&amp;</span>partitioner))
 <a href=#277 id=277 data-nosnippet>277</a>            .into_deploy::&lt;HydroDeploy&gt;();
 <a href=#278 id=278 data-nosnippet>278</a>
-<a href=#279 id=279 data-nosnippet>279</a>        <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
+<a href=#279 id=279 data-nosnippet>279</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(built.ir());
 <a href=#280 id=280 data-nosnippet>280</a>
 <a href=#281 id=281 data-nosnippet>281</a>        <span class="kw">for </span>(id, ir) <span class="kw">in </span>built.preview_compile().all_dfir() {
-<a href=#282 id=282 data-nosnippet>282</a>            <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{id}"</span>)}, {
-<a href=#283 id=283 data-nosnippet>283</a>                <span class="macro">insta::assert_snapshot!</span>(ir.surface_syntax_string());
-<a href=#284 id=284 data-nosnippet>284</a>            });
-<a href=#285 id=285 data-nosnippet>285</a>        }
-<a href=#286 id=286 data-nosnippet>286</a>    }
-<a href=#287 id=287 data-nosnippet>287</a>}</code></pre></div></section></main></body></html>
+<a href=#282 id=282 data-nosnippet>282</a>            <span class="macro">hydro_build_utils::insta::with_settings!</span>({
+<a href=#283 id=283 data-nosnippet>283</a>                snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{id}"</span>)
+<a href=#284 id=284 data-nosnippet>284</a>            }, {
+<a href=#285 id=285 data-nosnippet>285</a>                <span class="macro">hydro_build_utils::assert_snapshot!</span>(ir.surface_syntax_string());
+<a href=#286 id=286 data-nosnippet>286</a>            });
+<a href=#287 id=287 data-nosnippet>287</a>        }
+<a href=#288 id=288 data-nosnippet>288</a>    }
+<a href=#289 id=289 data-nosnippet>289</a>}</code></pre></div></section></main></body></html>
