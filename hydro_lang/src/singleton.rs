@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
+use crate::boundedness::Boundedness;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{
     CycleCollection, CycleCollectionWithInitial, CycleComplete, DeferTick, ForwardRefMarker,
@@ -17,7 +18,7 @@ use crate::stream::{AtLeastOnce, ExactlyOnce};
 use crate::unsafety::NonDet;
 use crate::{Bounded, NoOrder, Optional, Stream, TotalOrder, Unbounded};
 
-pub struct Singleton<Type, Loc, Bound> {
+pub struct Singleton<Type, Loc, Bound: Boundedness> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
@@ -132,7 +133,7 @@ where
     }
 }
 
-impl<'a, T, L, B> CycleCollection<'a, ForwardRefMarker> for Singleton<T, L, B>
+impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRefMarker> for Singleton<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -152,7 +153,7 @@ where
     }
 }
 
-impl<'a, T, L, B> CycleComplete<'a, ForwardRefMarker> for Singleton<T, L, B>
+impl<'a, T, L, B: Boundedness> CycleComplete<'a, ForwardRefMarker> for Singleton<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -180,7 +181,7 @@ where
     }
 }
 
-impl<'a, T, L, B> Clone for Singleton<T, L, B>
+impl<'a, T, L, B: Boundedness> Clone for Singleton<T, L, B>
 where
     T: Clone,
     L: Location<'a>,
@@ -210,7 +211,7 @@ where
     }
 }
 
-impl<'a, T, L, B> Singleton<T, L, B>
+impl<'a, T, L, B: Boundedness> Singleton<T, L, B>
 where
     L: Location<'a>,
 {
@@ -402,7 +403,7 @@ where
     }
 }
 
-impl<'a, T, L, B> Singleton<T, Atomic<L>, B>
+impl<'a, T, L, B: Boundedness> Singleton<T, Atomic<L>, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -429,7 +430,7 @@ where
     }
 }
 
-impl<'a, T, L, B> Singleton<T, L, B>
+impl<'a, T, L, B: Boundedness> Singleton<T, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
@@ -582,7 +583,8 @@ pub trait ZipResult<'a, Other> {
     fn make(location: Self::Location, ir_node: HydroNode) -> Self::Out;
 }
 
-impl<'a, T, U, L, B> ZipResult<'a, Singleton<U, Tick<L>, B>> for Singleton<T, Tick<L>, B>
+impl<'a, T, U, L, B: Boundedness> ZipResult<'a, Singleton<U, Tick<L>, B>>
+    for Singleton<T, Tick<L>, B>
 where
     U: Clone,
     L: Location<'a>,
@@ -604,7 +606,8 @@ where
     }
 }
 
-impl<'a, T, U, L, B> ZipResult<'a, Optional<U, Tick<L>, B>> for Singleton<T, Tick<L>, B>
+impl<'a, T, U, L, B: Boundedness> ZipResult<'a, Optional<U, Tick<L>, B>>
+    for Singleton<T, Tick<L>, B>
 where
     U: Clone,
     L: Location<'a>,

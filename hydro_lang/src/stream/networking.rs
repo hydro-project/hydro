@@ -5,6 +5,7 @@ use serde::de::DeserializeOwned;
 use stageleft::{q, quote_type};
 use syn::parse_quote;
 
+use crate::boundedness::Boundedness;
 use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode};
 use crate::keyed_singleton::KeyedSingleton;
 use crate::keyed_stream::KeyedStream;
@@ -83,7 +84,7 @@ pub(crate) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type
     deserialize_bincode_with_type(tagged, &quote_type::<T>())
 }
 
-impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, B: Boundedness, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,
@@ -138,7 +139,7 @@ impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     }
 }
 
-impl<'a, T, L, L2, B, O, R> Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -150,7 +151,7 @@ impl<'a, T, L, L2, B, O, R> Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R> {
     }
 }
 
-impl<'a, T, L, L2, B, O, R> KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B: Boundedness, O, R> KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -175,7 +176,7 @@ impl<'a, T, L, L2, B, O, R> KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R
     }
 }
 
-impl<'a, T, L, B> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
+impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
     pub fn round_robin_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
@@ -206,7 +207,7 @@ impl<'a, T, L, B> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
     }
 }
 
-impl<'a, T, L, L2, B, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -218,7 +219,7 @@ impl<'a, T, L, L2, B, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R> {
     }
 }
 
-impl<'a, T, L, L2, B, O, R> KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B: Boundedness, O, R> KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -245,7 +246,7 @@ impl<'a, T, L, L2, B, O, R> KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, Process<'a, L>, B, O, R> {
+impl<'a, T, L, B: Boundedness, O, R> Stream<T, Process<'a, L>, B, O, R> {
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,
