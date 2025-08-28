@@ -1344,6 +1344,15 @@ where
         Singleton::new(self.location, core)
     }
 
+    pub fn collect_vec(self) -> Singleton<Vec<T>, L, B> {
+        self.fold(
+            q!(|| vec![]),
+            q!(|acc, v| {
+                acc.push(v);
+            }),
+        )
+    }
+
     /// Applies a function to each element of the stream, maintaining an internal state (accumulator)
     /// and emitting each intermediate result.
     ///
@@ -1612,6 +1621,30 @@ where
                     Some(StreamKind::Stream),
                     true, // Chain preserves boundedness
                 ),
+            },
+        )
+    }
+
+    /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams.
+    /// Unlike [`Stream::cross_product`], the output order is totally ordered when the inputs are
+    /// because this is compiled into a nested loop.
+    pub fn cross_product_nested_loop<T2, O2>(
+        self,
+        other: Stream<T2, L, Bounded, O2, R>,
+    ) -> Stream<(T, T2), L, Bounded, O::Min, R>
+    where
+        T: Clone,
+        T2: Clone,
+        O: MinOrder<O2>,
+    {
+        check_matching_location(&self.location, &other.location);
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::CrossProduct {
+                left: Box::new(self.ir_node.into_inner()),
+                right: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(T, T2)>(),
             },
         )
     }

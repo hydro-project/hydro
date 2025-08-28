@@ -1,0 +1,24 @@
+---
+source: dfir_rs/tests/surface_singleton.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_iter(15..=25)</code>"/]:::pullClass
+2v1[\"(2v1) <code>map(Max::new)</code>"/]:::pullClass
+3v1[/"(3v1) <code>state::&lt;'static, Max&lt;_&gt;&gt;()</code>"\]:::pushClass
+1v1-->2v1
+2v1-->3v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    subgraph sg_1v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]
+        3v1
+    end
+    subgraph sg_1v1_var_stream2 ["var <tt>stream2</tt>"]
+        1v1
+        2v1
+    end
+end

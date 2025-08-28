@@ -42,7 +42,9 @@ pub fn paxos_bench<'a>(
             ),
         );
 
-        let sequenced_to_replicas = sequenced_payloads.broadcast_bincode(replicas).values();
+        let sequenced_to_replicas = sequenced_payloads
+            .broadcast_bincode(replicas, nondet!(/** TODO */))
+            .values();
 
         // Replicas
         let (replica_checkpoint, processed_payloads) =
@@ -53,7 +55,7 @@ pub fn paxos_bench<'a>(
         let a_checkpoint = {
             // TODO(shadaj): once we can reduce keyed over unbounded streams, this should be safe
             let a_checkpoint_largest_seqs = replica_checkpoint
-                .broadcast_bincode(&acceptors)
+                .broadcast_bincode(&acceptors, nondet!(/** TODO */))
                 .entries()
                 .into_keyed()
                 .reduce_commutative(q!(|curr_seq, seq| {
@@ -191,12 +193,14 @@ mod tests {
         let built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(built.ir());
+            hydro_build_utils::assert_debug_snapshot!(built.ir());
         });
 
         let preview = built.preview_compile();
-        insta::with_settings!({snapshot_suffix => "proposer_mermaid"}, {
-            insta::assert_snapshot!(
+        hydro_build_utils::insta::with_settings!({
+            snapshot_suffix => "proposer_mermaid"
+        }, {
+            hydro_build_utils::assert_snapshot!(
                 preview.dfir_for(&proposers).to_mermaid(&WriteConfig {
                     no_subgraphs: true,
                     no_pull_push: true,
@@ -206,8 +210,10 @@ mod tests {
                 })
             );
         });
-        insta::with_settings!({snapshot_suffix => "acceptor_mermaid"}, {
-            insta::assert_snapshot!(
+        hydro_build_utils::insta::with_settings!({
+            snapshot_suffix => "acceptor_mermaid"
+        }, {
+            hydro_build_utils::assert_snapshot!(
                 preview.dfir_for(&acceptors).to_mermaid(&WriteConfig {
                     no_subgraphs: true,
                     no_pull_push: true,

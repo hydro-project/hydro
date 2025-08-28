@@ -1270,11 +1270,11 @@ dependencies = [
  "clap",
  "data-encoding",
  "documented",
+ "hydro_build_utils",
  "itertools 0.13.0",
  "prettyplease",
  "proc-macro2",
  "quote",
- "rustc_version 0.4.1",
  "serde",
  "serde_json",
  "slotmap",
@@ -1287,11 +1287,11 @@ name = "dfir_macro"
 version = "0.14.0"
 dependencies = [
  "dfir_lang",
+ "hydro_build_utils",
  "itertools 0.13.0",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
- "rustc_version 0.4.1",
  "syn 2.0.101",
 ]
 
@@ -1311,9 +1311,9 @@ dependencies = [
  "example_test",
  "futures",
  "getrandom 0.2.16",
+ "hydro_build_utils",
  "hydro_deploy_integration",
  "include_mdtests",
- "insta",
  "itertools 0.13.0",
  "lattices",
  "multiplatform_test",
@@ -1324,7 +1324,6 @@ dependencies = [
  "ref-cast",
  "regex",
  "rustc-hash 1.1.0",
- "rustc_version 0.4.1",
  "sealed 0.5.0",
  "serde",
  "serde_json",
@@ -2217,6 +2216,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
+name = "hydro_build_utils"
+version = "0.0.1"
+dependencies = [
+ "insta",
+ "rustc_version 0.4.1",
+]
+
+[[package]]
 name = "hydro_cli_examples"
 version = "0.0.0"
 dependencies = [
@@ -2295,9 +2302,9 @@ dependencies = [
  "dfir_lang",
  "dfir_rs",
  "futures",
+ "hydro_build_utils",
  "hydro_deploy",
  "hydro_deploy_integration",
- "insta",
  "itertools 0.13.0",
  "match_box",
  "nameof",
@@ -2306,7 +2313,6 @@ dependencies = [
  "proc-macro2",
  "procfs",
  "quote",
- "rustc_version 0.4.1",
  "sealed 0.6.0",
  "serde",
  "serde_json",
@@ -2330,9 +2336,9 @@ version = "0.13.0"
 dependencies = [
  "ctor 0.2.9",
  "good_lp",
+ "hydro_build_utils",
  "hydro_deploy",
  "hydro_lang",
- "insta",
  "proc-macro2",
  "regex",
  "serde",
@@ -2349,7 +2355,6 @@ dependencies = [
  "hdrhistogram",
  "hydro_deploy",
  "hydro_lang",
- "insta",
  "serde",
  "stageleft",
  "stageleft_tool",
@@ -2367,12 +2372,12 @@ dependencies = [
  "dfir_rs",
  "example_test",
  "futures",
+ "hydro_build_utils",
  "hydro_deploy",
  "hydro_lang",
  "hydro_optimize",
  "hydro_std",
  "include_mdtests",
- "insta",
  "palette",
  "rand 0.8.5",
  "regex",
@@ -2896,6 +2901,7 @@ name = "lattices"
 version = "0.6.1"
 dependencies = [
  "cc-traits",
+ "hydro_build_utils",
  "lattices_macro",
  "ref-cast",
  "sealed 0.5.0",
@@ -2909,7 +2915,7 @@ dependencies = [
 name = "lattices_macro"
 version = "0.5.10"
 dependencies = [
- "insta",
+ "hydro_build_utils",
  "prettyplease",
  "proc-macro-crate",
  "proc-macro2",
@@ -6129,6 +6135,7 @@ name = "variadics"
 version = "0.0.9"
 dependencies = [
  "hashbrown 0.14.5",
+ "hydro_build_utils",
  "sealed 0.5.0",
  "trybuild",
 ]
@@ -6137,7 +6144,6 @@ dependencies = [
 name = "variadics_macro"
 version = "0.6.1"
 dependencies = [
- "insta",
  "prettyplease",
  "proc-macro-crate",
  "proc-macro2",

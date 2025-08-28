@@ -1,0 +1,1 @@
+../compile-fail/var_type_spread_badtype.rs

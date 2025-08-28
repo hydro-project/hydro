@@ -4,50 +4,63 @@ expression: built.ir()
 ---
 [
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , d) | println ! ("node received: ({}, {:?})" , id , d) }),
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32)) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , d) | println ! ("node received: ({}, {:?})" , id , d) }),
         input: Map {
-            f: | (sender_id , b) | (:: hydro_lang :: ClusterId :: < _ > :: from_raw (sender_id . raw_id / 3usize as u32) , b),
+            f: | (sender_id , b) | (:: hydro_lang :: MemberId :: < _ > :: from_raw (sender_id . raw_id / 3usize as u32) , b),
             input: Network {
                 serialize_fn: Some(
-                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                 ),
                 instantiate_fn: <network instantiate>,
                 deserialize_fn: Some(
-                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) > (& b) . unwrap ()) },
+                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: MemberId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) > (& b) . unwrap ()) },
                 ),
                 input: Inspect {
-                    f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < () > :: from_raw ({ __hydro_lang_cluster_self_id_1 / 3usize as u32 }) ; move | n | println ! ("cluster received: {:?} (self cluster id: {})" , n , CLUSTER_SELF_ID__free) }),
+                    f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: MemberId :: < () > :: from_raw ({ __hydro_lang_cluster_self_id_1 / 3usize as u32 }) ; move | n | println ! ("cluster received: {:?} (self cluster id: {})" , n , CLUSTER_SELF_ID__free) }),
                     input: Network {
                         serialize_fn: Some(
-                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: MemberId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                         ),
                         instantiate_fn: <network instantiate>,
                         deserialize_fn: Some(
-                            | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) > (& res . unwrap ()) . unwrap () },
+                            | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) > (& res . unwrap ()) . unwrap () },
                         ),
                         input: Map {
-                            f: | (orig_dest , struct_or_tuple) : (:: hydro_lang :: ClusterId < _ > , _) | { let mut s = :: std :: hash :: DefaultHasher :: new () ; :: std :: hash :: Hash :: hash (& struct_or_tuple . 1 , & mut s) ; let partition_val = :: std :: hash :: Hasher :: finish (& s) as u32 ; (:: hydro_lang :: ClusterId :: < () > :: from_raw ((orig_dest . raw_id * 3usize as u32) + (partition_val % 3usize as u32) as u32) , struct_or_tuple) },
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32)) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , n) | (id , (id , n)) }),
                             input: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , n) | (id , (id , n)) }),
+                                f: | (orig_dest , struct_or_tuple) : (:: hydro_lang :: MemberId < _ > , _) | { let mut s = :: std :: hash :: DefaultHasher :: new () ; :: std :: hash :: Hash :: hash (& struct_or_tuple . 1 , & mut s) ; let partition_val = :: std :: hash :: Hasher :: finish (& s) as u32 ; (:: hydro_lang :: MemberId :: < () > :: from_raw ((orig_dest . raw_id * 3usize as u32) + (partition_val % 3usize as u32) as u32) , struct_or_tuple) },
                                 input: Delta {
                                     inner: CrossProduct {
                                         left: Persist {
-                                            inner: Map {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | & id | id }),
-                                                input: Source {
-                                                    source: Iter(
-                                                        { let all_ids = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_1) } ; & all_ids [0 .. all_ids . len () / 3usize] },
-                                                    ),
+                                            inner: FilterMap {
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , core :: option :: Option < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (i , e) | match e { MembershipEvent :: Joined => Some (i) , MembershipEvent :: Left => None , } }),
+                                                input: Map {
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
+                                                    input: Source {
+                                                        source: Iter(
+                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_memberids__free = { let all_ids = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: MemberId < () >] > (__hydro_lang_cluster_ids_1) } ; & all_ids [0 .. all_ids . len () / 3usize] } ; underlying_memberids__free },
+                                                        ),
+                                                        metadata: HydroIrMetadata {
+                                                            location_kind: Process(
+                                                                0,
+                                                            ),
+                                                            output_type: Some(
+                                                                & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
+                                                            ),
+                                                            stream_kind: Some(
+                                                                Stream,
+                                                            ),
+                                                            is_bounded: false,
+                                                        },
+                                                    },
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Process(
                                                             0,
                                                         ),
                                                         output_type: Some(
-                                                            & hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
+                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
                                                         ),
-                                                        stream_kind: Some(
-                                                            Stream,
-                                                        ),
+                                                        stream_kind: None,
                                                         is_bounded: false,
                                                     },
                                                 },
@@ -56,7 +69,7 @@ expression: built.ir()
                                                         0,
                                                     ),
                                                     output_type: Some(
-                                                        hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
+                                                        hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
                                                     ),
                                                     stream_kind: None,
                                                     is_bounded: false,
@@ -67,7 +80,7 @@ expression: built.ir()
                                                     0,
                                                 ),
                                                 output_type: Some(
-                                                    hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
+                                                    hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
                                                 ),
                                                 stream_kind: None,
                                                 is_bounded: false,
@@ -109,7 +122,7 @@ expression: built.ir()
                                                 0,
                                             ),
                                             output_type: Some(
-                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
                                             ),
                                             stream_kind: Some(
                                                 Stream,
@@ -122,7 +135,7 @@ expression: built.ir()
                                             0,
                                         ),
                                         output_type: Some(
-                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
                                         ),
                                         stream_kind: Some(
                                             Stream,
@@ -135,9 +148,11 @@ expression: built.ir()
                                         0,
                                     ),
                                     output_type: Some(
-                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
+                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
                                     ),
-                                    stream_kind: None,
+                                    stream_kind: Some(
+                                        Stream,
+                                    ),
                                     is_bounded: false,
                                 },
                             },
@@ -146,7 +161,7 @@ expression: built.ir()
                                     0,
                                 ),
                                 output_type: Some(
-                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
+                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32)),
                                 ),
                                 stream_kind: None,
                                 is_bounded: false,
@@ -157,7 +172,7 @@ expression: built.ir()
                                 1,
                             ),
                             output_type: Some(
-                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
                             ),
                             stream_kind: None,
                             is_bounded: false,
@@ -168,7 +183,7 @@ expression: built.ir()
                             1,
                         ),
                         output_type: Some(
-                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
                         ),
                         stream_kind: None,
                         is_bounded: false,
@@ -179,7 +194,7 @@ expression: built.ir()
                         0,
                     ),
                     output_type: Some(
-                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
+                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32)),
                     ),
                     stream_kind: None,
                     is_bounded: false,
@@ -190,7 +205,7 @@ expression: built.ir()
                     0,
                 ),
                 output_type: Some(
-                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
+                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32)),
                 ),
                 stream_kind: None,
                 is_bounded: false,
@@ -201,7 +216,7 @@ expression: built.ir()
                 0,
             ),
             output_type: Some(
-                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
+                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32)),
             ),
             stream_kind: None,
             is_bounded: false,

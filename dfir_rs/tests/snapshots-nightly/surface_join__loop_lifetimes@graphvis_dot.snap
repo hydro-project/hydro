@@ -1,0 +1,152 @@
+---
+source: dfir_rs/tests/surface_join.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) source_stream(iter_batches_stream([(7, 1), (7, 2), (7, 3), (8, 4)], 2))", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) tee()", shape=house, fillcolor="#ffff88"]
+    n3v1 [label="(n3v1) source_stream(iter_batches_stream([(7, 5), (8, 6), (7, 7), (8, 8)], 2))", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) tee()", shape=house, fillcolor="#ffff88"]
+    n5v1 [label="(n5v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n7v1 [label="(n7v1) join::<'loop, 'loop>()", shape=invhouse, fillcolor="#88aaff"]
+    n8v1 [label="(n8v1) for_each(|x| result1_send.send((context.loop_iter_count(), x)).unwrap())", shape=house, fillcolor="#ffff88"]
+    n9v1 [label="(n9v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n10v1 [label="(n10v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n11v1 [label="(n11v1) join::<'loop, 'none>()", shape=invhouse, fillcolor="#88aaff"]
+    n12v1 [label="(n12v1) for_each(|x| result2_send.send((context.loop_iter_count(), x)).unwrap())", shape=house, fillcolor="#ffff88"]
+    n13v1 [label="(n13v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n14v1 [label="(n14v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n15v1 [label="(n15v1) join::<'none, 'loop>()", shape=invhouse, fillcolor="#88aaff"]
+    n16v1 [label="(n16v1) for_each(|x| result3_send.send((context.loop_iter_count(), x)).unwrap())", shape=house, fillcolor="#ffff88"]
+    n17v1 [label="(n17v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n18v1 [label="(n18v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n19v1 [label="(n19v1) join::<'none, 'none>()", shape=invhouse, fillcolor="#88aaff"]
+    n20v1 [label="(n20v1) for_each(|x| result4_send.send((context.loop_iter_count(), x)).unwrap())", shape=house, fillcolor="#ffff88"]
+    n21v1 [label="(n21v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n22v1 [label="(n22v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n23v1 [label="(n23v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n24v1 [label="(n24v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n25v1 [label="(n25v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n26v1 [label="(n26v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n27v1 [label="(n27v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n28v1 [label="(n28v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n1v1 -> n2v1
+    n3v1 -> n4v1
+    n5v1 -> n7v1 [label="0"]
+    n2v1 -> n21v1
+    n6v1 -> n7v1 [label="1"]
+    n4v1 -> n22v1
+    n7v1 -> n8v1
+    n9v1 -> n11v1 [label="0"]
+    n2v1 -> n23v1
+    n10v1 -> n11v1 [label="1"]
+    n4v1 -> n24v1
+    n11v1 -> n12v1
+    n13v1 -> n15v1 [label="0"]
+    n2v1 -> n25v1
+    n14v1 -> n15v1 [label="1"]
+    n4v1 -> n26v1
+    n15v1 -> n16v1
+    n17v1 -> n19v1 [label="0"]
+    n2v1 -> n27v1
+    n18v1 -> n19v1 [label="1"]
+    n4v1 -> n28v1
+    n19v1 -> n20v1
+    n21v1 -> n5v1
+    n22v1 -> n6v1
+    n23v1 -> n9v1
+    n24v1 -> n10v1
+    n25v1 -> n13v1
+    n26v1 -> n14v1
+    n27v1 -> n17v1
+    n28v1 -> n18v1
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_lb {
+            cluster=true
+            label="var lb"
+            n1v1
+            n2v1
+        }
+    }
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 0"
+        subgraph sg_2v1_var_rb {
+            cluster=true
+            label="var rb"
+            n3v1
+            n4v1
+        }
+    }
+    subgraph loop_1v1 {
+        cluster=true
+        fillcolor="#ee88ee"
+        style=filled
+        label = loop_1v1
+        subgraph sg_3v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_3v1\nstratum 1"
+            n5v1
+            n6v1
+            subgraph sg_3v1_var_join1 {
+                cluster=true
+                label="var join1"
+                n7v1
+                n8v1
+            }
+        }
+        subgraph sg_4v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_4v1\nstratum 1"
+            n9v1
+            n10v1
+            subgraph sg_4v1_var_join2 {
+                cluster=true
+                label="var join2"
+                n11v1
+                n12v1
+            }
+        }
+        subgraph sg_5v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_5v1\nstratum 1"
+            n13v1
+            n14v1
+            subgraph sg_5v1_var_join3 {
+                cluster=true
+                label="var join3"
+                n15v1
+                n16v1
+            }
+        }
+        subgraph sg_6v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_6v1\nstratum 1"
+            n17v1
+            n18v1
+            subgraph sg_6v1_var_join4 {
+                cluster=true
+                label="var join4"
+                n19v1
+                n20v1
+            }
+        }
+    }
+}

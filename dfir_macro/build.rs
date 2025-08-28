@@ -9,7 +9,6 @@ use dfir_lang::graph::PortIndexValue;
 use dfir_lang::graph::ops::{OPERATORS, PortListSpec};
 use itertools::Itertools;
 use quote::ToTokens;
-use rustc_version::{Channel, version_meta};
 
 const FILENAME: &str = "surface_ops_gen.md";
 
@@ -201,15 +200,8 @@ fn update_book() -> Result<()> {
 fn main() {
     const DFIR_GENERATE_DOCS: &str = "DFIR_GENERATE_DOCS";
 
-    println!("cargo:rerun-if-changed=build.rs");
     println!("cargo::rerun-if-env-changed={}", DFIR_GENERATE_DOCS);
-    println!("cargo::rustc-check-cfg=cfg(nightly)");
-    if matches!(
-        version_meta().map(|meta| meta.channel),
-        Ok(Channel::Nightly)
-    ) {
-        println!("cargo:rustc-cfg=nightly");
-    }
+    hydro_build_utils::emit_nightly_configuration!();
 
     if std::env::var_os(DFIR_GENERATE_DOCS).is_some()
         && let Err(err) = update_book()

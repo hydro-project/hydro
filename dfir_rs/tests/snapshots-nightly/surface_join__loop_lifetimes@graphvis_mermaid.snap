@@ -1,0 +1,114 @@
+---
+source: dfir_rs/tests/surface_join.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_stream(iter_batches_stream([(7, 1), (7, 2), (7, 3), (8, 4)], 2))</code>"/]:::pullClass
+2v1[/"(2v1) <code>tee()</code>"\]:::pushClass
+3v1[\"(3v1) <code>source_stream(iter_batches_stream([(7, 5), (8, 6), (7, 7), (8, 8)], 2))</code>"/]:::pullClass
+4v1[/"(4v1) <code>tee()</code>"\]:::pushClass
+5v1[\"(5v1) <code>batch()</code>"/]:::pullClass
+6v1[\"(6v1) <code>batch()</code>"/]:::pullClass
+7v1[\"(7v1) <code>join::&lt;'loop, 'loop&gt;()</code>"/]:::pullClass
+8v1[/"(8v1) <code>for_each(|x| result1_send.send((context.loop_iter_count(), x)).unwrap())</code>"\]:::pushClass
+9v1[\"(9v1) <code>batch()</code>"/]:::pullClass
+10v1[\"(10v1) <code>batch()</code>"/]:::pullClass
+11v1[\"(11v1) <code>join::&lt;'loop, 'none&gt;()</code>"/]:::pullClass
+12v1[/"(12v1) <code>for_each(|x| result2_send.send((context.loop_iter_count(), x)).unwrap())</code>"\]:::pushClass
+13v1[\"(13v1) <code>batch()</code>"/]:::pullClass
+14v1[\"(14v1) <code>batch()</code>"/]:::pullClass
+15v1[\"(15v1) <code>join::&lt;'none, 'loop&gt;()</code>"/]:::pullClass
+16v1[/"(16v1) <code>for_each(|x| result3_send.send((context.loop_iter_count(), x)).unwrap())</code>"\]:::pushClass
+17v1[\"(17v1) <code>batch()</code>"/]:::pullClass
+18v1[\"(18v1) <code>batch()</code>"/]:::pullClass
+19v1[\"(19v1) <code>join::&lt;'none, 'none&gt;()</code>"/]:::pullClass
+20v1[/"(20v1) <code>for_each(|x| result4_send.send((context.loop_iter_count(), x)).unwrap())</code>"\]:::pushClass
+21v1["(21v1) <code>handoff</code>"]:::otherClass
+22v1["(22v1) <code>handoff</code>"]:::otherClass
+23v1["(23v1) <code>handoff</code>"]:::otherClass
+24v1["(24v1) <code>handoff</code>"]:::otherClass
+25v1["(25v1) <code>handoff</code>"]:::otherClass
+26v1["(26v1) <code>handoff</code>"]:::otherClass
+27v1["(27v1) <code>handoff</code>"]:::otherClass
+28v1["(28v1) <code>handoff</code>"]:::otherClass
+1v1-->2v1
+3v1-->4v1
+5v1-->|0|7v1
+2v1-->21v1
+6v1-->|1|7v1
+4v1-->22v1
+7v1-->8v1
+9v1-->|0|11v1
+2v1-->23v1
+10v1-->|1|11v1
+4v1-->24v1
+11v1-->12v1
+13v1-->|0|15v1
+2v1-->25v1
+14v1-->|1|15v1
+4v1-->26v1
+15v1-->16v1
+17v1-->|0|19v1
+2v1-->27v1
+18v1-->|1|19v1
+4v1-->28v1
+19v1-->20v1
+21v1-->5v1
+22v1-->6v1
+23v1-->9v1
+24v1-->10v1
+25v1-->13v1
+26v1-->14v1
+27v1-->17v1
+28v1-->18v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    subgraph sg_1v1_var_lb ["var <tt>lb</tt>"]
+        1v1
+        2v1
+    end
+end
+subgraph sg_2v1 ["sg_2v1 stratum 0"]
+    subgraph sg_2v1_var_rb ["var <tt>rb</tt>"]
+        3v1
+        4v1
+    end
+end
+subgraph loop_1v1 ["loop_1v1"]
+    subgraph sg_3v1 ["sg_3v1 stratum 1"]
+        5v1
+        6v1
+        subgraph sg_3v1_var_join1 ["var <tt>join1</tt>"]
+            7v1
+            8v1
+        end
+    end
+    subgraph sg_4v1 ["sg_4v1 stratum 1"]
+        9v1
+        10v1
+        subgraph sg_4v1_var_join2 ["var <tt>join2</tt>"]
+            11v1
+            12v1
+        end
+    end
+    subgraph sg_5v1 ["sg_5v1 stratum 1"]
+        13v1
+        14v1
+        subgraph sg_5v1_var_join3 ["var <tt>join3</tt>"]
+            15v1
+            16v1
+        end
+    end
+    subgraph sg_6v1 ["sg_6v1 stratum 1"]
+        17v1
+        18v1
+        subgraph sg_6v1_var_join4 ["var <tt>join4</tt>"]
+            19v1
+            20v1
+        end
+    end
+end

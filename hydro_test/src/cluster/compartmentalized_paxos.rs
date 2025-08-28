@@ -50,7 +50,7 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
 
     fn get_recipient_from_ballot<L: Location<'a>>(
         ballot: Optional<Self::Ballot, L, Unbounded>,
-    ) -> Optional<ClusterId<Self::PaxosIn>, L, Unbounded> {
+    ) -> Optional<MemberId<Self::PaxosIn>, L, Unbounded> {
         ballot.map(q!(|ballot| ballot.proposer_id))
     }
 
@@ -268,11 +268,11 @@ fn sequence_payload<'a, P: PaxosPayload>(
     let p_to_proxy_leaders_p2a = p_indexed_payloads
         .cross_singleton(p_ballot.clone())
         .map(q!(move |((slot, payload), ballot)| (
-            ClusterId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
+            MemberId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
             ((slot, ballot), Some(payload))
         )))
         .chain(p_log_to_recommit.map(q!(move |((slot, ballot), payload)| (
-            ClusterId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
+            MemberId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
             ((slot, ballot), payload)
         ))))
         .all_ticks()
@@ -289,9 +289,9 @@ fn sequence_payload<'a, P: PaxosPayload>(
             let mut p2as = Vec::new();
             for i in 0..num_acceptor_cols {
                 p2as.push((
-                    ClusterId::<Acceptor>::from_raw((row * num_acceptor_cols + i) as u32),
+                    MemberId::<Acceptor>::from_raw((row * num_acceptor_cols + i) as u32),
                     P2a {
-                        sender: ClusterId::<ProxyLeader>::from_raw(
+                        sender: MemberId::<ProxyLeader>::from_raw(
                             (slot % num_proxy_leaders) as u32,
                         ),
                         slot,

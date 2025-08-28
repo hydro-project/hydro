@@ -100,6 +100,7 @@ mod tests {
     fn test_backtrace() {
         let backtrace = get_backtrace(0);
         let elements = backtrace.elements();
-        insta::assert_debug_snapshot!(elements);
+
+        hydro_build_utils::assert_debug_snapshot!(elements);
     }
 }

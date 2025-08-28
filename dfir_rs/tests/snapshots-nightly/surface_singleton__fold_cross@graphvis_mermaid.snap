@@ -1,0 +1,63 @@
+---
+source: dfir_rs/tests/surface_singleton.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_iter(1..=10)</code>"/]:::pullClass
+2v1[\"(2v1) <code>source_iter(3..=5)</code>"/]:::pullClass
+3v1[\"(3v1) <code>map(Max::new)</code>"/]:::pullClass
+4v1[\"(4v1) <code>lattice_reduce()</code>"/]:::pullClass
+5v1[/"(5v1) <code>tee()</code>"\]:::pushClass
+6v1[\"(6v1) <code>identity::&lt;Max&lt;_&gt;&gt;()</code>"/]:::pullClass
+7v1[\"(7v1) <code>cross_join()</code>"/]:::pullClass
+8v1[\"(8v1) <code>filter(|(value, max_of_stream2)| { value &lt;= max_of_stream2.as_reveal_ref() })</code>"/]:::pullClass
+9v1[\"(9v1) <code>map(|(x, _max)| (context.current_tick(), x))</code>"/]:::pullClass
+10v1[/"(10v1) <code>for_each(|x| filter_send.send(x).unwrap())</code>"\]:::pushClass
+11v1[/"(11v1) <code>map(|x: Max&lt;_&gt;| (context.current_tick(), x.into_reveal()))</code>"\]:::pushClass
+12v1[/"(12v1) <code>for_each(|x| max_send.send(x).unwrap())</code>"\]:::pushClass
+13v1["(13v1) <code>handoff</code>"]:::otherClass
+14v1["(14v1) <code>handoff</code>"]:::otherClass
+2v1-->3v1
+4v1-->5v1
+3v1-->13v1
+1v1-->|0|7v1
+6v1-->|1|7v1
+5v1-->14v1
+9v1-->10v1
+8v1-->9v1
+7v1-->8v1
+11v1-->12v1
+5v1-->11v1
+13v1-->4v1; linkStyle 11 stroke:#060
+14v1-->6v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    subgraph sg_1v1_var_stream2 ["var <tt>stream2</tt>"]
+        2v1
+        3v1
+    end
+end
+subgraph sg_2v1 ["sg_2v1 stratum 0"]
+    6v1
+    subgraph sg_2v1_var_filtered_stream2 ["var <tt>filtered_stream2</tt>"]
+        7v1
+        8v1
+        9v1
+        10v1
+    end
+    subgraph sg_2v1_var_stream1 ["var <tt>stream1</tt>"]
+        1v1
+    end
+end
+subgraph sg_3v1 ["sg_3v1 stratum 0"]
+    11v1
+    12v1
+    subgraph sg_3v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]
+        4v1
+        5v1
+    end
+end

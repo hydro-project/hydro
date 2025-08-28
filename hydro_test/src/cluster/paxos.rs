@@ -34,7 +34,7 @@ impl<T: Serialize + DeserializeOwned + PartialEq + Eq + Clone + Debug> PaxosPayl
 #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Hash)]
 pub struct Ballot {
     pub num: u32,
-    pub proposer_id: ClusterId<Proposer>,
+    pub proposer_id: MemberId<Proposer>,
 }
 
 impl Ord for Ballot {
@@ -59,7 +59,7 @@ pub struct LogValue<P> {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct P2a<P, S> {
-    pub sender: ClusterId<S>,
+    pub sender: MemberId<S>,
     pub ballot: Ballot,
     pub slot: usize,
     pub value: Option<P>, // might be a re-committed hole
@@ -87,7 +87,7 @@ impl<'a> PaxosLike<'a> for CorePaxos<'a> {
 
     fn get_recipient_from_ballot<L: Location<'a>>(
         ballot: Optional<Self::Ballot, L, Unbounded>,
-    ) -> Optional<ClusterId<Self::PaxosIn>, L, Unbounded> {
+    ) -> Optional<MemberId<Self::PaxosIn>, L, Unbounded> {
         ballot.map(q!(|ballot| ballot.proposer_id))
     }
 
@@ -270,7 +270,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
         .max()
         .unwrap_or(proposers.singleton(q!(Ballot {
             num: 0,
-            proposer_id: ClusterId::from_raw(0)
+            proposer_id: MemberId::from_raw(0)
         })));
 
     let (p_ballot, p_has_largest_ballot) = p_ballot_calc(
@@ -304,7 +304,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
         .then(p_ballot.clone())
         .all_ticks()
         .inspect(q!(|_| println!("Proposer leader expired, sending P1a")))
-        .broadcast_bincode(acceptors)
+        .broadcast_bincode(acceptors, nondet!(/** TODO */))
         .values();
 
     let (a_max_ballot, a_to_proposers_p1b) = acceptor_p1(
@@ -412,7 +412,7 @@ fn p_leader_heartbeat<'a>(
                 nondet_reelection
             ),
         )
-        .broadcast_bincode(proposers)
+        .broadcast_bincode(proposers, nondet!(/** TODO */))
         .values();
 
     let p_leader_expired = p_to_proposers_i_am_leader
@@ -468,7 +468,7 @@ fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
         .max()
         .unwrap_or(acceptor_tick.singleton(q!(Ballot {
             num: 0,
-            proposer_id: ClusterId::from_raw(0)
+            proposer_id: MemberId::from_raw(0)
         })));
 
     (
@@ -712,7 +712,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
                 slot,
                 value
             }))
-            .broadcast_bincode(acceptors)
+            .broadcast_bincode(acceptors, nondet!(/** TODO */))
             .values(),
         a_checkpoint,
         proposers,

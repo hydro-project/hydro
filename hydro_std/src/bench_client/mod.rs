@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 pub mod rolling_average;
 use rolling_average::RollingAverage;
 
+use crate::membership::track_membership;
+
 pub struct SerializableHistogramWrapper {
     pub histogram: Rc<RefCell<Histogram<u64>>>,
 }
@@ -237,12 +239,19 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
         }))
         .latest();
 
-    let client_members = clients.members();
+    let client_members = aggregator.source_cluster_members(clients);
+    let client_count = track_membership(client_members).key_count();
+    let print_tick = aggregator.tick();
+
     combined_throughputs
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
-        .for_each(q!(move |throughputs| {
+        .batch(&print_tick, nondet!(/** client count is stable in bench */))
+        .cross_singleton(
+            client_count.snapshot(&print_tick, nondet!(/** client count is stable in bench */)),
+        )
+        .all_ticks()
+        .for_each(q!(move |(throughputs, num_client_machines)| {
             if throughputs.sample_count() >= 2 {
-                let num_client_machines = client_members.len();
                 let mean = throughputs.sample_mean() * num_client_machines as f64;
 
                 if let Some((lower, upper)) = throughputs.confidence_interval_99() {

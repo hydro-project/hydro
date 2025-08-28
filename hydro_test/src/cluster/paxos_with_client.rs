@@ -22,7 +22,7 @@ pub trait PaxosLike<'a>: Sized {
 
     fn get_recipient_from_ballot<L: Location<'a>>(
         ballot: Optional<Self::Ballot, L, Unbounded>,
-    ) -> Optional<ClusterId<Self::PaxosIn>, L, Unbounded>;
+    ) -> Optional<MemberId<Self::PaxosIn>, L, Unbounded>;
 
     /// # Non-Determinism
     /// During leader-reelection, the latest known leader may be stale, which may
@@ -57,7 +57,7 @@ pub trait PaxosLike<'a>: Sized {
             move |new_leader_elected| {
                 let cur_leader_id = Self::get_recipient_from_ballot(
                     new_leader_elected
-                        .broadcast_bincode(clients)
+                        .broadcast_bincode(clients, nondet!(/** TODO */))
                         .values()
                         .inspect(q!(|ballot| println!(
                             "Client notified that leader was elected: {:?}",

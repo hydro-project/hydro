@@ -1,0 +1,153 @@
+---
+source: lattices_macro/src/lib.rs
+expression: "prettyplease :: unparse(& parse_quote! { # derive_lattice })"
+---
+impl lattices::Merge<SimilarFields> for SimilarFields
+where
+    Max<usize>: lattices::Merge<Max<usize>>,
+    Max<usize>: lattices::Merge<Max<usize>>,
+    Max<usize>: lattices::Merge<Max<usize>>,
+{
+    fn merge(&mut self, other: SimilarFields) -> bool {
+        let mut changed = false;
+        changed |= lattices::Merge::merge(&mut self.a, other.a);
+        changed |= lattices::Merge::merge(&mut self.b, other.b);
+        changed |= lattices::Merge::merge(&mut self.c, other.c);
+        changed
+    }
+}
+impl ::core::cmp::PartialEq<SimilarFields> for SimilarFields
+where
+    Max<usize>: ::core::cmp::PartialEq<Max<usize>>,
+    Max<usize>: ::core::cmp::PartialEq<Max<usize>>,
+    Max<usize>: ::core::cmp::PartialEq<Max<usize>>,
+{
+    fn eq(&self, other: &SimilarFields) -> bool {
+        if !::core::cmp::PartialEq::eq(&self.a, &other.a) {
+            return false;
+        }
+        if !::core::cmp::PartialEq::eq(&self.b, &other.b) {
+            return false;
+        }
+        if !::core::cmp::PartialEq::eq(&self.c, &other.c) {
+            return false;
+        }
+        true
+    }
+}
+impl ::core::cmp::PartialOrd<SimilarFields> for SimilarFields
+where
+    Max<usize>: ::core::cmp::PartialOrd<Max<usize>>,
+    Max<usize>: ::core::cmp::PartialOrd<Max<usize>>,
+    Max<usize>: ::core::cmp::PartialOrd<Max<usize>>,
+{
+    fn partial_cmp(
+        &self,
+        other: &SimilarFields,
+    ) -> ::core::option::Option<::core::cmp::Ordering> {
+        let mut self_any_greater = false;
+        let mut othr_any_greater = false;
+        match ::core::cmp::PartialOrd::partial_cmp(&self.a, &other.a)? {
+            ::core::cmp::Ordering::Less => {
+                othr_any_greater = true;
+            }
+            ::core::cmp::Ordering::Greater => {
+                self_any_greater = true;
+            }
+            ::core::cmp::Ordering::Equal => {}
+        }
+        if self_any_greater && othr_any_greater {
+            return ::core::option::Option::None;
+        }
+        match ::core::cmp::PartialOrd::partial_cmp(&self.b, &other.b)? {
+            ::core::cmp::Ordering::Less => {
+                othr_any_greater = true;
+            }
+            ::core::cmp::Ordering::Greater => {
+                self_any_greater = true;
+            }
+            ::core::cmp::Ordering::Equal => {}
+        }
+        if self_any_greater && othr_any_greater {
+            return ::core::option::Option::None;
+        }
+        match ::core::cmp::PartialOrd::partial_cmp(&self.c, &other.c)? {
+            ::core::cmp::Ordering::Less => {
+                othr_any_greater = true;
+            }
+            ::core::cmp::Ordering::Greater => {
+                self_any_greater = true;
+            }
+            ::core::cmp::Ordering::Equal => {}
+        }
+        if self_any_greater && othr_any_greater {
+            return ::core::option::Option::None;
+        }
+        ::core::option::Option::Some(
+            match (self_any_greater, othr_any_greater) {
+                (false, false) => ::core::cmp::Ordering::Equal,
+                (false, true) => ::core::cmp::Ordering::Less,
+                (true, false) => ::core::cmp::Ordering::Greater,
+                (true, true) => ::core::unreachable!(),
+            },
+        )
+    }
+}
+impl lattices::LatticeOrd<SimilarFields> for SimilarFields
+where
+    Max<usize>: ::core::cmp::PartialOrd<Max<usize>>,
+    Max<usize>: ::core::cmp::PartialOrd<Max<usize>>,
+    Max<usize>: ::core::cmp::PartialOrd<Max<usize>>,
+{}
+impl lattices::IsBot for SimilarFields
+where
+    Max<usize>: lattices::IsBot,
+    Max<usize>: lattices::IsBot,
+    Max<usize>: lattices::IsBot,
+{
+    fn is_bot(&self) -> bool {
+        if !lattices::IsBot::is_bot(&self.a) {
+            return false;
+        }
+        if !lattices::IsBot::is_bot(&self.b) {
+            return false;
+        }
+        if !lattices::IsBot::is_bot(&self.c) {
+            return false;
+        }
+        true
+    }
+}
+impl lattices::IsTop for SimilarFields
+where
+    Max<usize>: lattices::IsTop,
+    Max<usize>: lattices::IsTop,
+    Max<usize>: lattices::IsTop,
+{
+    fn is_top(&self) -> bool {
+        if !lattices::IsTop::is_top(&self.a) {
+            return false;
+        }
+        if !lattices::IsTop::is_top(&self.b) {
+            return false;
+        }
+        if !lattices::IsTop::is_top(&self.c) {
+            return false;
+        }
+        true
+    }
+}
+impl lattices::LatticeFrom<SimilarFields> for SimilarFields
+where
+    Max<usize>: lattices::LatticeFrom<Max<usize>>,
+    Max<usize>: lattices::LatticeFrom<Max<usize>>,
+    Max<usize>: lattices::LatticeFrom<Max<usize>>,
+{
+    fn lattice_from(other: SimilarFields) -> Self {
+        Self {
+            a: lattices::LatticeFrom::lattice_from(other.a),
+            b: lattices::LatticeFrom::lattice_from(other.b),
+            c: lattices::LatticeFrom::lattice_from(other.c),
+        }
+    }
+}

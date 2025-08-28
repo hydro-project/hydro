@@ -6,18 +6,40 @@ use stageleft::{q, quote_type};
 use syn::parse_quote;
 
 use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode};
+use crate::keyed_singleton::KeyedSingleton;
 use crate::keyed_stream::KeyedStream;
 use crate::location::external_process::ExternalBincodeStream;
+use crate::location::tick::NoAtomic;
+use crate::location::{MembershipEvent, NoTick};
 use crate::staging_util::get_this_crate;
 use crate::stream::ExactlyOnce;
-use crate::{Cluster, ClusterId, External, Location, Process, Stream, TotalOrder, Unbounded};
+use crate::{
+    Cluster, External, Location, MemberId, NonDet, Process, Stream, TotalOrder, Unbounded, nondet,
+};
+
+// same as the one in `hydro_std`, but internal use only
+fn track_membership<'a, C, L: Location<'a> + NoTick + NoAtomic>(
+    membership: KeyedStream<MemberId<C>, MembershipEvent, L, Unbounded>,
+) -> KeyedSingleton<MemberId<C>, (), L, Unbounded> {
+    membership
+        .fold(
+            q!(|| false),
+            q!(|present, event| {
+                match event {
+                    MembershipEvent::Joined => *present = true,
+                    MembershipEvent::Left => *present = false,
+                }
+            }),
+        )
+        .filter_map(q!(|v| if v { Some(()) } else { None }))
+}
 
 pub fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr {
     let root = get_this_crate();
 
     if is_demux {
         parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::ClusterId<_>, #t_type), _>(
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::MemberId<_>, #t_type), _>(
                 |(id, data)| {
                     (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
@@ -45,7 +67,7 @@ pub fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::T
         parse_quote! {
             |res| {
                 let (id, b) = res.unwrap();
-                (#root::ClusterId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                (#root::MemberId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
             }
         }
     } else {
@@ -65,7 +87,7 @@ impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,
-    ) -> KeyedStream<ClusterId<L>, T, Process<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<MemberId<L>, T, Process<'a, L2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -73,14 +95,14 @@ impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
 
         let deserialize_pipeline = Some(deserialize_bincode::<T>(Some(&quote_type::<L>())));
 
-        let raw_stream: Stream<(ClusterId<L>, T), Process<'a, L2>, Unbounded, O, R> = Stream::new(
+        let raw_stream: Stream<(MemberId<L>, T), Process<'a, L2>, Unbounded, O, R> = Stream::new(
             other.clone(),
             HydroNode::Network {
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<(ClusterId<L>, T)>(),
+                metadata: other.new_node_metadata::<(MemberId<L>, T)>(),
             },
         );
 
@@ -90,17 +112,33 @@ impl<'a, T, L, B, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     pub fn broadcast_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
-    ) -> KeyedStream<ClusterId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+        nondet_membership: NonDet,
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        let ids = other.members();
-        self.flat_map_ordered(q!(|v| { ids.iter().map(move |id| (*id, v.clone())) }))
+        let ids = track_membership(self.location.source_cluster_members(other));
+        let join_tick = self.location.tick();
+        let current_members = ids.snapshot(&join_tick, nondet_membership).keys();
+
+        current_members
+            .weaker_retries()
+            .assume_ordering::<TotalOrder>(
+                nondet!(/** we send to each member independently, order does not matter */),
+            )
+            .cross_product_nested_loop(
+                self.batch(&join_tick, nondet_membership)
+                    .assume_ordering::<TotalOrder>(
+                        nondet!(/** we weaken the ordering back later */),
+                    ),
+            )
+            .assume_ordering::<O>(nondet!(/** strictly weaker than TotalOrder */))
+            .all_ticks()
             .demux_bincode(other)
     }
 }
 
-impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -112,7 +150,7 @@ impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Process<'a, L>, B, O, R> 
     }
 }
 
-impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -141,23 +179,38 @@ impl<'a, T, L, B> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
     pub fn round_robin_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
+        nondet_membership: NonDet,
     ) -> Stream<T, Cluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
     where
         T: Serialize + DeserializeOwned,
     {
-        let ids = other.members();
+        let ids = track_membership(self.location.source_cluster_members(other));
+        let join_tick = self.location.tick();
+        let current_members = ids
+            .snapshot(&join_tick, nondet_membership)
+            .keys()
+            .assume_ordering(
+                nondet!(/** safe to assume ordering because each output is independent */),
+            )
+            .collect_vec();
 
         self.enumerate()
-            .map(q!(|(i, w)| (ids[i % ids.len()], w)))
+            .batch(&join_tick, nondet_membership)
+            .cross_singleton(current_members)
+            .map(q!(|(data, members)| (
+                members[data.0 % members.len()],
+                data.1
+            )))
+            .all_ticks()
             .demux_bincode(other)
     }
 }
 
-impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
-    ) -> KeyedStream<ClusterId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -165,11 +218,11 @@ impl<'a, T, L, L2, B, O, R> Stream<(ClusterId<L2>, T), Cluster<'a, L>, B, O, R> 
     }
 }
 
-impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B, O, R> KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
-    ) -> KeyedStream<ClusterId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -177,14 +230,14 @@ impl<'a, T, L, L2, B, O, R> KeyedStream<ClusterId<L2>, T, Cluster<'a, L>, B, O, 
 
         let deserialize_pipeline = Some(deserialize_bincode::<T>(Some(&quote_type::<L>())));
 
-        let raw_stream: Stream<(ClusterId<L>, T), Cluster<'a, L2>, Unbounded, O, R> = Stream::new(
+        let raw_stream: Stream<(MemberId<L>, T), Cluster<'a, L2>, Unbounded, O, R> = Stream::new(
             other.clone(),
             HydroNode::Network {
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.underlying.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<(ClusterId<L>, T)>(),
+                metadata: other.new_node_metadata::<(MemberId<L>, T)>(),
             },
         );
 
@@ -219,12 +272,28 @@ impl<'a, T, L, B, O, R> Stream<T, Process<'a, L>, B, O, R> {
     pub fn broadcast_bincode<L2: 'a>(
         self,
         other: &Cluster<'a, L2>,
+        nondet_membership: NonDet,
     ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        let ids = other.members();
-        self.flat_map_ordered(q!(|v| { ids.iter().map(move |id| (*id, v.clone())) }))
+        let ids = track_membership(self.location.source_cluster_members(other));
+        let join_tick = self.location.tick();
+        let current_members = ids.snapshot(&join_tick, nondet_membership).keys();
+
+        current_members
+            .weaker_retries()
+            .assume_ordering::<TotalOrder>(
+                nondet!(/** we send to each member independently, order does not matter */),
+            )
+            .cross_product_nested_loop(
+                self.batch(&join_tick, nondet_membership)
+                    .assume_ordering::<TotalOrder>(
+                        nondet!(/** we weaken the ordering back later */),
+                    ),
+            )
+            .assume_ordering::<O>(nondet!(/** strictly weaker than TotalOrder */))
+            .all_ticks()
             .demux_bincode(other)
     }
 

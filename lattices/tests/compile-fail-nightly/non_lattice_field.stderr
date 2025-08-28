@@ -1,0 +1,83 @@
+error[E0277]: the trait bound `String: Merge<String>` is not satisfied
+ --> tests/compile-fail/non_lattice_field.rs:3:10
+  |
+3 | #[derive(Lattice)]
+  |          ^^^^^^^ the trait `Merge<String>` is not implemented for `String`
+  |
+  = help: the following other types implement trait `Merge<Other>`:
+            `()` implements `Merge<()>`
+            `Conflict<T>` implements `Merge<Conflict<O>>`
+            `DomPair<KeySelf, ValSelf>` implements `Merge<DomPair<KeyOther, ValOther>>`
+            `GhtInner<Head, Node>` implements `Merge<GhtInner<Head, Node>>`
+            `GhtLeaf<Schema, ValType, Storage>` implements `Merge<GhtLeaf<Schema, ValType, Storage>>`
+            `MapUnion<MapSelf>` implements `Merge<MapUnion<MapOther>>`
+            `MapUnionWithTombstones<MapSelf, TombstoneSetSelf>` implements `Merge<MapUnionWithTombstones<MapOther, TombstoneSetOther>>`
+            `Max<T>` implements `Merge<Max<T>>`
+          and $N others
+  = help: see issue #48214
+  = note: this error originates in the derive macro `Lattice` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `String: IsBot` is not satisfied
+ --> tests/compile-fail/non_lattice_field.rs:3:10
+  |
+3 | #[derive(Lattice)]
+  |          ^^^^^^^ the trait `IsBot` is not implemented for `String`
+  |
+  = help: the following other types implement trait `IsBot`:
+            ()
+            Conflict<T>
+            DomPair<Key, Val>
+            GhtInner<Head, Node>
+            GhtLeaf<Schema, SuffixSchema, Storage>
+            MapUnion<Map>
+            MapUnionWithTombstones<Map, TombstoneSet>
+            Max<()>
+          and $N others
+  = help: see issue #48214
+  = note: this error originates in the derive macro `Lattice` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `String: IsTop` is not satisfied
+ --> tests/compile-fail/non_lattice_field.rs:3:10
+  |
+3 | #[derive(Lattice)]
+  |          ^^^^^^^ the trait `IsTop` is not implemented for `String`
+  |
+  = help: the following other types implement trait `IsTop`:
+            ()
+            Conflict<T>
+            DomPair<Key, Val>
+            GhtInner<Head, Node>
+            GhtLeaf<Schema, SuffixSchema, Storage>
+            MapUnion<Map>
+            MapUnionWithTombstones<Map, TombstoneSet>
+            Max<()>
+          and $N others
+  = help: see issue #48214
+  = note: this error originates in the derive macro `Lattice` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+  |
+1 + #![feature(trivial_bounds)]
+  |
+
+error[E0277]: the trait bound `String: LatticeFrom<String>` is not satisfied
+ --> tests/compile-fail/non_lattice_field.rs:3:10
+  |
+3 | #[derive(Lattice)]
+  |          ^^^^^^^ the trait `LatticeFrom<String>` is not implemented for `String`
+  |
+  = help: the following other types implement trait `LatticeFrom<Other>`:
+            `()` implements `LatticeFrom<()>`
+            `Conflict<T>` implements `LatticeFrom<Conflict<T>>`
+            `DomPair<KeySelf, ValSelf>` implements `LatticeFrom<DomPair<KeyOther, ValOther>>`
+            `MapUnion<MapSelf>` implements `LatticeFrom<MapUnion<MapOther>>`
+            `MapUnionWithTombstones<MapSelf, TombstoneSetSelf>` implements `LatticeFrom<MapUnionWithTombstones<MapOther, TombstoneSetOther>>`
+            `Max<T>` implements `LatticeFrom<Max<T>>`
+            `Min<T>` implements `LatticeFrom<Min<T>>`
+            `NotALattice` implements `LatticeFrom<NotALattice>`
+          and $N others
+  = help: see issue #48214
+  = note: this error originates in the derive macro `Lattice` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+  |
+1 + #![feature(trivial_bounds)]
+  |

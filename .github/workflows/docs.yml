@@ -1,0 +1,70 @@
+name: docs
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+  pull_request:
+  schedule:
+    - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
+  workflow_dispatch:
+
+jobs:
+  pre_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5.3.1
+        with:
+          cancel_others: "true"
+
+  docs:
+    name: Docs (rustdoc)
+    timeout-minutes: 10
+    needs: pre_job
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      WWW_DIR: target
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install rust channel and set it as default
+        run: |
+          rustup toolchain add nightly && \
+          rustup default nightly
+
+      - env:
+          RUSTDOCFLAGS: --cfg docsrs -Dwarnings
+        run: cargo doc --no-deps --all-features
+
+      - name: Move design docs to output
+        shell: bash
+        run: |
+          mv design_docs "$WWW_DIR/"
+
+      - name: Push to gh-pages
+        if: ${{ github.event_name != 'pull_request' }}
+        shell: bash
+        run: |
+          git -C "$WWW_DIR" init -q
+          git -C "$WWW_DIR" remote add origin "$(git remote get-url origin)"
+          git -C "$WWW_DIR" config credential.helper "$(git config credential.helper)"
+          git -C "$WWW_DIR" config 'http.https://github.com/.extraheader' "$(git config 'http.https://github.com/.extraheader')"
+          git -C "$WWW_DIR" config core.autocrlf input
+          git -C "$WWW_DIR" config core.safecrlf false
+          git -C "$WWW_DIR" fetch origin gh-pages:gh-pages || true
+          git -C "$WWW_DIR" symbolic-ref HEAD refs/heads/gh-pages
+          git -C "$WWW_DIR" reset
+          git -C "$WWW_DIR" add doc design_docs
+          if git -C "$WWW_DIR" -c 'user.name=github-actions[bot]' -c 'user.email=41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "Update rustdoc $(date -I) $(git rev-parse HEAD)";
+          then
+            git -C "$WWW_DIR" push -u origin gh-pages --quiet
+          else
+            echo 'No changes to commit'
+          fi
