@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["KeyedSingleton"]};
+window.SIDEBAR_ITEMS = {"struct":["BoundedValue","KeyedSingleton"],"trait":["KeyedSingletonBound"]};
