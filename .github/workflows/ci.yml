@@ -10,6 +10,10 @@ on:
     - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
