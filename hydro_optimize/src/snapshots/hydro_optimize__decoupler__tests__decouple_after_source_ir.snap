@@ -37,6 +37,10 @@ expression: built.ir()
                                                 output_type: Some(
                                                     & hydro_lang :: __staged :: location :: member_id :: MemberId < () >,
                                                 ),
+                                                stream_kind: Some(
+                                                    Stream,
+                                                ),
+                                                is_bounded: false,
                                             },
                                         },
                                         metadata: HydroIrMetadata {
@@ -46,6 +50,8 @@ expression: built.ir()
                                             output_type: Some(
                                                 (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , hydro_lang :: __staged :: location :: MembershipEvent),
                                             ),
+                                            stream_kind: None,
+                                            is_bounded: false,
                                         },
                                     },
                                     metadata: HydroIrMetadata {
@@ -55,6 +61,8 @@ expression: built.ir()
                                         output_type: Some(
                                             (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , hydro_lang :: __staged :: location :: MembershipEvent),
                                         ),
+                                        stream_kind: None,
+                                        is_bounded: false,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
@@ -64,6 +72,10 @@ expression: built.ir()
                                     output_type: Some(
                                         (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , bool),
                                     ),
+                                    stream_kind: Some(
+                                        Singleton,
+                                    ),
+                                    is_bounded: false,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -73,6 +85,8 @@ expression: built.ir()
                                 output_type: Some(
                                     (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , ()),
                                 ),
+                                stream_kind: None,
+                                is_bounded: false,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -85,6 +99,8 @@ expression: built.ir()
                             output_type: Some(
                                 hydro_lang :: __staged :: location :: member_id :: MemberId < () >,
                             ),
+                            stream_kind: None,
+                            is_bounded: false,
                         },
                     },
                     right: Map {
