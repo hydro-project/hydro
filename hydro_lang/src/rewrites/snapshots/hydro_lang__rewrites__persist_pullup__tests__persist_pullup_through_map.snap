@@ -20,6 +20,10 @@ expression: built.ir()
                             output_type: Some(
                                 i32,
                             ),
+                            stream_kind: Some(
+                                Stream,
+                            ),
+                            is_bounded: false,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -29,6 +33,10 @@ expression: built.ir()
                         output_type: Some(
                             i32,
                         ),
+                        stream_kind: Some(
+                            Stream,
+                        ),
+                        is_bounded: false,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -38,6 +46,8 @@ expression: built.ir()
                     output_type: Some(
                         i32,
                     ),
+                    stream_kind: None,
+                    is_bounded: false,
                 },
             },
             metadata: HydroIrMetadata {
@@ -47,6 +57,8 @@ expression: built.ir()
                 output_type: Some(
                     i32,
                 ),
+                stream_kind: None,
+                is_bounded: false,
             },
         },
         metadata: HydroIrMetadata {
@@ -56,6 +68,8 @@ expression: built.ir()
             output_type: Some(
                 i32,
             ),
+            stream_kind: None,
+            is_bounded: false,
         },
     },
 ]

@@ -28,6 +28,19 @@ use crate::backtrace::Backtrace;
 use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
 
+/// Represents the kind of stream/collection type for metadata
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum StreamKind {
+    /// Regular stream
+    Stream,
+    /// Keyed stream
+    KeyedStream,
+    /// Singleton collection
+    Singleton,
+    /// Optional collection
+    Optional,
+}
+
 /// Debug displays the type's tokens.
 ///
 /// Boxes `syn::Type` which is ~240 bytes.
@@ -960,6 +973,10 @@ pub struct HydroIrMetadata {
     pub location_kind: LocationId,
     pub backtrace: Backtrace,
     pub output_type: Option<DebugType>,
+    /// The kind of stream/collection
+    pub stream_kind: Option<StreamKind>,
+    /// Whether this collection is bounded (finite) or unbounded (potentially infinite)
+    pub is_bounded: bool,
     pub cardinality: Option<usize>,
     pub cpu_usage: Option<f64>,
     pub network_recv_cpu_usage: Option<f64>,
@@ -985,6 +1002,8 @@ impl Debug for HydroIrMetadata {
         f.debug_struct("HydroIrMetadata")
             .field("location_kind", &self.location_kind)
             .field("output_type", &self.output_type)
+            .field("stream_kind", &self.stream_kind)
+            .field("is_bounded", &self.is_bounded)
             .finish()
     }
 }
@@ -2994,12 +3013,12 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        assert_eq!(size_of::<HydroNode>(), 232);
+        assert_eq!(size_of::<HydroNode>(), 240);
     }
 
     #[test]
     fn hydro_leaf_size() {
-        assert_eq!(size_of::<HydroLeaf>(), 224);
+        assert_eq!(size_of::<HydroLeaf>(), 232);
     }
 
     #[test]

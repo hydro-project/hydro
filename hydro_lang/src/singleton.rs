@@ -102,7 +102,10 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_node_metadata_detailed::<T>(
+                    Some(crate::ir::StreamKind::Singleton),
+                    true, // Bounded
+                ),
             },
         )
     }
@@ -144,9 +147,15 @@ where
             HydroNode::Persist {
                 inner: Box::new(HydroNode::CycleSource {
                     ident,
-                    metadata: location.new_node_metadata::<T>(),
+                    metadata: location.new_node_metadata_detailed::<T>(
+                        Some(crate::ir::StreamKind::Singleton),
+                        false, // Boundedness depends on B parameter
+                    ),
                 }),
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_node_metadata_detailed::<T>(
+                    Some(crate::ir::StreamKind::Singleton),
+                    false, // Boundedness depends on B parameter
+                ),
             },
         )
     }
@@ -251,7 +260,10 @@ where
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self.location.new_node_metadata_detailed::<U>(
+                    Some(crate::ir::StreamKind::Stream),
+                    false, // Boundedness depends on B parameter
+                ),
             },
         )
     }

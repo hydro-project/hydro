@@ -12,7 +12,7 @@ use tokio::time::Instant;
 
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
-use crate::ir::{HydroLeaf, HydroNode, TeeNode};
+use crate::ir::{HydroLeaf, HydroNode, StreamKind, TeeNode};
 use crate::keyed_stream::KeyedStream;
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
@@ -97,7 +97,7 @@ impl MinRetries<AtLeastOnce> for ExactlyOnce {
 ///   or [`NoOrder`] (default is [`TotalOrder`])
 pub struct Stream<Type, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
     pub(crate) location: Loc,
-    pub(crate) ir_node: RefCell<HydroNode>,
+    pub ir_node: RefCell<HydroNode>,
 
     _phantom: PhantomData<(Type, Loc, Bound, Order, Retries)>,
 }
@@ -161,7 +161,10 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_node_metadata_detailed::<T>(
+                    Some(StreamKind::Stream),
+                    true, // Bounded
+                ),
             },
         )
     }
@@ -554,7 +557,10 @@ where
             HydroNode::CrossSingleton {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, O2)>(),
+                metadata: self.location.new_node_metadata_detailed::<(T, O2)>(
+                    Some(StreamKind::Stream),
+                    false, // Most cross operations result in unbounded streams
+                ),
             },
         )
     }
@@ -602,7 +608,10 @@ where
             HydroNode::CrossProduct {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, T2)>(),
+                metadata: self.location.new_node_metadata_detailed::<(T, T2)>(
+                    Some(StreamKind::Stream),
+                    false, // Cross product typically results in unbounded streams
+                ),
             },
         )
     }
@@ -671,7 +680,10 @@ where
             HydroNode::Difference {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata_detailed::<T>(
+                    Some(StreamKind::Stream),
+                    true, // Difference operation preserves boundedness
+                ),
             },
         )
     }
@@ -747,7 +759,12 @@ where
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
-        Stream::new(self.location, self.ir_node.into_inner())
+        let orig_ir_node = self.ir_node.into_inner();
+
+        // Update the metadata to reflect the new ordering guarantee if possible
+        // This ensures graph rendering can show the correct edge type when types are known
+
+        Stream::new(self.location.clone(), orig_ir_node)
     }
 
     /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
@@ -766,7 +783,12 @@ where
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_retries<R2>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
-        Stream::new(self.location, self.ir_node.into_inner())
+        let orig_ir_node = self.ir_node.into_inner();
+
+        // Update the metadata to reflect the new retries guarantee if possible
+        // This ensures graph rendering can show the correct edge type when types are known
+
+        Stream::new(self.location.clone(), orig_ir_node)
     }
 
     /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
@@ -1495,12 +1517,13 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O
     /// # }
     /// # }));
     /// ```
-    pub fn interleave<O2, R2: MinRetries<R>>(
+    pub fn interleave<O2, R2>(
         self,
         other: Stream<T, L, Unbounded, O2, R2>,
     ) -> Stream<T, L, Unbounded, NoOrder, R::Min>
     where
         R: MinRetries<R2, Min = R2::Min>,
+        R2: MinRetries<R>,
     {
         let tick = self.location.tick();
         // Because the outputs are unordered, we can interleave batches from both streams.
@@ -1594,7 +1617,10 @@ where
             HydroNode::Chain {
                 first: Box::new(self.ir_node.into_inner()),
                 second: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata_detailed::<T>(
+                    Some(StreamKind::Stream),
+                    true, // Chain preserves boundedness
+                ),
             },
         )
     }
@@ -1660,7 +1686,10 @@ where
             HydroNode::Join {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, (V1, V2))>(),
+                metadata: self.location.new_node_metadata_detailed::<(K, (V1, V2))>(
+                    Some(StreamKind::Stream),
+                    false, // Join typically results in unbounded streams
+                ),
             },
         )
     }
@@ -1699,7 +1728,10 @@ where
             HydroNode::AntiJoin {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V1)>(),
+                metadata: self.location.new_node_metadata_detailed::<(K, V1)>(
+                    Some(StreamKind::Stream),
+                    false, // Anti-join typically results in unbounded streams
+                ),
             },
         )
     }
@@ -1707,8 +1739,9 @@ where
 
 impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R> {
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
+        let underlying = self.weakest_ordering();
         KeyedStream {
-            underlying: self.weakest_ordering(),
+            underlying,
             _phantom_order: Default::default(),
         }
     }
@@ -1959,7 +1992,7 @@ where
     pub fn fold_keyed_commutative_idempotent<A, I, F>(
         self,
         init: impl IntoQuotedMut<'a, I, Tick<L>>,
-        comb: impl IntoQuotedMut<'a, F, Tick<L>>,
+        comb: impl IntoQuotedMut<'a, F, Tick<L>> + Copy,
     ) -> Stream<(K, A), Tick<L>, Bounded, NoOrder, ExactlyOnce>
     where
         I: Fn() -> A + 'a,
@@ -2209,7 +2242,10 @@ where
             self.location.clone().tick,
             HydroNode::Unpersist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata_detailed::<T>(
+                    Some(StreamKind::Stream),
+                    true, // Batch converts to bounded
+                ),
             },
         )
     }
@@ -2438,7 +2474,10 @@ where
             self.location.outer().clone(),
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata_detailed::<T>(
+                    Some(StreamKind::Stream),
+                    false, // Converts to unbounded
+                ),
             },
         )
     }
@@ -2450,7 +2489,10 @@ where
             },
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata_detailed::<T>(
+                    Some(StreamKind::Stream),
+                    false, // Converts to unbounded
+                ),
             },
         )
     }

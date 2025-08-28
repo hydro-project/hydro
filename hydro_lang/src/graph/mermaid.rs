@@ -139,7 +139,6 @@ where
     ) -> Result<(), Self::Err> {
         let arrow_style = match edge_type {
             HydroEdgeType::Stream => "-->",
-            HydroEdgeType::Persistent => "==>",
             HydroEdgeType::Network => "-.->",
             HydroEdgeType::Cycle => "--o",
         };
@@ -167,7 +166,6 @@ where
                 "{b:i$}linkStyle {} stroke:{}",
                 self.link_count,
                 match edge_type {
-                    HydroEdgeType::Persistent => "#008800",
                     HydroEdgeType::Network => "#880088",
                     HydroEdgeType::Cycle => "#ff0000",
                     HydroEdgeType::Stream => "#666666", /* Should not be used here, but for completeness. */
@@ -222,7 +220,7 @@ pub fn open_browser(
     built_flow: &crate::builder::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let config = super::render::HydroWriteConfig {
-        show_metadata: false,
+        show_metadata: true,
         show_location_groups: true,
         use_short_labels: true, // Default to short labels
         process_id_name: built_flow.process_id_name().clone(),
