@@ -10,6 +10,10 @@ on:
     - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
@@ -30,11 +34,11 @@ jobs:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@v5.3.1
         with:
-          cancel_others: "true"
+          cancel_others: ${{ github.event_name == 'pull_request' }}
 
   test:
     name: All tests, lints, and checks
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
     timeout-minutes: 45
     needs: pre_job
     runs-on: ${{ matrix.os }}
@@ -82,7 +86,7 @@ jobs:
 
   test-wasm:
     name: Test Suite (WebAssembly)
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
     timeout-minutes: 15
     needs: pre_job
     runs-on: ubuntu-latest
