@@ -3,13 +3,14 @@ use std::marker::PhantomData;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
+use crate::boundedness::Boundedness;
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::ir::HydroNode;
 use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
 use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::manual_expr::ManualExpr;
-use crate::stream::{ExactlyOnce, MinRetries};
+use crate::stream::{ExactlyOnce, MinOrder, MinRetries};
 use crate::unsafety::NonDet;
 use crate::*;
 
@@ -21,16 +22,17 @@ use crate::*;
 /// - `K`: the type of the key for each group
 /// - `V`: the type of the elements inside each group
 /// - `Loc`: the [`Location`] where the keyed stream is materialized
+/// - `Bound`: tracks whether the entries are [`Bounded`] (local and finite) or [`Unbounded`] (asynchronous and possibly infinite)
 /// - `Order`: tracks whether the elements within each group have deterministic order
 ///   ([`TotalOrder`]) or not ([`NoOrder`])
 /// - `Retries`: tracks whether the elements within each group have deterministic cardinality
 ///   ([`ExactlyOnce`]) or may have non-deterministic retries ([`crate::stream::AtLeastOnce`])
-pub struct KeyedStream<K, V, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
+pub struct KeyedStream<K, V, Loc, Bound: Boundedness, Order = TotalOrder, Retries = ExactlyOnce> {
     pub(crate) underlying: Stream<(K, V), Loc, Bound, NoOrder, Retries>,
     pub(crate) _phantom_order: PhantomData<Order>,
 }
 
-impl<'a, K, V, L, B, R> From<KeyedStream<K, V, L, B, TotalOrder, R>>
+impl<'a, K, V, L, B: Boundedness, R> From<KeyedStream<K, V, L, B, TotalOrder, R>>
     for KeyedStream<K, V, L, B, NoOrder, R>
 where
     L: Location<'a>,
@@ -43,7 +45,7 @@ where
     }
 }
 
-impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound, Order, Retries> Clone
+impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order, Retries> Clone
     for KeyedStream<K, V, Loc, Bound, Order, Retries>
 {
     fn clone(&self) -> Self {
@@ -54,7 +56,8 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound, Order, Retries> Clone
     }
 }
 
-impl<'a, K, V, L, B, O, R> CycleCollection<'a, ForwardRefMarker> for KeyedStream<K, V, L, B, O, R>
+impl<'a, K, V, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRefMarker>
+    for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -65,7 +68,8 @@ where
     }
 }
 
-impl<'a, K, V, L, B, O, R> CycleComplete<'a, ForwardRefMarker> for KeyedStream<K, V, L, B, O, R>
+impl<'a, K, V, L, B: Boundedness, O, R> CycleComplete<'a, ForwardRefMarker>
+    for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -74,7 +78,7 @@ where
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R> {
     /// Explicitly "casts" the keyed stream to a type with a different ordering
     /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.
@@ -501,7 +505,7 @@ impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, U
     }
 }
 
-impl<'a, K, V, L, B> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
+impl<'a, K, V, L, B: Boundedness> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -593,22 +597,21 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L> + Copy,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
-    ) -> KeyedStream<K, A, L, B, TotalOrder, ExactlyOnce>
+    ) -> KeyedSingleton<K, A, L, B::WhenValueBounded>
     where
         K: Clone,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> bool + 'a,
     {
-        KeyedStream {
+        KeyedSingleton {
             underlying: {
                 self.underlying
                     .assume_ordering::<TotalOrder>(
-                        nondet!(/** keyed scan does not rely on order of keys */),
+                        nondet!(/** keyed fold does not rely on order of keys */),
                     )
                     .fold_keyed_early_stop(init, f)
                     .into()
             },
-            _phantom_order: Default::default(),
         }
     }
 
@@ -644,7 +647,7 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded> {
         let init = init.splice_fn0_ctx(&self.underlying.location).into();
         let comb = comb
             .splice_fn2_borrow_mut_ctx(&self.underlying.location)
@@ -689,7 +692,7 @@ where
     pub fn reduce<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded> {
         let f = comb
             .splice_fn2_borrow_mut_ctx(&self.underlying.location)
             .into();
@@ -734,7 +737,7 @@ where
         self,
         other: impl Into<Optional<O, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
     where
         O: Clone,
         F: Fn(&mut V, V) + 'a,
@@ -759,7 +762,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B, O> KeyedStream<K, V, L, B, O, ExactlyOnce>
+impl<'a, K, V, L, B: Boundedness, O> KeyedStream<K, V, L, B, O, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -795,7 +798,7 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded> {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .fold(init, comb)
     }
@@ -829,7 +832,7 @@ where
     pub fn reduce_commutative<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded> {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .reduce(comb)
     }
@@ -862,7 +865,7 @@ where
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
     where
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
@@ -872,7 +875,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B, R> KeyedStream<K, V, L, B, TotalOrder, R>
+impl<'a, K, V, L, B: Boundedness, R> KeyedStream<K, V, L, B, TotalOrder, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -908,7 +911,7 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded> {
         self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .fold(init, comb)
     }
@@ -942,7 +945,7 @@ where
     pub fn reduce_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded> {
         self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce(comb)
     }
@@ -975,7 +978,7 @@ where
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
     where
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
@@ -985,7 +988,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B, O, R> KeyedStream<K, V, L, B, O, R>
+impl<'a, K, V, L, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -1022,7 +1025,7 @@ where
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B> {
+    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded> {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .fold(init, comb)
@@ -1058,7 +1061,7 @@ where
     pub fn reduce_commutative_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B> {
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded> {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce(comb)
@@ -1093,7 +1096,7 @@ where
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B>
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
     where
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
@@ -1135,7 +1138,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B, O, R> KeyedStream<K, V, L, B, O, R>
+impl<'a, K, V, L, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
@@ -1161,7 +1164,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B, O, R> KeyedStream<K, V, Atomic<L>, B, O, R>
+impl<'a, K, V, L, B: Boundedness, O, R> KeyedStream<K, V, Atomic<L>, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
@@ -1174,6 +1177,24 @@ where
     pub fn batch(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
         KeyedStream {
             underlying: self.underlying.batch(nondet),
+            _phantom_order: Default::default(),
+        }
+    }
+}
+
+impl<'a, K, V, L, O, R> KeyedStream<K, V, L, Bounded, O, R>
+where
+    L: Location<'a>,
+{
+    pub fn chain<O2>(
+        self,
+        other: KeyedStream<K, V, L, Bounded, O2, R>,
+    ) -> KeyedStream<K, V, L, Bounded, O::Min, R>
+    where
+        O: MinOrder<O2>,
+    {
+        KeyedStream {
+            underlying: self.underlying.chain(other.underlying),
             _phantom_order: Default::default(),
         }
     }

@@ -1,9 +1,10 @@
+use hydro_lang::keyed_singleton::{BoundedValue, KeyedSingleton};
 use hydro_lang::keyed_stream::KeyedStream;
 use hydro_lang::*;
 
 pub fn http_hello_server<'a, P>(
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder>,
-) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder> {
+) -> KeyedSingleton<u64, String, Process<'a, P>, BoundedValue> {
     in_stream
         .inspect_with_key(q!(|(id, line)| println!(
             "Received line from client #{}: '{}'",
