@@ -211,6 +211,26 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
         .key_count()
         .snapshot(&print_tick, nondet_client_count);
 
+    let waiting_for_clients = client_count
+        .clone()
+        .zip(clients_with_throughputs_count)
+        .filter_map(q!(|(num_clients, num_clients_with_throughput)| {
+            if num_clients > num_clients_with_throughput {
+                Some(num_clients - num_clients_with_throughput)
+            } else {
+                None
+            }
+        }));
+
+    waiting_for_clients
+        .clone()
+        .all_ticks()
+        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .for_each(q!(|num_clients_not_responded| println!(
+            "Awaiting {} clients",
+            num_clients_not_responded
+        )));
+
     let combined_throughputs = latest_throughputs
         .snapshot(&aggregator.tick(), nondet_sampling)
         .values()
@@ -223,28 +243,18 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
         .batch(&print_tick, nondet_client_count)
         .cross_singleton(client_count.clone())
-        .cross_singleton(clients_with_throughputs_count.clone())
+        .continue_unless(waiting_for_clients.clone())
         .all_ticks()
-        .for_each(q!(move |(
-            (throughputs, num_client_machines),
-            num_clients_with_throughputs,
-        )| {
+        .for_each(q!(move |(throughputs, num_client_machines)| {
             if throughputs.sample_count() >= 2 {
-                if num_clients_with_throughputs == num_client_machines {
-                    let mean = throughputs.sample_mean() * num_client_machines as f64;
+                let mean = throughputs.sample_mean() * num_client_machines as f64;
 
-                    if let Some((lower, upper)) = throughputs.confidence_interval_99() {
-                        println!(
-                            "Throughput: {:.2} - {:.2} - {:.2} requests/s",
-                            lower * num_client_machines as f64,
-                            mean,
-                            upper * num_client_machines as f64
-                        );
-                    }
-                } else {
+                if let Some((lower, upper)) = throughputs.confidence_interval_99() {
                     println!(
-                        "Throughput: N/A - N/A - N/A requests/s, awaiting {} clients",
-                        num_client_machines - num_clients_with_throughputs
+                        "Throughput: {:.2} - {:.2} - {:.2} requests/s",
+                        lower * num_client_machines as f64,
+                        mean,
+                        upper * num_client_machines as f64
                     );
                 }
             }
@@ -276,29 +286,16 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     combined_latencies
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
         .batch(&print_tick, nondet_client_count)
-        .cross_singleton(client_count)
-        .cross_singleton(clients_with_throughputs_count)
+        .continue_unless(waiting_for_clients)
         .all_ticks()
-        .for_each(q!(move |(
-            (latencies, num_client_machines),
-            num_clients_with_throughputs,
-        )| {
-            if num_clients_with_throughputs == num_client_machines {
-                println!(
-                    "Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)",
-                    Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64
-                        / 1000.0,
-                    Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64
-                        / 1000.0,
-                    Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64
-                        / 1000.0,
-                    latencies.len()
-                );
-            } else {
-                println!(
-                    "Latency: p50: N/A | p99 N/A | p999 N/A ms (N/A samples), awaiting {} clients",
-                    num_client_machines - num_clients_with_throughputs
-                );
-            }
+        .for_each(q!(move |latencies| {
+            println!(
+                "Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)",
+                Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64 / 1000.0,
+                Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64 / 1000.0,
+                Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64
+                    / 1000.0,
+                latencies.len()
+            );
         }));
 }
