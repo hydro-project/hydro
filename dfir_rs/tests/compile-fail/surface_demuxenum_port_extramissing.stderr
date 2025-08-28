@@ -1,6 +1,6 @@
 error[E0599]: no variant named `Triangle` found for enum `Shape`
- --> tests/compile-fail/surface_demuxenum_port_extramissing.rs:20:18
-  |
+  --> tests/compile-fail/surface_demuxenum_port_extramissing.rs:20:18
+   |
  6 |     enum Shape {
    |     ---------- variant `Triangle` not found here
 ...

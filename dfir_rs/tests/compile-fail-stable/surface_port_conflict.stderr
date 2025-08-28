@@ -1,10 +1,10 @@
-error: Output connection conflicts with below (unknown:0:0) (1/2)
+error: Output connection conflicts with below (unknown:7:10) (1/2)
  --> tests/compile-fail-stable/surface_port_conflict.rs:6:11
   |
 6 |         t[1] -> for_each(std::mem::drop);
   |           ^
 
-error: Output connection conflicts with above (unknown:0:0) (2/2)
+error: Output connection conflicts with above (unknown:6:10) (2/2)
  --> tests/compile-fail-stable/surface_port_conflict.rs:7:11
   |
 7 |         t[1] -> for_each(std::mem::drop);

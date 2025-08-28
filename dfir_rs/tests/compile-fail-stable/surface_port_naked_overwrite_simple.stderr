@@ -1,22 +1,22 @@
-error: Indexing on output is overwritten below (unknown:0:0) (1/2).
+error: Indexing on output is overwritten below (unknown:8:12) (1/2).
  --> tests/compile-fail-stable/surface_port_naked_overwrite_simple.rs:7:18
   |
 7 |         out = id[0];
   |                  ^
 
-error: Cannot index on already-indexed output, previously indexed above (unknown:0:0) (2/2).
+error: Cannot index on already-indexed output, previously indexed above (unknown:7:17) (2/2).
  --> tests/compile-fail-stable/surface_port_naked_overwrite_simple.rs:8:13
   |
 8 |         out[0] -> [0]inn; // Error, equivalent to: `[0][0]id[0][0]`
   |             ^
 
-error: Indexing on input is overwritten below (unknown:0:0) (1/2).
+error: Indexing on input is overwritten below (unknown:8:19) (1/2).
  --> tests/compile-fail-stable/surface_port_naked_overwrite_simple.rs:6:16
   |
 6 |         inn = [0]id;
   |                ^
 
-error: Cannot index on already-indexed input, previously indexed above (unknown:0:0) (2/2).
+error: Cannot index on already-indexed input, previously indexed above (unknown:6:15) (2/2).
  --> tests/compile-fail-stable/surface_port_naked_overwrite_simple.rs:8:20
   |
 8 |         out[0] -> [0]inn; // Error, equivalent to: `[0][0]id[0][0]`

@@ -307,7 +307,6 @@ declare_ops![
     prefix::PREFIX,
     resolve_futures::RESOLVE_FUTURES,
     resolve_futures_ordered::RESOLVE_FUTURES_ORDERED,
-    py_udf::PY_UDF,
     reduce::REDUCE,
     scan::SCAN,
     spin::SPIN,

@@ -1,10 +1,10 @@
-error: Existing assignment to `a` conflicts with later assignment: unknown:0:0 (1/2)
+error: Existing assignment to `a` conflicts with later assignment: unknown:6:8 (1/2)
  --> tests/compile-fail-stable/surface_conflicting_name.rs:5:9
   |
 5 |         a = null() -> null();
   |         ^
 
-error: Name assignment to `a` conflicts with existing assignment: unknown:0:0 (2/2)
+error: Name assignment to `a` conflicts with existing assignment: unknown:5:8 (2/2)
  --> tests/compile-fail-stable/surface_conflicting_name.rs:6:9
   |
 6 |         a = null() -> null();

@@ -111,10 +111,6 @@ fn generate_op_docs() -> Result<()> {
                         in_hf_doctest = true;
 
                         writeln!(docgen_write, "```rust")?;
-                        // py_udf special-cased.
-                        if "py_udf" == op_name {
-                            writeln!(docgen_write, "# #[cfg(feature = \"python\")]")?;
-                        }
                         writeln!(docgen_write, "{}", DOCTEST_PREFIX)?;
                         continue;
                     } else if doc_str.trim() == "```rustbook" {
