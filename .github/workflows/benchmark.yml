@@ -15,6 +15,10 @@ on:
         required: true
         default: "false"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   pre_job:
     runs-on: ubuntu-latest
@@ -24,14 +28,14 @@ jobs:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@v5.3.1
         with:
-          cancel_others: "true"
+          cancel_others: ${{ github.event_name == 'pull_request' }}
 
   benches:
     name: Benchmarks
     timeout-minutes: 30
     needs: pre_job
     if: |
-      needs.pre_job.outputs.should_skip != 'true' &&
+      (needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request') &&
       (
         github.event_name == 'schedule'
         || (github.event_name == 'workflow_dispatch' && github.event.inputs.should_bench == 'true')

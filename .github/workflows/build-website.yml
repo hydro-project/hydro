@@ -5,15 +5,11 @@ on:
     branches:
       - main
       - feature/**
-  schedule:
-    - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
   pull_request:
-  workflow_dispatch:
-    inputs:
-      should_bench:
-        description: "Should Benchmark? (`true`)"
-        required: true
-        default: "false"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   pre_job:
@@ -24,11 +20,11 @@ jobs:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@v5.3.1
         with:
-          cancel_others: "true"
+          cancel_others: ${{ github.event_name == 'pull_request' }}
 
   build-website:
     name: Build Website
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
     timeout-minutes: 25
     needs: pre_job
     runs-on: ubuntu-latest
