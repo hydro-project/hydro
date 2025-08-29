@@ -6,7 +6,7 @@ use good_lp::{
     Constraint, Expression, ProblemVariables, Solution, SolverModel, Variable, constraint, microlp,
     variable, variables,
 };
-use hydro_lang::ir::{HydroIrMetadata, HydroLeaf, HydroNode, traverse_dfir};
+use hydro_lang::ir::{HydroIrMetadata, HydroNode, HydroRoot, traverse_dfir};
 use hydro_lang::location::LocationId;
 
 use super::rewrites::{NetworkType, get_network_type, relevant_inputs};
@@ -295,12 +295,13 @@ fn add_tee_decoupling_overhead(
 }
 
 fn decouple_analysis_leaf(
-    leaf: &mut HydroLeaf,
+    leaf: &mut HydroRoot,
     op_id: &mut usize,
     model_metadata: &RefCell<ModelMetadata>,
 ) {
     // Ignore nodes that are not in the cluster to decouple
-    if model_metadata.borrow().cluster_to_decouple != *leaf.metadata().location_kind.root() {
+    if model_metadata.borrow().cluster_to_decouple != *leaf.input_metadata()[0].location_kind.root()
+    {
         return;
     }
 
@@ -309,7 +310,7 @@ fn decouple_analysis_leaf(
         &model_metadata.borrow().cluster_to_decouple,
     );
     add_input_constraints(*op_id, input_ids, model_metadata);
-    add_tick_constraint(leaf.metadata(), model_metadata);
+    add_tick_constraint(leaf.input_metadata()[0], model_metadata);
 }
 
 fn decouple_analysis_node(
@@ -399,7 +400,7 @@ fn solve(model_metadata: &RefCell<ModelMetadata>) -> MicroLpSolution {
 }
 
 pub(crate) fn decouple_analysis(
-    ir: &mut [HydroLeaf],
+    ir: &mut [HydroRoot],
     cluster_to_decouple: &LocationId,
     send_overhead: f64,
     recv_overhead: f64,
