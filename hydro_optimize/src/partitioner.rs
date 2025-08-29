@@ -1,7 +1,7 @@
 use core::panic;
 use std::collections::HashMap;
 
-use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
+use hydro_lang::ir::{HydroNode, HydroRoot, traverse_dfir};
 use hydro_lang::location::LocationId;
 use hydro_lang::stream::networking::{deserialize_bincode_with_type, serialize_bincode_with_type};
 use serde::{Deserialize, Serialize};
@@ -323,7 +323,7 @@ fn replace_process_node_location(node: &mut HydroNode, partitioner: &Partitioner
 }
 
 /// If we're partitioning a process into a cluster, we need to replace references to its location
-fn replace_process_leaf_location(leaf: &mut HydroLeaf, partitioner: &Partitioner) {
+fn replace_process_leaf_location(leaf: &mut HydroRoot, partitioner: &Partitioner) {
     let Partitioner {
         location_id,
         new_cluster_id,
@@ -332,11 +332,9 @@ fn replace_process_leaf_location(leaf: &mut HydroLeaf, partitioner: &Partitioner
 
     if let Some(new_id) = new_cluster_id {
         // Modify the metadata
-        replace_process_location_id(
-            &mut leaf.metadata_mut().location_kind,
-            *location_id,
-            *new_id,
-        );
+        if let HydroRoot::CycleSink { out_location, .. } = leaf {
+            replace_process_location_id(out_location, *location_id, *new_id);
+        }
     }
 }
 
@@ -376,7 +374,7 @@ fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id:
 }
 
 /// Limitations: Can only partition sends to clusters (not processes). Can only partition sends to 1 cluster at a time. Assumes that the partitioned attribute can be casted to usize.
-pub fn partition(ir: &mut [HydroLeaf], partitioner: &Partitioner) {
+pub fn partition(ir: &mut [HydroRoot], partitioner: &Partitioner) {
     traverse_dfir(
         ir,
         |_, _| {},
@@ -386,9 +384,9 @@ pub fn partition(ir: &mut [HydroLeaf], partitioner: &Partitioner) {
     );
 
     if partitioner.new_cluster_id.is_some() {
-        // Separately traverse leaves since CycleSink isn't processed in traverse_dfir
-        for leaf in ir.iter_mut() {
-            replace_process_leaf_location(leaf, partitioner);
+        // Separately traverse roots since CycleSink isn't processed in traverse_dfir
+        for root in ir.iter_mut() {
+            replace_process_leaf_location(root, partitioner);
         }
 
         // DANGER: Do not depend on the ID here, since nodes would've been injected

@@ -1,12 +1,12 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use hydro_lang::ir::{HydroLeaf, HydroNode, transform_bottom_up, traverse_dfir};
+use hydro_lang::ir::{HydroNode, HydroRoot, transform_bottom_up, traverse_dfir};
 use hydro_lang::location::LocationId;
 use syn::Ident;
 
-fn inject_id_leaf(leaf: &mut HydroLeaf, next_stmt_id: &mut usize) {
-    let metadata = leaf.metadata_mut();
+fn inject_id_leaf(leaf: &mut HydroRoot, next_stmt_id: &mut usize) {
+    let metadata = leaf.op_metadata_mut();
     metadata.id = Some(*next_stmt_id);
 }
 
@@ -15,12 +15,12 @@ fn inject_id_node(node: &mut HydroNode, next_stmt_id: &mut usize) {
     metadata.id = Some(*next_stmt_id);
 }
 
-pub fn inject_id(ir: &mut [HydroLeaf]) {
+pub fn inject_id(ir: &mut [HydroRoot]) {
     traverse_dfir(ir, inject_id_leaf, inject_id_node);
 }
 
-fn link_cycles_leaf(leaf: &mut HydroLeaf, sink_inputs: &mut HashMap<Ident, usize>) {
-    if let HydroLeaf::CycleSink { ident, input, .. } = leaf {
+fn link_cycles_leaf(leaf: &mut HydroRoot, sink_inputs: &mut HashMap<Ident, usize>) {
+    if let HydroRoot::CycleSink { ident, input, .. } = leaf {
         sink_inputs.insert(ident.clone(), input.metadata().id.unwrap());
     }
 }
@@ -36,7 +36,7 @@ fn link_cycles_node(node: &mut HydroNode, sources: &mut HashMap<Ident, usize>) {
 
 // Returns map from CycleSource id to the input IDs of the corresponding CycleSink's input
 // Assumes that metadtata.id is set for all nodes
-pub fn cycle_source_to_sink_input(ir: &mut [HydroLeaf]) -> HashMap<usize, usize> {
+pub fn cycle_source_to_sink_input(ir: &mut [HydroRoot]) -> HashMap<usize, usize> {
     let mut sources = HashMap::new();
     let mut sink_inputs = HashMap::new();
 
@@ -69,7 +69,7 @@ pub fn cycle_source_to_sink_input(ir: &mut [HydroLeaf]) -> HashMap<usize, usize>
 }
 
 fn inject_location_leaf(
-    leaf: &mut HydroLeaf,
+    leaf: &mut HydroRoot,
     id_to_location: &RefCell<HashMap<usize, LocationId>>,
     missing_location: &RefCell<bool>,
 ) {
@@ -77,8 +77,9 @@ fn inject_location_leaf(
     let input_metadata = inputs.first().unwrap();
 
     if let Some(location) = id_to_location.borrow().get(&input_metadata.id.unwrap()) {
-        let metadata: &mut hydro_lang::ir::HydroIrMetadata = leaf.metadata_mut();
-        metadata.location_kind.swap_root(location.root().clone());
+        if let HydroRoot::CycleSink { out_location, .. } = leaf {
+            out_location.swap_root(location.root().clone());
+        }
     } else {
         println!("Missing location for leaf: {:?}", leaf.print_root());
         *missing_location.borrow_mut() = true;
@@ -166,7 +167,7 @@ fn inject_location_node(
     }
 }
 
-pub fn inject_location(ir: &mut [HydroLeaf], cycle_source_to_sink_input: &HashMap<usize, usize>) {
+pub fn inject_location(ir: &mut [HydroRoot], cycle_source_to_sink_input: &HashMap<usize, usize>) {
     let id_to_location = RefCell::new(HashMap::new());
 
     loop {
@@ -205,6 +206,6 @@ fn remove_counter_node(node: &mut HydroNode, _next_stmt_id: &mut usize) {
     }
 }
 
-pub fn remove_counter(ir: &mut [HydroLeaf]) {
+pub fn remove_counter(ir: &mut [HydroRoot]) {
     traverse_dfir(ir, |_, _| {}, remove_counter_node);
 }

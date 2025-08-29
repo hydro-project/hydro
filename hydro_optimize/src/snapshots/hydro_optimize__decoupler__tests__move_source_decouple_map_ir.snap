@@ -180,13 +180,6 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Cluster(
-                1,
-            ),
-            output_type: Some(
-                i32,
-            ),
-        },
+        op_metadata: HydroIrOpMetadata,
     },
 ]

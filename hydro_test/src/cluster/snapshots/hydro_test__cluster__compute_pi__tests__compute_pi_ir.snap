@@ -198,13 +198,6 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Process(
-                1,
-            ),
-            output_type: Some(
-                (u64 , u64),
-            ),
-        },
+        op_metadata: HydroIrOpMetadata,
     },
 ]

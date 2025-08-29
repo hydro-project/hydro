@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use stageleft::*;
 
-use crate::ir::{HydroLeaf, HydroNode, transform_bottom_up};
+use crate::ir::{HydroNode, HydroRoot, transform_bottom_up};
 
 /// Structure for tracking expressions known to have particular algebraic properties.
 ///
@@ -56,7 +56,7 @@ fn properties_optimize_node(node: &mut HydroNode, db: &mut PropertyDatabase) {
     }
 }
 
-pub fn properties_optimize(ir: &mut [HydroLeaf], db: &mut PropertyDatabase) {
+pub fn properties_optimize(ir: &mut [HydroRoot], db: &mut PropertyDatabase) {
     transform_bottom_up(
         ir,
         &mut |_| (),

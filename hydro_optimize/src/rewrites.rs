@@ -1,5 +1,5 @@
 use hydro_lang::builder::RewriteIrFlowBuilder;
-use hydro_lang::ir::{HydroIrMetadata, HydroLeaf, HydroNode, deep_clone};
+use hydro_lang::ir::{HydroIrMetadata, HydroNode, HydroRoot, deep_clone};
 use hydro_lang::location::LocationId;
 use hydro_lang::{Cluster, FlowBuilder, Location};
 use serde::{Deserialize, Serialize};
@@ -28,7 +28,7 @@ pub type Rewrites = Vec<RewriteMetadata>;
 pub fn replay<'a>(
     rewrites: &mut Rewrites,
     builder: RewriteIrFlowBuilder<'a>,
-    ir: &[HydroLeaf],
+    ir: &[HydroRoot],
 ) -> (Vec<(Cluster<'a, ()>, usize)>, FlowBuilder<'a>) {
     let mut new_clusters = vec![];
 
