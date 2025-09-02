@@ -16,7 +16,7 @@ use super::compiled::CompiledFlow;
 use crate::deploy::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
-use crate::ir::HydroLeaf;
+use crate::ir::HydroRoot;
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBincodeStream, ExternalBytesPort,
 };
@@ -30,7 +30,7 @@ where
     // We need to grab an `&mut` reference to the IR in `preview_compile` even though
     // that function does not modify the IR. Using an `UnsafeCell` allows us to do this
     // while still being able to lend out immutable references to the IR.
-    pub(super) ir: UnsafeCell<Vec<HydroLeaf>>,
+    pub(super) ir: UnsafeCell<Vec<HydroRoot>>,
 
     /// Deployed instances of each process in the flow
     pub(super) processes: HashMap<usize, D::Process>,
@@ -49,7 +49,7 @@ where
 }
 
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
-    pub fn ir(&self) -> &Vec<HydroLeaf> {
+    pub fn ir(&self) -> &Vec<HydroRoot> {
         unsafe {
             // SAFETY: even when we grab this as mutable in `preview_compile`, we do not modify it
             &*self.ir.get()

@@ -9,12 +9,12 @@ use super::deploy::{DeployFlow, DeployResult};
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 #[cfg(feature = "viz")]
 use crate::graph::api::GraphApi;
-use crate::ir::{HydroLeaf, emit};
+use crate::ir::{HydroRoot, emit};
 use crate::location::{Cluster, External, Process};
 use crate::staging_util::Invariant;
 
 pub struct BuiltFlow<'a> {
-    pub(super) ir: Vec<HydroLeaf>,
+    pub(super) ir: Vec<HydroRoot>,
     pub(super) process_id_name: Vec<(usize, String)>,
     pub(super) cluster_id_name: Vec<(usize, String)>,
     pub(super) external_id_name: Vec<(usize, String)>,
@@ -22,7 +22,7 @@ pub struct BuiltFlow<'a> {
     pub(super) _phantom: Invariant<'a>,
 }
 
-pub(crate) fn build_inner(ir: &mut Vec<HydroLeaf>) -> BTreeMap<usize, DfirGraph> {
+pub(crate) fn build_inner(ir: &mut Vec<HydroRoot>) -> BTreeMap<usize, DfirGraph> {
     emit(ir)
         .into_iter()
         .map(|(k, v)| {
@@ -36,7 +36,7 @@ pub(crate) fn build_inner(ir: &mut Vec<HydroLeaf>) -> BTreeMap<usize, DfirGraph>
 }
 
 impl<'a> BuiltFlow<'a> {
-    pub fn ir(&self) -> &Vec<HydroLeaf> {
+    pub fn ir(&self) -> &Vec<HydroRoot> {
         &self.ir
     }
 
@@ -195,7 +195,7 @@ impl<'a> BuiltFlow<'a> {
         )
     }
 
-    pub fn optimize_with(mut self, f: impl FnOnce(&mut [HydroLeaf])) -> Self {
+    pub fn optimize_with(mut self, f: impl FnOnce(&mut [HydroRoot])) -> Self {
         f(&mut self.ir);
         BuiltFlow {
             ir: std::mem::take(&mut self.ir),

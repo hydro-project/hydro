@@ -81,7 +81,7 @@ async fn main() {
 
     let _nodes = built
         .optimize_with(persist_pullup::persist_pullup)
-        .optimize_with(|leaves| decoupler::decouple(leaves, &decoupler))
+        .optimize_with(|roots| decoupler::decouple(roots, &decoupler))
         .optimize_with(debug::print_id)
         .with_process(
             &leader,
