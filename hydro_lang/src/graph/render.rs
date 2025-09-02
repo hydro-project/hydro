@@ -1,13 +1,13 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt::Write;
 
 use auto_impl::auto_impl;
 
-pub use super::graphviz::{HydroDot, escape_dot};
+pub use super::dot::{HydroDot, escape_dot};
+pub use super::json::HydroJson;
 // Re-export specific implementations
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
-pub use super::reactflow::HydroReactFlow;
 use crate::ir::{DebugExpr, HydroLeaf, HydroNode, HydroSource};
 
 /// Label for a graph node - can be either a static string or contain expressions.
@@ -105,6 +105,7 @@ pub trait HydroGraphWrite {
         node_type: HydroNodeType,
         location_id: Option<usize>,
         location_type: Option<&str>,
+        backtrace: Option<&crate::backtrace::Backtrace>,
     ) -> Result<(), Self::Err>;
 
     /// Write an edge between nodes with optional labeling.
@@ -112,7 +113,7 @@ pub trait HydroGraphWrite {
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_type: HydroEdgeType,
+        edge_properties: &HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err>;
 
@@ -133,8 +134,97 @@ pub trait HydroGraphWrite {
     fn write_epilogue(&mut self) -> Result<(), Self::Err>;
 }
 
+/// Node type utilities - centralized handling of HydroNodeType operations
+pub mod node_type_utils {
+    use super::HydroNodeType;
+
+    /// All node types with their metadata in one place
+    const NODE_TYPE_DATA: &[(HydroNodeType, &str, &str, &str, &str)] = &[
+        (HydroNodeType::Source, "Source", "sourceClass", "[[", "]]"),
+        (
+            HydroNodeType::Transform,
+            "Transform",
+            "transformClass",
+            "(",
+            ")",
+        ),
+        (HydroNodeType::Join, "Join", "joinClass", "(", ")"),
+        (
+            HydroNodeType::Aggregation,
+            "Aggregation",
+            "aggClass",
+            "(",
+            ")",
+        ),
+        (
+            HydroNodeType::Network,
+            "Network",
+            "networkClass",
+            "[[",
+            "]]",
+        ),
+        (HydroNodeType::Sink, "Sink", "sinkClass", "[/", "/]"),
+        (HydroNodeType::Tee, "Tee", "teeClass", "(", ")"),
+    ];
+
+    /// DOT shape and color data
+    const DOT_STYLES: &[(HydroNodeType, &str, &str)] = &[
+        (HydroNodeType::Source, "ellipse", "\"#8dd3c7\""), // Light teal
+        (HydroNodeType::Transform, "box", "\"#ffffb3\""),  // Light yellow
+        (HydroNodeType::Join, "diamond", "\"#bebada\""),   // Light purple
+        (HydroNodeType::Aggregation, "house", "\"#fb8072\""), // Light red/salmon
+        (HydroNodeType::Network, "doubleoctagon", "\"#80b1d3\""), // Light blue
+        (HydroNodeType::Sink, "invhouse", "\"#fdb462\""),  // Light orange
+        (HydroNodeType::Tee, "terminator", "\"#b3de69\""), // Light green
+    ];
+
+    /// Convert HydroNodeType to string representation (used by JSON format)
+    pub fn to_string(node_type: HydroNodeType) -> &'static str {
+        NODE_TYPE_DATA
+            .iter()
+            .find(|(nt, _, _, _, _)| *nt == node_type)
+            .map(|(_, name, _, _, _)| *name)
+            .unwrap_or("Unknown")
+    }
+
+    /// Get all node types with their string representations (used by JSON format)
+    pub fn all_types_with_strings() -> Vec<(HydroNodeType, &'static str)> {
+        NODE_TYPE_DATA
+            .iter()
+            .map(|(nt, name, _, _, _)| (*nt, *name))
+            .collect()
+    }
+
+    /// Get Mermaid class name for node type
+    pub fn to_mermaid_class(node_type: HydroNodeType) -> &'static str {
+        NODE_TYPE_DATA
+            .iter()
+            .find(|(nt, _, _, _, _)| *nt == node_type)
+            .map(|(_, _, class, _, _)| *class)
+            .unwrap_or("defaultClass")
+    }
+
+    /// Get Mermaid shape for node type
+    pub fn to_mermaid_shape(node_type: HydroNodeType) -> (&'static str, &'static str) {
+        NODE_TYPE_DATA
+            .iter()
+            .find(|(nt, _, _, _, _)| *nt == node_type)
+            .map(|(_, _, _, left, right)| (*left, *right))
+            .unwrap_or(("(", ")"))
+    }
+
+    /// Get DOT shape and color for node type
+    pub fn to_dot_style(node_type: HydroNodeType) -> (&'static str, &'static str) {
+        DOT_STYLES
+            .iter()
+            .find(|(nt, _, _)| *nt == node_type)
+            .map(|(_, shape, color)| (*shape, *color))
+            .unwrap_or(("box", "\"#ffffff\""))
+    }
+}
+
 /// Types of nodes in Hydro IR for styling purposes.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HydroNodeType {
     Source,
     Transform,
@@ -145,11 +235,19 @@ pub enum HydroNodeType {
     Tee,
 }
 
-/// Types of edges in Hydro IR.
-#[derive(Debug, Clone, Copy)]
+/// Types of edges in Hydro IR representing stream properties.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HydroEdgeType {
+    Bounded,
+    Unbounded,
+    TotalOrder,
+    NoOrder,
+    Keyed,
+    // Collection type tags for styling
     Stream,
-    Persistent,
+    KeyedStream,
+    Singleton,
+    Optional,
     Network,
     Cycle,
 }
@@ -179,11 +277,19 @@ impl Default for HydroWriteConfig {
 }
 
 /// Graph structure tracker for Hydro IR rendering.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct HydroGraphStructure {
-    pub nodes: HashMap<usize, (NodeLabel, HydroNodeType, Option<usize>)>, /* node_id -> (label, type, location) */
-    pub edges: Vec<(usize, usize, HydroEdgeType, Option<String>)>, // (src, dst, edge_type, label)
-    pub locations: HashMap<usize, String>,                         // location_id -> location_type
+    pub nodes: HashMap<
+        usize,
+        (
+            NodeLabel,
+            HydroNodeType,
+            Option<usize>,
+            Option<crate::backtrace::Backtrace>,
+        ),
+    >, // node_id -> (label, type, location, backtrace)
+    pub edges: Vec<(usize, usize, HashSet<HydroEdgeType>, Option<String>)>, /* (src, dst, edge_properties, label) */
+    pub locations: HashMap<usize, String>, // location_id -> location_type
     pub next_node_id: usize,
 }
 
@@ -197,10 +303,12 @@ impl HydroGraphStructure {
         label: NodeLabel,
         node_type: HydroNodeType,
         location: Option<usize>,
+        backtrace: Option<crate::backtrace::Backtrace>,
     ) -> usize {
         let node_id = self.next_node_id;
         self.next_node_id += 1;
-        self.nodes.insert(node_id, (label, node_type, location));
+        self.nodes
+            .insert(node_id, (label, node_type, location, backtrace));
         node_id
     }
 
@@ -208,15 +316,240 @@ impl HydroGraphStructure {
         &mut self,
         src: usize,
         dst: usize,
-        edge_type: HydroEdgeType,
+        edge_properties: HashSet<HydroEdgeType>,
         label: Option<String>,
     ) {
-        self.edges.push((src, dst, edge_type, label));
+        self.edges.push((src, dst, edge_properties, label));
     }
 
     pub fn add_location(&mut self, location_id: usize, location_type: String) {
         self.locations.insert(location_id, location_type);
     }
+}
+
+/// Extract edge properties from a Hydro type (e.g., Stream<T, L, Bounded, TotalOrder>).
+pub fn extract_edge_properties_from_type(ty: &syn::Type) -> HashSet<HydroEdgeType> {
+    let mut properties = HashSet::new();
+
+    // Fast path: unwrap wrappers and combine properties recursively
+    match ty {
+        // Handle tuples introduced by optimizers like (ClusterId<()>, T)
+        syn::Type::Tuple(t) => {
+            for elem in &t.elems {
+                properties.extend(extract_edge_properties_from_type(elem));
+            }
+            return properties;
+        }
+        // Handle &T
+        syn::Type::Reference(r) => {
+            properties.extend(extract_edge_properties_from_type(&r.elem));
+            return properties;
+        }
+        // Handle (T)
+        syn::Type::Paren(p) => {
+            properties.extend(extract_edge_properties_from_type(&p.elem));
+            return properties;
+        }
+        // Handle grouped types
+        syn::Type::Group(g) => {
+            properties.extend(extract_edge_properties_from_type(&g.elem));
+            return properties;
+        }
+        _ => {}
+    }
+
+    // Parse the type to extract stream properties
+    if let syn::Type::Path(type_path) = ty {
+        if let Some(segment) = type_path.path.segments.last() {
+            let type_name = segment.ident.to_string();
+
+            match type_name.as_str() {
+                "Stream" => {
+                    // Tag collection type
+                    properties.insert(HydroEdgeType::Stream);
+                    // Stream<T, L, Bound, Order, Retries>
+                    if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                        let type_args: Vec<_> = args.args.iter().collect();
+
+                        // Extract boundedness (3rd type param: index 2)
+                        if let Some(syn::GenericArgument::Type(bound_ty)) = type_args.get(2) {
+                            if let syn::Type::Path(bound_path) = bound_ty {
+                                if let Some(bound_segment) = bound_path.path.segments.last() {
+                                    let bound_name = bound_segment.ident.to_string();
+                                    match bound_name.as_str() {
+                                        "Bounded" => {
+                                            properties.insert(HydroEdgeType::Bounded);
+                                        }
+                                        "Unbounded" => {
+                                            properties.insert(HydroEdgeType::Unbounded);
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+
+                        // Extract ordering (4th type param: index 3)
+                        if let Some(syn::GenericArgument::Type(order_ty)) = type_args.get(3) {
+                            if let syn::Type::Path(order_path) = order_ty {
+                                if let Some(order_segment) = order_path.path.segments.last() {
+                                    let order_name = order_segment.ident.to_string();
+                                    match order_name.as_str() {
+                                        "TotalOrder" => {
+                                            properties.insert(HydroEdgeType::TotalOrder);
+                                        }
+                                        "NoOrder" => {
+                                            properties.insert(HydroEdgeType::NoOrder);
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                "KeyedStream" => {
+                    // KeyedStream<K, V, L, Bound, Order, Retries>
+                    properties.insert(HydroEdgeType::KeyedStream);
+                    properties.insert(HydroEdgeType::Keyed);
+
+                    if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                        let type_args: Vec<_> = args.args.iter().collect();
+
+                        // Extract boundedness (4th type param: index 3)
+                        if let Some(syn::GenericArgument::Type(bound_ty)) = type_args.get(3) {
+                            if let syn::Type::Path(bound_path) = bound_ty {
+                                if let Some(bound_segment) = bound_path.path.segments.last() {
+                                    let bound_name = bound_segment.ident.to_string();
+                                    match bound_name.as_str() {
+                                        "Bounded" => {
+                                            properties.insert(HydroEdgeType::Bounded);
+                                        }
+                                        "Unbounded" => {
+                                            properties.insert(HydroEdgeType::Unbounded);
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+
+                        // Extract ordering (5th type param: index 4)
+                        if let Some(syn::GenericArgument::Type(order_ty)) = type_args.get(4) {
+                            if let syn::Type::Path(order_path) = order_ty {
+                                if let Some(order_segment) = order_path.path.segments.last() {
+                                    let order_name = order_segment.ident.to_string();
+                                    match order_name.as_str() {
+                                        "TotalOrder" => {
+                                            properties.insert(HydroEdgeType::TotalOrder);
+                                        }
+                                        "NoOrder" => {
+                                            properties.insert(HydroEdgeType::NoOrder);
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                "Singleton" | "Optional" => {
+                    if type_name == "Singleton" {
+                        properties.insert(HydroEdgeType::Singleton);
+                    } else {
+                        properties.insert(HydroEdgeType::Optional);
+                    }
+                    // Singletons/Optionals can have Bound/Order type params too
+                    // Singleton<T, L, Bound, Order, Retries>
+                    if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                        let type_args: Vec<_> = args.args.iter().collect();
+
+                        // Extract boundedness (3rd type param: index 2) - defaults to Bounded
+                        if let Some(syn::GenericArgument::Type(bound_ty)) = type_args.get(2) {
+                            if let syn::Type::Path(bound_path) = bound_ty {
+                                if let Some(bound_segment) = bound_path.path.segments.last() {
+                                    let bound_name = bound_segment.ident.to_string();
+                                    match bound_name.as_str() {
+                                        "Bounded" => {
+                                            properties.insert(HydroEdgeType::Bounded);
+                                        }
+                                        "Unbounded" => {
+                                            properties.insert(HydroEdgeType::Unbounded);
+                                        }
+                                        _ => {
+                                            // Default for Singleton
+                                            properties.insert(HydroEdgeType::Bounded);
+                                        }
+                                    };
+                                } else {
+                                    properties.insert(HydroEdgeType::Bounded);
+                                }
+                            } else {
+                                properties.insert(HydroEdgeType::Bounded);
+                            }
+                        } else {
+                            properties.insert(HydroEdgeType::Bounded);
+                        }
+
+                        // Extract ordering (4th type param: index 3) - defaults to TotalOrder
+                        if let Some(syn::GenericArgument::Type(order_ty)) = type_args.get(3) {
+                            if let syn::Type::Path(order_path) = order_ty {
+                                if let Some(order_segment) = order_path.path.segments.last() {
+                                    let order_name = order_segment.ident.to_string();
+                                    match order_name.as_str() {
+                                        "TotalOrder" => {
+                                            properties.insert(HydroEdgeType::TotalOrder);
+                                        }
+                                        "NoOrder" => {
+                                            properties.insert(HydroEdgeType::NoOrder);
+                                        }
+                                        _ => {
+                                            // Default for Singleton
+                                            properties.insert(HydroEdgeType::TotalOrder);
+                                        }
+                                    };
+                                } else {
+                                    properties.insert(HydroEdgeType::TotalOrder);
+                                }
+                            } else {
+                                properties.insert(HydroEdgeType::TotalOrder);
+                            }
+                        } else {
+                            properties.insert(HydroEdgeType::TotalOrder);
+                        }
+                    } else {
+                        // No type args, use defaults for Singleton
+                        properties.insert(HydroEdgeType::Bounded);
+                        properties.insert(HydroEdgeType::TotalOrder);
+                    }
+                }
+                _ => {
+                    // Unknown/wrapper type. If it has generic type arguments, recurse into them
+                    // so we can pick up inner Stream/KeyedStream/Singleton/Optional semantics.
+                    if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                        for arg in &args.args {
+                            if let syn::GenericArgument::Type(inner_ty) = arg {
+                                properties.extend(extract_edge_properties_from_type(inner_ty));
+                            }
+                        }
+                    }
+                    // Do not set defaults here; allow final fallback below if still empty.
+                }
+            }
+        }
+    } else {
+        // Non-path type (and not covered above), use defaults
+        properties.insert(HydroEdgeType::Unbounded);
+        properties.insert(HydroEdgeType::TotalOrder);
+    }
+
+    // If no specific properties were found, assume basic stream properties
+    if properties.is_empty() {
+        properties.insert(HydroEdgeType::Unbounded);
+        properties.insert(HydroEdgeType::TotalOrder);
+    }
+
+    properties
 }
 
 /// Function to extract an op_name from a print_root() result for use in labels.
@@ -297,6 +630,70 @@ fn setup_location(
     location_id
 }
 
+/// Helper function to extract edge properties from a node's output type.
+fn extract_edge_properties_from_node(node: &HydroNode) -> HashSet<HydroEdgeType> {
+    // Get the metadata from the node
+    let metadata = match node {
+        HydroNode::Placeholder => return HashSet::new(),
+        HydroNode::Source { metadata, .. } => metadata,
+        HydroNode::CycleSource { metadata, .. } => metadata,
+        HydroNode::ExternalInput { metadata, .. } => metadata,
+        HydroNode::Tee { metadata, .. } => metadata,
+        HydroNode::Persist { metadata, .. } => metadata,
+        HydroNode::Unpersist { metadata, .. } => metadata,
+        HydroNode::Delta { metadata, .. } => metadata,
+        HydroNode::Chain { metadata, .. } => metadata,
+        HydroNode::CrossProduct { metadata, .. } => metadata,
+        HydroNode::CrossSingleton { metadata, .. } => metadata,
+        HydroNode::Join { metadata, .. } => metadata,
+        HydroNode::Difference { metadata, .. } => metadata,
+        HydroNode::AntiJoin { metadata, .. } => metadata,
+        HydroNode::ResolveFutures { metadata, .. } => metadata,
+        HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
+        HydroNode::Map { metadata, .. } => metadata,
+        HydroNode::FlatMap { metadata, .. } => metadata,
+        HydroNode::Filter { metadata, .. } => metadata,
+        HydroNode::FilterMap { metadata, .. } => metadata,
+        HydroNode::DeferTick { metadata, .. } => metadata,
+        HydroNode::Enumerate { metadata, .. } => metadata,
+        HydroNode::Inspect { metadata, .. } => metadata,
+        HydroNode::Unique { metadata, .. } => metadata,
+        HydroNode::Sort { metadata, .. } => metadata,
+        HydroNode::Fold { metadata, .. } => metadata,
+        HydroNode::FoldKeyed { metadata, .. } => metadata,
+        HydroNode::Reduce { metadata, .. } => metadata,
+        HydroNode::ReduceKeyed { metadata, .. } => metadata,
+        HydroNode::ReduceKeyedWatermark { metadata, .. } => metadata,
+        HydroNode::Scan { metadata, .. } => metadata,
+        HydroNode::Network { metadata, .. } => metadata,
+        HydroNode::Counter { metadata, .. } => metadata,
+    };
+
+    // Extract properties from the output type if available
+    if let Some(output_type) = &metadata.output_type {
+        let mut properties = extract_edge_properties_from_type(output_type);
+
+        // Add special properties based on node type
+        match node {
+            HydroNode::Network { .. } => {
+                properties.insert(HydroEdgeType::Network);
+            }
+            HydroNode::CycleSource { .. } => {
+                properties.insert(HydroEdgeType::Cycle);
+            }
+            _ => {}
+        }
+
+        properties
+    } else {
+        // Fallback: basic properties
+        let mut properties = HashSet::new();
+        properties.insert(HydroEdgeType::Unbounded);
+        properties.insert(HydroEdgeType::TotalOrder);
+        properties
+    }
+}
+
 impl HydroLeaf {
     /// Core graph writing logic that works with any GraphWrite implementation.
     pub fn write_graph<W>(
@@ -317,7 +714,7 @@ impl HydroLeaf {
         graph_write.write_prologue()?;
 
         // Write node definitions
-        for (&node_id, (label, node_type, location)) in &structure.nodes {
+        for (&node_id, (label, node_type, location, backtrace)) in &structure.nodes {
             let (location_id, location_type) = if let Some(loc_id) = location {
                 (
                     Some(*loc_id),
@@ -335,13 +732,14 @@ impl HydroLeaf {
                 *node_type,
                 location_id,
                 location_type,
+                backtrace.as_ref(),
             )?;
         }
 
         // Group nodes by location if requested
         if config.show_location_groups {
             let mut nodes_by_location: HashMap<usize, Vec<usize>> = HashMap::new();
-            for (&node_id, (_, _, location)) in &structure.nodes {
+            for (&node_id, (_, _, location, _)) in &structure.nodes {
                 if let Some(location_id) = location {
                     nodes_by_location
                         .entry(*location_id)
@@ -362,8 +760,8 @@ impl HydroLeaf {
         }
 
         // Write edges
-        for (src_id, dst_id, edge_type, label) in &structure.edges {
-            graph_write.write_edge(*src_id, *dst_id, *edge_type, label.as_deref())?;
+        for (src_id, dst_id, edge_properties, label) in &structure.edges {
+            graph_write.write_edge(*src_id, *dst_id, edge_properties, label.as_deref())?;
         }
 
         graph_write.write_epilogue()?;
@@ -385,17 +783,24 @@ impl HydroLeaf {
             input: &HydroNode,
             metadata: Option<&crate::ir::HydroIrMetadata>,
             label: NodeLabel,
-            edge_type: HydroEdgeType,
         ) -> usize {
             let input_id = input.build_graph_structure(structure, seen_tees, config);
             let location_id = metadata.and_then(|m| setup_location(structure, m));
-            let sink_id = structure.add_node(label, HydroNodeType::Sink, location_id);
-            structure.add_edge(input_id, sink_id, edge_type, None);
+            let sink_id = structure.add_node(
+                label,
+                HydroNodeType::Sink,
+                location_id,
+                metadata.map(|m| m.backtrace.clone()),
+            );
+
+            // Extract edge properties from the input node's output type
+            let edge_properties = extract_edge_properties_from_node(input);
+            structure.add_edge(input_id, sink_id, edge_properties, None);
             sink_id
         }
 
         match self {
-            // Sink operations with Stream edges - grouped by edge type
+            // Sink operations - edge properties extracted from input node
             HydroLeaf::ForEach { f, input, metadata } => build_sink_node(
                 structure,
                 seen_tees,
@@ -403,7 +808,6 @@ impl HydroLeaf {
                 input,
                 Some(metadata),
                 NodeLabel::with_exprs("for_each".to_string(), vec![f.clone()]),
-                HydroEdgeType::Stream,
             ),
 
             HydroLeaf::SendExternal {
@@ -421,7 +825,6 @@ impl HydroLeaf {
                     format!("send_external({}:{})", to_external_id, to_key),
                     vec![],
                 ),
-                HydroEdgeType::Stream,
             ),
 
             HydroLeaf::DestSink {
@@ -435,24 +838,30 @@ impl HydroLeaf {
                 input,
                 Some(metadata),
                 NodeLabel::with_exprs("dest_sink".to_string(), vec![sink.clone()]),
-                HydroEdgeType::Stream,
             ),
 
-            // Sink operation with Cycle edge - grouped by edge type
+            // Cycle sink - edge properties extracted from input node, plus Cycle property
             HydroLeaf::CycleSink {
                 ident,
                 input,
                 metadata,
                 ..
-            } => build_sink_node(
-                structure,
-                seen_tees,
-                config,
-                input,
-                Some(metadata),
-                NodeLabel::static_label(format!("cycle_sink({})", ident)),
-                HydroEdgeType::Cycle,
-            ),
+            } => {
+                let input_id = input.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let sink_id = structure.add_node(
+                    NodeLabel::static_label(format!("cycle_sink({})", ident)),
+                    HydroNodeType::Sink,
+                    location_id,
+                    Some(metadata.backtrace.clone()),
+                );
+
+                // Extract edge properties and add Cycle property
+                let mut edge_properties = extract_edge_properties_from_node(input);
+                edge_properties.insert(HydroEdgeType::Cycle);
+                structure.add_edge(input_id, sink_id, edge_properties, None);
+                sink_id
+            }
         }
     }
 }
@@ -469,79 +878,28 @@ impl HydroNode {
 
         // Helper functions to reduce duplication, categorized by input/expression patterns
 
-        /// Common parameters for transform builder functions to reduce argument count
-        struct TransformParams<'a> {
-            structure: &'a mut HydroGraphStructure,
-            seen_tees: &'a mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
-            config: &'a HydroWriteConfig,
-            input: &'a HydroNode,
-            metadata: &'a crate::ir::HydroIrMetadata,
-            op_name: String,
+        // Helper function for single-input transforms
+        fn build_single_input_transform(
+            structure: &mut HydroGraphStructure,
+            seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
+            config: &HydroWriteConfig,
+            input: &HydroNode,
+            metadata: &crate::ir::HydroIrMetadata,
+            label: NodeLabel,
             node_type: HydroNodeType,
-            edge_type: HydroEdgeType,
-        }
-
-        // Single-input transform with no expressions
-        fn build_simple_transform(params: TransformParams) -> usize {
-            let input_id = params.input.build_graph_structure(
-                params.structure,
-                params.seen_tees,
-                params.config,
-            );
-            let location_id = setup_location(params.structure, params.metadata);
-            let node_id = params.structure.add_node(
-                NodeLabel::Static(params.op_name.to_string()),
-                params.node_type,
-                location_id,
-            );
-            params
-                .structure
-                .add_edge(input_id, node_id, params.edge_type, None);
-            node_id
-        }
-
-        // Single-input transform with one expression
-        fn build_single_expr_transform(params: TransformParams, expr: &DebugExpr) -> usize {
-            let input_id = params.input.build_graph_structure(
-                params.structure,
-                params.seen_tees,
-                params.config,
-            );
-            let location_id = setup_location(params.structure, params.metadata);
-            let node_id = params.structure.add_node(
-                NodeLabel::with_exprs(params.op_name.to_string(), vec![expr.clone()]),
-                params.node_type,
-                location_id,
-            );
-            params
-                .structure
-                .add_edge(input_id, node_id, params.edge_type, None);
-            node_id
-        }
-
-        // Single-input transform with two expressions
-        fn build_dual_expr_transform(
-            params: TransformParams,
-            expr1: &DebugExpr,
-            expr2: &DebugExpr,
         ) -> usize {
-            let input_id = params.input.build_graph_structure(
-                params.structure,
-                params.seen_tees,
-                params.config,
-            );
-            let location_id = setup_location(params.structure, params.metadata);
-            let node_id = params.structure.add_node(
-                NodeLabel::with_exprs(
-                    params.op_name.to_string(),
-                    vec![expr1.clone(), expr2.clone()],
-                ),
-                params.node_type,
+            let input_id = input.build_graph_structure(structure, seen_tees, config);
+            let location_id = setup_location(structure, metadata);
+            let node_id = structure.add_node(
+                label,
+                node_type,
                 location_id,
+                Some(metadata.backtrace.clone()),
             );
-            params
-                .structure
-                .add_edge(input_id, node_id, params.edge_type, None);
+
+            // Extract edge properties from the input node's output type
+            let edge_properties = extract_edge_properties_from_node(input);
+            structure.add_edge(input_id, node_id, edge_properties, None);
             node_id
         }
 
@@ -552,13 +910,19 @@ impl HydroNode {
             label: String,
         ) -> usize {
             let location_id = setup_location(structure, metadata);
-            structure.add_node(NodeLabel::Static(label), HydroNodeType::Source, location_id)
+            structure.add_node(
+                NodeLabel::Static(label),
+                HydroNodeType::Source,
+                location_id,
+                Some(metadata.backtrace.clone()),
+            )
         }
 
         match self {
             HydroNode::Placeholder => structure.add_node(
                 NodeLabel::Static("PLACEHOLDER".to_string()),
                 HydroNodeType::Transform,
+                None,
                 None,
             ),
 
@@ -605,221 +969,190 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Tee,
                     location_id,
+                    Some(metadata.backtrace.clone()),
                 );
 
                 seen_tees.insert(ptr, tee_id);
 
-                structure.add_edge(input_id, tee_id, HydroEdgeType::Stream, None);
+                // Extract edge properties from the input node
+                let edge_properties = extract_edge_properties_from_node(&inner.0.borrow());
+                structure.add_edge(input_id, tee_id, edge_properties, None);
 
                 tee_id
             }
 
-            // Transform operations with Stream edges - grouped by node/edge type
-            HydroNode::Delta { inner, metadata }
-            | HydroNode::DeferTick {
+            // Transform operations - edge properties extracted from input
+            HydroNode::Delta { inner, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                inner,
+                metadata,
+                NodeLabel::Static(extract_op_name(self.print_root())),
+                HydroNodeType::Transform,
+            ),
+
+            HydroNode::DeferTick {
                 input: inner,
                 metadata,
-            }
-            | HydroNode::Enumerate {
+            } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                inner,
+                metadata,
+                NodeLabel::Static(extract_op_name(self.print_root())),
+                HydroNodeType::Transform,
+            ),
+
+            HydroNode::Enumerate {
                 input: inner,
                 metadata,
                 ..
-            }
-            | HydroNode::Unique {
-                input: inner,
-                metadata,
-            }
-            | HydroNode::ResolveFutures {
-                input: inner,
-                metadata,
-            }
-            | HydroNode::ResolveFuturesOrdered {
-                input: inner,
-                metadata,
-            } => build_simple_transform(TransformParams {
+            } => build_single_input_transform(
                 structure,
                 seen_tees,
                 config,
+                inner,
+                metadata,
+                NodeLabel::Static(extract_op_name(self.print_root())),
+                HydroNodeType::Transform,
+            ),
+
+            HydroNode::Unique {
                 input: inner,
                 metadata,
-                op_name: extract_op_name(self.print_root()),
-                node_type: HydroNodeType::Transform,
-                edge_type: HydroEdgeType::Stream,
-            }),
-
-            // Transform operation with Persistent edge - grouped by node/edge type
-            HydroNode::Persist { inner, metadata } => build_simple_transform(TransformParams {
+            } => build_single_input_transform(
                 structure,
                 seen_tees,
                 config,
+                inner,
+                metadata,
+                NodeLabel::Static(extract_op_name(self.print_root())),
+                HydroNodeType::Transform,
+            ),
+
+            HydroNode::ResolveFutures {
                 input: inner,
                 metadata,
-                op_name: extract_op_name(self.print_root()),
-                node_type: HydroNodeType::Transform,
-                edge_type: HydroEdgeType::Persistent,
-            }),
+            } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                inner,
+                metadata,
+                NodeLabel::Static(extract_op_name(self.print_root())),
+                HydroNodeType::Transform,
+            ),
 
-            // Aggregation operation with Stream edge - grouped by node/edge type
+            HydroNode::ResolveFuturesOrdered {
+                input: inner,
+                metadata,
+            } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                inner,
+                metadata,
+                NodeLabel::Static(extract_op_name(self.print_root())),
+                HydroNodeType::Transform,
+            ),
+
+            HydroNode::Persist { inner, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                inner,
+                metadata,
+                NodeLabel::Static(extract_op_name(self.print_root())),
+                HydroNodeType::Transform,
+            ),
+
             HydroNode::Sort {
                 input: inner,
                 metadata,
-            } => build_simple_transform(TransformParams {
+            } => build_single_input_transform(
                 structure,
                 seen_tees,
                 config,
-                input: inner,
+                inner,
                 metadata,
-                op_name: extract_op_name(self.print_root()),
-                node_type: HydroNodeType::Aggregation,
-                edge_type: HydroEdgeType::Stream,
-            }),
-
-            // Single-expression Transform operations - grouped by node type
-            HydroNode::Map { f, input, metadata }
-            | HydroNode::Filter { f, input, metadata }
-            | HydroNode::FlatMap { f, input, metadata }
-            | HydroNode::FilterMap { f, input, metadata }
-            | HydroNode::Inspect { f, input, metadata } => build_single_expr_transform(
-                TransformParams {
-                    structure,
-                    seen_tees,
-                    config,
-                    input,
-                    metadata,
-                    op_name: extract_op_name(self.print_root()),
-                    node_type: HydroNodeType::Transform,
-                    edge_type: HydroEdgeType::Stream,
-                },
-                f,
+                NodeLabel::Static(extract_op_name(self.print_root())),
+                HydroNodeType::Aggregation,
             ),
 
-            // Single-expression Aggregation operations - grouped by node type
-            HydroNode::Reduce { f, input, metadata }
-            | HydroNode::ReduceKeyed { f, input, metadata } => build_single_expr_transform(
-                TransformParams {
-                    structure,
-                    seen_tees,
-                    config,
-                    input,
-                    metadata,
-                    op_name: extract_op_name(self.print_root()),
-                    node_type: HydroNodeType::Aggregation,
-                    edge_type: HydroEdgeType::Stream,
-                },
-                f,
+            // Single-expression Transform operations
+            HydroNode::Map { f, input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                HydroNodeType::Transform,
             ),
 
-            // Join-like operations with left/right edge labels - grouped by edge labeling
-            HydroNode::Join {
-                left,
-                right,
-                metadata,
-            }
-            | HydroNode::CrossProduct {
-                left,
-                right,
-                metadata,
-            }
-            | HydroNode::CrossSingleton {
-                left,
-                right,
-                metadata,
-            } => {
-                let left_id = left.build_graph_structure(structure, seen_tees, config);
-                let right_id = right.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let node_id = structure.add_node(
-                    NodeLabel::Static(extract_op_name(self.print_root())),
-                    HydroNodeType::Join,
-                    location_id,
-                );
-                structure.add_edge(
-                    left_id,
-                    node_id,
-                    HydroEdgeType::Stream,
-                    Some("left".to_string()),
-                );
-                structure.add_edge(
-                    right_id,
-                    node_id,
-                    HydroEdgeType::Stream,
-                    Some("right".to_string()),
-                );
-                node_id
-            }
-
-            // Join-like operations with pos/neg edge labels - grouped by edge labeling
-            HydroNode::Difference {
-                pos: left,
-                neg: right,
-                metadata,
-            }
-            | HydroNode::AntiJoin {
-                pos: left,
-                neg: right,
-                metadata,
-            } => {
-                let left_id = left.build_graph_structure(structure, seen_tees, config);
-                let right_id = right.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let node_id = structure.add_node(
-                    NodeLabel::Static(extract_op_name(self.print_root())),
-                    HydroNodeType::Join,
-                    location_id,
-                );
-                structure.add_edge(
-                    left_id,
-                    node_id,
-                    HydroEdgeType::Stream,
-                    Some("pos".to_string()),
-                );
-                structure.add_edge(
-                    right_id,
-                    node_id,
-                    HydroEdgeType::Stream,
-                    Some("neg".to_string()),
-                );
-                node_id
-            }
-
-            // Dual expression transforms - consolidated using pattern matching
-            HydroNode::Fold {
-                init,
-                acc,
+            HydroNode::Filter { f, input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
                 input,
                 metadata,
-            }
-            | HydroNode::FoldKeyed {
-                init,
-                acc,
+                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                HydroNodeType::Transform,
+            ),
+
+            HydroNode::FlatMap { f, input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
                 input,
                 metadata,
-            }
-            | HydroNode::Scan {
-                init,
-                acc,
+                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                HydroNodeType::Transform,
+            ),
+
+            HydroNode::FilterMap { f, input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
                 input,
                 metadata,
-            } => {
-                let node_type = HydroNodeType::Aggregation; // All are aggregation operations
+                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                HydroNodeType::Transform,
+            ),
 
-                build_dual_expr_transform(
-                    TransformParams {
-                        structure,
-                        seen_tees,
-                        config,
-                        input,
-                        metadata,
-                        op_name: extract_op_name(self.print_root()),
-                        node_type,
-                        edge_type: HydroEdgeType::Stream,
-                    },
-                    init,
-                    acc,
-                )
-            }
+            HydroNode::Inspect { f, input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                HydroNodeType::Transform,
+            ),
 
-            // Combination of join and transform
+            // Single-expression Aggregation operations
+            HydroNode::Reduce { f, input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                HydroNodeType::Aggregation,
+            ),
+
+            HydroNode::ReduceKeyed { f, input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                HydroNodeType::Aggregation,
+            ),
+
             HydroNode::ReduceKeyedWatermark {
                 f,
                 input,
@@ -829,35 +1162,212 @@ impl HydroNode {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let watermark_id = watermark.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
-                let join_node_id = structure.add_node(
+                let node_id = structure.add_node(
+                    NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                    HydroNodeType::Aggregation,
+                    location_id,
+                    Some(metadata.backtrace.clone()),
+                );
+
+                let input_properties = extract_edge_properties_from_node(input);
+                let watermark_properties = extract_edge_properties_from_node(watermark);
+
+                structure.add_edge(input_id, node_id, input_properties, Some("input".to_string()));
+                structure.add_edge(
+                    watermark_id,
+                    node_id,
+                    watermark_properties,
+                    Some("watermark".to_string()),
+                );
+                node_id
+            }
+
+            // Join-like operations with left/right edge labels
+            HydroNode::Join {
+                left,
+                right,
+                metadata,
+            } => {
+                let left_id = left.build_graph_structure(structure, seen_tees, config);
+                let right_id = right.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let node_id = structure.add_node(
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
                     location_id,
-                );
-                structure.add_edge(
-                    input_id,
-                    join_node_id,
-                    HydroEdgeType::Stream,
-                    Some("input".to_string()),
-                );
-                structure.add_edge(
-                    watermark_id,
-                    join_node_id,
-                    HydroEdgeType::Stream,
-                    Some("watermark".to_string()),
+                    Some(metadata.backtrace.clone()),
                 );
 
-                let node_id = structure.add_node(
-                    NodeLabel::with_exprs(
-                        extract_op_name(self.print_root()).to_string(),
-                        vec![f.clone()],
-                    ),
-                    HydroNodeType::Aggregation,
-                    location_id,
+                let left_properties = extract_edge_properties_from_node(left);
+                let right_properties = extract_edge_properties_from_node(right);
+
+                structure.add_edge(left_id, node_id, left_properties, Some("left".to_string()));
+                structure.add_edge(
+                    right_id,
+                    node_id,
+                    right_properties,
+                    Some("right".to_string()),
                 );
-                structure.add_edge(join_node_id, node_id, HydroEdgeType::Stream, None);
                 node_id
             }
+
+            HydroNode::CrossProduct {
+                left,
+                right,
+                metadata,
+            } => {
+                let left_id = left.build_graph_structure(structure, seen_tees, config);
+                let right_id = right.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let node_id = structure.add_node(
+                    NodeLabel::Static(extract_op_name(self.print_root())),
+                    HydroNodeType::Join,
+                    location_id,
+                    Some(metadata.backtrace.clone()),
+                );
+
+                let left_properties = extract_edge_properties_from_node(left);
+                let right_properties = extract_edge_properties_from_node(right);
+
+                structure.add_edge(left_id, node_id, left_properties, Some("left".to_string()));
+                structure.add_edge(
+                    right_id,
+                    node_id,
+                    right_properties,
+                    Some("right".to_string()),
+                );
+                node_id
+            }
+
+            HydroNode::CrossSingleton {
+                left,
+                right,
+                metadata,
+            } => {
+                let left_id = left.build_graph_structure(structure, seen_tees, config);
+                let right_id = right.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let node_id = structure.add_node(
+                    NodeLabel::Static(extract_op_name(self.print_root())),
+                    HydroNodeType::Join,
+                    location_id,
+                    Some(metadata.backtrace.clone()),
+                );
+
+                let left_properties = extract_edge_properties_from_node(left);
+                let right_properties = extract_edge_properties_from_node(right);
+
+                structure.add_edge(left_id, node_id, left_properties, Some("left".to_string()));
+                structure.add_edge(
+                    right_id,
+                    node_id,
+                    right_properties,
+                    Some("right".to_string()),
+                );
+                node_id
+            }
+
+            // Join-like operations with pos/neg edge labels
+            HydroNode::Difference {
+                pos: left,
+                neg: right,
+                metadata,
+            } => {
+                let left_id = left.build_graph_structure(structure, seen_tees, config);
+                let right_id = right.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let node_id = structure.add_node(
+                    NodeLabel::Static(extract_op_name(self.print_root())),
+                    HydroNodeType::Join,
+                    location_id,
+                    Some(metadata.backtrace.clone()),
+                );
+
+                let left_properties = extract_edge_properties_from_node(left);
+                let right_properties = extract_edge_properties_from_node(right);
+
+                structure.add_edge(left_id, node_id, left_properties, Some("pos".to_string()));
+                structure.add_edge(right_id, node_id, right_properties, Some("neg".to_string()));
+                node_id
+            }
+
+            HydroNode::AntiJoin {
+                pos: left,
+                neg: right,
+                metadata,
+            } => {
+                let left_id = left.build_graph_structure(structure, seen_tees, config);
+                let right_id = right.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let node_id = structure.add_node(
+                    NodeLabel::Static(extract_op_name(self.print_root())),
+                    HydroNodeType::Join,
+                    location_id,
+                    Some(metadata.backtrace.clone()),
+                );
+
+                let left_properties = extract_edge_properties_from_node(left);
+                let right_properties = extract_edge_properties_from_node(right);
+
+                structure.add_edge(left_id, node_id, left_properties, Some("pos".to_string()));
+                structure.add_edge(right_id, node_id, right_properties, Some("neg".to_string()));
+                node_id
+            }
+
+            // Dual expression transforms
+            HydroNode::Fold {
+                init,
+                acc,
+                input,
+                metadata,
+            } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeLabel::with_exprs(
+                    extract_op_name(self.print_root()),
+                    vec![init.clone(), acc.clone()],
+                ),
+                HydroNodeType::Aggregation,
+            ),
+
+            HydroNode::FoldKeyed {
+                init,
+                acc,
+                input,
+                metadata,
+            } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeLabel::with_exprs(
+                    extract_op_name(self.print_root()),
+                    vec![init.clone(), acc.clone()],
+                ),
+                HydroNodeType::Aggregation,
+            ),
+
+            HydroNode::Scan {
+                init,
+                acc,
+                input,
+                metadata,
+            } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeLabel::with_exprs(
+                    extract_op_name(self.print_root()),
+                    vec![init.clone(), acc.clone()],
+                ),
+                HydroNodeType::Transform,
+            ),
 
             HydroNode::Network {
                 serialize_fn,
@@ -897,11 +1407,15 @@ impl HydroNode {
                     NodeLabel::Static(label),
                     HydroNodeType::Network,
                     to_location_id,
+                    Some(metadata.backtrace.clone()),
                 );
+                // Extract edge properties and add Network property
+                let mut edge_properties = extract_edge_properties_from_node(input);
+                edge_properties.insert(HydroEdgeType::Network);
                 structure.add_edge(
                     input_id,
                     network_id,
-                    HydroEdgeType::Network,
+                    edge_properties,
                     Some(format!("to {:?}", to_location_id)),
                 );
                 network_id
@@ -925,39 +1439,39 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Transform,
                     location_id,
+                    Some(metadata.backtrace.clone()),
                 );
+                let first_properties = extract_edge_properties_from_node(first);
+                let second_properties = extract_edge_properties_from_node(second);
+
                 structure.add_edge(
                     first_id,
                     chain_id,
-                    HydroEdgeType::Stream,
+                    first_properties,
                     Some("first".to_string()),
                 );
                 structure.add_edge(
                     second_id,
                     chain_id,
-                    HydroEdgeType::Stream,
+                    second_properties,
                     Some("second".to_string()),
                 );
                 chain_id
             }
 
             HydroNode::Counter {
-                tag: _,
                 duration,
                 input,
                 metadata,
-            } => build_single_expr_transform(
-                TransformParams {
-                    structure,
-                    seen_tees,
-                    config,
-                    input,
-                    metadata,
-                    op_name: extract_op_name(self.print_root()),
-                    node_type: HydroNodeType::Transform,
-                    edge_type: HydroEdgeType::Stream,
-                },
-                duration,
+                ..
+            } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![duration.clone()]),
+                HydroNodeType::Transform,
             ),
         }
     }
@@ -999,12 +1513,8 @@ write_hydro_ir!(
 render_hydro_ir!(render_hydro_ir_dot, write_hydro_ir_dot);
 write_hydro_ir!(write_hydro_ir_dot, HydroDot<_>, HydroDot::new_with_config);
 
-render_hydro_ir!(render_hydro_ir_reactflow, write_hydro_ir_reactflow);
-write_hydro_ir!(
-    write_hydro_ir_reactflow,
-    HydroReactFlow<_>,
-    HydroReactFlow::new
-);
+render_hydro_ir!(render_hydro_ir_json, write_hydro_ir_json);
+write_hydro_ir!(write_hydro_ir_json, HydroJson<_>, HydroJson::new);
 
 fn write_hydro_ir_graph<W>(
     mut graph_write: W,
@@ -1025,7 +1535,7 @@ where
     // Write the graph using the same logic as individual leaves
     graph_write.write_prologue()?;
 
-    for (&node_id, (label, node_type, location)) in &structure.nodes {
+    for (&node_id, (label, node_type, location, backtrace)) in &structure.nodes {
         let (location_id, location_type) = if let Some(loc_id) = location {
             (
                 Some(*loc_id),
@@ -1040,12 +1550,13 @@ where
             *node_type,
             location_id,
             location_type,
+            backtrace.as_ref(),
         )?;
     }
 
     if config.show_location_groups {
         let mut nodes_by_location: HashMap<usize, Vec<usize>> = HashMap::new();
-        for (&node_id, (_, _, location)) in &structure.nodes {
+        for (&node_id, (_, _, location, _)) in &structure.nodes {
             if let Some(location_id) = location {
                 nodes_by_location
                     .entry(*location_id)
@@ -1065,8 +1576,8 @@ where
         }
     }
 
-    for (src_id, dst_id, edge_type, label) in &structure.edges {
-        graph_write.write_edge(*src_id, *dst_id, *edge_type, label.as_deref())?;
+    for (src_id, dst_id, edge_properties, label) in &structure.edges {
+        graph_write.write_edge(*src_id, *dst_id, edge_properties, label.as_deref())?;
     }
 
     graph_write.write_epilogue()?;

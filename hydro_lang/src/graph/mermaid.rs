@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::fmt::Write;
 
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
@@ -75,24 +76,10 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
+        _backtrace: Option<&crate::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
-        let class_str = match node_type {
-            HydroNodeType::Source => "sourceClass",
-            HydroNodeType::Transform => "transformClass",
-            HydroNodeType::Join => "joinClass",
-            HydroNodeType::Aggregation => "aggClass",
-            HydroNodeType::Network => "networkClass",
-            HydroNodeType::Sink => "sinkClass",
-            HydroNodeType::Tee => "teeClass",
-        };
-
-        let (lbracket, rbracket) = match node_type {
-            HydroNodeType::Source => ("[[", "]]"),
-            HydroNodeType::Sink => ("[/", "/]"),
-            HydroNodeType::Network => ("[[", "]]"),
-            HydroNodeType::Tee => ("(", ")"),
-            _ => ("[", "]"),
-        };
+        let class_str = super::render::node_type_utils::to_mermaid_class(node_type);
+        let (lbracket, rbracket) = super::render::node_type_utils::to_mermaid_shape(node_type);
 
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
@@ -134,14 +121,51 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_type: HydroEdgeType,
+        edge_properties: &HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
-        let arrow_style = match edge_type {
-            HydroEdgeType::Stream => "-->",
-            HydroEdgeType::Persistent => "==>",
-            HydroEdgeType::Network => "-.->",
-            HydroEdgeType::Cycle => "--o",
+        // Choose arrow style based on primary edge property
+        let arrow_style = if edge_properties.contains(&HydroEdgeType::Network) {
+            "-.->".to_string()
+        } else if edge_properties.contains(&HydroEdgeType::Cycle) {
+            "--o".to_string()
+        } else if edge_properties.contains(&HydroEdgeType::Bounded) {
+            "==>".to_string()
+        } else {
+            "-->".to_string()
+        };
+
+        // Add property indicators to the label
+        let enhanced_label = if let Some(label) = label {
+            let mut parts = vec![label.to_string()];
+            if edge_properties.contains(&HydroEdgeType::Keyed) {
+                parts.push("K".to_string());
+            }
+            if edge_properties.contains(&HydroEdgeType::NoOrder) {
+                parts.push("~".to_string());
+            }
+            Some(parts.join(" "))
+        } else if !edge_properties.is_empty() {
+            let mut indicators = Vec::new();
+            if edge_properties.contains(&HydroEdgeType::Keyed) {
+                indicators.push("K");
+            }
+            if edge_properties.contains(&HydroEdgeType::NoOrder) {
+                indicators.push("~");
+            }
+            if edge_properties.contains(&HydroEdgeType::Bounded) {
+                indicators.push("B");
+            }
+            if edge_properties.contains(&HydroEdgeType::Unbounded) {
+                indicators.push("U");
+            }
+            if !indicators.is_empty() {
+                Some(indicators.join(""))
+            } else {
+                None
+            }
+        } else {
+            None
         };
 
         // Write the edge definition on its own line
@@ -150,8 +174,8 @@ where
             "{b:i$}n{src}{arrow}{label}n{dst}",
             src = src_id,
             arrow = arrow_style,
-            label = if let Some(label) = label {
-                Cow::Owned(format!("|{}|", escape_mermaid(label)))
+            label = if let Some(label) = enhanced_label {
+                Cow::Owned(format!("|{}|", escape_mermaid(&label)))
             } else {
                 Cow::Borrowed("")
             },
@@ -161,17 +185,26 @@ where
         )?;
 
         // Add styling for different edge types on a separate line
-        if !matches!(edge_type, HydroEdgeType::Stream) {
+        let color = if edge_properties.contains(&HydroEdgeType::Network) {
+            "#880088"
+        } else if edge_properties.contains(&HydroEdgeType::Cycle) {
+            "#ff0000"
+        } else if edge_properties.contains(&HydroEdgeType::Bounded) {
+            "#008800"
+        } else if edge_properties.contains(&HydroEdgeType::NoOrder) {
+            "#ff8800"
+        } else if edge_properties.contains(&HydroEdgeType::Keyed) {
+            "#0088ff"
+        } else {
+            "#666666"
+        };
+
+        if color != "#666666" {
             writeln!(
                 self.base.write,
                 "{b:i$}linkStyle {} stroke:{}",
                 self.link_count,
-                match edge_type {
-                    HydroEdgeType::Persistent => "#008800",
-                    HydroEdgeType::Network => "#880088",
-                    HydroEdgeType::Cycle => "#ff0000",
-                    HydroEdgeType::Stream => "#666666", /* Should not be used here, but for completeness. */
-                },
+                color,
                 b = "",
                 i = self.base.indent,
             )?;

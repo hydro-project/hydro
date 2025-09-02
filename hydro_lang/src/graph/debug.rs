@@ -7,8 +7,12 @@ use std::fmt::Write;
 use std::io::Result;
 
 use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
-use super::template::get_template;
 use crate::ir::HydroLeaf;
+
+/// URLs longer than ~8000 characters may fail in some browsers.
+/// With modern JSON compression, we can afford a higher limit.
+/// Use a limit of 4000 characters for the base URL + encoded data.
+const MAX_SAFE_URL_LENGTH: usize = 4000;
 
 /// Opens Hydro IR leaves as a single mermaid diagram.
 pub fn open_mermaid(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
@@ -22,27 +26,27 @@ pub fn open_dot(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Resul
     open_dot_browser(&dot_src)
 }
 
-/// Opens Hydro IR leaves as a ReactFlow.js visualization in a browser.
-/// Creates a complete HTML file with ReactFlow.js interactive graph visualization.
-pub fn open_reactflow_browser(
+/// Opens Hydro IR leaves by passing JSON to a visualization in a browser.
+/// Creates a complete HTML file with interactive graph visualization.
+pub fn open_json_browser(
     leaves: &[HydroLeaf],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
 ) -> Result<()> {
-    let reactflow_json = render_with_config(leaves, config, render_hydro_ir_reactflow);
+    let json_content = render_with_config(leaves, config, render_hydro_ir_json);
     let filename = filename.unwrap_or("hydro_graph.html");
-    save_and_open_reactflow_browser(&reactflow_json, filename)
+    save_and_open_json_browser(&json_content, filename)
 }
 
-/// Saves Hydro IR leaves as a ReactFlow.js JSON file.
+/// Saves Hydro IR leaves as a JSON file.
 /// If no filename is provided, saves to temporary directory.
-pub fn save_reactflow_json(
+pub fn save_json(
     leaves: &[HydroLeaf],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
 ) -> Result<std::path::PathBuf> {
-    let content = render_with_config(leaves, config, render_hydro_ir_reactflow);
-    save_to_file(content, filename, "hydro_graph.json", "ReactFlow.js JSON")
+    let content = render_with_config(leaves, config, render_hydro_ir_json);
+    save_to_file(content, filename, "hydro_graph.json", "JSON")
 }
 
 /// Saves Hydro IR leaves as a Mermaid diagram file.
@@ -67,11 +71,18 @@ pub fn save_dot(
     save_to_file(content, filename, "hydro_graph.dot", "DOT/Graphviz file")
 }
 
+/// Opens Hydro IR leaves by passing JSON to a visualization in a browser.
+/// Uses URL compression when possible, falls back to file approach for large graphs.
+pub fn open_json_visualizer(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
+    let json_content = render_with_config(leaves, config, render_hydro_ir_json);
+    print_json_debug_info(&json_content);
+
+    // Use the centralized compression and URL logic
+    open_json_visualizer_with_fallback(&json_content, "JSON visualizer")
+}
+
 fn open_mermaid_browser(mermaid_src: &str) -> Result<()> {
-    // Debug: Print the mermaid source being sent to browser
-    println!("=== MERMAID SOURCE BEING SENT TO BROWSER ===");
-    println!("{}", mermaid_src);
-    println!("=== END MERMAID SOURCE ===");
+    print_debug_content("MERMAID SOURCE BEING SENT TO BROWSER", mermaid_src);
 
     let state = serde_json::json!({
         "code": mermaid_src,
@@ -98,27 +109,164 @@ fn open_dot_browser(dot_src: &str) -> Result<()> {
     webbrowser::open(&url)
 }
 
-/// Helper function to create a complete HTML file with ReactFlow.js visualization and open it in browser.
+/// Helper function to create a complete HTML file with JSON visualization and open it in browser.
 /// Creates files in temporary directory to avoid cluttering the workspace.
-pub fn save_and_open_reactflow_browser(reactflow_json: &str, filename: &str) -> Result<()> {
-    let template = get_template();
-    let html_content = template.replace("{{GRAPH_DATA}}", reactflow_json);
+pub fn save_and_open_json_browser(json_content: &str, _filename: &str) -> Result<()> {
+    open_json_visualizer_with_fallback(json_content, "JSON visualizer in docs")
+}
 
-    // Create file in temporary directory
-    let temp_file = save_to_file(html_content, None, filename, "HTML/Reactflow JS file").unwrap();
-    println!("Got path {}", temp_file.display());
+/// Centralized function to handle JSON visualization with URL length checks and fallbacks.
+fn open_json_visualizer_with_fallback(json_content: &str, context_name: &str) -> Result<()> {
+    #[cfg(feature = "viz")]
+    {
+        use data_encoding::BASE64URL_NOPAD;
 
-    // Open the HTML file in browser
-    let file_url = format!("file://{}", temp_file.display());
-    webbrowser::open(&file_url)?;
+        // Try compression first for large JSON
+        let (encoded_data, is_compressed) = if json_content.len() > 1000 {
+            match compress_json(json_content) {
+                Ok(compressed) => {
+                    let encoded = BASE64URL_NOPAD.encode(&compressed);
+                    println!(
+                        "📦 Compressed JSON from {} to {} bytes",
+                        json_content.len(),
+                        compressed.len()
+                    );
+                    (encoded, true)
+                }
+                Err(_) => {
+                    // Fallback to uncompressed
+                    (BASE64URL_NOPAD.encode(json_content.as_bytes()), false)
+                }
+            }
+        } else {
+            (BASE64URL_NOPAD.encode(json_content.as_bytes()), false)
+        };
 
-    println!("Opened Enhanced ReactFlow.js visualization in browser.");
+        let base_url_length = if is_compressed {
+            "https://hydro.run/docs/hydroscope#compressed=".len()
+        } else {
+            "https://hydro.run/docs/hydroscope#data=".len()
+        };
+
+        if base_url_length + encoded_data.len() > MAX_SAFE_URL_LENGTH {
+            // Still too large even with compression - save to temp file
+            handle_large_graph_fallback(json_content, encoded_data.len())?;
+            return Ok(());
+        }
+
+        // Small enough - use URL encoding
+        try_open_visualizer_urls(&encoded_data, context_name, is_compressed)?;
+    }
+
+    #[cfg(not(feature = "viz"))]
+    {
+        println!("viz feature not enabled, cannot open browser");
+    }
+
+    Ok(())
+}
+
+/// Handle the case where the graph is too large for URL encoding.
+fn handle_large_graph_fallback(json_content: &str, encoded_size: usize) -> Result<()> {
+    let temp_file = save_json_to_temp(json_content)?;
+
+    println!(
+        "📊 Graph is too large for URL encoding ({} chars)",
+        encoded_size
+    );
+    println!("� Saved graph to: {}", temp_file.display());
+    println!("🌐 Opening visualizer...");
+
+    // URL encode the file path
+    let file_path_str = temp_file.to_string_lossy();
+    let encoded_path = urlencoding::encode(&file_path_str);
+
+    // Try to open localhost first with file parameter, fall back to docs site
+    let localhost_url = format!("http://localhost:3000/hydroscope?file={}", encoded_path);
+    let docs_url = format!("https://hydro.run/docs/hydroscope?file={}", encoded_path);
+
+    if webbrowser::open(&localhost_url).is_ok() {
+        println!("✅ Opened visualizer: {}", localhost_url);
+    } else if webbrowser::open(&docs_url).is_ok() {
+        println!("✅ Opened visualizer: {}", docs_url);
+    } else {
+        println!("❌ Failed to open browser");
+        println!("🎯 Please manually open the visualizer and load the file:");
+        println!("   1. Open https://hydro.run/docs/hydroscope");
+        println!("   2. Drag and drop the JSON file onto the visualizer");
+        println!("   3. Or use the file upload button in the visualizer");
+    }
+
+    println!("💡 The generated file path is shown above for easy loading");
+
+    Ok(())
+}
+
+/// Save JSON content to a temporary file with a descriptive name
+fn save_json_to_temp(json_content: &str) -> Result<std::path::PathBuf> {
+    use std::io::Write;
+
+    // Create a descriptive filename with timestamp
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let filename = format!("hydro_graph_{}.json", timestamp);
+    let temp_file = std::env::temp_dir().join(filename);
+
+    // Write the JSON content to the temp file
+    let mut file = std::fs::File::create(&temp_file)?;
+    file.write_all(json_content.as_bytes())?;
+    file.flush()?;
+
+    Ok(temp_file)
+}
+
+/// Try to open the visualizer URLs, with localhost fallback to docs site.
+fn try_open_visualizer_urls(
+    encoded_data: &str,
+    context_name: &str,
+    is_compressed: bool,
+) -> Result<()> {
+    let url_param = if is_compressed { "compressed" } else { "data" };
+    let localhost_url = format!("http://localhost:3000/hydroscope#{}={}", url_param, encoded_data);
+    let docs_url = format!("https://hydro.run/docs/hydroscope#{}={}", url_param, encoded_data);
+
+    // Show the compressed URL for debugging
+    if is_compressed {
+        println!("📦 Compressed URL length: {} characters", docs_url.len());
+        println!(
+            "🔗 Compressed URL: {}",
+            if docs_url.len() > 200 {
+                format!(
+                    "{}...{}",
+                    &docs_url[..100],
+                    &docs_url[docs_url.len() - 50..]
+                )
+            } else {
+                docs_url.clone()
+            }
+        );
+    }
+
+    // Try to open localhost first
+    match webbrowser::open(&localhost_url) {
+        Ok(_) => {
+            println!("Opened {} (localhost): {}", context_name, localhost_url);
+        }
+        Err(_) => {
+            // If localhost fails, try the main docs site
+            webbrowser::open(&docs_url)?;
+            println!("Opened {}: {}", context_name, docs_url);
+        }
+    }
     Ok(())
 }
 
 /// Helper function to render multiple Hydro IR leaves as ReactFlow.js JSON.
-fn render_hydro_ir_reactflow(leaves: &[HydroLeaf], config: &HydroWriteConfig) -> String {
-    super::render::render_hydro_ir_reactflow(leaves, config)
+fn render_hydro_ir_json(leaves: &[HydroLeaf], config: &HydroWriteConfig) -> String {
+    super::render::render_hydro_ir_json(leaves, config)
 }
 
 /// Helper function to save content to a file with consistent path handling.
@@ -151,4 +299,50 @@ where
 {
     let config = config.unwrap_or_default();
     renderer(leaves, &config)
+}
+
+/// Helper function to print debug content with consistent formatting.
+fn print_debug_content(title: &str, content: &str) {
+    println!("=== {} ===", title);
+    println!("{}", content);
+    println!(
+        "=== END {} ===",
+        title.split_whitespace().last().unwrap_or("CONTENT")
+    );
+}
+
+/// Helper function to print JSON debug information including backtrace verification.
+fn print_json_debug_info(json_content: &str) {
+    println!("=== JSON CONTENT SAMPLE (for backtrace verification) ===");
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(json_content) {
+        if let Some(nodes) = parsed["nodes"].as_array() {
+            if let Some(first_node) = nodes.first() {
+                if let Some(backtrace) = first_node["data"]["backtrace"].as_array() {
+                    println!("First node has backtrace with {} elements", backtrace.len());
+                    if !backtrace.is_empty() {
+                        println!(
+                            "Sample backtrace element: {}",
+                            serde_json::to_string_pretty(&backtrace[0]).unwrap_or_default()
+                        );
+                    }
+                } else {
+                    println!("First node does not have backtrace data");
+                }
+            }
+        }
+    }
+    println!("=== END JSON SAMPLE ===");
+}
+
+/// Compress JSON data using gzip compression
+#[cfg(feature = "viz")]
+fn compress_json(json_content: &str) -> Result<Vec<u8>> {
+    use std::io::Write;
+
+    use flate2::Compression;
+    use flate2::write::GzEncoder;
+
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(json_content.as_bytes())?;
+    Ok(encoder.finish()?)
 }

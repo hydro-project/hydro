@@ -16,7 +16,7 @@ pub struct GraphApi<'a> {
 pub enum GraphFormat {
     Mermaid,
     Dot,
-    ReactFlow,
+    Json,
 }
 
 impl GraphFormat {
@@ -24,7 +24,7 @@ impl GraphFormat {
         match self {
             GraphFormat::Mermaid => "mmd",
             GraphFormat::Dot => "dot",
-            GraphFormat::ReactFlow => "json",
+            GraphFormat::Json => "json",
         }
     }
 
@@ -32,7 +32,7 @@ impl GraphFormat {
         match self {
             GraphFormat::Mermaid => "Opening Mermaid graph in browser...",
             GraphFormat::Dot => "Opening Graphviz/DOT graph in browser...",
-            GraphFormat::ReactFlow => "Opening ReactFlow graph in browser...",
+            GraphFormat::Json => "Opening JSON graph in browser...",
         }
     }
 }
@@ -74,9 +74,7 @@ impl<'a> GraphApi<'a> {
         match format {
             GraphFormat::Mermaid => crate::graph::render::render_hydro_ir_mermaid(self.ir, config),
             GraphFormat::Dot => crate::graph::render::render_hydro_ir_dot(self.ir, config),
-            GraphFormat::ReactFlow => {
-                crate::graph::render::render_hydro_ir_reactflow(self.ir, config)
-            }
+            GraphFormat::Json => crate::graph::render::render_hydro_ir_json(self.ir, config),
         }
     }
 
@@ -89,9 +87,8 @@ impl<'a> GraphApi<'a> {
         match format {
             GraphFormat::Mermaid => Ok(crate::graph::debug::open_mermaid(self.ir, Some(config))?),
             GraphFormat::Dot => Ok(crate::graph::debug::open_dot(self.ir, Some(config))?),
-            GraphFormat::ReactFlow => Ok(crate::graph::debug::open_reactflow_browser(
+            GraphFormat::Json => Ok(crate::graph::debug::open_json_visualizer(
                 self.ir,
-                None,
                 Some(config),
             )?),
         }
@@ -132,6 +129,38 @@ impl<'a> GraphApi<'a> {
         Ok(())
     }
 
+    /// Generate and save graph to temporary file
+    fn write_graph_to_temp_file(
+        &self,
+        format: GraphFormat,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> Result<(), Box<dyn Error>> {
+        let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
+        let content = self.render_graph_to_string(format, &config);
+
+        // Generate a temporary file name based on format
+        let extension = match format {
+            GraphFormat::Mermaid => "mmd",
+            GraphFormat::Dot => "dot",
+            GraphFormat::Json => "json",
+        };
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        let filename =
+            std::env::temp_dir().join(format!("hydro_graph_{}.{}", timestamp, extension));
+
+        std::fs::write(&filename, content)?;
+        println!("📄 Saved graph to: {}", filename.display());
+        println!("💡 You can examine or share this file as needed");
+        Ok(())
+    }
+
     /// Generate mermaid graph as string
     pub fn mermaid_to_string(
         &self,
@@ -154,15 +183,15 @@ impl<'a> GraphApi<'a> {
         self.render_graph_to_string(GraphFormat::Dot, &config)
     }
 
-    /// Generate ReactFlow graph as string
-    pub fn reactflow_to_string(
+    /// Generate JSON graph as string
+    pub fn json_to_string(
         &self,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> String {
         let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
-        self.render_graph_to_string(GraphFormat::ReactFlow, &config)
+        self.render_graph_to_string(GraphFormat::Json, &config)
     }
 
     /// Write mermaid graph to file
@@ -199,8 +228,8 @@ impl<'a> GraphApi<'a> {
         )
     }
 
-    /// Write ReactFlow graph to file
-    pub fn reactflow_to_file(
+    /// Write JSON graph to file
+    pub fn json_to_file(
         &self,
         filename: &str,
         show_metadata: bool,
@@ -208,7 +237,7 @@ impl<'a> GraphApi<'a> {
         use_short_labels: bool,
     ) -> Result<(), Box<dyn Error>> {
         self.write_graph_to_file(
-            GraphFormat::ReactFlow,
+            GraphFormat::Json,
             filename,
             show_metadata,
             show_location_groups,
@@ -250,8 +279,8 @@ impl<'a> GraphApi<'a> {
         )
     }
 
-    /// Open ReactFlow graph in browser
-    pub fn reactflow_to_browser(
+    /// Open JSON graph in browser
+    pub fn json_to_browser(
         &self,
         show_metadata: bool,
         show_location_groups: bool,
@@ -259,7 +288,7 @@ impl<'a> GraphApi<'a> {
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn Error>> {
         self.open_browser(
-            GraphFormat::ReactFlow,
+            GraphFormat::Json,
             show_metadata,
             show_location_groups,
             use_short_labels,
@@ -277,11 +306,7 @@ impl<'a> GraphApi<'a> {
     ) -> Result<(), Box<dyn Error>> {
         let label_suffix = if use_short_labels { "_short" } else { "_long" };
 
-        let formats = [
-            GraphFormat::Mermaid,
-            GraphFormat::Dot,
-            GraphFormat::ReactFlow,
-        ];
+        let formats = [GraphFormat::Mermaid, GraphFormat::Dot, GraphFormat::Json];
 
         for format in formats {
             let filename = format!(
@@ -313,16 +338,27 @@ impl<'a> GraphApi<'a> {
             let format = match graph_type {
                 crate::graph_util::GraphType::Mermaid => GraphFormat::Mermaid,
                 crate::graph_util::GraphType::Dot => GraphFormat::Dot,
-                crate::graph_util::GraphType::Reactflow => GraphFormat::ReactFlow,
+                crate::graph_util::GraphType::Json => GraphFormat::Json,
             };
 
-            self.open_browser(
-                format,
-                !config.no_metadata,
-                !config.no_location_groups,
-                !config.long_labels, // use_short_labels is the inverse of long_labels
-                message_handler,
-            )
+            if config.file {
+                // Force save to temporary file
+                self.write_graph_to_temp_file(
+                    format,
+                    !config.no_metadata,
+                    !config.no_location_groups,
+                    !config.long_labels, // use_short_labels is the inverse of long_labels
+                )
+            } else {
+                // Open in browser (existing behavior)
+                self.open_browser(
+                    format,
+                    !config.no_metadata,
+                    !config.no_location_groups,
+                    !config.long_labels, // use_short_labels is the inverse of long_labels
+                    message_handler,
+                )
+            }
         } else {
             Ok(())
         }
@@ -352,7 +388,7 @@ mod tests {
     fn test_graph_format() {
         assert_eq!(GraphFormat::Mermaid.file_extension(), "mmd");
         assert_eq!(GraphFormat::Dot.file_extension(), "dot");
-        assert_eq!(GraphFormat::ReactFlow.file_extension(), "json");
+        assert_eq!(GraphFormat::Json.file_extension(), "json");
 
         assert_eq!(
             GraphFormat::Mermaid.browser_message(),
@@ -360,11 +396,11 @@ mod tests {
         );
         assert_eq!(
             GraphFormat::Dot.browser_message(),
-            "Opening Graphviz/DOT graph in browser..."
+            "Opening Dot (Graphviz) graph in browser..."
         );
         assert_eq!(
-            GraphFormat::ReactFlow.browser_message(),
-            "Opening ReactFlow graph in browser..."
+            GraphFormat::Json.browser_message(),
+            "Opening JSON graph in browser..."
         );
     }
 
@@ -398,11 +434,11 @@ mod tests {
         // Test that string generation methods don't panic and return some content
         let mermaid = api.mermaid_to_string(true, true, false);
         let dot = api.dot_to_string(true, true, false);
-        let reactflow = api.reactflow_to_string(true, true, false);
+        let json = api.json_to_string(true, true, false);
 
         // These should all return non-empty strings
         assert!(!mermaid.is_empty());
         assert!(!dot.is_empty());
-        assert!(!reactflow.is_empty());
+        assert!(!json.is_empty());
     }
 }
