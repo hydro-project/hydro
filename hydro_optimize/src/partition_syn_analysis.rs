@@ -786,13 +786,13 @@ mod tests {
 
     use crate::partition_syn_analysis::{AnalyzeClosure, StructOrTuple};
 
-    fn partition_analysis_leaf(
-        leaf: &mut HydroRoot,
+    fn partition_analysis_root(
+        root: &mut HydroRoot,
         next_stmt_id: &mut usize,
         metadata: &RefCell<BTreeMap<usize, StructOrTuple>>,
     ) {
         let mut analyzer = AnalyzeClosure::default();
-        leaf.visit_debug_expr(|debug_expr| {
+        root.visit_debug_expr(|debug_expr| {
             analyzer.visit_expr(&debug_expr.0);
         });
         metadata
@@ -819,7 +819,7 @@ mod tests {
         traverse_dfir(
             ir,
             |leaf, next_stmt_id| {
-                partition_analysis_leaf(leaf, next_stmt_id, &partitioning_metadata);
+                partition_analysis_root(leaf, next_stmt_id, &partitioning_metadata);
             },
             |node, next_stmt_id| {
                 partition_analysis_node(node, next_stmt_id, &partitioning_metadata);

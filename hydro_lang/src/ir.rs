@@ -564,7 +564,7 @@ impl HydroRoot {
 
     pub fn transform_bottom_up(
         &mut self,
-        transform_leaf: &mut impl FnMut(&mut HydroRoot),
+        transform_root: &mut impl FnMut(&mut HydroRoot),
         transform_node: &mut impl FnMut(&mut HydroNode),
         seen_tees: &mut SeenTees,
         check_well_formed: bool,
@@ -574,7 +574,7 @@ impl HydroRoot {
             seen_tees,
         );
 
-        transform_leaf(self);
+        transform_root(self);
     }
 
     pub fn transform_children(
@@ -866,12 +866,12 @@ pub fn emit(ir: &mut Vec<HydroRoot>) -> BTreeMap<usize, FlatGraphBuilder> {
 #[cfg(feature = "build")]
 pub fn traverse_dfir(
     ir: &mut [HydroRoot],
-    transform_leaf: impl FnMut(&mut HydroRoot, &mut usize),
+    transform_root: impl FnMut(&mut HydroRoot, &mut usize),
     transform_node: impl FnMut(&mut HydroNode, &mut usize),
 ) {
     let mut seen_tees = HashMap::new();
     let mut next_stmt_id = 0;
-    let mut callback = BuildersOrCallback::Callback(transform_leaf, transform_node);
+    let mut callback = BuildersOrCallback::Callback(transform_root, transform_node);
     ir.iter_mut().for_each(|leaf| {
         leaf.emit_core(&mut callback, &mut seen_tees, &mut next_stmt_id);
     });
@@ -879,14 +879,14 @@ pub fn traverse_dfir(
 
 pub fn transform_bottom_up(
     ir: &mut [HydroRoot],
-    transform_leaf: &mut impl FnMut(&mut HydroRoot),
+    transform_root: &mut impl FnMut(&mut HydroRoot),
     transform_node: &mut impl FnMut(&mut HydroNode),
     check_well_formed: bool,
 ) {
     let mut seen_tees = HashMap::new();
     ir.iter_mut().for_each(|leaf| {
         leaf.transform_bottom_up(
-            transform_leaf,
+            transform_root,
             transform_node,
             &mut seen_tees,
             check_well_formed,
@@ -969,13 +969,10 @@ impl Hash for TeeNode {
 #[derive(Clone)]
 pub struct HydroIrMetadata {
     pub location_kind: LocationId,
-    pub backtrace: Backtrace,
     pub output_type: Option<DebugType>,
     pub cardinality: Option<usize>,
-    pub cpu_usage: Option<f64>,
-    pub network_recv_cpu_usage: Option<f64>,
-    pub id: Option<usize>,
     pub tag: Option<String>,
+    pub op: HydroIrOpMetadata,
 }
 
 // HydroIrMetadata shouldn't be used to hash or compare
@@ -1006,6 +1003,7 @@ impl Debug for HydroIrMetadata {
 pub struct HydroIrOpMetadata {
     pub backtrace: Backtrace,
     pub cpu_usage: Option<f64>,
+    pub network_recv_cpu_usage: Option<f64>,
     pub id: Option<usize>,
 }
 
@@ -1024,6 +1022,7 @@ impl HydroIrOpMetadata {
         HydroIrOpMetadata {
             backtrace: get_backtrace(2 + skip_count),
             cpu_usage: None,
+            network_recv_cpu_usage: None,
             id: None,
         }
     }
@@ -2720,6 +2719,10 @@ impl HydroNode {
         }
     }
 
+    pub fn op_metadata(&self) -> &HydroIrOpMetadata {
+        &self.metadata().op
+    }
+
     pub fn metadata(&self) -> &HydroIrMetadata {
         match self {
             HydroNode::Placeholder => {
@@ -2758,6 +2761,10 @@ impl HydroNode {
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
         }
+    }
+
+    pub fn op_metadata_mut(&mut self) -> &mut HydroIrOpMetadata {
+        &mut self.metadata_mut().op
     }
 
     pub fn metadata_mut(&mut self) -> &mut HydroIrMetadata {
@@ -3048,8 +3055,8 @@ mod test {
     }
 
     #[test]
-    fn hydro_leaf_size() {
-        assert_eq!(size_of::<HydroRoot>(), 160);
+    fn hydro_root_size() {
+        assert_eq!(size_of::<HydroRoot>(), 176);
     }
 
     #[test]

@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use hydro_lang::MemberId;
 use hydro_lang::ir::{
-    DebugInstantiate, DebugType, HydroIrMetadata, HydroNode, HydroRoot, TeeNode,
+    DebugInstantiate, DebugType, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode,
     transform_bottom_up, traverse_dfir,
 };
 use hydro_lang::location::LocationId;
@@ -49,13 +49,15 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         input: Box::new(node_content),
         metadata: HydroIrMetadata {
             location_kind: metadata.location_kind.root().clone(), // Remove any ticks
-            backtrace: metadata.backtrace.clone(),
             output_type: Some(DebugType(Box::new(mapped_output_type.clone()))),
             cardinality: None,
-            cpu_usage: None,
-            network_recv_cpu_usage: None,
-            id: None,
             tag: None,
+            op: HydroIrOpMetadata {
+                backtrace: metadata.op.backtrace.clone(),
+                cpu_usage: None,
+                network_recv_cpu_usage: None,
+                id: None,
+            },
         },
     };
 
@@ -72,13 +74,15 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         input: Box::new(mapped_node),
         metadata: HydroIrMetadata {
             location_kind: new_location.clone(),
-            backtrace: metadata.backtrace.clone(),
             output_type: Some(DebugType(Box::new(mapped_output_type))),
             cardinality: None,
-            cpu_usage: None,
-            network_recv_cpu_usage: None,
-            id: None,
             tag: None,
+            op: HydroIrOpMetadata {
+                backtrace: metadata.op.backtrace.clone(),
+                cpu_usage: None,
+                network_recv_cpu_usage: None,
+                id: None,
+            },
         },
     };
 
@@ -89,13 +93,15 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         input: Box::new(network_node),
         metadata: HydroIrMetadata {
             location_kind: new_location.clone(),
-            backtrace: metadata.backtrace.clone(),
             output_type: Some(output_debug_type),
             cardinality: None,
-            cpu_usage: None,
-            network_recv_cpu_usage: None,
-            id: None,
             tag: None,
+            op: HydroIrOpMetadata {
+                backtrace: metadata.op.backtrace.clone(),
+                cpu_usage: None,
+                network_recv_cpu_usage: None,
+                id: None,
+            },
         },
     };
     *node = mapped_node;
@@ -108,7 +114,7 @@ fn add_tee(
 ) {
     let metadata = node.metadata().clone();
     let inner_id = if let HydroNode::Tee { inner, .. } = node {
-        inner.0.borrow().metadata().id.unwrap()
+        inner.0.borrow().op_metadata().id.unwrap()
     } else {
         std::panic!("Decoupler add_tee() called on non-Tee");
     };
@@ -204,14 +210,14 @@ fn decouple_node(
     }
 }
 
-fn fix_cluster_self_id_leaf(leaf: &mut HydroRoot, mut locations: ClusterSelfIdReplace) {
+fn fix_cluster_self_id_root(root: &mut HydroRoot, mut locations: ClusterSelfIdReplace) {
     if let ClusterSelfIdReplace::Decouple {
         decoupled_cluster_id,
         ..
     } = locations
-        && leaf.input_metadata()[0].location_kind.root().raw_id() == decoupled_cluster_id
+        && root.input_metadata()[0].location_kind.root().raw_id() == decoupled_cluster_id
     {
-        leaf.visit_debug_expr(|expr| {
+        root.visit_debug_expr(|expr| {
             locations.visit_expr_mut(&mut expr.0);
         });
     }
@@ -253,7 +259,7 @@ pub fn decouple(ir: &mut [HydroRoot], decoupler: &Decoupler) {
     transform_bottom_up(
         ir,
         &mut |leaf| {
-            fix_cluster_self_id_leaf(leaf, locations);
+            fix_cluster_self_id_root(leaf, locations);
         },
         &mut |node| {
             fix_cluster_self_id_node(node, locations);
