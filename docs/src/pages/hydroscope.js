@@ -20,7 +20,8 @@ import BrowserOnly from '@docusaurus/BrowserOnly';
 import { useLocation } from '@docusaurus/router';
 
 // Import CSS from hydroscope npm package
-import '@hydro-project/hydroscope/style.css';
+// Note: CSS file not available in current package version
+// import '@hydro-project/hydroscope/style.css';
 
 // Typography constants for consistent styling
 const TYPOGRAPHY = {
