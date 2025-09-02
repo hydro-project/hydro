@@ -192,7 +192,7 @@ fn persist_pullup_node(
     };
 }
 
-pub fn persist_pullup(ir: &mut [HydroLeaf]) {
+pub fn persist_pullup(ir: &mut [HydroRoot]) {
     let mut persist_pulled_tees = Default::default();
     transform_bottom_up(
         ir,

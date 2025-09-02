@@ -74,7 +74,7 @@ async fn main() {
 
     let _nodes = built
         .optimize_with(persist_pullup::persist_pullup)
-        .optimize_with(|leaves| partitioner::partition(leaves, &partitioner))
+        .optimize_with(|roots| partitioner::partition(roots, &partitioner))
         .with_process(
             &process,
             TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),

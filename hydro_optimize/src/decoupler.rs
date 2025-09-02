@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use hydro_lang::MemberId;
 use hydro_lang::ir::{
-    DebugInstantiate, DebugType, HydroIrMetadata, HydroLeaf, HydroNode, TeeNode,
+    DebugInstantiate, DebugType, HydroIrMetadata, HydroNode, HydroRoot, TeeNode,
     transform_bottom_up, traverse_dfir,
 };
 use hydro_lang::location::LocationId;
@@ -204,12 +204,12 @@ fn decouple_node(
     }
 }
 
-fn fix_cluster_self_id_leaf(leaf: &mut HydroLeaf, mut locations: ClusterSelfIdReplace) {
+fn fix_cluster_self_id_leaf(leaf: &mut HydroRoot, mut locations: ClusterSelfIdReplace) {
     if let ClusterSelfIdReplace::Decouple {
         decoupled_cluster_id,
         ..
     } = locations
-        && leaf.metadata().location_kind.root().raw_id() == decoupled_cluster_id
+        && leaf.input_metadata()[0].location_kind.root().raw_id() == decoupled_cluster_id
     {
         leaf.visit_debug_expr(|expr| {
             locations.visit_expr_mut(&mut expr.0);
@@ -230,7 +230,7 @@ fn fix_cluster_self_id_node(node: &mut HydroNode, mut locations: ClusterSelfIdRe
     }
 }
 
-pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
+pub fn decouple(ir: &mut [HydroRoot], decoupler: &Decoupler) {
     let mut new_inners = HashMap::new();
     traverse_dfir(
         ir,
