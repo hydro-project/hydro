@@ -216,6 +216,20 @@ jobs:
               console.log(`Closed existing issue #${existingIssue.number} - tests now passing`);
             }
 
+  test-all:
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    name: Test Suite Result (Full Matrix)
+    needs: [test]
+    steps:
+      - run: |
+          result="${{ needs.test.result }}"
+          if [[ $result == "success" || $result == "skipped" ]]; then
+            exit 0
+          else
+            exit 1
+          fi
+
   test-wasm:
     name: Test Suite (WebAssembly)
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
@@ -260,3 +274,17 @@ jobs:
         run: cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
 
       - run: cargo check -p dfir_rs --target wasm32-unknown-unknown
+  
+  test-wasm-all:
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    name: Test Suite Result (WebAssembly Full Matrix)
+    needs: [test-wasm]
+    steps:
+      - run: |
+          result="${{ needs.test-wasm.result }}"
+          if [[ $result == "success" || $result == "skipped" ]]; then
+            exit 0
+          else
+            exit 1
+          fi
