@@ -24,6 +24,7 @@ use syn::visit_mut::VisitMut;
 use crate::NetworkHint;
 #[cfg(stageleft_runtime)]
 use crate::backtrace::Backtrace;
+use crate::backtrace::get_backtrace;
 #[cfg(feature = "build")]
 use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
@@ -308,22 +309,22 @@ pub enum HydroSource {
 #[cfg(feature = "build")]
 pub enum BuildersOrCallback<'a, L, N>
 where
-    L: FnMut(&mut HydroLeaf, &mut usize),
+    L: FnMut(&mut HydroRoot, &mut usize),
     N: FnMut(&mut HydroNode, &mut usize),
 {
     Builders(&'a mut BTreeMap<usize, FlatGraphBuilder>),
     Callback(L, N),
 }
 
-/// An leaf in a Hydro graph, which is an pipeline that doesn't emit
+/// An root in a Hydro graph, which is an pipeline that doesn't emit
 /// any downstream values. Traversals over the dataflow graph and
-/// generating DFIR IR start from leaves.
+/// generating DFIR IR start from roots.
 #[derive(Debug, Hash)]
-pub enum HydroLeaf {
+pub enum HydroRoot {
     ForEach {
         f: DebugExpr,
         input: Box<HydroNode>,
-        metadata: HydroIrMetadata,
+        op_metadata: HydroIrOpMetadata,
     },
     SendExternal {
         to_external_id: usize,
@@ -332,20 +333,22 @@ pub enum HydroLeaf {
         serialize_fn: Option<DebugExpr>,
         instantiate_fn: DebugInstantiate,
         input: Box<HydroNode>,
+        op_metadata: HydroIrOpMetadata,
     },
     DestSink {
         sink: DebugExpr,
         input: Box<HydroNode>,
-        metadata: HydroIrMetadata,
+        op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
         ident: syn::Ident,
         input: Box<HydroNode>,
-        metadata: HydroIrMetadata,
+        out_location: LocationId,
+        op_metadata: HydroIrOpMetadata,
     },
 }
 
-impl HydroLeaf {
+impl HydroRoot {
     #[cfg(feature = "build")]
     pub fn compile_network<'a, D>(
         &mut self,
@@ -360,7 +363,7 @@ impl HydroLeaf {
     {
         self.transform_bottom_up(
             &mut |l| {
-                if let HydroLeaf::SendExternal {
+                if let HydroRoot::SendExternal {
                     input,
                     to_external_id,
                     to_key,
@@ -531,7 +534,7 @@ impl HydroLeaf {
     pub fn connect_network(&mut self, seen_tees: &mut SeenTees) {
         self.transform_bottom_up(
             &mut |l| {
-                if let HydroLeaf::SendExternal { instantiate_fn, .. } = l {
+                if let HydroRoot::SendExternal { instantiate_fn, .. } = l {
                     match instantiate_fn {
                         DebugInstantiate::Building => panic!("network not built"),
 
@@ -561,7 +564,7 @@ impl HydroLeaf {
 
     pub fn transform_bottom_up(
         &mut self,
-        transform_leaf: &mut impl FnMut(&mut HydroLeaf),
+        transform_leaf: &mut impl FnMut(&mut HydroRoot),
         transform_node: &mut impl FnMut(&mut HydroNode),
         seen_tees: &mut SeenTees,
         check_well_formed: bool,
@@ -580,54 +583,62 @@ impl HydroLeaf {
         seen_tees: &mut SeenTees,
     ) {
         match self {
-            HydroLeaf::ForEach { input, .. }
-            | HydroLeaf::SendExternal { input, .. }
-            | HydroLeaf::DestSink { input, .. }
-            | HydroLeaf::CycleSink { input, .. } => {
+            HydroRoot::ForEach { input, .. }
+            | HydroRoot::SendExternal { input, .. }
+            | HydroRoot::DestSink { input, .. }
+            | HydroRoot::CycleSink { input, .. } => {
                 transform(input, seen_tees);
             }
         }
     }
 
-    pub fn deep_clone(&self, seen_tees: &mut SeenTees) -> HydroLeaf {
+    pub fn deep_clone(&self, seen_tees: &mut SeenTees) -> HydroRoot {
         match self {
-            HydroLeaf::ForEach { f, input, metadata } => HydroLeaf::ForEach {
+            HydroRoot::ForEach {
+                f,
+                input,
+                op_metadata,
+            } => HydroRoot::ForEach {
                 f: f.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
-                metadata: metadata.clone(),
+                op_metadata: op_metadata.clone(),
             },
-            HydroLeaf::SendExternal {
+            HydroRoot::SendExternal {
                 to_external_id,
                 to_key,
                 to_many,
                 serialize_fn,
                 instantiate_fn,
                 input,
-            } => HydroLeaf::SendExternal {
+                op_metadata,
+            } => HydroRoot::SendExternal {
                 to_external_id: *to_external_id,
                 to_key: *to_key,
                 to_many: *to_many,
                 serialize_fn: serialize_fn.clone(),
                 instantiate_fn: instantiate_fn.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                op_metadata: op_metadata.clone(),
             },
-            HydroLeaf::DestSink {
+            HydroRoot::DestSink {
                 sink,
                 input,
-                metadata,
-            } => HydroLeaf::DestSink {
+                op_metadata,
+            } => HydroRoot::DestSink {
                 sink: sink.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
-                metadata: metadata.clone(),
+                op_metadata: op_metadata.clone(),
             },
-            HydroLeaf::CycleSink {
+            HydroRoot::CycleSink {
                 ident,
                 input,
-                metadata,
-            } => HydroLeaf::CycleSink {
+                out_location,
+                op_metadata,
+            } => HydroRoot::CycleSink {
                 ident: ident.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
-                metadata: metadata.clone(),
+                out_location: out_location.clone(),
+                op_metadata: op_metadata.clone(),
             },
         }
     }
@@ -641,7 +652,7 @@ impl HydroLeaf {
     ) {
         self.emit_core(
             &mut BuildersOrCallback::Builders::<
-                fn(&mut HydroLeaf, &mut usize),
+                fn(&mut HydroRoot, &mut usize),
                 fn(&mut HydroNode, &mut usize),
             >(graph_builders),
             built_tees,
@@ -653,14 +664,14 @@ impl HydroLeaf {
     pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
-            impl FnMut(&mut HydroLeaf, &mut usize),
+            impl FnMut(&mut HydroRoot, &mut usize),
             impl FnMut(&mut HydroNode, &mut usize),
         >,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, (syn::Ident, usize)>,
         next_stmt_id: &mut usize,
     ) {
         match self {
-            HydroLeaf::ForEach { f, input, .. } => {
+            HydroRoot::ForEach { f, input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
@@ -685,7 +696,7 @@ impl HydroLeaf {
                 *next_stmt_id += 1;
             }
 
-            HydroLeaf::SendExternal {
+            HydroRoot::SendExternal {
                 serialize_fn,
                 instantiate_fn,
                 input,
@@ -735,7 +746,7 @@ impl HydroLeaf {
                 *next_stmt_id += 1;
             }
 
-            HydroLeaf::DestSink { sink, input, .. } => {
+            HydroRoot::DestSink { sink, input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
@@ -760,16 +771,16 @@ impl HydroLeaf {
                 *next_stmt_id += 1;
             }
 
-            HydroLeaf::CycleSink {
+            HydroRoot::CycleSink {
                 ident,
                 input,
-                metadata,
+                out_location,
                 ..
             } => {
                 let (input_ident, input_location_id) =
                     input.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                let location_id = metadata.location_kind.root().raw_id();
+                let location_id = out_location.root().raw_id();
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -793,30 +804,30 @@ impl HydroLeaf {
         }
     }
 
-    pub fn metadata(&self) -> &HydroIrMetadata {
+    pub fn op_metadata(&self) -> &HydroIrOpMetadata {
         match self {
-            HydroLeaf::ForEach { metadata, .. }
-            | HydroLeaf::DestSink { metadata, .. }
-            | HydroLeaf::CycleSink { metadata, .. } => metadata,
-            HydroLeaf::SendExternal { .. } => panic!(),
+            HydroRoot::ForEach { op_metadata, .. }
+            | HydroRoot::SendExternal { op_metadata, .. }
+            | HydroRoot::DestSink { op_metadata, .. }
+            | HydroRoot::CycleSink { op_metadata, .. } => op_metadata,
         }
     }
 
-    pub fn metadata_mut(&mut self) -> &mut HydroIrMetadata {
+    pub fn op_metadata_mut(&mut self) -> &mut HydroIrOpMetadata {
         match self {
-            HydroLeaf::ForEach { metadata, .. }
-            | HydroLeaf::DestSink { metadata, .. }
-            | HydroLeaf::CycleSink { metadata, .. } => metadata,
-            HydroLeaf::SendExternal { .. } => panic!(),
+            HydroRoot::ForEach { op_metadata, .. }
+            | HydroRoot::SendExternal { op_metadata, .. }
+            | HydroRoot::DestSink { op_metadata, .. }
+            | HydroRoot::CycleSink { op_metadata, .. } => op_metadata,
         }
     }
 
     pub fn input_metadata(&self) -> Vec<&HydroIrMetadata> {
         match self {
-            HydroLeaf::ForEach { input, .. }
-            | HydroLeaf::SendExternal { input, .. }
-            | HydroLeaf::DestSink { input, .. }
-            | HydroLeaf::CycleSink { input, .. } => {
+            HydroRoot::ForEach { input, .. }
+            | HydroRoot::SendExternal { input, .. }
+            | HydroRoot::DestSink { input, .. }
+            | HydroRoot::CycleSink { input, .. } => {
                 vec![input.metadata()]
             }
         }
@@ -824,25 +835,25 @@ impl HydroLeaf {
 
     pub fn print_root(&self) -> String {
         match self {
-            HydroLeaf::ForEach { f, .. } => format!("ForEach({:?})", f),
-            HydroLeaf::SendExternal { .. } => "SendExternal".to_string(),
-            HydroLeaf::DestSink { sink, .. } => format!("DestSink({:?})", sink),
-            HydroLeaf::CycleSink { ident, .. } => format!("CycleSink({:?})", ident),
+            HydroRoot::ForEach { f, .. } => format!("ForEach({:?})", f),
+            HydroRoot::SendExternal { .. } => "SendExternal".to_string(),
+            HydroRoot::DestSink { sink, .. } => format!("DestSink({:?})", sink),
+            HydroRoot::CycleSink { ident, .. } => format!("CycleSink({:?})", ident),
         }
     }
 
     pub fn visit_debug_expr(&mut self, mut transform: impl FnMut(&mut DebugExpr)) {
         match self {
-            HydroLeaf::ForEach { f, .. } | HydroLeaf::DestSink { sink: f, .. } => {
+            HydroRoot::ForEach { f, .. } | HydroRoot::DestSink { sink: f, .. } => {
                 transform(f);
             }
-            HydroLeaf::SendExternal { .. } | HydroLeaf::CycleSink { .. } => {}
+            HydroRoot::SendExternal { .. } | HydroRoot::CycleSink { .. } => {}
         }
     }
 }
 
 #[cfg(feature = "build")]
-pub fn emit(ir: &mut Vec<HydroLeaf>) -> BTreeMap<usize, FlatGraphBuilder> {
+pub fn emit(ir: &mut Vec<HydroRoot>) -> BTreeMap<usize, FlatGraphBuilder> {
     let mut builders = BTreeMap::new();
     let mut built_tees = HashMap::new();
     let mut next_stmt_id = 0;
@@ -854,8 +865,8 @@ pub fn emit(ir: &mut Vec<HydroLeaf>) -> BTreeMap<usize, FlatGraphBuilder> {
 
 #[cfg(feature = "build")]
 pub fn traverse_dfir(
-    ir: &mut [HydroLeaf],
-    transform_leaf: impl FnMut(&mut HydroLeaf, &mut usize),
+    ir: &mut [HydroRoot],
+    transform_leaf: impl FnMut(&mut HydroRoot, &mut usize),
     transform_node: impl FnMut(&mut HydroNode, &mut usize),
 ) {
     let mut seen_tees = HashMap::new();
@@ -867,8 +878,8 @@ pub fn traverse_dfir(
 }
 
 pub fn transform_bottom_up(
-    ir: &mut [HydroLeaf],
-    transform_leaf: &mut impl FnMut(&mut HydroLeaf),
+    ir: &mut [HydroRoot],
+    transform_leaf: &mut impl FnMut(&mut HydroRoot),
     transform_node: &mut impl FnMut(&mut HydroNode),
     check_well_formed: bool,
 ) {
@@ -883,7 +894,7 @@ pub fn transform_bottom_up(
     });
 }
 
-pub fn deep_clone(ir: &[HydroLeaf]) -> Vec<HydroLeaf> {
+pub fn deep_clone(ir: &[HydroRoot]) -> Vec<HydroRoot> {
     let mut seen_tees = HashMap::new();
     ir.iter()
         .map(|leaf| leaf.deep_clone(&mut seen_tees))
@@ -987,6 +998,45 @@ impl Debug for HydroIrMetadata {
             .field("output_type", &self.output_type)
             .finish()
     }
+}
+
+/// Metadata that is specific to the operator itself, rather than its outputs.
+/// This is available on _both_ inner nodes and roots.
+#[derive(Clone)]
+pub struct HydroIrOpMetadata {
+    pub backtrace: Backtrace,
+    pub cpu_usage: Option<f64>,
+    pub id: Option<usize>,
+}
+
+impl HydroIrOpMetadata {
+    #[expect(
+        clippy::new_without_default,
+        reason = "explicit calls to new ensure correct backtrace bounds"
+    )]
+    #[inline(never)]
+    pub fn new() -> HydroIrOpMetadata {
+        Self::new_with_skip(1)
+    }
+
+    #[inline(never)]
+    fn new_with_skip(skip_count: usize) -> HydroIrOpMetadata {
+        HydroIrOpMetadata {
+            backtrace: get_backtrace(2 + skip_count),
+            cpu_usage: None,
+            id: None,
+        }
+    }
+}
+
+impl Debug for HydroIrOpMetadata {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HydroIrOpMetadata").finish()
+    }
+}
+
+impl Hash for HydroIrOpMetadata {
+    fn hash<H: Hasher>(&self, _: &mut H) {}
 }
 
 /// An intermediate node in a Hydro graph, which consumes data
@@ -1545,7 +1595,7 @@ impl HydroNode {
     pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
-            impl FnMut(&mut HydroLeaf, &mut usize),
+            impl FnMut(&mut HydroRoot, &mut usize),
             impl FnMut(&mut HydroNode, &mut usize),
         >,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, (syn::Ident, usize)>,
@@ -2999,7 +3049,7 @@ mod test {
 
     #[test]
     fn hydro_leaf_size() {
-        assert_eq!(size_of::<HydroLeaf>(), 224);
+        assert_eq!(size_of::<HydroRoot>(), 160);
     }
 
     #[test]

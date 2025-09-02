@@ -8,7 +8,7 @@ use hydro_lang::builder::deploy::DeployResult;
 use hydro_lang::deploy::HydroDeploy;
 use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
 use hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
-use hydro_lang::ir::{HydroLeaf, HydroNode, deep_clone, traverse_dfir};
+use hydro_lang::ir::{HydroNode, HydroRoot, deep_clone, traverse_dfir};
 use hydro_lang::location::LocationId;
 use hydro_lang::rewrites::persist_pullup::persist_pullup;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -76,7 +76,7 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration:
     }
 }
 
-fn insert_counter(ir: &mut [HydroLeaf], duration: syn::Expr) {
+fn insert_counter(ir: &mut [HydroRoot], duration: syn::Expr) {
     traverse_dfir(
         ir,
         |_, _| {},
@@ -131,7 +131,7 @@ pub async fn deploy_and_analyze<'a>(
     num_seconds: Option<usize>,
 ) -> (
     RewriteIrFlowBuilder<'a>,
-    Vec<HydroLeaf>,
+    Vec<HydroRoot>,
     Decoupler,
     String,
     usize,

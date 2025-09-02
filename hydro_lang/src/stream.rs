@@ -13,7 +13,7 @@ use tokio::time::Instant;
 use crate::boundedness::Boundedness;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
-use crate::ir::{HydroLeaf, HydroNode, TeeNode};
+use crate::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 use crate::keyed_stream::KeyedStream;
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
@@ -183,13 +183,14 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .leaves
+            .roots
             .as_mut()
             .expect(FLOW_USED_MESSAGE)
-            .push(HydroLeaf::CycleSink {
+            .push(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                out_location: self.location.id(),
+                op_metadata: HydroIrOpMetadata::new(),
             });
     }
 }
@@ -228,16 +229,17 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .leaves
+            .roots
             .as_mut()
             .expect(FLOW_USED_MESSAGE)
-            .push(HydroLeaf::CycleSink {
+            .push(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
                     metadata: metadata.clone(),
                 }),
-                metadata,
+                out_location: self.location.id(),
+                op_metadata: HydroIrOpMetadata::new(),
             });
     }
 }
@@ -2401,16 +2403,16 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .leaves
+            .roots
             .as_mut()
             .expect(FLOW_USED_MESSAGE)
-            .push(HydroLeaf::ForEach {
+            .push(HydroRoot::ForEach {
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
                     metadata: metadata.clone(),
                 }),
                 f,
-                metadata,
+                op_metadata: HydroIrOpMetadata::new(),
             });
     }
 
@@ -2421,13 +2423,13 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .leaves
+            .roots
             .as_mut()
             .expect(FLOW_USED_MESSAGE)
-            .push(HydroLeaf::DestSink {
+            .push(HydroRoot::DestSink {
                 sink: sink.splice_typed_ctx(&self.location).into(),
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                op_metadata: HydroIrOpMetadata::new(),
             });
     }
 }

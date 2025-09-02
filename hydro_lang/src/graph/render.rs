@@ -8,7 +8,7 @@ pub use super::graphviz::{HydroDot, escape_dot};
 // Re-export specific implementations
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
 pub use super::reactflow::HydroReactFlow;
-use crate::ir::{DebugExpr, HydroLeaf, HydroNode, HydroSource};
+use crate::ir::{DebugExpr, HydroNode, HydroRoot, HydroSource};
 
 /// Label for a graph node - can be either a static string or contain expressions.
 #[derive(Debug, Clone)]
@@ -297,7 +297,7 @@ fn setup_location(
     location_id
 }
 
-impl HydroLeaf {
+impl HydroRoot {
     /// Core graph writing logic that works with any GraphWrite implementation.
     pub fn write_graph<W>(
         &self,
@@ -396,17 +396,17 @@ impl HydroLeaf {
 
         match self {
             // Sink operations with Stream edges - grouped by edge type
-            HydroLeaf::ForEach { f, input, metadata } => build_sink_node(
+            HydroRoot::ForEach { f, input, .. } => build_sink_node(
                 structure,
                 seen_tees,
                 config,
                 input,
-                Some(metadata),
+                None,
                 NodeLabel::with_exprs("for_each".to_string(), vec![f.clone()]),
                 HydroEdgeType::Stream,
             ),
 
-            HydroLeaf::SendExternal {
+            HydroRoot::SendExternal {
                 to_external_id,
                 to_key,
                 input,
@@ -424,32 +424,23 @@ impl HydroLeaf {
                 HydroEdgeType::Stream,
             ),
 
-            HydroLeaf::DestSink {
-                sink,
-                input,
-                metadata,
-            } => build_sink_node(
+            HydroRoot::DestSink { sink, input, .. } => build_sink_node(
                 structure,
                 seen_tees,
                 config,
                 input,
-                Some(metadata),
+                None,
                 NodeLabel::with_exprs("dest_sink".to_string(), vec![sink.clone()]),
                 HydroEdgeType::Stream,
             ),
 
             // Sink operation with Cycle edge - grouped by edge type
-            HydroLeaf::CycleSink {
-                ident,
-                input,
-                metadata,
-                ..
-            } => build_sink_node(
+            HydroRoot::CycleSink { ident, input, .. } => build_sink_node(
                 structure,
                 seen_tees,
                 config,
                 input,
-                Some(metadata),
+                None,
                 NodeLabel::static_label(format!("cycle_sink({})", ident)),
                 HydroEdgeType::Cycle,
             ),
@@ -963,13 +954,13 @@ impl HydroNode {
     }
 }
 
-/// Utility functions for rendering multiple leaves as a single graph.
+/// Utility functions for rendering multiple roots as a single graph.
 /// Macro to reduce duplication in render functions.
 macro_rules! render_hydro_ir {
     ($name:ident, $write_fn:ident) => {
-        pub fn $name(leaves: &[HydroLeaf], config: &HydroWriteConfig) -> String {
+        pub fn $name(roots: &[HydroRoot], config: &HydroWriteConfig) -> String {
             let mut output = String::new();
-            $write_fn(&mut output, leaves, config).unwrap();
+            $write_fn(&mut output, roots, config).unwrap();
             output
         }
     };
@@ -980,11 +971,11 @@ macro_rules! write_hydro_ir {
     ($name:ident, $writer_type:ty, $constructor:expr) => {
         pub fn $name(
             output: impl std::fmt::Write,
-            leaves: &[HydroLeaf],
+            roots: &[HydroRoot],
             config: &HydroWriteConfig,
         ) -> std::fmt::Result {
             let mut graph_write: $writer_type = $constructor(output, config);
-            write_hydro_ir_graph(&mut graph_write, leaves, config)
+            write_hydro_ir_graph(&mut graph_write, roots, config)
         }
     };
 }
@@ -1008,7 +999,7 @@ write_hydro_ir!(
 
 fn write_hydro_ir_graph<W>(
     mut graph_write: W,
-    leaves: &[HydroLeaf],
+    roots: &[HydroRoot],
     config: &HydroWriteConfig,
 ) -> Result<(), W::Err>
 where
@@ -1017,12 +1008,12 @@ where
     let mut structure = HydroGraphStructure::new();
     let mut seen_tees = HashMap::new();
 
-    // Build the graph structure for all leaves
-    for leaf in leaves {
+    // Build the graph structure for all roots
+    for leaf in roots {
         leaf.build_graph_structure(&mut structure, &mut seen_tees, config);
     }
 
-    // Write the graph using the same logic as individual leaves
+    // Write the graph using the same logic as individual roots
     graph_write.write_prologue()?;
 
     for (&node_id, (label, node_type, location)) in &structure.nodes {
