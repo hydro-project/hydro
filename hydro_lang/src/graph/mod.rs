@@ -1,6 +1,7 @@
 //! Graph visualization utilities for Hydro IR
 
 pub mod api;
+pub mod config;
 pub mod debug;
 pub mod graphviz;
 pub mod mermaid;

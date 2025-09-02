@@ -306,14 +306,14 @@ impl<'a> GraphApi<'a> {
     #[cfg(feature = "build")]
     pub fn generate_graph_with_config(
         &self,
-        config: &crate::graph_util::GraphConfig,
+        config: &crate::graph::config::GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn Error>> {
         if let Some(graph_type) = config.graph {
             let format = match graph_type {
-                crate::graph_util::GraphType::Mermaid => GraphFormat::Mermaid,
-                crate::graph_util::GraphType::Dot => GraphFormat::Dot,
-                crate::graph_util::GraphType::Reactflow => GraphFormat::ReactFlow,
+                crate::graph::config::GraphType::Mermaid => GraphFormat::Mermaid,
+                crate::graph::config::GraphType::Dot => GraphFormat::Dot,
+                crate::graph::config::GraphType::Reactflow => GraphFormat::ReactFlow,
             };
 
             self.open_browser(
@@ -332,7 +332,7 @@ impl<'a> GraphApi<'a> {
     #[cfg(feature = "build")]
     pub fn generate_all_files_with_config(
         &self,
-        config: &crate::graph_util::GraphConfig,
+        config: &crate::graph::config::GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn Error>> {
         self.generate_all_files(

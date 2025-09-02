@@ -330,7 +330,7 @@ impl<'a> BuiltFlow<'a> {
     #[cfg(feature = "viz")]
     pub fn generate_graph_with_config(
         &self,
-        config: &crate::graph_util::GraphConfig,
+        config: &crate::graph::config::GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.graph_api()
@@ -340,7 +340,7 @@ impl<'a> BuiltFlow<'a> {
     #[cfg(feature = "viz")]
     pub fn generate_all_files_with_config(
         &self,
-        config: &crate::graph_util::GraphConfig,
+        config: &crate::graph::config::GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.graph_api()
