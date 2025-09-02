@@ -327,17 +327,13 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Tick(
-                2,
-                Process(
-                    0,
-                ),
+        out_location: Tick(
+            2,
+            Process(
+                0,
             ),
-            output_type: Some(
-                ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
-            ),
-        },
+        ),
+        op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
         ident: Ident {
@@ -647,17 +643,13 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Tick(
-                2,
-                Process(
-                    0,
-                ),
+        out_location: Tick(
+            2,
+            Process(
+                0,
             ),
-            output_type: Some(
-                ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
-            ),
-        },
+        ),
+        op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
         ident: Ident {
@@ -788,14 +780,10 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Cluster(
-                2,
-            ),
-            output_type: Some(
-                (u32 , u32),
-            ),
-        },
+        out_location: Cluster(
+            2,
+        ),
+        op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
         ident: Ident {
@@ -966,17 +954,13 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Tick(
-                0,
-                Cluster(
-                    2,
-                ),
+        out_location: Tick(
+            0,
+            Cluster(
+                2,
             ),
-            output_type: Some(
-                (usize , std :: time :: Instant),
-            ),
-        },
+        ),
+        op_metadata: HydroIrOpMetadata,
     },
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | num_clients_not_responded | println ! ("Awaiting {} clients" , num_clients_not_responded) }),
@@ -1552,14 +1536,7 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Process(
-                3,
-            ),
-            output_type: Some(
-                usize,
-            ),
-        },
+        op_metadata: HydroIrOpMetadata,
     },
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize) , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; move | (throughputs , num_client_machines) | { if throughputs . sample_count () >= 2 { let mean = throughputs . sample_mean () * num_client_machines as f64 ; if let Some ((lower , upper)) = throughputs . confidence_interval_99 () { println ! ("Throughput: {:.2} - {:.2} - {:.2} requests/s" , lower * num_client_machines as f64 , mean , upper * num_client_machines as f64) ; } } } }),
@@ -1781,14 +1758,7 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Process(
-                3,
-            ),
-            output_type: Some(
-                (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize),
-            ),
-        },
+        op_metadata: HydroIrOpMetadata,
     },
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; move | latencies | { println ! ("Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)" , Duration :: from_nanos (latencies . value_at_quantile (0.5)) . as_micros () as f64 / 1000.0 , Duration :: from_nanos (latencies . value_at_quantile (0.99)) . as_micros () as f64 / 1000.0 , Duration :: from_nanos (latencies . value_at_quantile (0.999)) . as_micros () as f64 / 1000.0 , latencies . len ()) ; } }),
@@ -2180,13 +2150,6 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Process(
-                3,
-            ),
-            output_type: Some(
-                hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >,
-            ),
-        },
+        op_metadata: HydroIrOpMetadata,
     },
 ]

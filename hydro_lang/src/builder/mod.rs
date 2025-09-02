@@ -11,7 +11,7 @@ use stageleft::*;
 
 #[cfg(feature = "build")]
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
-use crate::ir::HydroLeaf;
+use crate::ir::HydroRoot;
 use crate::location::{Cluster, External, Process};
 use crate::staging_util::Invariant;
 
@@ -26,10 +26,10 @@ pub mod compiled;
 pub mod deploy;
 
 pub struct FlowStateInner {
-    /// Tracks the leaves of the dataflow IR. This is referenced by
+    /// Tracks the roots of the dataflow IR. This is referenced by
     /// `Stream` and `HfCycle` to build the IR. The inner option will
     /// be set to `None` when this builder is finalized.
-    pub(crate) leaves: Option<Vec<HydroLeaf>>,
+    pub(crate) roots: Option<Vec<HydroRoot>>,
 
     /// Counter for generating unique external output identifiers.
     pub(crate) next_external_out: usize,
@@ -54,7 +54,7 @@ impl FlowStateInner {
 
 pub type FlowState = Rc<RefCell<FlowStateInner>>;
 
-pub const FLOW_USED_MESSAGE: &str = "Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled.";
+pub const FLOW_USED_MESSAGE: &str = "Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled.";
 
 pub struct RewriteIrFlowBuilder<'a> {
     builder: FlowBuilder<'a>,
@@ -63,10 +63,10 @@ pub struct RewriteIrFlowBuilder<'a> {
 impl<'a> RewriteIrFlowBuilder<'a> {
     pub fn build_with(
         self,
-        thunk: impl FnOnce(&FlowBuilder<'a>) -> Vec<HydroLeaf>,
+        thunk: impl FnOnce(&FlowBuilder<'a>) -> Vec<HydroRoot>,
     ) -> FlowBuilder<'a> {
-        let leaves = thunk(&self.builder);
-        self.builder.flow_state().borrow_mut().leaves = Some(leaves);
+        let roots = thunk(&self.builder);
+        self.builder.flow_state().borrow_mut().roots = Some(roots);
         self.builder
     }
 }
@@ -114,7 +114,7 @@ impl<'a> FlowBuilder<'a> {
     pub fn new() -> FlowBuilder<'a> {
         FlowBuilder {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
-                leaves: Some(vec![]),
+                roots: Some(vec![]),
                 next_external_out: 0,
                 cycle_counts: 0,
                 next_clock_id: 0,
@@ -137,7 +137,7 @@ impl<'a> FlowBuilder<'a> {
         RewriteIrFlowBuilder {
             builder: FlowBuilder {
                 flow_state: Rc::new(RefCell::new(FlowStateInner {
-                    leaves: None,
+                    roots: None,
                     next_external_out: 0,
                     cycle_counts: 0,
                     next_clock_id: 0,
@@ -213,7 +213,7 @@ impl<'a> FlowBuilder<'a> {
         self.finalized = true;
 
         built::BuiltFlow {
-            ir: self.flow_state.borrow_mut().leaves.take().unwrap(),
+            ir: self.flow_state.borrow_mut().roots.take().unwrap(),
             process_id_name: self.processes.replace(vec![]),
             cluster_id_name: self.clusters.replace(vec![]),
             external_id_name: self.externals.replace(vec![]),
@@ -225,7 +225,7 @@ impl<'a> FlowBuilder<'a> {
         self.finalize().with_default_optimize()
     }
 
-    pub fn optimize_with(self, f: impl FnOnce(&mut [HydroLeaf])) -> built::BuiltFlow<'a> {
+    pub fn optimize_with(self, f: impl FnOnce(&mut [HydroRoot])) -> built::BuiltFlow<'a> {
         self.finalize().optimize_with(f)
     }
 
