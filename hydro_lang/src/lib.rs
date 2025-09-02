@@ -33,6 +33,7 @@ pub mod internal_constants {
 
 #[cfg(feature = "dfir_context")]
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_context")))]
+#[expect(missing_docs, reason = "TODO")]
 pub mod runtime_context;
 #[cfg(feature = "dfir_context")]
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_context")))]
