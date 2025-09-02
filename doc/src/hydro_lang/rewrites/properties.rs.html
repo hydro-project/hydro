@@ -2,7 +2,7 @@
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>stageleft::<span class="kw-2">*</span>;
 <a href=#4 id=4 data-nosnippet>4</a>
-<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span><span class="kw">crate</span>::ir::{HydroLeaf, HydroNode, transform_bottom_up};
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span><span class="kw">crate</span>::ir::{HydroNode, HydroRoot, transform_bottom_up};
 <a href=#6 id=6 data-nosnippet>6</a>
 <a href=#7 id=7 data-nosnippet>7</a><span class="doccomment">/// Structure for tracking expressions known to have particular algebraic properties.
 <a href=#8 id=8 data-nosnippet>8</a>///
@@ -56,7 +56,7 @@
 <a href=#56 id=56 data-nosnippet>56</a>    }
 <a href=#57 id=57 data-nosnippet>57</a>}
 <a href=#58 id=58 data-nosnippet>58</a>
-<a href=#59 id=59 data-nosnippet>59</a><span class="kw">pub fn </span>properties_optimize(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], db: <span class="kw-2">&amp;mut </span>PropertyDatabase) {
+<a href=#59 id=59 data-nosnippet>59</a><span class="kw">pub fn </span>properties_optimize(ir: <span class="kw-2">&amp;mut </span>[HydroRoot], db: <span class="kw-2">&amp;mut </span>PropertyDatabase) {
 <a href=#60 id=60 data-nosnippet>60</a>    transform_bottom_up(
 <a href=#61 id=61 data-nosnippet>61</a>        ir,
 <a href=#62 id=62 data-nosnippet>62</a>        <span class="kw-2">&amp;mut </span>|<span class="kw">_</span>| (),

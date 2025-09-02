@@ -4,7 +4,7 @@
 <a href=#4 id=4 data-nosnippet>4</a>
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>hydro_lang::MemberId;
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>hydro_lang::ir::{
-<a href=#7 id=7 data-nosnippet>7</a>    DebugInstantiate, DebugType, HydroIrMetadata, HydroLeaf, HydroNode, TeeNode,
+<a href=#7 id=7 data-nosnippet>7</a>    DebugInstantiate, DebugType, HydroIrMetadata, HydroNode, HydroRoot, TeeNode,
 <a href=#8 id=8 data-nosnippet>8</a>    transform_bottom_up, traverse_dfir,
 <a href=#9 id=9 data-nosnippet>9</a>};
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>hydro_lang::location::LocationId;
@@ -204,12 +204,12 @@
 <a href=#204 id=204 data-nosnippet>204</a>    }
 <a href=#205 id=205 data-nosnippet>205</a>}
 <a href=#206 id=206 data-nosnippet>206</a>
-<a href=#207 id=207 data-nosnippet>207</a><span class="kw">fn </span>fix_cluster_self_id_leaf(leaf: <span class="kw-2">&amp;mut </span>HydroLeaf, <span class="kw-2">mut </span>locations: ClusterSelfIdReplace) {
+<a href=#207 id=207 data-nosnippet>207</a><span class="kw">fn </span>fix_cluster_self_id_leaf(leaf: <span class="kw-2">&amp;mut </span>HydroRoot, <span class="kw-2">mut </span>locations: ClusterSelfIdReplace) {
 <a href=#208 id=208 data-nosnippet>208</a>    <span class="kw">if let </span>ClusterSelfIdReplace::Decouple {
 <a href=#209 id=209 data-nosnippet>209</a>        decoupled_cluster_id,
 <a href=#210 id=210 data-nosnippet>210</a>        ..
 <a href=#211 id=211 data-nosnippet>211</a>    } = locations
-<a href=#212 id=212 data-nosnippet>212</a>        &amp;&amp; leaf.metadata().location_kind.root().raw_id() == decoupled_cluster_id
+<a href=#212 id=212 data-nosnippet>212</a>        &amp;&amp; leaf.input_metadata()[<span class="number">0</span>].location_kind.root().raw_id() == decoupled_cluster_id
 <a href=#213 id=213 data-nosnippet>213</a>    {
 <a href=#214 id=214 data-nosnippet>214</a>        leaf.visit_debug_expr(|expr| {
 <a href=#215 id=215 data-nosnippet>215</a>            locations.visit_expr_mut(<span class="kw-2">&amp;mut </span>expr.<span class="number">0</span>);
@@ -230,7 +230,7 @@
 <a href=#230 id=230 data-nosnippet>230</a>    }
 <a href=#231 id=231 data-nosnippet>231</a>}
 <a href=#232 id=232 data-nosnippet>232</a>
-<a href=#233 id=233 data-nosnippet>233</a><span class="kw">pub fn </span>decouple(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], decoupler: <span class="kw-2">&amp;</span>Decoupler) {
+<a href=#233 id=233 data-nosnippet>233</a><span class="kw">pub fn </span>decouple(ir: <span class="kw-2">&amp;mut </span>[HydroRoot], decoupler: <span class="kw-2">&amp;</span>Decoupler) {
 <a href=#234 id=234 data-nosnippet>234</a>    <span class="kw">let </span><span class="kw-2">mut </span>new_inners = HashMap::new();
 <a href=#235 id=235 data-nosnippet>235</a>    traverse_dfir(
 <a href=#236 id=236 data-nosnippet>236</a>        ir,

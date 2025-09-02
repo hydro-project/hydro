@@ -93,7 +93,7 @@
 <a href=#93 id=93 data-nosnippet>93</a>        };
 <a href=#94 id=94 data-nosnippet>94</a>        <span class="kw">let </span>built = builder
 <a href=#95 id=95 data-nosnippet>95</a>            .optimize_with(persist_pullup::persist_pullup)
-<a href=#96 id=96 data-nosnippet>96</a>            .optimize_with(|leaves| decoupler::decouple(leaves, <span class="kw-2">&amp;</span>decoupler))
+<a href=#96 id=96 data-nosnippet>96</a>            .optimize_with(|roots| decoupler::decouple(roots, <span class="kw-2">&amp;</span>decoupler))
 <a href=#97 id=97 data-nosnippet>97</a>            .into_deploy::&lt;HydroDeploy&gt;();
 <a href=#98 id=98 data-nosnippet>98</a>
 <a href=#99 id=99 data-nosnippet>99</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(built.ir());

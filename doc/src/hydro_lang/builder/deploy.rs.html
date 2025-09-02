@@ -16,7 +16,7 @@
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span><span class="kw">crate</span>::deploy::{
 <a href=#17 id=17 data-nosnippet>17</a>    ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 <a href=#18 id=18 data-nosnippet>18</a>};
-<a href=#19 id=19 data-nosnippet>19</a><span class="kw">use </span><span class="kw">crate</span>::ir::HydroLeaf;
+<a href=#19 id=19 data-nosnippet>19</a><span class="kw">use </span><span class="kw">crate</span>::ir::HydroRoot;
 <a href=#20 id=20 data-nosnippet>20</a><span class="kw">use </span><span class="kw">crate</span>::location::external_process::{
 <a href=#21 id=21 data-nosnippet>21</a>    ExternalBincodeBidi, ExternalBincodeSink, ExternalBincodeStream, ExternalBytesPort,
 <a href=#22 id=22 data-nosnippet>22</a>};
@@ -30,7 +30,7 @@
 <a href=#30 id=30 data-nosnippet>30</a>    <span class="comment">// We need to grab an `&amp;mut` reference to the IR in `preview_compile` even though
 <a href=#31 id=31 data-nosnippet>31</a>    // that function does not modify the IR. Using an `UnsafeCell` allows us to do this
 <a href=#32 id=32 data-nosnippet>32</a>    // while still being able to lend out immutable references to the IR.
-<a href=#33 id=33 data-nosnippet>33</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) ir: UnsafeCell&lt;Vec&lt;HydroLeaf&gt;&gt;,
+<a href=#33 id=33 data-nosnippet>33</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) ir: UnsafeCell&lt;Vec&lt;HydroRoot&gt;&gt;,
 <a href=#34 id=34 data-nosnippet>34</a>
 <a href=#35 id=35 data-nosnippet>35</a>    <span class="doccomment">/// Deployed instances of each process in the flow
 <a href=#36 id=36 data-nosnippet>36</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) processes: HashMap&lt;usize, D::Process&gt;,
@@ -49,7 +49,7 @@
 <a href=#49 id=49 data-nosnippet>49</a>}
 <a href=#50 id=50 data-nosnippet>50</a>
 <a href=#51 id=51 data-nosnippet>51</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
-<a href=#52 id=52 data-nosnippet>52</a>    <span class="kw">pub fn </span>ir(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;HydroLeaf&gt; {
+<a href=#52 id=52 data-nosnippet>52</a>    <span class="kw">pub fn </span>ir(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;HydroRoot&gt; {
 <a href=#53 id=53 data-nosnippet>53</a>        <span class="kw">unsafe </span>{
 <a href=#54 id=54 data-nosnippet>54</a>            <span class="comment">// SAFETY: even when we grab this as mutable in `preview_compile`, we do not modify it
 <a href=#55 id=55 data-nosnippet>55</a>            </span><span class="kw-2">&amp;*</span><span class="self">self</span>.ir.get()

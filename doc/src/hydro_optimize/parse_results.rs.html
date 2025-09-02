@@ -3,7 +3,7 @@
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::builder::deploy::DeployResult;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>hydro_lang::deploy::HydroDeploy;
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
-<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>hydro_lang::ir::{HydroNode, HydroRoot, traverse_dfir};
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>hydro_lang::location::LocationId;
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>regex::Regex;
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>tokio::sync::mpsc::UnboundedReceiver;
@@ -59,12 +59,12 @@
 <a href=#59 id=59 data-nosnippet>59</a>}
 <a href=#60 id=60 data-nosnippet>60</a>
 <a href=#61 id=61 data-nosnippet>61</a><span class="kw">fn </span>inject_perf_leaf(
-<a href=#62 id=62 data-nosnippet>62</a>    leaf: <span class="kw-2">&amp;mut </span>HydroLeaf,
+<a href=#62 id=62 data-nosnippet>62</a>    leaf: <span class="kw-2">&amp;mut </span>HydroRoot,
 <a href=#63 id=63 data-nosnippet>63</a>    id_to_usage: <span class="kw-2">&amp;</span>HashMap&lt;(usize, bool), f64&gt;,
 <a href=#64 id=64 data-nosnippet>64</a>    next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
 <a href=#65 id=65 data-nosnippet>65</a>) {
 <a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(cpu_usage) = id_to_usage.get(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>next_stmt_id, <span class="bool-val">false</span>)) {
-<a href=#67 id=67 data-nosnippet>67</a>        leaf.metadata_mut().cpu_usage = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>cpu_usage);
+<a href=#67 id=67 data-nosnippet>67</a>        leaf.op_metadata_mut().cpu_usage = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>cpu_usage);
 <a href=#68 id=68 data-nosnippet>68</a>    }
 <a href=#69 id=69 data-nosnippet>69</a>}
 <a href=#70 id=70 data-nosnippet>70</a>
@@ -84,7 +84,7 @@
 <a href=#84 id=84 data-nosnippet>84</a>    }
 <a href=#85 id=85 data-nosnippet>85</a>}
 <a href=#86 id=86 data-nosnippet>86</a>
-<a href=#87 id=87 data-nosnippet>87</a><span class="kw">pub fn </span>inject_perf(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], folded_data: Vec&lt;u8&gt;) {
+<a href=#87 id=87 data-nosnippet>87</a><span class="kw">pub fn </span>inject_perf(ir: <span class="kw-2">&amp;mut </span>[HydroRoot], folded_data: Vec&lt;u8&gt;) {
 <a href=#88 id=88 data-nosnippet>88</a>    <span class="kw">let </span>id_to_usage = parse_perf(String::from_utf8(folded_data).unwrap());
 <a href=#89 id=89 data-nosnippet>89</a>    traverse_dfir(
 <a href=#90 id=90 data-nosnippet>90</a>        ir,
@@ -133,7 +133,7 @@
 <a href=#133 id=133 data-nosnippet>133</a>    }
 <a href=#134 id=134 data-nosnippet>134</a>}
 <a href=#135 id=135 data-nosnippet>135</a>
-<a href=#136 id=136 data-nosnippet>136</a><span class="kw">pub fn </span>inject_count(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], op_to_count: <span class="kw-2">&amp;</span>HashMap&lt;usize, usize&gt;) {
+<a href=#136 id=136 data-nosnippet>136</a><span class="kw">pub fn </span>inject_count(ir: <span class="kw-2">&amp;mut </span>[HydroRoot], op_to_count: <span class="kw-2">&amp;</span>HashMap&lt;usize, usize&gt;) {
 <a href=#137 id=137 data-nosnippet>137</a>    traverse_dfir(
 <a href=#138 id=138 data-nosnippet>138</a>        ir,
 <a href=#139 id=139 data-nosnippet>139</a>        |<span class="kw">_</span>, <span class="kw">_</span>| {},
@@ -145,7 +145,7 @@
 <a href=#145 id=145 data-nosnippet>145</a>
 <a href=#146 id=146 data-nosnippet>146</a><span class="kw">pub async fn </span>analyze_process_results(
 <a href=#147 id=147 data-nosnippet>147</a>    process: <span class="kw-2">&amp;</span><span class="kw">impl </span>DeployCrateWrapper,
-<a href=#148 id=148 data-nosnippet>148</a>    ir: <span class="kw-2">&amp;mut </span>[HydroLeaf],
+<a href=#148 id=148 data-nosnippet>148</a>    ir: <span class="kw-2">&amp;mut </span>[HydroRoot],
 <a href=#149 id=149 data-nosnippet>149</a>    _node_usage: f64,
 <a href=#150 id=150 data-nosnippet>150</a>    node_cardinality: <span class="kw-2">&amp;mut </span>UnboundedReceiver&lt;String&gt;,
 <a href=#151 id=151 data-nosnippet>151</a>) {
@@ -166,7 +166,7 @@
 <a href=#166 id=166 data-nosnippet>166</a>
 <a href=#167 id=167 data-nosnippet>167</a><span class="kw">pub async fn </span>analyze_cluster_results(
 <a href=#168 id=168 data-nosnippet>168</a>    nodes: <span class="kw-2">&amp;</span>DeployResult&lt;<span class="lifetime">'_</span>, HydroDeploy&gt;,
-<a href=#169 id=169 data-nosnippet>169</a>    ir: <span class="kw-2">&amp;mut </span>[HydroLeaf],
+<a href=#169 id=169 data-nosnippet>169</a>    ir: <span class="kw-2">&amp;mut </span>[HydroRoot],
 <a href=#170 id=170 data-nosnippet>170</a>    usage_out: <span class="kw-2">&amp;mut </span>HashMap&lt;(LocationId, String, usize), UnboundedReceiver&lt;String&gt;&gt;,
 <a href=#171 id=171 data-nosnippet>171</a>    cardinality_out: <span class="kw-2">&amp;mut </span>HashMap&lt;(LocationId, String, usize), UnboundedReceiver&lt;String&gt;&gt;,
 <a href=#172 id=172 data-nosnippet>172</a>    exclude_from_decoupling: Vec&lt;String&gt;,
@@ -274,7 +274,7 @@
 <a href=#274 id=274 data-nosnippet>274</a>}
 <a href=#275 id=275 data-nosnippet>275</a>
 <a href=#276 id=276 data-nosnippet>276</a><span class="comment">// Track the max of each so we decouple conservatively
-<a href=#277 id=277 data-nosnippet>277</a></span><span class="kw">pub fn </span>analyze_send_recv_overheads(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], location: <span class="kw-2">&amp;</span>LocationId) -&gt; (f64, f64) {
+<a href=#277 id=277 data-nosnippet>277</a></span><span class="kw">pub fn </span>analyze_send_recv_overheads(ir: <span class="kw-2">&amp;mut </span>[HydroRoot], location: <span class="kw-2">&amp;</span>LocationId) -&gt; (f64, f64) {
 <a href=#278 id=278 data-nosnippet>278</a>    <span class="kw">let </span><span class="kw-2">mut </span>max_send_overhead = <span class="number">0.0</span>;
 <a href=#279 id=279 data-nosnippet>279</a>    <span class="kw">let </span><span class="kw-2">mut </span>max_recv_overhead = <span class="number">0.0</span>;
 <a href=#280 id=280 data-nosnippet>280</a>

@@ -11,7 +11,7 @@
 <a href=#11 id=11 data-nosnippet>11</a>
 <a href=#12 id=12 data-nosnippet>12</a><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 <a href=#13 id=13 data-nosnippet>13</a></span><span class="kw">use </span><span class="kw">crate</span>::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
-<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::ir::HydroLeaf;
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::ir::HydroRoot;
 <a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::location::{Cluster, External, Process};
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span><span class="kw">crate</span>::staging_util::Invariant;
 <a href=#17 id=17 data-nosnippet>17</a>
@@ -26,10 +26,10 @@
 <a href=#26 id=26 data-nosnippet>26</a></span><span class="kw">pub mod </span>deploy;
 <a href=#27 id=27 data-nosnippet>27</a>
 <a href=#28 id=28 data-nosnippet>28</a><span class="kw">pub struct </span>FlowStateInner {
-<a href=#29 id=29 data-nosnippet>29</a>    <span class="doccomment">/// Tracks the leaves of the dataflow IR. This is referenced by
+<a href=#29 id=29 data-nosnippet>29</a>    <span class="doccomment">/// Tracks the roots of the dataflow IR. This is referenced by
 <a href=#30 id=30 data-nosnippet>30</a>    /// `Stream` and `HfCycle` to build the IR. The inner option will
 <a href=#31 id=31 data-nosnippet>31</a>    /// be set to `None` when this builder is finalized.
-<a href=#32 id=32 data-nosnippet>32</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) leaves: <span class="prelude-ty">Option</span>&lt;Vec&lt;HydroLeaf&gt;&gt;,
+<a href=#32 id=32 data-nosnippet>32</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) roots: <span class="prelude-ty">Option</span>&lt;Vec&lt;HydroRoot&gt;&gt;,
 <a href=#33 id=33 data-nosnippet>33</a>
 <a href=#34 id=34 data-nosnippet>34</a>    <span class="doccomment">/// Counter for generating unique external output identifiers.
 <a href=#35 id=35 data-nosnippet>35</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) next_external_out: usize,
@@ -54,7 +54,7 @@
 <a href=#54 id=54 data-nosnippet>54</a>
 <a href=#55 id=55 data-nosnippet>55</a><span class="kw">pub type </span>FlowState = Rc&lt;RefCell&lt;FlowStateInner&gt;&gt;;
 <a href=#56 id=56 data-nosnippet>56</a>
-<a href=#57 id=57 data-nosnippet>57</a><span class="kw">pub const </span>FLOW_USED_MESSAGE: <span class="kw-2">&amp;</span>str = <span class="string">"Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled."</span>;
+<a href=#57 id=57 data-nosnippet>57</a><span class="kw">pub const </span>FLOW_USED_MESSAGE: <span class="kw-2">&amp;</span>str = <span class="string">"Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled."</span>;
 <a href=#58 id=58 data-nosnippet>58</a>
 <a href=#59 id=59 data-nosnippet>59</a><span class="kw">pub struct </span>RewriteIrFlowBuilder&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#60 id=60 data-nosnippet>60</a>    builder: FlowBuilder&lt;<span class="lifetime">'a</span>&gt;,
@@ -63,10 +63,10 @@
 <a href=#63 id=63 data-nosnippet>63</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; RewriteIrFlowBuilder&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#64 id=64 data-nosnippet>64</a>    <span class="kw">pub fn </span>build_with(
 <a href=#65 id=65 data-nosnippet>65</a>        <span class="self">self</span>,
-<a href=#66 id=66 data-nosnippet>66</a>        thunk: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;</span>FlowBuilder&lt;<span class="lifetime">'a</span>&gt;) -&gt; Vec&lt;HydroLeaf&gt;,
+<a href=#66 id=66 data-nosnippet>66</a>        thunk: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;</span>FlowBuilder&lt;<span class="lifetime">'a</span>&gt;) -&gt; Vec&lt;HydroRoot&gt;,
 <a href=#67 id=67 data-nosnippet>67</a>    ) -&gt; FlowBuilder&lt;<span class="lifetime">'a</span>&gt; {
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>leaves = thunk(<span class="kw-2">&amp;</span><span class="self">self</span>.builder);
-<a href=#69 id=69 data-nosnippet>69</a>        <span class="self">self</span>.builder.flow_state().borrow_mut().leaves = <span class="prelude-val">Some</span>(leaves);
+<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>roots = thunk(<span class="kw-2">&amp;</span><span class="self">self</span>.builder);
+<a href=#69 id=69 data-nosnippet>69</a>        <span class="self">self</span>.builder.flow_state().borrow_mut().roots = <span class="prelude-val">Some</span>(roots);
 <a href=#70 id=70 data-nosnippet>70</a>        <span class="self">self</span>.builder
 <a href=#71 id=71 data-nosnippet>71</a>    }
 <a href=#72 id=72 data-nosnippet>72</a>}
@@ -114,7 +114,7 @@
 <a href=#114 id=114 data-nosnippet>114</a>    </span><span class="kw">pub fn </span>new() -&gt; FlowBuilder&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#115 id=115 data-nosnippet>115</a>        FlowBuilder {
 <a href=#116 id=116 data-nosnippet>116</a>            flow_state: Rc::new(RefCell::new(FlowStateInner {
-<a href=#117 id=117 data-nosnippet>117</a>                leaves: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[]),
+<a href=#117 id=117 data-nosnippet>117</a>                roots: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[]),
 <a href=#118 id=118 data-nosnippet>118</a>                next_external_out: <span class="number">0</span>,
 <a href=#119 id=119 data-nosnippet>119</a>                cycle_counts: <span class="number">0</span>,
 <a href=#120 id=120 data-nosnippet>120</a>                next_clock_id: <span class="number">0</span>,
@@ -137,7 +137,7 @@
 <a href=#137 id=137 data-nosnippet>137</a>        RewriteIrFlowBuilder {
 <a href=#138 id=138 data-nosnippet>138</a>            builder: FlowBuilder {
 <a href=#139 id=139 data-nosnippet>139</a>                flow_state: Rc::new(RefCell::new(FlowStateInner {
-<a href=#140 id=140 data-nosnippet>140</a>                    leaves: <span class="prelude-val">None</span>,
+<a href=#140 id=140 data-nosnippet>140</a>                    roots: <span class="prelude-val">None</span>,
 <a href=#141 id=141 data-nosnippet>141</a>                    next_external_out: <span class="number">0</span>,
 <a href=#142 id=142 data-nosnippet>142</a>                    cycle_counts: <span class="number">0</span>,
 <a href=#143 id=143 data-nosnippet>143</a>                    next_clock_id: <span class="number">0</span>,
@@ -213,7 +213,7 @@
 <a href=#213 id=213 data-nosnippet>213</a>        <span class="self">self</span>.finalized = <span class="bool-val">true</span>;
 <a href=#214 id=214 data-nosnippet>214</a>
 <a href=#215 id=215 data-nosnippet>215</a>        built::BuiltFlow {
-<a href=#216 id=216 data-nosnippet>216</a>            ir: <span class="self">self</span>.flow_state.borrow_mut().leaves.take().unwrap(),
+<a href=#216 id=216 data-nosnippet>216</a>            ir: <span class="self">self</span>.flow_state.borrow_mut().roots.take().unwrap(),
 <a href=#217 id=217 data-nosnippet>217</a>            process_id_name: <span class="self">self</span>.processes.replace(<span class="macro">vec!</span>[]),
 <a href=#218 id=218 data-nosnippet>218</a>            cluster_id_name: <span class="self">self</span>.clusters.replace(<span class="macro">vec!</span>[]),
 <a href=#219 id=219 data-nosnippet>219</a>            external_id_name: <span class="self">self</span>.externals.replace(<span class="macro">vec!</span>[]),
@@ -225,7 +225,7 @@
 <a href=#225 id=225 data-nosnippet>225</a>        <span class="self">self</span>.finalize().with_default_optimize()
 <a href=#226 id=226 data-nosnippet>226</a>    }
 <a href=#227 id=227 data-nosnippet>227</a>
-<a href=#228 id=228 data-nosnippet>228</a>    <span class="kw">pub fn </span>optimize_with(<span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>[HydroLeaf])) -&gt; built::BuiltFlow&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#228 id=228 data-nosnippet>228</a>    <span class="kw">pub fn </span>optimize_with(<span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>[HydroRoot])) -&gt; built::BuiltFlow&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#229 id=229 data-nosnippet>229</a>        <span class="self">self</span>.finalize().optimize_with(f)
 <a href=#230 id=230 data-nosnippet>230</a>    }
 <a href=#231 id=231 data-nosnippet>231</a>

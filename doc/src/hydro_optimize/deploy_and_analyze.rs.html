@@ -8,7 +8,7 @@
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>hydro_lang::deploy::HydroDeploy;
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
-<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>hydro_lang::ir::{HydroLeaf, HydroNode, deep_clone, traverse_dfir};
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>hydro_lang::ir::{HydroNode, HydroRoot, deep_clone, traverse_dfir};
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>hydro_lang::location::LocationId;
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>hydro_lang::rewrites::persist_pullup::persist_pullup;
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span>tokio::sync::mpsc::UnboundedReceiver;
@@ -76,7 +76,7 @@
 <a href=#76 id=76 data-nosnippet>76</a>    }
 <a href=#77 id=77 data-nosnippet>77</a>}
 <a href=#78 id=78 data-nosnippet>78</a>
-<a href=#79 id=79 data-nosnippet>79</a><span class="kw">fn </span>insert_counter(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], duration: syn::Expr) {
+<a href=#79 id=79 data-nosnippet>79</a><span class="kw">fn </span>insert_counter(ir: <span class="kw-2">&amp;mut </span>[HydroRoot], duration: syn::Expr) {
 <a href=#80 id=80 data-nosnippet>80</a>    traverse_dfir(
 <a href=#81 id=81 data-nosnippet>81</a>        ir,
 <a href=#82 id=82 data-nosnippet>82</a>        |<span class="kw">_</span>, <span class="kw">_</span>| {},
@@ -131,7 +131,7 @@
 <a href=#131 id=131 data-nosnippet>131</a>    num_seconds: <span class="prelude-ty">Option</span>&lt;usize&gt;,
 <a href=#132 id=132 data-nosnippet>132</a>) -&gt; (
 <a href=#133 id=133 data-nosnippet>133</a>    RewriteIrFlowBuilder&lt;<span class="lifetime">'a</span>&gt;,
-<a href=#134 id=134 data-nosnippet>134</a>    Vec&lt;HydroLeaf&gt;,
+<a href=#134 id=134 data-nosnippet>134</a>    Vec&lt;HydroRoot&gt;,
 <a href=#135 id=135 data-nosnippet>135</a>    Decoupler,
 <a href=#136 id=136 data-nosnippet>136</a>    String,
 <a href=#137 id=137 data-nosnippet>137</a>    usize,
