@@ -1,3 +1,5 @@
+//! Various utilities for testing short Hydro programs, especially in doctests.
+
 use std::future::Future;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::pin::Pin;
@@ -7,6 +9,10 @@ use serde::de::DeserializeOwned;
 
 use crate::{FlowBuilder, Process, Stream, Unbounded};
 
+/// Sets up a test with multiple processes / clusters declared in the test logic (`thunk`). The test logic must return
+/// a single streaming output, which can then be read in `check` (an async closure) to perform assertions.
+///
+/// Each declared process is deployed as a single local process, and each cluster is deployed as four local processes.
 pub async fn multi_location_test<'a, T, C, O, R>(
     thunk: impl FnOnce(&FlowBuilder<'a>, &Process<'a, ()>) -> Stream<T, Process<'a>, Unbounded, O, R>,
     check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = T>>>) -> C,
@@ -34,6 +40,8 @@ pub async fn multi_location_test<'a, T, C, O, R>(
     check(external_out).await;
 }
 
+/// Sets up a test declared in `thunk` that executes on a single [`Process`], returning a streaming output
+/// that can be read in `check` (an async closure) to perform assertions.
 pub async fn stream_transform_test<'a, T, C, O, R>(
     thunk: impl FnOnce(&Process<'a>) -> Stream<T, Process<'a>, Unbounded, O, R>,
     check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = T>>>) -> C,
@@ -61,6 +69,7 @@ pub async fn stream_transform_test<'a, T, C, O, R>(
 }
 
 // from https://users.rust-lang.org/t/how-to-write-doctest-that-panic-with-an-expected-message/58650
+/// Asserts that running the given closure results in a panic with a message containing `msg`.
 pub fn assert_panics_with_message(func: impl FnOnce(), msg: &'static str) {
     let err = catch_unwind(AssertUnwindSafe(func)).expect_err("Didn't panic!");
 
