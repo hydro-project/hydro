@@ -16,7 +16,7 @@ on:
         default: "false"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  group: ${{ github.workflow }}-${{ github.sha }}-${{ github.base_ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -95,7 +95,7 @@ jobs:
 
       - name: Push to gh-pages
         # Do not deploy PRs, only benchmark main branch.
-        if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name != 'pull_request' && github.sha == 'refs/heads/main' }}
         shell: bash
         run: |
           cp -r .github/gh-pages/* .github/gh-pages/.gitignore "$WWW_DIR/"

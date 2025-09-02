@@ -58,5 +58,5 @@ jobs:
           secrets: |
             GIT_AUTH_TOKEN=${{ github.token }}
           tags: |
-            ghcr.io/${{ steps.owner.outputs.owner }}/hydroflow-examples:${{ github.sha }}
+            ghcr.io/${{ steps.owner.outputs.owner }}/hydroflow-examples:${{ github.sha }}-${{ github.base_ref }}
             ghcr.io/${{ steps.owner.outputs.owner }}/hydroflow-examples:latest
