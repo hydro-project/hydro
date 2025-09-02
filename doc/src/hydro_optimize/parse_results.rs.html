@@ -58,13 +58,13 @@
 <a href=#58 id=58 data-nosnippet>58</a>    samples_per_id
 <a href=#59 id=59 data-nosnippet>59</a>}
 <a href=#60 id=60 data-nosnippet>60</a>
-<a href=#61 id=61 data-nosnippet>61</a><span class="kw">fn </span>inject_perf_leaf(
-<a href=#62 id=62 data-nosnippet>62</a>    leaf: <span class="kw-2">&amp;mut </span>HydroRoot,
+<a href=#61 id=61 data-nosnippet>61</a><span class="kw">fn </span>inject_perf_root(
+<a href=#62 id=62 data-nosnippet>62</a>    root: <span class="kw-2">&amp;mut </span>HydroRoot,
 <a href=#63 id=63 data-nosnippet>63</a>    id_to_usage: <span class="kw-2">&amp;</span>HashMap&lt;(usize, bool), f64&gt;,
 <a href=#64 id=64 data-nosnippet>64</a>    next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
 <a href=#65 id=65 data-nosnippet>65</a>) {
 <a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(cpu_usage) = id_to_usage.get(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>next_stmt_id, <span class="bool-val">false</span>)) {
-<a href=#67 id=67 data-nosnippet>67</a>        leaf.op_metadata_mut().cpu_usage = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>cpu_usage);
+<a href=#67 id=67 data-nosnippet>67</a>        root.op_metadata_mut().cpu_usage = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>cpu_usage);
 <a href=#68 id=68 data-nosnippet>68</a>    }
 <a href=#69 id=69 data-nosnippet>69</a>}
 <a href=#70 id=70 data-nosnippet>70</a>
@@ -74,13 +74,13 @@
 <a href=#74 id=74 data-nosnippet>74</a>    next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
 <a href=#75 id=75 data-nosnippet>75</a>) {
 <a href=#76 id=76 data-nosnippet>76</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(cpu_usage) = id_to_usage.get(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>next_stmt_id, <span class="bool-val">false</span>)) {
-<a href=#77 id=77 data-nosnippet>77</a>        node.metadata_mut().cpu_usage = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>cpu_usage);
+<a href=#77 id=77 data-nosnippet>77</a>        node.op_metadata_mut().cpu_usage = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>cpu_usage);
 <a href=#78 id=78 data-nosnippet>78</a>    }
 <a href=#79 id=79 data-nosnippet>79</a>    <span class="comment">// If this is a Network node, separately get receiver CPU usage
 <a href=#80 id=80 data-nosnippet>80</a>    </span><span class="kw">if let </span>HydroNode::Network { metadata, .. } = node
 <a href=#81 id=81 data-nosnippet>81</a>        &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(cpu_usage) = id_to_usage.get(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>next_stmt_id, <span class="bool-val">true</span>))
 <a href=#82 id=82 data-nosnippet>82</a>    {
-<a href=#83 id=83 data-nosnippet>83</a>        metadata.network_recv_cpu_usage = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>cpu_usage);
+<a href=#83 id=83 data-nosnippet>83</a>        metadata.op.network_recv_cpu_usage = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>cpu_usage);
 <a href=#84 id=84 data-nosnippet>84</a>    }
 <a href=#85 id=85 data-nosnippet>85</a>}
 <a href=#86 id=86 data-nosnippet>86</a>
@@ -89,7 +89,7 @@
 <a href=#89 id=89 data-nosnippet>89</a>    traverse_dfir(
 <a href=#90 id=90 data-nosnippet>90</a>        ir,
 <a href=#91 id=91 data-nosnippet>91</a>        |leaf, next_stmt_id| {
-<a href=#92 id=92 data-nosnippet>92</a>            inject_perf_leaf(leaf, <span class="kw-2">&amp;</span>id_to_usage, next_stmt_id);
+<a href=#92 id=92 data-nosnippet>92</a>            inject_perf_root(leaf, <span class="kw-2">&amp;</span>id_to_usage, next_stmt_id);
 <a href=#93 id=93 data-nosnippet>93</a>        },
 <a href=#94 id=94 data-nosnippet>94</a>        |node, next_stmt_id| {
 <a href=#95 id=95 data-nosnippet>95</a>            inject_perf_node(node, <span class="kw-2">&amp;</span>id_to_usage, next_stmt_id);
@@ -241,7 +241,7 @@
 <a href=#241 id=241 data-nosnippet>241</a>    <span class="kw">let </span>network_type = get_network_type(node, location.root().raw_id());
 <a href=#242 id=242 data-nosnippet>242</a>    <span class="kw">match </span>network_type {
 <a href=#243 id=243 data-nosnippet>243</a>        <span class="prelude-val">Some</span>(NetworkType::Send) | <span class="prelude-val">Some</span>(NetworkType::SendRecv) =&gt; {
-<a href=#244 id=244 data-nosnippet>244</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(cpu_usage) = metadata.cpu_usage {
+<a href=#244 id=244 data-nosnippet>244</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(cpu_usage) = metadata.op.cpu_usage {
 <a href=#245 id=245 data-nosnippet>245</a>                <span class="comment">// Use cardinality from the network's input, not the network itself.
 <a href=#246 id=246 data-nosnippet>246</a>                // Reason: Cardinality is measured at ONE recipient, but the sender may be sending to MANY machines.
 <a href=#247 id=247 data-nosnippet>247</a>                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(cardinality) = node.input_metadata().first().unwrap().cardinality {
@@ -259,7 +259,7 @@
 <a href=#259 id=259 data-nosnippet>259</a>    <span class="kw">match </span>network_type {
 <a href=#260 id=260 data-nosnippet>260</a>        <span class="prelude-val">Some</span>(NetworkType::Recv) | <span class="prelude-val">Some</span>(NetworkType::SendRecv) =&gt; {
 <a href=#261 id=261 data-nosnippet>261</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(cardinality) = metadata.cardinality
-<a href=#262 id=262 data-nosnippet>262</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(cpu_usage) = metadata.network_recv_cpu_usage
+<a href=#262 id=262 data-nosnippet>262</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(cpu_usage) = metadata.op.network_recv_cpu_usage
 <a href=#263 id=263 data-nosnippet>263</a>            {
 <a href=#264 id=264 data-nosnippet>264</a>                <span class="kw">let </span>overhead = cpu_usage / cardinality <span class="kw">as </span>f64;
 <a href=#265 id=265 data-nosnippet>265</a>

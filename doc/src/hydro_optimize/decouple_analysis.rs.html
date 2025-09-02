@@ -6,7 +6,7 @@
 <a href=#6 id=6 data-nosnippet>6</a>    Constraint, Expression, ProblemVariables, Solution, SolverModel, Variable, constraint, microlp,
 <a href=#7 id=7 data-nosnippet>7</a>    variable, variables,
 <a href=#8 id=8 data-nosnippet>8</a>};
-<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>hydro_lang::ir::{HydroIrMetadata, HydroNode, HydroRoot, traverse_dfir};
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>hydro_lang::ir::{HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, traverse_dfir};
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>hydro_lang::location::LocationId;
 <a href=#11 id=11 data-nosnippet>11</a>
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span><span class="kw">super</span>::rewrites::{NetworkType, get_network_type, relevant_inputs};
@@ -104,415 +104,418 @@
 <a href=#104 id=104 data-nosnippet>104</a>
 <a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">if let </span>LocationId::Tick(tick_id, <span class="kw">_</span>) = metadata.location_kind {
 <a href=#106 id=106 data-nosnippet>106</a>        <span class="comment">// Set each input = to the last input
-<a href=#107 id=107 data-nosnippet>107</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>inputs = op_id_to_inputs.get(<span class="kw-2">&amp;</span>metadata.id.unwrap()).unwrap().clone();
-<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_input) = prev_op_input_with_tick.get(<span class="kw-2">&amp;</span>tick_id) {
-<a href=#109 id=109 data-nosnippet>109</a>            inputs.push(<span class="kw-2">*</span>prev_input);
-<a href=#110 id=110 data-nosnippet>110</a>        }
-<a href=#111 id=111 data-nosnippet>111</a>        add_equality_constr(<span class="kw-2">&amp;</span>inputs, op_id_to_var, variables, constraints);
-<a href=#112 id=112 data-nosnippet>112</a>
-<a href=#113 id=113 data-nosnippet>113</a>        <span class="comment">// Set this op's last input as the last op's input that had this tick
-<a href=#114 id=114 data-nosnippet>114</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_input) = inputs.last() {
-<a href=#115 id=115 data-nosnippet>115</a>            prev_op_input_with_tick.insert(tick_id, <span class="kw-2">*</span>last_input);
-<a href=#116 id=116 data-nosnippet>116</a>        }
-<a href=#117 id=117 data-nosnippet>117</a>    }
-<a href=#118 id=118 data-nosnippet>118</a>}
-<a href=#119 id=119 data-nosnippet>119</a>
-<a href=#120 id=120 data-nosnippet>120</a><span class="kw">fn </span>add_cpu_usage(
-<a href=#121 id=121 data-nosnippet>121</a>    metadata: <span class="kw-2">&amp;</span>HydroIrMetadata,
-<a href=#122 id=122 data-nosnippet>122</a>    network_type: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;NetworkType&gt;,
-<a href=#123 id=123 data-nosnippet>123</a>    model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;,
-<a href=#124 id=124 data-nosnippet>124</a>) {
-<a href=#125 id=125 data-nosnippet>125</a>    <span class="kw">let </span>ModelMetadata {
-<a href=#126 id=126 data-nosnippet>126</a>        variables,
-<a href=#127 id=127 data-nosnippet>127</a>        orig_node_cpu_usage,
-<a href=#128 id=128 data-nosnippet>128</a>        decoupled_node_cpu_usage,
-<a href=#129 id=129 data-nosnippet>129</a>        op_id_to_inputs,
-<a href=#130 id=130 data-nosnippet>130</a>        op_id_to_var,
-<a href=#131 id=131 data-nosnippet>131</a>        ..
-<a href=#132 id=132 data-nosnippet>132</a>    } = <span class="kw-2">&amp;mut *</span>model_metadata.borrow_mut();
-<a href=#133 id=133 data-nosnippet>133</a>
-<a href=#134 id=134 data-nosnippet>134</a>    <span class="kw">let </span>op_id = metadata.id.unwrap();
-<a href=#135 id=135 data-nosnippet>135</a>
-<a href=#136 id=136 data-nosnippet>136</a>    <span class="comment">// Calculate total CPU usage on each node (before overheads). Operators are run on the machine that their inputs send to.
-<a href=#137 id=137 data-nosnippet>137</a>    </span><span class="kw">match </span>network_type {
-<a href=#138 id=138 data-nosnippet>138</a>        <span class="prelude-val">Some</span>(NetworkType::Send) | <span class="prelude-val">Some</span>(NetworkType::SendRecv) | <span class="prelude-val">None </span>=&gt; {
-<a href=#139 id=139 data-nosnippet>139</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(inputs) = op_id_to_inputs.get(<span class="kw-2">&amp;</span>op_id) {
-<a href=#140 id=140 data-nosnippet>140</a>                <span class="comment">// All inputs must be assigned the same var (by constraints above), so it suffices to check one
-<a href=#141 id=141 data-nosnippet>141</a>                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(first_input) = inputs.first() {
-<a href=#142 id=142 data-nosnippet>142</a>                    <span class="kw">let </span>input_var = var_from_op_id(<span class="kw-2">*</span>first_input, op_id_to_var, variables);
-<a href=#143 id=143 data-nosnippet>143</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(cpu_usage) = metadata.cpu_usage {
-<a href=#144 id=144 data-nosnippet>144</a>                        <span class="kw">let </span>og_usage_temp = std::mem::take(orig_node_cpu_usage);
-<a href=#145 id=145 data-nosnippet>145</a>                        <span class="kw-2">*</span>orig_node_cpu_usage = og_usage_temp + cpu_usage * (<span class="number">1 </span>- input_var);
-<a href=#146 id=146 data-nosnippet>146</a>                        <span class="kw">let </span>decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
-<a href=#147 id=147 data-nosnippet>147</a>                        <span class="kw-2">*</span>decoupled_node_cpu_usage = decoupled_usage_temp + cpu_usage * input_var;
-<a href=#148 id=148 data-nosnippet>148</a>                    }
-<a href=#149 id=149 data-nosnippet>149</a>                }
-<a href=#150 id=150 data-nosnippet>150</a>            }
-<a href=#151 id=151 data-nosnippet>151</a>        }
-<a href=#152 id=152 data-nosnippet>152</a>        <span class="kw">_ </span>=&gt; {}
-<a href=#153 id=153 data-nosnippet>153</a>    }
-<a href=#154 id=154 data-nosnippet>154</a>    <span class="comment">// Special case for network receives: their cpu usage (deserialization) is paid by the receiver, aka the machine they send to.
-<a href=#155 id=155 data-nosnippet>155</a>    </span><span class="kw">match </span>network_type {
-<a href=#156 id=156 data-nosnippet>156</a>        <span class="prelude-val">Some</span>(NetworkType::Recv) | <span class="prelude-val">Some</span>(NetworkType::SendRecv) =&gt; {
-<a href=#157 id=157 data-nosnippet>157</a>            <span class="kw">let </span>op_var = var_from_op_id(op_id, op_id_to_var, variables);
-<a href=#158 id=158 data-nosnippet>158</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(recv_cpu_usage) = metadata.network_recv_cpu_usage {
-<a href=#159 id=159 data-nosnippet>159</a>                <span class="kw">let </span>og_usage_temp = std::mem::take(orig_node_cpu_usage);
-<a href=#160 id=160 data-nosnippet>160</a>                <span class="kw-2">*</span>orig_node_cpu_usage = og_usage_temp + recv_cpu_usage * (<span class="number">1 </span>- op_var);
-<a href=#161 id=161 data-nosnippet>161</a>                <span class="kw">let </span>decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
-<a href=#162 id=162 data-nosnippet>162</a>                <span class="kw-2">*</span>decoupled_node_cpu_usage = decoupled_usage_temp + recv_cpu_usage * op_var;
-<a href=#163 id=163 data-nosnippet>163</a>            }
-<a href=#164 id=164 data-nosnippet>164</a>        }
-<a href=#165 id=165 data-nosnippet>165</a>        <span class="kw">_ </span>=&gt; {}
-<a href=#166 id=166 data-nosnippet>166</a>    }
-<a href=#167 id=167 data-nosnippet>167</a>}
-<a href=#168 id=168 data-nosnippet>168</a>
-<a href=#169 id=169 data-nosnippet>169</a><span class="comment">// Return the variables:
-<a href=#170 id=170 data-nosnippet>170</a>// orig_to_decoupled_var: 1 if (op1 = 0, op2 = 1), 0 otherwise
-<a href=#171 id=171 data-nosnippet>171</a>// decoupled_to_orig_var: 1 if (op1 = 1, op2 = 0), 0 otherwise
-<a href=#172 id=172 data-nosnippet>172</a></span><span class="kw">fn </span>add_decouple_vars(
-<a href=#173 id=173 data-nosnippet>173</a>    variables: <span class="kw-2">&amp;mut </span>ProblemVariables,
-<a href=#174 id=174 data-nosnippet>174</a>    constraints: <span class="kw-2">&amp;mut </span>Vec&lt;Constraint&gt;,
-<a href=#175 id=175 data-nosnippet>175</a>    op1: usize,
-<a href=#176 id=176 data-nosnippet>176</a>    op2: usize,
-<a href=#177 id=177 data-nosnippet>177</a>    op_id_to_var: <span class="kw-2">&amp;mut </span>HashMap&lt;usize, Variable&gt;,
-<a href=#178 id=178 data-nosnippet>178</a>) -&gt; (Variable, Variable) {
-<a href=#179 id=179 data-nosnippet>179</a>    <span class="kw">let </span>op1_var = var_from_op_id(op1, op_id_to_var, variables);
-<a href=#180 id=180 data-nosnippet>180</a>    <span class="kw">let </span>op2_var = var_from_op_id(op2, op_id_to_var, variables);
-<a href=#181 id=181 data-nosnippet>181</a>    <span class="comment">// 1 if (op1 = 0, op2 = 1), 0 otherwise
-<a href=#182 id=182 data-nosnippet>182</a>    </span><span class="kw">let </span>orig_to_decoupled_var = variables.add(variable().binary());
-<a href=#183 id=183 data-nosnippet>183</a>    <span class="comment">// Technically unnecessary since we're using binvar, but future proofing
-<a href=#184 id=184 data-nosnippet>184</a>    </span>constraints.push(<span class="macro">constraint!</span>(orig_to_decoupled_var &gt;= <span class="number">0</span>));
-<a href=#185 id=185 data-nosnippet>185</a>    constraints.push(<span class="macro">constraint!</span>(orig_to_decoupled_var &gt;= op2_var - op1_var));
-<a href=#186 id=186 data-nosnippet>186</a>    <span class="comment">// 1 if (op1 = 1, op2 = 0), 0 otherwise
-<a href=#187 id=187 data-nosnippet>187</a>    </span><span class="kw">let </span>decoupled_to_orig_var = variables.add(variable().binary());
-<a href=#188 id=188 data-nosnippet>188</a>    constraints.push(<span class="macro">constraint!</span>(decoupled_to_orig_var &gt;= <span class="number">0</span>));
-<a href=#189 id=189 data-nosnippet>189</a>    constraints.push(<span class="macro">constraint!</span>(decoupled_to_orig_var &gt;= op1_var - op2_var));
-<a href=#190 id=190 data-nosnippet>190</a>    (orig_to_decoupled_var, decoupled_to_orig_var)
-<a href=#191 id=191 data-nosnippet>191</a>}
-<a href=#192 id=192 data-nosnippet>192</a>
-<a href=#193 id=193 data-nosnippet>193</a><span class="kw">fn </span>add_decoupling_overhead(
-<a href=#194 id=194 data-nosnippet>194</a>    node: <span class="kw-2">&amp;</span>HydroNode,
-<a href=#195 id=195 data-nosnippet>195</a>    network_type: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;NetworkType&gt;,
-<a href=#196 id=196 data-nosnippet>196</a>    model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;,
-<a href=#197 id=197 data-nosnippet>197</a>) {
-<a href=#198 id=198 data-nosnippet>198</a>    <span class="kw">let </span>ModelMetadata {
-<a href=#199 id=199 data-nosnippet>199</a>        decoupling_send_overhead,
-<a href=#200 id=200 data-nosnippet>200</a>        decoupling_recv_overhead,
-<a href=#201 id=201 data-nosnippet>201</a>        variables,
-<a href=#202 id=202 data-nosnippet>202</a>        constraints,
-<a href=#203 id=203 data-nosnippet>203</a>        orig_node_cpu_usage,
-<a href=#204 id=204 data-nosnippet>204</a>        decoupled_node_cpu_usage,
-<a href=#205 id=205 data-nosnippet>205</a>        op_id_to_inputs,
-<a href=#206 id=206 data-nosnippet>206</a>        op_id_to_var,
-<a href=#207 id=207 data-nosnippet>207</a>        ..
-<a href=#208 id=208 data-nosnippet>208</a>    } = <span class="kw-2">&amp;mut *</span>model_metadata.borrow_mut();
-<a href=#209 id=209 data-nosnippet>209</a>
-<a href=#210 id=210 data-nosnippet>210</a>    <span class="kw">let </span>metadata = node.metadata();
-<a href=#211 id=211 data-nosnippet>211</a>    <span class="kw">let </span>cardinality = <span class="kw">match </span>network_type {
-<a href=#212 id=212 data-nosnippet>212</a>        <span class="prelude-val">Some</span>(NetworkType::Send) | <span class="prelude-val">Some</span>(NetworkType::SendRecv) =&gt; node
-<a href=#213 id=213 data-nosnippet>213</a>            .input_metadata()
-<a href=#214 id=214 data-nosnippet>214</a>            .first()
-<a href=#215 id=215 data-nosnippet>215</a>            .unwrap()
-<a href=#216 id=216 data-nosnippet>216</a>            .cardinality
-<a href=#217 id=217 data-nosnippet>217</a>            .unwrap_or_default(),
-<a href=#218 id=218 data-nosnippet>218</a>        <span class="kw">_ </span>=&gt; metadata.cardinality.unwrap_or_default(),
-<a href=#219 id=219 data-nosnippet>219</a>    };
-<a href=#220 id=220 data-nosnippet>220</a>
-<a href=#221 id=221 data-nosnippet>221</a>    <span class="kw">let </span>op_id = metadata.id.unwrap();
-<a href=#222 id=222 data-nosnippet>222</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(inputs) = op_id_to_inputs.get(<span class="kw-2">&amp;</span>op_id) {
-<a href=#223 id=223 data-nosnippet>223</a>        <span class="comment">// All inputs must be assigned the same var (by constraints above), so it suffices to check one
-<a href=#224 id=224 data-nosnippet>224</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(input) = inputs.first() {
-<a href=#225 id=225 data-nosnippet>225</a>            <span class="kw">let </span>(orig_to_decoupled_var, decoupled_to_orig_var) =
-<a href=#226 id=226 data-nosnippet>226</a>                add_decouple_vars(variables, constraints, <span class="kw-2">*</span>input, op_id, op_id_to_var);
-<a href=#227 id=227 data-nosnippet>227</a>            <span class="kw">let </span>og_usage_temp = std::mem::take(orig_node_cpu_usage);
-<a href=#228 id=228 data-nosnippet>228</a>            <span class="kw-2">*</span>orig_node_cpu_usage = og_usage_temp
-<a href=#229 id=229 data-nosnippet>229</a>                + (<span class="kw-2">*</span>decoupling_send_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
-<a href=#230 id=230 data-nosnippet>230</a>                    * orig_to_decoupled_var
-<a href=#231 id=231 data-nosnippet>231</a>                + (<span class="kw-2">*</span>decoupling_recv_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
-<a href=#232 id=232 data-nosnippet>232</a>                    * decoupled_to_orig_var;
-<a href=#233 id=233 data-nosnippet>233</a>            <span class="kw">let </span>decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
-<a href=#234 id=234 data-nosnippet>234</a>            <span class="kw-2">*</span>decoupled_node_cpu_usage = decoupled_usage_temp
-<a href=#235 id=235 data-nosnippet>235</a>                + (<span class="kw-2">*</span>decoupling_recv_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
-<a href=#236 id=236 data-nosnippet>236</a>                    * orig_to_decoupled_var
-<a href=#237 id=237 data-nosnippet>237</a>                + (<span class="kw-2">*</span>decoupling_send_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
-<a href=#238 id=238 data-nosnippet>238</a>                    * decoupled_to_orig_var;
-<a href=#239 id=239 data-nosnippet>239</a>        }
-<a href=#240 id=240 data-nosnippet>240</a>    }
-<a href=#241 id=241 data-nosnippet>241</a>}
-<a href=#242 id=242 data-nosnippet>242</a>
-<a href=#243 id=243 data-nosnippet>243</a><span class="kw">fn </span>add_tee_decoupling_overhead(
-<a href=#244 id=244 data-nosnippet>244</a>    inner_id: usize,
-<a href=#245 id=245 data-nosnippet>245</a>    metadata: <span class="kw-2">&amp;</span>HydroIrMetadata,
-<a href=#246 id=246 data-nosnippet>246</a>    model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;,
-<a href=#247 id=247 data-nosnippet>247</a>) {
-<a href=#248 id=248 data-nosnippet>248</a>    <span class="kw">let </span>ModelMetadata {
-<a href=#249 id=249 data-nosnippet>249</a>        decoupling_send_overhead,
-<a href=#250 id=250 data-nosnippet>250</a>        decoupling_recv_overhead,
-<a href=#251 id=251 data-nosnippet>251</a>        variables,
-<a href=#252 id=252 data-nosnippet>252</a>        constraints,
-<a href=#253 id=253 data-nosnippet>253</a>        orig_node_cpu_usage,
-<a href=#254 id=254 data-nosnippet>254</a>        decoupled_node_cpu_usage,
-<a href=#255 id=255 data-nosnippet>255</a>        op_id_to_var,
-<a href=#256 id=256 data-nosnippet>256</a>        tee_inner_to_decoupled_vars,
-<a href=#257 id=257 data-nosnippet>257</a>        ..
-<a href=#258 id=258 data-nosnippet>258</a>    } = <span class="kw-2">&amp;mut *</span>model_metadata.borrow_mut();
-<a href=#259 id=259 data-nosnippet>259</a>
-<a href=#260 id=260 data-nosnippet>260</a>    <span class="kw">let </span>cardinality = metadata.cardinality.unwrap_or_default();
-<a href=#261 id=261 data-nosnippet>261</a>    <span class="kw">let </span>op_id = metadata.id.unwrap();
+<a href=#107 id=107 data-nosnippet>107</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>inputs = op_id_to_inputs
+<a href=#108 id=108 data-nosnippet>108</a>            .get(<span class="kw-2">&amp;</span>metadata.op.id.unwrap())
+<a href=#109 id=109 data-nosnippet>109</a>            .unwrap()
+<a href=#110 id=110 data-nosnippet>110</a>            .clone();
+<a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_input) = prev_op_input_with_tick.get(<span class="kw-2">&amp;</span>tick_id) {
+<a href=#112 id=112 data-nosnippet>112</a>            inputs.push(<span class="kw-2">*</span>prev_input);
+<a href=#113 id=113 data-nosnippet>113</a>        }
+<a href=#114 id=114 data-nosnippet>114</a>        add_equality_constr(<span class="kw-2">&amp;</span>inputs, op_id_to_var, variables, constraints);
+<a href=#115 id=115 data-nosnippet>115</a>
+<a href=#116 id=116 data-nosnippet>116</a>        <span class="comment">// Set this op's last input as the last op's input that had this tick
+<a href=#117 id=117 data-nosnippet>117</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_input) = inputs.last() {
+<a href=#118 id=118 data-nosnippet>118</a>            prev_op_input_with_tick.insert(tick_id, <span class="kw-2">*</span>last_input);
+<a href=#119 id=119 data-nosnippet>119</a>        }
+<a href=#120 id=120 data-nosnippet>120</a>    }
+<a href=#121 id=121 data-nosnippet>121</a>}
+<a href=#122 id=122 data-nosnippet>122</a>
+<a href=#123 id=123 data-nosnippet>123</a><span class="kw">fn </span>add_cpu_usage(
+<a href=#124 id=124 data-nosnippet>124</a>    metadata: <span class="kw-2">&amp;</span>HydroIrOpMetadata,
+<a href=#125 id=125 data-nosnippet>125</a>    network_type: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;NetworkType&gt;,
+<a href=#126 id=126 data-nosnippet>126</a>    model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;,
+<a href=#127 id=127 data-nosnippet>127</a>) {
+<a href=#128 id=128 data-nosnippet>128</a>    <span class="kw">let </span>ModelMetadata {
+<a href=#129 id=129 data-nosnippet>129</a>        variables,
+<a href=#130 id=130 data-nosnippet>130</a>        orig_node_cpu_usage,
+<a href=#131 id=131 data-nosnippet>131</a>        decoupled_node_cpu_usage,
+<a href=#132 id=132 data-nosnippet>132</a>        op_id_to_inputs,
+<a href=#133 id=133 data-nosnippet>133</a>        op_id_to_var,
+<a href=#134 id=134 data-nosnippet>134</a>        ..
+<a href=#135 id=135 data-nosnippet>135</a>    } = <span class="kw-2">&amp;mut *</span>model_metadata.borrow_mut();
+<a href=#136 id=136 data-nosnippet>136</a>
+<a href=#137 id=137 data-nosnippet>137</a>    <span class="kw">let </span>op_id = metadata.id.unwrap();
+<a href=#138 id=138 data-nosnippet>138</a>
+<a href=#139 id=139 data-nosnippet>139</a>    <span class="comment">// Calculate total CPU usage on each node (before overheads). Operators are run on the machine that their inputs send to.
+<a href=#140 id=140 data-nosnippet>140</a>    </span><span class="kw">match </span>network_type {
+<a href=#141 id=141 data-nosnippet>141</a>        <span class="prelude-val">Some</span>(NetworkType::Send) | <span class="prelude-val">Some</span>(NetworkType::SendRecv) | <span class="prelude-val">None </span>=&gt; {
+<a href=#142 id=142 data-nosnippet>142</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(inputs) = op_id_to_inputs.get(<span class="kw-2">&amp;</span>op_id) {
+<a href=#143 id=143 data-nosnippet>143</a>                <span class="comment">// All inputs must be assigned the same var (by constraints above), so it suffices to check one
+<a href=#144 id=144 data-nosnippet>144</a>                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(first_input) = inputs.first() {
+<a href=#145 id=145 data-nosnippet>145</a>                    <span class="kw">let </span>input_var = var_from_op_id(<span class="kw-2">*</span>first_input, op_id_to_var, variables);
+<a href=#146 id=146 data-nosnippet>146</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(cpu_usage) = metadata.cpu_usage {
+<a href=#147 id=147 data-nosnippet>147</a>                        <span class="kw">let </span>og_usage_temp = std::mem::take(orig_node_cpu_usage);
+<a href=#148 id=148 data-nosnippet>148</a>                        <span class="kw-2">*</span>orig_node_cpu_usage = og_usage_temp + cpu_usage * (<span class="number">1 </span>- input_var);
+<a href=#149 id=149 data-nosnippet>149</a>                        <span class="kw">let </span>decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
+<a href=#150 id=150 data-nosnippet>150</a>                        <span class="kw-2">*</span>decoupled_node_cpu_usage = decoupled_usage_temp + cpu_usage * input_var;
+<a href=#151 id=151 data-nosnippet>151</a>                    }
+<a href=#152 id=152 data-nosnippet>152</a>                }
+<a href=#153 id=153 data-nosnippet>153</a>            }
+<a href=#154 id=154 data-nosnippet>154</a>        }
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">_ </span>=&gt; {}
+<a href=#156 id=156 data-nosnippet>156</a>    }
+<a href=#157 id=157 data-nosnippet>157</a>    <span class="comment">// Special case for network receives: their cpu usage (deserialization) is paid by the receiver, aka the machine they send to.
+<a href=#158 id=158 data-nosnippet>158</a>    </span><span class="kw">match </span>network_type {
+<a href=#159 id=159 data-nosnippet>159</a>        <span class="prelude-val">Some</span>(NetworkType::Recv) | <span class="prelude-val">Some</span>(NetworkType::SendRecv) =&gt; {
+<a href=#160 id=160 data-nosnippet>160</a>            <span class="kw">let </span>op_var = var_from_op_id(op_id, op_id_to_var, variables);
+<a href=#161 id=161 data-nosnippet>161</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(recv_cpu_usage) = metadata.network_recv_cpu_usage {
+<a href=#162 id=162 data-nosnippet>162</a>                <span class="kw">let </span>og_usage_temp = std::mem::take(orig_node_cpu_usage);
+<a href=#163 id=163 data-nosnippet>163</a>                <span class="kw-2">*</span>orig_node_cpu_usage = og_usage_temp + recv_cpu_usage * (<span class="number">1 </span>- op_var);
+<a href=#164 id=164 data-nosnippet>164</a>                <span class="kw">let </span>decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
+<a href=#165 id=165 data-nosnippet>165</a>                <span class="kw-2">*</span>decoupled_node_cpu_usage = decoupled_usage_temp + recv_cpu_usage * op_var;
+<a href=#166 id=166 data-nosnippet>166</a>            }
+<a href=#167 id=167 data-nosnippet>167</a>        }
+<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">_ </span>=&gt; {}
+<a href=#169 id=169 data-nosnippet>169</a>    }
+<a href=#170 id=170 data-nosnippet>170</a>}
+<a href=#171 id=171 data-nosnippet>171</a>
+<a href=#172 id=172 data-nosnippet>172</a><span class="comment">// Return the variables:
+<a href=#173 id=173 data-nosnippet>173</a>// orig_to_decoupled_var: 1 if (op1 = 0, op2 = 1), 0 otherwise
+<a href=#174 id=174 data-nosnippet>174</a>// decoupled_to_orig_var: 1 if (op1 = 1, op2 = 0), 0 otherwise
+<a href=#175 id=175 data-nosnippet>175</a></span><span class="kw">fn </span>add_decouple_vars(
+<a href=#176 id=176 data-nosnippet>176</a>    variables: <span class="kw-2">&amp;mut </span>ProblemVariables,
+<a href=#177 id=177 data-nosnippet>177</a>    constraints: <span class="kw-2">&amp;mut </span>Vec&lt;Constraint&gt;,
+<a href=#178 id=178 data-nosnippet>178</a>    op1: usize,
+<a href=#179 id=179 data-nosnippet>179</a>    op2: usize,
+<a href=#180 id=180 data-nosnippet>180</a>    op_id_to_var: <span class="kw-2">&amp;mut </span>HashMap&lt;usize, Variable&gt;,
+<a href=#181 id=181 data-nosnippet>181</a>) -&gt; (Variable, Variable) {
+<a href=#182 id=182 data-nosnippet>182</a>    <span class="kw">let </span>op1_var = var_from_op_id(op1, op_id_to_var, variables);
+<a href=#183 id=183 data-nosnippet>183</a>    <span class="kw">let </span>op2_var = var_from_op_id(op2, op_id_to_var, variables);
+<a href=#184 id=184 data-nosnippet>184</a>    <span class="comment">// 1 if (op1 = 0, op2 = 1), 0 otherwise
+<a href=#185 id=185 data-nosnippet>185</a>    </span><span class="kw">let </span>orig_to_decoupled_var = variables.add(variable().binary());
+<a href=#186 id=186 data-nosnippet>186</a>    <span class="comment">// Technically unnecessary since we're using binvar, but future proofing
+<a href=#187 id=187 data-nosnippet>187</a>    </span>constraints.push(<span class="macro">constraint!</span>(orig_to_decoupled_var &gt;= <span class="number">0</span>));
+<a href=#188 id=188 data-nosnippet>188</a>    constraints.push(<span class="macro">constraint!</span>(orig_to_decoupled_var &gt;= op2_var - op1_var));
+<a href=#189 id=189 data-nosnippet>189</a>    <span class="comment">// 1 if (op1 = 1, op2 = 0), 0 otherwise
+<a href=#190 id=190 data-nosnippet>190</a>    </span><span class="kw">let </span>decoupled_to_orig_var = variables.add(variable().binary());
+<a href=#191 id=191 data-nosnippet>191</a>    constraints.push(<span class="macro">constraint!</span>(decoupled_to_orig_var &gt;= <span class="number">0</span>));
+<a href=#192 id=192 data-nosnippet>192</a>    constraints.push(<span class="macro">constraint!</span>(decoupled_to_orig_var &gt;= op1_var - op2_var));
+<a href=#193 id=193 data-nosnippet>193</a>    (orig_to_decoupled_var, decoupled_to_orig_var)
+<a href=#194 id=194 data-nosnippet>194</a>}
+<a href=#195 id=195 data-nosnippet>195</a>
+<a href=#196 id=196 data-nosnippet>196</a><span class="kw">fn </span>add_decoupling_overhead(
+<a href=#197 id=197 data-nosnippet>197</a>    node: <span class="kw-2">&amp;</span>HydroNode,
+<a href=#198 id=198 data-nosnippet>198</a>    network_type: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;NetworkType&gt;,
+<a href=#199 id=199 data-nosnippet>199</a>    model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;,
+<a href=#200 id=200 data-nosnippet>200</a>) {
+<a href=#201 id=201 data-nosnippet>201</a>    <span class="kw">let </span>ModelMetadata {
+<a href=#202 id=202 data-nosnippet>202</a>        decoupling_send_overhead,
+<a href=#203 id=203 data-nosnippet>203</a>        decoupling_recv_overhead,
+<a href=#204 id=204 data-nosnippet>204</a>        variables,
+<a href=#205 id=205 data-nosnippet>205</a>        constraints,
+<a href=#206 id=206 data-nosnippet>206</a>        orig_node_cpu_usage,
+<a href=#207 id=207 data-nosnippet>207</a>        decoupled_node_cpu_usage,
+<a href=#208 id=208 data-nosnippet>208</a>        op_id_to_inputs,
+<a href=#209 id=209 data-nosnippet>209</a>        op_id_to_var,
+<a href=#210 id=210 data-nosnippet>210</a>        ..
+<a href=#211 id=211 data-nosnippet>211</a>    } = <span class="kw-2">&amp;mut *</span>model_metadata.borrow_mut();
+<a href=#212 id=212 data-nosnippet>212</a>
+<a href=#213 id=213 data-nosnippet>213</a>    <span class="kw">let </span>metadata = node.metadata();
+<a href=#214 id=214 data-nosnippet>214</a>    <span class="kw">let </span>cardinality = <span class="kw">match </span>network_type {
+<a href=#215 id=215 data-nosnippet>215</a>        <span class="prelude-val">Some</span>(NetworkType::Send) | <span class="prelude-val">Some</span>(NetworkType::SendRecv) =&gt; node
+<a href=#216 id=216 data-nosnippet>216</a>            .input_metadata()
+<a href=#217 id=217 data-nosnippet>217</a>            .first()
+<a href=#218 id=218 data-nosnippet>218</a>            .unwrap()
+<a href=#219 id=219 data-nosnippet>219</a>            .cardinality
+<a href=#220 id=220 data-nosnippet>220</a>            .unwrap_or_default(),
+<a href=#221 id=221 data-nosnippet>221</a>        <span class="kw">_ </span>=&gt; metadata.cardinality.unwrap_or_default(),
+<a href=#222 id=222 data-nosnippet>222</a>    };
+<a href=#223 id=223 data-nosnippet>223</a>
+<a href=#224 id=224 data-nosnippet>224</a>    <span class="kw">let </span>op_id = metadata.op.id.unwrap();
+<a href=#225 id=225 data-nosnippet>225</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(inputs) = op_id_to_inputs.get(<span class="kw-2">&amp;</span>op_id) {
+<a href=#226 id=226 data-nosnippet>226</a>        <span class="comment">// All inputs must be assigned the same var (by constraints above), so it suffices to check one
+<a href=#227 id=227 data-nosnippet>227</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(input) = inputs.first() {
+<a href=#228 id=228 data-nosnippet>228</a>            <span class="kw">let </span>(orig_to_decoupled_var, decoupled_to_orig_var) =
+<a href=#229 id=229 data-nosnippet>229</a>                add_decouple_vars(variables, constraints, <span class="kw-2">*</span>input, op_id, op_id_to_var);
+<a href=#230 id=230 data-nosnippet>230</a>            <span class="kw">let </span>og_usage_temp = std::mem::take(orig_node_cpu_usage);
+<a href=#231 id=231 data-nosnippet>231</a>            <span class="kw-2">*</span>orig_node_cpu_usage = og_usage_temp
+<a href=#232 id=232 data-nosnippet>232</a>                + (<span class="kw-2">*</span>decoupling_send_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
+<a href=#233 id=233 data-nosnippet>233</a>                    * orig_to_decoupled_var
+<a href=#234 id=234 data-nosnippet>234</a>                + (<span class="kw-2">*</span>decoupling_recv_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
+<a href=#235 id=235 data-nosnippet>235</a>                    * decoupled_to_orig_var;
+<a href=#236 id=236 data-nosnippet>236</a>            <span class="kw">let </span>decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
+<a href=#237 id=237 data-nosnippet>237</a>            <span class="kw-2">*</span>decoupled_node_cpu_usage = decoupled_usage_temp
+<a href=#238 id=238 data-nosnippet>238</a>                + (<span class="kw-2">*</span>decoupling_recv_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
+<a href=#239 id=239 data-nosnippet>239</a>                    * orig_to_decoupled_var
+<a href=#240 id=240 data-nosnippet>240</a>                + (<span class="kw-2">*</span>decoupling_send_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
+<a href=#241 id=241 data-nosnippet>241</a>                    * decoupled_to_orig_var;
+<a href=#242 id=242 data-nosnippet>242</a>        }
+<a href=#243 id=243 data-nosnippet>243</a>    }
+<a href=#244 id=244 data-nosnippet>244</a>}
+<a href=#245 id=245 data-nosnippet>245</a>
+<a href=#246 id=246 data-nosnippet>246</a><span class="kw">fn </span>add_tee_decoupling_overhead(
+<a href=#247 id=247 data-nosnippet>247</a>    inner_id: usize,
+<a href=#248 id=248 data-nosnippet>248</a>    metadata: <span class="kw-2">&amp;</span>HydroIrMetadata,
+<a href=#249 id=249 data-nosnippet>249</a>    model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;,
+<a href=#250 id=250 data-nosnippet>250</a>) {
+<a href=#251 id=251 data-nosnippet>251</a>    <span class="kw">let </span>ModelMetadata {
+<a href=#252 id=252 data-nosnippet>252</a>        decoupling_send_overhead,
+<a href=#253 id=253 data-nosnippet>253</a>        decoupling_recv_overhead,
+<a href=#254 id=254 data-nosnippet>254</a>        variables,
+<a href=#255 id=255 data-nosnippet>255</a>        constraints,
+<a href=#256 id=256 data-nosnippet>256</a>        orig_node_cpu_usage,
+<a href=#257 id=257 data-nosnippet>257</a>        decoupled_node_cpu_usage,
+<a href=#258 id=258 data-nosnippet>258</a>        op_id_to_var,
+<a href=#259 id=259 data-nosnippet>259</a>        tee_inner_to_decoupled_vars,
+<a href=#260 id=260 data-nosnippet>260</a>        ..
+<a href=#261 id=261 data-nosnippet>261</a>    } = <span class="kw-2">&amp;mut *</span>model_metadata.borrow_mut();
 <a href=#262 id=262 data-nosnippet>262</a>
-<a href=#263 id=263 data-nosnippet>263</a>    <span class="macro">println!</span>(<span class="string">"Tee {} has inner {}"</span>, op_id, inner_id);
-<a href=#264 id=264 data-nosnippet>264</a>
-<a href=#265 id=265 data-nosnippet>265</a>    <span class="comment">// 1 if any of the Tees are decoupled from the inner, 0 otherwise, and vice versa
-<a href=#266 id=266 data-nosnippet>266</a>    </span><span class="kw">let </span>(any_orig_to_decoupled_var, any_decoupled_to_orig_var) = <span class="kw-2">*</span>tee_inner_to_decoupled_vars
-<a href=#267 id=267 data-nosnippet>267</a>        .entry(inner_id)
-<a href=#268 id=268 data-nosnippet>268</a>        .or_insert_with(|| {
-<a href=#269 id=269 data-nosnippet>269</a>            <span class="kw">let </span>any_orig_to_decoupled_var = variables.add(variable().binary());
-<a href=#270 id=270 data-nosnippet>270</a>            <span class="kw">let </span>any_decoupled_to_orig_var = variables.add(variable().binary());
-<a href=#271 id=271 data-nosnippet>271</a>            <span class="kw">let </span>og_usage_temp = std::mem::take(orig_node_cpu_usage);
-<a href=#272 id=272 data-nosnippet>272</a>            <span class="kw-2">*</span>orig_node_cpu_usage = og_usage_temp
-<a href=#273 id=273 data-nosnippet>273</a>                + (<span class="kw-2">*</span>decoupling_send_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
-<a href=#274 id=274 data-nosnippet>274</a>                    * any_orig_to_decoupled_var
-<a href=#275 id=275 data-nosnippet>275</a>                + (<span class="kw-2">*</span>decoupling_recv_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
-<a href=#276 id=276 data-nosnippet>276</a>                    * any_decoupled_to_orig_var;
-<a href=#277 id=277 data-nosnippet>277</a>            <span class="kw">let </span>decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
-<a href=#278 id=278 data-nosnippet>278</a>            <span class="kw-2">*</span>decoupled_node_cpu_usage = decoupled_usage_temp
-<a href=#279 id=279 data-nosnippet>279</a>                + (<span class="kw-2">*</span>decoupling_recv_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
-<a href=#280 id=280 data-nosnippet>280</a>                    * any_orig_to_decoupled_var
-<a href=#281 id=281 data-nosnippet>281</a>                + (<span class="kw-2">*</span>decoupling_send_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
-<a href=#282 id=282 data-nosnippet>282</a>                    * any_decoupled_to_orig_var;
-<a href=#283 id=283 data-nosnippet>283</a>            (any_orig_to_decoupled_var, any_decoupled_to_orig_var)
-<a href=#284 id=284 data-nosnippet>284</a>        });
-<a href=#285 id=285 data-nosnippet>285</a>
-<a href=#286 id=286 data-nosnippet>286</a>    <span class="kw">let </span>(orig_to_decoupled_var, decoupled_to_orig_var) =
-<a href=#287 id=287 data-nosnippet>287</a>        add_decouple_vars(variables, constraints, inner_id, op_id, op_id_to_var);
-<a href=#288 id=288 data-nosnippet>288</a>    <span class="comment">// If any Tee has orig_to_decoupled, then set any_orig_to_decoupled to 1, vice versa
-<a href=#289 id=289 data-nosnippet>289</a>    </span>constraints.push(<span class="macro">constraint!</span>(
-<a href=#290 id=290 data-nosnippet>290</a>        any_orig_to_decoupled_var &gt;= orig_to_decoupled_var
-<a href=#291 id=291 data-nosnippet>291</a>    ));
-<a href=#292 id=292 data-nosnippet>292</a>    constraints.push(<span class="macro">constraint!</span>(
-<a href=#293 id=293 data-nosnippet>293</a>        any_decoupled_to_orig_var &gt;= decoupled_to_orig_var
+<a href=#263 id=263 data-nosnippet>263</a>    <span class="kw">let </span>cardinality = metadata.cardinality.unwrap_or_default();
+<a href=#264 id=264 data-nosnippet>264</a>    <span class="kw">let </span>op_id = metadata.op.id.unwrap();
+<a href=#265 id=265 data-nosnippet>265</a>
+<a href=#266 id=266 data-nosnippet>266</a>    <span class="macro">println!</span>(<span class="string">"Tee {} has inner {}"</span>, op_id, inner_id);
+<a href=#267 id=267 data-nosnippet>267</a>
+<a href=#268 id=268 data-nosnippet>268</a>    <span class="comment">// 1 if any of the Tees are decoupled from the inner, 0 otherwise, and vice versa
+<a href=#269 id=269 data-nosnippet>269</a>    </span><span class="kw">let </span>(any_orig_to_decoupled_var, any_decoupled_to_orig_var) = <span class="kw-2">*</span>tee_inner_to_decoupled_vars
+<a href=#270 id=270 data-nosnippet>270</a>        .entry(inner_id)
+<a href=#271 id=271 data-nosnippet>271</a>        .or_insert_with(|| {
+<a href=#272 id=272 data-nosnippet>272</a>            <span class="kw">let </span>any_orig_to_decoupled_var = variables.add(variable().binary());
+<a href=#273 id=273 data-nosnippet>273</a>            <span class="kw">let </span>any_decoupled_to_orig_var = variables.add(variable().binary());
+<a href=#274 id=274 data-nosnippet>274</a>            <span class="kw">let </span>og_usage_temp = std::mem::take(orig_node_cpu_usage);
+<a href=#275 id=275 data-nosnippet>275</a>            <span class="kw-2">*</span>orig_node_cpu_usage = og_usage_temp
+<a href=#276 id=276 data-nosnippet>276</a>                + (<span class="kw-2">*</span>decoupling_send_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
+<a href=#277 id=277 data-nosnippet>277</a>                    * any_orig_to_decoupled_var
+<a href=#278 id=278 data-nosnippet>278</a>                + (<span class="kw-2">*</span>decoupling_recv_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
+<a href=#279 id=279 data-nosnippet>279</a>                    * any_decoupled_to_orig_var;
+<a href=#280 id=280 data-nosnippet>280</a>            <span class="kw">let </span>decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
+<a href=#281 id=281 data-nosnippet>281</a>            <span class="kw-2">*</span>decoupled_node_cpu_usage = decoupled_usage_temp
+<a href=#282 id=282 data-nosnippet>282</a>                + (<span class="kw-2">*</span>decoupling_recv_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
+<a href=#283 id=283 data-nosnippet>283</a>                    * any_orig_to_decoupled_var
+<a href=#284 id=284 data-nosnippet>284</a>                + (<span class="kw-2">*</span>decoupling_send_overhead * cardinality <span class="kw">as </span>f64 + DECOUPLING_PENALTY)
+<a href=#285 id=285 data-nosnippet>285</a>                    * any_decoupled_to_orig_var;
+<a href=#286 id=286 data-nosnippet>286</a>            (any_orig_to_decoupled_var, any_decoupled_to_orig_var)
+<a href=#287 id=287 data-nosnippet>287</a>        });
+<a href=#288 id=288 data-nosnippet>288</a>
+<a href=#289 id=289 data-nosnippet>289</a>    <span class="kw">let </span>(orig_to_decoupled_var, decoupled_to_orig_var) =
+<a href=#290 id=290 data-nosnippet>290</a>        add_decouple_vars(variables, constraints, inner_id, op_id, op_id_to_var);
+<a href=#291 id=291 data-nosnippet>291</a>    <span class="comment">// If any Tee has orig_to_decoupled, then set any_orig_to_decoupled to 1, vice versa
+<a href=#292 id=292 data-nosnippet>292</a>    </span>constraints.push(<span class="macro">constraint!</span>(
+<a href=#293 id=293 data-nosnippet>293</a>        any_orig_to_decoupled_var &gt;= orig_to_decoupled_var
 <a href=#294 id=294 data-nosnippet>294</a>    ));
-<a href=#295 id=295 data-nosnippet>295</a>}
-<a href=#296 id=296 data-nosnippet>296</a>
-<a href=#297 id=297 data-nosnippet>297</a><span class="kw">fn </span>decouple_analysis_leaf(
-<a href=#298 id=298 data-nosnippet>298</a>    leaf: <span class="kw-2">&amp;mut </span>HydroRoot,
-<a href=#299 id=299 data-nosnippet>299</a>    op_id: <span class="kw-2">&amp;mut </span>usize,
-<a href=#300 id=300 data-nosnippet>300</a>    model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;,
-<a href=#301 id=301 data-nosnippet>301</a>) {
-<a href=#302 id=302 data-nosnippet>302</a>    <span class="comment">// Ignore nodes that are not in the cluster to decouple
-<a href=#303 id=303 data-nosnippet>303</a>    </span><span class="kw">if </span>model_metadata.borrow().cluster_to_decouple != <span class="kw-2">*</span>leaf.input_metadata()[<span class="number">0</span>].location_kind.root()
-<a href=#304 id=304 data-nosnippet>304</a>    {
-<a href=#305 id=305 data-nosnippet>305</a>        <span class="kw">return</span>;
-<a href=#306 id=306 data-nosnippet>306</a>    }
-<a href=#307 id=307 data-nosnippet>307</a>
-<a href=#308 id=308 data-nosnippet>308</a>    <span class="kw">let </span>input_ids = relevant_inputs(
-<a href=#309 id=309 data-nosnippet>309</a>        leaf.input_metadata(),
-<a href=#310 id=310 data-nosnippet>310</a>        <span class="kw-2">&amp;</span>model_metadata.borrow().cluster_to_decouple,
-<a href=#311 id=311 data-nosnippet>311</a>    );
-<a href=#312 id=312 data-nosnippet>312</a>    add_input_constraints(<span class="kw-2">*</span>op_id, input_ids, model_metadata);
-<a href=#313 id=313 data-nosnippet>313</a>    add_tick_constraint(leaf.input_metadata()[<span class="number">0</span>], model_metadata);
-<a href=#314 id=314 data-nosnippet>314</a>}
-<a href=#315 id=315 data-nosnippet>315</a>
-<a href=#316 id=316 data-nosnippet>316</a><span class="kw">fn </span>decouple_analysis_node(
-<a href=#317 id=317 data-nosnippet>317</a>    node: <span class="kw-2">&amp;mut </span>HydroNode,
-<a href=#318 id=318 data-nosnippet>318</a>    op_id: <span class="kw-2">&amp;mut </span>usize,
-<a href=#319 id=319 data-nosnippet>319</a>    model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;,
-<a href=#320 id=320 data-nosnippet>320</a>    cycle_source_to_sink_input: <span class="kw-2">&amp;</span>HashMap&lt;usize, usize&gt;,
-<a href=#321 id=321 data-nosnippet>321</a>) {
-<a href=#322 id=322 data-nosnippet>322</a>    <span class="kw">let </span>network_type = get_network_type(
-<a href=#323 id=323 data-nosnippet>323</a>        node,
-<a href=#324 id=324 data-nosnippet>324</a>        model_metadata.borrow().cluster_to_decouple.root().raw_id(),
-<a href=#325 id=325 data-nosnippet>325</a>    );
-<a href=#326 id=326 data-nosnippet>326</a>    <span class="kw">if let </span>HydroNode::Network { .. } = node {
-<a href=#327 id=327 data-nosnippet>327</a>        <span class="comment">// If this is a network and we're not involved, ignore
-<a href=#328 id=328 data-nosnippet>328</a>        </span><span class="kw">if </span>network_type.is_none() {
-<a href=#329 id=329 data-nosnippet>329</a>            <span class="kw">return</span>;
-<a href=#330 id=330 data-nosnippet>330</a>        }
-<a href=#331 id=331 data-nosnippet>331</a>        model_metadata
-<a href=#332 id=332 data-nosnippet>332</a>            .borrow_mut()
-<a href=#333 id=333 data-nosnippet>333</a>            .network_ids
-<a href=#334 id=334 data-nosnippet>334</a>            .insert(<span class="kw-2">*</span>op_id, network_type.clone().unwrap());
-<a href=#335 id=335 data-nosnippet>335</a>    } <span class="kw">else if </span>model_metadata.borrow().cluster_to_decouple != <span class="kw-2">*</span>node.metadata().location_kind.root() {
-<a href=#336 id=336 data-nosnippet>336</a>        <span class="comment">// If it's not a network and the operator isn't on the cluster, ignore
-<a href=#337 id=337 data-nosnippet>337</a>        </span><span class="kw">return</span>;
-<a href=#338 id=338 data-nosnippet>338</a>    }
-<a href=#339 id=339 data-nosnippet>339</a>
-<a href=#340 id=340 data-nosnippet>340</a>    <span class="comment">// Add inputs
-<a href=#341 id=341 data-nosnippet>341</a>    </span><span class="kw">let </span>input_ids = <span class="kw">match </span>node {
-<a href=#342 id=342 data-nosnippet>342</a>        HydroNode::CycleSource { .. } =&gt; {
-<a href=#343 id=343 data-nosnippet>343</a>            <span class="comment">// For CycleSource, its input is its CycleSink's input. Note: assume the CycleSink is on the same cluster
-<a href=#344 id=344 data-nosnippet>344</a>            </span><span class="macro">vec!</span>[<span class="kw-2">*</span>cycle_source_to_sink_input.get(op_id).unwrap()]
-<a href=#345 id=345 data-nosnippet>345</a>        }
-<a href=#346 id=346 data-nosnippet>346</a>        HydroNode::Tee { inner, .. } =&gt; {
-<a href=#347 id=347 data-nosnippet>347</a>            <span class="macro">vec!</span>[inner.<span class="number">0</span>.borrow().metadata().id.unwrap()]
+<a href=#295 id=295 data-nosnippet>295</a>    constraints.push(<span class="macro">constraint!</span>(
+<a href=#296 id=296 data-nosnippet>296</a>        any_decoupled_to_orig_var &gt;= decoupled_to_orig_var
+<a href=#297 id=297 data-nosnippet>297</a>    ));
+<a href=#298 id=298 data-nosnippet>298</a>}
+<a href=#299 id=299 data-nosnippet>299</a>
+<a href=#300 id=300 data-nosnippet>300</a><span class="kw">fn </span>decouple_analysis_root(
+<a href=#301 id=301 data-nosnippet>301</a>    root: <span class="kw-2">&amp;mut </span>HydroRoot,
+<a href=#302 id=302 data-nosnippet>302</a>    op_id: <span class="kw-2">&amp;mut </span>usize,
+<a href=#303 id=303 data-nosnippet>303</a>    model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;,
+<a href=#304 id=304 data-nosnippet>304</a>) {
+<a href=#305 id=305 data-nosnippet>305</a>    <span class="comment">// Ignore nodes that are not in the cluster to decouple
+<a href=#306 id=306 data-nosnippet>306</a>    </span><span class="kw">if </span>model_metadata.borrow().cluster_to_decouple != <span class="kw-2">*</span>root.input_metadata()[<span class="number">0</span>].location_kind.root()
+<a href=#307 id=307 data-nosnippet>307</a>    {
+<a href=#308 id=308 data-nosnippet>308</a>        <span class="kw">return</span>;
+<a href=#309 id=309 data-nosnippet>309</a>    }
+<a href=#310 id=310 data-nosnippet>310</a>
+<a href=#311 id=311 data-nosnippet>311</a>    <span class="kw">let </span>input_ids = relevant_inputs(
+<a href=#312 id=312 data-nosnippet>312</a>        root.input_metadata(),
+<a href=#313 id=313 data-nosnippet>313</a>        <span class="kw-2">&amp;</span>model_metadata.borrow().cluster_to_decouple,
+<a href=#314 id=314 data-nosnippet>314</a>    );
+<a href=#315 id=315 data-nosnippet>315</a>    add_input_constraints(<span class="kw-2">*</span>op_id, input_ids, model_metadata);
+<a href=#316 id=316 data-nosnippet>316</a>    add_tick_constraint(root.input_metadata()[<span class="number">0</span>], model_metadata);
+<a href=#317 id=317 data-nosnippet>317</a>}
+<a href=#318 id=318 data-nosnippet>318</a>
+<a href=#319 id=319 data-nosnippet>319</a><span class="kw">fn </span>decouple_analysis_node(
+<a href=#320 id=320 data-nosnippet>320</a>    node: <span class="kw-2">&amp;mut </span>HydroNode,
+<a href=#321 id=321 data-nosnippet>321</a>    op_id: <span class="kw-2">&amp;mut </span>usize,
+<a href=#322 id=322 data-nosnippet>322</a>    model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;,
+<a href=#323 id=323 data-nosnippet>323</a>    cycle_source_to_sink_input: <span class="kw-2">&amp;</span>HashMap&lt;usize, usize&gt;,
+<a href=#324 id=324 data-nosnippet>324</a>) {
+<a href=#325 id=325 data-nosnippet>325</a>    <span class="kw">let </span>network_type = get_network_type(
+<a href=#326 id=326 data-nosnippet>326</a>        node,
+<a href=#327 id=327 data-nosnippet>327</a>        model_metadata.borrow().cluster_to_decouple.root().raw_id(),
+<a href=#328 id=328 data-nosnippet>328</a>    );
+<a href=#329 id=329 data-nosnippet>329</a>    <span class="kw">if let </span>HydroNode::Network { .. } = node {
+<a href=#330 id=330 data-nosnippet>330</a>        <span class="comment">// If this is a network and we're not involved, ignore
+<a href=#331 id=331 data-nosnippet>331</a>        </span><span class="kw">if </span>network_type.is_none() {
+<a href=#332 id=332 data-nosnippet>332</a>            <span class="kw">return</span>;
+<a href=#333 id=333 data-nosnippet>333</a>        }
+<a href=#334 id=334 data-nosnippet>334</a>        model_metadata
+<a href=#335 id=335 data-nosnippet>335</a>            .borrow_mut()
+<a href=#336 id=336 data-nosnippet>336</a>            .network_ids
+<a href=#337 id=337 data-nosnippet>337</a>            .insert(<span class="kw-2">*</span>op_id, network_type.clone().unwrap());
+<a href=#338 id=338 data-nosnippet>338</a>    } <span class="kw">else if </span>model_metadata.borrow().cluster_to_decouple != <span class="kw-2">*</span>node.metadata().location_kind.root() {
+<a href=#339 id=339 data-nosnippet>339</a>        <span class="comment">// If it's not a network and the operator isn't on the cluster, ignore
+<a href=#340 id=340 data-nosnippet>340</a>        </span><span class="kw">return</span>;
+<a href=#341 id=341 data-nosnippet>341</a>    }
+<a href=#342 id=342 data-nosnippet>342</a>
+<a href=#343 id=343 data-nosnippet>343</a>    <span class="comment">// Add inputs
+<a href=#344 id=344 data-nosnippet>344</a>    </span><span class="kw">let </span>input_ids = <span class="kw">match </span>node {
+<a href=#345 id=345 data-nosnippet>345</a>        HydroNode::CycleSource { .. } =&gt; {
+<a href=#346 id=346 data-nosnippet>346</a>            <span class="comment">// For CycleSource, its input is its CycleSink's input. Note: assume the CycleSink is on the same cluster
+<a href=#347 id=347 data-nosnippet>347</a>            </span><span class="macro">vec!</span>[<span class="kw-2">*</span>cycle_source_to_sink_input.get(op_id).unwrap()]
 <a href=#348 id=348 data-nosnippet>348</a>        }
-<a href=#349 id=349 data-nosnippet>349</a>        <span class="kw">_ </span>=&gt; relevant_inputs(
-<a href=#350 id=350 data-nosnippet>350</a>            node.input_metadata(),
-<a href=#351 id=351 data-nosnippet>351</a>            <span class="kw-2">&amp;</span>model_metadata.borrow().cluster_to_decouple,
-<a href=#352 id=352 data-nosnippet>352</a>        ),
-<a href=#353 id=353 data-nosnippet>353</a>    };
-<a href=#354 id=354 data-nosnippet>354</a>    add_input_constraints(<span class="kw-2">*</span>op_id, input_ids, model_metadata);
-<a href=#355 id=355 data-nosnippet>355</a>
-<a href=#356 id=356 data-nosnippet>356</a>    <span class="comment">// Add decoupling overhead. For Tees of the same inner, even if multiple are decoupled, only penalize decoupling once
-<a href=#357 id=357 data-nosnippet>357</a>    </span><span class="kw">if let </span>HydroNode::Tee {
-<a href=#358 id=358 data-nosnippet>358</a>        inner, metadata, ..
-<a href=#359 id=359 data-nosnippet>359</a>    } = node
-<a href=#360 id=360 data-nosnippet>360</a>    {
-<a href=#361 id=361 data-nosnippet>361</a>        add_tee_decoupling_overhead(
-<a href=#362 id=362 data-nosnippet>362</a>            inner.<span class="number">0</span>.borrow().metadata().id.unwrap(),
-<a href=#363 id=363 data-nosnippet>363</a>            metadata,
-<a href=#364 id=364 data-nosnippet>364</a>            model_metadata,
-<a href=#365 id=365 data-nosnippet>365</a>        );
-<a href=#366 id=366 data-nosnippet>366</a>    } <span class="kw">else </span>{
-<a href=#367 id=367 data-nosnippet>367</a>        add_decoupling_overhead(node, <span class="kw-2">&amp;</span>network_type, model_metadata);
-<a href=#368 id=368 data-nosnippet>368</a>    }
-<a href=#369 id=369 data-nosnippet>369</a>
-<a href=#370 id=370 data-nosnippet>370</a>    add_cpu_usage(node.metadata(), <span class="kw-2">&amp;</span>network_type, model_metadata);
-<a href=#371 id=371 data-nosnippet>371</a>    add_tick_constraint(node.metadata(), model_metadata);
-<a href=#372 id=372 data-nosnippet>372</a>}
-<a href=#373 id=373 data-nosnippet>373</a>
-<a href=#374 id=374 data-nosnippet>374</a><span class="kw">fn </span>solve(model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;) -&gt; MicroLpSolution {
-<a href=#375 id=375 data-nosnippet>375</a>    <span class="kw">let </span>ModelMetadata {
-<a href=#376 id=376 data-nosnippet>376</a>        variables,
-<a href=#377 id=377 data-nosnippet>377</a>        constraints,
-<a href=#378 id=378 data-nosnippet>378</a>        orig_node_cpu_usage,
-<a href=#379 id=379 data-nosnippet>379</a>        decoupled_node_cpu_usage,
-<a href=#380 id=380 data-nosnippet>380</a>        ..
-<a href=#381 id=381 data-nosnippet>381</a>    } = <span class="kw-2">&amp;mut *</span>model_metadata.borrow_mut();
-<a href=#382 id=382 data-nosnippet>382</a>
-<a href=#383 id=383 data-nosnippet>383</a>    <span class="comment">// Need values to be taken instead of &amp;mut
-<a href=#384 id=384 data-nosnippet>384</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>vars = std::mem::take(variables);
-<a href=#385 id=385 data-nosnippet>385</a>    <span class="kw">let </span><span class="kw-2">mut </span>constrs = std::mem::take(constraints);
-<a href=#386 id=386 data-nosnippet>386</a>    <span class="kw">let </span>orig_usage = std::mem::take(orig_node_cpu_usage);
-<a href=#387 id=387 data-nosnippet>387</a>    <span class="kw">let </span>decoupled_usage = std::mem::take(decoupled_node_cpu_usage);
-<a href=#388 id=388 data-nosnippet>388</a>
-<a href=#389 id=389 data-nosnippet>389</a>    <span class="comment">// Which node has the highest CPU usage?
-<a href=#390 id=390 data-nosnippet>390</a>    </span><span class="kw">let </span>highest_cpu = vars.add_variable();
-<a href=#391 id=391 data-nosnippet>391</a>    constrs.push(<span class="macro">constraint!</span>(highest_cpu &gt;= orig_usage));
-<a href=#392 id=392 data-nosnippet>392</a>    constrs.push(<span class="macro">constraint!</span>(highest_cpu &gt;= decoupled_usage));
-<a href=#393 id=393 data-nosnippet>393</a>
-<a href=#394 id=394 data-nosnippet>394</a>    <span class="comment">// Minimize the CPU usage of that node
-<a href=#395 id=395 data-nosnippet>395</a>    </span>vars.minimise(highest_cpu)
-<a href=#396 id=396 data-nosnippet>396</a>        .using(microlp)
-<a href=#397 id=397 data-nosnippet>397</a>        .with_all(constrs)
-<a href=#398 id=398 data-nosnippet>398</a>        .solve()
-<a href=#399 id=399 data-nosnippet>399</a>        .unwrap()
-<a href=#400 id=400 data-nosnippet>400</a>}
-<a href=#401 id=401 data-nosnippet>401</a>
-<a href=#402 id=402 data-nosnippet>402</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decouple_analysis(
-<a href=#403 id=403 data-nosnippet>403</a>    ir: <span class="kw-2">&amp;mut </span>[HydroRoot],
-<a href=#404 id=404 data-nosnippet>404</a>    cluster_to_decouple: <span class="kw-2">&amp;</span>LocationId,
-<a href=#405 id=405 data-nosnippet>405</a>    send_overhead: f64,
-<a href=#406 id=406 data-nosnippet>406</a>    recv_overhead: f64,
-<a href=#407 id=407 data-nosnippet>407</a>    cycle_source_to_sink_input: <span class="kw-2">&amp;</span>HashMap&lt;usize, usize&gt;,
-<a href=#408 id=408 data-nosnippet>408</a>) -&gt; (Vec&lt;usize&gt;, Vec&lt;usize&gt;, Vec&lt;usize&gt;) {
-<a href=#409 id=409 data-nosnippet>409</a>    <span class="kw">let </span>model_metadata = RefCell::new(ModelMetadata {
-<a href=#410 id=410 data-nosnippet>410</a>        cluster_to_decouple: cluster_to_decouple.clone(),
-<a href=#411 id=411 data-nosnippet>411</a>        decoupling_send_overhead: send_overhead,
-<a href=#412 id=412 data-nosnippet>412</a>        decoupling_recv_overhead: recv_overhead,
-<a href=#413 id=413 data-nosnippet>413</a>        variables: <span class="macro">variables!</span> {},
-<a href=#414 id=414 data-nosnippet>414</a>        constraints: <span class="macro">vec!</span>[],
-<a href=#415 id=415 data-nosnippet>415</a>        orig_node_cpu_usage: Expression::default(),
-<a href=#416 id=416 data-nosnippet>416</a>        decoupled_node_cpu_usage: Expression::default(),
-<a href=#417 id=417 data-nosnippet>417</a>        op_id_to_var: HashMap::new(),
-<a href=#418 id=418 data-nosnippet>418</a>        op_id_to_inputs: HashMap::new(),
-<a href=#419 id=419 data-nosnippet>419</a>        prev_op_input_with_tick: HashMap::new(),
-<a href=#420 id=420 data-nosnippet>420</a>        tee_inner_to_decoupled_vars: HashMap::new(),
-<a href=#421 id=421 data-nosnippet>421</a>        network_ids: HashMap::new(),
-<a href=#422 id=422 data-nosnippet>422</a>    });
-<a href=#423 id=423 data-nosnippet>423</a>
-<a href=#424 id=424 data-nosnippet>424</a>    traverse_dfir(
-<a href=#425 id=425 data-nosnippet>425</a>        ir,
-<a href=#426 id=426 data-nosnippet>426</a>        |leaf, next_op_id| {
-<a href=#427 id=427 data-nosnippet>427</a>            decouple_analysis_leaf(leaf, next_op_id, <span class="kw-2">&amp;</span>model_metadata);
-<a href=#428 id=428 data-nosnippet>428</a>        },
-<a href=#429 id=429 data-nosnippet>429</a>        |node, next_op_id| {
-<a href=#430 id=430 data-nosnippet>430</a>            decouple_analysis_node(
-<a href=#431 id=431 data-nosnippet>431</a>                node,
-<a href=#432 id=432 data-nosnippet>432</a>                next_op_id,
-<a href=#433 id=433 data-nosnippet>433</a>                <span class="kw-2">&amp;</span>model_metadata,
-<a href=#434 id=434 data-nosnippet>434</a>                cycle_source_to_sink_input,
-<a href=#435 id=435 data-nosnippet>435</a>            );
-<a href=#436 id=436 data-nosnippet>436</a>        },
-<a href=#437 id=437 data-nosnippet>437</a>    );
-<a href=#438 id=438 data-nosnippet>438</a>
-<a href=#439 id=439 data-nosnippet>439</a>    <span class="kw">let </span>solution = solve(<span class="kw-2">&amp;</span>model_metadata);
-<a href=#440 id=440 data-nosnippet>440</a>    <span class="kw">let </span>ModelMetadata {
-<a href=#441 id=441 data-nosnippet>441</a>        op_id_to_var,
-<a href=#442 id=442 data-nosnippet>442</a>        op_id_to_inputs,
-<a href=#443 id=443 data-nosnippet>443</a>        network_ids,
-<a href=#444 id=444 data-nosnippet>444</a>        ..
-<a href=#445 id=445 data-nosnippet>445</a>    } = <span class="kw-2">&amp;mut *</span>model_metadata.borrow_mut();
-<a href=#446 id=446 data-nosnippet>446</a>
-<a href=#447 id=447 data-nosnippet>447</a>    <span class="kw">let </span><span class="kw-2">mut </span>orig_machine = <span class="macro">vec!</span>[];
-<a href=#448 id=448 data-nosnippet>448</a>    <span class="kw">let </span><span class="kw-2">mut </span>decoupled_machine = <span class="macro">vec!</span>[];
-<a href=#449 id=449 data-nosnippet>449</a>    <span class="kw">let </span><span class="kw-2">mut </span>orig_to_decoupled = <span class="macro">vec!</span>[];
-<a href=#450 id=450 data-nosnippet>450</a>    <span class="kw">let </span><span class="kw-2">mut </span>decoupled_to_orig = <span class="macro">vec!</span>[];
-<a href=#451 id=451 data-nosnippet>451</a>    <span class="kw">let </span><span class="kw-2">mut </span>place_on_decoupled = <span class="macro">vec!</span>[];
-<a href=#452 id=452 data-nosnippet>452</a>
-<a href=#453 id=453 data-nosnippet>453</a>    <span class="kw">for </span>(op_id, inputs) <span class="kw">in </span>op_id_to_inputs {
-<a href=#454 id=454 data-nosnippet>454</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(op_var) = op_id_to_var.get(op_id) {
-<a href=#455 id=455 data-nosnippet>455</a>            <span class="kw">let </span>op_value = solution.value(<span class="kw-2">*</span>op_var).round();
-<a href=#456 id=456 data-nosnippet>456</a>            <span class="kw">let </span><span class="kw-2">mut </span>input_value = <span class="prelude-val">None</span>;
-<a href=#457 id=457 data-nosnippet>457</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(input) = inputs.first()
-<a href=#458 id=458 data-nosnippet>458</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(input_var) = op_id_to_var.get(input)
-<a href=#459 id=459 data-nosnippet>459</a>            {
-<a href=#460 id=460 data-nosnippet>460</a>                input_value = <span class="prelude-val">Some</span>(solution.value(<span class="kw-2">*</span>input_var).round());
-<a href=#461 id=461 data-nosnippet>461</a>            };
-<a href=#462 id=462 data-nosnippet>462</a>
-<a href=#463 id=463 data-nosnippet>463</a>            <span class="comment">// Don't insert network if this is Source or already a Network
-<a href=#464 id=464 data-nosnippet>464</a>            </span><span class="kw">let </span>network_type = network_ids.get(op_id);
+<a href=#349 id=349 data-nosnippet>349</a>        HydroNode::Tee { inner, .. } =&gt; {
+<a href=#350 id=350 data-nosnippet>350</a>            <span class="macro">vec!</span>[inner.<span class="number">0</span>.borrow().metadata().op.id.unwrap()]
+<a href=#351 id=351 data-nosnippet>351</a>        }
+<a href=#352 id=352 data-nosnippet>352</a>        <span class="kw">_ </span>=&gt; relevant_inputs(
+<a href=#353 id=353 data-nosnippet>353</a>            node.input_metadata(),
+<a href=#354 id=354 data-nosnippet>354</a>            <span class="kw-2">&amp;</span>model_metadata.borrow().cluster_to_decouple,
+<a href=#355 id=355 data-nosnippet>355</a>        ),
+<a href=#356 id=356 data-nosnippet>356</a>    };
+<a href=#357 id=357 data-nosnippet>357</a>    add_input_constraints(<span class="kw-2">*</span>op_id, input_ids, model_metadata);
+<a href=#358 id=358 data-nosnippet>358</a>
+<a href=#359 id=359 data-nosnippet>359</a>    <span class="comment">// Add decoupling overhead. For Tees of the same inner, even if multiple are decoupled, only penalize decoupling once
+<a href=#360 id=360 data-nosnippet>360</a>    </span><span class="kw">if let </span>HydroNode::Tee {
+<a href=#361 id=361 data-nosnippet>361</a>        inner, metadata, ..
+<a href=#362 id=362 data-nosnippet>362</a>    } = node
+<a href=#363 id=363 data-nosnippet>363</a>    {
+<a href=#364 id=364 data-nosnippet>364</a>        add_tee_decoupling_overhead(
+<a href=#365 id=365 data-nosnippet>365</a>            inner.<span class="number">0</span>.borrow().metadata().op.id.unwrap(),
+<a href=#366 id=366 data-nosnippet>366</a>            metadata,
+<a href=#367 id=367 data-nosnippet>367</a>            model_metadata,
+<a href=#368 id=368 data-nosnippet>368</a>        );
+<a href=#369 id=369 data-nosnippet>369</a>    } <span class="kw">else </span>{
+<a href=#370 id=370 data-nosnippet>370</a>        add_decoupling_overhead(node, <span class="kw-2">&amp;</span>network_type, model_metadata);
+<a href=#371 id=371 data-nosnippet>371</a>    }
+<a href=#372 id=372 data-nosnippet>372</a>
+<a href=#373 id=373 data-nosnippet>373</a>    add_cpu_usage(node.op_metadata(), <span class="kw-2">&amp;</span>network_type, model_metadata);
+<a href=#374 id=374 data-nosnippet>374</a>    add_tick_constraint(node.metadata(), model_metadata);
+<a href=#375 id=375 data-nosnippet>375</a>}
+<a href=#376 id=376 data-nosnippet>376</a>
+<a href=#377 id=377 data-nosnippet>377</a><span class="kw">fn </span>solve(model_metadata: <span class="kw-2">&amp;</span>RefCell&lt;ModelMetadata&gt;) -&gt; MicroLpSolution {
+<a href=#378 id=378 data-nosnippet>378</a>    <span class="kw">let </span>ModelMetadata {
+<a href=#379 id=379 data-nosnippet>379</a>        variables,
+<a href=#380 id=380 data-nosnippet>380</a>        constraints,
+<a href=#381 id=381 data-nosnippet>381</a>        orig_node_cpu_usage,
+<a href=#382 id=382 data-nosnippet>382</a>        decoupled_node_cpu_usage,
+<a href=#383 id=383 data-nosnippet>383</a>        ..
+<a href=#384 id=384 data-nosnippet>384</a>    } = <span class="kw-2">&amp;mut *</span>model_metadata.borrow_mut();
+<a href=#385 id=385 data-nosnippet>385</a>
+<a href=#386 id=386 data-nosnippet>386</a>    <span class="comment">// Need values to be taken instead of &amp;mut
+<a href=#387 id=387 data-nosnippet>387</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>vars = std::mem::take(variables);
+<a href=#388 id=388 data-nosnippet>388</a>    <span class="kw">let </span><span class="kw-2">mut </span>constrs = std::mem::take(constraints);
+<a href=#389 id=389 data-nosnippet>389</a>    <span class="kw">let </span>orig_usage = std::mem::take(orig_node_cpu_usage);
+<a href=#390 id=390 data-nosnippet>390</a>    <span class="kw">let </span>decoupled_usage = std::mem::take(decoupled_node_cpu_usage);
+<a href=#391 id=391 data-nosnippet>391</a>
+<a href=#392 id=392 data-nosnippet>392</a>    <span class="comment">// Which node has the highest CPU usage?
+<a href=#393 id=393 data-nosnippet>393</a>    </span><span class="kw">let </span>highest_cpu = vars.add_variable();
+<a href=#394 id=394 data-nosnippet>394</a>    constrs.push(<span class="macro">constraint!</span>(highest_cpu &gt;= orig_usage));
+<a href=#395 id=395 data-nosnippet>395</a>    constrs.push(<span class="macro">constraint!</span>(highest_cpu &gt;= decoupled_usage));
+<a href=#396 id=396 data-nosnippet>396</a>
+<a href=#397 id=397 data-nosnippet>397</a>    <span class="comment">// Minimize the CPU usage of that node
+<a href=#398 id=398 data-nosnippet>398</a>    </span>vars.minimise(highest_cpu)
+<a href=#399 id=399 data-nosnippet>399</a>        .using(microlp)
+<a href=#400 id=400 data-nosnippet>400</a>        .with_all(constrs)
+<a href=#401 id=401 data-nosnippet>401</a>        .solve()
+<a href=#402 id=402 data-nosnippet>402</a>        .unwrap()
+<a href=#403 id=403 data-nosnippet>403</a>}
+<a href=#404 id=404 data-nosnippet>404</a>
+<a href=#405 id=405 data-nosnippet>405</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decouple_analysis(
+<a href=#406 id=406 data-nosnippet>406</a>    ir: <span class="kw-2">&amp;mut </span>[HydroRoot],
+<a href=#407 id=407 data-nosnippet>407</a>    cluster_to_decouple: <span class="kw-2">&amp;</span>LocationId,
+<a href=#408 id=408 data-nosnippet>408</a>    send_overhead: f64,
+<a href=#409 id=409 data-nosnippet>409</a>    recv_overhead: f64,
+<a href=#410 id=410 data-nosnippet>410</a>    cycle_source_to_sink_input: <span class="kw-2">&amp;</span>HashMap&lt;usize, usize&gt;,
+<a href=#411 id=411 data-nosnippet>411</a>) -&gt; (Vec&lt;usize&gt;, Vec&lt;usize&gt;, Vec&lt;usize&gt;) {
+<a href=#412 id=412 data-nosnippet>412</a>    <span class="kw">let </span>model_metadata = RefCell::new(ModelMetadata {
+<a href=#413 id=413 data-nosnippet>413</a>        cluster_to_decouple: cluster_to_decouple.clone(),
+<a href=#414 id=414 data-nosnippet>414</a>        decoupling_send_overhead: send_overhead,
+<a href=#415 id=415 data-nosnippet>415</a>        decoupling_recv_overhead: recv_overhead,
+<a href=#416 id=416 data-nosnippet>416</a>        variables: <span class="macro">variables!</span> {},
+<a href=#417 id=417 data-nosnippet>417</a>        constraints: <span class="macro">vec!</span>[],
+<a href=#418 id=418 data-nosnippet>418</a>        orig_node_cpu_usage: Expression::default(),
+<a href=#419 id=419 data-nosnippet>419</a>        decoupled_node_cpu_usage: Expression::default(),
+<a href=#420 id=420 data-nosnippet>420</a>        op_id_to_var: HashMap::new(),
+<a href=#421 id=421 data-nosnippet>421</a>        op_id_to_inputs: HashMap::new(),
+<a href=#422 id=422 data-nosnippet>422</a>        prev_op_input_with_tick: HashMap::new(),
+<a href=#423 id=423 data-nosnippet>423</a>        tee_inner_to_decoupled_vars: HashMap::new(),
+<a href=#424 id=424 data-nosnippet>424</a>        network_ids: HashMap::new(),
+<a href=#425 id=425 data-nosnippet>425</a>    });
+<a href=#426 id=426 data-nosnippet>426</a>
+<a href=#427 id=427 data-nosnippet>427</a>    traverse_dfir(
+<a href=#428 id=428 data-nosnippet>428</a>        ir,
+<a href=#429 id=429 data-nosnippet>429</a>        |leaf, next_op_id| {
+<a href=#430 id=430 data-nosnippet>430</a>            decouple_analysis_root(leaf, next_op_id, <span class="kw-2">&amp;</span>model_metadata);
+<a href=#431 id=431 data-nosnippet>431</a>        },
+<a href=#432 id=432 data-nosnippet>432</a>        |node, next_op_id| {
+<a href=#433 id=433 data-nosnippet>433</a>            decouple_analysis_node(
+<a href=#434 id=434 data-nosnippet>434</a>                node,
+<a href=#435 id=435 data-nosnippet>435</a>                next_op_id,
+<a href=#436 id=436 data-nosnippet>436</a>                <span class="kw-2">&amp;</span>model_metadata,
+<a href=#437 id=437 data-nosnippet>437</a>                cycle_source_to_sink_input,
+<a href=#438 id=438 data-nosnippet>438</a>            );
+<a href=#439 id=439 data-nosnippet>439</a>        },
+<a href=#440 id=440 data-nosnippet>440</a>    );
+<a href=#441 id=441 data-nosnippet>441</a>
+<a href=#442 id=442 data-nosnippet>442</a>    <span class="kw">let </span>solution = solve(<span class="kw-2">&amp;</span>model_metadata);
+<a href=#443 id=443 data-nosnippet>443</a>    <span class="kw">let </span>ModelMetadata {
+<a href=#444 id=444 data-nosnippet>444</a>        op_id_to_var,
+<a href=#445 id=445 data-nosnippet>445</a>        op_id_to_inputs,
+<a href=#446 id=446 data-nosnippet>446</a>        network_ids,
+<a href=#447 id=447 data-nosnippet>447</a>        ..
+<a href=#448 id=448 data-nosnippet>448</a>    } = <span class="kw-2">&amp;mut *</span>model_metadata.borrow_mut();
+<a href=#449 id=449 data-nosnippet>449</a>
+<a href=#450 id=450 data-nosnippet>450</a>    <span class="kw">let </span><span class="kw-2">mut </span>orig_machine = <span class="macro">vec!</span>[];
+<a href=#451 id=451 data-nosnippet>451</a>    <span class="kw">let </span><span class="kw-2">mut </span>decoupled_machine = <span class="macro">vec!</span>[];
+<a href=#452 id=452 data-nosnippet>452</a>    <span class="kw">let </span><span class="kw-2">mut </span>orig_to_decoupled = <span class="macro">vec!</span>[];
+<a href=#453 id=453 data-nosnippet>453</a>    <span class="kw">let </span><span class="kw-2">mut </span>decoupled_to_orig = <span class="macro">vec!</span>[];
+<a href=#454 id=454 data-nosnippet>454</a>    <span class="kw">let </span><span class="kw-2">mut </span>place_on_decoupled = <span class="macro">vec!</span>[];
+<a href=#455 id=455 data-nosnippet>455</a>
+<a href=#456 id=456 data-nosnippet>456</a>    <span class="kw">for </span>(op_id, inputs) <span class="kw">in </span>op_id_to_inputs {
+<a href=#457 id=457 data-nosnippet>457</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(op_var) = op_id_to_var.get(op_id) {
+<a href=#458 id=458 data-nosnippet>458</a>            <span class="kw">let </span>op_value = solution.value(<span class="kw-2">*</span>op_var).round();
+<a href=#459 id=459 data-nosnippet>459</a>            <span class="kw">let </span><span class="kw-2">mut </span>input_value = <span class="prelude-val">None</span>;
+<a href=#460 id=460 data-nosnippet>460</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(input) = inputs.first()
+<a href=#461 id=461 data-nosnippet>461</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(input_var) = op_id_to_var.get(input)
+<a href=#462 id=462 data-nosnippet>462</a>            {
+<a href=#463 id=463 data-nosnippet>463</a>                input_value = <span class="prelude-val">Some</span>(solution.value(<span class="kw-2">*</span>input_var).round());
+<a href=#464 id=464 data-nosnippet>464</a>            };
 <a href=#465 id=465 data-nosnippet>465</a>
-<a href=#466 id=466 data-nosnippet>466</a>            <span class="attr">#[expect(clippy::collapsible_else_if, reason = <span class="string">"code symmetry"</span>)]
-<a href=#467 id=467 data-nosnippet>467</a>            </span><span class="kw">if </span>network_type.is_none()
-<a href=#468 id=468 data-nosnippet>468</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(input_unwrapped) = input_value
-<a href=#469 id=469 data-nosnippet>469</a>            {
-<a href=#470 id=470 data-nosnippet>470</a>                <span class="comment">// Figure out if we should insert Network nodes
-<a href=#471 id=471 data-nosnippet>471</a>                </span><span class="kw">match </span>(input_unwrapped, op_value) {
-<a href=#472 id=472 data-nosnippet>472</a>                    (<span class="number">0.0</span>, <span class="number">1.0</span>) =&gt; {
-<a href=#473 id=473 data-nosnippet>473</a>                        orig_to_decoupled.push(<span class="kw-2">*</span>op_id);
-<a href=#474 id=474 data-nosnippet>474</a>                    }
-<a href=#475 id=475 data-nosnippet>475</a>                    (<span class="number">1.0</span>, <span class="number">0.0</span>) =&gt; {
-<a href=#476 id=476 data-nosnippet>476</a>                        decoupled_to_orig.push(<span class="kw-2">*</span>op_id);
+<a href=#466 id=466 data-nosnippet>466</a>            <span class="comment">// Don't insert network if this is Source or already a Network
+<a href=#467 id=467 data-nosnippet>467</a>            </span><span class="kw">let </span>network_type = network_ids.get(op_id);
+<a href=#468 id=468 data-nosnippet>468</a>
+<a href=#469 id=469 data-nosnippet>469</a>            <span class="attr">#[expect(clippy::collapsible_else_if, reason = <span class="string">"code symmetry"</span>)]
+<a href=#470 id=470 data-nosnippet>470</a>            </span><span class="kw">if </span>network_type.is_none()
+<a href=#471 id=471 data-nosnippet>471</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(input_unwrapped) = input_value
+<a href=#472 id=472 data-nosnippet>472</a>            {
+<a href=#473 id=473 data-nosnippet>473</a>                <span class="comment">// Figure out if we should insert Network nodes
+<a href=#474 id=474 data-nosnippet>474</a>                </span><span class="kw">match </span>(input_unwrapped, op_value) {
+<a href=#475 id=475 data-nosnippet>475</a>                    (<span class="number">0.0</span>, <span class="number">1.0</span>) =&gt; {
+<a href=#476 id=476 data-nosnippet>476</a>                        orig_to_decoupled.push(<span class="kw-2">*</span>op_id);
 <a href=#477 id=477 data-nosnippet>477</a>                    }
-<a href=#478 id=478 data-nosnippet>478</a>                    <span class="kw">_ </span>=&gt; {}
-<a href=#479 id=479 data-nosnippet>479</a>                }
-<a href=#480 id=480 data-nosnippet>480</a>
-<a href=#481 id=481 data-nosnippet>481</a>                <span class="kw">if </span>input_unwrapped == <span class="number">0.0 </span>{
-<a href=#482 id=482 data-nosnippet>482</a>                    orig_machine.push(<span class="kw-2">*</span>op_id);
-<a href=#483 id=483 data-nosnippet>483</a>                } <span class="kw">else </span>{
-<a href=#484 id=484 data-nosnippet>484</a>                    decoupled_machine.push(<span class="kw-2">*</span>op_id);
-<a href=#485 id=485 data-nosnippet>485</a>                }
-<a href=#486 id=486 data-nosnippet>486</a>            } <span class="kw">else </span>{
-<a href=#487 id=487 data-nosnippet>487</a>                <span class="kw">if </span>op_value == <span class="number">0.0 </span>{
-<a href=#488 id=488 data-nosnippet>488</a>                    orig_machine.push(<span class="kw-2">*</span>op_id);
-<a href=#489 id=489 data-nosnippet>489</a>                } <span class="kw">else </span>{
-<a href=#490 id=490 data-nosnippet>490</a>                    decoupled_machine.push(<span class="kw-2">*</span>op_id);
-<a href=#491 id=491 data-nosnippet>491</a>                    <span class="comment">// Don't modify the destination if we're sending to someone else
-<a href=#492 id=492 data-nosnippet>492</a>                    </span><span class="kw">if </span>!network_type.is_some_and(|t| <span class="kw-2">*</span>t == NetworkType::Send) {
-<a href=#493 id=493 data-nosnippet>493</a>                        place_on_decoupled.push(<span class="kw-2">*</span>op_id);
-<a href=#494 id=494 data-nosnippet>494</a>                    }
-<a href=#495 id=495 data-nosnippet>495</a>                }
-<a href=#496 id=496 data-nosnippet>496</a>            }
-<a href=#497 id=497 data-nosnippet>497</a>        }
-<a href=#498 id=498 data-nosnippet>498</a>    }
-<a href=#499 id=499 data-nosnippet>499</a>
-<a href=#500 id=500 data-nosnippet>500</a>    orig_machine.sort();
-<a href=#501 id=501 data-nosnippet>501</a>    decoupled_machine.sort();
-<a href=#502 id=502 data-nosnippet>502</a>    <span class="macro">println!</span>(<span class="string">"Original: {:?}"</span>, orig_machine);
-<a href=#503 id=503 data-nosnippet>503</a>    <span class="macro">println!</span>(<span class="string">"Decoupling: {:?}"</span>, decoupled_machine);
-<a href=#504 id=504 data-nosnippet>504</a>    orig_to_decoupled.sort();
-<a href=#505 id=505 data-nosnippet>505</a>    decoupled_to_orig.sort();
-<a href=#506 id=506 data-nosnippet>506</a>    place_on_decoupled.sort();
-<a href=#507 id=507 data-nosnippet>507</a>    <span class="macro">println!</span>(
-<a href=#508 id=508 data-nosnippet>508</a>        <span class="string">"Original outputting to decoupled after: {:?}"</span>,
-<a href=#509 id=509 data-nosnippet>509</a>        orig_to_decoupled
-<a href=#510 id=510 data-nosnippet>510</a>    );
-<a href=#511 id=511 data-nosnippet>511</a>    <span class="macro">println!</span>(
-<a href=#512 id=512 data-nosnippet>512</a>        <span class="string">"Decoupled outputting to original after: {:?}"</span>,
-<a href=#513 id=513 data-nosnippet>513</a>        decoupled_to_orig
-<a href=#514 id=514 data-nosnippet>514</a>    );
-<a href=#515 id=515 data-nosnippet>515</a>    <span class="macro">println!</span>(<span class="string">"Placing on decoupled: {:?}"</span>, place_on_decoupled);
-<a href=#516 id=516 data-nosnippet>516</a>
-<a href=#517 id=517 data-nosnippet>517</a>    (orig_to_decoupled, decoupled_to_orig, place_on_decoupled)
-<a href=#518 id=518 data-nosnippet>518</a>}</code></pre></div></section></main></body></html>
+<a href=#478 id=478 data-nosnippet>478</a>                    (<span class="number">1.0</span>, <span class="number">0.0</span>) =&gt; {
+<a href=#479 id=479 data-nosnippet>479</a>                        decoupled_to_orig.push(<span class="kw-2">*</span>op_id);
+<a href=#480 id=480 data-nosnippet>480</a>                    }
+<a href=#481 id=481 data-nosnippet>481</a>                    <span class="kw">_ </span>=&gt; {}
+<a href=#482 id=482 data-nosnippet>482</a>                }
+<a href=#483 id=483 data-nosnippet>483</a>
+<a href=#484 id=484 data-nosnippet>484</a>                <span class="kw">if </span>input_unwrapped == <span class="number">0.0 </span>{
+<a href=#485 id=485 data-nosnippet>485</a>                    orig_machine.push(<span class="kw-2">*</span>op_id);
+<a href=#486 id=486 data-nosnippet>486</a>                } <span class="kw">else </span>{
+<a href=#487 id=487 data-nosnippet>487</a>                    decoupled_machine.push(<span class="kw-2">*</span>op_id);
+<a href=#488 id=488 data-nosnippet>488</a>                }
+<a href=#489 id=489 data-nosnippet>489</a>            } <span class="kw">else </span>{
+<a href=#490 id=490 data-nosnippet>490</a>                <span class="kw">if </span>op_value == <span class="number">0.0 </span>{
+<a href=#491 id=491 data-nosnippet>491</a>                    orig_machine.push(<span class="kw-2">*</span>op_id);
+<a href=#492 id=492 data-nosnippet>492</a>                } <span class="kw">else </span>{
+<a href=#493 id=493 data-nosnippet>493</a>                    decoupled_machine.push(<span class="kw-2">*</span>op_id);
+<a href=#494 id=494 data-nosnippet>494</a>                    <span class="comment">// Don't modify the destination if we're sending to someone else
+<a href=#495 id=495 data-nosnippet>495</a>                    </span><span class="kw">if </span>!network_type.is_some_and(|t| <span class="kw-2">*</span>t == NetworkType::Send) {
+<a href=#496 id=496 data-nosnippet>496</a>                        place_on_decoupled.push(<span class="kw-2">*</span>op_id);
+<a href=#497 id=497 data-nosnippet>497</a>                    }
+<a href=#498 id=498 data-nosnippet>498</a>                }
+<a href=#499 id=499 data-nosnippet>499</a>            }
+<a href=#500 id=500 data-nosnippet>500</a>        }
+<a href=#501 id=501 data-nosnippet>501</a>    }
+<a href=#502 id=502 data-nosnippet>502</a>
+<a href=#503 id=503 data-nosnippet>503</a>    orig_machine.sort();
+<a href=#504 id=504 data-nosnippet>504</a>    decoupled_machine.sort();
+<a href=#505 id=505 data-nosnippet>505</a>    <span class="macro">println!</span>(<span class="string">"Original: {:?}"</span>, orig_machine);
+<a href=#506 id=506 data-nosnippet>506</a>    <span class="macro">println!</span>(<span class="string">"Decoupling: {:?}"</span>, decoupled_machine);
+<a href=#507 id=507 data-nosnippet>507</a>    orig_to_decoupled.sort();
+<a href=#508 id=508 data-nosnippet>508</a>    decoupled_to_orig.sort();
+<a href=#509 id=509 data-nosnippet>509</a>    place_on_decoupled.sort();
+<a href=#510 id=510 data-nosnippet>510</a>    <span class="macro">println!</span>(
+<a href=#511 id=511 data-nosnippet>511</a>        <span class="string">"Original outputting to decoupled after: {:?}"</span>,
+<a href=#512 id=512 data-nosnippet>512</a>        orig_to_decoupled
+<a href=#513 id=513 data-nosnippet>513</a>    );
+<a href=#514 id=514 data-nosnippet>514</a>    <span class="macro">println!</span>(
+<a href=#515 id=515 data-nosnippet>515</a>        <span class="string">"Decoupled outputting to original after: {:?}"</span>,
+<a href=#516 id=516 data-nosnippet>516</a>        decoupled_to_orig
+<a href=#517 id=517 data-nosnippet>517</a>    );
+<a href=#518 id=518 data-nosnippet>518</a>    <span class="macro">println!</span>(<span class="string">"Placing on decoupled: {:?}"</span>, place_on_decoupled);
+<a href=#519 id=519 data-nosnippet>519</a>
+<a href=#520 id=520 data-nosnippet>520</a>    (orig_to_decoupled, decoupled_to_orig, place_on_decoupled)
+<a href=#521 id=521 data-nosnippet>521</a>}</code></pre></div></section></main></body></html>

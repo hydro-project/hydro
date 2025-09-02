@@ -27,7 +27,7 @@
 <a href=#27 id=27 data-nosnippet>27</a>            metadata.inputs.insert(<span class="kw-2">*</span>next_stmt_id);
 <a href=#28 id=28 data-nosnippet>28</a>            metadata.input_parents.insert(
 <a href=#29 id=29 data-nosnippet>29</a>                <span class="kw-2">*</span>next_stmt_id,
-<a href=#30 id=30 data-nosnippet>30</a>                node.input_metadata().first().unwrap().id.unwrap(),
+<a href=#30 id=30 data-nosnippet>30</a>                node.input_metadata().first().unwrap().op.id.unwrap(),
 <a href=#31 id=31 data-nosnippet>31</a>            );
 <a href=#32 id=32 data-nosnippet>32</a>        }
 <a href=#33 id=33 data-nosnippet>33</a>        <span class="kw">_ </span>=&gt; {}
@@ -108,7 +108,7 @@
 <a href=#108 id=108 data-nosnippet>108</a>            </span><span class="macro">vec!</span>[<span class="kw-2">*</span>cycle_source_to_sink_input.get(next_stmt_id).unwrap()]
 <a href=#109 id=109 data-nosnippet>109</a>        }
 <a href=#110 id=110 data-nosnippet>110</a>        HydroNode::Tee { inner, .. } =&gt; {
-<a href=#111 id=111 data-nosnippet>111</a>            <span class="macro">vec!</span>[inner.<span class="number">0</span>.borrow().metadata().id.unwrap()]
+<a href=#111 id=111 data-nosnippet>111</a>            <span class="macro">vec!</span>[inner.<span class="number">0</span>.borrow().metadata().op.id.unwrap()]
 <a href=#112 id=112 data-nosnippet>112</a>        }
 <a href=#113 id=113 data-nosnippet>113</a>        <span class="kw">_ </span>=&gt; relevant_inputs(node.input_metadata(), <span class="kw-2">&amp;</span>metadata.location),
 <a href=#114 id=114 data-nosnippet>114</a>    };
