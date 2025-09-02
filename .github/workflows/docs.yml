@@ -27,6 +27,8 @@ jobs:
     needs: pre_job
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       WWW_DIR: target
     steps:
