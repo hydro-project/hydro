@@ -104,14 +104,7 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Process(
-                0,
-            ),
-            output_type: Some(
-                i32,
-            ),
-        },
+        op_metadata: HydroIrOpMetadata,
     },
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: persist_pullup :: tests :: * ; | n | println ! ("{}" , n) }),
@@ -214,13 +207,6 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Process(
-                0,
-            ),
-            output_type: Some(
-                i32,
-            ),
-        },
+        op_metadata: HydroIrOpMetadata,
     },
 ]

@@ -44,14 +44,7 @@ expression: builder.finalize().ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Process(
-                1,
-            ),
-            output_type: Some(
-                std :: string :: String,
-            ),
-        },
+        op_metadata: HydroIrOpMetadata,
     },
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("{}" , n . n) }),
@@ -116,13 +109,6 @@ expression: builder.finalize().ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Process(
-                2,
-            ),
-            output_type: Some(
-                hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
-            ),
-        },
+        op_metadata: HydroIrOpMetadata,
     },
 ]

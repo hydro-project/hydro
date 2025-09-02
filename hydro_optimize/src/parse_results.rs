@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use hydro_lang::builder::deploy::DeployResult;
 use hydro_lang::deploy::HydroDeploy;
 use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
-use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
+use hydro_lang::ir::{HydroNode, HydroRoot, traverse_dfir};
 use hydro_lang::location::LocationId;
 use regex::Regex;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -59,12 +59,12 @@ fn parse_perf(file: String) -> HashMap<(usize, bool), f64> {
 }
 
 fn inject_perf_leaf(
-    leaf: &mut HydroLeaf,
+    leaf: &mut HydroRoot,
     id_to_usage: &HashMap<(usize, bool), f64>,
     next_stmt_id: &mut usize,
 ) {
     if let Some(cpu_usage) = id_to_usage.get(&(*next_stmt_id, false)) {
-        leaf.metadata_mut().cpu_usage = Some(*cpu_usage);
+        leaf.op_metadata_mut().cpu_usage = Some(*cpu_usage);
     }
 }
 
@@ -84,7 +84,7 @@ fn inject_perf_node(
     }
 }
 
-pub fn inject_perf(ir: &mut [HydroLeaf], folded_data: Vec<u8>) {
+pub fn inject_perf(ir: &mut [HydroRoot], folded_data: Vec<u8>) {
     let id_to_usage = parse_perf(String::from_utf8(folded_data).unwrap());
     traverse_dfir(
         ir,
@@ -133,7 +133,7 @@ fn inject_count_node(
     }
 }
 
-pub fn inject_count(ir: &mut [HydroLeaf], op_to_count: &HashMap<usize, usize>) {
+pub fn inject_count(ir: &mut [HydroRoot], op_to_count: &HashMap<usize, usize>) {
     traverse_dfir(
         ir,
         |_, _| {},
@@ -145,7 +145,7 @@ pub fn inject_count(ir: &mut [HydroLeaf], op_to_count: &HashMap<usize, usize>) {
 
 pub async fn analyze_process_results(
     process: &impl DeployCrateWrapper,
-    ir: &mut [HydroLeaf],
+    ir: &mut [HydroRoot],
     _node_usage: f64,
     node_cardinality: &mut UnboundedReceiver<String>,
 ) {
@@ -166,7 +166,7 @@ pub async fn analyze_process_results(
 
 pub async fn analyze_cluster_results(
     nodes: &DeployResult<'_, HydroDeploy>,
-    ir: &mut [HydroLeaf],
+    ir: &mut [HydroRoot],
     usage_out: &mut HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
     cardinality_out: &mut HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
     exclude_from_decoupling: Vec<String>,
@@ -274,7 +274,7 @@ fn analyze_overheads_node(
 }
 
 // Track the max of each so we decouple conservatively
-pub fn analyze_send_recv_overheads(ir: &mut [HydroLeaf], location: &LocationId) -> (f64, f64) {
+pub fn analyze_send_recv_overheads(ir: &mut [HydroRoot], location: &LocationId) -> (f64, f64) {
     let mut max_send_overhead = 0.0;
     let mut max_recv_overhead = 0.0;
 

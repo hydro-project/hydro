@@ -273,7 +273,7 @@ mod tests {
         };
         let built = builder
             .optimize_with(persist_pullup::persist_pullup)
-            .optimize_with(|leaves| partitioner::partition(leaves, &partitioner))
+            .optimize_with(|roots| partitioner::partition(roots, &partitioner))
             .into_deploy::<HydroDeploy>();
 
         hydro_build_utils::assert_debug_snapshot!(built.ir());
