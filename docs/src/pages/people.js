@@ -26,7 +26,6 @@ const PersonCard = (props) => {
     >
       <div className={styles["personContainer"]}>
         <Image
-          className={styles["personImage"]}
           img={props.img}
           style={{
             width: "100%",
