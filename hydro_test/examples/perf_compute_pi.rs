@@ -16,7 +16,7 @@ async fn main() {
     use hydro_deploy::Deployment;
     use hydro_deploy::gcp::GcpNetwork;
     use hydro_lang::Location;
-    use hydro_lang::graph_util::GraphConfig;
+    use hydro_lang::graph::config::GraphConfig;
     use hydro_optimize::deploy::ReusableHosts;
     use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
     use hydro_test::cluster::compute_pi::{Leader, Worker, compute_pi};

@@ -15,7 +15,7 @@ struct Args {
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::graph_util::GraphConfig;
+use hydro_lang::graph::config::GraphConfig;
 use hydro_test::cluster::compartmentalized_paxos::{
     CompartmentalizedPaxosConfig, CoreCompartmentalizedPaxos,
 };

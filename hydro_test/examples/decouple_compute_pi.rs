@@ -16,7 +16,7 @@ use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::Location;
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::graph_util::GraphConfig;
+use hydro_lang::graph::config::GraphConfig;
 use hydro_lang::rewrites::persist_pullup;
 use hydro_optimize::debug;
 use hydro_optimize::decoupler::{self, Decoupler};
