@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
+use hydro_lang::ir::{HydroNode, HydroRoot, traverse_dfir};
 use hydro_lang::location::LocationId;
 use syn::visit::Visit;
 
@@ -35,7 +35,7 @@ fn input_analysis_node(
 }
 
 fn input_analysis(
-    ir: &mut [HydroLeaf],
+    ir: &mut [HydroRoot],
     location: &LocationId,
 ) -> (BTreeSet<usize>, BTreeMap<usize, usize>) {
     let mut input_metadata = InputMetadata {
@@ -363,7 +363,7 @@ fn input_dependency_analysis_node(
 }
 
 fn input_dependency_analysis(
-    ir: &mut [HydroLeaf],
+    ir: &mut [HydroRoot],
     location: &LocationId,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
 ) -> InputDependencyMetadata {
@@ -387,7 +387,7 @@ fn input_dependency_analysis(
 
         traverse_dfir(
             ir,
-            |_, _| {}, // Don't need to analyze leaves since they don't output anyway
+            |_, _| {}, // Don't need to analyze roots since they don't output anyway
             |node, next_stmt_id| {
                 input_dependency_analysis_node(
                     node,
@@ -586,7 +586,7 @@ fn partitioning_constraint_analysis_node(
 /// Returns (all possible partitionings, inputs -> inputs' parents)
 #[expect(clippy::type_complexity, reason = "internal optimization code")]
 pub fn partitioning_analysis(
-    ir: &mut [HydroLeaf],
+    ir: &mut [HydroRoot],
     location: &LocationId,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
 ) -> Option<(

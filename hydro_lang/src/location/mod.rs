@@ -14,7 +14,9 @@ use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 use super::builder::FlowState;
 use crate::backtrace::get_backtrace;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
-use crate::ir::{DebugInstantiate, HydroIrMetadata, HydroLeaf, HydroNode, HydroSource};
+use crate::ir::{
+    DebugInstantiate, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
+};
 use crate::keyed_stream::KeyedStream;
 use crate::location::cluster::ClusterIds;
 use crate::location::external_process::{
@@ -334,9 +336,9 @@ pub trait Location<'a>: Clone {
             self.forward_ref::<KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
-        let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
+        let roots = flow_state_borrow.roots.as_mut().expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled()");
 
-        leaves.push(HydroLeaf::SendExternal {
+        roots.push(HydroRoot::SendExternal {
             to_external_id: from.id,
             to_key: next_external_port_id,
             to_many: true,
@@ -346,6 +348,7 @@ pub trait Location<'a>: Clone {
                 inner: Box::new(to_sink.entries().ir_node.into_inner()),
                 metadata: self.new_node_metadata::<(u64, T)>(),
             }),
+            op_metadata: HydroIrOpMetadata::new(),
         });
 
         let raw_stream: Stream<
@@ -447,7 +450,7 @@ pub trait Location<'a>: Clone {
             self.forward_ref::<KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
-        let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
+        let roots = flow_state_borrow.roots.as_mut().expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled()");
 
         let out_t_type = quote_type::<OutT>();
         let ser_fn: syn::Expr = syn::parse_quote! {
@@ -456,7 +459,7 @@ pub trait Location<'a>: Clone {
             )
         };
 
-        leaves.push(HydroLeaf::SendExternal {
+        roots.push(HydroRoot::SendExternal {
             to_external_id: from.id,
             to_key: next_external_port_id,
             to_many: true,
@@ -466,6 +469,7 @@ pub trait Location<'a>: Clone {
                 inner: Box::new(to_sink.entries().ir_node.into_inner()),
                 metadata: self.new_node_metadata::<(u64, Bytes)>(),
             }),
+            op_metadata: HydroIrOpMetadata::new(),
         });
 
         let in_t_type = quote_type::<InT>();
