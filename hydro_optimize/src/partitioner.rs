@@ -323,7 +323,7 @@ fn replace_process_node_location(node: &mut HydroNode, partitioner: &Partitioner
 }
 
 /// If we're partitioning a process into a cluster, we need to replace references to its location
-fn replace_process_leaf_location(leaf: &mut HydroRoot, partitioner: &Partitioner) {
+fn replace_process_root_location(root: &mut HydroRoot, partitioner: &Partitioner) {
     let Partitioner {
         location_id,
         new_cluster_id,
@@ -332,7 +332,7 @@ fn replace_process_leaf_location(leaf: &mut HydroRoot, partitioner: &Partitioner
 
     if let Some(new_id) = new_cluster_id {
         // Modify the metadata
-        if let HydroRoot::CycleSink { out_location, .. } = leaf {
+        if let HydroRoot::CycleSink { out_location, .. } = root {
             replace_process_location_id(out_location, *location_id, *new_id);
         }
     }
@@ -386,7 +386,7 @@ pub fn partition(ir: &mut [HydroRoot], partitioner: &Partitioner) {
     if partitioner.new_cluster_id.is_some() {
         // Separately traverse roots since CycleSink isn't processed in traverse_dfir
         for root in ir.iter_mut() {
-            replace_process_leaf_location(root, partitioner);
+            replace_process_root_location(root, partitioner);
         }
 
         // DANGER: Do not depend on the ID here, since nodes would've been injected

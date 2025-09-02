@@ -122,7 +122,7 @@ pub fn relevant_inputs(
         .iter()
         .filter_map(|input_metadata| {
             if cluster_to_decouple == input_metadata.location_kind.root() {
-                Some(input_metadata.id.unwrap())
+                Some(input_metadata.op.id.unwrap())
             } else {
                 None
             }

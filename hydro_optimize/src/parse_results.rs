@@ -58,13 +58,13 @@ fn parse_perf(file: String) -> HashMap<(usize, bool), f64> {
     samples_per_id
 }
 
-fn inject_perf_leaf(
-    leaf: &mut HydroRoot,
+fn inject_perf_root(
+    root: &mut HydroRoot,
     id_to_usage: &HashMap<(usize, bool), f64>,
     next_stmt_id: &mut usize,
 ) {
     if let Some(cpu_usage) = id_to_usage.get(&(*next_stmt_id, false)) {
-        leaf.op_metadata_mut().cpu_usage = Some(*cpu_usage);
+        root.op_metadata_mut().cpu_usage = Some(*cpu_usage);
     }
 }
 
@@ -74,13 +74,13 @@ fn inject_perf_node(
     next_stmt_id: &mut usize,
 ) {
     if let Some(cpu_usage) = id_to_usage.get(&(*next_stmt_id, false)) {
-        node.metadata_mut().cpu_usage = Some(*cpu_usage);
+        node.op_metadata_mut().cpu_usage = Some(*cpu_usage);
     }
     // If this is a Network node, separately get receiver CPU usage
     if let HydroNode::Network { metadata, .. } = node
         && let Some(cpu_usage) = id_to_usage.get(&(*next_stmt_id, true))
     {
-        metadata.network_recv_cpu_usage = Some(*cpu_usage);
+        metadata.op.network_recv_cpu_usage = Some(*cpu_usage);
     }
 }
 
@@ -89,7 +89,7 @@ pub fn inject_perf(ir: &mut [HydroRoot], folded_data: Vec<u8>) {
     traverse_dfir(
         ir,
         |leaf, next_stmt_id| {
-            inject_perf_leaf(leaf, &id_to_usage, next_stmt_id);
+            inject_perf_root(leaf, &id_to_usage, next_stmt_id);
         },
         |node, next_stmt_id| {
             inject_perf_node(node, &id_to_usage, next_stmt_id);
@@ -241,7 +241,7 @@ fn analyze_overheads_node(
     let network_type = get_network_type(node, location.root().raw_id());
     match network_type {
         Some(NetworkType::Send) | Some(NetworkType::SendRecv) => {
-            if let Some(cpu_usage) = metadata.cpu_usage {
+            if let Some(cpu_usage) = metadata.op.cpu_usage {
                 // Use cardinality from the network's input, not the network itself.
                 // Reason: Cardinality is measured at ONE recipient, but the sender may be sending to MANY machines.
                 if let Some(cardinality) = node.input_metadata().first().unwrap().cardinality {
@@ -259,7 +259,7 @@ fn analyze_overheads_node(
     match network_type {
         Some(NetworkType::Recv) | Some(NetworkType::SendRecv) => {
             if let Some(cardinality) = metadata.cardinality
-                && let Some(cpu_usage) = metadata.network_recv_cpu_usage
+                && let Some(cpu_usage) = metadata.op.network_recv_cpu_usage
             {
                 let overhead = cpu_usage / cardinality as f64;
 

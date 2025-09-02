@@ -6,7 +6,7 @@ use good_lp::{
     Constraint, Expression, ProblemVariables, Solution, SolverModel, Variable, constraint, microlp,
     variable, variables,
 };
-use hydro_lang::ir::{HydroIrMetadata, HydroNode, HydroRoot, traverse_dfir};
+use hydro_lang::ir::{HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, traverse_dfir};
 use hydro_lang::location::LocationId;
 
 use super::rewrites::{NetworkType, get_network_type, relevant_inputs};
@@ -104,7 +104,10 @@ fn add_tick_constraint(metadata: &HydroIrMetadata, model_metadata: &RefCell<Mode
 
     if let LocationId::Tick(tick_id, _) = metadata.location_kind {
         // Set each input = to the last input
-        let mut inputs = op_id_to_inputs.get(&metadata.id.unwrap()).unwrap().clone();
+        let mut inputs = op_id_to_inputs
+            .get(&metadata.op.id.unwrap())
+            .unwrap()
+            .clone();
         if let Some(prev_input) = prev_op_input_with_tick.get(&tick_id) {
             inputs.push(*prev_input);
         }
@@ -118,7 +121,7 @@ fn add_tick_constraint(metadata: &HydroIrMetadata, model_metadata: &RefCell<Mode
 }
 
 fn add_cpu_usage(
-    metadata: &HydroIrMetadata,
+    metadata: &HydroIrOpMetadata,
     network_type: &Option<NetworkType>,
     model_metadata: &RefCell<ModelMetadata>,
 ) {
@@ -218,7 +221,7 @@ fn add_decoupling_overhead(
         _ => metadata.cardinality.unwrap_or_default(),
     };
 
-    let op_id = metadata.id.unwrap();
+    let op_id = metadata.op.id.unwrap();
     if let Some(inputs) = op_id_to_inputs.get(&op_id) {
         // All inputs must be assigned the same var (by constraints above), so it suffices to check one
         if let Some(input) = inputs.first() {
@@ -258,7 +261,7 @@ fn add_tee_decoupling_overhead(
     } = &mut *model_metadata.borrow_mut();
 
     let cardinality = metadata.cardinality.unwrap_or_default();
-    let op_id = metadata.id.unwrap();
+    let op_id = metadata.op.id.unwrap();
 
     println!("Tee {} has inner {}", op_id, inner_id);
 
@@ -294,23 +297,23 @@ fn add_tee_decoupling_overhead(
     ));
 }
 
-fn decouple_analysis_leaf(
-    leaf: &mut HydroRoot,
+fn decouple_analysis_root(
+    root: &mut HydroRoot,
     op_id: &mut usize,
     model_metadata: &RefCell<ModelMetadata>,
 ) {
     // Ignore nodes that are not in the cluster to decouple
-    if model_metadata.borrow().cluster_to_decouple != *leaf.input_metadata()[0].location_kind.root()
+    if model_metadata.borrow().cluster_to_decouple != *root.input_metadata()[0].location_kind.root()
     {
         return;
     }
 
     let input_ids = relevant_inputs(
-        leaf.input_metadata(),
+        root.input_metadata(),
         &model_metadata.borrow().cluster_to_decouple,
     );
     add_input_constraints(*op_id, input_ids, model_metadata);
-    add_tick_constraint(leaf.input_metadata()[0], model_metadata);
+    add_tick_constraint(root.input_metadata()[0], model_metadata);
 }
 
 fn decouple_analysis_node(
@@ -344,7 +347,7 @@ fn decouple_analysis_node(
             vec![*cycle_source_to_sink_input.get(op_id).unwrap()]
         }
         HydroNode::Tee { inner, .. } => {
-            vec![inner.0.borrow().metadata().id.unwrap()]
+            vec![inner.0.borrow().metadata().op.id.unwrap()]
         }
         _ => relevant_inputs(
             node.input_metadata(),
@@ -359,7 +362,7 @@ fn decouple_analysis_node(
     } = node
     {
         add_tee_decoupling_overhead(
-            inner.0.borrow().metadata().id.unwrap(),
+            inner.0.borrow().metadata().op.id.unwrap(),
             metadata,
             model_metadata,
         );
@@ -367,7 +370,7 @@ fn decouple_analysis_node(
         add_decoupling_overhead(node, &network_type, model_metadata);
     }
 
-    add_cpu_usage(node.metadata(), &network_type, model_metadata);
+    add_cpu_usage(node.op_metadata(), &network_type, model_metadata);
     add_tick_constraint(node.metadata(), model_metadata);
 }
 
@@ -424,7 +427,7 @@ pub(crate) fn decouple_analysis(
     traverse_dfir(
         ir,
         |leaf, next_op_id| {
-            decouple_analysis_leaf(leaf, next_op_id, &model_metadata);
+            decouple_analysis_root(leaf, next_op_id, &model_metadata);
         },
         |node, next_op_id| {
             decouple_analysis_node(

@@ -27,7 +27,7 @@ fn input_analysis_node(
             metadata.inputs.insert(*next_stmt_id);
             metadata.input_parents.insert(
                 *next_stmt_id,
-                node.input_metadata().first().unwrap().id.unwrap(),
+                node.input_metadata().first().unwrap().op.id.unwrap(),
             );
         }
         _ => {}
@@ -108,7 +108,7 @@ fn input_dependency_analysis_node(
             vec![*cycle_source_to_sink_input.get(next_stmt_id).unwrap()]
         }
         HydroNode::Tee { inner, .. } => {
-            vec![inner.0.borrow().metadata().id.unwrap()]
+            vec![inner.0.borrow().metadata().op.id.unwrap()]
         }
         _ => relevant_inputs(node.input_metadata(), &metadata.location),
     };
