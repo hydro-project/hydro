@@ -12,7 +12,7 @@ use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 use super::builder::FlowState;
-use crate::backtrace::get_backtrace;
+use crate::backtrace::Backtrace;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
 use crate::ir::{
     DebugInstantiate, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
@@ -139,7 +139,7 @@ pub trait Location<'a>: Clone {
             cardinality: None,
             tag: None,
             op: HydroIrOpMetadata {
-                backtrace: get_backtrace(2),
+                backtrace: Backtrace::get_backtrace(2),
                 cpu_usage: None,
                 network_recv_cpu_usage: None,
                 id: None,
