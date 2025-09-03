@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use hydro_lang::location::MemberId;
 use hydro_lang::*;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
