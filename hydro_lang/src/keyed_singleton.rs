@@ -5,12 +5,12 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use crate::boundedness::Boundedness;
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::location::tick::NoAtomic;
-use crate::location::{LocationId, NoTick};
+use crate::location::{Atomic, LocationId, NoTick};
 use crate::manual_expr::ManualExpr;
 use crate::stream::ExactlyOnce;
 use crate::unsafety::NonDet;
 use crate::{
-    Atomic, Bounded, KeyedStream, Location, NoOrder, Optional, Singleton, Stream, Tick, TotalOrder,
+    Bounded, KeyedStream, Location, NoOrder, Optional, Singleton, Stream, Tick, TotalOrder,
     Unbounded, nondet,
 };
 

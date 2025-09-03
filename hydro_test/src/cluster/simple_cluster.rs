@@ -1,4 +1,5 @@
-use hydro_lang::location::MembershipEvent;
+use hydro_lang::location::cluster::CLUSTER_SELF_ID;
+use hydro_lang::location::{MemberId, MembershipEvent};
 use hydro_lang::*;
 use hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
 use stageleft::IntoQuotedMut;
@@ -79,9 +80,10 @@ mod tests {
     use std::collections::HashMap;
 
     use hydro_deploy::Deployment;
+    use hydro_lang::Location;
     use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy};
+    use hydro_lang::location::MemberId;
     use hydro_lang::rewrites::persist_pullup;
-    use hydro_lang::{Location, MemberId};
     use hydro_optimize::partitioner::{self, Partitioner};
     use stageleft::q;
 
