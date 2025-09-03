@@ -2576,4 +2576,41 @@
 <a href=#2576 id=2576 data-nosnippet>2576</a>
 <a href=#2577 id=2577 data-nosnippet>2577</a>        <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap(), <span class="number">1</span>);
 <a href=#2578 id=2578 data-nosnippet>2578</a>    }
-<a href=#2579 id=2579 data-nosnippet>2579</a>}</code></pre></div></section></main></body></html>
+<a href=#2579 id=2579 data-nosnippet>2579</a>
+<a href=#2580 id=2580 data-nosnippet>2580</a>    <span class="attr">#[cfg(unix)]
+<a href=#2581 id=2581 data-nosnippet>2581</a>    #[test]
+<a href=#2582 id=2582 data-nosnippet>2582</a>    </span><span class="kw">fn </span>backtrace_chained_ops() {
+<a href=#2583 id=2583 data-nosnippet>2583</a>        <span class="kw">use </span><span class="kw">crate</span>::ir::HydroRoot;
+<a href=#2584 id=2584 data-nosnippet>2584</a>
+<a href=#2585 id=2585 data-nosnippet>2585</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2586 id=2586 data-nosnippet>2586</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2587 id=2587 data-nosnippet>2587</a>
+<a href=#2588 id=2588 data-nosnippet>2588</a>        node.source_iter(<span class="macro">q!</span>([<span class="number">123</span>])).for_each(<span class="macro">q!</span>(|<span class="kw">_</span>| {}));
+<a href=#2589 id=2589 data-nosnippet>2589</a>
+<a href=#2590 id=2590 data-nosnippet>2590</a>        <span class="kw">let </span>finalized: <span class="kw">crate</span>::builder::built::BuiltFlow&lt;<span class="lifetime">'_</span>&gt; = flow.finalize();
+<a href=#2591 id=2591 data-nosnippet>2591</a>
+<a href=#2592 id=2592 data-nosnippet>2592</a>        <span class="kw">let </span>source_meta = <span class="kw">if let </span>HydroRoot::ForEach { input, .. } = <span class="kw-2">&amp;</span>finalized.ir()[<span class="number">0</span>] {
+<a href=#2593 id=2593 data-nosnippet>2593</a>            <span class="kw">use </span><span class="kw">crate</span>::ir::HydroNode;
+<a href=#2594 id=2594 data-nosnippet>2594</a>
+<a href=#2595 id=2595 data-nosnippet>2595</a>            <span class="kw">if let </span>HydroNode::Unpersist { inner, .. } = input.as_ref() {
+<a href=#2596 id=2596 data-nosnippet>2596</a>                <span class="kw">if let </span>HydroNode::Persist { inner, .. } = inner.as_ref() {
+<a href=#2597 id=2597 data-nosnippet>2597</a>                    <span class="kw">if let </span>HydroNode::Source { metadata, .. } = inner.as_ref() {
+<a href=#2598 id=2598 data-nosnippet>2598</a>                        <span class="kw-2">&amp;</span>metadata.op
+<a href=#2599 id=2599 data-nosnippet>2599</a>                    } <span class="kw">else </span>{
+<a href=#2600 id=2600 data-nosnippet>2600</a>                        <span class="macro">panic!</span>()
+<a href=#2601 id=2601 data-nosnippet>2601</a>                    }
+<a href=#2602 id=2602 data-nosnippet>2602</a>                } <span class="kw">else </span>{
+<a href=#2603 id=2603 data-nosnippet>2603</a>                    <span class="macro">panic!</span>()
+<a href=#2604 id=2604 data-nosnippet>2604</a>                }
+<a href=#2605 id=2605 data-nosnippet>2605</a>            } <span class="kw">else </span>{
+<a href=#2606 id=2606 data-nosnippet>2606</a>                <span class="macro">panic!</span>()
+<a href=#2607 id=2607 data-nosnippet>2607</a>            }
+<a href=#2608 id=2608 data-nosnippet>2608</a>        } <span class="kw">else </span>{
+<a href=#2609 id=2609 data-nosnippet>2609</a>            <span class="macro">panic!</span>()
+<a href=#2610 id=2610 data-nosnippet>2610</a>        };
+<a href=#2611 id=2611 data-nosnippet>2611</a>        <span class="kw">let </span>for_each_meta = finalized.ir()[<span class="number">0</span>].op_metadata();
+<a href=#2612 id=2612 data-nosnippet>2612</a>
+<a href=#2613 id=2613 data-nosnippet>2613</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(source_meta.backtrace.elements());
+<a href=#2614 id=2614 data-nosnippet>2614</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(for_each_meta.backtrace.elements());
+<a href=#2615 id=2615 data-nosnippet>2615</a>    }
+<a href=#2616 id=2616 data-nosnippet>2616</a>}</code></pre></div></section></main></body></html>
