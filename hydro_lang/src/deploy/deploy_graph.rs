@@ -25,8 +25,8 @@ use tokio::sync::RwLock;
 
 use super::trybuild::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
 use super::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort};
-use crate::NetworkHint;
 use crate::deploy_runtime::*;
+use crate::location::NetworkHint;
 use crate::staging_util::get_this_crate;
 
 pub struct HydroDeploy {}

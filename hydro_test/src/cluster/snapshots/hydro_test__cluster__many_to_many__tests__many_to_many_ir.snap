@@ -8,11 +8,11 @@ expression: built.ir()
         input: Unpersist {
             inner: Network {
                 serialize_fn: Some(
-                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: MemberId < _ > , i32) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: MemberId < _ > , i32) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                 ),
                 instantiate_fn: <network instantiate>,
                 deserialize_fn: Some(
-                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: MemberId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
+                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
                 ),
                 input: Persist {
                     inner: CrossProduct {
@@ -28,7 +28,7 @@ expression: built.ir()
                                         input: Persist {
                                             inner: Source {
                                                 source: Iter(
-                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_memberids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: MemberId < () >] > (__hydro_lang_cluster_ids_0) } ; underlying_memberids__free },
+                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_memberids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: location :: MemberId < () >] > (__hydro_lang_cluster_ids_0) } ; underlying_memberids__free },
                                                 ),
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Cluster(
