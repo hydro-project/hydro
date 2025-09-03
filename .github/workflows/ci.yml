@@ -40,10 +40,6 @@ jobs:
     timeout-minutes: 45
     needs: pre_job
     runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
     strategy:
       fail-fast: false
       matrix:
@@ -106,12 +102,22 @@ jobs:
             echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Generate token
+        if: matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.os == 'ubuntu-latest' && steps.check_snapshot_changes.outputs.has_changes == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
       - name: Create Pull Request for snapshot updates
         if: matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.os == 'ubuntu-latest' && steps.check_snapshot_changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v5
         id: create_snapshot_pr
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           commit-message: "chore: update nightly snapshots"
           title: "chore: update nightly snapshots"
           body: |
