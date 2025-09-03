@@ -89,7 +89,7 @@ impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
         QuoteTokens {
             prelude: None,
             expr: Some(
-                quote! { unsafe { ::std::mem::transmute::<_, &[#root::MemberId<#c_type>]>(#ident) } },
+                quote! { unsafe { ::std::mem::transmute::<_, &[#root::location::MemberId<#c_type>]>(#ident) } },
             ),
         }
     }
@@ -140,7 +140,7 @@ where
 
         QuoteTokens {
             prelude: None,
-            expr: Some(quote! { #root::MemberId::<#c_type>::from_raw(#ident) }),
+            expr: Some(quote! { #root::location::MemberId::<#c_type>::from_raw(#ident) }),
         }
     }
 }
