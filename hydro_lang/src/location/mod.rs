@@ -649,7 +649,8 @@ mod tests {
     use stageleft::q;
     use tokio_util::codec::LengthDelimitedCodec;
 
-    use crate::{FlowBuilder, Location, NetworkHint};
+    use crate::location::NetworkHint;
+    use crate::{FlowBuilder, Location};
 
     #[tokio::test]
     async fn external_bytes() {

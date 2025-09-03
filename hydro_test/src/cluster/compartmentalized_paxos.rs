@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use hydro_lang::location::{Atomic, MemberId};
 use hydro_lang::*;
 use hydro_std::quorum::collect_quorum;
 use hydro_std::request_response::join_responses;

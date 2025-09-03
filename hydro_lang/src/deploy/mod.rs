@@ -32,7 +32,7 @@ pub mod deploy_graph;
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub use deploy_graph::*;
 
-use crate::NetworkHint;
+use crate::location::NetworkHint;
 
 pub trait Deploy<'a> {
     type InstantiateEnv;
