@@ -30,6 +30,7 @@ mod tests {
     use futures::StreamExt;
     use hydro_deploy::Deployment;
 
+    use super::RUNTIME_CONTEXT;
     use crate::*;
 
     struct P1 {}

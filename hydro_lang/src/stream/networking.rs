@@ -11,12 +11,10 @@ use crate::keyed_singleton::KeyedSingleton;
 use crate::keyed_stream::KeyedStream;
 use crate::location::external_process::ExternalBincodeStream;
 use crate::location::tick::NoAtomic;
-use crate::location::{MembershipEvent, NoTick};
+use crate::location::{MemberId, MembershipEvent, NoTick};
 use crate::staging_util::get_this_crate;
 use crate::stream::ExactlyOnce;
-use crate::{
-    Cluster, External, Location, MemberId, NonDet, Process, Stream, TotalOrder, Unbounded, nondet,
-};
+use crate::{Cluster, External, Location, NonDet, Process, Stream, TotalOrder, Unbounded, nondet};
 
 // same as the one in `hydro_std`, but internal use only
 fn track_membership<'a, C, L: Location<'a> + NoTick + NoAtomic>(
@@ -40,7 +38,7 @@ pub fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::E
 
     if is_demux {
         parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::MemberId<_>, #t_type), _>(
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::location::MemberId<_>, #t_type), _>(
                 |(id, data)| {
                     (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
@@ -68,7 +66,7 @@ pub fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::T
         parse_quote! {
             |res| {
                 let (id, b) = res.unwrap();
-                (#root::MemberId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                (#root::location::MemberId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
             }
         }
     } else {
