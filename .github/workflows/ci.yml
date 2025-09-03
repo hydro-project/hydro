@@ -17,9 +17,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  CARGO_PROFILE_DEV_STRIP: "debuginfo"
-  CARGO_PROFILE_TEST_STRIP: "debuginfo"
-  CARGO_PROFILE_RELEASE_STRIP: "debuginfo"
+  RUSTFLAGS: "-C debuginfo=line-tables-only"
 
 defaults:
   run:
