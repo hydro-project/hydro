@@ -3,7 +3,8 @@ use dfir_rs::tokio_util::codec::LinesCodec;
 use hydro_deploy::Deployment;
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::graph::config::GraphConfig;
-use hydro_lang::{Location, NetworkHint, nondet};
+use hydro_lang::location::NetworkHint;
+use hydro_lang::{Location, nondet};
 
 #[derive(Parser, Debug)]
 struct Args {

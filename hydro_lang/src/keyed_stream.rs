@@ -8,7 +8,7 @@ use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::ir::HydroNode;
 use crate::keyed_singleton::KeyedSingleton;
 use crate::location::tick::NoAtomic;
-use crate::location::{LocationId, NoTick, check_matching_location};
+use crate::location::{Atomic, LocationId, NoTick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::stream::{ExactlyOnce, MinOrder, MinRetries};
 use crate::unsafety::NonDet;

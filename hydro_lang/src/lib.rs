@@ -35,9 +35,6 @@ pub mod internal_constants {
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_context")))]
 #[expect(missing_docs, reason = "TODO")]
 pub mod runtime_context;
-#[cfg(feature = "dfir_context")]
-#[cfg_attr(docsrs, doc(cfg(feature = "dfir_context")))]
-pub use runtime_context::RUNTIME_CONTEXT;
 
 #[expect(missing_docs, reason = "TODO")]
 pub mod unsafety;
@@ -67,8 +64,7 @@ pub use optional::Optional;
 
 #[expect(missing_docs, reason = "TODO")]
 pub mod location;
-pub use location::cluster::CLUSTER_SELF_ID;
-pub use location::{Atomic, Cluster, External, Location, MemberId, NetworkHint, Process, Tick};
+pub use location::{Cluster, External, Location, Process, Tick};
 
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
