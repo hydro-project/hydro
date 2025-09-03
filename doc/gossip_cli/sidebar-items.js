@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["InteractiveCommands"],"fn":["main","parse_command","parse_key"],"struct":["InteractiveApp","Opts"]};

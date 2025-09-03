@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["delete_row","upsert_row"],"type":["Clock","NamespaceMap","Namespaces","RowKey","RowValue","Table","TableMap","TableName"]};

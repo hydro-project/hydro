@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["server"],"struct":["InfectingWrite","SETS_COUNTER","SeedNode"],"trait":["Address"],"type":["MessageId"]};

@@ -1,9 +1,9 @@
 (function() {
-    var implementors = Object.fromEntries([["gossip_kv",[["impl IsBot for <a class=\"struct\" href=\"gossip_kv/server/struct.InfectingWrite.html\" title=\"struct gossip_kv::server::InfectingWrite\">InfectingWrite</a><div class=\"where\">where\n    <a class=\"type\" href=\"gossip_kv/model/type.Namespaces.html\" title=\"type gossip_kv::model::Namespaces\">Namespaces</a>&lt;<a class=\"type\" href=\"gossip_kv/model/type.Clock.html\" title=\"type gossip_kv::model::Clock\">Clock</a>&gt;: IsBot,\n    <a class=\"struct\" href=\"gossip_kv/lattices/struct.BoundedSetLattice.html\" title=\"struct gossip_kv::lattices::BoundedSetLattice\">BoundedSetLattice</a>&lt;<a class=\"type\" href=\"gossip_kv/membership/type.MemberId.html\" title=\"type gossip_kv::membership::MemberId\">MemberId</a>, 2&gt;: IsBot,</div>"],["impl&lt;T, const N: <a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.usize.html\">usize</a>&gt; IsBot for <a class=\"struct\" href=\"gossip_kv/lattices/struct.BoundedSetLattice.html\" title=\"struct gossip_kv::lattices::BoundedSetLattice\">BoundedSetLattice</a>&lt;T, N&gt;<div class=\"where\">where\n    T: <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html\" title=\"trait core::cmp::Eq\">Eq</a> + <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/hash/trait.Hash.html\" title=\"trait core::hash::Hash\">Hash</a>,</div>"]]],["lattices",[]]]);
+    var implementors = Object.fromEntries([["lattices",[]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
         window.pending_implementors = implementors;
     }
 })()
-//{"start":57,"fragment_lengths":[1368,16]}
+//{"start":57,"fragment_lengths":[15]}

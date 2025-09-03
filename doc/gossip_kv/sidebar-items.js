@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ClientRequest","ClientResponse","GossipMessage","KeyParseError","Namespace"],"mod":["lattices","membership","model","server","util"],"struct":["Key"],"type":["RowKey","TableName"]};

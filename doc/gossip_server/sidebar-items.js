@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["clap_duration_from_secs","main","make_seed_node","metrics_handler","setup_inbound_deserialization","setup_outbound_serialization"],"mod":["config","membership"],"struct":["Opts"]};
