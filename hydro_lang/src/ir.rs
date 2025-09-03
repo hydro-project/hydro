@@ -24,7 +24,6 @@ use syn::visit_mut::VisitMut;
 use crate::NetworkHint;
 #[cfg(stageleft_runtime)]
 use crate::backtrace::Backtrace;
-use crate::backtrace::get_backtrace;
 #[cfg(feature = "build")]
 use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
@@ -1020,7 +1019,7 @@ impl HydroIrOpMetadata {
     #[inline(never)]
     fn new_with_skip(skip_count: usize) -> HydroIrOpMetadata {
         HydroIrOpMetadata {
-            backtrace: get_backtrace(2 + skip_count),
+            backtrace: Backtrace::get_backtrace(2 + skip_count),
             cpu_usage: None,
             network_recv_cpu_usage: None,
             id: None,
