@@ -1,5 +1,6 @@
 use std::hash::Hash;
 
+use hydro_lang::location::Atomic;
 use hydro_lang::*;
 use location::NoTick;
 

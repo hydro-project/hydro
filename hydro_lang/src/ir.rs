@@ -21,13 +21,12 @@ use syn::parse_quote;
 use syn::visit::{self, Visit};
 use syn::visit_mut::VisitMut;
 
-use crate::NetworkHint;
 #[cfg(stageleft_runtime)]
 use crate::backtrace::Backtrace;
 use crate::backtrace::get_backtrace;
 #[cfg(feature = "build")]
 use crate::deploy::{Deploy, RegisterPort};
-use crate::location::LocationId;
+use crate::location::{LocationId, NetworkHint};
 
 /// Debug displays the type's tokens.
 ///
