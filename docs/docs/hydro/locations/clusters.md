@@ -83,7 +83,7 @@ In the reverse direction, when sending a stream _to_ a cluster, the sender must 
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
 let on_worker: Stream<_, Cluster<_>, _> = numbers
-    .map(q!(|x| (MemberId::from_raw(x), x)))
+    .map(q!(|x| (hydro_lang::location::MemberId::from_raw(x), x)))
     .demux_bincode(&workers);
 on_worker.send_bincode(&p2)
 # .entries()
@@ -155,6 +155,8 @@ In some programs, it may be necessary for cluster members to know their own ID (
 # use hydro_lang::*;
 # use futures::StreamExt;
 # tokio_test::block_on(test_util::multi_location_test(|flow, process| {
+use hydro_lang::location::cluster::CLUSTER_SELF_ID;
+
 let workers: Cluster<()> = flow.cluster::<()>();
 let self_id_stream = workers.source_iter(q!([CLUSTER_SELF_ID]));
 self_id_stream
