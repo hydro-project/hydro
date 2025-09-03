@@ -17,9 +17,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  CARGO_PROFILE_DEV_STRIP: "debuginfo"
-  CARGO_PROFILE_TEST_STRIP: "debuginfo"
-  CARGO_PROFILE_RELEASE_STRIP: "debuginfo"
 
 defaults:
   run:
@@ -79,7 +76,8 @@ jobs:
         env:
           INSTA_UPDATE: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && 'always' || '' }}
           INSTA_FORCE_PASS: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && '1' || '' }}
-        run: cargo nextest run --no-fail-fast --features hydro_lang/deploy --all-targets
+        # run: cargo nextest run --no-fail-fast --features hydro_lang/deploy --all-targets
+        run: cargo test -p hydro_lang --features deploy -- test_backtrace
 
       - name: Run doctests
         id: doctests

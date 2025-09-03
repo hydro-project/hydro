@@ -104,7 +104,6 @@ pub mod rewrites;
 
 mod staging_util;
 
-#[expect(missing_docs, reason = "TODO")]
 pub mod backtrace;
 
 #[cfg(feature = "deploy")]
