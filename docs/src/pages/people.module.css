@@ -86,7 +86,7 @@
   }
 }
 
-div.personImage {
+.personContainer div:nth-child(1) {
   background-position: center;
   flex-grow: 1;
   height: 0px;
@@ -94,12 +94,12 @@ div.personImage {
 }
 
 @media screen and (max-width: 1000px) {
-  div.personImage {
+  .personContainer div:nth-child(1) {
     min-height: 200px;
   }
 }
 
-.personImage img {
+.personContainer div:nth-child(1) > img {
   object-fit: cover;
   width: 100% !important;
   height: 100% !important;
