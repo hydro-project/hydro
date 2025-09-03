@@ -330,7 +330,7 @@
 <a href=#330 id=330 data-nosnippet>330</a>    <span class="attr">#[cfg(feature = <span class="string">"viz"</span>)]
 <a href=#331 id=331 data-nosnippet>331</a>    </span><span class="kw">pub fn </span>generate_graph_with_config(
 <a href=#332 id=332 data-nosnippet>332</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#333 id=333 data-nosnippet>333</a>        config: <span class="kw-2">&amp;</span><span class="kw">crate</span>::graph_util::GraphConfig,
+<a href=#333 id=333 data-nosnippet>333</a>        config: <span class="kw-2">&amp;</span><span class="kw">crate</span>::graph::config::GraphConfig,
 <a href=#334 id=334 data-nosnippet>334</a>        message_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">dyn </span>Fn(<span class="kw-2">&amp;</span>str)&gt;,
 <a href=#335 id=335 data-nosnippet>335</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
 <a href=#336 id=336 data-nosnippet>336</a>        <span class="self">self</span>.graph_api()
@@ -340,7 +340,7 @@
 <a href=#340 id=340 data-nosnippet>340</a>    <span class="attr">#[cfg(feature = <span class="string">"viz"</span>)]
 <a href=#341 id=341 data-nosnippet>341</a>    </span><span class="kw">pub fn </span>generate_all_files_with_config(
 <a href=#342 id=342 data-nosnippet>342</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#343 id=343 data-nosnippet>343</a>        config: <span class="kw-2">&amp;</span><span class="kw">crate</span>::graph_util::GraphConfig,
+<a href=#343 id=343 data-nosnippet>343</a>        config: <span class="kw-2">&amp;</span><span class="kw">crate</span>::graph::config::GraphConfig,
 <a href=#344 id=344 data-nosnippet>344</a>        prefix: <span class="kw-2">&amp;</span>str,
 <a href=#345 id=345 data-nosnippet>345</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
 <a href=#346 id=346 data-nosnippet>346</a>        <span class="self">self</span>.graph_api()
