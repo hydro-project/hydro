@@ -104,7 +104,6 @@ pub mod backtrace;
 
 #[cfg(feature = "deploy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
-#[expect(missing_docs, reason = "TODO")]
 pub mod test_util;
 
 #[cfg(feature = "build")]
