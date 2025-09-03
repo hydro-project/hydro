@@ -11,12 +11,10 @@ use crate::keyed_singleton::KeyedSingleton;
 use crate::keyed_stream::KeyedStream;
 use crate::location::external_process::ExternalBincodeStream;
 use crate::location::tick::NoAtomic;
-use crate::location::{MembershipEvent, NoTick};
+use crate::location::{MemberId, MembershipEvent, NoTick};
 use crate::staging_util::get_this_crate;
 use crate::stream::ExactlyOnce;
-use crate::{
-    Cluster, External, Location, MemberId, NonDet, Process, Stream, TotalOrder, Unbounded, nondet,
-};
+use crate::{Cluster, External, Location, NonDet, Process, Stream, TotalOrder, Unbounded, nondet};
 
 // same as the one in `hydro_std`, but internal use only
 fn track_membership<'a, C, L: Location<'a> + NoTick + NoAtomic>(

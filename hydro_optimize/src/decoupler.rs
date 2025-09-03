@@ -2,12 +2,11 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use hydro_lang::MemberId;
 use hydro_lang::ir::{
     DebugInstantiate, DebugType, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode,
     transform_bottom_up, traverse_dfir,
 };
-use hydro_lang::location::LocationId;
+use hydro_lang::location::{LocationId, MemberId};
 use hydro_lang::stream::networking::{deserialize_bincode_with_type, serialize_bincode_with_type};
 use proc_macro2::Span;
 use serde::{Deserialize, Serialize};
