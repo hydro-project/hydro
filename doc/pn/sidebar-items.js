@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["GossipOrIncrement","TopolotreeMessage"],"fn":["main"],"struct":["OperationPayload","Payload","QueryResponse","Timestamped"],"type":["NextStateType"]};
