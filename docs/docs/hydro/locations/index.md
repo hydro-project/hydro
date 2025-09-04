@@ -15,7 +15,7 @@ Locations can be created by calling the appropriate method on the global `FlowBu
 It is possible to create **different** locations that still have the same type, for example:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 let flow = FlowBuilder::new();
 let process1: Process<()> = flow.process::<()>();
 let process2: Process<()> = flow.process::<()>();
@@ -27,7 +27,7 @@ assert_ne!(process1, process2);
 These locations will not be unified and may be deployed to separate machines. When deploying a Hydro program, additional runtime checks will be performed to ensure that input locations match.
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 let flow = FlowBuilder::new();
 let process1: Process<()> = flow.process::<()>();
 let process2: Process<()> = flow.process::<()>();

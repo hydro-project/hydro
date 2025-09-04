@@ -2,8 +2,10 @@ use core::panic;
 use std::collections::HashMap;
 
 use hydro_lang::ir::{HydroNode, HydroRoot, traverse_dfir};
+use hydro_lang::live_collections::stream::networking::{
+    deserialize_bincode_with_type, serialize_bincode_with_type,
+};
 use hydro_lang::location::LocationId;
-use hydro_lang::stream::networking::{deserialize_bincode_with_type, serialize_bincode_with_type};
 use serde::{Deserialize, Serialize};
 use syn::visit_mut::{self, VisitMut};
 

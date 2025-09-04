@@ -153,7 +153,7 @@ pub fn compile_graph_trybuild(
 
     let source_ast: syn::File = syn::parse_quote! {
         #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-        use hydro_lang::*;
+        use hydro_lang::prelude::*;
         use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
 
         #[allow(unused)]
