@@ -13,7 +13,7 @@ use stageleft::QuotedWithContext;
 
 use super::built::build_inner;
 use super::compiled::CompiledFlow;
-use crate::deploy::{
+use super::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
 use crate::ir::HydroRoot;

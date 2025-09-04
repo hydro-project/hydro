@@ -9,8 +9,6 @@ use compiled::CompiledFlow;
 use deploy::{DeployFlow, DeployResult};
 use stageleft::*;
 
-#[cfg(feature = "build")]
-use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use crate::ir::HydroRoot;
 use crate::location::{Cluster, External, Process};
 use crate::staging_util::Invariant;
@@ -24,6 +22,13 @@ pub mod compiled;
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 pub mod deploy;
+
+#[cfg(feature = "build")]
+#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
+pub mod deploy_provider;
+
+#[cfg(feature = "build")]
+use deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 
 pub struct FlowStateInner {
     /// Tracks the roots of the dataflow IR. This is referenced by
