@@ -13,7 +13,7 @@ use trybuild_internals_api::{Runner, dependencies, features, path};
 
 use super::trybuild_rewriters::UseTestModeStaged;
 
-pub const HYDRO_RUNTIME_FEATURES: [&str; 1] = ["runtime_measure"];
+pub const HYDRO_RUNTIME_FEATURES: &[&str] = &["deploy_integration", "runtime_measure"];
 
 static IS_TEST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
@@ -157,7 +157,7 @@ pub fn compile_graph_trybuild(
         use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
 
         #[allow(unused)]
-        fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+        fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::__staged::deploy::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
             #(#extra_stmts)*
             #dfir_expr
         }
