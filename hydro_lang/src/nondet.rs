@@ -1,6 +1,9 @@
 #[derive(Copy, Clone)]
 pub struct NonDet;
 
+#[doc(inline)]
+pub use crate::nondet;
+
 #[macro_export]
 /// Fulfills a non-determinism guard parameter by declaring a reason why the
 /// non-determinism is tolerated or providing other non-determinism guards
@@ -15,7 +18,7 @@ macro_rules! nondet {
     ($(#[doc = $doc:expr])+$($forward:ident),*) => {
         {
             $(let _ = $forward;)*
-            $crate::unsafety::NonDet
+            $crate::nondet::NonDet
         }
     };
 }
