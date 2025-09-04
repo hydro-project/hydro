@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use stageleft::{QuotedWithContext, RuntimeData, q};
 
 #[derive(Default, Serialize, Deserialize)]
-pub struct HydroMeta {
+pub(super) struct HydroMeta {
     pub clusters: HashMap<usize, Vec<u32>>,
     pub cluster_id: Option<u32>,
     pub subgraph_id: usize,

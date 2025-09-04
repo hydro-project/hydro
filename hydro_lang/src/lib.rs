@@ -66,13 +66,13 @@ pub use optional::Optional;
 pub mod location;
 pub use location::{Cluster, External, Location, Process, Tick};
 
-#[cfg(feature = "build")]
-#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 #[expect(missing_docs, reason = "TODO")]
+#[cfg(any(
+    feature = "deploy",
+    feature = "deploy_integration" // hidden internal feature enabled in the trybuild
+))]
+#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod deploy;
-
-#[expect(missing_docs, reason = "TODO")]
-pub mod deploy_runtime;
 
 #[expect(missing_docs, reason = "TODO")]
 pub mod cycle;
