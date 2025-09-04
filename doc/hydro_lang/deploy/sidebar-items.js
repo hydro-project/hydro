@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["init_test"],"mod":["deploy_graph"],"trait":["ClusterSpec","Deploy","ExternalSpec","IntoProcessSpec","Node","ProcessSpec","RegisterPort"]};
+window.SIDEBAR_ITEMS = {"fn":["init_test"],"mod":["deploy_graph"]};
