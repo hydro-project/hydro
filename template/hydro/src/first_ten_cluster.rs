@@ -1,4 +1,4 @@
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 
 pub struct Leader {}
 pub struct Worker {}
@@ -29,7 +29,7 @@ mod tests {
         let mut deployment = Deployment::new();
         let localhost = deployment.Localhost();
 
-        let flow = hydro_lang::FlowBuilder::new();
+        let flow = hydro_lang::builder::FlowBuilder::new();
         let leader = flow.process();
         let workers = flow.cluster();
         super::first_ten_cluster(&leader, &workers);

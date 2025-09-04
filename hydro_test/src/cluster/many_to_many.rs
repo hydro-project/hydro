@@ -1,4 +1,4 @@
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 
 pub fn many_to_many<'a>(flow: &FlowBuilder<'a>) -> Cluster<'a, ()> {
     let cluster = flow.cluster();
@@ -18,7 +18,7 @@ mod tests {
 
     #[test]
     fn many_to_many_ir() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let _ = super::many_to_many(&builder);
         let built = builder.finalize();
 
@@ -29,7 +29,7 @@ mod tests {
     async fn many_to_many() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let cluster = super::many_to_many(&builder);
 
         let nodes = builder

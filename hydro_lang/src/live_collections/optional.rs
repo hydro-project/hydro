@@ -6,16 +6,15 @@ use std::rc::Rc;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 
-use crate::boundedness::Boundedness;
+use super::singleton::{Singleton, ZipResult};
+use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
+use crate::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
 use crate::location::tick::{Atomic, NoAtomic};
-use crate::location::{LocationId, NoTick, check_matching_location};
-use crate::singleton::ZipResult;
-use crate::stream::{AtLeastOnce, ExactlyOnce, NoOrder};
+use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
 use crate::unsafety::NonDet;
-use crate::{Bounded, Location, Singleton, Stream, Tick, TotalOrder, Unbounded};
 
 pub struct Optional<Type, Loc, Bound: Boundedness> {
     pub(crate) location: Loc,
@@ -237,9 +236,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let optional = tick.optional_first_tick(q!(1));
     /// optional.map(q!(|v| v + 1)).all_ticks()
