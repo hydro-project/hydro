@@ -87,6 +87,7 @@ mod manual_expr;
 pub mod ir;
 
 #[cfg(feature = "viz")]
+#[cfg_attr(docsrs, doc(cfg(feature = "viz")))]
 #[expect(missing_docs, reason = "TODO")]
 pub mod graph;
 
