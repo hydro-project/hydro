@@ -5,7 +5,9 @@ use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
-use crate::boundedness::Boundedness;
+use super::optional::Optional;
+use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
+use crate::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{
     CycleCollection, CycleCollectionWithInitial, CycleComplete, DeferTick, ForwardRefMarker,
@@ -14,9 +16,7 @@ use crate::cycle::{
 use crate::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
-use crate::stream::{AtLeastOnce, ExactlyOnce};
 use crate::unsafety::NonDet;
-use crate::{Bounded, NoOrder, Optional, Stream, TotalOrder, Unbounded};
 
 pub struct Singleton<Type, Loc, Bound: Boundedness> {
     pub(crate) location: Loc,
@@ -638,7 +638,9 @@ mod tests {
     use hydro_deploy::Deployment;
     use stageleft::q;
 
-    use crate::*;
+    use crate::builder::FlowBuilder;
+    use crate::location::Location;
+    use crate::unsafety::nondet;
 
     #[tokio::test]
     async fn tick_cycle_cardinality() {

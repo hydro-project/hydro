@@ -1,4 +1,4 @@
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 
 pub fn count_elems<'a, T: 'a>(
     process: &Process<'a>,
@@ -19,13 +19,13 @@ pub fn count_elems<'a, T: 'a>(
 mod tests {
     use futures::{SinkExt, StreamExt};
     use hydro_deploy::Deployment;
-    use hydro_lang::Location;
+    use hydro_lang::location::Location;
 
     #[tokio::test]
     async fn test_count() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 

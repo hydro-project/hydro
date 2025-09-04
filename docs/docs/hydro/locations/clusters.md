@@ -8,7 +8,7 @@ When building scalable distributed systems in Hydro, you'll often need to use **
 Like when creating a process, you can pass in a type parameter to a cluster to distinguish it from other clusters. For example, you can create a cluster with a marker of `Worker` to represent a pool of workers in a distributed system:
 
 ```rust,no_run
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 struct Worker {}
 
 let flow = FlowBuilder::new();
@@ -18,7 +18,7 @@ let workers: Cluster<Worker> = flow.cluster::<Worker>();
 You can then instantiate a live collection on the cluster using the same APIs as for processes. For example, you can create a stream of integers on the worker cluster. If you launch this program, **each** member of the cluster will create a stream containing the elements 1, 2, 3, and 4:
 
 ```rust,no_run
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # struct Worker {}
 # let flow = FlowBuilder::new();
 # let workers: Cluster<Worker> = flow.cluster::<Worker>();
@@ -29,9 +29,9 @@ let numbers = workers.source_iter(q!(vec![1, 2, 3, 4]));
 When sending a live collection from a cluster to another location, **each** member of the cluster will send its local collection. On the receiver side, these collections will be joined together into a **keyed stream** of with `ID` keys and groups of  `Data` values where the ID uniquely identifies which member of the cluster the data came from. For example, you can send a stream from the worker cluster to another process using the `send_bincode` method:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::multi_location_test(|flow, process| {
+# tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
 numbers.send_bincode(&process) // KeyedStream<MemberId<()>, i32, ...>
@@ -53,9 +53,9 @@ numbers.send_bincode(&process) // KeyedStream<MemberId<()>, i32, ...>
 If you do not need to know _which_ member of the cluster the data came from, you can use the `values()` method on the keyed stream, which will drop the IDs at the receiver:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::multi_location_test(|flow, process| {
+# tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
 numbers.send_bincode(&process).values()
@@ -76,9 +76,9 @@ numbers.send_bincode(&process).values()
 In the reverse direction, when sending a stream _to_ a cluster, the sender must prepare `(ID, Data)` tuples, where the ID uniquely identifies which member of the cluster the data is intended for. Then, we can send a stream from a process to the worker cluster using the `demux_bincode` method:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::multi_location_test(|flow, p2| {
+# tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
 # let p1 = flow.process::<()>();
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
@@ -103,9 +103,9 @@ on_worker.send_bincode(&p2)
 A common pattern in distributed systems is to broadcast data to all members of a cluster. In Hydro, this can be achieved using `broadcast_bincode`, which takes in a stream of **only data elements** and broadcasts them to all members of the cluster. For example, we can broadcast a stream of integers to the worker cluster:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::multi_location_test(|flow, p2| {
+# tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
 # let p1 = flow.process::<()>();
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
@@ -127,9 +127,9 @@ on_worker.send_bincode(&p2)
 This API requires a [non-determinism guard](../live-collections/determinism.md#unsafe-operations-in-hydro), because the set of cluster members may asynchronously change over time. Depending on when we are notified of membership changes, we will broadcast to different members. Under the hood, the `broadcast_bincode` API uses a list of members of the cluster provided by the deployment system. To manually access this list, you can use the `source_cluster_members` method to get a stream of membership events (cluster members joining or leaving):
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::multi_location_test(|flow, p2| {
+# tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
 let p1 = flow.process::<()>();
 let workers: Cluster<()> = flow.cluster::<()>();
 # // do nothing on each worker
@@ -152,9 +152,9 @@ let cluster_members = p1.source_cluster_members(&workers);
 In some programs, it may be necessary for cluster members to know their own ID (for example, to construct a ballot in Paxos). In Hydro, this can be achieved by using the `CLUSTER_SELF_ID` constant, which can be used inside `q!(...)` blocks to get the current cluster member's ID:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::multi_location_test(|flow, process| {
+# tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 
 let workers: Cluster<()> = flow.cluster::<()>();
@@ -181,7 +181,7 @@ self_id_stream
 You can only use `CLUSTER_SELF_ID` in code that will run on a `Cluster<_>`, such as when calling `Stream::map` when that stream is on a cluster. If you try to use it in code that will run on a `Process<_>`, you'll get a compile-time error:
 
 ```compile_fail
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # let flow = FlowBuilder::new();
 let process: Process<()> = flow.process::<()>();
 process.source_iter(q!([CLUSTER_SELF_ID]));
