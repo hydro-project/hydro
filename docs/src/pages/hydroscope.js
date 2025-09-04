@@ -1,17 +1,5 @@
 /**
- * Hydroscope - Complete Graph Visualization Experience
- * 
- * URL: /hydroscope
- * 
- * This is the main hydroscope interface, providing the complete visualization experience
- * that replaces the original /vis application. Features include:
- * - File upload and drag-drop
- * - Layout algorithm controls  
- * - Style tuning with color palettes
- * - Interactive container collapse/expand
- * - Information panel with metadata
- * - Grouping controls
- * - Pack/Unpack all operations
+ * Load the hydroscope visualizer for Hydro JSON
  */
 
 import React from 'react';
@@ -20,8 +8,7 @@ import BrowserOnly from '@docusaurus/BrowserOnly';
 import { useLocation } from '@docusaurus/router';
 
 // Import CSS from hydroscope npm package
-// Note: CSS file not available in current package version
-// import '@hydro-project/hydroscope/style.css';
+import '@hydro-project/hydroscope/style.css';
 
 // Typography constants for consistent styling
 const TYPOGRAPHY = {
@@ -29,9 +16,9 @@ const TYPOGRAPHY = {
   PAGE_SUBTITLE: '0.9em'
 };
 
-function HydroscopeDemo() {
+function HydroscopePage() {
   const location = useLocation();
-  const [HydroscopeFull, setHydroscopeFull] = React.useState(null);
+  const [Hydroscope, setHydroscope] = React.useState(null);
   const [generateCompleteExample, setGenerateCompleteExample] = React.useState(null);
   const [parseDataFromUrl, setParseDataFromUrl] = React.useState(null);
   const [error, setError] = React.useState(null);
@@ -54,25 +41,23 @@ function HydroscopeDemo() {
     return () => window.removeEventListener('resize', calculateHeight);
   }, []);
 
-  // Load HydroscopeFull component from npm package
+  // Load Hydroscope component from npm package
   React.useEffect(() => {
-    const loadHydroscopeFull = async () => {
+    const loadHydroscope = async () => {
       try {
         const hydroscopeModule = await import('@hydro-project/hydroscope');
         
-        const { HydroscopeFull, generateCompleteExample, parseDataFromUrl } = hydroscopeModule;
+        const { Hydroscope, generateCompleteExample, parseDataFromUrl } = hydroscopeModule;
         
-        if (!HydroscopeFull) {
-          throw new Error('HydroscopeFull component not found in external module');
+        if (!Hydroscope) {
+          throw new Error('Hydroscope component not found in external module');
         }
         
         if (!parseDataFromUrl) {
           throw new Error('parseDataFromUrl function not found in external module');
         }
         
-        console.log('✅ Hydroscope component loaded successfully');
-        
-        setHydroscopeFull(() => HydroscopeFull);
+        setHydroscope(() => Hydroscope);
         setGenerateCompleteExample(() => generateCompleteExample);
         setParseDataFromUrl(() => parseDataFromUrl);
         setLoading(false);
@@ -83,7 +68,7 @@ function HydroscopeDemo() {
         setLoading(false);
       }
     };
-    loadHydroscopeFull();
+    loadHydroscope();
   }, []);
 
   // Handle URL data parameter (for sharing graphs via URL)
@@ -128,7 +113,14 @@ function HydroscopeDemo() {
 
   // Handle file upload
   const handleFileUpload = React.useCallback((data, filename) => {
-    setGraphData(data);
+    if (!data) {
+      console.error('❌ No data received from file upload');
+      setError('No data received from file upload');
+      return;
+    }
+    
+    // Let Hydroscope manage its own data internally
+    setError(null);
   }, []);
 
   // Handle example generation
@@ -142,12 +134,18 @@ function HydroscopeDemo() {
       try {
         const exampleData = generateCompleteExample();
         setGraphData(exampleData);
+        setError(null);
       } catch (err) {
         console.error('❌ Failed to generate example data:', err);
         setError(`Failed to generate example: ${err.message}`);
       }
     }
   }, [generateCompleteExample]);
+
+  // Add a test button to trigger example generation
+  const handleTestExample = React.useCallback(() => {
+    handleCreateExample();
+  }, [handleCreateExample]);
 
   const containerStyle = {
     height: availableHeight,
@@ -178,61 +176,44 @@ function HydroscopeDemo() {
       description="Complete graph visualization interface"
       noFooter={true}
     >
-      <div style={containerStyle}>
-        <div style={headerStyle}>
-          {/* <h1 style={{ fontSize: TYPOGRAPHY.PAGE_TITLE, margin: '0 0 10px 0' }}>
-            Hydroscope
-          </h1>
-          <p style={{ fontSize: TYPOGRAPHY.PAGE_SUBTITLE, color: '#666', margin: 0 }}>
-            Complete graph visualization interface with full controls and interactive features
-          </p> */}
+      {loading && (
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <p>Loading Hydroscope component...</p>
         </div>
+      )}
 
-        {loading && (
-          <div style={{ padding: '40px', textAlign: 'center' }}>
-            <p>Loading Hydroscope component...</p>
-          </div>
-        )}
+      {error && (
+        <div style={{ padding: '40px', textAlign: 'center', color: '#d32f2f' }}>
+          <h3>Error</h3>
+          <p>{error}</p>
+        </div>
+      )}
 
-        {error && (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#d32f2f' }}>
-            <h3>Error</h3>
-            <p>{error}</p>
-          </div>
-        )}
+      {!loading && !error && Hydroscope && (
+        <div style={contentStyle}>
+          <Hydroscope
+            data={graphData}
+            showFileUpload={true}
+            showInfoPanel={true}
+            showStylePanel={true}
+            enableCollapse={true}
+            autoFit={true}
+            initialLayoutAlgorithm="mrtree"
+            initialColorPalette="Set3"
+            onFileUpload={handleFileUpload}
+            style={{ 
+              height: '100%',
+              width: '100%',
+            }}
+          />
+        </div>
+      )}
 
-        {!loading && !error && HydroscopeFull && (
-          <>
-            <div style={contentStyle}>
-              <HydroscopeFull
-                data={graphData}
-                showFileUpload={true}
-                showInfoPanel={true}
-                showStylePanel={true}
-                enableCollapse={true}
-                autoFit={true}
-                initialLayoutAlgorithm="mrtree"
-                initialColorPalette="Set3"
-                generatedFilePath={filePath}
-                generateCompleteExample={generateCompleteExample}
-                onFileUpload={handleFileUpload}
-                onExampleGenerated={handleExampleGenerated}
-                onCreateExample={handleCreateExample}
-                style={{ 
-                  height: '100%',
-                  width: '100%',
-                }}
-              />
-            </div>
-          </>
-        )}
-
-        {!loading && !error && !HydroscopeFull && (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-            <p>Hydroscope component not available</p>
-          </div>
-        )}
-      </div>
+      {!loading && !error && !Hydroscope && (
+        <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+          <p>Hydroscope component not available</p>
+        </div>
+      )}
     </Layout>
   );
 }
@@ -240,7 +221,7 @@ function HydroscopeDemo() {
 export default function HydroscopeFullPage() {
   return (
     <BrowserOnly fallback={<div>Loading...</div>}>
-      {() => <HydroscopeDemo />}
+      {() => <HydroscopePage />}
     </BrowserOnly>
   );
 }
