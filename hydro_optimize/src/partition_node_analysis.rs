@@ -744,9 +744,10 @@ mod tests {
 
     use hydro_lang::deploy::HydroDeploy;
     use hydro_lang::ir::deep_clone;
+    use hydro_lang::live_collections::stream::NoOrder;
     use hydro_lang::location::LocationId;
+    use hydro_lang::prelude::*;
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
-    use hydro_lang::{Bounded, FlowBuilder, Location, NoOrder, Stream, nondet};
     use stageleft::q;
 
     use crate::debug::name_to_id_map;

@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use hydro_lang::keyed_stream::KeyedStream;
+use hydro_lang::live_collections::stream::TotalOrder;
 use hydro_lang::location::MembershipEvent;
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 use hydro_std::membership::track_membership;
 
 pub fn echo_server<'a, P>(

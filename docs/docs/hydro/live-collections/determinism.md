@@ -25,7 +25,7 @@ All **safe** APIs in Hydro (the ones you can call regularly in Rust) guarantee d
 These non-deterministic APIs take additional paramters called **non-determinism guards**. These values, with type `NonDep`, help you reason about how non-determinism affects your application. To pass a non-determinism guard, you must invoke `nondet!()` with an explanation for how the non-determinism affects the application. If the non-determinism is never exposed outside the function, or if it appears at the root of your application (and thus is documented in the service guarantees), you should use `nondet!()` with only a single parameter containing the explanation.
 
 ```rust,no_run
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 use std::time::Duration;
 
 fn singleton_with_delay<T, L>(
@@ -42,7 +42,7 @@ When writing a function with Hydro that involves non-deterministic APIs, it is i
 If the outputs of your code are non-deterministic, you should take non-determinism guards and document this behavior in the Rustdoc. Then, when invoking APIs whose non-determinism propagates to the outputs of your code, you should use `nondet!` passing in an explanation as well the relevant guard parameter.
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 use std::fmt::Debug;
 use std::time::Duration;
 

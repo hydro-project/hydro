@@ -5,14 +5,17 @@ use sealed::sealed;
 use stageleft::{QuotedWithContext, q};
 
 use super::{Cluster, Location, LocationId, Process};
+use crate::boundedness::Bounded;
 use crate::builder::FlowState;
 use crate::cycle::{
     CycleCollection, CycleCollectionWithInitial, DeferTick, ForwardRef, ForwardRefMarker,
     TickCycle, TickCycleMarker,
 };
 use crate::ir::{HydroNode, HydroSource};
-use crate::stream::ExactlyOnce;
-use crate::{Bounded, Optional, Singleton, Stream, TotalOrder, nondet};
+use crate::live_collections::optional::Optional;
+use crate::live_collections::singleton::Singleton;
+use crate::live_collections::stream::{ExactlyOnce, Stream, TotalOrder};
+use crate::nondet::nondet;
 
 #[sealed]
 pub trait NoTick {}

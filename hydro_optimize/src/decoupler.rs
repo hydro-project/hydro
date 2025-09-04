@@ -6,8 +6,10 @@ use hydro_lang::ir::{
     DebugInstantiate, DebugType, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode,
     transform_bottom_up, traverse_dfir,
 };
+use hydro_lang::live_collections::stream::networking::{
+    deserialize_bincode_with_type, serialize_bincode_with_type,
+};
 use hydro_lang::location::{LocationId, MemberId};
-use hydro_lang::stream::networking::{deserialize_bincode_with_type, serialize_bincode_with_type};
 use proc_macro2::Span;
 use serde::{Deserialize, Serialize};
 use stageleft::quote_type;
@@ -272,8 +274,11 @@ mod tests {
     use std::collections::HashSet;
 
     use hydro_deploy::Deployment;
+    use hydro_lang::builder::FlowBuilder;
+    use hydro_lang::ir;
+    use hydro_lang::location::Location;
+    use hydro_lang::nondet::nondet;
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
-    use hydro_lang::{FlowBuilder, Location, ir, nondet};
     use stageleft::q;
 
     use crate::debug::name_to_id_map;
@@ -285,9 +290,9 @@ mod tests {
         output_to_original_machine_after: Vec<(&str, i32)>,
         place_on_decoupled_machine: Vec<(&str, i32)>,
     ) -> (
-        hydro_lang::Cluster<'a, ()>,
-        hydro_lang::Cluster<'a, ()>,
-        hydro_lang::Cluster<'a, ()>,
+        hydro_lang::location::Cluster<'a, ()>,
+        hydro_lang::location::Cluster<'a, ()>,
+        hydro_lang::location::Cluster<'a, ()>,
         hydro_lang::builder::built::BuiltFlow<'a>,
     ) {
         let builder = FlowBuilder::new();

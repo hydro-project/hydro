@@ -11,7 +11,7 @@ In Hydro, certain APIs are restricted to only work on collections that are **gua
 In some cases, you may need to convert between bounded and unbounded collections. Converting from a bounded collection **to an unbounded collection** is always allowed and safe, since it relaxes the guarantees on the collection. This can be done by calling `.into()` on the collection.
 
 ```rust,no_run
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
 # let flow = FlowBuilder::new();
 # let process = flow.process::<()>();
@@ -23,7 +23,7 @@ let unbounded: Stream<_, _, Unbounded> = input.into();
 ```
 
 ```rust,no_run
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
 # let flow = FlowBuilder::new();
 # let process = flow.process::<()>();
@@ -35,7 +35,7 @@ let unbounded: Singleton<_, _, Unbounded> = input.into();
 Converting from an unbounded collection **to a bounded collection**, however is more complex. This requires cutting off the unbounded collection at a specific point in time, which may not be possible to do deterministically. For example, the most common way to convert an unbounded `Stream` to a bounded one is to batch its elements non-deterministically using `.batch()`. Because this is non-deterministic, this API requires a [non-determinism guard](./determinism.md#unsafe-operations-in-hydro).
 
 ```rust,no_run
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
 # let flow = FlowBuilder::new();
 # let process = flow.process::<()>();

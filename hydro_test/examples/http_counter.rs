@@ -2,10 +2,9 @@ use clap::Parser;
 use dfir_rs::tokio_util::codec::LinesCodec;
 use hydro_deploy::Deployment;
 use hydro_deploy::custom_service::ServerPort;
-use hydro_lang::Location;
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::graph::config::GraphConfig;
-use hydro_lang::location::NetworkHint;
+use hydro_lang::location::{Location, NetworkHint};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -17,7 +16,7 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let mut deployment = Deployment::new();
-    let flow = hydro_lang::FlowBuilder::new();
+    let flow = hydro_lang::builder::FlowBuilder::new();
 
     let process = flow.process::<()>();
     let external = flow.external::<()>();

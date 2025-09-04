@@ -1,7 +1,6 @@
-use hydro_lang::builder::RewriteIrFlowBuilder;
+use hydro_lang::builder::{FlowBuilder, RewriteIrFlowBuilder};
 use hydro_lang::ir::{HydroIrMetadata, HydroNode, HydroRoot, deep_clone};
-use hydro_lang::location::LocationId;
-use hydro_lang::{Cluster, FlowBuilder, Location};
+use hydro_lang::location::{Cluster, Location, LocationId};
 use serde::{Deserialize, Serialize};
 use syn::visit_mut::{self, VisitMut};
 
