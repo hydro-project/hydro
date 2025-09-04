@@ -1,5 +1,6 @@
+use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 use hydro_std::bench_client::{bench_client, print_bench_results};
 use hydro_std::quorum::collect_quorum;
 
@@ -148,11 +149,11 @@ mod tests {
 
     #[cfg(stageleft_runtime)]
     fn create_paxos<'a>(
-        proposers: &hydro_lang::Cluster<'a, crate::cluster::paxos::Proposer>,
-        acceptors: &hydro_lang::Cluster<'a, crate::cluster::paxos::Acceptor>,
-        clients: &hydro_lang::Cluster<'a, super::Client>,
-        client_aggregator: &hydro_lang::Process<'a, super::Aggregator>,
-        replicas: &hydro_lang::Cluster<'a, crate::cluster::kv_replica::Replica>,
+        proposers: &hydro_lang::location::Cluster<'a, crate::cluster::paxos::Proposer>,
+        acceptors: &hydro_lang::location::Cluster<'a, crate::cluster::paxos::Acceptor>,
+        clients: &hydro_lang::location::Cluster<'a, super::Client>,
+        client_aggregator: &hydro_lang::location::Process<'a, super::Aggregator>,
+        replicas: &hydro_lang::location::Cluster<'a, crate::cluster::kv_replica::Replica>,
     ) {
         super::paxos_bench(
             100,
@@ -177,7 +178,7 @@ mod tests {
 
     #[test]
     fn paxos_ir() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
         let clients = builder.cluster();
@@ -228,7 +229,7 @@ mod tests {
 
     #[tokio::test]
     async fn paxos_some_throughput() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
         let clients = builder.cluster();
