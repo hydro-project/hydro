@@ -1,4 +1,4 @@
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 
 pub struct Leader {}
 pub struct Worker {}
@@ -50,7 +50,7 @@ mod tests {
 
     #[test]
     fn map_reduce_ir() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let _ = super::map_reduce(&builder);
         let built = builder.with_default_optimize::<HydroDeploy>();
 
