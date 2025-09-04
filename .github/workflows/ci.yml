@@ -117,6 +117,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           commit-message: "chore: update nightly snapshots"
+          author: hydro-project-bot[bot] <132423234+hydro-project-bot[bot]@users.noreply.github.com>
           title: "chore: update nightly snapshots"
           body: |
             [ci-full]
