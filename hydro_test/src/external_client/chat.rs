@@ -8,6 +8,8 @@ use hydro_lang::*;
 use hydro_std::membership::track_membership;
 use palette::{FromColor, Hsv, Srgb};
 
+pub struct ChatServer {}
+
 fn hash_to_color<T: Hash>(input: T) -> Color {
     let mut hasher = DefaultHasher::new();
     input.hash(&mut hasher);
@@ -29,12 +31,12 @@ fn hash_to_color<T: Hash>(input: T) -> Color {
 // `CLICOLOR_FORCE=1`. By default, the `colored` crate only applies color
 // when the output is a terminal, to avoid issues with terminals that do
 // not support color.
-pub fn chat_server<'a, P>(
-    process: &Process<'a, P>,
-    in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded>,
-    membership: KeyedStream<u64, MembershipEvent, Process<'a, P>, Unbounded>,
+pub fn chat_server<'a>(
+    process: &Process<'a, ChatServer>,
+    in_stream: KeyedStream<u64, String, Process<'a, ChatServer>, Unbounded>,
+    membership: KeyedStream<u64, MembershipEvent, Process<'a, ChatServer>, Unbounded>,
     nondet_user_arrival_broadcast: NonDet,
-) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, NoOrder> {
+) -> KeyedStream<u64, String, Process<'a, ChatServer>, Unbounded, NoOrder> {
     let current_members = track_membership(membership);
 
     let tick = process.tick();

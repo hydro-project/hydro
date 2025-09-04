@@ -4,6 +4,7 @@ use hydro_deploy::Deployment;
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::graph_util::GraphConfig;
 use hydro_lang::{Location, NetworkHint, nondet};
+use hydro_test::external_client::chat::ChatServer;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -17,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut deployment = Deployment::new();
     let flow = hydro_lang::FlowBuilder::new();
 
-    let process = flow.process::<()>();
+    let process = flow.process::<ChatServer>();
     let external = flow.external::<()>();
 
     let (port, input, membership, output_ref) =

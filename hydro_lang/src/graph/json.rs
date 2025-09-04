@@ -340,12 +340,22 @@ where
         // Convert edge properties to a JSON array
         let properties: Vec<String> = edge_properties.iter().map(|p| format!("{:?}", p)).collect();
 
+        let mut semantic_tags = properties.clone();
+        // Add Network tag if edge crosses locations
+        let src_loc = self.node_locations.get(&src_id);
+        let dst_loc = self.node_locations.get(&dst_id);
+        if let (Some(src), Some(dst)) = (src_loc, dst_loc) {
+            if src != dst && !semantic_tags.contains(&"Network".to_string()) {
+                semantic_tags.push("Network".to_string());
+            }
+        }
+
         let mut edge = serde_json::json!({
             "id": edge_id,
             "source": src_id.to_string(),
             "target": dst_id.to_string(),
             "edgeProperties": properties,
-            "semanticTags": properties, // For backward compatibility with visualizer
+            "semanticTags": semantic_tags,
         });
 
         if let Some(label_text) = label {
@@ -565,8 +575,8 @@ impl<W> HydroJson<W> {
 
         // Process each node's backtrace using the stored backtraces
         for node in &self.nodes {
-            if let Some(node_id_str) = node["id"].as_str() {
-                if let Ok(node_id) = node_id_str.parse::<usize>() {
+            if let Some(node_id_str) = node["id"].as_str()
+                && let Ok(node_id) = node_id_str.parse::<usize>() {
                     if let Some(backtrace) = self.node_backtraces.get(&node_id) {
                         let elements = backtrace.elements();
 
@@ -648,8 +658,6 @@ impl<W> HydroJson<W> {
                     }
                 }
             }
-        }
-
         // Build hierarchy tree and create proper ID mapping
         let (hierarchy, path_to_id_map) = self.build_hierarchy_tree_with_ids(&hierarchy_map);
 
@@ -663,7 +671,6 @@ impl<W> HydroJson<W> {
                 }
             }
         }
-
         (hierarchy, node_assignments)
     }
 

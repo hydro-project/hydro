@@ -201,6 +201,7 @@ function HydroscopePage() {
             initialLayoutAlgorithm="mrtree"
             initialColorPalette="Set3"
             onFileUpload={handleFileUpload}
+            generatedFilePath={filePath}
             style={{ 
               height: '100%',
               width: '100%',
