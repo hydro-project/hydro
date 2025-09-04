@@ -23,9 +23,11 @@ use stageleft::{QuotedWithContext, RuntimeData};
 use syn::parse_quote;
 use tokio::sync::RwLock;
 
+use super::deploy_runtime::*;
 use super::trybuild::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
-use super::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort};
-use crate::deploy_runtime::*;
+use crate::builder::deploy_provider::{
+    ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
+};
 use crate::location::NetworkHint;
 use crate::staging_util::get_this_crate;
 
@@ -1051,16 +1053,20 @@ fn create_trybuild_service(
     }
 
     ret = ret.features(
-        trybuild
-            .additional_hydro_features
+        vec!["hydro___feature_deploy_integration".to_string()]
             .into_iter()
-            .map(|runtime_feature| {
-                assert!(
-                    HYDRO_RUNTIME_FEATURES.iter().any(|f| f == &runtime_feature),
-                    "{runtime_feature} is not a valid Hydro runtime feature"
-                );
-                format!("hydro___feature_{runtime_feature}")
-            })
+            .chain(
+                trybuild
+                    .additional_hydro_features
+                    .into_iter()
+                    .map(|runtime_feature| {
+                        assert!(
+                            HYDRO_RUNTIME_FEATURES.iter().any(|f| f == &runtime_feature),
+                            "{runtime_feature} is not a valid Hydro runtime feature"
+                        );
+                        format!("hydro___feature_{runtime_feature}")
+                    }),
+            )
             .chain(trybuild.features),
     );
 

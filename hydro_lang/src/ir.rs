@@ -24,7 +24,7 @@ use syn::visit_mut::VisitMut;
 #[cfg(stageleft_runtime)]
 use crate::backtrace::Backtrace;
 #[cfg(feature = "build")]
-use crate::deploy::{Deploy, RegisterPort};
+use crate::builder::deploy_provider::{Deploy, RegisterPort};
 use crate::location::{LocationId, NetworkHint};
 
 /// Debug displays the type's tokens.
