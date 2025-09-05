@@ -342,7 +342,7 @@ where
 
 /// Create ReactFlow JSON from Hydro IR with type names
 pub fn hydro_ir_to_reactflow(
-    ir: &[crate::ir::HydroRoot],
+    ir: &[crate::builder::ir::HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
@@ -365,7 +365,7 @@ pub fn hydro_ir_to_reactflow(
 
 /// Open ReactFlow visualization in browser using the consolidated debug utilities
 pub fn open_reactflow_browser(
-    ir: &[crate::ir::HydroRoot],
+    ir: &[crate::builder::ir::HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
@@ -383,7 +383,7 @@ pub fn open_reactflow_browser(
 
 /// Save ReactFlow JSON to file using the consolidated debug utilities
 pub fn save_reactflow_json(
-    ir: &[crate::ir::HydroRoot],
+    ir: &[crate::builder::ir::HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
