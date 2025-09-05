@@ -9,7 +9,7 @@ use hydro_lang::builder::{FlowBuilder, RewriteIrFlowBuilder};
 use hydro_lang::deploy::HydroDeploy;
 use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
 use hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
-use hydro_lang::location::LocationId;
+use hydro_lang::location::dynamic::LocationId;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::decouple_analysis::decouple_analysis;
