@@ -82,7 +82,7 @@ mod tests {
     use hydro_deploy::Deployment;
     use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy};
     use hydro_lang::location::{Location, MemberId};
-    use hydro_lang::rewrites::persist_pullup;
+    use hydro_lang::builder::rewrites::persist_pullup;
     use hydro_optimize::partitioner::{self, Partitioner};
     use stageleft::q;
 
