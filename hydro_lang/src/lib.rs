@@ -43,8 +43,8 @@ pub mod prelude {
 
     pub use stageleft::q;
 
-    pub use crate::boundedness::{Bounded, Unbounded};
     pub use crate::builder::FlowBuilder;
+    pub use crate::live_collections::boundedness::{Bounded, Unbounded};
     pub use crate::live_collections::keyed_singleton::KeyedSingleton;
     pub use crate::live_collections::keyed_stream::KeyedStream;
     pub use crate::live_collections::optional::Optional;
@@ -60,9 +60,6 @@ pub mod prelude {
 pub mod runtime_context;
 
 pub mod nondet;
-
-#[expect(missing_docs, reason = "TODO")]
-pub mod boundedness;
 
 #[expect(missing_docs, reason = "TODO")]
 pub mod live_collections;
