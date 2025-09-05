@@ -277,7 +277,7 @@ mod tests {
     use hydro_lang::builder::{FlowBuilder, ir};
     use hydro_lang::location::Location;
     use hydro_lang::nondet::nondet;
-    use hydro_lang::rewrites::persist_pullup::persist_pullup;
+    use hydro_lang::builder::rewrites::persist_pullup::persist_pullup;
     use stageleft::q;
 
     use crate::debug::name_to_id_map;

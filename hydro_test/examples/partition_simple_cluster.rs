@@ -18,7 +18,7 @@ use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::graph::config::GraphConfig;
 use hydro_lang::location::Location;
-use hydro_lang::rewrites::persist_pullup;
+use hydro_lang::builder::rewrites::persist_pullup;
 use hydro_optimize::partitioner::{self, Partitioner};
 use tokio::sync::RwLock;
 
