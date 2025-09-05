@@ -9,7 +9,8 @@ use hydro_lang::builder::ir::{
 use hydro_lang::live_collections::stream::networking::{
     deserialize_bincode_with_type, serialize_bincode_with_type,
 };
-use hydro_lang::location::{LocationId, MemberId};
+use hydro_lang::location::MemberId;
+use hydro_lang::location::dynamic::LocationId;
 use proc_macro2::Span;
 use serde::{Deserialize, Serialize};
 use stageleft::quote_type;

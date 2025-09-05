@@ -1,3 +1,18 @@
+//! Type definitions for distributed locations, which specify where pieces of a Hydro
+//! program will be executed.
+//!
+//! Hydro is a **global**, **distributed** programming model. This means that the data
+//! and computation in a Hydro program can be spread across multiple machines, data
+//! centers, and even continents. To achieve this, Hydro uses the concept of
+//! **locations** to keep track of _where_ data is located and computation is executed.
+//!
+//! Each live collection type (in [`crate::live_collections`]) has a type parameter `L`
+//! which will always be a type that implements the [`Location`] trait (e.g. [`Process`]
+//! and [`Cluster`]). To create distributed programs, Hydro provides a variety of APIs
+//! to allow live collections to be _moved_ between locations via network send/receive.
+//!
+//! See [the Hydro docs](https://hydro.run/docs/hydro/locations/) for more information.
+
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::time::Duration;
@@ -11,108 +26,73 @@ use stageleft::{QuotedWithContext, q, quote_type};
 use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-use super::builder::FlowState;
-use crate::builder::ir::backtrace::Backtrace;
-use crate::builder::ir::{
-    DebugInstantiate, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
-};
+use crate::builder::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource};
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
 use crate::live_collections::boundedness::Unbounded;
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::location::cluster::ClusterIds;
+use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many,
 };
 use crate::nondet::{NonDet, nondet};
 use crate::staging_util::get_this_crate;
 
+pub mod dynamic;
+
+#[expect(missing_docs, reason = "TODO")]
 pub mod external_process;
 pub use external_process::External;
 
+#[expect(missing_docs, reason = "TODO")]
 pub mod process;
 pub use process::Process;
 
+#[expect(missing_docs, reason = "TODO")]
 pub mod cluster;
 pub use cluster::Cluster;
 
+#[expect(missing_docs, reason = "TODO")]
 pub mod member_id;
 pub use member_id::MemberId;
 
+#[expect(missing_docs, reason = "TODO")]
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
 
-#[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
-pub enum LocationId {
-    Process(usize),
-    Cluster(usize),
-    Tick(usize, Box<LocationId>),
-}
-
+#[expect(missing_docs, reason = "TODO")]
 #[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum MembershipEvent {
     Joined,
     Left,
 }
 
-impl LocationId {
-    pub fn root(&self) -> &LocationId {
-        match self {
-            LocationId::Process(_) => self,
-            LocationId::Cluster(_) => self,
-            LocationId::Tick(_, id) => id.root(),
-        }
-    }
-
-    pub fn is_root(&self) -> bool {
-        match self {
-            LocationId::Process(_) | LocationId::Cluster(_) => true,
-            LocationId::Tick(_, _) => false,
-        }
-    }
-
-    pub fn raw_id(&self) -> usize {
-        match self {
-            LocationId::Process(id) => *id,
-            LocationId::Cluster(id) => *id,
-            LocationId::Tick(_, _) => panic!("cannot get raw id for tick"),
-        }
-    }
-
-    pub fn swap_root(&mut self, new_root: LocationId) {
-        match self {
-            LocationId::Tick(_, id) => {
-                id.swap_root(new_root);
-            }
-            _ => {
-                assert!(new_root.is_root());
-                *self = new_root;
-            }
-        }
-    }
-}
-
-pub fn check_matching_location<'a, L: Location<'a>>(l1: &L, l2: &L) {
-    assert_eq!(l1.id(), l2.id(), "locations do not match");
-}
-
+#[expect(missing_docs, reason = "TODO")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NetworkHint {
     Auto,
     TcpPort(Option<u16>),
 }
 
-pub trait Location<'a>: Clone {
+pub(crate) fn check_matching_location<'a, L: Location<'a>>(l1: &L, l2: &L) {
+    assert_eq!(Location::id(l1), Location::id(l2), "locations do not match");
+}
+
+#[expect(missing_docs, reason = "TODO")]
+#[expect(
+    private_bounds,
+    reason = "only internal Hydro code can define location types"
+)]
+pub trait Location<'a>: dynamic::DynLocation {
     type Root: Location<'a>;
 
     fn root(&self) -> Self::Root;
 
-    fn id(&self) -> LocationId;
-
-    fn flow_state(&self) -> &FlowState;
-
-    fn is_top_level() -> bool;
+    fn id(&self) -> LocationId {
+        dynamic::DynLocation::id(self)
+    }
 
     fn tick(&self) -> Tick<Self>
     where
@@ -123,28 +103,6 @@ pub trait Location<'a>: Clone {
         Tick {
             id: next_id,
             l: self.clone(),
-        }
-    }
-
-    fn next_node_id(&self) -> usize {
-        let next_id = self.flow_state().borrow_mut().next_node_id;
-        self.flow_state().borrow_mut().next_node_id += 1;
-        next_id
-    }
-
-    #[inline(never)]
-    fn new_node_metadata<T>(&self) -> HydroIrMetadata {
-        HydroIrMetadata {
-            location_kind: self.id(),
-            output_type: Some(quote_type::<T>().into()),
-            cardinality: None,
-            tag: None,
-            op: HydroIrOpMetadata {
-                backtrace: Backtrace::get_backtrace(2),
-                cpu_usage: None,
-                network_recv_cpu_usage: None,
-                id: None,
-            },
         }
     }
 
@@ -636,7 +594,7 @@ pub trait Location<'a>: Clone {
             ForwardRef {
                 completed: false,
                 ident: ident.clone(),
-                expected_location: self.id(),
+                expected_location: Location::id(self),
                 _phantom: PhantomData,
             },
             S::create_source(ident, self.clone()),
