@@ -3,10 +3,10 @@ use std::marker::PhantomData;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
+use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
 use super::stream::{ExactlyOnce, MinOrder, MinRetries, NoOrder, Stream, TotalOrder};
-use crate::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::builder::ir::HydroNode;
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::location::tick::NoAtomic;
