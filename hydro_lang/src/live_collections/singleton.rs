@@ -5,9 +5,9 @@ use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
+use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::optional::Optional;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 use crate::cycle::{
