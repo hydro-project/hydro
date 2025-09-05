@@ -568,7 +568,7 @@ where
     /// A variant of [`Stream::fold`], intended for keyed streams. The aggregation is executed in-order across the values
     /// in each group. But the aggregation function returns a boolean, which when true indicates that the aggregated
     /// result is complete and can be released to downstream computation. Unlike [`Stream::fold_keyed`], this means that
-    /// even if the input stream is [`crate::boundedness::Unbounded`], the outputs of the fold can be processed like normal stream elements.
+    /// even if the input stream is [`super::boundedness::Unbounded`], the outputs of the fold can be processed like normal stream elements.
     ///
     /// # Example
     /// ```rust
