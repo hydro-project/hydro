@@ -1,0 +1,5 @@
+---
+source: hydro_lang/src/builder/ir/mod.rs
+expression: result.to_token_stream().to_string()
+---
+| x : usize | x + 1

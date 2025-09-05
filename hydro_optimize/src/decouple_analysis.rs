@@ -6,7 +6,9 @@ use good_lp::{
     Constraint, Expression, ProblemVariables, Solution, SolverModel, Variable, constraint, microlp,
     variable, variables,
 };
-use hydro_lang::ir::{HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, traverse_dfir};
+use hydro_lang::builder::ir::{
+    HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, traverse_dfir,
+};
 use hydro_lang::location::LocationId;
 
 use super::rewrites::{NetworkType, get_network_type, relevant_inputs};

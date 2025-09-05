@@ -7,7 +7,10 @@ use std::pin::Pin;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::{FlowBuilder, Process, Stream, Unbounded};
+use crate::builder::FlowBuilder;
+use crate::live_collections::boundedness::Unbounded;
+use crate::live_collections::stream::Stream;
+use crate::location::Process;
 
 /// Sets up a test with multiple processes / clusters declared in the test logic (`thunk`). The test logic must return
 /// a single streaming output, which can then be read in `check` (an async closure) to perform assertions.
