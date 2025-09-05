@@ -12,7 +12,7 @@ use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 use super::builder::FlowState;
-use crate::backtrace::Backtrace;
+use crate::ir::backtrace::Backtrace;
 use crate::boundedness::Unbounded;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
 use crate::ir::{
