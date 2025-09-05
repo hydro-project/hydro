@@ -1,5 +1,5 @@
-use hydro_lang::*;
-use location::external_process::ExternalBincodeSink;
+use hydro_lang::location::external_process::ExternalBincodeSink;
+use hydro_lang::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -35,7 +35,7 @@ mod tests {
 
     #[test]
     fn first_ten_distributed_ir() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external();
         let p1 = builder.process();
         let p2 = builder.process();
@@ -48,7 +48,7 @@ mod tests {
     async fn first_ten_distributed() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external();
         let p1 = builder.process();
         let p2 = builder.process();

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 
 pub struct Worker {}
 pub struct Leader {}
@@ -55,16 +55,16 @@ pub fn compute_pi<'a>(
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::Location;
+    use hydro_lang::builder::rewrites::persist_pullup;
     use hydro_lang::deploy::HydroDeploy;
-    use hydro_lang::rewrites::persist_pullup;
+    use hydro_lang::location::Location;
     use hydro_optimize::decoupler;
 
     struct DecoupledCluster {}
 
     #[test]
     fn compute_pi_ir() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let _ = super::compute_pi(&builder, 8192);
         let built = builder.with_default_optimize::<HydroDeploy>();
 
@@ -81,7 +81,7 @@ mod tests {
 
     #[test]
     fn decoupled_compute_pi_ir() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let (cluster, _) = super::compute_pi(&builder, 8192);
         let decoupled_cluster = builder.cluster::<DecoupledCluster>();
         let decoupler = decoupler::Decoupler {

@@ -22,10 +22,10 @@ Much existing literature in distributed systems focuses on data consistency leve
 ## Unsafe Operations in Hydro
 All **safe** APIs in Hydro (the ones you can call regularly in Rust) guarantee determinism. But often it is necessary to do something non-deterministic, like generate events at a fixed wall-clock-time interval, or split an input into arbitrarily sized batches.
 
-These non-deterministic APIs take additional paramters called **non-determinism guards**. These values, with type `NonDep`, help you reason about how non-determinism affects your application. To pass a non-determinism guard, you must invoke `nondet!()` with an explanation for how the non-determinism affects the application. If the non-determinism is never exposed outside the function, or if it appears at the root of your application (and thus is documented in the service guarantees), you should use `nondet!()` with only a single parameter containing the explanation.
+These non-deterministic APIs take additional parameters called **non-determinism guards**. These values, with type `NonDet`, help you reason about how non-determinism affects your application. To pass a non-determinism guard, you must invoke `nondet!()` with an explanation for how the non-determinism affects the application. If the non-determinism is never exposed outside the function, or if it appears at the root of your application (and thus is documented in the service guarantees), you should use `nondet!()` with only a single parameter containing the explanation.
 
 ```rust,no_run
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 use std::time::Duration;
 
 fn singleton_with_delay<T, L>(
@@ -42,16 +42,16 @@ When writing a function with Hydro that involves non-deterministic APIs, it is i
 If the outputs of your code are non-deterministic, you should take non-determinism guards and document this behavior in the Rustdoc. Then, when invoking APIs whose non-determinism propagates to the outputs of your code, you should use `nondet!` passing in an explanation as well the relevant guard parameter.
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 use std::fmt::Debug;
 use std::time::Duration;
 
 /// ...
 ///
 /// # Non-Determinism
-/// This function will non-deterministically print elements
-/// from the stream according to a timer.
-unsafe fn print_samples<T: Debug, L>(
+/// - `nondet_samples`: this function will non-deterministically print elements
+///   from the stream according to a timer
+fn print_samples<T: Debug, L>(
   stream: Stream<T, Process<L>, Unbounded>,
   nondet_samples: NonDet
 ) {
