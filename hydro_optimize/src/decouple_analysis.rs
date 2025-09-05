@@ -9,7 +9,7 @@ use good_lp::{
 use hydro_lang::builder::ir::{
     HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, traverse_dfir,
 };
-use hydro_lang::location::LocationId;
+use hydro_lang::location::dynamic::LocationId;
 
 use super::rewrites::{NetworkType, get_network_type, relevant_inputs};
 

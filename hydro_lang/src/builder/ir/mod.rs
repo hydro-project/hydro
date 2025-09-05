@@ -23,7 +23,8 @@ use syn::visit_mut::VisitMut;
 
 #[cfg(feature = "build")]
 use crate::builder::deploy_provider::{Deploy, RegisterPort};
-use crate::location::{LocationId, NetworkHint};
+use crate::location::NetworkHint;
+use crate::location::dynamic::LocationId;
 
 pub mod backtrace;
 use backtrace::Backtrace;

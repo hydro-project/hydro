@@ -9,8 +9,9 @@ use super::optional::Optional;
 use super::stream::{ExactlyOnce, MinOrder, MinRetries, NoOrder, Stream, TotalOrder};
 use crate::builder::ir::HydroNode;
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
+use crate::location::dynamic::LocationId;
 use crate::location::tick::NoAtomic;
-use crate::location::{Atomic, Location, LocationId, NoTick, Tick, check_matching_location};
+use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
