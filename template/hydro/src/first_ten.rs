@@ -1,4 +1,4 @@
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 
 pub fn first_ten(process: &Process) {
     process

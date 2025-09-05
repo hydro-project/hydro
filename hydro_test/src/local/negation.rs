@@ -1,4 +1,4 @@
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 
 pub fn test_difference<'a>(
     process: &Process<'a>,
@@ -86,7 +86,7 @@ pub fn test_anti_join<'a>(
 mod tests {
     use futures::{SinkExt, Stream, StreamExt};
     use hydro_deploy::Deployment;
-    use hydro_lang::Location;
+    use hydro_lang::location::Location;
 
     async fn take_next_n<T>(stream: &mut (impl Stream<Item = T> + Unpin), n: usize) -> Vec<T> {
         let mut out = Vec::with_capacity(n);
@@ -104,7 +104,7 @@ mod tests {
     async fn test_difference_tick_tick() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
@@ -135,7 +135,7 @@ mod tests {
     async fn test_difference_tick_static() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
@@ -166,7 +166,7 @@ mod tests {
     async fn test_difference_static_tick() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
@@ -201,7 +201,7 @@ mod tests {
     async fn test_difference_static_static() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
@@ -236,7 +236,7 @@ mod tests {
     async fn test_anti_join_tick_tick() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
@@ -267,7 +267,7 @@ mod tests {
     async fn test_anti_join_tick_static() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
@@ -298,7 +298,7 @@ mod tests {
     async fn test_anti_join_static_tick() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
@@ -333,7 +333,7 @@ mod tests {
     async fn test_anti_join_static_static() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 

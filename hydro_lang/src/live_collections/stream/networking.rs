@@ -5,16 +5,16 @@ use serde::de::DeserializeOwned;
 use stageleft::{q, quote_type};
 use syn::parse_quote;
 
-use crate::boundedness::Boundedness;
+use crate::boundedness::{Boundedness, Unbounded};
 use crate::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
-use crate::keyed_singleton::KeyedSingleton;
-use crate::keyed_stream::KeyedStream;
+use crate::live_collections::keyed_singleton::KeyedSingleton;
+use crate::live_collections::keyed_stream::KeyedStream;
+use crate::live_collections::stream::{ExactlyOnce, Stream, TotalOrder};
 use crate::location::external_process::ExternalBincodeStream;
 use crate::location::tick::NoAtomic;
-use crate::location::{MemberId, MembershipEvent, NoTick};
+use crate::location::{Cluster, External, Location, MemberId, MembershipEvent, NoTick, Process};
+use crate::nondet::{NonDet, nondet};
 use crate::staging_util::get_this_crate;
-use crate::stream::ExactlyOnce;
-use crate::{Cluster, External, Location, NonDet, Process, Stream, TotalOrder, Unbounded, nondet};
 
 // same as the one in `hydro_std`, but internal use only
 fn track_membership<'a, C, L: Location<'a> + NoTick + NoAtomic>(
