@@ -1,19 +1,19 @@
 //! Defines the `NonDet` type and `nondet!` macro for tracking non-determinism.
-//! 
+//!
 //! All **safe** APIs in Hydro guarantee determinism, even in the face of networking delays
 //! and concurrency across machines. But often it is necessary to do something non-deterministic,
 //! like generate events at a fixed wall-clock-time interval, or split an input into arbitrarily
 //! sized batches.
-//! 
+//!
 //! These non-deterministic APIs take additional parameters called **non-determinism guards**.
 //! These values, with type `NonDet`, help you reason about how non-determinism affects your
 //! application. To pass a non-determinism guard, you must invoke `nondet!()` with an explanation
 //! for how the non-determinism affects the application.
-//! 
+//!
 //! See the [Hydro docs](https://hydro.run/docs/hydro/live-collections/determinism) for more.
 
 /// A non-determinism guard, which documents how a source of non-determinism affects the application.
-/// 
+///
 /// To create a non-determinism guard, use the [`nondet!`] macro, which takes in a doc comment
 /// explaining the effects of the particular source of non-determinism, and additional
 /// non-determinism guards that justify the form of non-determinism.
@@ -33,13 +33,13 @@ pub use crate::__nondet__ as nondet;
 /// is not handled internally, you should provide a short explanation of how the
 /// inner non-determinism is captured by the outer one. If the non-determinism
 /// is locally resolved, you should document _why_ this is the case.
-/// 
+///
 /// # Examples
 /// Locally resolved non-determinism:
 /// ```rust,no_run
 /// # use hydro_lang::prelude::*;
 /// use std::time::Duration;
-/// 
+///
 /// fn singleton_with_delay<T, L>(
 ///   singleton: Singleton<T, Process<L>, Unbounded>
 /// ) -> Optional<T, Process<L>, Unbounded> {
@@ -50,7 +50,7 @@ pub use crate::__nondet__ as nondet;
 ///     .last()
 /// }
 /// ```
-/// 
+///
 /// Forwarded non-determinism:
 /// ```rust
 /// # use hydro_lang::prelude::*;

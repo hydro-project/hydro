@@ -42,8 +42,8 @@ mod tests {
 
     use dfir_lang::graph::WriteConfig;
     use hydro_deploy::Deployment;
+    use hydro_lang::builder::ir::deep_clone;
     use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy, TrybuildHost};
-    use hydro_lang::ir::deep_clone;
     use hydro_lang::location::Location;
     #[cfg(stageleft_runtime)]
     use hydro_lang::location::{Cluster, Process};
@@ -89,7 +89,7 @@ mod tests {
         create_two_pc(&coordinator, &participants, &clients, &client_aggregator);
         let built = builder.with_default_optimize::<HydroDeploy>();
 
-        hydro_lang::ir::dbg_dedup_tee(|| {
+        hydro_lang::builder::ir::dbg_dedup_tee(|| {
             hydro_build_utils::assert_debug_snapshot!(built.ir());
         });
 
