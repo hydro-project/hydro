@@ -27,7 +27,9 @@ use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 use crate::builder::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource};
-use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
+use crate::forward_handle::ForwardRef;
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, ForwardHandle};
 use crate::live_collections::boundedness::Unbounded;
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
@@ -284,7 +286,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         ExternalBytesPort<Many>,
         KeyedStream<u64, <Codec as Decoder>::Item, Self, Unbounded, TotalOrder, ExactlyOnce>,
         KeyedStream<u64, MembershipEvent, Self, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardRef<'a, KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>,
+        ForwardHandle<'a, KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>,
     )
     where
         Self: Sized + NoTick,
@@ -396,7 +398,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         ExternalBincodeBidi<InT, OutT, Many>,
         KeyedStream<u64, InT, Self, Unbounded, TotalOrder, ExactlyOnce>,
         KeyedStream<u64, MembershipEvent, Self, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardRef<'a, KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
+        ForwardHandle<'a, KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
     )
     where
         Self: Sized + NoTick,
@@ -582,16 +584,16 @@ pub trait Location<'a>: dynamic::DynLocation {
         )))
     }
 
-    fn forward_ref<S>(&self) -> (ForwardRef<'a, S>, S)
+    fn forward_ref<S>(&self) -> (ForwardHandle<'a, S>, S)
     where
-        S: CycleCollection<'a, ForwardRefMarker, Location = Self>,
+        S: CycleCollection<'a, ForwardRef, Location = Self>,
         Self: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
-            ForwardRef {
+            ForwardHandle {
                 completed: false,
                 ident: ident.clone(),
                 expected_location: Location::id(self),
