@@ -48,7 +48,7 @@ where
 /// Represents a forward reference in the graph that will be fulfilled
 /// by a stream that is not yet known.
 ///
-/// See [`crate::FlowBuilder`] for an explainer on the type parameters.
+/// See [`crate::builder::FlowBuilder`] for an explainer on the type parameters.
 pub struct ForwardRef<'a, Stream>
 where
     Stream: CycleComplete<'a, ForwardRefMarker>,

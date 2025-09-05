@@ -21,13 +21,14 @@ use syn::parse_quote;
 use syn::visit::{self, Visit};
 use syn::visit_mut::VisitMut;
 
-#[cfg(stageleft_runtime)]
-use crate::backtrace::Backtrace;
 #[cfg(feature = "build")]
 use crate::builder::deploy_provider::{Deploy, RegisterPort};
 use crate::location::{LocationId, NetworkHint};
 
-/// Debug displays the type's tokens.
+pub mod backtrace;
+use backtrace::Backtrace;
+
+/// Wrapper that displays only the tokens of a parsed expr.
 ///
 /// Boxes `syn::Type` which is ~240 bytes.
 #[derive(Clone, Hash)]

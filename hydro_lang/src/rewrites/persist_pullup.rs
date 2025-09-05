@@ -209,7 +209,7 @@ mod tests {
 
     use crate::deploy::HydroDeploy;
     use crate::location::Location;
-    use crate::nondet;
+    use crate::nondet::nondet;
 
     #[test]
     fn persist_pullup_through_map() {
