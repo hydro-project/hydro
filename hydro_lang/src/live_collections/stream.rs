@@ -15,8 +15,8 @@ use super::optional::Optional;
 use super::singleton::Singleton;
 use crate::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::builder::FLOW_USED_MESSAGE;
+use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
-use crate::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
@@ -2581,7 +2581,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn backtrace_chained_ops() {
-        use crate::ir::HydroRoot;
+        use crate::builder::ir::HydroRoot;
 
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
@@ -2591,7 +2591,7 @@ mod tests {
         let finalized: crate::builder::built::BuiltFlow<'_> = flow.finalize();
 
         let source_meta = if let HydroRoot::ForEach { input, .. } = &finalized.ir()[0] {
-            use crate::ir::HydroNode;
+            use crate::builder::ir::HydroNode;
 
             if let HydroNode::Unpersist { inner, .. } = input.as_ref() {
                 if let HydroNode::Persist { inner, .. } = inner.as_ref() {
