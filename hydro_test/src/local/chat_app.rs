@@ -1,5 +1,6 @@
-use hydro_lang::unsafety::NonDet;
-use hydro_lang::*;
+use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::nondet::NonDet;
+use hydro_lang::prelude::*;
 
 pub fn chat_app<'a>(
     process: &Process<'a>,
@@ -38,7 +39,8 @@ pub fn chat_app<'a>(
 mod tests {
     use futures::{SinkExt, Stream, StreamExt};
     use hydro_deploy::Deployment;
-    use hydro_lang::{Location, nondet};
+    use hydro_lang::location::Location;
+    use hydro_lang::nondet::nondet;
 
     async fn take_next_n<T>(stream: &mut (impl Stream<Item = T> + Unpin), n: usize) -> Vec<T> {
         let mut out = Vec::with_capacity(n);
@@ -56,7 +58,7 @@ mod tests {
     async fn test_chat_app_no_replay() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
@@ -121,7 +123,7 @@ mod tests {
     async fn test_chat_app_replay() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
