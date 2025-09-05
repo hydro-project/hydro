@@ -158,7 +158,7 @@ If each parent of `Chain` has different dependencies on the same input, what are
 
 Imagine `Chain` then joins with another stream, as in the following program.
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 fn chain_parents_same_input<'a, L>(
     flow: FlowBuilder<'a>,
     input1: Stream<(usize, usize), Process<'a, L>, Unbounded>,
@@ -194,7 +194,7 @@ The two tuples of `input1` both need to join with the single tuple of `input2`, 
 
 Imagine `Chain` then joins with another stream, as in the following program.
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 fn chain_parents_different_inputs<'a, L>(
     flow: FlowBuilder<'a>,
     input1: Stream<(usize, usize), Process<'a, L>, Unbounded>,

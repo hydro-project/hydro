@@ -2,17 +2,16 @@ use std::hash::Hash;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
-use crate::boundedness::Boundedness;
+use super::keyed_stream::KeyedStream;
+use super::optional::Optional;
+use super::singleton::Singleton;
+use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
+use crate::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::location::tick::NoAtomic;
-use crate::location::{Atomic, LocationId, NoTick};
+use crate::location::{Atomic, Location, LocationId, NoTick, Tick};
 use crate::manual_expr::ManualExpr;
-use crate::stream::ExactlyOnce;
-use crate::unsafety::NonDet;
-use crate::{
-    Bounded, KeyedStream, Location, NoOrder, Optional, Singleton, Stream, Tick, TotalOrder,
-    Unbounded, nondet,
-};
+use crate::nondet::{NonDet, nondet};
 
 pub trait KeyedSingletonBound {
     type UnderlyingBound: Boundedness;
@@ -228,9 +227,9 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let keyed_data = process
     ///     .source_iter(q!(vec![(1, 2), (2, 3)]))
@@ -259,9 +258,9 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let keyed_data = process
     ///     .source_iter(q!(vec![(1, 10), (2, 20)]))
