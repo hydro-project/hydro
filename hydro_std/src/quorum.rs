@@ -55,7 +55,8 @@ pub fn collect_quorum_with_response<
 
         current_responses.anti_join(not_reached_min_count)
     } else {
-        let (min_but_not_max_complete_cycle, min_but_not_max) = tick.cycle();
+        let (min_but_not_max_complete_cycle, min_but_not_max) =
+            tick.cycle::<Stream<K, Tick<L>, Bounded, NoOrder>>();
 
         let received_from_all = count_per_key
             .filter(q!(move |(success, error)| (success + error) >= max))
