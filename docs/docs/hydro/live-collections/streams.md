@@ -16,9 +16,9 @@ Streams have several type parameters:
 The simplest way to create a stream is to use [`Location::source_iter`](https://hydro.run/rustdoc/hydro_lang/location/trait.Location#method.source_iter), which creates a stream from any Rust type that can be converted into an [`Iterator`](https://doc.rust-lang.org/beta/std/iter/trait.Iterator.html) (via [`IntoIterator`](https://doc.rust-lang.org/std/iter/trait.IntoIterator.html)). For example, we can create a stream of integers on a [process](../locations/processes) and transform it:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::multi_location_test(|flow, p_out| {
+# tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
 let process = flow.process::<()>();
 let numbers: Stream<_, Process<_>, Unbounded> = process
     .source_iter(q!(vec![1, 2, 3]))
@@ -35,9 +35,9 @@ let numbers: Stream<_, Process<_>, Unbounded> = process
 Streams also can be sent over the network to participate in distributed programs. Under the hood, sending a stream sets up an RPC handler at the target location that will receive the stream elements. For example, we can send a stream of integers from one process to another with [bincode](https://docs.rs/bincode/latest/bincode/) serialization:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::multi_location_test(|flow, p_out| {
+# tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
 let p1 = flow.process::<()>();
 let numbers: Stream<_, Process<_>, Unbounded> = p1.source_iter(q!(vec![1, 2, 3]));
 let p2 = flow.process::<()>();
@@ -59,8 +59,9 @@ To track this behavior, stream have an `Order` type parameter that indicates whe
 If we send a stream from a cluster to a process and flatten the values across senders (with `.values()`), the return type will be a stream with `NoOrder`:
 
 ```rust,no_run
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # let flow = FlowBuilder::new();
+use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
 let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, Unbounded, TotalOrder> =
     workers.source_iter(q!(vec![1, 2, 3]));
@@ -74,7 +75,7 @@ The ordering of a stream determines which APIs are available on it. For example,
 A particularly common API that faces this restriction is [`fold`](pathname:///rustdoc/hydro_lang/stream/struct.Stream#method.fold) (and [`reduce`](pathname:///rustdoc/hydro_lang/stream/struct.Stream#method.reduce)). These APIs require the stream to have a deterministic order, since the result may depend on the order of elements. For example, the following code will not compile because `fold` is not available on `NoOrder` streams (note that the error is a bit misleading due to the Rust compiler attempting to apply `Iterator` methods):
 
 ```compile_fail
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # let flow = FlowBuilder::new();
 let workers: Cluster<()> = flow.cluster::<()>();
 let process: Process<()> = flow.process::<()>();
@@ -100,12 +101,12 @@ Running an aggregation (`fold`, `reduce`) converts a `Stream` into a `Singleton`
 To perform an aggregation with an unordered stream, you must use [`fold_commutative`](pathname:///rustdoc/hydro_lang/stream/struct.Stream#method.fold_commutative), which requires the provided closure to be commutative (and therefore immune to non-deterministic ordering):
 
 ```rust,no_run
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
 # let flow = FlowBuilder::new();
 # let workers = flow.cluster::<()>();
 # let process = flow.process::<()>();
-# let all_words: Stream<_, Process<_>, _, NoOrder> = workers
+# let all_words: Stream<_, Process<_>, _, hydro_lang::live_collections::stream::NoOrder> = workers
 #     .source_iter(q!(vec!["hello", "world"]))
 #     .map(q!(|x| x.to_string()))
 #     .send_bincode(&process)

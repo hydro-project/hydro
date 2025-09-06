@@ -3,9 +3,9 @@ use std::sync::Arc;
 
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
-use hydro_lang::Location;
+use hydro_lang::builder::rewrites::persist_pullup::persist_pullup;
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::rewrites::persist_pullup::persist_pullup;
+use hydro_lang::location::Location;
 use hydro_optimize::partition_node_analysis::{nodes_to_partition, partitioning_analysis};
 use hydro_optimize::partitioner::{Partitioner, partition};
 use hydro_optimize::repair::{cycle_source_to_sink_input, inject_id, inject_location};
@@ -37,7 +37,7 @@ async fn main() {
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let builder = hydro_lang::FlowBuilder::new();
+    let builder = hydro_lang::builder::FlowBuilder::new();
     let num_participants = 3;
     let num_partitions = 3;
     let num_clients = 3;

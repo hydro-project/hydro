@@ -15,10 +15,10 @@ struct Args {
 }
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
-use hydro_lang::Location;
+use hydro_lang::builder::rewrites::persist_pullup;
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::graph::config::GraphConfig;
-use hydro_lang::rewrites::persist_pullup;
+use hydro_lang::location::Location;
 use hydro_optimize::partitioner::{self, Partitioner};
 use tokio::sync::RwLock;
 
@@ -55,7 +55,7 @@ async fn main() {
         )
     };
 
-    let builder = hydro_lang::FlowBuilder::new();
+    let builder = hydro_lang::builder::FlowBuilder::new();
     let (process, cluster) = hydro_test::cluster::simple_cluster::simple_cluster(&builder);
 
     let num_original_nodes = 2;
