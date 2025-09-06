@@ -8,7 +8,9 @@ use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
 use super::stream::{ExactlyOnce, MinOrder, MinRetries, NoOrder, Stream, TotalOrder};
 use crate::builder::ir::HydroNode;
-use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
+use crate::forward_handle::ForwardRef;
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::location::dynamic::LocationId;
 use crate::location::tick::NoAtomic;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
@@ -57,7 +59,7 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order, Retri
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRefMarker>
+impl<'a, K, V, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRef>
     for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
@@ -69,7 +71,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, O, R> CycleComplete<'a, ForwardRefMarker>
+impl<'a, K, V, L, B: Boundedness, O, R> ReceiverComplete<'a, ForwardRef>
     for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
