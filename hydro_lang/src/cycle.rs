@@ -1,6 +1,7 @@
 use sealed::sealed;
 
-use crate::location::{Location, LocationId};
+use crate::location::Location;
+use crate::location::dynamic::LocationId;
 use crate::staging_util::Invariant;
 
 #[sealed]
@@ -48,7 +49,7 @@ where
 /// Represents a forward reference in the graph that will be fulfilled
 /// by a stream that is not yet known.
 ///
-/// See [`crate::FlowBuilder`] for an explainer on the type parameters.
+/// See [`crate::builder::FlowBuilder`] for an explainer on the type parameters.
 pub struct ForwardRef<'a, Stream>
 where
     Stream: CycleComplete<'a, ForwardRefMarker>,

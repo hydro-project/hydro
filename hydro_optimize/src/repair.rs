@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use hydro_lang::ir::{HydroNode, HydroRoot, transform_bottom_up, traverse_dfir};
-use hydro_lang::location::LocationId;
+use hydro_lang::builder::ir::{HydroNode, HydroRoot, transform_bottom_up, traverse_dfir};
+use hydro_lang::location::dynamic::LocationId;
 use syn::Ident;
 
 fn inject_id_root(root: &mut HydroRoot, next_stmt_id: &mut usize) {

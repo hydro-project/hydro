@@ -50,7 +50,7 @@ async fn main() {
         )
     };
 
-    let builder = hydro_lang::FlowBuilder::new();
+    let builder = hydro_lang::builder::FlowBuilder::new();
     let external = builder.external();
     let p1 = builder.process();
     let p2 = builder.process();

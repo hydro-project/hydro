@@ -2,7 +2,7 @@ use dfir_rs::scheduled::context::Context;
 use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
 
-use crate::Location;
+use crate::location::Location;
 
 pub static RUNTIME_CONTEXT: RuntimeContext = RuntimeContext { _private: &() };
 
@@ -29,9 +29,11 @@ where
 mod tests {
     use futures::StreamExt;
     use hydro_deploy::Deployment;
+    use stageleft::q;
 
     use super::RUNTIME_CONTEXT;
-    use crate::*;
+    use crate::builder::FlowBuilder;
+    use crate::location::Location;
 
     struct P1 {}
 
