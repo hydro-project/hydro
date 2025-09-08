@@ -43,11 +43,11 @@ mod tests {
     use dfir_lang::graph::WriteConfig;
     use hydro_deploy::Deployment;
     use hydro_lang::builder::ir::deep_clone;
+    use hydro_lang::builder::rewrites::persist_pullup::persist_pullup;
     use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy, TrybuildHost};
     use hydro_lang::location::Location;
     #[cfg(stageleft_runtime)]
     use hydro_lang::location::{Cluster, Process};
-    use hydro_lang::rewrites::persist_pullup::persist_pullup;
     use hydro_optimize::debug::name_to_id_map;
     use hydro_optimize::partition_node_analysis::{nodes_to_partition, partitioning_analysis};
     use hydro_optimize::partitioner::{Partitioner, partition};
