@@ -994,66 +994,66 @@
 <a href=#994 id=994 data-nosnippet>994</a>            )
 <a href=#995 id=995 data-nosnippet>995</a>        }
 <a href=#996 id=996 data-nosnippet>996</a>
-<a href=#997 id=997 data-nosnippet>997</a>        <span class="comment">// Helper function for two-input operations with left/right labels
-<a href=#998 id=998 data-nosnippet>998</a>        </span><span class="kw">fn </span>build_left_right_join(
-<a href=#999 id=999 data-nosnippet>999</a>            structure: <span class="kw-2">&amp;mut </span>HydroGraphStructure,
-<a href=#1000 id=1000 data-nosnippet>1000</a>            seen_tees: <span class="kw-2">&amp;mut </span>HashMap&lt;<span class="kw-2">*const </span>std::cell::RefCell&lt;HydroNode&gt;, usize&gt;,
-<a href=#1001 id=1001 data-nosnippet>1001</a>            config: <span class="kw-2">&amp;</span>HydroWriteConfig,
-<a href=#1002 id=1002 data-nosnippet>1002</a>            left: <span class="kw-2">&amp;</span>HydroNode,
-<a href=#1003 id=1003 data-nosnippet>1003</a>            right: <span class="kw-2">&amp;</span>HydroNode,
-<a href=#1004 id=1004 data-nosnippet>1004</a>            metadata: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ir::HydroIrMetadata,
-<a href=#1005 id=1005 data-nosnippet>1005</a>            op_name: String,
-<a href=#1006 id=1006 data-nosnippet>1006</a>            node_type: HydroNodeType,
-<a href=#1007 id=1007 data-nosnippet>1007</a>        ) -&gt; usize {
-<a href=#1008 id=1008 data-nosnippet>1008</a>            <span class="kw">let </span>left_id = left.build_graph_structure(structure, seen_tees, config);
-<a href=#1009 id=1009 data-nosnippet>1009</a>            <span class="kw">let </span>right_id = right.build_graph_structure(structure, seen_tees, config);
-<a href=#1010 id=1010 data-nosnippet>1010</a>            <span class="kw">let </span>location_id = setup_location(structure, metadata);
-<a href=#1011 id=1011 data-nosnippet>1011</a>            <span class="kw">let </span>node_id = structure.add_node(
-<a href=#1012 id=1012 data-nosnippet>1012</a>                NodeLabel::Static(op_name),
-<a href=#1013 id=1013 data-nosnippet>1013</a>                node_type,
-<a href=#1014 id=1014 data-nosnippet>1014</a>                location_id,
-<a href=#1015 id=1015 data-nosnippet>1015</a>                <span class="prelude-val">Some</span>(metadata.op.backtrace.clone()),
-<a href=#1016 id=1016 data-nosnippet>1016</a>            );
-<a href=#1017 id=1017 data-nosnippet>1017</a>
-<a href=#1018 id=1018 data-nosnippet>1018</a>            <span class="kw">let </span>left_properties = extract_edge_properties_from_node(left);
-<a href=#1019 id=1019 data-nosnippet>1019</a>            <span class="kw">let </span>right_properties = extract_edge_properties_from_node(right);
-<a href=#1020 id=1020 data-nosnippet>1020</a>
-<a href=#1021 id=1021 data-nosnippet>1021</a>            structure.add_edge(left_id, node_id, left_properties, <span class="prelude-val">Some</span>(<span class="string">"left"</span>.to_string()));
-<a href=#1022 id=1022 data-nosnippet>1022</a>            structure.add_edge(
-<a href=#1023 id=1023 data-nosnippet>1023</a>                right_id,
-<a href=#1024 id=1024 data-nosnippet>1024</a>                node_id,
-<a href=#1025 id=1025 data-nosnippet>1025</a>                right_properties,
-<a href=#1026 id=1026 data-nosnippet>1026</a>                <span class="prelude-val">Some</span>(<span class="string">"right"</span>.to_string()),
-<a href=#1027 id=1027 data-nosnippet>1027</a>            );
-<a href=#1028 id=1028 data-nosnippet>1028</a>            node_id
-<a href=#1029 id=1029 data-nosnippet>1029</a>        }
-<a href=#1030 id=1030 data-nosnippet>1030</a>
-<a href=#1031 id=1031 data-nosnippet>1031</a>        <span class="comment">// Helper function for two-input operations with pos/neg labels
-<a href=#1032 id=1032 data-nosnippet>1032</a>        </span><span class="kw">fn </span>build_pos_neg_join(
-<a href=#1033 id=1033 data-nosnippet>1033</a>            structure: <span class="kw-2">&amp;mut </span>HydroGraphStructure,
-<a href=#1034 id=1034 data-nosnippet>1034</a>            seen_tees: <span class="kw-2">&amp;mut </span>HashMap&lt;<span class="kw-2">*const </span>std::cell::RefCell&lt;HydroNode&gt;, usize&gt;,
-<a href=#1035 id=1035 data-nosnippet>1035</a>            config: <span class="kw-2">&amp;</span>HydroWriteConfig,
-<a href=#1036 id=1036 data-nosnippet>1036</a>            pos: <span class="kw-2">&amp;</span>HydroNode,
-<a href=#1037 id=1037 data-nosnippet>1037</a>            neg: <span class="kw-2">&amp;</span>HydroNode,
-<a href=#1038 id=1038 data-nosnippet>1038</a>            metadata: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ir::HydroIrMetadata,
-<a href=#1039 id=1039 data-nosnippet>1039</a>            op_name: String,
-<a href=#1040 id=1040 data-nosnippet>1040</a>            node_type: HydroNodeType,
+<a href=#997 id=997 data-nosnippet>997</a>        <span class="comment">// Helper struct to group parameters for two-input operations
+<a href=#998 id=998 data-nosnippet>998</a>        </span><span class="kw">struct </span>TwoInputParams&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#999 id=999 data-nosnippet>999</a>            structure: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>HydroGraphStructure,
+<a href=#1000 id=1000 data-nosnippet>1000</a>            seen_tees: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>HashMap&lt;<span class="kw-2">*const </span>std::cell::RefCell&lt;HydroNode&gt;, usize&gt;,
+<a href=#1001 id=1001 data-nosnippet>1001</a>            config: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>HydroWriteConfig,
+<a href=#1002 id=1002 data-nosnippet>1002</a>            metadata: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw">crate</span>::ir::HydroIrMetadata,
+<a href=#1003 id=1003 data-nosnippet>1003</a>            op_name: String,
+<a href=#1004 id=1004 data-nosnippet>1004</a>            node_type: HydroNodeType,
+<a href=#1005 id=1005 data-nosnippet>1005</a>        }
+<a href=#1006 id=1006 data-nosnippet>1006</a>
+<a href=#1007 id=1007 data-nosnippet>1007</a>        <span class="comment">// Helper function for two-input operations with left/right labels
+<a href=#1008 id=1008 data-nosnippet>1008</a>        </span><span class="kw">fn </span>build_left_right_join(
+<a href=#1009 id=1009 data-nosnippet>1009</a>            params: TwoInputParams&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#1010 id=1010 data-nosnippet>1010</a>            left: <span class="kw-2">&amp;</span>HydroNode,
+<a href=#1011 id=1011 data-nosnippet>1011</a>            right: <span class="kw-2">&amp;</span>HydroNode,
+<a href=#1012 id=1012 data-nosnippet>1012</a>        ) -&gt; usize {
+<a href=#1013 id=1013 data-nosnippet>1013</a>            <span class="kw">let </span>left_id = left.build_graph_structure(params.structure, params.seen_tees, params.config);
+<a href=#1014 id=1014 data-nosnippet>1014</a>            <span class="kw">let </span>right_id = right.build_graph_structure(params.structure, params.seen_tees, params.config);
+<a href=#1015 id=1015 data-nosnippet>1015</a>            <span class="kw">let </span>location_id = setup_location(params.structure, params.metadata);
+<a href=#1016 id=1016 data-nosnippet>1016</a>            <span class="kw">let </span>node_id = params.structure.add_node(
+<a href=#1017 id=1017 data-nosnippet>1017</a>                NodeLabel::Static(params.op_name),
+<a href=#1018 id=1018 data-nosnippet>1018</a>                params.node_type,
+<a href=#1019 id=1019 data-nosnippet>1019</a>                location_id,
+<a href=#1020 id=1020 data-nosnippet>1020</a>                <span class="prelude-val">Some</span>(params.metadata.op.backtrace.clone()),
+<a href=#1021 id=1021 data-nosnippet>1021</a>            );
+<a href=#1022 id=1022 data-nosnippet>1022</a>
+<a href=#1023 id=1023 data-nosnippet>1023</a>            <span class="kw">let </span>left_properties = extract_edge_properties_from_node(left);
+<a href=#1024 id=1024 data-nosnippet>1024</a>            <span class="kw">let </span>right_properties = extract_edge_properties_from_node(right);
+<a href=#1025 id=1025 data-nosnippet>1025</a>
+<a href=#1026 id=1026 data-nosnippet>1026</a>            params.structure.add_edge(left_id, node_id, left_properties, <span class="prelude-val">Some</span>(<span class="string">"left"</span>.to_string()));
+<a href=#1027 id=1027 data-nosnippet>1027</a>            params.structure.add_edge(
+<a href=#1028 id=1028 data-nosnippet>1028</a>                right_id,
+<a href=#1029 id=1029 data-nosnippet>1029</a>                node_id,
+<a href=#1030 id=1030 data-nosnippet>1030</a>                right_properties,
+<a href=#1031 id=1031 data-nosnippet>1031</a>                <span class="prelude-val">Some</span>(<span class="string">"right"</span>.to_string()),
+<a href=#1032 id=1032 data-nosnippet>1032</a>            );
+<a href=#1033 id=1033 data-nosnippet>1033</a>            node_id
+<a href=#1034 id=1034 data-nosnippet>1034</a>        }
+<a href=#1035 id=1035 data-nosnippet>1035</a>
+<a href=#1036 id=1036 data-nosnippet>1036</a>        <span class="comment">// Helper function for two-input operations with pos/neg labels
+<a href=#1037 id=1037 data-nosnippet>1037</a>        </span><span class="kw">fn </span>build_pos_neg_join(
+<a href=#1038 id=1038 data-nosnippet>1038</a>            params: TwoInputParams&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#1039 id=1039 data-nosnippet>1039</a>            pos: <span class="kw-2">&amp;</span>HydroNode,
+<a href=#1040 id=1040 data-nosnippet>1040</a>            neg: <span class="kw-2">&amp;</span>HydroNode,
 <a href=#1041 id=1041 data-nosnippet>1041</a>        ) -&gt; usize {
-<a href=#1042 id=1042 data-nosnippet>1042</a>            <span class="kw">let </span>pos_id = pos.build_graph_structure(structure, seen_tees, config);
-<a href=#1043 id=1043 data-nosnippet>1043</a>            <span class="kw">let </span>neg_id = neg.build_graph_structure(structure, seen_tees, config);
-<a href=#1044 id=1044 data-nosnippet>1044</a>            <span class="kw">let </span>location_id = setup_location(structure, metadata);
-<a href=#1045 id=1045 data-nosnippet>1045</a>            <span class="kw">let </span>node_id = structure.add_node(
-<a href=#1046 id=1046 data-nosnippet>1046</a>                NodeLabel::Static(op_name),
-<a href=#1047 id=1047 data-nosnippet>1047</a>                node_type,
+<a href=#1042 id=1042 data-nosnippet>1042</a>            <span class="kw">let </span>pos_id = pos.build_graph_structure(params.structure, params.seen_tees, params.config);
+<a href=#1043 id=1043 data-nosnippet>1043</a>            <span class="kw">let </span>neg_id = neg.build_graph_structure(params.structure, params.seen_tees, params.config);
+<a href=#1044 id=1044 data-nosnippet>1044</a>            <span class="kw">let </span>location_id = setup_location(params.structure, params.metadata);
+<a href=#1045 id=1045 data-nosnippet>1045</a>            <span class="kw">let </span>node_id = params.structure.add_node(
+<a href=#1046 id=1046 data-nosnippet>1046</a>                NodeLabel::Static(params.op_name),
+<a href=#1047 id=1047 data-nosnippet>1047</a>                params.node_type,
 <a href=#1048 id=1048 data-nosnippet>1048</a>                location_id,
-<a href=#1049 id=1049 data-nosnippet>1049</a>                <span class="prelude-val">Some</span>(metadata.op.backtrace.clone()),
+<a href=#1049 id=1049 data-nosnippet>1049</a>                <span class="prelude-val">Some</span>(params.metadata.op.backtrace.clone()),
 <a href=#1050 id=1050 data-nosnippet>1050</a>            );
 <a href=#1051 id=1051 data-nosnippet>1051</a>
 <a href=#1052 id=1052 data-nosnippet>1052</a>            <span class="kw">let </span>pos_properties = extract_edge_properties_from_node(pos);
 <a href=#1053 id=1053 data-nosnippet>1053</a>            <span class="kw">let </span>neg_properties = extract_edge_properties_from_node(neg);
 <a href=#1054 id=1054 data-nosnippet>1054</a>
-<a href=#1055 id=1055 data-nosnippet>1055</a>            structure.add_edge(pos_id, node_id, pos_properties, <span class="prelude-val">Some</span>(<span class="string">"pos"</span>.to_string()));
-<a href=#1056 id=1056 data-nosnippet>1056</a>            structure.add_edge(neg_id, node_id, neg_properties, <span class="prelude-val">Some</span>(<span class="string">"neg"</span>.to_string()));
+<a href=#1055 id=1055 data-nosnippet>1055</a>            params.structure.add_edge(pos_id, node_id, pos_properties, <span class="prelude-val">Some</span>(<span class="string">"pos"</span>.to_string()));
+<a href=#1056 id=1056 data-nosnippet>1056</a>            params.structure.add_edge(neg_id, node_id, neg_properties, <span class="prelude-val">Some</span>(<span class="string">"neg"</span>.to_string()));
 <a href=#1057 id=1057 data-nosnippet>1057</a>            node_id
 <a href=#1058 id=1058 data-nosnippet>1058</a>        }
 <a href=#1059 id=1059 data-nosnippet>1059</a>
@@ -1229,278 +1229,282 @@
 <a href=#1229 id=1229 data-nosnippet>1229</a>                right,
 <a href=#1230 id=1230 data-nosnippet>1230</a>                metadata,
 <a href=#1231 id=1231 data-nosnippet>1231</a>            } =&gt; build_left_right_join(
-<a href=#1232 id=1232 data-nosnippet>1232</a>                structure,
-<a href=#1233 id=1233 data-nosnippet>1233</a>                seen_tees,
-<a href=#1234 id=1234 data-nosnippet>1234</a>                config,
-<a href=#1235 id=1235 data-nosnippet>1235</a>                left,
-<a href=#1236 id=1236 data-nosnippet>1236</a>                right,
-<a href=#1237 id=1237 data-nosnippet>1237</a>                metadata,
-<a href=#1238 id=1238 data-nosnippet>1238</a>                extract_op_name(<span class="self">self</span>.print_root()),
-<a href=#1239 id=1239 data-nosnippet>1239</a>                HydroNodeType::Join,
-<a href=#1240 id=1240 data-nosnippet>1240</a>            ),
-<a href=#1241 id=1241 data-nosnippet>1241</a>            HydroNode::Difference {
-<a href=#1242 id=1242 data-nosnippet>1242</a>                pos: left,
-<a href=#1243 id=1243 data-nosnippet>1243</a>                neg: right,
-<a href=#1244 id=1244 data-nosnippet>1244</a>                metadata,
-<a href=#1245 id=1245 data-nosnippet>1245</a>            }
-<a href=#1246 id=1246 data-nosnippet>1246</a>            | HydroNode::AntiJoin {
-<a href=#1247 id=1247 data-nosnippet>1247</a>                pos: left,
-<a href=#1248 id=1248 data-nosnippet>1248</a>                neg: right,
-<a href=#1249 id=1249 data-nosnippet>1249</a>                metadata,
-<a href=#1250 id=1250 data-nosnippet>1250</a>            } =&gt; build_pos_neg_join(
-<a href=#1251 id=1251 data-nosnippet>1251</a>                structure,
-<a href=#1252 id=1252 data-nosnippet>1252</a>                seen_tees,
-<a href=#1253 id=1253 data-nosnippet>1253</a>                config,
-<a href=#1254 id=1254 data-nosnippet>1254</a>                left,
-<a href=#1255 id=1255 data-nosnippet>1255</a>                right,
-<a href=#1256 id=1256 data-nosnippet>1256</a>                metadata,
-<a href=#1257 id=1257 data-nosnippet>1257</a>                extract_op_name(<span class="self">self</span>.print_root()),
-<a href=#1258 id=1258 data-nosnippet>1258</a>                HydroNodeType::Join,
-<a href=#1259 id=1259 data-nosnippet>1259</a>            ),
-<a href=#1260 id=1260 data-nosnippet>1260</a>            HydroNode::Fold {
-<a href=#1261 id=1261 data-nosnippet>1261</a>                init,
-<a href=#1262 id=1262 data-nosnippet>1262</a>                acc,
-<a href=#1263 id=1263 data-nosnippet>1263</a>                input,
-<a href=#1264 id=1264 data-nosnippet>1264</a>                metadata,
-<a href=#1265 id=1265 data-nosnippet>1265</a>            }
-<a href=#1266 id=1266 data-nosnippet>1266</a>            | HydroNode::FoldKeyed {
-<a href=#1267 id=1267 data-nosnippet>1267</a>                init,
-<a href=#1268 id=1268 data-nosnippet>1268</a>                acc,
-<a href=#1269 id=1269 data-nosnippet>1269</a>                input,
-<a href=#1270 id=1270 data-nosnippet>1270</a>                metadata,
-<a href=#1271 id=1271 data-nosnippet>1271</a>            }
-<a href=#1272 id=1272 data-nosnippet>1272</a>            | HydroNode::Scan {
-<a href=#1273 id=1273 data-nosnippet>1273</a>                init,
-<a href=#1274 id=1274 data-nosnippet>1274</a>                acc,
-<a href=#1275 id=1275 data-nosnippet>1275</a>                input,
-<a href=#1276 id=1276 data-nosnippet>1276</a>                metadata,
-<a href=#1277 id=1277 data-nosnippet>1277</a>            } =&gt; build_single_input_transform(
-<a href=#1278 id=1278 data-nosnippet>1278</a>                structure,
-<a href=#1279 id=1279 data-nosnippet>1279</a>                seen_tees,
-<a href=#1280 id=1280 data-nosnippet>1280</a>                config,
-<a href=#1281 id=1281 data-nosnippet>1281</a>                input,
-<a href=#1282 id=1282 data-nosnippet>1282</a>                metadata,
-<a href=#1283 id=1283 data-nosnippet>1283</a>                NodeLabel::with_exprs(
-<a href=#1284 id=1284 data-nosnippet>1284</a>                    extract_op_name(<span class="self">self</span>.print_root()),
-<a href=#1285 id=1285 data-nosnippet>1285</a>                    <span class="macro">vec!</span>[init.clone(), acc.clone()],
-<a href=#1286 id=1286 data-nosnippet>1286</a>                ),
-<a href=#1287 id=1287 data-nosnippet>1287</a>                HydroNodeType::Transform,
-<a href=#1288 id=1288 data-nosnippet>1288</a>            ),
-<a href=#1289 id=1289 data-nosnippet>1289</a>            HydroNode::Network {
-<a href=#1290 id=1290 data-nosnippet>1290</a>                serialize_fn,
-<a href=#1291 id=1291 data-nosnippet>1291</a>                deserialize_fn,
-<a href=#1292 id=1292 data-nosnippet>1292</a>                input,
-<a href=#1293 id=1293 data-nosnippet>1293</a>                metadata,
-<a href=#1294 id=1294 data-nosnippet>1294</a>                ..
-<a href=#1295 id=1295 data-nosnippet>1295</a>            } =&gt; {
-<a href=#1296 id=1296 data-nosnippet>1296</a>                <span class="kw">let </span>input_id = input.build_graph_structure(structure, seen_tees, config);
-<a href=#1297 id=1297 data-nosnippet>1297</a>                <span class="kw">let </span>_from_location_id = setup_location(structure, metadata);
-<a href=#1298 id=1298 data-nosnippet>1298</a>
-<a href=#1299 id=1299 data-nosnippet>1299</a>                <span class="kw">let </span>to_location_id = <span class="kw">match </span>metadata.location_kind.root() {
-<a href=#1300 id=1300 data-nosnippet>1300</a>                    LocationId::Process(id) =&gt; {
-<a href=#1301 id=1301 data-nosnippet>1301</a>                        structure.add_location(<span class="kw-2">*</span>id, <span class="string">"Process"</span>.to_string());
-<a href=#1302 id=1302 data-nosnippet>1302</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">*</span>id)
-<a href=#1303 id=1303 data-nosnippet>1303</a>                    }
-<a href=#1304 id=1304 data-nosnippet>1304</a>                    LocationId::Cluster(id) =&gt; {
-<a href=#1305 id=1305 data-nosnippet>1305</a>                        structure.add_location(<span class="kw-2">*</span>id, <span class="string">"Cluster"</span>.to_string());
+<a href=#1232 id=1232 data-nosnippet>1232</a>                TwoInputParams {
+<a href=#1233 id=1233 data-nosnippet>1233</a>                    structure,
+<a href=#1234 id=1234 data-nosnippet>1234</a>                    seen_tees,
+<a href=#1235 id=1235 data-nosnippet>1235</a>                    config,
+<a href=#1236 id=1236 data-nosnippet>1236</a>                    metadata,
+<a href=#1237 id=1237 data-nosnippet>1237</a>                    op_name: extract_op_name(<span class="self">self</span>.print_root()),
+<a href=#1238 id=1238 data-nosnippet>1238</a>                    node_type: HydroNodeType::Join,
+<a href=#1239 id=1239 data-nosnippet>1239</a>                },
+<a href=#1240 id=1240 data-nosnippet>1240</a>                left,
+<a href=#1241 id=1241 data-nosnippet>1241</a>                right,
+<a href=#1242 id=1242 data-nosnippet>1242</a>            ),
+<a href=#1243 id=1243 data-nosnippet>1243</a>            HydroNode::Difference {
+<a href=#1244 id=1244 data-nosnippet>1244</a>                pos: left,
+<a href=#1245 id=1245 data-nosnippet>1245</a>                neg: right,
+<a href=#1246 id=1246 data-nosnippet>1246</a>                metadata,
+<a href=#1247 id=1247 data-nosnippet>1247</a>            }
+<a href=#1248 id=1248 data-nosnippet>1248</a>            | HydroNode::AntiJoin {
+<a href=#1249 id=1249 data-nosnippet>1249</a>                pos: left,
+<a href=#1250 id=1250 data-nosnippet>1250</a>                neg: right,
+<a href=#1251 id=1251 data-nosnippet>1251</a>                metadata,
+<a href=#1252 id=1252 data-nosnippet>1252</a>            } =&gt; build_pos_neg_join(
+<a href=#1253 id=1253 data-nosnippet>1253</a>                TwoInputParams {
+<a href=#1254 id=1254 data-nosnippet>1254</a>                    structure,
+<a href=#1255 id=1255 data-nosnippet>1255</a>                    seen_tees,
+<a href=#1256 id=1256 data-nosnippet>1256</a>                    config,
+<a href=#1257 id=1257 data-nosnippet>1257</a>                    metadata,
+<a href=#1258 id=1258 data-nosnippet>1258</a>                    op_name: extract_op_name(<span class="self">self</span>.print_root()),
+<a href=#1259 id=1259 data-nosnippet>1259</a>                    node_type: HydroNodeType::Join,
+<a href=#1260 id=1260 data-nosnippet>1260</a>                },
+<a href=#1261 id=1261 data-nosnippet>1261</a>                left,
+<a href=#1262 id=1262 data-nosnippet>1262</a>                right,
+<a href=#1263 id=1263 data-nosnippet>1263</a>            ),
+<a href=#1264 id=1264 data-nosnippet>1264</a>            HydroNode::Fold {
+<a href=#1265 id=1265 data-nosnippet>1265</a>                init,
+<a href=#1266 id=1266 data-nosnippet>1266</a>                acc,
+<a href=#1267 id=1267 data-nosnippet>1267</a>                input,
+<a href=#1268 id=1268 data-nosnippet>1268</a>                metadata,
+<a href=#1269 id=1269 data-nosnippet>1269</a>            }
+<a href=#1270 id=1270 data-nosnippet>1270</a>            | HydroNode::FoldKeyed {
+<a href=#1271 id=1271 data-nosnippet>1271</a>                init,
+<a href=#1272 id=1272 data-nosnippet>1272</a>                acc,
+<a href=#1273 id=1273 data-nosnippet>1273</a>                input,
+<a href=#1274 id=1274 data-nosnippet>1274</a>                metadata,
+<a href=#1275 id=1275 data-nosnippet>1275</a>            }
+<a href=#1276 id=1276 data-nosnippet>1276</a>            | HydroNode::Scan {
+<a href=#1277 id=1277 data-nosnippet>1277</a>                init,
+<a href=#1278 id=1278 data-nosnippet>1278</a>                acc,
+<a href=#1279 id=1279 data-nosnippet>1279</a>                input,
+<a href=#1280 id=1280 data-nosnippet>1280</a>                metadata,
+<a href=#1281 id=1281 data-nosnippet>1281</a>            } =&gt; build_single_input_transform(
+<a href=#1282 id=1282 data-nosnippet>1282</a>                structure,
+<a href=#1283 id=1283 data-nosnippet>1283</a>                seen_tees,
+<a href=#1284 id=1284 data-nosnippet>1284</a>                config,
+<a href=#1285 id=1285 data-nosnippet>1285</a>                input,
+<a href=#1286 id=1286 data-nosnippet>1286</a>                metadata,
+<a href=#1287 id=1287 data-nosnippet>1287</a>                NodeLabel::with_exprs(
+<a href=#1288 id=1288 data-nosnippet>1288</a>                    extract_op_name(<span class="self">self</span>.print_root()),
+<a href=#1289 id=1289 data-nosnippet>1289</a>                    <span class="macro">vec!</span>[init.clone(), acc.clone()],
+<a href=#1290 id=1290 data-nosnippet>1290</a>                ),
+<a href=#1291 id=1291 data-nosnippet>1291</a>                HydroNodeType::Transform,
+<a href=#1292 id=1292 data-nosnippet>1292</a>            ),
+<a href=#1293 id=1293 data-nosnippet>1293</a>            HydroNode::Network {
+<a href=#1294 id=1294 data-nosnippet>1294</a>                serialize_fn,
+<a href=#1295 id=1295 data-nosnippet>1295</a>                deserialize_fn,
+<a href=#1296 id=1296 data-nosnippet>1296</a>                input,
+<a href=#1297 id=1297 data-nosnippet>1297</a>                metadata,
+<a href=#1298 id=1298 data-nosnippet>1298</a>                ..
+<a href=#1299 id=1299 data-nosnippet>1299</a>            } =&gt; {
+<a href=#1300 id=1300 data-nosnippet>1300</a>                <span class="kw">let </span>input_id = input.build_graph_structure(structure, seen_tees, config);
+<a href=#1301 id=1301 data-nosnippet>1301</a>                <span class="kw">let </span>_from_location_id = setup_location(structure, metadata);
+<a href=#1302 id=1302 data-nosnippet>1302</a>
+<a href=#1303 id=1303 data-nosnippet>1303</a>                <span class="kw">let </span>to_location_id = <span class="kw">match </span>metadata.location_kind.root() {
+<a href=#1304 id=1304 data-nosnippet>1304</a>                    LocationId::Process(id) =&gt; {
+<a href=#1305 id=1305 data-nosnippet>1305</a>                        structure.add_location(<span class="kw-2">*</span>id, <span class="string">"Process"</span>.to_string());
 <a href=#1306 id=1306 data-nosnippet>1306</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">*</span>id)
 <a href=#1307 id=1307 data-nosnippet>1307</a>                    }
-<a href=#1308 id=1308 data-nosnippet>1308</a>                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-<a href=#1309 id=1309 data-nosnippet>1309</a>                };
-<a href=#1310 id=1310 data-nosnippet>1310</a>
-<a href=#1311 id=1311 data-nosnippet>1311</a>                <span class="kw">let </span><span class="kw-2">mut </span>label = <span class="string">"network("</span>.to_string();
-<a href=#1312 id=1312 data-nosnippet>1312</a>                <span class="kw">if </span>serialize_fn.is_some() {
-<a href=#1313 id=1313 data-nosnippet>1313</a>                    label.push_str(<span class="string">"ser"</span>);
-<a href=#1314 id=1314 data-nosnippet>1314</a>                }
-<a href=#1315 id=1315 data-nosnippet>1315</a>                <span class="kw">if </span>deserialize_fn.is_some() {
-<a href=#1316 id=1316 data-nosnippet>1316</a>                    <span class="kw">if </span>serialize_fn.is_some() {
-<a href=#1317 id=1317 data-nosnippet>1317</a>                        label.push_str(<span class="string">" + "</span>);
-<a href=#1318 id=1318 data-nosnippet>1318</a>                    }
-<a href=#1319 id=1319 data-nosnippet>1319</a>                    label.push_str(<span class="string">"deser"</span>);
-<a href=#1320 id=1320 data-nosnippet>1320</a>                }
-<a href=#1321 id=1321 data-nosnippet>1321</a>                label.push(<span class="string">')'</span>);
-<a href=#1322 id=1322 data-nosnippet>1322</a>
-<a href=#1323 id=1323 data-nosnippet>1323</a>                <span class="kw">let </span>network_id = structure.add_node(
-<a href=#1324 id=1324 data-nosnippet>1324</a>                    NodeLabel::Static(label),
-<a href=#1325 id=1325 data-nosnippet>1325</a>                    HydroNodeType::Network,
-<a href=#1326 id=1326 data-nosnippet>1326</a>                    to_location_id,
-<a href=#1327 id=1327 data-nosnippet>1327</a>                    <span class="prelude-val">Some</span>(metadata.op.backtrace.clone()),
-<a href=#1328 id=1328 data-nosnippet>1328</a>                );
-<a href=#1329 id=1329 data-nosnippet>1329</a>                <span class="comment">// Extract edge properties and add Network property
-<a href=#1330 id=1330 data-nosnippet>1330</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>edge_properties = extract_edge_properties_from_node(input);
-<a href=#1331 id=1331 data-nosnippet>1331</a>                edge_properties.insert(HydroEdgeType::Network);
-<a href=#1332 id=1332 data-nosnippet>1332</a>                structure.add_edge(
-<a href=#1333 id=1333 data-nosnippet>1333</a>                    input_id,
-<a href=#1334 id=1334 data-nosnippet>1334</a>                    network_id,
-<a href=#1335 id=1335 data-nosnippet>1335</a>                    edge_properties,
-<a href=#1336 id=1336 data-nosnippet>1336</a>                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"to {:?}"</span>, to_location_id)),
-<a href=#1337 id=1337 data-nosnippet>1337</a>                );
-<a href=#1338 id=1338 data-nosnippet>1338</a>                network_id
-<a href=#1339 id=1339 data-nosnippet>1339</a>            }
-<a href=#1340 id=1340 data-nosnippet>1340</a>            HydroNode::Unpersist { inner, .. } =&gt; {
-<a href=#1341 id=1341 data-nosnippet>1341</a>                <span class="comment">// Unpersist is typically optimized away, just pass through
-<a href=#1342 id=1342 data-nosnippet>1342</a>                </span>inner.build_graph_structure(structure, seen_tees, config)
+<a href=#1308 id=1308 data-nosnippet>1308</a>                    LocationId::Cluster(id) =&gt; {
+<a href=#1309 id=1309 data-nosnippet>1309</a>                        structure.add_location(<span class="kw-2">*</span>id, <span class="string">"Cluster"</span>.to_string());
+<a href=#1310 id=1310 data-nosnippet>1310</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">*</span>id)
+<a href=#1311 id=1311 data-nosnippet>1311</a>                    }
+<a href=#1312 id=1312 data-nosnippet>1312</a>                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+<a href=#1313 id=1313 data-nosnippet>1313</a>                };
+<a href=#1314 id=1314 data-nosnippet>1314</a>
+<a href=#1315 id=1315 data-nosnippet>1315</a>                <span class="kw">let </span><span class="kw-2">mut </span>label = <span class="string">"network("</span>.to_string();
+<a href=#1316 id=1316 data-nosnippet>1316</a>                <span class="kw">if </span>serialize_fn.is_some() {
+<a href=#1317 id=1317 data-nosnippet>1317</a>                    label.push_str(<span class="string">"ser"</span>);
+<a href=#1318 id=1318 data-nosnippet>1318</a>                }
+<a href=#1319 id=1319 data-nosnippet>1319</a>                <span class="kw">if </span>deserialize_fn.is_some() {
+<a href=#1320 id=1320 data-nosnippet>1320</a>                    <span class="kw">if </span>serialize_fn.is_some() {
+<a href=#1321 id=1321 data-nosnippet>1321</a>                        label.push_str(<span class="string">" + "</span>);
+<a href=#1322 id=1322 data-nosnippet>1322</a>                    }
+<a href=#1323 id=1323 data-nosnippet>1323</a>                    label.push_str(<span class="string">"deser"</span>);
+<a href=#1324 id=1324 data-nosnippet>1324</a>                }
+<a href=#1325 id=1325 data-nosnippet>1325</a>                label.push(<span class="string">')'</span>);
+<a href=#1326 id=1326 data-nosnippet>1326</a>
+<a href=#1327 id=1327 data-nosnippet>1327</a>                <span class="kw">let </span>network_id = structure.add_node(
+<a href=#1328 id=1328 data-nosnippet>1328</a>                    NodeLabel::Static(label),
+<a href=#1329 id=1329 data-nosnippet>1329</a>                    HydroNodeType::Network,
+<a href=#1330 id=1330 data-nosnippet>1330</a>                    to_location_id,
+<a href=#1331 id=1331 data-nosnippet>1331</a>                    <span class="prelude-val">Some</span>(metadata.op.backtrace.clone()),
+<a href=#1332 id=1332 data-nosnippet>1332</a>                );
+<a href=#1333 id=1333 data-nosnippet>1333</a>                <span class="comment">// Extract edge properties and add Network property
+<a href=#1334 id=1334 data-nosnippet>1334</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>edge_properties = extract_edge_properties_from_node(input);
+<a href=#1335 id=1335 data-nosnippet>1335</a>                edge_properties.insert(HydroEdgeType::Network);
+<a href=#1336 id=1336 data-nosnippet>1336</a>                structure.add_edge(
+<a href=#1337 id=1337 data-nosnippet>1337</a>                    input_id,
+<a href=#1338 id=1338 data-nosnippet>1338</a>                    network_id,
+<a href=#1339 id=1339 data-nosnippet>1339</a>                    edge_properties,
+<a href=#1340 id=1340 data-nosnippet>1340</a>                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"to {:?}"</span>, to_location_id)),
+<a href=#1341 id=1341 data-nosnippet>1341</a>                );
+<a href=#1342 id=1342 data-nosnippet>1342</a>                network_id
 <a href=#1343 id=1343 data-nosnippet>1343</a>            }
-<a href=#1344 id=1344 data-nosnippet>1344</a>            HydroNode::Chain {
-<a href=#1345 id=1345 data-nosnippet>1345</a>                first,
-<a href=#1346 id=1346 data-nosnippet>1346</a>                second,
-<a href=#1347 id=1347 data-nosnippet>1347</a>                metadata,
-<a href=#1348 id=1348 data-nosnippet>1348</a>            } =&gt; {
-<a href=#1349 id=1349 data-nosnippet>1349</a>                <span class="kw">let </span>first_id = first.build_graph_structure(structure, seen_tees, config);
-<a href=#1350 id=1350 data-nosnippet>1350</a>                <span class="kw">let </span>second_id = second.build_graph_structure(structure, seen_tees, config);
-<a href=#1351 id=1351 data-nosnippet>1351</a>                <span class="kw">let </span>location_id = setup_location(structure, metadata);
-<a href=#1352 id=1352 data-nosnippet>1352</a>                <span class="kw">let </span>chain_id = structure.add_node(
-<a href=#1353 id=1353 data-nosnippet>1353</a>                    NodeLabel::Static(extract_op_name(<span class="self">self</span>.print_root())),
-<a href=#1354 id=1354 data-nosnippet>1354</a>                    HydroNodeType::Transform,
-<a href=#1355 id=1355 data-nosnippet>1355</a>                    location_id,
-<a href=#1356 id=1356 data-nosnippet>1356</a>                    <span class="prelude-val">Some</span>(metadata.op.backtrace.clone()),
-<a href=#1357 id=1357 data-nosnippet>1357</a>                );
-<a href=#1358 id=1358 data-nosnippet>1358</a>                <span class="kw">let </span>first_properties = extract_edge_properties_from_node(first);
-<a href=#1359 id=1359 data-nosnippet>1359</a>                <span class="kw">let </span>second_properties = extract_edge_properties_from_node(second);
-<a href=#1360 id=1360 data-nosnippet>1360</a>
-<a href=#1361 id=1361 data-nosnippet>1361</a>                structure.add_edge(
-<a href=#1362 id=1362 data-nosnippet>1362</a>                    first_id,
-<a href=#1363 id=1363 data-nosnippet>1363</a>                    chain_id,
-<a href=#1364 id=1364 data-nosnippet>1364</a>                    first_properties,
-<a href=#1365 id=1365 data-nosnippet>1365</a>                    <span class="prelude-val">Some</span>(<span class="string">"first"</span>.to_string()),
-<a href=#1366 id=1366 data-nosnippet>1366</a>                );
-<a href=#1367 id=1367 data-nosnippet>1367</a>                structure.add_edge(
-<a href=#1368 id=1368 data-nosnippet>1368</a>                    second_id,
-<a href=#1369 id=1369 data-nosnippet>1369</a>                    chain_id,
-<a href=#1370 id=1370 data-nosnippet>1370</a>                    second_properties,
-<a href=#1371 id=1371 data-nosnippet>1371</a>                    <span class="prelude-val">Some</span>(<span class="string">"second"</span>.to_string()),
-<a href=#1372 id=1372 data-nosnippet>1372</a>                );
-<a href=#1373 id=1373 data-nosnippet>1373</a>                chain_id
-<a href=#1374 id=1374 data-nosnippet>1374</a>            }
-<a href=#1375 id=1375 data-nosnippet>1375</a>            HydroNode::Counter {
-<a href=#1376 id=1376 data-nosnippet>1376</a>                duration,
-<a href=#1377 id=1377 data-nosnippet>1377</a>                input,
-<a href=#1378 id=1378 data-nosnippet>1378</a>                metadata,
-<a href=#1379 id=1379 data-nosnippet>1379</a>                tag,
-<a href=#1380 id=1380 data-nosnippet>1380</a>            } =&gt; build_single_input_transform(
-<a href=#1381 id=1381 data-nosnippet>1381</a>                structure,
-<a href=#1382 id=1382 data-nosnippet>1382</a>                seen_tees,
-<a href=#1383 id=1383 data-nosnippet>1383</a>                config,
-<a href=#1384 id=1384 data-nosnippet>1384</a>                input,
-<a href=#1385 id=1385 data-nosnippet>1385</a>                metadata,
-<a href=#1386 id=1386 data-nosnippet>1386</a>                NodeLabel::with_exprs(
-<a href=#1387 id=1387 data-nosnippet>1387</a>                    extract_op_name(<span class="self">self</span>.print_root()),
-<a href=#1388 id=1388 data-nosnippet>1388</a>                    <span class="macro">vec!</span>[
-<a href=#1389 id=1389 data-nosnippet>1389</a>                        syn::parse_str::&lt;syn::Expr&gt;(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:?}"</span>, tag))
-<a href=#1390 id=1390 data-nosnippet>1390</a>                            .unwrap()
-<a href=#1391 id=1391 data-nosnippet>1391</a>                            .into(),
-<a href=#1392 id=1392 data-nosnippet>1392</a>                        duration.clone(),
-<a href=#1393 id=1393 data-nosnippet>1393</a>                    ],
-<a href=#1394 id=1394 data-nosnippet>1394</a>                ),
-<a href=#1395 id=1395 data-nosnippet>1395</a>                HydroNodeType::Transform,
-<a href=#1396 id=1396 data-nosnippet>1396</a>            ),
-<a href=#1397 id=1397 data-nosnippet>1397</a>        }
-<a href=#1398 id=1398 data-nosnippet>1398</a>    }
-<a href=#1399 id=1399 data-nosnippet>1399</a>}
-<a href=#1400 id=1400 data-nosnippet>1400</a>
-<a href=#1401 id=1401 data-nosnippet>1401</a><span class="doccomment">/// Utility functions for rendering multiple roots as a single graph.
-<a href=#1402 id=1402 data-nosnippet>1402</a>/// Macro to reduce duplication in render functions.
-<a href=#1403 id=1403 data-nosnippet>1403</a></span><span class="macro">macro_rules!</span> render_hydro_ir {
-<a href=#1404 id=1404 data-nosnippet>1404</a>    (<span class="macro-nonterminal">$name</span>:ident, <span class="macro-nonterminal">$write_fn</span>:ident) =&gt; {
-<a href=#1405 id=1405 data-nosnippet>1405</a>        <span class="kw">pub fn </span><span class="macro-nonterminal">$name</span>(roots: <span class="kw-2">&amp;</span>[HydroRoot], config: <span class="kw-2">&amp;</span>HydroWriteConfig) -&gt; String {
-<a href=#1406 id=1406 data-nosnippet>1406</a>            <span class="kw">let </span><span class="kw-2">mut </span>output = String::new();
-<a href=#1407 id=1407 data-nosnippet>1407</a>            <span class="macro-nonterminal">$write_fn</span>(<span class="kw-2">&amp;mut </span>output, roots, config).unwrap();
-<a href=#1408 id=1408 data-nosnippet>1408</a>            output
-<a href=#1409 id=1409 data-nosnippet>1409</a>        }
-<a href=#1410 id=1410 data-nosnippet>1410</a>    };
-<a href=#1411 id=1411 data-nosnippet>1411</a>}
-<a href=#1412 id=1412 data-nosnippet>1412</a>
-<a href=#1413 id=1413 data-nosnippet>1413</a><span class="doccomment">/// Macro to reduce duplication in write functions.
-<a href=#1414 id=1414 data-nosnippet>1414</a></span><span class="macro">macro_rules!</span> write_hydro_ir {
-<a href=#1415 id=1415 data-nosnippet>1415</a>    (<span class="macro-nonterminal">$name</span>:ident, <span class="macro-nonterminal">$writer_type</span>:ty, <span class="macro-nonterminal">$constructor</span>:expr) =&gt; {
-<a href=#1416 id=1416 data-nosnippet>1416</a>        <span class="kw">pub fn </span><span class="macro-nonterminal">$name</span>(
-<a href=#1417 id=1417 data-nosnippet>1417</a>            output: <span class="kw">impl </span>std::fmt::Write,
-<a href=#1418 id=1418 data-nosnippet>1418</a>            roots: <span class="kw-2">&amp;</span>[HydroRoot],
-<a href=#1419 id=1419 data-nosnippet>1419</a>            config: <span class="kw-2">&amp;</span>HydroWriteConfig,
-<a href=#1420 id=1420 data-nosnippet>1420</a>        ) -&gt; std::fmt::Result {
-<a href=#1421 id=1421 data-nosnippet>1421</a>            <span class="kw">let </span><span class="kw-2">mut </span>graph_write: <span class="macro-nonterminal">$writer_type </span>= <span class="macro-nonterminal">$constructor</span>(output, config);
-<a href=#1422 id=1422 data-nosnippet>1422</a>            write_hydro_ir_graph(<span class="kw-2">&amp;mut </span>graph_write, roots, config)
-<a href=#1423 id=1423 data-nosnippet>1423</a>        }
-<a href=#1424 id=1424 data-nosnippet>1424</a>    };
-<a href=#1425 id=1425 data-nosnippet>1425</a>}
-<a href=#1426 id=1426 data-nosnippet>1426</a>
-<a href=#1427 id=1427 data-nosnippet>1427</a><span class="macro">render_hydro_ir!</span>(render_hydro_ir_mermaid, write_hydro_ir_mermaid);
-<a href=#1428 id=1428 data-nosnippet>1428</a><span class="macro">write_hydro_ir!</span>(
-<a href=#1429 id=1429 data-nosnippet>1429</a>    write_hydro_ir_mermaid,
-<a href=#1430 id=1430 data-nosnippet>1430</a>    HydroMermaid&lt;<span class="kw">_</span>&gt;,
-<a href=#1431 id=1431 data-nosnippet>1431</a>    HydroMermaid::new_with_config
-<a href=#1432 id=1432 data-nosnippet>1432</a>);
-<a href=#1433 id=1433 data-nosnippet>1433</a>
-<a href=#1434 id=1434 data-nosnippet>1434</a><span class="macro">render_hydro_ir!</span>(render_hydro_ir_dot, write_hydro_ir_dot);
-<a href=#1435 id=1435 data-nosnippet>1435</a><span class="macro">write_hydro_ir!</span>(write_hydro_ir_dot, HydroDot&lt;<span class="kw">_</span>&gt;, HydroDot::new_with_config);
-<a href=#1436 id=1436 data-nosnippet>1436</a>
-<a href=#1437 id=1437 data-nosnippet>1437</a><span class="macro">render_hydro_ir!</span>(render_hydro_ir_json, write_hydro_ir_json);
-<a href=#1438 id=1438 data-nosnippet>1438</a><span class="macro">write_hydro_ir!</span>(write_hydro_ir_json, HydroJson&lt;<span class="kw">_</span>&gt;, HydroJson::new);
-<a href=#1439 id=1439 data-nosnippet>1439</a>
-<a href=#1440 id=1440 data-nosnippet>1440</a><span class="kw">fn </span>write_hydro_ir_graph&lt;W&gt;(
-<a href=#1441 id=1441 data-nosnippet>1441</a>    <span class="kw-2">mut </span>graph_write: W,
-<a href=#1442 id=1442 data-nosnippet>1442</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
-<a href=#1443 id=1443 data-nosnippet>1443</a>    config: <span class="kw-2">&amp;</span>HydroWriteConfig,
-<a href=#1444 id=1444 data-nosnippet>1444</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), W::Err&gt;
-<a href=#1445 id=1445 data-nosnippet>1445</a><span class="kw">where
-<a href=#1446 id=1446 data-nosnippet>1446</a>    </span>W: HydroGraphWrite,
-<a href=#1447 id=1447 data-nosnippet>1447</a>{
-<a href=#1448 id=1448 data-nosnippet>1448</a>    <span class="kw">let </span><span class="kw-2">mut </span>structure = HydroGraphStructure::new();
-<a href=#1449 id=1449 data-nosnippet>1449</a>    <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = HashMap::new();
-<a href=#1450 id=1450 data-nosnippet>1450</a>
-<a href=#1451 id=1451 data-nosnippet>1451</a>    <span class="comment">// Build the graph structure for all roots
-<a href=#1452 id=1452 data-nosnippet>1452</a>    </span><span class="kw">for </span>leaf <span class="kw">in </span>roots {
-<a href=#1453 id=1453 data-nosnippet>1453</a>        leaf.build_graph_structure(<span class="kw-2">&amp;mut </span>structure, <span class="kw-2">&amp;mut </span>seen_tees, config);
-<a href=#1454 id=1454 data-nosnippet>1454</a>    }
-<a href=#1455 id=1455 data-nosnippet>1455</a>
-<a href=#1456 id=1456 data-nosnippet>1456</a>    <span class="comment">// Write the graph using the same logic as individual roots
-<a href=#1457 id=1457 data-nosnippet>1457</a>    </span>graph_write.write_prologue()<span class="question-mark">?</span>;
-<a href=#1458 id=1458 data-nosnippet>1458</a>
-<a href=#1459 id=1459 data-nosnippet>1459</a>    <span class="kw">for </span>(<span class="kw-2">&amp;</span>node_id, (label, node_type, location, backtrace)) <span class="kw">in </span><span class="kw-2">&amp;</span>structure.nodes {
-<a href=#1460 id=1460 data-nosnippet>1460</a>        <span class="kw">let </span>(location_id, location_type) = <span class="kw">if let </span><span class="prelude-val">Some</span>(loc_id) = location {
-<a href=#1461 id=1461 data-nosnippet>1461</a>            (
-<a href=#1462 id=1462 data-nosnippet>1462</a>                <span class="prelude-val">Some</span>(<span class="kw-2">*</span>loc_id),
-<a href=#1463 id=1463 data-nosnippet>1463</a>                structure.locations.get(loc_id).map(|s| s.as_str()),
-<a href=#1464 id=1464 data-nosnippet>1464</a>            )
-<a href=#1465 id=1465 data-nosnippet>1465</a>        } <span class="kw">else </span>{
-<a href=#1466 id=1466 data-nosnippet>1466</a>            (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
-<a href=#1467 id=1467 data-nosnippet>1467</a>        };
-<a href=#1468 id=1468 data-nosnippet>1468</a>        graph_write.write_node_definition(
-<a href=#1469 id=1469 data-nosnippet>1469</a>            node_id,
-<a href=#1470 id=1470 data-nosnippet>1470</a>            label,
-<a href=#1471 id=1471 data-nosnippet>1471</a>            <span class="kw-2">*</span>node_type,
-<a href=#1472 id=1472 data-nosnippet>1472</a>            location_id,
-<a href=#1473 id=1473 data-nosnippet>1473</a>            location_type,
-<a href=#1474 id=1474 data-nosnippet>1474</a>            backtrace.as_ref(),
-<a href=#1475 id=1475 data-nosnippet>1475</a>        )<span class="question-mark">?</span>;
-<a href=#1476 id=1476 data-nosnippet>1476</a>    }
-<a href=#1477 id=1477 data-nosnippet>1477</a>
-<a href=#1478 id=1478 data-nosnippet>1478</a>    <span class="kw">if </span>config.show_location_groups {
-<a href=#1479 id=1479 data-nosnippet>1479</a>        <span class="kw">let </span><span class="kw-2">mut </span>nodes_by_location: HashMap&lt;usize, Vec&lt;usize&gt;&gt; = HashMap::new();
-<a href=#1480 id=1480 data-nosnippet>1480</a>        <span class="kw">for </span>(<span class="kw-2">&amp;</span>node_id, (<span class="kw">_</span>, <span class="kw">_</span>, location, <span class="kw">_</span>)) <span class="kw">in </span><span class="kw-2">&amp;</span>structure.nodes {
-<a href=#1481 id=1481 data-nosnippet>1481</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(location_id) = location {
-<a href=#1482 id=1482 data-nosnippet>1482</a>                nodes_by_location
-<a href=#1483 id=1483 data-nosnippet>1483</a>                    .entry(<span class="kw-2">*</span>location_id)
-<a href=#1484 id=1484 data-nosnippet>1484</a>                    .or_default()
-<a href=#1485 id=1485 data-nosnippet>1485</a>                    .push(node_id);
-<a href=#1486 id=1486 data-nosnippet>1486</a>            }
-<a href=#1487 id=1487 data-nosnippet>1487</a>        }
-<a href=#1488 id=1488 data-nosnippet>1488</a>
-<a href=#1489 id=1489 data-nosnippet>1489</a>        <span class="kw">for </span>(<span class="kw-2">&amp;</span>location_id, node_ids) <span class="kw">in </span><span class="kw-2">&amp;</span>nodes_by_location {
-<a href=#1490 id=1490 data-nosnippet>1490</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(location_type) = structure.locations.get(<span class="kw-2">&amp;</span>location_id) {
-<a href=#1491 id=1491 data-nosnippet>1491</a>                graph_write.write_location_start(location_id, location_type)<span class="question-mark">?</span>;
-<a href=#1492 id=1492 data-nosnippet>1492</a>                <span class="kw">for </span><span class="kw-2">&amp;</span>node_id <span class="kw">in </span>node_ids {
-<a href=#1493 id=1493 data-nosnippet>1493</a>                    graph_write.write_node(node_id)<span class="question-mark">?</span>;
-<a href=#1494 id=1494 data-nosnippet>1494</a>                }
-<a href=#1495 id=1495 data-nosnippet>1495</a>                graph_write.write_location_end()<span class="question-mark">?</span>;
-<a href=#1496 id=1496 data-nosnippet>1496</a>            }
-<a href=#1497 id=1497 data-nosnippet>1497</a>        }
-<a href=#1498 id=1498 data-nosnippet>1498</a>    }
-<a href=#1499 id=1499 data-nosnippet>1499</a>
-<a href=#1500 id=1500 data-nosnippet>1500</a>    <span class="kw">for </span>(src_id, dst_id, edge_properties, label) <span class="kw">in </span><span class="kw-2">&amp;</span>structure.edges {
-<a href=#1501 id=1501 data-nosnippet>1501</a>        graph_write.write_edge(<span class="kw-2">*</span>src_id, <span class="kw-2">*</span>dst_id, edge_properties, label.as_deref())<span class="question-mark">?</span>;
+<a href=#1344 id=1344 data-nosnippet>1344</a>            HydroNode::Unpersist { inner, .. } =&gt; {
+<a href=#1345 id=1345 data-nosnippet>1345</a>                <span class="comment">// Unpersist is typically optimized away, just pass through
+<a href=#1346 id=1346 data-nosnippet>1346</a>                </span>inner.build_graph_structure(structure, seen_tees, config)
+<a href=#1347 id=1347 data-nosnippet>1347</a>            }
+<a href=#1348 id=1348 data-nosnippet>1348</a>            HydroNode::Chain {
+<a href=#1349 id=1349 data-nosnippet>1349</a>                first,
+<a href=#1350 id=1350 data-nosnippet>1350</a>                second,
+<a href=#1351 id=1351 data-nosnippet>1351</a>                metadata,
+<a href=#1352 id=1352 data-nosnippet>1352</a>            } =&gt; {
+<a href=#1353 id=1353 data-nosnippet>1353</a>                <span class="kw">let </span>first_id = first.build_graph_structure(structure, seen_tees, config);
+<a href=#1354 id=1354 data-nosnippet>1354</a>                <span class="kw">let </span>second_id = second.build_graph_structure(structure, seen_tees, config);
+<a href=#1355 id=1355 data-nosnippet>1355</a>                <span class="kw">let </span>location_id = setup_location(structure, metadata);
+<a href=#1356 id=1356 data-nosnippet>1356</a>                <span class="kw">let </span>chain_id = structure.add_node(
+<a href=#1357 id=1357 data-nosnippet>1357</a>                    NodeLabel::Static(extract_op_name(<span class="self">self</span>.print_root())),
+<a href=#1358 id=1358 data-nosnippet>1358</a>                    HydroNodeType::Transform,
+<a href=#1359 id=1359 data-nosnippet>1359</a>                    location_id,
+<a href=#1360 id=1360 data-nosnippet>1360</a>                    <span class="prelude-val">Some</span>(metadata.op.backtrace.clone()),
+<a href=#1361 id=1361 data-nosnippet>1361</a>                );
+<a href=#1362 id=1362 data-nosnippet>1362</a>                <span class="kw">let </span>first_properties = extract_edge_properties_from_node(first);
+<a href=#1363 id=1363 data-nosnippet>1363</a>                <span class="kw">let </span>second_properties = extract_edge_properties_from_node(second);
+<a href=#1364 id=1364 data-nosnippet>1364</a>
+<a href=#1365 id=1365 data-nosnippet>1365</a>                structure.add_edge(
+<a href=#1366 id=1366 data-nosnippet>1366</a>                    first_id,
+<a href=#1367 id=1367 data-nosnippet>1367</a>                    chain_id,
+<a href=#1368 id=1368 data-nosnippet>1368</a>                    first_properties,
+<a href=#1369 id=1369 data-nosnippet>1369</a>                    <span class="prelude-val">Some</span>(<span class="string">"first"</span>.to_string()),
+<a href=#1370 id=1370 data-nosnippet>1370</a>                );
+<a href=#1371 id=1371 data-nosnippet>1371</a>                structure.add_edge(
+<a href=#1372 id=1372 data-nosnippet>1372</a>                    second_id,
+<a href=#1373 id=1373 data-nosnippet>1373</a>                    chain_id,
+<a href=#1374 id=1374 data-nosnippet>1374</a>                    second_properties,
+<a href=#1375 id=1375 data-nosnippet>1375</a>                    <span class="prelude-val">Some</span>(<span class="string">"second"</span>.to_string()),
+<a href=#1376 id=1376 data-nosnippet>1376</a>                );
+<a href=#1377 id=1377 data-nosnippet>1377</a>                chain_id
+<a href=#1378 id=1378 data-nosnippet>1378</a>            }
+<a href=#1379 id=1379 data-nosnippet>1379</a>            HydroNode::Counter {
+<a href=#1380 id=1380 data-nosnippet>1380</a>                duration,
+<a href=#1381 id=1381 data-nosnippet>1381</a>                input,
+<a href=#1382 id=1382 data-nosnippet>1382</a>                metadata,
+<a href=#1383 id=1383 data-nosnippet>1383</a>                tag,
+<a href=#1384 id=1384 data-nosnippet>1384</a>            } =&gt; build_single_input_transform(
+<a href=#1385 id=1385 data-nosnippet>1385</a>                structure,
+<a href=#1386 id=1386 data-nosnippet>1386</a>                seen_tees,
+<a href=#1387 id=1387 data-nosnippet>1387</a>                config,
+<a href=#1388 id=1388 data-nosnippet>1388</a>                input,
+<a href=#1389 id=1389 data-nosnippet>1389</a>                metadata,
+<a href=#1390 id=1390 data-nosnippet>1390</a>                NodeLabel::with_exprs(
+<a href=#1391 id=1391 data-nosnippet>1391</a>                    extract_op_name(<span class="self">self</span>.print_root()),
+<a href=#1392 id=1392 data-nosnippet>1392</a>                    <span class="macro">vec!</span>[
+<a href=#1393 id=1393 data-nosnippet>1393</a>                        syn::parse_str::&lt;syn::Expr&gt;(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:?}"</span>, tag))
+<a href=#1394 id=1394 data-nosnippet>1394</a>                            .unwrap()
+<a href=#1395 id=1395 data-nosnippet>1395</a>                            .into(),
+<a href=#1396 id=1396 data-nosnippet>1396</a>                        duration.clone(),
+<a href=#1397 id=1397 data-nosnippet>1397</a>                    ],
+<a href=#1398 id=1398 data-nosnippet>1398</a>                ),
+<a href=#1399 id=1399 data-nosnippet>1399</a>                HydroNodeType::Transform,
+<a href=#1400 id=1400 data-nosnippet>1400</a>            ),
+<a href=#1401 id=1401 data-nosnippet>1401</a>        }
+<a href=#1402 id=1402 data-nosnippet>1402</a>    }
+<a href=#1403 id=1403 data-nosnippet>1403</a>}
+<a href=#1404 id=1404 data-nosnippet>1404</a>
+<a href=#1405 id=1405 data-nosnippet>1405</a><span class="doccomment">/// Utility functions for rendering multiple roots as a single graph.
+<a href=#1406 id=1406 data-nosnippet>1406</a>/// Macro to reduce duplication in render functions.
+<a href=#1407 id=1407 data-nosnippet>1407</a></span><span class="macro">macro_rules!</span> render_hydro_ir {
+<a href=#1408 id=1408 data-nosnippet>1408</a>    (<span class="macro-nonterminal">$name</span>:ident, <span class="macro-nonterminal">$write_fn</span>:ident) =&gt; {
+<a href=#1409 id=1409 data-nosnippet>1409</a>        <span class="kw">pub fn </span><span class="macro-nonterminal">$name</span>(roots: <span class="kw-2">&amp;</span>[HydroRoot], config: <span class="kw-2">&amp;</span>HydroWriteConfig) -&gt; String {
+<a href=#1410 id=1410 data-nosnippet>1410</a>            <span class="kw">let </span><span class="kw-2">mut </span>output = String::new();
+<a href=#1411 id=1411 data-nosnippet>1411</a>            <span class="macro-nonterminal">$write_fn</span>(<span class="kw-2">&amp;mut </span>output, roots, config).unwrap();
+<a href=#1412 id=1412 data-nosnippet>1412</a>            output
+<a href=#1413 id=1413 data-nosnippet>1413</a>        }
+<a href=#1414 id=1414 data-nosnippet>1414</a>    };
+<a href=#1415 id=1415 data-nosnippet>1415</a>}
+<a href=#1416 id=1416 data-nosnippet>1416</a>
+<a href=#1417 id=1417 data-nosnippet>1417</a><span class="doccomment">/// Macro to reduce duplication in write functions.
+<a href=#1418 id=1418 data-nosnippet>1418</a></span><span class="macro">macro_rules!</span> write_hydro_ir {
+<a href=#1419 id=1419 data-nosnippet>1419</a>    (<span class="macro-nonterminal">$name</span>:ident, <span class="macro-nonterminal">$writer_type</span>:ty, <span class="macro-nonterminal">$constructor</span>:expr) =&gt; {
+<a href=#1420 id=1420 data-nosnippet>1420</a>        <span class="kw">pub fn </span><span class="macro-nonterminal">$name</span>(
+<a href=#1421 id=1421 data-nosnippet>1421</a>            output: <span class="kw">impl </span>std::fmt::Write,
+<a href=#1422 id=1422 data-nosnippet>1422</a>            roots: <span class="kw-2">&amp;</span>[HydroRoot],
+<a href=#1423 id=1423 data-nosnippet>1423</a>            config: <span class="kw-2">&amp;</span>HydroWriteConfig,
+<a href=#1424 id=1424 data-nosnippet>1424</a>        ) -&gt; std::fmt::Result {
+<a href=#1425 id=1425 data-nosnippet>1425</a>            <span class="kw">let </span><span class="kw-2">mut </span>graph_write: <span class="macro-nonterminal">$writer_type </span>= <span class="macro-nonterminal">$constructor</span>(output, config);
+<a href=#1426 id=1426 data-nosnippet>1426</a>            write_hydro_ir_graph(<span class="kw-2">&amp;mut </span>graph_write, roots, config)
+<a href=#1427 id=1427 data-nosnippet>1427</a>        }
+<a href=#1428 id=1428 data-nosnippet>1428</a>    };
+<a href=#1429 id=1429 data-nosnippet>1429</a>}
+<a href=#1430 id=1430 data-nosnippet>1430</a>
+<a href=#1431 id=1431 data-nosnippet>1431</a><span class="macro">render_hydro_ir!</span>(render_hydro_ir_mermaid, write_hydro_ir_mermaid);
+<a href=#1432 id=1432 data-nosnippet>1432</a><span class="macro">write_hydro_ir!</span>(
+<a href=#1433 id=1433 data-nosnippet>1433</a>    write_hydro_ir_mermaid,
+<a href=#1434 id=1434 data-nosnippet>1434</a>    HydroMermaid&lt;<span class="kw">_</span>&gt;,
+<a href=#1435 id=1435 data-nosnippet>1435</a>    HydroMermaid::new_with_config
+<a href=#1436 id=1436 data-nosnippet>1436</a>);
+<a href=#1437 id=1437 data-nosnippet>1437</a>
+<a href=#1438 id=1438 data-nosnippet>1438</a><span class="macro">render_hydro_ir!</span>(render_hydro_ir_dot, write_hydro_ir_dot);
+<a href=#1439 id=1439 data-nosnippet>1439</a><span class="macro">write_hydro_ir!</span>(write_hydro_ir_dot, HydroDot&lt;<span class="kw">_</span>&gt;, HydroDot::new_with_config);
+<a href=#1440 id=1440 data-nosnippet>1440</a>
+<a href=#1441 id=1441 data-nosnippet>1441</a><span class="macro">render_hydro_ir!</span>(render_hydro_ir_json, write_hydro_ir_json);
+<a href=#1442 id=1442 data-nosnippet>1442</a><span class="macro">write_hydro_ir!</span>(write_hydro_ir_json, HydroJson&lt;<span class="kw">_</span>&gt;, HydroJson::new);
+<a href=#1443 id=1443 data-nosnippet>1443</a>
+<a href=#1444 id=1444 data-nosnippet>1444</a><span class="kw">fn </span>write_hydro_ir_graph&lt;W&gt;(
+<a href=#1445 id=1445 data-nosnippet>1445</a>    <span class="kw-2">mut </span>graph_write: W,
+<a href=#1446 id=1446 data-nosnippet>1446</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
+<a href=#1447 id=1447 data-nosnippet>1447</a>    config: <span class="kw-2">&amp;</span>HydroWriteConfig,
+<a href=#1448 id=1448 data-nosnippet>1448</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), W::Err&gt;
+<a href=#1449 id=1449 data-nosnippet>1449</a><span class="kw">where
+<a href=#1450 id=1450 data-nosnippet>1450</a>    </span>W: HydroGraphWrite,
+<a href=#1451 id=1451 data-nosnippet>1451</a>{
+<a href=#1452 id=1452 data-nosnippet>1452</a>    <span class="kw">let </span><span class="kw-2">mut </span>structure = HydroGraphStructure::new();
+<a href=#1453 id=1453 data-nosnippet>1453</a>    <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = HashMap::new();
+<a href=#1454 id=1454 data-nosnippet>1454</a>
+<a href=#1455 id=1455 data-nosnippet>1455</a>    <span class="comment">// Build the graph structure for all roots
+<a href=#1456 id=1456 data-nosnippet>1456</a>    </span><span class="kw">for </span>leaf <span class="kw">in </span>roots {
+<a href=#1457 id=1457 data-nosnippet>1457</a>        leaf.build_graph_structure(<span class="kw-2">&amp;mut </span>structure, <span class="kw-2">&amp;mut </span>seen_tees, config);
+<a href=#1458 id=1458 data-nosnippet>1458</a>    }
+<a href=#1459 id=1459 data-nosnippet>1459</a>
+<a href=#1460 id=1460 data-nosnippet>1460</a>    <span class="comment">// Write the graph using the same logic as individual roots
+<a href=#1461 id=1461 data-nosnippet>1461</a>    </span>graph_write.write_prologue()<span class="question-mark">?</span>;
+<a href=#1462 id=1462 data-nosnippet>1462</a>
+<a href=#1463 id=1463 data-nosnippet>1463</a>    <span class="kw">for </span>(<span class="kw-2">&amp;</span>node_id, (label, node_type, location, backtrace)) <span class="kw">in </span><span class="kw-2">&amp;</span>structure.nodes {
+<a href=#1464 id=1464 data-nosnippet>1464</a>        <span class="kw">let </span>(location_id, location_type) = <span class="kw">if let </span><span class="prelude-val">Some</span>(loc_id) = location {
+<a href=#1465 id=1465 data-nosnippet>1465</a>            (
+<a href=#1466 id=1466 data-nosnippet>1466</a>                <span class="prelude-val">Some</span>(<span class="kw-2">*</span>loc_id),
+<a href=#1467 id=1467 data-nosnippet>1467</a>                structure.locations.get(loc_id).map(|s| s.as_str()),
+<a href=#1468 id=1468 data-nosnippet>1468</a>            )
+<a href=#1469 id=1469 data-nosnippet>1469</a>        } <span class="kw">else </span>{
+<a href=#1470 id=1470 data-nosnippet>1470</a>            (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+<a href=#1471 id=1471 data-nosnippet>1471</a>        };
+<a href=#1472 id=1472 data-nosnippet>1472</a>        graph_write.write_node_definition(
+<a href=#1473 id=1473 data-nosnippet>1473</a>            node_id,
+<a href=#1474 id=1474 data-nosnippet>1474</a>            label,
+<a href=#1475 id=1475 data-nosnippet>1475</a>            <span class="kw-2">*</span>node_type,
+<a href=#1476 id=1476 data-nosnippet>1476</a>            location_id,
+<a href=#1477 id=1477 data-nosnippet>1477</a>            location_type,
+<a href=#1478 id=1478 data-nosnippet>1478</a>            backtrace.as_ref(),
+<a href=#1479 id=1479 data-nosnippet>1479</a>        )<span class="question-mark">?</span>;
+<a href=#1480 id=1480 data-nosnippet>1480</a>    }
+<a href=#1481 id=1481 data-nosnippet>1481</a>
+<a href=#1482 id=1482 data-nosnippet>1482</a>    <span class="kw">if </span>config.show_location_groups {
+<a href=#1483 id=1483 data-nosnippet>1483</a>        <span class="kw">let </span><span class="kw-2">mut </span>nodes_by_location: HashMap&lt;usize, Vec&lt;usize&gt;&gt; = HashMap::new();
+<a href=#1484 id=1484 data-nosnippet>1484</a>        <span class="kw">for </span>(<span class="kw-2">&amp;</span>node_id, (<span class="kw">_</span>, <span class="kw">_</span>, location, <span class="kw">_</span>)) <span class="kw">in </span><span class="kw-2">&amp;</span>structure.nodes {
+<a href=#1485 id=1485 data-nosnippet>1485</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(location_id) = location {
+<a href=#1486 id=1486 data-nosnippet>1486</a>                nodes_by_location
+<a href=#1487 id=1487 data-nosnippet>1487</a>                    .entry(<span class="kw-2">*</span>location_id)
+<a href=#1488 id=1488 data-nosnippet>1488</a>                    .or_default()
+<a href=#1489 id=1489 data-nosnippet>1489</a>                    .push(node_id);
+<a href=#1490 id=1490 data-nosnippet>1490</a>            }
+<a href=#1491 id=1491 data-nosnippet>1491</a>        }
+<a href=#1492 id=1492 data-nosnippet>1492</a>
+<a href=#1493 id=1493 data-nosnippet>1493</a>        <span class="kw">for </span>(<span class="kw-2">&amp;</span>location_id, node_ids) <span class="kw">in </span><span class="kw-2">&amp;</span>nodes_by_location {
+<a href=#1494 id=1494 data-nosnippet>1494</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(location_type) = structure.locations.get(<span class="kw-2">&amp;</span>location_id) {
+<a href=#1495 id=1495 data-nosnippet>1495</a>                graph_write.write_location_start(location_id, location_type)<span class="question-mark">?</span>;
+<a href=#1496 id=1496 data-nosnippet>1496</a>                <span class="kw">for </span><span class="kw-2">&amp;</span>node_id <span class="kw">in </span>node_ids {
+<a href=#1497 id=1497 data-nosnippet>1497</a>                    graph_write.write_node(node_id)<span class="question-mark">?</span>;
+<a href=#1498 id=1498 data-nosnippet>1498</a>                }
+<a href=#1499 id=1499 data-nosnippet>1499</a>                graph_write.write_location_end()<span class="question-mark">?</span>;
+<a href=#1500 id=1500 data-nosnippet>1500</a>            }
+<a href=#1501 id=1501 data-nosnippet>1501</a>        }
 <a href=#1502 id=1502 data-nosnippet>1502</a>    }
 <a href=#1503 id=1503 data-nosnippet>1503</a>
-<a href=#1504 id=1504 data-nosnippet>1504</a>    graph_write.write_epilogue()<span class="question-mark">?</span>;
-<a href=#1505 id=1505 data-nosnippet>1505</a>    <span class="prelude-val">Ok</span>(())
-<a href=#1506 id=1506 data-nosnippet>1506</a>}</code></pre></div></section></main></body></html>
+<a href=#1504 id=1504 data-nosnippet>1504</a>    <span class="kw">for </span>(src_id, dst_id, edge_properties, label) <span class="kw">in </span><span class="kw-2">&amp;</span>structure.edges {
+<a href=#1505 id=1505 data-nosnippet>1505</a>        graph_write.write_edge(<span class="kw-2">*</span>src_id, <span class="kw-2">*</span>dst_id, edge_properties, label.as_deref())<span class="question-mark">?</span>;
+<a href=#1506 id=1506 data-nosnippet>1506</a>    }
+<a href=#1507 id=1507 data-nosnippet>1507</a>
+<a href=#1508 id=1508 data-nosnippet>1508</a>    graph_write.write_epilogue()<span class="question-mark">?</span>;
+<a href=#1509 id=1509 data-nosnippet>1509</a>    <span class="prelude-val">Ok</span>(())
+<a href=#1510 id=1510 data-nosnippet>1510</a>}</code></pre></div></section></main></body></html>
