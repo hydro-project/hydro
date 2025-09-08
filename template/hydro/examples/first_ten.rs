@@ -4,7 +4,7 @@ use hydro_deploy::Deployment;
 async fn main() {
     let mut deployment = Deployment::new();
 
-    let flow = hydro_lang::builder::FlowBuilder::new();
+    let flow = hydro_lang::compile::builder::FlowBuilder::new();
     let process = flow.process();
     hydro_template::first_ten::first_ten(&process);
 

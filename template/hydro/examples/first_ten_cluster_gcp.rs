@@ -17,7 +17,7 @@ async fn main() {
     let mut deployment = Deployment::new();
     let vpc = Arc::new(RwLock::new(GcpNetwork::new(&gcp_project, None)));
 
-    let flow = hydro_lang::builder::FlowBuilder::new();
+    let flow = hydro_lang::compile::builder::FlowBuilder::new();
     let leader = flow.process();
     let workers = flow.cluster();
     hydro_template::first_ten_cluster::first_ten_cluster(&leader, &workers);
