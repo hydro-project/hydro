@@ -85,9 +85,6 @@ mod manual_expr;
 #[expect(missing_docs, reason = "TODO")]
 pub mod graph;
 
-#[expect(missing_docs, reason = "TODO")]
-pub mod rewrites;
-
 mod staging_util;
 
 #[cfg(feature = "deploy")]
