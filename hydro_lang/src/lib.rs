@@ -94,11 +94,6 @@ pub mod ir;
 #[expect(missing_docs, reason = "TODO")]
 pub mod graph;
 
-#[cfg(feature = "viz")]
-#[cfg_attr(docsrs, doc(cfg(feature = "viz")))]
-#[expect(missing_docs, reason = "TODO")]
-pub mod graph_util;
-
 #[expect(missing_docs, reason = "TODO")]
 pub mod rewrites;
 

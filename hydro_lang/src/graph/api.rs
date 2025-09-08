@@ -331,34 +331,23 @@ impl<'a> GraphApi<'a> {
     #[cfg(feature = "build")]
     pub fn generate_graph_with_config(
         &self,
-        config: &crate::graph_util::GraphConfig,
+        config: &crate::graph::config::GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn Error>> {
         if let Some(graph_type) = config.graph {
             let format = match graph_type {
-                crate::graph_util::GraphType::Mermaid => GraphFormat::Mermaid,
-                crate::graph_util::GraphType::Dot => GraphFormat::Dot,
-                crate::graph_util::GraphType::Json => GraphFormat::Json,
+                crate::graph::config::GraphType::Mermaid => GraphFormat::Mermaid,
+                crate::graph::config::GraphType::Dot => GraphFormat::Dot,
+                crate::graph::config::GraphType::Json => GraphFormat::Json,
             };
 
-            if config.file {
-                // Force save to temporary file
-                self.write_graph_to_temp_file(
-                    format,
-                    !config.no_metadata,
-                    !config.no_location_groups,
-                    !config.long_labels, // use_short_labels is the inverse of long_labels
-                )
-            } else {
-                // Open in browser (existing behavior)
-                self.open_browser(
-                    format,
-                    !config.no_metadata,
-                    !config.no_location_groups,
-                    !config.long_labels, // use_short_labels is the inverse of long_labels
-                    message_handler,
-                )
-            }
+            self.open_browser(
+                format,
+                !config.no_metadata,
+                !config.no_location_groups,
+                !config.long_labels, // use_short_labels is the inverse of long_labels
+                message_handler,
+            )
         } else {
             Ok(())
         }
@@ -368,7 +357,7 @@ impl<'a> GraphApi<'a> {
     #[cfg(feature = "build")]
     pub fn generate_all_files_with_config(
         &self,
-        config: &crate::graph_util::GraphConfig,
+        config: &crate::graph::config::GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn Error>> {
         self.generate_all_files(

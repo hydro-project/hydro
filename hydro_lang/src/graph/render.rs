@@ -772,7 +772,7 @@ impl HydroRoot {
                 label,
                 HydroNodeType::Sink,
                 location_id,
-                effective_metadata.map(|m| m.backtrace.clone()),
+                effective_metadata.map(|m| m.op.backtrace.clone()),
             );
 
             // Extract edge properties from the input node's output type
@@ -859,7 +859,7 @@ impl HydroNode {
                 label,
                 node_type,
                 location_id,
-                Some(metadata.backtrace.clone()),
+                Some(metadata.op.backtrace.clone()),
             );
 
             // Extract edge properties from the input node's output type
@@ -879,7 +879,7 @@ impl HydroNode {
                 NodeLabel::Static(label),
                 HydroNodeType::Source,
                 location_id,
-                Some(metadata.backtrace.clone()),
+                Some(metadata.op.backtrace.clone()),
             )
         }
 
@@ -930,7 +930,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Tee,
                     location_id,
-                    Some(metadata.backtrace.clone()),
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 seen_tees.insert(ptr, tee_id);
@@ -1108,7 +1108,7 @@ impl HydroNode {
                     NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
                     HydroNodeType::Aggregation,
                     location_id,
-                    Some(metadata.backtrace.clone()),
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 let input_properties = extract_edge_properties_from_node(input);
@@ -1140,7 +1140,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
                     location_id,
-                    Some(metadata.backtrace.clone()),
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 let left_properties = extract_edge_properties_from_node(left);
@@ -1167,7 +1167,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
                     location_id,
-                    Some(metadata.backtrace.clone()),
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 let left_properties = extract_edge_properties_from_node(left);
@@ -1194,7 +1194,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
                     location_id,
-                    Some(metadata.backtrace.clone()),
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 let left_properties = extract_edge_properties_from_node(left);
@@ -1221,7 +1221,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
                     location_id,
-                    Some(metadata.backtrace.clone()),
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 let left_properties = extract_edge_properties_from_node(left);
@@ -1243,7 +1243,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
                     location_id,
-                    Some(metadata.backtrace.clone()),
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 let left_properties = extract_edge_properties_from_node(left);
@@ -1342,7 +1342,7 @@ impl HydroNode {
                     NodeLabel::Static(label),
                     HydroNodeType::Network,
                     to_location_id,
-                    Some(metadata.backtrace.clone()),
+                    Some(metadata.op.backtrace.clone()),
                 );
                 // Extract edge properties and add Network property
                 let mut edge_properties = extract_edge_properties_from_node(input);
@@ -1371,7 +1371,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Transform,
                     location_id,
-                    Some(metadata.backtrace.clone()),
+                    Some(metadata.op.backtrace.clone()),
                 );
                 let first_properties = extract_edge_properties_from_node(first);
                 let second_properties = extract_edge_properties_from_node(second);
