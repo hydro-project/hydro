@@ -17,10 +17,11 @@ use super::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
 use super::ir::HydroRoot;
+use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBincodeStream, ExternalBytesPort,
 };
-use crate::location::{Cluster, External, Location, LocationId, Process};
+use crate::location::{Cluster, External, Location, Process};
 use crate::staging_util::Invariant;
 
 pub struct DeployFlow<'a, D>
