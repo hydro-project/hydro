@@ -34,13 +34,7 @@ impl<P> Clone for Process<'_, P> {
     }
 }
 
-impl<'a, P> Location<'a> for Process<'a, P> {
-    type Root = Self;
-
-    fn root(&self) -> Self::Root {
-        self.clone()
-    }
-
+impl<'a, P> super::dynamic::DynLocation for Process<'a, P> {
     fn id(&self) -> LocationId {
         LocationId::Process(self.id)
     }
@@ -51,5 +45,13 @@ impl<'a, P> Location<'a> for Process<'a, P> {
 
     fn is_top_level() -> bool {
         true
+    }
+}
+
+impl<'a, P> Location<'a> for Process<'a, P> {
+    type Root = Self;
+
+    fn root(&self) -> Self::Root {
+        self.clone()
     }
 }

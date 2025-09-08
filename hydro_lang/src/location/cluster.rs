@@ -6,7 +6,8 @@ use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
 use stageleft::{QuotedWithContext, quote_type};
 
-use super::{Location, LocationId, MemberId};
+use super::dynamic::LocationId;
+use super::{Location, MemberId};
 use crate::builder::FlowState;
 use crate::staging_util::{Invariant, get_this_crate};
 
@@ -39,13 +40,7 @@ impl<C> Clone for Cluster<'_, C> {
     }
 }
 
-impl<'a, C> Location<'a> for Cluster<'a, C> {
-    type Root = Cluster<'a, C>;
-
-    fn root(&self) -> Self::Root {
-        self.clone()
-    }
-
+impl<'a, C> super::dynamic::DynLocation for Cluster<'a, C> {
     fn id(&self) -> LocationId {
         LocationId::Cluster(self.id)
     }
@@ -56,6 +51,14 @@ impl<'a, C> Location<'a> for Cluster<'a, C> {
 
     fn is_top_level() -> bool {
         true
+    }
+}
+
+impl<'a, C> Location<'a> for Cluster<'a, C> {
+    type Root = Cluster<'a, C>;
+
+    fn root(&self) -> Self::Root {
+        self.clone()
     }
 }
 
