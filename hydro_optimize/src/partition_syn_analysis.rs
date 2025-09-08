@@ -778,8 +778,8 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::BTreeMap;
 
-    use hydro_lang::builder::FlowBuilder;
-    use hydro_lang::builder::ir::{HydroNode, HydroRoot, deep_clone, traverse_dfir};
+    use hydro_lang::compile::builder::FlowBuilder;
+    use hydro_lang::compile::ir::{HydroNode, HydroRoot, deep_clone, traverse_dfir};
     use hydro_lang::deploy::HydroDeploy;
     use hydro_lang::location::Location;
     use stageleft::q;
