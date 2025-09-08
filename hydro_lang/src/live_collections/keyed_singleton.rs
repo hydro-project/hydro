@@ -8,8 +8,9 @@ use super::optional::Optional;
 use super::singleton::Singleton;
 use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
+use crate::location::dynamic::LocationId;
 use crate::location::tick::NoAtomic;
-use crate::location::{Atomic, Location, LocationId, NoTick, Tick};
+use crate::location::{Atomic, Location, NoTick, Tick};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
