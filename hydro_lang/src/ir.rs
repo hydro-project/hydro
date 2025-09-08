@@ -1222,6 +1222,7 @@ pub enum HydroNode {
     Counter {
         tag: String,
         duration: DebugExpr,
+        prefix: String,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -1578,11 +1579,13 @@ impl HydroNode {
             HydroNode::Counter {
                 tag,
                 duration,
+                prefix,
                 input,
                 metadata,
             } => HydroNode::Counter {
                 tag: tag.clone(),
                 duration: duration.clone(),
+                prefix: prefix.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -2621,6 +2624,7 @@ impl HydroNode {
             HydroNode::Counter {
                 tag,
                 duration,
+                prefix,
                 input,
                 ..
             } => {
@@ -2635,7 +2639,7 @@ impl HydroNode {
                         let builder = graph_builders.entry(input_location_id).or_default();
                         builder.add_dfir(
                             parse_quote! {
-                                #counter_ident = #input_ident -> _counter(#tag, #duration);
+                                #counter_ident = #input_ident -> _counter(#tag, #duration, #prefix);
                             },
                             None,
                             Some(&next_stmt_id.to_string()),
