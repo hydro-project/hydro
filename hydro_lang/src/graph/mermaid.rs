@@ -159,25 +159,27 @@ where
         // Choose arrow style based on unified style patterns
         let arrow_style = match (style.line_pattern, style.arrowhead) {
             // Dotted patterns for network/remote connections
-            (super::render::LinePattern::Dotted, super::render::ArrowheadStyle::CircleFilled) => "-.->",
+            (super::render::LinePattern::Dotted, super::render::ArrowheadStyle::CircleFilled) => {
+                "-.->"
+            }
             (super::render::LinePattern::Dotted, _) => "-.->",
-            
+
             // Circle arrowhead for singleton/special data
             (_, super::render::ArrowheadStyle::CircleFilled) => "--o",
-            
-            // Cross arrowhead for optional/nullable data  
+
+            // Cross arrowhead for optional/nullable data
             (_, super::render::ArrowheadStyle::DiamondOpen) => "--x",
-            
+
             // Thick lines for bounded/heavy data flows
             _ if style.line_width > 1 => "==>",
-            
+
             // Default arrow
             _ => "-->",
         };
 
         // For double line style (keyed streams), we'll add a visual indicator in the linkStyle
         // For wavy lines (no order), we'll use stroke-dasharray to create a wavy pattern
-        
+
         // Write the edge definition
         writeln!(
             self.base.write,
@@ -200,12 +202,12 @@ where
 
         // Build linkStyle properties
         let mut link_style_parts = vec![format!("stroke:{}", style.color)];
-        
+
         // Apply stroke width
         if style.line_width > 1 {
             link_style_parts.push(format!("stroke-width:{}px", style.line_width));
         }
-        
+
         // Apply special patterns for semantic meaning
         match (style.line_style, style.waviness) {
             // Double lines for keyed streams - use stroke-dasharray to simulate
@@ -237,7 +239,8 @@ where
         location_type: &str,
     ) -> Result<(), Self::Err> {
         // Use the common location labeling utility
-        let location_label = super::render::get_location_label(location_id, location_type, &self.base.config);
+        let location_label =
+            super::render::get_location_label(location_id, location_type, &self.base.config);
         writeln!(
             self.base.write,
             "{b:i$}subgraph {id} [\"{label}\"]",
