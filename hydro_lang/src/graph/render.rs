@@ -1262,36 +1262,14 @@ impl HydroNode {
                 acc,
                 input,
                 metadata,
-            } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                input,
-                metadata,
-                NodeLabel::with_exprs(
-                    extract_op_name(self.print_root()),
-                    vec![init.clone(), acc.clone()],
-                ),
-                HydroNodeType::Aggregation,
-            ),
-            HydroNode::FoldKeyed {
+            }
+            | HydroNode::FoldKeyed {
                 init,
                 acc,
                 input,
                 metadata,
-            } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                input,
-                metadata,
-                NodeLabel::with_exprs(
-                    extract_op_name(self.print_root()),
-                    vec![init.clone(), acc.clone()],
-                ),
-                HydroNodeType::Aggregation,
-            ),
-            HydroNode::Scan {
+            }
+            | HydroNode::Scan {
                 init,
                 acc,
                 input,
@@ -1417,18 +1395,6 @@ impl HydroNode {
                 HydroNodeType::Transform,
             ),
         }
-        // build_single_input_transform(
-        //         structure,
-        //         seen_tees,
-        //         config,
-        //         input,
-        //         metadata,
-        //         NodeLabel::with_exprs(
-        //             extract_op_name(self.print_root()),
-        //             vec![init.clone(), acc.clone()],
-        //         ),
-        //         HydroNodeType::Transform,
-        //     ),
     }
 }
 
