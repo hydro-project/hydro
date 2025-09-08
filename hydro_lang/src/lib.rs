@@ -80,9 +80,6 @@ pub mod builder;
 
 mod manual_expr;
 
-#[expect(missing_docs, reason = "TODO")]
-pub mod ir;
-
 #[cfg(feature = "viz")]
 #[cfg_attr(docsrs, doc(cfg(feature = "viz")))]
 #[expect(missing_docs, reason = "TODO")]

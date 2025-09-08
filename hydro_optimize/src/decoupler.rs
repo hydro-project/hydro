@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use hydro_lang::ir::{
+use hydro_lang::builder::ir::{
     DebugInstantiate, DebugType, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode,
     transform_bottom_up, traverse_dfir,
 };
@@ -274,8 +274,7 @@ mod tests {
     use std::collections::HashSet;
 
     use hydro_deploy::Deployment;
-    use hydro_lang::builder::FlowBuilder;
-    use hydro_lang::ir;
+    use hydro_lang::builder::{FlowBuilder, ir};
     use hydro_lang::location::Location;
     use hydro_lang::nondet::nondet;
     use hydro_lang::rewrites::persist_pullup::persist_pullup;

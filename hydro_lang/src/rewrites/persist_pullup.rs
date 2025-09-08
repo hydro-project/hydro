@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashSet;
 
-use crate::ir::*;
+use crate::builder::ir::*;
 
 fn persist_pullup_node(
     node: &mut HydroNode,

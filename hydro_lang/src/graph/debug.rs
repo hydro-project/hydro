@@ -8,7 +8,7 @@ use std::io::Result;
 
 use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
 use super::template::get_template;
-use crate::ir::HydroRoot;
+use crate::builder::ir::HydroRoot;
 
 /// Opens Hydro IR roots as a single mermaid diagram.
 pub fn open_mermaid(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result<()> {
