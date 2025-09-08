@@ -1115,77 +1115,29 @@ impl HydroNode {
 
                 tee_id
             }
-            HydroNode::Delta { inner, metadata } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                inner,
-                metadata,
-                NodeLabel::Static(extract_op_name(self.print_root())),
-                HydroNodeType::Transform,
-            ),
-            HydroNode::DeferTick {
+            HydroNode::Delta { inner, metadata }
+            | HydroNode::DeferTick {
                 input: inner,
                 metadata,
-            } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                inner,
-                metadata,
-                NodeLabel::Static(extract_op_name(self.print_root())),
-                HydroNodeType::Transform,
-            ),
-            HydroNode::Enumerate {
+            }
+            | HydroNode::Enumerate {
                 input: inner,
                 metadata,
                 ..
-            } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                inner,
-                metadata,
-                NodeLabel::Static(extract_op_name(self.print_root())),
-                HydroNodeType::Transform,
-            ),
-            HydroNode::Unique {
+            }
+            | HydroNode::Unique {
                 input: inner,
                 metadata,
-            } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                inner,
-                metadata,
-                NodeLabel::Static(extract_op_name(self.print_root())),
-                HydroNodeType::Transform,
-            ),
-            HydroNode::ResolveFutures {
+            }
+            | HydroNode::ResolveFutures {
                 input: inner,
                 metadata,
-            } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                inner,
-                metadata,
-                NodeLabel::Static(extract_op_name(self.print_root())),
-                HydroNodeType::Transform,
-            ),
-            HydroNode::ResolveFuturesOrdered {
+            }
+            | HydroNode::ResolveFuturesOrdered {
                 input: inner,
                 metadata,
-            } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                inner,
-                metadata,
-                NodeLabel::Static(extract_op_name(self.print_root())),
-                HydroNodeType::Transform,
-            ),
-            HydroNode::Persist { inner, metadata } => build_single_input_transform(
+            }
+            | HydroNode::Persist { inner, metadata } => build_single_input_transform(
                 structure,
                 seen_tees,
                 config,
