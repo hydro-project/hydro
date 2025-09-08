@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
 use hydro_lang::prelude::*;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -59,7 +59,9 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
 
     let replica_tick = replicas.tick();
 
-    let (r_buffered_payloads_complete_cycle, r_buffered_payloads) = replica_tick.cycle();
+    let (r_buffered_payloads_complete_cycle, r_buffered_payloads) =
+        replica_tick
+            .cycle::<Stream<SequencedKv<K, V>, Tick<Cluster<'a, Replica>>, Bounded, TotalOrder>>();
     // p_to_replicas.inspect(q!(|payload: ReplicaPayload| println!("Replica received payload: {:?}", payload)));
     let r_sorted_payloads = p_to_replicas.batch(&replica_tick, nondet!(
             /// because we fill slots one-by-one, we can safely batch

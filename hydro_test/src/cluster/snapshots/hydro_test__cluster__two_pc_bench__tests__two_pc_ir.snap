@@ -7,11 +7,11 @@ expression: built.ir()
         ident: Ident {
             sym: cycle_1,
         },
-        input: DeferTick {
-            input: AntiJoin {
-                pos: Tee {
-                    inner: <tee 0>: Chain {
-                        first: CycleSource {
+        input: AntiJoin {
+            pos: Tee {
+                inner: <tee 0>: Chain {
+                    first: DeferTick {
+                        input: CycleSource {
                             ident: Ident {
                                 sym: cycle_1,
                             },
@@ -27,57 +27,60 @@ expression: built.ir()
                                 ),
                             },
                         },
-                        second: Tee {
-                            inner: <tee 1>: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: two_pc :: * ; | kv | (kv , Ok :: < () , () > (())) }),
-                                input: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
+                        metadata: HydroIrMetadata {
+                            location_kind: Tick(
+                                2,
+                                Process(
+                                    0,
+                                ),
+                            ),
+                            output_type: Some(
+                                ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
+                            ),
+                        },
+                    },
+                    second: Tee {
+                        inner: <tee 1>: Map {
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: two_pc :: * ; | kv | (kv , Ok :: < () , () > (())) }),
+                            input: Map {
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
+                                input: Network {
+                                    serialize_fn: Some(
+                                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                                    ),
+                                    instantiate_fn: <network instantiate>,
+                                    deserialize_fn: Some(
+                                        | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: two_pc :: Participant > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > (& b) . unwrap ()) },
+                                    ),
                                     input: Network {
                                         serialize_fn: Some(
-                                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: MemberId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                         ),
                                         instantiate_fn: <network instantiate>,
                                         deserialize_fn: Some(
-                                            | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: two_pc :: Participant > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > (& b) . unwrap ()) },
+                                            | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > (& res . unwrap ()) . unwrap () },
                                         ),
-                                        input: Network {
-                                            serialize_fn: Some(
-                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: MemberId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
-                                            ),
-                                            instantiate_fn: <network instantiate>,
-                                            deserialize_fn: Some(
-                                                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > (& res . unwrap ()) . unwrap () },
-                                            ),
-                                            input: CrossProduct {
-                                                left: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                    input: FilterMap {
-                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
-                                                        input: FoldKeyed {
-                                                            init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | | false }),
-                                                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
-                                                            input: Persist {
-                                                                inner: Map {
-                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
-                                                                    input: Source {
-                                                                        source: Iter(
-                                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_memberids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: location :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >] > (__hydro_lang_cluster_ids_1) } ; underlying_memberids__free },
-                                                                        ),
-                                                                        metadata: HydroIrMetadata {
-                                                                            location_kind: Process(
-                                                                                0,
-                                                                            ),
-                                                                            output_type: Some(
-                                                                                & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >,
-                                                                            ),
-                                                                        },
-                                                                    },
+                                        input: CrossProduct {
+                                            left: Map {
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
+                                                input: FilterMap {
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
+                                                    input: FoldKeyed {
+                                                        init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | | false }),
+                                                        acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
+                                                        input: Persist {
+                                                            inner: Map {
+                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
+                                                                input: Source {
+                                                                    source: Iter(
+                                                                        { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_memberids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: location :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >] > (__hydro_lang_cluster_ids_1) } ; underlying_memberids__free },
+                                                                    ),
                                                                     metadata: HydroIrMetadata {
                                                                         location_kind: Process(
                                                                             0,
                                                                         ),
                                                                         output_type: Some(
-                                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
+                                                                            & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >,
                                                                         ),
                                                                     },
                                                                 },
@@ -95,7 +98,7 @@ expression: built.ir()
                                                                     0,
                                                                 ),
                                                                 output_type: Some(
-                                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , bool),
+                                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
                                                                 ),
                                                             },
                                                         },
@@ -104,40 +107,7 @@ expression: built.ir()
                                                                 0,
                                                             ),
                                                             output_type: Some(
-                                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()),
-                                                            ),
-                                                        },
-                                                    },
-                                                    metadata: HydroIrMetadata {
-                                                        location_kind: Tick(
-                                                            1,
-                                                            Process(
-                                                                0,
-                                                            ),
-                                                        ),
-                                                        output_type: Some(
-                                                            hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >,
-                                                        ),
-                                                    },
-                                                },
-                                                right: Network {
-                                                    serialize_fn: Some(
-                                                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , u32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
-                                                    ),
-                                                    instantiate_fn: <network instantiate>,
-                                                    deserialize_fn: Some(
-                                                        | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (u32 , u32) > (& b) . unwrap ()) },
-                                                    ),
-                                                    input: CycleSource {
-                                                        ident: Ident {
-                                                            sym: cycle_0,
-                                                        },
-                                                        metadata: HydroIrMetadata {
-                                                            location_kind: Cluster(
-                                                                2,
-                                                            ),
-                                                            output_type: Some(
-                                                                (u32 , u32),
+                                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , bool),
                                                             ),
                                                         },
                                                     },
@@ -146,7 +116,7 @@ expression: built.ir()
                                                             0,
                                                         ),
                                                         output_type: Some(
-                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()),
                                                         ),
                                                     },
                                                 },
@@ -158,25 +128,58 @@ expression: built.ir()
                                                         ),
                                                     ),
                                                     output_type: Some(
-                                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
+                                                        hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >,
+                                                    ),
+                                                },
+                                            },
+                                            right: Network {
+                                                serialize_fn: Some(
+                                                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , u32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                                                ),
+                                                instantiate_fn: <network instantiate>,
+                                                deserialize_fn: Some(
+                                                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (u32 , u32) > (& b) . unwrap ()) },
+                                                ),
+                                                input: CycleSource {
+                                                    ident: Ident {
+                                                        sym: cycle_0,
+                                                    },
+                                                    metadata: HydroIrMetadata {
+                                                        location_kind: Cluster(
+                                                            2,
+                                                        ),
+                                                        output_type: Some(
+                                                            (u32 , u32),
+                                                        ),
+                                                    },
+                                                },
+                                                metadata: HydroIrMetadata {
+                                                    location_kind: Process(
+                                                        0,
+                                                    ),
+                                                    output_type: Some(
+                                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                                     ),
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
-                                                location_kind: Cluster(
+                                                location_kind: Tick(
                                                     1,
+                                                    Process(
+                                                        0,
+                                                    ),
                                                 ),
                                                 output_type: Some(
-                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                                 ),
                                             },
                                         },
                                         metadata: HydroIrMetadata {
-                                            location_kind: Process(
-                                                0,
+                                            location_kind: Cluster(
+                                                1,
                                             ),
                                             output_type: Some(
-                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
+                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                             ),
                                         },
                                     },
@@ -185,7 +188,7 @@ expression: built.ir()
                                             0,
                                         ),
                                         output_type: Some(
-                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                         ),
                                     },
                                 },
@@ -194,16 +197,13 @@ expression: built.ir()
                                         0,
                                     ),
                                     output_type: Some(
-                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
+                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                     ),
                                 },
                             },
                             metadata: HydroIrMetadata {
-                                location_kind: Tick(
-                                    2,
-                                    Process(
-                                        0,
-                                    ),
+                                location_kind: Process(
+                                    0,
                                 ),
                                 output_type: Some(
                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
@@ -234,27 +234,27 @@ expression: built.ir()
                         ),
                     },
                 },
-                neg: Tee {
-                    inner: <tee 2>: FilterMap {
-                        f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; let min__free = 3usize ; move | (key , (success , _error)) | if success >= min__free { Some (key) } else { None } }),
-                        input: Tee {
-                            inner: <tee 3>: FoldKeyed {
-                                init: stageleft :: runtime_support :: fn0_type_hint :: < (usize , usize) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | | (0 , 0) }),
-                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (usize , usize) , core :: result :: Result < () , () > , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | accum , value | { if value . is_ok () { accum . 0 += 1 ; } else { accum . 1 += 1 ; } } }),
-                                input: Tee {
-                                    inner: <tee 0>,
-                                    metadata: HydroIrMetadata {
-                                        location_kind: Tick(
-                                            2,
-                                            Process(
-                                                0,
-                                            ),
-                                        ),
-                                        output_type: Some(
-                                            ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
-                                        ),
-                                    },
-                                },
+                metadata: HydroIrMetadata {
+                    location_kind: Tick(
+                        2,
+                        Process(
+                            0,
+                        ),
+                    ),
+                    output_type: Some(
+                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
+                    ),
+                },
+            },
+            neg: Tee {
+                inner: <tee 2>: FilterMap {
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; let min__free = 3usize ; move | (key , (success , _error)) | if success >= min__free { Some (key) } else { None } }),
+                    input: Tee {
+                        inner: <tee 3>: FoldKeyed {
+                            init: stageleft :: runtime_support :: fn0_type_hint :: < (usize , usize) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | | (0 , 0) }),
+                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (usize , usize) , core :: result :: Result < () , () > , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | accum , value | { if value . is_ok () { accum . 0 += 1 ; } else { accum . 1 += 1 ; } } }),
+                            input: Tee {
+                                inner: <tee 0>,
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
                                         2,
@@ -263,7 +263,7 @@ expression: built.ir()
                                         ),
                                     ),
                                     output_type: Some(
-                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                     ),
                                 },
                             },
@@ -287,7 +287,7 @@ expression: built.ir()
                                 ),
                             ),
                             output_type: Some(
-                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                                ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                             ),
                         },
                     },
@@ -311,7 +311,7 @@ expression: built.ir()
                         ),
                     ),
                     output_type: Some(
-                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
+                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                     ),
                 },
             },
@@ -339,11 +339,11 @@ expression: built.ir()
         ident: Ident {
             sym: cycle_2,
         },
-        input: DeferTick {
-            input: AntiJoin {
-                pos: Tee {
-                    inner: <tee 4>: Chain {
-                        first: CycleSource {
+        input: AntiJoin {
+            pos: Tee {
+                inner: <tee 4>: Chain {
+                    first: DeferTick {
+                        input: CycleSource {
                             ident: Ident {
                                 sym: cycle_2,
                             },
@@ -359,57 +359,60 @@ expression: built.ir()
                                 ),
                             },
                         },
-                        second: Tee {
-                            inner: <tee 5>: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: two_pc :: * ; | kv | (kv , Ok :: < () , () > (())) }),
-                                input: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
+                        metadata: HydroIrMetadata {
+                            location_kind: Tick(
+                                2,
+                                Process(
+                                    0,
+                                ),
+                            ),
+                            output_type: Some(
+                                ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
+                            ),
+                        },
+                    },
+                    second: Tee {
+                        inner: <tee 5>: Map {
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: two_pc :: * ; | kv | (kv , Ok :: < () , () > (())) }),
+                            input: Map {
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
+                                input: Network {
+                                    serialize_fn: Some(
+                                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                                    ),
+                                    instantiate_fn: <network instantiate>,
+                                    deserialize_fn: Some(
+                                        | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: two_pc :: Participant > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > (& b) . unwrap ()) },
+                                    ),
                                     input: Network {
                                         serialize_fn: Some(
-                                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: MemberId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                         ),
                                         instantiate_fn: <network instantiate>,
                                         deserialize_fn: Some(
-                                            | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: two_pc :: Participant > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > (& b) . unwrap ()) },
+                                            | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > (& res . unwrap ()) . unwrap () },
                                         ),
-                                        input: Network {
-                                            serialize_fn: Some(
-                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: MemberId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
-                                            ),
-                                            instantiate_fn: <network instantiate>,
-                                            deserialize_fn: Some(
-                                                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > (& res . unwrap ()) . unwrap () },
-                                            ),
-                                            input: CrossProduct {
-                                                left: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                    input: FilterMap {
-                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
-                                                        input: FoldKeyed {
-                                                            init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | | false }),
-                                                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
-                                                            input: Persist {
-                                                                inner: Map {
-                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
-                                                                    input: Source {
-                                                                        source: Iter(
-                                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_memberids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: location :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >] > (__hydro_lang_cluster_ids_1) } ; underlying_memberids__free },
-                                                                        ),
-                                                                        metadata: HydroIrMetadata {
-                                                                            location_kind: Process(
-                                                                                0,
-                                                                            ),
-                                                                            output_type: Some(
-                                                                                & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >,
-                                                                            ),
-                                                                        },
-                                                                    },
+                                        input: CrossProduct {
+                                            left: Map {
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
+                                                input: FilterMap {
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
+                                                    input: FoldKeyed {
+                                                        init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | | false }),
+                                                        acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
+                                                        input: Persist {
+                                                            inner: Map {
+                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
+                                                                input: Source {
+                                                                    source: Iter(
+                                                                        { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_memberids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: location :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >] > (__hydro_lang_cluster_ids_1) } ; underlying_memberids__free },
+                                                                    ),
                                                                     metadata: HydroIrMetadata {
                                                                         location_kind: Process(
                                                                             0,
                                                                         ),
                                                                         output_type: Some(
-                                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
+                                                                            & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >,
                                                                         ),
                                                                     },
                                                                 },
@@ -427,7 +430,7 @@ expression: built.ir()
                                                                     0,
                                                                 ),
                                                                 output_type: Some(
-                                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , bool),
+                                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
                                                                 ),
                                                             },
                                                         },
@@ -436,33 +439,16 @@ expression: built.ir()
                                                                 0,
                                                             ),
                                                             output_type: Some(
-                                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()),
+                                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , bool),
                                                             ),
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
-                                                        location_kind: Tick(
-                                                            3,
-                                                            Process(
-                                                                0,
-                                                            ),
+                                                        location_kind: Process(
+                                                            0,
                                                         ),
                                                         output_type: Some(
-                                                            hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >,
-                                                        ),
-                                                    },
-                                                },
-                                                right: Tee {
-                                                    inner: <tee 2>,
-                                                    metadata: HydroIrMetadata {
-                                                        location_kind: Tick(
-                                                            2,
-                                                            Process(
-                                                                0,
-                                                            ),
-                                                        ),
-                                                        output_type: Some(
-                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , ()),
                                                         ),
                                                     },
                                                 },
@@ -474,25 +460,42 @@ expression: built.ir()
                                                         ),
                                                     ),
                                                     output_type: Some(
-                                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
+                                                        hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant >,
+                                                    ),
+                                                },
+                                            },
+                                            right: Tee {
+                                                inner: <tee 2>,
+                                                metadata: HydroIrMetadata {
+                                                    location_kind: Tick(
+                                                        2,
+                                                        Process(
+                                                            0,
+                                                        ),
+                                                    ),
+                                                    output_type: Some(
+                                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                                     ),
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
-                                                location_kind: Cluster(
-                                                    1,
+                                                location_kind: Tick(
+                                                    3,
+                                                    Process(
+                                                        0,
+                                                    ),
                                                 ),
                                                 output_type: Some(
-                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                                 ),
                                             },
                                         },
                                         metadata: HydroIrMetadata {
-                                            location_kind: Process(
-                                                0,
+                                            location_kind: Cluster(
+                                                1,
                                             ),
                                             output_type: Some(
-                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
+                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                             ),
                                         },
                                     },
@@ -501,7 +504,7 @@ expression: built.ir()
                                             0,
                                         ),
                                         output_type: Some(
-                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))),
                                         ),
                                     },
                                 },
@@ -510,16 +513,13 @@ expression: built.ir()
                                         0,
                                     ),
                                     output_type: Some(
-                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
+                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                                     ),
                                 },
                             },
                             metadata: HydroIrMetadata {
-                                location_kind: Tick(
-                                    2,
-                                    Process(
-                                        0,
-                                    ),
+                                location_kind: Process(
+                                    0,
                                 ),
                                 output_type: Some(
                                     ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
@@ -550,27 +550,27 @@ expression: built.ir()
                         ),
                     },
                 },
-                neg: Tee {
-                    inner: <tee 6>: FilterMap {
-                        f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; let min__free = 3usize ; move | (key , (success , _error)) | if success >= min__free { Some (key) } else { None } }),
-                        input: Tee {
-                            inner: <tee 7>: FoldKeyed {
-                                init: stageleft :: runtime_support :: fn0_type_hint :: < (usize , usize) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | | (0 , 0) }),
-                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (usize , usize) , core :: result :: Result < () , () > , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | accum , value | { if value . is_ok () { accum . 0 += 1 ; } else { accum . 1 += 1 ; } } }),
-                                input: Tee {
-                                    inner: <tee 4>,
-                                    metadata: HydroIrMetadata {
-                                        location_kind: Tick(
-                                            2,
-                                            Process(
-                                                0,
-                                            ),
-                                        ),
-                                        output_type: Some(
-                                            ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
-                                        ),
-                                    },
-                                },
+                metadata: HydroIrMetadata {
+                    location_kind: Tick(
+                        2,
+                        Process(
+                            0,
+                        ),
+                    ),
+                    output_type: Some(
+                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
+                    ),
+                },
+            },
+            neg: Tee {
+                inner: <tee 6>: FilterMap {
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; let min__free = 3usize ; move | (key , (success , _error)) | if success >= min__free { Some (key) } else { None } }),
+                    input: Tee {
+                        inner: <tee 7>: FoldKeyed {
+                            init: stageleft :: runtime_support :: fn0_type_hint :: < (usize , usize) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | | (0 , 0) }),
+                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (usize , usize) , core :: result :: Result < () , () > , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | accum , value | { if value . is_ok () { accum . 0 += 1 ; } else { accum . 1 += 1 ; } } }),
+                            input: Tee {
+                                inner: <tee 4>,
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
                                         2,
@@ -579,7 +579,7 @@ expression: built.ir()
                                         ),
                                     ),
                                     output_type: Some(
-                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
+                                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
                                     ),
                                 },
                             },
@@ -603,7 +603,7 @@ expression: built.ir()
                                 ),
                             ),
                             output_type: Some(
-                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                                ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , (usize , usize)),
                             ),
                         },
                     },
@@ -627,7 +627,7 @@ expression: built.ir()
                         ),
                     ),
                     output_type: Some(
-                        ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , core :: result :: Result < () , () >),
+                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
                     ),
                 },
             },
@@ -789,13 +789,13 @@ expression: built.ir()
         ident: Ident {
             sym: cycle_3,
         },
-        input: DeferTick {
-            input: ReduceKeyed {
-                f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: time :: Instant , std :: time :: Instant , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr_time , new_time | { if new_time > * curr_time { * curr_time = new_time ; } } }),
-                input: Chain {
-                    first: Chain {
-                        first: Tee {
-                            inner: <tee 10>: CycleSource {
+        input: ReduceKeyed {
+            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: time :: Instant , std :: time :: Instant , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr_time , new_time | { if new_time > * curr_time { * curr_time = new_time ; } } }),
+            input: Chain {
+                first: Chain {
+                    first: Tee {
+                        inner: <tee 10>: DeferTick {
+                            input: CycleSource {
                                 ident: Ident {
                                     sym: cycle_3,
                                 },
@@ -823,24 +823,24 @@ expression: built.ir()
                                 ),
                             },
                         },
-                        second: FlatMap {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < std :: time :: Instant , std :: iter :: Map < std :: ops :: Range < usize > , _ > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let num_clients_per_node__free = 100usize ; move | now | (0 .. num_clients_per_node__free) . map (move | virtual_id | (virtual_id , now)) }),
-                            input: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , std :: time :: Instant > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | _ | Instant :: now () }),
-                                input: Tee {
-                                    inner: <tee 8>,
-                                    metadata: HydroIrMetadata {
-                                        location_kind: Tick(
-                                            0,
-                                            Cluster(
-                                                2,
-                                            ),
-                                        ),
-                                        output_type: Some(
-                                            (),
-                                        ),
-                                    },
-                                },
+                        metadata: HydroIrMetadata {
+                            location_kind: Tick(
+                                0,
+                                Cluster(
+                                    2,
+                                ),
+                            ),
+                            output_type: Some(
+                                (usize , std :: time :: Instant),
+                            ),
+                        },
+                    },
+                    second: FlatMap {
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < std :: time :: Instant , std :: iter :: Map < std :: ops :: Range < usize > , _ > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let num_clients_per_node__free = 100usize ; move | now | (0 .. num_clients_per_node__free) . map (move | virtual_id | (virtual_id , now)) }),
+                        input: Map {
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , std :: time :: Instant > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | _ | Instant :: now () }),
+                            input: Tee {
+                                inner: <tee 8>,
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
                                         0,
@@ -849,7 +849,7 @@ expression: built.ir()
                                         ),
                                     ),
                                     output_type: Some(
-                                        std :: time :: Instant,
+                                        (),
                                     ),
                                 },
                             },
@@ -861,7 +861,7 @@ expression: built.ir()
                                     ),
                                 ),
                                 output_type: Some(
-                                    (usize , std :: time :: Instant),
+                                    std :: time :: Instant,
                                 ),
                             },
                         },
@@ -877,23 +877,23 @@ expression: built.ir()
                             ),
                         },
                     },
-                    second: Tee {
-                        inner: <tee 11>: Map {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , core :: option :: Option < u32 >) , (usize , std :: time :: Instant) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (key , _payload) | (key as usize , Instant :: now ()) }),
-                            input: Tee {
-                                inner: <tee 9>,
-                                metadata: HydroIrMetadata {
-                                    location_kind: Tick(
-                                        0,
-                                        Cluster(
-                                            2,
-                                        ),
-                                    ),
-                                    output_type: Some(
-                                        (u32 , core :: option :: Option < u32 >),
-                                    ),
-                                },
-                            },
+                    metadata: HydroIrMetadata {
+                        location_kind: Tick(
+                            0,
+                            Cluster(
+                                2,
+                            ),
+                        ),
+                        output_type: Some(
+                            (usize , std :: time :: Instant),
+                        ),
+                    },
+                },
+                second: Tee {
+                    inner: <tee 11>: Map {
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , core :: option :: Option < u32 >) , (usize , std :: time :: Instant) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (key , _payload) | (key as usize , Instant :: now ()) }),
+                        input: Tee {
+                            inner: <tee 9>,
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
                                     0,
@@ -902,7 +902,7 @@ expression: built.ir()
                                     ),
                                 ),
                                 output_type: Some(
-                                    (usize , std :: time :: Instant),
+                                    (u32 , core :: option :: Option < u32 >),
                                 ),
                             },
                         },
