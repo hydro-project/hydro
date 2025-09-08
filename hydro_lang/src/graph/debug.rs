@@ -81,8 +81,6 @@ pub fn open_json_visualizer(roots: &[HydroRoot], config: Option<HydroWriteConfig
 }
 
 fn open_mermaid_browser(mermaid_src: &str) -> Result<()> {
-    print_debug_content("MERMAID SOURCE BEING SENT TO BROWSER", mermaid_src);
-
     let state = serde_json::json!({
         "code": mermaid_src,
         "mermaid": serde_json::json!({
@@ -304,16 +302,6 @@ where
 {
     let config = config.unwrap_or_default();
     renderer(roots, &config)
-}
-
-/// Helper function to print debug content with consistent formatting.
-fn print_debug_content(title: &str, content: &str) {
-    println!("=== {} ===", title);
-    println!("{}", content);
-    println!(
-        "=== END {} ===",
-        title.split_whitespace().last().unwrap_or("CONTENT")
-    );
 }
 
 /// Compress JSON data using gzip compression
