@@ -7,8 +7,8 @@ use std::pin::Pin;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::boundedness::Unbounded;
 use crate::builder::FlowBuilder;
+use crate::live_collections::boundedness::Unbounded;
 use crate::live_collections::stream::Stream;
 use crate::location::Process;
 

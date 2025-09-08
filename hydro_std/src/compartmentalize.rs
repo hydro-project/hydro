@@ -1,4 +1,4 @@
-use hydro_lang::boundedness::Boundedness;
+use hydro_lang::live_collections::boundedness::Boundedness;
 use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::location::{Location, MemberId, NoTick};
