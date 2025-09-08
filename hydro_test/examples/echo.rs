@@ -15,7 +15,7 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let mut deployment = Deployment::new();
-    let flow = hydro_lang::builder::FlowBuilder::new();
+    let flow = hydro_lang::compile::builder::FlowBuilder::new();
 
     let process = flow.process::<()>();
     let external = flow.external::<()>();

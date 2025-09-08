@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use hydro_lang::builder::ir::{HydroNode, HydroRoot, transform_bottom_up, traverse_dfir};
+use hydro_lang::compile::ir::{HydroNode, HydroRoot, transform_bottom_up, traverse_dfir};
 use hydro_lang::location::dynamic::LocationId;
 use syn::Ident;
 

@@ -80,7 +80,7 @@ mod tests {
     use std::collections::HashMap;
 
     use hydro_deploy::Deployment;
-    use hydro_lang::builder::rewrites::persist_pullup;
+    use hydro_lang::compile::rewrites::persist_pullup;
     use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy};
     use hydro_lang::location::{Location, MemberId};
     use hydro_optimize::partitioner::{self, Partitioner};
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn simple_cluster_ir() {
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let _ = super::simple_cluster(&builder);
         let built = builder.finalize();
 
@@ -99,7 +99,7 @@ mod tests {
     async fn simple_cluster() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let (node, cluster) = super::simple_cluster(&builder);
 
         let nodes = builder
@@ -157,7 +157,7 @@ mod tests {
     async fn decouple_process() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let (process1, process2) = super::decouple_process(&builder);
         let built = builder.with_default_optimize();
 
@@ -179,7 +179,7 @@ mod tests {
     async fn decouple_cluster() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let (cluster1, cluster2) = super::decouple_cluster(&builder);
         let built = builder.with_default_optimize();
 
@@ -218,7 +218,7 @@ mod tests {
 
         let num_nodes = 3;
         let num_partitions = 2;
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let (cluster1, cluster2) = super::partition(
             builder.cluster::<()>(),
             builder.cluster::<()>(),
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn partitioned_simple_cluster_ir() {
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let (_, cluster) = super::simple_cluster(&builder);
         let partitioner = Partitioner {
             nodes_to_partition: HashMap::from([(5, vec!["1".to_string()])]),
