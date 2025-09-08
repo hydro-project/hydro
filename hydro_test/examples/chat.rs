@@ -5,6 +5,7 @@ use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::graph::config::GraphConfig;
 use hydro_lang::location::NetworkHint;
 use hydro_lang::{Location, nondet};
+use hydro_test::external_client::chat::ChatServer;
 
 #[derive(Parser, Debug)]
 struct Args {
