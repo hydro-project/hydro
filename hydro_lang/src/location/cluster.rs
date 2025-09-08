@@ -8,7 +8,7 @@ use stageleft::{QuotedWithContext, quote_type};
 
 use super::dynamic::LocationId;
 use super::{Location, MemberId};
-use crate::builder::FlowState;
+use crate::compile::builder::FlowState;
 use crate::staging_util::{Invariant, get_this_crate};
 
 pub struct Cluster<'a, ClusterTag> {

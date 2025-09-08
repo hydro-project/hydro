@@ -2,7 +2,7 @@ use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 
 use super::{Location, LocationId};
-use crate::builder::FlowState;
+use crate::compile::builder::FlowState;
 use crate::staging_util::Invariant;
 
 pub struct Process<'a, ProcessTag = ()> {

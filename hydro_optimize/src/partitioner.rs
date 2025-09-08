@@ -1,7 +1,7 @@
 use core::panic;
 use std::collections::HashMap;
 
-use hydro_lang::builder::ir::{HydroNode, HydroRoot, traverse_dfir};
+use hydro_lang::compile::ir::{HydroNode, HydroRoot, traverse_dfir};
 use hydro_lang::live_collections::stream::networking::{
     deserialize_bincode_with_type, serialize_bincode_with_type,
 };

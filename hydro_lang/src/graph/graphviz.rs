@@ -264,7 +264,7 @@ where
 /// Open DOT/Graphviz visualization in browser for a BuiltFlow
 #[cfg(feature = "build")]
 pub fn open_browser(
-    built_flow: &crate::builder::built::BuiltFlow,
+    built_flow: &crate::compile::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let config = super::render::HydroWriteConfig {
         show_metadata: false,
