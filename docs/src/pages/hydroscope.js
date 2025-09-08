@@ -7,9 +7,9 @@ import Layout from '@theme/Layout';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import { useLocation } from '@docusaurus/router';
 
-// Import CSS from hydroscope npm package
-// Note: CSS file not available in current package version
-// import '@hydro-project/hydroscope/style.css';
+import '@xyflow/react/dist/style.css';      // React Flow base styles
+import '@hydro-project/hydroscope/style.css'; // Hydroscope generated styles
+import 'antd/dist/reset.css';               // (Optional) Ant Design reset
 
 // Typography constants for consistent styling
 const TYPOGRAPHY = {
