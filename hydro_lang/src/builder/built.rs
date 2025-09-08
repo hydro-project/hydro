@@ -207,7 +207,7 @@ impl<'a> BuiltFlow<'a> {
     }
 
     pub fn with_default_optimize<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
-        self.optimize_with(crate::rewrites::persist_pullup::persist_pullup)
+        self.optimize_with(super::rewrites::persist_pullup::persist_pullup)
             .into_deploy()
     }
 
