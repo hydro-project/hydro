@@ -2,11 +2,11 @@ use std::hash::Hash;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
+use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
 use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
 use crate::location::tick::NoAtomic;
 use crate::location::{Atomic, Location, LocationId, NoTick, Tick};

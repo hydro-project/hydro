@@ -1,6 +1,6 @@
 use sealed::sealed;
 
-use crate::live_collections::keyed_singleton::{BoundedValue, KeyedSingletonBound};
+use super::keyed_singleton::{BoundedValue, KeyedSingletonBound};
 
 /// A marker trait indicating whether a stream’s length is bounded (finite) or unbounded (potentially infinite).
 ///
