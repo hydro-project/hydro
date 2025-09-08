@@ -14,8 +14,8 @@ use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
-use crate::builder::FLOW_USED_MESSAGE;
-use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
+use crate::compile::builder::FLOW_USED_MESSAGE;
+use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
@@ -2506,7 +2506,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use stageleft::q;
 
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
 
     struct P1 {}
@@ -2585,17 +2585,17 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn backtrace_chained_ops() {
-        use crate::builder::ir::HydroRoot;
+        use crate::compile::ir::HydroRoot;
 
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         node.source_iter(q!([123])).for_each(q!(|_| {}));
 
-        let finalized: crate::builder::built::BuiltFlow<'_> = flow.finalize();
+        let finalized: crate::compile::built::BuiltFlow<'_> = flow.finalize();
 
         let source_meta = if let HydroRoot::ForEach { input, .. } = &finalized.ir()[0] {
-            use crate::builder::ir::HydroNode;
+            use crate::compile::ir::HydroNode;
 
             if let HydroNode::Unpersist { inner, .. } = input.as_ref() {
                 if let HydroNode::Persist { inner, .. } = inner.as_ref() {

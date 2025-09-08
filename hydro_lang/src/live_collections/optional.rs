@@ -9,8 +9,8 @@ use syn::parse_quote;
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::singleton::{Singleton, ZipResult};
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::builder::FLOW_USED_MESSAGE;
-use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
+use crate::compile::builder::FLOW_USED_MESSAGE;
+use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};

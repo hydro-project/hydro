@@ -8,8 +8,8 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::optional::Optional;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::builder::FLOW_USED_MESSAGE;
-use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
+use crate::compile::builder::FLOW_USED_MESSAGE;
+use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
@@ -642,7 +642,7 @@ mod tests {
     use hydro_deploy::Deployment;
     use stageleft::q;
 
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
     use crate::nondet::nondet;
 

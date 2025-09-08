@@ -6,7 +6,7 @@ use good_lp::{
     Constraint, Expression, ProblemVariables, Solution, SolverModel, Variable, constraint, microlp,
     variable, variables,
 };
-use hydro_lang::builder::ir::{
+use hydro_lang::compile::ir::{
     HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, traverse_dfir,
 };
 use hydro_lang::location::dynamic::LocationId;
