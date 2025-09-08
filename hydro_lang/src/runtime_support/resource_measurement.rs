@@ -47,7 +47,7 @@ pub async fn run(flow: Dfir<'_>) {
             system_time.num_milliseconds() as f32 / elapsed_time.num_milliseconds() as f32;
         println!(
             "{} Total {:.4}%, User {:.4}%, System {:.4}%",
-            crate::internal_constants::CPU_USAGE_PREFIX,
+            option_env!("HYDRO_RUNTIME_MEASURE_CPU_PREFIX").unwrap_or("CPU:"),
             percent_cpu_use,
             user_cpu_use,
             system_cpu_use
@@ -67,7 +67,7 @@ pub async fn run(flow: Dfir<'_>) {
 
         println!(
             "{} Total {:.4}%, User {:.4}%, System {:.4}%",
-            crate::internal_constants::CPU_USAGE_PREFIX,
+            option_env!("HYDRO_RUNTIME_MEASURE_CPU_PREFIX").unwrap_or("CPU:"),
             user_cpu_use,
             user_cpu_use,
             0.0
