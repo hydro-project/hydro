@@ -1010,8 +1010,10 @@ impl HydroNode {
             left: &HydroNode,
             right: &HydroNode,
         ) -> usize {
-            let left_id = left.build_graph_structure(params.structure, params.seen_tees, params.config);
-            let right_id = right.build_graph_structure(params.structure, params.seen_tees, params.config);
+            let left_id =
+                left.build_graph_structure(params.structure, params.seen_tees, params.config);
+            let right_id =
+                right.build_graph_structure(params.structure, params.seen_tees, params.config);
             let location_id = setup_location(params.structure, params.metadata);
             let node_id = params.structure.add_node(
                 NodeLabel::Static(params.op_name),
@@ -1023,7 +1025,9 @@ impl HydroNode {
             let left_properties = extract_edge_properties_from_node(left);
             let right_properties = extract_edge_properties_from_node(right);
 
-            params.structure.add_edge(left_id, node_id, left_properties, Some("left".to_string()));
+            params
+                .structure
+                .add_edge(left_id, node_id, left_properties, Some("left".to_string()));
             params.structure.add_edge(
                 right_id,
                 node_id,
@@ -1039,8 +1043,10 @@ impl HydroNode {
             pos: &HydroNode,
             neg: &HydroNode,
         ) -> usize {
-            let pos_id = pos.build_graph_structure(params.structure, params.seen_tees, params.config);
-            let neg_id = neg.build_graph_structure(params.structure, params.seen_tees, params.config);
+            let pos_id =
+                pos.build_graph_structure(params.structure, params.seen_tees, params.config);
+            let neg_id =
+                neg.build_graph_structure(params.structure, params.seen_tees, params.config);
             let location_id = setup_location(params.structure, params.metadata);
             let node_id = params.structure.add_node(
                 NodeLabel::Static(params.op_name),
@@ -1052,8 +1058,12 @@ impl HydroNode {
             let pos_properties = extract_edge_properties_from_node(pos);
             let neg_properties = extract_edge_properties_from_node(neg);
 
-            params.structure.add_edge(pos_id, node_id, pos_properties, Some("pos".to_string()));
-            params.structure.add_edge(neg_id, node_id, neg_properties, Some("neg".to_string()));
+            params
+                .structure
+                .add_edge(pos_id, node_id, pos_properties, Some("pos".to_string()));
+            params
+                .structure
+                .add_edge(neg_id, node_id, neg_properties, Some("neg".to_string()));
             node_id
         }
 
