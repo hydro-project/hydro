@@ -7,7 +7,7 @@ use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
 use super::stream::{ExactlyOnce, MinOrder, MinRetries, NoOrder, Stream, TotalOrder};
-use crate::builder::ir::HydroNode;
+use crate::compile::ir::HydroNode;
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
@@ -1221,7 +1221,7 @@ mod tests {
     use hydro_deploy::Deployment;
     use stageleft::q;
 
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
     use crate::nondet::nondet;
 

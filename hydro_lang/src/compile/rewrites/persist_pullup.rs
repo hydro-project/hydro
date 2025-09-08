@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashSet;
 
-use crate::builder::ir::*;
+use crate::compile::ir::*;
 
 fn persist_pullup_node(
     node: &mut HydroNode,
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn persist_pullup_through_map() {
-        let flow = crate::builder::FlowBuilder::new();
+        let flow = crate::compile::builder::FlowBuilder::new();
         let process = flow.process::<()>();
 
         process
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn persist_pullup_behind_tee() {
-        let flow = crate::builder::FlowBuilder::new();
+        let flow = crate::compile::builder::FlowBuilder::new();
         let process = flow.process::<()>();
 
         let tick = process.tick();
