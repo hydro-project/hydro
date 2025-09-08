@@ -1,8 +1,14 @@
+<<<<<<< HEAD
 #[cfg(feature = "viz")]
 use clap::ValueEnum;
 
 /// Enum for choosing between mermaid, dot, and json graph writing.
 #[cfg(feature = "viz")]
+=======
+use clap::{Parser, ValueEnum};
+
+/// Enum for choosing between mermaid, dot, and reactflow graph writing.
+>>>>>>> origin/main
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum GraphType {
     /// Mermaid graphs.
@@ -20,7 +26,11 @@ impl std::fmt::Display for GraphType {
 }
 
 /// Configuration for graph generation in examples.
+<<<<<<< HEAD
 #[derive(clap::Parser, Debug, Clone)]
+=======
+#[derive(Parser, Debug, Default)]
+>>>>>>> origin/main
 pub struct GraphConfig {
     /// Output graph format
     #[clap(long)]
