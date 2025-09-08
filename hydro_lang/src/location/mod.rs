@@ -13,11 +13,11 @@ use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 use super::builder::FlowState;
 use crate::boundedness::Unbounded;
-use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
-use crate::ir::backtrace::Backtrace;
-use crate::ir::{
+use crate::builder::ir::backtrace::Backtrace;
+use crate::builder::ir::{
     DebugInstantiate, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
 };
+use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};

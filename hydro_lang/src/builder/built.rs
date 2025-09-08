@@ -7,9 +7,9 @@ use dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees, partition_graph};
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
+use super::ir::{HydroRoot, emit};
 #[cfg(feature = "viz")]
 use crate::graph::api::GraphApi;
-use crate::ir::{HydroRoot, emit};
 use crate::location::{Cluster, External, Process};
 use crate::staging_util::Invariant;
 
