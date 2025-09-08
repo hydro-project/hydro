@@ -1,4 +1,5 @@
-use hydro_lang::*;
+use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::prelude::*;
 
 pub fn graph_reachability<'a>(
     process: &Process<'a>,
@@ -35,14 +36,14 @@ pub fn graph_reachability<'a>(
 mod tests {
     use futures::{SinkExt, StreamExt};
     use hydro_deploy::Deployment;
-    use hydro_lang::Location;
+    use hydro_lang::location::Location;
 
     #[tokio::test]
     #[ignore = "broken because ticks in Hydro are only triggered by external input"]
     async fn test_reachability() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 

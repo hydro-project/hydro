@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use dfir_lang::graph::DfirGraph;
 
-use crate::Location;
+use crate::location::Location;
 use crate::staging_util::Invariant;
 
 pub struct CompiledFlow<'a, ID> {

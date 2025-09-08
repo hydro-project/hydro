@@ -6,8 +6,8 @@ async fn main() {
     use clap::Parser;
     use hydro_deploy::Deployment;
     use hydro_deploy::gcp::GcpNetwork;
-    use hydro_lang::Location;
     use hydro_lang::graph::config::GraphConfig;
+    use hydro_lang::location::Location;
     use hydro_optimize::decoupler;
     use hydro_optimize::deploy::ReusableHosts;
     use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
@@ -37,7 +37,7 @@ async fn main() {
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
-    let mut builder = hydro_lang::FlowBuilder::new();
+    let mut builder = hydro_lang::builder::FlowBuilder::new();
     let f = 1;
     let num_clients = 3;
     let num_clients_per_node = 500; // Change based on experiment between 1, 50, 100.

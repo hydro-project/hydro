@@ -69,9 +69,10 @@ pub fn properties_optimize(ir: &mut [HydroRoot], db: &mut PropertyDatabase) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builder::FlowBuilder;
     use crate::deploy::HydroDeploy;
     use crate::location::Location;
-    use crate::{FlowBuilder, nondet};
+    use crate::nondet::nondet;
 
     #[test]
     fn test_property_database() {

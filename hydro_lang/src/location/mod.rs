@@ -13,19 +13,20 @@ use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 use super::builder::FlowState;
 use crate::backtrace::Backtrace;
+use crate::boundedness::Unbounded;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
 use crate::ir::{
     DebugInstantiate, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
 };
-use crate::keyed_stream::KeyedStream;
+use crate::live_collections::keyed_stream::KeyedStream;
+use crate::live_collections::singleton::Singleton;
+use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::location::cluster::ClusterIds;
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many,
 };
+use crate::nondet::{NonDet, nondet};
 use crate::staging_util::get_this_crate;
-use crate::stream::ExactlyOnce;
-use crate::unsafety::NonDet;
-use crate::{NoOrder, Singleton, Stream, TotalOrder, Unbounded, nondet};
 
 pub mod external_process;
 pub use external_process::External;
@@ -303,7 +304,10 @@ pub trait Location<'a>: Clone {
                         port_hint: NetworkHint::Auto,
                         instantiate_fn: DebugInstantiate::Building,
                         deserialize_fn: Some(
-                            crate::stream::networking::deserialize_bincode::<T>(None).into(),
+                            crate::live_collections::stream::networking::deserialize_bincode::<T>(
+                                None,
+                            )
+                            .into(),
                         ),
                         metadata: self.new_node_metadata::<T>(),
                     }),
@@ -649,8 +653,8 @@ mod tests {
     use stageleft::q;
     use tokio_util::codec::LengthDelimitedCodec;
 
-    use crate::location::NetworkHint;
-    use crate::{FlowBuilder, Location};
+    use crate::builder::FlowBuilder;
+    use crate::location::{Location, NetworkHint};
 
     #[tokio::test]
     async fn external_bytes() {

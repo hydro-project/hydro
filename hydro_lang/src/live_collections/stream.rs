@@ -10,16 +10,17 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 use tokio::time::Instant;
 
-use crate::boundedness::Boundedness;
+use super::keyed_stream::KeyedStream;
+use super::optional::Optional;
+use super::singleton::Singleton;
+use crate::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
-use crate::keyed_stream::KeyedStream;
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
-use crate::unsafety::NonDet;
-use crate::*;
+use crate::nondet::{NonDet, nondet};
 
 pub mod networking;
 
@@ -292,9 +293,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let words = process.source_iter(q!(vec!["hello", "world"]));
     /// words.map(q!(|x| x.to_uppercase()))
     /// # }, |mut stream| async move {
@@ -327,9 +328,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process
     ///     .source_iter(q!(vec![vec![1, 2], vec![3, 4]]))
     ///     .flat_map_ordered(q!(|x| x))
@@ -361,9 +362,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::{*, stream::ExactlyOnce};
+    /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
     /// process
     ///     .source_iter(q!(vec![
     ///         std::collections::HashSet::<i32>::from_iter(vec![1, 2]),
@@ -406,9 +407,9 @@ where
     /// not deterministic, use [`Stream::flatten_unordered`] instead.
     ///
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process
     ///     .source_iter(q!(vec![vec![1, 2], vec![3, 4]]))
     ///     .flatten_ordered()
@@ -431,9 +432,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::{*, stream::ExactlyOnce};
+    /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
     /// process
     ///     .source_iter(q!(vec![
     ///         std::collections::HashSet::<i32>::from_iter(vec![1, 2]),
@@ -465,9 +466,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process
     ///     .source_iter(q!(vec![1, 2, 3, 4]))
     ///     .filter(q!(|&x| x > 2))
@@ -497,9 +498,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process
     ///     .source_iter(q!(vec!["1", "hello", "world", "2"]))
     ///     .filter_map(q!(|s| s.parse::<usize>().ok()))
@@ -529,9 +530,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let batch = process
     ///   .source_iter(q!(vec![1, 2, 3, 4]))
@@ -580,10 +581,10 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use std::collections::HashSet;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let stream1 = process.source_iter(q!(vec!['a', 'b', 'c']));
     /// let stream2 = process.source_iter(q!(vec![1, 2, 3]));
@@ -617,9 +618,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     ///     process.source_iter(q!(vec![1, 2, 3, 2, 1, 4])).unique()
     /// # }, |mut stream| async move {
@@ -646,9 +647,9 @@ where
     /// all its elements are available before producing any output.
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let stream = process
     ///   .source_iter(q!(vec![ 1, 2, 3, 4 ]))
@@ -687,9 +688,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let nums = process.source_iter(q!(vec![1, 2]));
     /// // prints "1 * 10 = 10" and "2 * 10 = 20"
     /// nums.inspect(q!(|x| println!("{} * 10 = {}", x, x * 10)))
@@ -814,9 +815,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process.source_iter(q!(&[1, 2, 3])).cloned()
     /// # }, |mut stream| async move {
     /// // 1, 2, 3
@@ -846,9 +847,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let bools = process.source_iter(q!(vec![false, true, false]));
     /// let batch = bools.batch(&tick, nondet!(/** test */));
@@ -885,9 +886,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let bools = process.source_iter(q!(vec![false, true, false]));
     /// let batch = bools.batch(&tick, nondet!(/** test */));
@@ -917,9 +918,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -946,9 +947,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -995,9 +996,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1031,9 +1032,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1067,9 +1068,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1093,9 +1094,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1122,9 +1123,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let bools = process.source_iter(q!(vec![false, true, false]));
     /// let batch = bools.batch(&tick, nondet!(/** test */));
@@ -1158,9 +1159,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let bools = process.source_iter(q!(vec![false, true, false]));
     /// let batch = bools.batch(&tick, nondet!(/** test */));
@@ -1186,9 +1187,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1210,9 +1211,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1235,9 +1236,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::{*, stream::ExactlyOnce};
+    /// # use hydro_lang::{prelude::*, live_collections::stream::{TotalOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, TotalOrder, ExactlyOnce>(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, TotalOrder, ExactlyOnce>(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// numbers.enumerate()
@@ -1285,9 +1286,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
     /// let batch = words.batch(&tick, nondet!(/** test */));
@@ -1351,9 +1352,9 @@ where
     ///
     /// Basic usage - running sum:
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process.source_iter(q!(vec![1, 2, 3, 4])).scan(
     ///     q!(|| 0),
     ///     q!(|acc, x| {
@@ -1371,9 +1372,9 @@ where
     ///
     /// Early termination example:
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process.source_iter(q!(vec![1, 2, 3, 4])).scan(
     ///     q!(|| 1),
     ///     q!(|state, x| {
@@ -1442,9 +1443,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
     /// let batch = words.batch(&tick, nondet!(/** test */));
@@ -1488,9 +1489,9 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// numbers.clone().map(q!(|x| x + 1)).interleave(numbers)
     /// # }, |mut stream| async move {
@@ -1536,9 +1537,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![4, 2, 3, 1]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1574,9 +1575,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1638,10 +1639,10 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use std::collections::HashSet;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let stream1 = process.source_iter(q!(vec![(1, 'a'), (2, 'b')]));
     /// let stream2 = process.source_iter(q!(vec![(1, 'x'), (2, 'y')]));
@@ -1677,9 +1678,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let stream = process
     ///   .source_iter(q!(vec![ (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd') ]))
@@ -1738,9 +1739,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process
     ///     .source_iter(q!(vec![(0, 1), (0, 2), (1, 3), (1, 4)]))
     ///     .scan_keyed(
@@ -1791,9 +1792,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process
     ///     .source_iter(q!(vec![(0, 2), (0, 3), (1, 3), (1, 6)]))
     ///     .fold_keyed_early_stop(
@@ -1856,9 +1857,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1895,9 +1896,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1946,9 +1947,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -1978,9 +1979,9 @@ where
     /// Given a stream of pairs `(K, V)`, produces a new stream of unique keys `K`.
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -2009,9 +2010,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -2054,9 +2055,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -2092,9 +2093,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -2135,9 +2136,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -2173,9 +2174,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use hydro_lang::*;
+    /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]));
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
@@ -2243,8 +2244,8 @@ where
     /// ```rust
     /// # use std::collections::HashSet;
     /// # use futures::StreamExt;
-    /// # use hydro_lang::*;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # use hydro_lang::prelude::*;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
     ///     .map(q!(|x| async move {
     ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
@@ -2361,8 +2362,8 @@ where
     /// ```rust
     /// # use std::collections::HashSet;
     /// # use futures::StreamExt;
-    /// # use hydro_lang::*;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// # use hydro_lang::prelude::*;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
     ///     .map(q!(|x| async move {
     ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
@@ -2501,7 +2502,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use stageleft::q;
 
-    use crate::FlowBuilder;
+    use crate::builder::FlowBuilder;
     use crate::location::Location;
 
     struct P1 {}
