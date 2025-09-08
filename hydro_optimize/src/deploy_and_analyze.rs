@@ -6,7 +6,6 @@ use hydro_lang::builder::deploy::DeployResult;
 use hydro_lang::builder::{FlowBuilder, RewriteIrFlowBuilder};
 use hydro_lang::deploy::HydroDeploy;
 use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
-use hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
 use hydro_lang::ir::{HydroNode, HydroRoot, deep_clone, traverse_dfir};
 use hydro_lang::location::LocationId;
 use hydro_lang::rewrites::persist_pullup::persist_pullup;
@@ -17,6 +16,9 @@ use crate::decoupler::Decoupler;
 use crate::deploy::ReusableHosts;
 use crate::parse_results::{analyze_cluster_results, analyze_send_recv_overheads};
 use crate::repair::{cycle_source_to_sink_input, inject_id, remove_counter};
+
+const COUNTER_PREFIX: &str = "_optimize_counter";
+pub(crate) const CPU_USAGE_PREFIX: &str = "HYDRO_OPTIMIZE_CPU:";
 
 fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration: syn::Expr) {
     match node {
@@ -56,6 +58,7 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration:
             let counter = HydroNode::Counter {
                 tag: next_stmt_id.to_string(),
                 duration: duration.into(),
+                prefix: COUNTER_PREFIX.to_string(),
                 input: Box::new(node_content),
                 metadata: metadata.clone(),
             };
