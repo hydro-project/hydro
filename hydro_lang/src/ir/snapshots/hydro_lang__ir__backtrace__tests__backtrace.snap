@@ -1,10 +1,10 @@
 ---
-source: hydro_lang/src/backtrace.rs
+source: hydro_lang/src/ir/backtrace.rs
 expression: elements
 ---
 [
     BacktraceElement {
-        fn_name: "hydro_lang::backtrace::tests::test_backtrace",
+        fn_name: "hydro_lang::ir::backtrace::tests::test_backtrace",
         lineno: Some(
             129,
         ),
@@ -13,7 +13,7 @@ expression: elements
         ),
     },
     BacktraceElement {
-        fn_name: "hydro_lang::backtrace::tests::test_backtrace::{{closure}}",
+        fn_name: "hydro_lang::ir::backtrace::tests::test_backtrace::{{closure}}",
         lineno: Some(
             128,
         ),
