@@ -1,21 +1,21 @@
 ---
-source: hydro_lang/src/stream.rs
-expression: source_meta.backtrace.elements()
+source: hydro_lang/src/live_collections/stream.rs
+expression: for_each_meta.backtrace.elements()
 ---
 [
     BacktraceElement {
-        fn_name: "hydro_lang::stream::tests::backtrace_chained_ops",
+        fn_name: "hydro_lang::live_collections::stream::tests::backtrace_chained_ops",
         lineno: Some(
-            2588,
+            2589,
         ),
         colno: Some(
-            14,
+            37,
         ),
     },
     BacktraceElement {
-        fn_name: "hydro_lang::stream::tests::backtrace_chained_ops::{{closure}}",
+        fn_name: "hydro_lang::live_collections::stream::tests::backtrace_chained_ops::{{closure}}",
         lineno: Some(
-            2582,
+            2583,
         ),
         colno: Some(
             31,
@@ -24,7 +24,7 @@ expression: source_meta.backtrace.elements()
     BacktraceElement {
         fn_name: "core::ops::function::FnOnce::call_once",
         lineno: Some(
-            250,
+            253,
         ),
         colno: Some(
             5,
