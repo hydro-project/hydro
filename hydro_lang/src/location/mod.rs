@@ -26,7 +26,7 @@ use stageleft::{QuotedWithContext, q, quote_type};
 use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-use crate::builder::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource};
+use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource};
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ForwardHandle};
@@ -302,9 +302,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.forward_ref::<KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
-        let roots = flow_state_borrow.roots.as_mut().expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled()");
-
-        roots.push(HydroRoot::SendExternal {
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: from.id,
             to_key: next_external_port_id,
             to_many: true,
@@ -416,8 +414,6 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.forward_ref::<KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
-        let roots = flow_state_borrow.roots.as_mut().expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled()");
-
         let out_t_type = quote_type::<OutT>();
         let ser_fn: syn::Expr = syn::parse_quote! {
             ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(u64, #out_t_type), _>(
@@ -425,7 +421,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             )
         };
 
-        roots.push(HydroRoot::SendExternal {
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: from.id,
             to_key: next_external_port_id,
             to_many: true,
@@ -613,7 +609,7 @@ mod tests {
     use stageleft::q;
     use tokio_util::codec::LengthDelimitedCodec;
 
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::location::{Location, NetworkHint};
 
     #[tokio::test]
