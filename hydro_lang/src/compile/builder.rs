@@ -4,40 +4,18 @@ use std::marker::PhantomData;
 use std::rc::Rc;
 
 #[cfg(feature = "build")]
-use compiled::CompiledFlow;
+use super::compiled::CompiledFlow;
 #[cfg(feature = "build")]
-use deploy::{DeployFlow, DeployResult};
-use stageleft::*;
-
+use super::deploy::{DeployFlow, DeployResult};
+#[cfg(feature = "build")]
+use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
+use super::ir::HydroRoot;
 use crate::location::{Cluster, External, Process};
 use crate::staging_util::Invariant;
 
-pub mod ir;
-use ir::HydroRoot;
+pub(crate) type FlowState = Rc<RefCell<FlowStateInner>>;
 
-#[cfg(feature = "build")]
-#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
-pub mod rewrites;
-
-#[cfg(feature = "build")]
-#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
-pub mod built;
-
-#[cfg(feature = "build")]
-#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
-pub mod compiled;
-#[cfg(feature = "build")]
-#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
-pub mod deploy;
-
-#[cfg(feature = "build")]
-#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
-pub mod deploy_provider;
-
-#[cfg(feature = "build")]
-use deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
-
-pub struct FlowStateInner {
+pub(crate) struct FlowStateInner {
     /// Tracks the roots of the dataflow IR. This is referenced by
     /// `Stream` and `HfCycle` to build the IR. The inner option will
     /// be set to `None` when this builder is finalized.
@@ -59,27 +37,16 @@ impl FlowStateInner {
         self.cycle_counts += 1;
         id
     }
-}
 
-pub type FlowState = Rc<RefCell<FlowStateInner>>;
-
-pub const FLOW_USED_MESSAGE: &str = "Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled.";
-
-pub struct RewriteIrFlowBuilder<'a> {
-    builder: FlowBuilder<'a>,
-}
-
-impl<'a> RewriteIrFlowBuilder<'a> {
-    pub fn build_with(
-        self,
-        thunk: impl FnOnce(&FlowBuilder<'a>) -> Vec<HydroRoot>,
-    ) -> FlowBuilder<'a> {
-        let roots = thunk(&self.builder);
-        self.builder.flow_state().borrow_mut().roots = Some(roots);
-        self.builder
+    pub fn push_root(&mut self, root: HydroRoot) {
+        self.roots
+            .as_mut()
+            .expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled.")
+            .push(root);
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 pub struct FlowBuilder<'a> {
     flow_state: FlowState,
     processes: RefCell<Vec<(usize, String)>>,
@@ -109,12 +76,7 @@ impl Drop for FlowBuilder<'_> {
     }
 }
 
-impl QuotedContext for FlowBuilder<'_> {
-    fn create() -> Self {
-        FlowBuilder::new()
-    }
-}
-
+#[expect(missing_docs, reason = "TODO")]
 impl<'a> FlowBuilder<'a> {
     #[expect(
         clippy::new_without_default,
@@ -160,7 +122,7 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
-    pub fn flow_state(&self) -> &FlowState {
+    pub(crate) fn flow_state(&self) -> &FlowState {
         &self.flow_state
     }
 
@@ -215,11 +177,12 @@ impl<'a> FlowBuilder<'a> {
 
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
+#[expect(missing_docs, reason = "TODO")]
 impl<'a> FlowBuilder<'a> {
-    pub fn finalize(mut self) -> built::BuiltFlow<'a> {
+    pub fn finalize(mut self) -> super::built::BuiltFlow<'a> {
         self.finalized = true;
 
-        built::BuiltFlow {
+        super::built::BuiltFlow {
             ir: self.flow_state.borrow_mut().roots.take().unwrap(),
             process_id_name: self.processes.replace(vec![]),
             cluster_id_name: self.clusters.replace(vec![]),
@@ -232,7 +195,7 @@ impl<'a> FlowBuilder<'a> {
         self.finalize().with_default_optimize()
     }
 
-    pub fn optimize_with(self, f: impl FnOnce(&mut [HydroRoot])) -> built::BuiltFlow<'a> {
+    pub fn optimize_with(self, f: impl FnOnce(&mut [HydroRoot])) -> super::built::BuiltFlow<'a> {
         self.finalize().optimize_with(f)
     }
 
@@ -294,5 +257,22 @@ impl<'a> FlowBuilder<'a> {
         env: &mut D::InstantiateEnv,
     ) -> DeployResult<'a, D> {
         self.with_default_optimize().deploy(env)
+    }
+}
+
+#[expect(missing_docs, reason = "TODO")]
+pub struct RewriteIrFlowBuilder<'a> {
+    builder: FlowBuilder<'a>,
+}
+
+#[expect(missing_docs, reason = "TODO")]
+impl<'a> RewriteIrFlowBuilder<'a> {
+    pub fn build_with(
+        self,
+        thunk: impl FnOnce(&FlowBuilder<'a>) -> Vec<HydroRoot>,
+    ) -> FlowBuilder<'a> {
+        let roots = thunk(&self.builder);
+        self.builder.flow_state().borrow_mut().roots = Some(roots);
+        self.builder
     }
 }
