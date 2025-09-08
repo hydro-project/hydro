@@ -25,7 +25,7 @@ mod tests {
     async fn test_count() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 

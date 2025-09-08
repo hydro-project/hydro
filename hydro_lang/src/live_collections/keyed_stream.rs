@@ -3,14 +3,17 @@ use std::marker::PhantomData;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
+use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
 use super::stream::{ExactlyOnce, MinOrder, MinRetries, NoOrder, Stream, TotalOrder};
-use crate::boundedness::{Bounded, Boundedness, Unbounded};
-use crate::builder::ir::HydroNode;
-use crate::cycle::{CycleCollection, CycleComplete, ForwardRefMarker};
+use crate::compile::ir::HydroNode;
+use crate::forward_handle::ForwardRef;
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::location::dynamic::LocationId;
 use crate::location::tick::NoAtomic;
-use crate::location::{Atomic, Location, LocationId, NoTick, Tick, check_matching_location};
+use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
@@ -56,7 +59,7 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order, Retri
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRefMarker>
+impl<'a, K, V, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRef>
     for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
@@ -68,7 +71,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, O, R> CycleComplete<'a, ForwardRefMarker>
+impl<'a, K, V, L, B: Boundedness, O, R> ReceiverComplete<'a, ForwardRef>
     for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
@@ -568,7 +571,7 @@ where
     /// A variant of [`Stream::fold`], intended for keyed streams. The aggregation is executed in-order across the values
     /// in each group. But the aggregation function returns a boolean, which when true indicates that the aggregated
     /// result is complete and can be released to downstream computation. Unlike [`Stream::fold_keyed`], this means that
-    /// even if the input stream is [`crate::boundedness::Unbounded`], the outputs of the fold can be processed like normal stream elements.
+    /// even if the input stream is [`super::boundedness::Unbounded`], the outputs of the fold can be processed like normal stream elements.
     ///
     /// # Example
     /// ```rust
@@ -1218,7 +1221,7 @@ mod tests {
     use hydro_deploy::Deployment;
     use stageleft::q;
 
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
     use crate::nondet::nondet;
 

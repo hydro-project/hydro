@@ -1,0 +1,10 @@
+---
+source: hydro_lang/src/compile/rewrites/persist_pullup.rs
+expression: graph.surface_syntax_string()
+---
+1v1 = source_iter ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: persist_pullup :: tests :: * ; 0 .. 10 });
+2v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < i32 , i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: persist_pullup :: tests :: * ; | v | v + 1 }));
+3v1 = for_each (stageleft :: runtime_support :: fn1_type_hint :: < i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: persist_pullup :: tests :: * ; | n | println ! ("{}" , n) }));
+
+1v1 -> 2v1;
+2v1 -> 3v1;

@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn paxos_ir() {
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
         let clients = builder.cluster();
@@ -194,7 +194,7 @@ mod tests {
         );
         let built = builder.with_default_optimize::<HydroDeploy>();
 
-        hydro_lang::builder::ir::dbg_dedup_tee(|| {
+        hydro_lang::compile::ir::dbg_dedup_tee(|| {
             hydro_build_utils::assert_debug_snapshot!(built.ir());
         });
 
@@ -229,7 +229,7 @@ mod tests {
 
     #[tokio::test]
     async fn paxos_some_throughput() {
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
         let clients = builder.cluster();
