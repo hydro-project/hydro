@@ -1,3 +1,4 @@
+use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::*;
 use hydro_std::bench_client::{bench_client, print_bench_results};
 use hydro_std::quorum::collect_quorum;
