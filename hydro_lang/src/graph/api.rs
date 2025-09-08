@@ -397,7 +397,7 @@ mod tests {
         );
         assert_eq!(
             GraphFormat::Dot.browser_message(),
-            "Opening Dot (Graphviz) graph in browser..."
+            "Opening Graphviz/DOT graph in browser..."
         );
         assert_eq!(
             GraphFormat::Json.browser_message(),

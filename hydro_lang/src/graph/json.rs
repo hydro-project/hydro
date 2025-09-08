@@ -342,10 +342,11 @@ where
         // Add Network tag if edge crosses locations
         let src_loc = self.node_locations.get(&src_id);
         let dst_loc = self.node_locations.get(&dst_id);
-        if let (Some(src), Some(dst)) = (src_loc, dst_loc) {
-            if src != dst && !semantic_tags.contains(&"Network".to_string()) {
-                semantic_tags.push("Network".to_string());
-            }
+        if let (Some(src), Some(dst)) = (src_loc, dst_loc)
+            && src != dst
+            && !semantic_tags.contains(&"Network".to_string())
+        {
+            semantic_tags.push("Network".to_string());
         }
 
         let mut edge = serde_json::json!({
@@ -574,88 +575,79 @@ impl<W> HydroJson<W> {
         // Process each node's backtrace using the stored backtraces
         for node in &self.nodes {
             if let Some(node_id_str) = node["id"].as_str()
-                && let Ok(node_id) = node_id_str.parse::<usize>() {
-                    if let Some(backtrace) = self.node_backtraces.get(&node_id) {
-                        let elements = backtrace.elements();
+                && let Ok(node_id) = node_id_str.parse::<usize>()
+                && let Some(backtrace) = self.node_backtraces.get(&node_id)
+            {
+                let elements = backtrace.elements();
+                if elements.is_empty() {
+                    continue;
+                }
 
-                        if elements.is_empty() {
-                            continue;
+                // Filter to user-relevant frames using structured data
+                let user_frames: Vec<_> = elements
+                    .iter()
+                    .filter(|elem| {
+                        let filename = elem.filename.as_deref().unwrap_or("");
+                        let fn_name = &elem.fn_name;
+                        // Include frames that are from user code (more precise filtering)
+                        filename.contains("hydro_test")
+                            || filename.contains("/src/")
+                            || (filename.contains("examples/") && !filename.contains(".cargo/"))
+                            || (!filename.contains(".cargo/registry/")
+                                && !filename.contains(".rustup/toolchains/")
+                                && !fn_name.starts_with("std::")
+                                && !fn_name.starts_with("core::")
+                                && !fn_name.contains("tokio::"))
+                    })
+                    .take(5)
+                    .collect();
+                if user_frames.is_empty() {
+                    continue;
+                }
+
+                // Build hierarchy path from backtrace frames (reverse order for call stack)
+                let mut hierarchy_path = Vec::new();
+                for (i, elem) in user_frames.iter().rev().enumerate() {
+                    let label = if i == 0 {
+                        if let Some(filename) = &elem.filename {
+                            Self::extract_file_path(filename)
+                        } else {
+                            format!("fn_{}", Self::truncate_function_name(&elem.fn_name))
                         }
+                    } else {
+                        Self::truncate_function_name(&elem.fn_name)
+                    };
+                    hierarchy_path.push(label);
+                }
 
-                        // Filter to user-relevant frames using structured data
-                        let user_frames: Vec<_> = elements
-                        .iter()
-                        .filter(|elem| {
-                            let filename = elem.filename.as_deref().unwrap_or("");
-                            let fn_name = &elem.fn_name;
-                            
-                            // Include frames that are from user code (more precise filtering)
-                            filename.contains("hydro_test") 
-                                || filename.contains("/src/")
-                                || (filename.contains("examples/") && !filename.contains(".cargo/"))
-                                || (!filename.contains(".cargo/registry/") 
-                                    && !filename.contains(".rustup/toolchains/")
-                                    && !fn_name.starts_with("std::")
-                                    && !fn_name.starts_with("core::")
-                                    && !fn_name.contains("tokio::"))
-                        })
-                        .take(5) // Take top 5 user frames for better differentiation
-                        .collect();
-
-                        if user_frames.is_empty() {
-                            continue;
-                        }
-
-                        // Build hierarchy path from backtrace frames (reverse order for call stack)
-                        let mut hierarchy_path = Vec::new();
-                        for (i, elem) in user_frames.iter().rev().enumerate() {
-                            let label = if i == 0 {
-                                // Top level: show file (more specific)
-                                if let Some(filename) = &elem.filename {
-                                    Self::extract_file_path(filename)
-                                } else {
-                                    format!("fn_{}", Self::truncate_function_name(&elem.fn_name))
-                                }
-                            } else {
-                                // Function levels: show function name
-                                Self::truncate_function_name(&elem.fn_name)
-                            };
-                            hierarchy_path.push(label);
-                        }
-
-                        // Create hierarchy nodes for this path
-                        let mut current_path = String::new();
-                        let mut parent_path: Option<String> = None;
-                        let mut deepest_path = String::new();
-
-                        for (depth, label) in hierarchy_path.iter().enumerate() {
-                            current_path = if current_path.is_empty() {
-                                label.clone()
-                            } else {
-                                format!("{}/{}", current_path, label)
-                            };
-
-                            if !hierarchy_map.contains_key(&current_path) {
-                                hierarchy_map.insert(
-                                    current_path.clone(),
-                                    (label.clone(), depth, parent_path.clone()),
-                                );
-                            }
-
-                            deepest_path = current_path.clone();
-                            parent_path = Some(current_path.clone());
-                        }
-
-                        // Assign node to the deepest hierarchy level
-                        if !deepest_path.is_empty() {
-                            path_to_node_assignments
-                                .entry(deepest_path)
-                                .or_default()
-                                .push(node_id_str.to_string());
-                        }
+                // Create hierarchy nodes for this path
+                let mut current_path = String::new();
+                let mut parent_path: Option<String> = None;
+                let mut deepest_path = String::new();
+                for (depth, label) in hierarchy_path.iter().enumerate() {
+                    current_path = if current_path.is_empty() {
+                        label.clone()
+                    } else {
+                        format!("{}/{}", current_path, label)
+                    };
+                    if !hierarchy_map.contains_key(&current_path) {
+                        hierarchy_map.insert(
+                            current_path.clone(),
+                            (label.clone(), depth, parent_path.clone()),
+                        );
                     }
+                    deepest_path = current_path.clone();
+                    parent_path = Some(current_path.clone());
+                }
+
+                if !deepest_path.is_empty() {
+                    path_to_node_assignments
+                        .entry(deepest_path)
+                        .or_default()
+                        .push(node_id_str.to_string());
                 }
             }
+        }
         // Build hierarchy tree and create proper ID mapping
         let (hierarchy, path_to_id_map) = self.build_hierarchy_tree_with_ids(&hierarchy_map);
 
@@ -710,12 +702,12 @@ impl<W> HydroJson<W> {
         // Find children (paths that have this path as parent)
         let mut children = Vec::new();
         for (child_path, (child_name, _, parent_path)) in hierarchy_map {
-            if let Some(parent) = parent_path {
-                if parent == current_path {
-                    let child_node =
-                        Self::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
-                    children.push(child_node);
-                }
+            if let Some(parent) = parent_path
+                && parent == current_path
+            {
+                let child_node =
+                    Self::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
+                children.push(child_node);
             }
         }
 

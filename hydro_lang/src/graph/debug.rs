@@ -316,6 +316,29 @@ fn print_debug_content(title: &str, content: &str) {
     );
 }
 
+/// Helper function to print JSON debug information including backtrace verification.
+fn print_json_debug_info(json_content: &str) {
+    println!("=== JSON CONTENT SAMPLE (for backtrace verification) ===");
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(json_content) {
+        if let Some(nodes) = parsed["nodes"].as_array() {
+            if let Some(first_node) = nodes.first() {
+                if let Some(backtrace) = first_node["data"]["backtrace"].as_array() {
+                    println!("First node has backtrace with {} elements", backtrace.len());
+                    if !backtrace.is_empty() {
+                        println!(
+                            "Sample backtrace element: {}",
+                            serde_json::to_string_pretty(&backtrace[0]).unwrap_or_default()
+                        );
+                    }
+                } else {
+                    println!("First node does not have backtrace data");
+                }
+            }
+        }
+    }
+    println!("=== END JSON SAMPLE ===");
+}
+
 /// Compress JSON data using gzip compression
 #[cfg(feature = "viz")]
 fn compress_json(json_content: &str) -> Result<Vec<u8>> {
@@ -326,5 +349,5 @@ fn compress_json(json_content: &str) -> Result<Vec<u8>> {
 
     let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
     encoder.write_all(json_content.as_bytes())?;
-    Ok(encoder.finish()?)
+    encoder.finish()
 }
