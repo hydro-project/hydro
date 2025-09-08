@@ -22,13 +22,6 @@ pub mod runtime_support {
     pub mod resource_measurement;
 }
 
-#[doc(hidden)]
-pub mod internal_constants {
-    pub const CPU_USAGE_PREFIX: &str = "CPU:";
-    // Should remain consistent with dfir_lang/src/graph/ops/_counter.rs
-    pub const COUNTER_PREFIX: &str = "_counter";
-}
-
 pub mod prelude {
     // taken from `tokio`
     //! A "prelude" for users of the `hydro_lang` crate.

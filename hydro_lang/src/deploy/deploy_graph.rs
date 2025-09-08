@@ -495,6 +495,7 @@ pub struct TrybuildHost {
     pub additional_hydro_features: Vec<String>,
     pub features: Vec<String>,
     pub tracing: Option<TracingOptions>,
+    pub build_envs: Vec<(String, String)>,
     pub name_hint: Option<String>,
     pub cluster_idx: Option<usize>,
 }
@@ -508,6 +509,7 @@ impl From<Arc<dyn Host>> for TrybuildHost {
             additional_hydro_features: vec![],
             features: vec![],
             tracing: None,
+            build_envs: vec![],
             name_hint: None,
             cluster_idx: None,
         }
@@ -523,6 +525,7 @@ impl<H: Host + 'static> From<Arc<H>> for TrybuildHost {
             additional_hydro_features: vec![],
             features: vec![],
             tracing: None,
+            build_envs: vec![],
             name_hint: None,
             cluster_idx: None,
         }
@@ -538,6 +541,7 @@ impl TrybuildHost {
             additional_hydro_features: vec![],
             features: vec![],
             tracing: None,
+            build_envs: vec![],
             name_hint: None,
             cluster_idx: None,
         }
@@ -589,6 +593,17 @@ impl TrybuildHost {
             ..self
         }
     }
+
+    pub fn build_env(self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        Self {
+            build_envs: self
+                .build_envs
+                .into_iter()
+                .chain(std::iter::once((key.into(), value.into())))
+                .collect(),
+            ..self
+        }
+    }
 }
 
 impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
@@ -601,6 +616,7 @@ impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
             additional_hydro_features: vec![],
             features: vec![],
             tracing: None,
+            build_envs: vec![],
             name_hint: None,
             cluster_idx: None,
         }
@@ -617,6 +633,7 @@ impl<H: Host + 'static> IntoProcessSpec<'_, HydroDeploy> for Arc<H> {
             additional_hydro_features: vec![],
             features: vec![],
             tracing: None,
+            build_envs: vec![],
             name_hint: None,
             cluster_idx: None,
         }
@@ -1069,6 +1086,10 @@ fn create_trybuild_service(
             )
             .chain(trybuild.features),
     );
+
+    for (key, value) in trybuild.build_envs {
+        ret = ret.build_env(key, value);
+    }
 
     ret = ret.build_env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
     ret = ret.config("build.incremental = false");
