@@ -76,7 +76,8 @@ impl<W> HydroJson<W> {
             .collect()
     }
 
-    /// Get edge style configuration with semantic→style mappings
+    /// Get edge style configuration with semantic→style mappings.
+    /// This is now simplified since styles are computed per-edge using unified system.
     fn get_edge_style_config() -> serde_json::Value {
         serde_json::json!({
             "semanticMappings": {
@@ -130,8 +131,8 @@ impl<W> HydroJson<W> {
                     "Cycle": {
                         "halo": "light-red"
                     }
-                }
-                ,
+                },
+
                 // Ordering group - waviness channel
                 "OrderingGroup": {
                     "TotalOrder": {
@@ -141,7 +142,8 @@ impl<W> HydroJson<W> {
                         "waviness": "wavy"
                     }
                 }
-            }
+            },
+            "note": "Edge styles are now computed per-edge using the unified edge style system. This config is provided for reference and compatibility."
         })
     }
 
@@ -338,10 +340,15 @@ where
         // Convert edge properties to a JSON array
         let properties: Vec<String> = edge_properties.iter().map(|p| format!("{:?}", p)).collect();
 
+        // Get location information for styling
+        let src_loc = self.node_locations.get(&src_id).copied();
+        let dst_loc = self.node_locations.get(&dst_id).copied();
+
+        // Get unified edge style
+        let style = super::render::get_unified_edge_style(edge_properties, src_loc, dst_loc);
+
         let mut semantic_tags = properties.clone();
         // Add Network tag if edge crosses locations
-        let src_loc = self.node_locations.get(&src_id);
-        let dst_loc = self.node_locations.get(&dst_id);
         if let (Some(src), Some(dst)) = (src_loc, dst_loc)
             && src != dst
             && !semantic_tags.contains(&"Network".to_string())
@@ -355,6 +362,37 @@ where
             "target": dst_id.to_string(),
             "edgeProperties": properties,
             "semanticTags": semantic_tags,
+            "style": {
+                "line-pattern": match style.line_pattern {
+                    super::render::LinePattern::Solid => "solid",
+                    super::render::LinePattern::Dotted => "dotted",
+                    super::render::LinePattern::Dashed => "dashed",
+                },
+                "line-width": style.line_width,
+                "arrowhead": match style.arrowhead {
+                    super::render::ArrowheadStyle::TriangleFilled => "triangle-filled",
+                    super::render::ArrowheadStyle::CircleFilled => "circle-filled",
+                    super::render::ArrowheadStyle::DiamondOpen => "diamond-open",
+                    super::render::ArrowheadStyle::Default => "triangle-filled",
+                },
+                "line-style": match style.line_style {
+                    super::render::LineStyle::Single => "single",
+                    super::render::LineStyle::Double => "double",
+                },
+                "halo": match style.halo {
+                    super::render::HaloStyle::None => "none",
+                    super::render::HaloStyle::LightRed => "light-red",
+                },
+                "waviness": match style.waviness {
+                    super::render::WavinessStyle::None => "none",
+                    super::render::WavinessStyle::Wavy => "wavy",
+                },
+                "animation": match style.animation {
+                    super::render::AnimationStyle::Static => "static",
+                    super::render::AnimationStyle::Animated => "animated",
+                },
+                "color": style.color,
+            }
         });
 
         if let Some(label_text) = label {

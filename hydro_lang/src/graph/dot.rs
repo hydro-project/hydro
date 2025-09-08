@@ -118,7 +118,7 @@ where
 
         write!(
             self.base.write,
-            "{b:i$}{label} [label=\"({node_id}) {escaped_label}{}\"",
+            "{b:i$}{label} [label=\"{escaped_label}{}\"",
             if escaped_label.contains("\\l") {
                 "\\l"
             } else {
@@ -148,25 +148,55 @@ where
             properties.push(format!("label=\"{}\"", escape_dot(label, "\\n")).into());
         }
 
-        // Styling based on edge properties
-        if edge_properties.contains(&HydroEdgeType::Network) {
-            properties.push("color=\"#880088\"".into());
-            properties.push("style=\"dashed\"".into());
-        } else if edge_properties.contains(&HydroEdgeType::Cycle) {
-            properties.push("color=\"#ff8800\"".into());
-            properties.push("style=\"dotted\"".into());
-        } else if edge_properties.contains(&HydroEdgeType::Bounded) {
-            properties.push("color=\"#008800\"".into());
-            properties.push("style=\"bold\"".into());
-        } else if edge_properties.contains(&HydroEdgeType::NoOrder) {
-            properties.push("color=\"#ff0000\"".into());
-            properties.push("style=\"dashed\"".into());
-        } else if edge_properties.contains(&HydroEdgeType::Keyed) {
-            properties.push("color=\"#0088ff\"".into());
-            properties.push("style=\"bold\"".into());
+        // Get unified edge style (DOT doesn't have location context, so pass None)
+        let style = super::render::get_unified_edge_style(edge_properties, None, None);
+
+        // Apply color
+        properties.push(format!("color=\"{}\"", style.color).into());
+
+        // Apply line pattern
+        match style.line_pattern {
+            super::render::LinePattern::Solid => {
+                if style.line_width > 1 {
+                    properties.push("style=\"bold\"".into());
+                }
+            }
+            super::render::LinePattern::Dotted => {
+                properties.push("style=\"dotted\"".into());
+            }
+            super::render::LinePattern::Dashed => {
+                properties.push("style=\"dashed\"".into());
+            }
         }
 
-        // Add tooltip with all properties
+        // Apply line width through penwidth
+        if style.line_width > 1 {
+            properties.push(format!("penwidth={}", style.line_width).into());
+        }
+
+        // Apply arrowhead style
+        match style.arrowhead {
+            super::render::ArrowheadStyle::TriangleFilled => {
+                properties.push("arrowhead=\"normal\"".into());
+            }
+            super::render::ArrowheadStyle::CircleFilled => {
+                properties.push("arrowhead=\"dot\"".into());
+            }
+            super::render::ArrowheadStyle::DiamondOpen => {
+                properties.push("arrowhead=\"odiamond\"".into());
+            }
+            super::render::ArrowheadStyle::Default => {
+                // DOT default
+            }
+        }
+
+        // For double lines (keyed streams), we can't directly do double lines in DOT,
+        // but we can use a different style to indicate it
+        if style.line_style == super::render::LineStyle::Double {
+            properties.push("style=\"bold,dashed\"".into());
+        }
+
+        // Add tooltip with all properties for debugging
         if !edge_properties.is_empty() {
             let props: Vec<String> = edge_properties.iter().map(|p| format!("{:?}", p)).collect();
             properties.push(format!("tooltip=\"{}\"", props.join(", ")).into());
@@ -213,10 +243,14 @@ where
             b = "",
             i = self.base.indent
         )?;
+
+        // Use the common location labeling utility
+        let location_label =
+            super::render::get_location_label(location_id, location_type, &self.base.config);
         writeln!(
             self.base.write,
-            "{b:i$}label = \"{location_type} {id}\"",
-            id = location_id,
+            "{b:i$}label = \"{}\"",
+            escape_dot(&location_label, "\\n"),
             b = "",
             i = self.base.indent
         )?;

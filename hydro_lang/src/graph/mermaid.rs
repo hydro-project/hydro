@@ -124,58 +124,39 @@ where
         edge_properties: &HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
-        // Choose arrow style based on primary edge property
-        let arrow_style = if edge_properties.contains(&HydroEdgeType::Network) {
-            "-.->".to_string()
-        } else if edge_properties.contains(&HydroEdgeType::Cycle) {
-            "--o".to_string()
-        } else if edge_properties.contains(&HydroEdgeType::Bounded) {
-            "==>".to_string()
-        } else {
-            "-->".to_string()
+        // Get unified edge style (Mermaid doesn't have location context, so pass None)
+        let style = super::render::get_unified_edge_style(edge_properties, None, None);
+
+        // Choose arrow style based on unified style patterns
+        let arrow_style = match (style.line_pattern, style.arrowhead) {
+            // Dotted patterns for network/remote connections
+            (super::render::LinePattern::Dotted, super::render::ArrowheadStyle::CircleFilled) => "-.->",
+            (super::render::LinePattern::Dotted, _) => "-.->",
+            
+            // Circle arrowhead for singleton/special data
+            (_, super::render::ArrowheadStyle::CircleFilled) => "--o",
+            
+            // Cross arrowhead for optional/nullable data  
+            (_, super::render::ArrowheadStyle::DiamondOpen) => "--x",
+            
+            // Thick lines for bounded/heavy data flows
+            _ if style.line_width > 1 => "==>",
+            
+            // Default arrow
+            _ => "-->",
         };
 
-        // Add property indicators to the label
-        let enhanced_label = if let Some(label) = label {
-            let mut parts = vec![label.to_string()];
-            if edge_properties.contains(&HydroEdgeType::Keyed) {
-                parts.push("K".to_string());
-            }
-            if edge_properties.contains(&HydroEdgeType::NoOrder) {
-                parts.push("~".to_string());
-            }
-            Some(parts.join(" "))
-        } else if !edge_properties.is_empty() {
-            let mut indicators = Vec::new();
-            if edge_properties.contains(&HydroEdgeType::Keyed) {
-                indicators.push("K");
-            }
-            if edge_properties.contains(&HydroEdgeType::NoOrder) {
-                indicators.push("~");
-            }
-            if edge_properties.contains(&HydroEdgeType::Bounded) {
-                indicators.push("B");
-            }
-            if edge_properties.contains(&HydroEdgeType::Unbounded) {
-                indicators.push("U");
-            }
-            if !indicators.is_empty() {
-                Some(indicators.join(""))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        // Write the edge definition on its own line
+        // For double line style (keyed streams), we'll add a visual indicator in the linkStyle
+        // For wavy lines (no order), we'll use stroke-dasharray to create a wavy pattern
+        
+        // Write the edge definition
         writeln!(
             self.base.write,
             "{b:i$}n{src}{arrow}{label}n{dst}",
             src = src_id,
             arrow = arrow_style,
-            label = if let Some(label) = enhanced_label {
-                Cow::Owned(format!("|{}|", escape_mermaid(&label)))
+            label = if let Some(label) = label {
+                Cow::Owned(format!("|{}|", escape_mermaid(label)))
             } else {
                 Cow::Borrowed("")
             },
@@ -184,33 +165,40 @@ where
             i = self.base.indent,
         )?;
 
-        // Add styling for different edge types on a separate line
-        let color = if edge_properties.contains(&HydroEdgeType::Network) {
-            "#880088"
-        } else if edge_properties.contains(&HydroEdgeType::Cycle) {
-            "#ff0000"
-        } else if edge_properties.contains(&HydroEdgeType::Bounded) {
-            "#008800"
-        } else if edge_properties.contains(&HydroEdgeType::NoOrder) {
-            "#ff8800"
-        } else if edge_properties.contains(&HydroEdgeType::Keyed) {
-            "#0088ff"
-        } else {
-            "#666666"
-        };
+        // Apply advanced styling using linkStyle
+        let link_num = self.link_count;
+        self.link_count += 1;
 
-        if color != "#666666" {
-            writeln!(
-                self.base.write,
-                "{b:i$}linkStyle {} stroke:{}",
-                self.link_count,
-                color,
-                b = "",
-                i = self.base.indent,
-            )?;
+        // Build linkStyle properties
+        let mut link_style_parts = vec![format!("stroke:{}", style.color)];
+        
+        // Apply stroke width
+        if style.line_width > 1 {
+            link_style_parts.push(format!("stroke-width:{}px", style.line_width));
+        }
+        
+        // Apply special patterns for semantic meaning
+        match (style.line_style, style.waviness) {
+            // Double lines for keyed streams - use stroke-dasharray to simulate
+            (super::render::LineStyle::Double, _) => {
+                link_style_parts.push("stroke-dasharray:8 2 2 2".to_string());
+            }
+            // Wavy lines for no-order - use a wavy dash pattern
+            (_, super::render::WavinessStyle::Wavy) => {
+                link_style_parts.push("stroke-dasharray:4 4".to_string());
+            }
+            _ => {}
         }
 
-        self.link_count += 1;
+        // Apply the combined linkStyle
+        writeln!(
+            self.base.write,
+            "{b:i$}linkStyle {link_num} {style}",
+            style = link_style_parts.join(","),
+            b = "",
+            i = self.base.indent,
+        )?;
+
         Ok(())
     }
 
@@ -219,10 +207,13 @@ where
         location_id: usize,
         location_type: &str,
     ) -> Result<(), Self::Err> {
+        // Use the common location labeling utility
+        let location_label = super::render::get_location_label(location_id, location_type, &self.base.config);
         writeln!(
             self.base.write,
-            "{b:i$}subgraph loc_{id} [\"{location_type} {id}\"]",
+            "{b:i$}subgraph {id} [\"{label}\"]",
             id = location_id,
+            label = location_label,
             b = "",
             i = self.base.indent,
         )?;

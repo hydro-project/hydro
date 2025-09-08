@@ -252,6 +252,195 @@ pub enum HydroEdgeType {
     Cycle,
 }
 
+/// Unified edge style representation for all graph formats.
+/// This intermediate format allows consistent styling across JSON, DOT, and Mermaid.
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnifiedEdgeStyle {
+    /// Line pattern (solid, dotted, dashed)
+    pub line_pattern: LinePattern,
+    /// Line width (1 = thin, 3 = thick)
+    pub line_width: u8,
+    /// Arrowhead style
+    pub arrowhead: ArrowheadStyle,
+    /// Line style for rails (single, double)
+    pub line_style: LineStyle,
+    /// Halo/background effect
+    pub halo: HaloStyle,
+    /// Line waviness for ordering information
+    pub waviness: WavinessStyle,
+    /// Whether animation is enabled (JSON only)
+    pub animation: AnimationStyle,
+    /// Color for the edge
+    pub color: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LinePattern {
+    Solid,
+    Dotted,
+    Dashed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ArrowheadStyle {
+    TriangleFilled,
+    CircleFilled,
+    DiamondOpen,
+    Default,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LineStyle {
+    Single,
+    Double,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum HaloStyle {
+    None,
+    LightRed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum WavinessStyle {
+    None,
+    Wavy,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AnimationStyle {
+    Static,
+    Animated,
+}
+
+impl Default for UnifiedEdgeStyle {
+    fn default() -> Self {
+        Self {
+            line_pattern: LinePattern::Solid,
+            line_width: 1,
+            arrowhead: ArrowheadStyle::Default,
+            line_style: LineStyle::Single,
+            halo: HaloStyle::None,
+            waviness: WavinessStyle::None,
+            animation: AnimationStyle::Static,
+            color: "#666666",
+        }
+    }
+}
+
+/// Convert HydroEdgeType properties to unified edge style.
+/// This is the core logic moved from json.rs get_edge_style_config.
+pub fn get_unified_edge_style(
+    edge_properties: &HashSet<HydroEdgeType>,
+    src_location: Option<usize>,
+    dst_location: Option<usize>,
+) -> UnifiedEdgeStyle {
+    let mut style = UnifiedEdgeStyle::default();
+
+    // Network communication group - controls line pattern AND animation
+    let is_network = edge_properties.contains(&HydroEdgeType::Network)
+        || (src_location.is_some() && dst_location.is_some() && src_location != dst_location);
+
+    if is_network {
+        style.line_pattern = LinePattern::Dotted;
+        style.animation = AnimationStyle::Animated;
+        style.color = "#880088";
+    } else {
+        style.line_pattern = LinePattern::Solid;
+        style.animation = AnimationStyle::Static;
+    }
+
+    // Boundedness group - controls line width
+    if edge_properties.contains(&HydroEdgeType::Bounded) {
+        style.line_width = 3;
+        if !is_network {
+            style.color = "#008800";
+        }
+    } else if edge_properties.contains(&HydroEdgeType::Unbounded) {
+        style.line_width = 1;
+    }
+
+    // Collection type group - controls arrowhead and rails (line-style)
+    if edge_properties.contains(&HydroEdgeType::Stream) {
+        style.arrowhead = ArrowheadStyle::TriangleFilled;
+        style.line_style = LineStyle::Single;
+    } else if edge_properties.contains(&HydroEdgeType::KeyedStream) {
+        style.arrowhead = ArrowheadStyle::TriangleFilled;
+        style.line_style = LineStyle::Double;
+        if !is_network && !edge_properties.contains(&HydroEdgeType::Bounded) {
+            style.color = "#0088ff";
+        }
+    } else if edge_properties.contains(&HydroEdgeType::Singleton) {
+        style.arrowhead = ArrowheadStyle::CircleFilled;
+        style.line_style = LineStyle::Single;
+    } else if edge_properties.contains(&HydroEdgeType::Optional) {
+        style.arrowhead = ArrowheadStyle::DiamondOpen;
+        style.line_style = LineStyle::Single;
+    }
+
+    // Flow control group - controls halo
+    if edge_properties.contains(&HydroEdgeType::Cycle) {
+        style.halo = HaloStyle::LightRed;
+        style.color = "#ff8800";
+    }
+
+    // Ordering group - waviness channel
+    if edge_properties.contains(&HydroEdgeType::NoOrder) {
+        style.waviness = WavinessStyle::Wavy;
+        if !is_network
+            && !edge_properties.contains(&HydroEdgeType::Bounded)
+            && !edge_properties.contains(&HydroEdgeType::KeyedStream)
+            && !edge_properties.contains(&HydroEdgeType::Cycle)
+        {
+            style.color = "#ff0000";
+        }
+    } else if edge_properties.contains(&HydroEdgeType::TotalOrder) {
+        style.waviness = WavinessStyle::None;
+    }
+
+    style
+}
+
+/// Generate a proper location label using the configuration's name mappings.
+/// This ensures consistent location labeling across all graph renderers.
+pub fn get_location_label(
+    location_id: usize,
+    location_type: &str,
+    config: &HydroWriteConfig,
+) -> String {
+    match location_type {
+        "Process" => {
+            // Convert to HashMap for efficient lookup
+            let process_names: HashMap<usize, String> =
+                config.process_id_name.iter().cloned().collect();
+            if let Some(name) = process_names.get(&location_id) {
+                name.clone()
+            } else {
+                format!("Process {}", location_id)
+            }
+        }
+        "Cluster" => {
+            let cluster_names: HashMap<usize, String> =
+                config.cluster_id_name.iter().cloned().collect();
+            if let Some(name) = cluster_names.get(&location_id) {
+                name.clone()
+            } else {
+                format!("Cluster {}", location_id)
+            }
+        }
+        "External" => {
+            let external_names: HashMap<usize, String> =
+                config.external_id_name.iter().cloned().collect();
+            if let Some(name) = external_names.get(&location_id) {
+                name.clone()
+            } else {
+                format!("External {}", location_id)
+            }
+        }
+        _ => location_type.to_string(),
+    }
+}
+
 /// Configuration for graph writing.
 #[derive(Debug, Clone)]
 pub struct HydroWriteConfig {
