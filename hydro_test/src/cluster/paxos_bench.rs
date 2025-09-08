@@ -194,7 +194,7 @@ mod tests {
         );
         let built = builder.with_default_optimize::<HydroDeploy>();
 
-        hydro_lang::ir::dbg_dedup_tee(|| {
+        hydro_lang::builder::ir::dbg_dedup_tee(|| {
             hydro_build_utils::assert_debug_snapshot!(built.ir());
         });
 
