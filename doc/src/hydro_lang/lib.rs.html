@@ -84,28 +84,25 @@
 <a href=#84 id=84 data-nosnippet>84</a>#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
 <a href=#85 id=85 data-nosnippet>85</a></span><span class="kw">pub mod </span>graph;
 <a href=#86 id=86 data-nosnippet>86</a>
-<a href=#87 id=87 data-nosnippet>87</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#88 id=88 data-nosnippet>88</a></span><span class="kw">pub mod </span>rewrites;
-<a href=#89 id=89 data-nosnippet>89</a>
-<a href=#90 id=90 data-nosnippet>90</a><span class="kw">mod </span>staging_util;
-<a href=#91 id=91 data-nosnippet>91</a>
-<a href=#92 id=92 data-nosnippet>92</a><span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
-<a href=#93 id=93 data-nosnippet>93</a>#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"deploy"</span>)))]
-<a href=#94 id=94 data-nosnippet>94</a></span><span class="kw">pub mod </span>test_util;
-<a href=#95 id=95 data-nosnippet>95</a>
-<a href=#96 id=96 data-nosnippet>96</a><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-<a href=#97 id=97 data-nosnippet>97</a>#[ctor::ctor]
-<a href=#98 id=98 data-nosnippet>98</a></span><span class="kw">fn </span>init_rewrites() {
-<a href=#99 id=99 data-nosnippet>99</a>    stageleft::add_private_reexport(
-<a href=#100 id=100 data-nosnippet>100</a>        <span class="macro">vec!</span>[<span class="string">"tokio_util"</span>, <span class="string">"codec"</span>, <span class="string">"lines_codec"</span>],
-<a href=#101 id=101 data-nosnippet>101</a>        <span class="macro">vec!</span>[<span class="string">"tokio_util"</span>, <span class="string">"codec"</span>],
-<a href=#102 id=102 data-nosnippet>102</a>    );
-<a href=#103 id=103 data-nosnippet>103</a>}
-<a href=#104 id=104 data-nosnippet>104</a>
-<a href=#105 id=105 data-nosnippet>105</a><span class="attr">#[cfg(test)]
-<a href=#106 id=106 data-nosnippet>106</a></span><span class="kw">mod </span>test_init {
-<a href=#107 id=107 data-nosnippet>107</a>    <span class="attr">#[ctor::ctor]
-<a href=#108 id=108 data-nosnippet>108</a>    </span><span class="kw">fn </span>init() {
-<a href=#109 id=109 data-nosnippet>109</a>        <span class="kw">crate</span>::deploy::init_test();
-<a href=#110 id=110 data-nosnippet>110</a>    }
-<a href=#111 id=111 data-nosnippet>111</a>}</code></pre></div></section></main></body></html>
+<a href=#87 id=87 data-nosnippet>87</a><span class="kw">mod </span>staging_util;
+<a href=#88 id=88 data-nosnippet>88</a>
+<a href=#89 id=89 data-nosnippet>89</a><span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
+<a href=#90 id=90 data-nosnippet>90</a>#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"deploy"</span>)))]
+<a href=#91 id=91 data-nosnippet>91</a></span><span class="kw">pub mod </span>test_util;
+<a href=#92 id=92 data-nosnippet>92</a>
+<a href=#93 id=93 data-nosnippet>93</a><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+<a href=#94 id=94 data-nosnippet>94</a>#[ctor::ctor]
+<a href=#95 id=95 data-nosnippet>95</a></span><span class="kw">fn </span>init_rewrites() {
+<a href=#96 id=96 data-nosnippet>96</a>    stageleft::add_private_reexport(
+<a href=#97 id=97 data-nosnippet>97</a>        <span class="macro">vec!</span>[<span class="string">"tokio_util"</span>, <span class="string">"codec"</span>, <span class="string">"lines_codec"</span>],
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="macro">vec!</span>[<span class="string">"tokio_util"</span>, <span class="string">"codec"</span>],
+<a href=#99 id=99 data-nosnippet>99</a>    );
+<a href=#100 id=100 data-nosnippet>100</a>}
+<a href=#101 id=101 data-nosnippet>101</a>
+<a href=#102 id=102 data-nosnippet>102</a><span class="attr">#[cfg(test)]
+<a href=#103 id=103 data-nosnippet>103</a></span><span class="kw">mod </span>test_init {
+<a href=#104 id=104 data-nosnippet>104</a>    <span class="attr">#[ctor::ctor]
+<a href=#105 id=105 data-nosnippet>105</a>    </span><span class="kw">fn </span>init() {
+<a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">crate</span>::deploy::init_test();
+<a href=#107 id=107 data-nosnippet>107</a>    }
+<a href=#108 id=108 data-nosnippet>108</a>}</code></pre></div></section></main></body></html>

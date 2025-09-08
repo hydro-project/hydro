@@ -4,11 +4,11 @@
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>hydro_deploy::Deployment;
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>hydro_lang::builder::deploy::DeployResult;
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>hydro_lang::builder::ir::{HydroNode, HydroRoot, deep_clone, traverse_dfir};
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>hydro_lang::builder::{FlowBuilder, RewriteIrFlowBuilder};
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>hydro_lang::deploy::HydroDeploy;
-<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>hydro_lang::location::LocationId;
-<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>hydro_lang::rewrites::persist_pullup::persist_pullup;
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>hydro_lang::builder::rewrites::persist_pullup::persist_pullup;
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>hydro_lang::builder::{FlowBuilder, RewriteIrFlowBuilder};
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>hydro_lang::deploy::HydroDeploy;
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>hydro_lang::location::LocationId;
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>tokio::sync::mpsc::UnboundedReceiver;
 <a href=#13 id=13 data-nosnippet>13</a>
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::decouple_analysis::decouple_analysis;

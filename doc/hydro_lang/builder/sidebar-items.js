@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["FLOW_USED_MESSAGE"],"mod":["built","compiled","deploy","deploy_provider","ir"],"struct":["FlowBuilder","FlowStateInner","RewriteIrFlowBuilder"],"type":["FlowState"]};
+window.SIDEBAR_ITEMS = {"constant":["FLOW_USED_MESSAGE"],"mod":["built","compiled","deploy","deploy_provider","ir","rewrites"],"struct":["FlowBuilder","FlowStateInner","RewriteIrFlowBuilder"],"type":["FlowState"]};
