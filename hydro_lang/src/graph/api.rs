@@ -338,7 +338,7 @@ impl<'a> GraphApi<'a> {
             let format = match graph_type {
                 crate::graph::config::GraphType::Mermaid => GraphFormat::Mermaid,
                 crate::graph::config::GraphType::Dot => GraphFormat::Dot,
-                crate::graph::config::GraphType::Reactflow => GraphFormat::ReactFlow,
+                crate::graph::config::GraphType::Json => GraphFormat::Json,
             };
 
             if config.file {
