@@ -5,17 +5,17 @@ use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
+use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::optional::Optional;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::boundedness::{Bounded, Boundedness, Unbounded};
-use crate::builder::FLOW_USED_MESSAGE;
-use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
-use crate::cycle::{
-    CycleCollection, CycleCollectionWithInitial, CycleComplete, DeferTick, ForwardRefMarker,
-    TickCycleMarker,
-};
-use crate::location::tick::{Atomic, NoAtomic};
-use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
+use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
+use crate::forward_handle::{ForwardRef, TickCycle};
+#[cfg(stageleft_runtime)]
+use crate::location::dynamic::{DynLocation, LocationId};
+use crate::location::tick::{Atomic, DeferTick, NoAtomic};
+use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::NonDet;
 
 pub struct Singleton<Type, Loc, Bound: Boundedness> {
@@ -43,18 +43,21 @@ where
     }
 }
 
-impl<'a, T, L> CycleCollectionWithInitial<'a, TickCycleMarker> for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollectionWithInitial<'a, TickCycle> for Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
     type Location = Tick<L>;
 
-    fn create_source(ident: syn::Ident, initial: Self, location: Tick<L>) -> Self {
+    fn create_source_with_initial(ident: syn::Ident, initial: Self, location: Tick<L>) -> Self {
         Singleton::new(
             location.clone(),
             HydroNode::Chain {
-                first: Box::new(HydroNode::CycleSource {
-                    ident,
+                first: Box::new(HydroNode::DeferTick {
+                    input: Box::new(HydroNode::CycleSource {
+                        ident,
+                        metadata: location.new_node_metadata::<T>(),
+                    }),
                     metadata: location.new_node_metadata::<T>(),
                 }),
                 second: initial
@@ -68,32 +71,29 @@ where
     }
 }
 
-impl<'a, T, L> CycleComplete<'a, TickCycleMarker> for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> ReceiverComplete<'a, TickCycle> for Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
-            self.location.id(),
+            Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: self.location.id(),
+                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
 }
 
-impl<'a, T, L> CycleCollection<'a, ForwardRefMarker> for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollection<'a, ForwardRef> for Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
@@ -110,32 +110,29 @@ where
     }
 }
 
-impl<'a, T, L> CycleComplete<'a, ForwardRefMarker> for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> ReceiverComplete<'a, ForwardRef> for Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
-            self.location.id(),
+            Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: self.location.id(),
+                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
 }
 
-impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRefMarker> for Singleton<T, L, B>
+impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRef> for Singleton<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -155,13 +152,13 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> CycleComplete<'a, ForwardRefMarker> for Singleton<T, L, B>
+impl<'a, T, L, B: Boundedness> ReceiverComplete<'a, ForwardRef> for Singleton<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
-            self.location.id(),
+            Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
@@ -169,16 +166,13 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
                     metadata: metadata.clone(),
                 }),
-                out_location: self.location.id(),
+                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -638,7 +632,7 @@ mod tests {
     use hydro_deploy::Deployment;
     use stageleft::q;
 
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
     use crate::nondet::nondet;
 

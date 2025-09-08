@@ -1,3 +1,18 @@
+//! Type definitions for distributed locations, which specify where pieces of a Hydro
+//! program will be executed.
+//!
+//! Hydro is a **global**, **distributed** programming model. This means that the data
+//! and computation in a Hydro program can be spread across multiple machines, data
+//! centers, and even continents. To achieve this, Hydro uses the concept of
+//! **locations** to keep track of _where_ data is located and computation is executed.
+//!
+//! Each live collection type (in [`crate::live_collections`]) has a type parameter `L`
+//! which will always be a type that implements the [`Location`] trait (e.g. [`Process`]
+//! and [`Cluster`]). To create distributed programs, Hydro provides a variety of APIs
+//! to allow live collections to be _moved_ between locations via network send/receive.
+//!
+//! See [the Hydro docs](https://hydro.run/docs/hydro/locations/) for more information.
+
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::time::Duration;
@@ -11,108 +26,75 @@ use stageleft::{QuotedWithContext, q, quote_type};
 use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-use super::builder::FlowState;
-use crate::boundedness::Unbounded;
-use crate::builder::ir::backtrace::Backtrace;
-use crate::builder::ir::{
-    DebugInstantiate, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
-};
-use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
+use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource};
+use crate::forward_handle::ForwardRef;
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, ForwardHandle};
+use crate::live_collections::boundedness::Unbounded;
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::location::cluster::ClusterIds;
+use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many,
 };
 use crate::nondet::{NonDet, nondet};
 use crate::staging_util::get_this_crate;
 
+pub mod dynamic;
+
+#[expect(missing_docs, reason = "TODO")]
 pub mod external_process;
 pub use external_process::External;
 
+#[expect(missing_docs, reason = "TODO")]
 pub mod process;
 pub use process::Process;
 
+#[expect(missing_docs, reason = "TODO")]
 pub mod cluster;
 pub use cluster::Cluster;
 
+#[expect(missing_docs, reason = "TODO")]
 pub mod member_id;
 pub use member_id::MemberId;
 
+#[expect(missing_docs, reason = "TODO")]
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
 
-#[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
-pub enum LocationId {
-    Process(usize),
-    Cluster(usize),
-    Tick(usize, Box<LocationId>),
-}
-
+#[expect(missing_docs, reason = "TODO")]
 #[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum MembershipEvent {
     Joined,
     Left,
 }
 
-impl LocationId {
-    pub fn root(&self) -> &LocationId {
-        match self {
-            LocationId::Process(_) => self,
-            LocationId::Cluster(_) => self,
-            LocationId::Tick(_, id) => id.root(),
-        }
-    }
-
-    pub fn is_root(&self) -> bool {
-        match self {
-            LocationId::Process(_) | LocationId::Cluster(_) => true,
-            LocationId::Tick(_, _) => false,
-        }
-    }
-
-    pub fn raw_id(&self) -> usize {
-        match self {
-            LocationId::Process(id) => *id,
-            LocationId::Cluster(id) => *id,
-            LocationId::Tick(_, _) => panic!("cannot get raw id for tick"),
-        }
-    }
-
-    pub fn swap_root(&mut self, new_root: LocationId) {
-        match self {
-            LocationId::Tick(_, id) => {
-                id.swap_root(new_root);
-            }
-            _ => {
-                assert!(new_root.is_root());
-                *self = new_root;
-            }
-        }
-    }
-}
-
-pub fn check_matching_location<'a, L: Location<'a>>(l1: &L, l2: &L) {
-    assert_eq!(l1.id(), l2.id(), "locations do not match");
-}
-
+#[expect(missing_docs, reason = "TODO")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NetworkHint {
     Auto,
     TcpPort(Option<u16>),
 }
 
-pub trait Location<'a>: Clone {
+pub(crate) fn check_matching_location<'a, L: Location<'a>>(l1: &L, l2: &L) {
+    assert_eq!(Location::id(l1), Location::id(l2), "locations do not match");
+}
+
+#[expect(missing_docs, reason = "TODO")]
+#[expect(
+    private_bounds,
+    reason = "only internal Hydro code can define location types"
+)]
+pub trait Location<'a>: dynamic::DynLocation {
     type Root: Location<'a>;
 
     fn root(&self) -> Self::Root;
 
-    fn id(&self) -> LocationId;
-
-    fn flow_state(&self) -> &FlowState;
-
-    fn is_top_level() -> bool;
+    fn id(&self) -> LocationId {
+        dynamic::DynLocation::id(self)
+    }
 
     fn tick(&self) -> Tick<Self>
     where
@@ -123,28 +105,6 @@ pub trait Location<'a>: Clone {
         Tick {
             id: next_id,
             l: self.clone(),
-        }
-    }
-
-    fn next_node_id(&self) -> usize {
-        let next_id = self.flow_state().borrow_mut().next_node_id;
-        self.flow_state().borrow_mut().next_node_id += 1;
-        next_id
-    }
-
-    #[inline(never)]
-    fn new_node_metadata<T>(&self) -> HydroIrMetadata {
-        HydroIrMetadata {
-            location_kind: self.id(),
-            output_type: Some(quote_type::<T>().into()),
-            cardinality: None,
-            tag: None,
-            op: HydroIrOpMetadata {
-                backtrace: Backtrace::get_backtrace(2),
-                cpu_usage: None,
-                network_recv_cpu_usage: None,
-                id: None,
-            },
         }
     }
 
@@ -326,7 +286,7 @@ pub trait Location<'a>: Clone {
         ExternalBytesPort<Many>,
         KeyedStream<u64, <Codec as Decoder>::Item, Self, Unbounded, TotalOrder, ExactlyOnce>,
         KeyedStream<u64, MembershipEvent, Self, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardRef<'a, KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>,
+        ForwardHandle<'a, KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>, ForwardRef>,
     )
     where
         Self: Sized + NoTick,
@@ -342,9 +302,7 @@ pub trait Location<'a>: Clone {
             self.forward_ref::<KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
-        let roots = flow_state_borrow.roots.as_mut().expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled()");
-
-        roots.push(HydroRoot::SendExternal {
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: from.id,
             to_key: next_external_port_id,
             to_many: true,
@@ -438,7 +396,11 @@ pub trait Location<'a>: Clone {
         ExternalBincodeBidi<InT, OutT, Many>,
         KeyedStream<u64, InT, Self, Unbounded, TotalOrder, ExactlyOnce>,
         KeyedStream<u64, MembershipEvent, Self, Unbounded, TotalOrder, ExactlyOnce>,
-        ForwardRef<'a, KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
+        ForwardHandle<
+            'a,
+            KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>,
+            ForwardRef,
+        >,
     )
     where
         Self: Sized + NoTick,
@@ -456,8 +418,6 @@ pub trait Location<'a>: Clone {
             self.forward_ref::<KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
-        let roots = flow_state_borrow.roots.as_mut().expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled()");
-
         let out_t_type = quote_type::<OutT>();
         let ser_fn: syn::Expr = syn::parse_quote! {
             ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(u64, #out_t_type), _>(
@@ -465,7 +425,7 @@ pub trait Location<'a>: Clone {
             )
         };
 
-        roots.push(HydroRoot::SendExternal {
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: from.id,
             to_key: next_external_port_id,
             to_many: true,
@@ -624,19 +584,19 @@ pub trait Location<'a>: Clone {
         )))
     }
 
-    fn forward_ref<S>(&self) -> (ForwardRef<'a, S>, S)
+    fn forward_ref<S>(&self) -> (ForwardHandle<'a, S, ForwardRef>, S)
     where
-        S: CycleCollection<'a, ForwardRefMarker, Location = Self>,
+        S: CycleCollection<'a, ForwardRef, Location = Self>,
         Self: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
-            ForwardRef {
+            ForwardHandle {
                 completed: false,
                 ident: ident.clone(),
-                expected_location: self.id(),
+                expected_location: Location::id(self),
                 _phantom: PhantomData,
             },
             S::create_source(ident, self.clone()),
@@ -653,7 +613,7 @@ mod tests {
     use stageleft::q;
     use tokio_util::codec::LengthDelimitedCodec;
 
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::location::{Location, NetworkHint};
 
     #[tokio::test]
