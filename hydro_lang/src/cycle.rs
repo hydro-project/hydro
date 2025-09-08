@@ -1,6 +1,7 @@
 use sealed::sealed;
 
-use crate::location::{Location, LocationId};
+use crate::location::Location;
+use crate::location::dynamic::LocationId;
 use crate::staging_util::Invariant;
 
 #[sealed]
