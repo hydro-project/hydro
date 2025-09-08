@@ -52,7 +52,6 @@ pub mod prelude {
 #[expect(missing_docs, reason = "TODO")]
 pub mod runtime_context;
 
-#[expect(missing_docs, reason = "TODO")]
 pub mod nondet;
 
 #[expect(missing_docs, reason = "TODO")]
