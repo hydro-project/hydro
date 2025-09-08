@@ -1,10 +1,12 @@
 use quote::quote_spanned;
+use syn::parse_quote_spanned;
 
 use super::{
     OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
-/// > Arguments: A `tag` string and a `Duration` for how long to wait between printing.
+/// > Arguments: A `tag` string and a `Duration` for how long to wait between printing. A third optional
+/// > parameter controls the prefix used for logging (defaults to "_counter").
 ///
 /// Counts the number of items passing through and prints to stdout whenever the stream trigger activates.
 ///
@@ -66,6 +68,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
         let tag_ident = wc.make_ident("tag");
         let duration_expr = &arguments[1];
         let duration_ident = wc.make_ident("duration");
+        let prefix = arguments.get(2).cloned().unwrap_or(parse_quote_spanned!(op_span=> "_counter"));
 
         let write_prologue = quote_spanned! {op_span=>
             let #write_ident = ::std::rc::Rc::new(::std::cell::Cell::new(0_u64));
@@ -75,7 +78,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
             let #tag_ident = #tag_expr;
             #df_ident.request_task(async move {
                 loop {
-                    println!("_counter({}): {}", #tag_ident, #read_ident.get());
+                    println!("{}({}): {}", #prefix, #tag_ident, #read_ident.get());
                     #root::tokio::time::sleep(#duration_ident).await;
                 }
             });

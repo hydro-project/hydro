@@ -934,6 +934,7 @@ impl HydroNode {
 
             HydroNode::Counter {
                 tag: _,
+                prefix: _,
                 duration,
                 input,
                 metadata,
