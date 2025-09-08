@@ -138,52 +138,23 @@ pub trait HydroGraphWrite {
 pub mod node_type_utils {
     use super::HydroNodeType;
 
-    /// All node types with their metadata in one place
-    const NODE_TYPE_DATA: &[(HydroNodeType, &str, &str, &str, &str)] = &[
-        (HydroNodeType::Source, "Source", "sourceClass", "[[", "]]"),
-        (
-            HydroNodeType::Transform,
-            "Transform",
-            "transformClass",
-            "(",
-            ")",
-        ),
-        (HydroNodeType::Join, "Join", "joinClass", "(", ")"),
-        (
-            HydroNodeType::Aggregation,
-            "Aggregation",
-            "aggClass",
-            "(",
-            ")",
-        ),
-        (
-            HydroNodeType::Network,
-            "Network",
-            "networkClass",
-            "[[",
-            "]]",
-        ),
-        (HydroNodeType::Sink, "Sink", "sinkClass", "[/", "/]"),
-        (HydroNodeType::Tee, "Tee", "teeClass", "(", ")"),
-    ];
-
-    /// DOT shape and color data
-    const DOT_STYLES: &[(HydroNodeType, &str, &str)] = &[
-        (HydroNodeType::Source, "ellipse", "\"#8dd3c7\""), // Light teal
-        (HydroNodeType::Transform, "box", "\"#ffffb3\""),  // Light yellow
-        (HydroNodeType::Join, "diamond", "\"#bebada\""),   // Light purple
-        (HydroNodeType::Aggregation, "house", "\"#fb8072\""), // Light red/salmon
-        (HydroNodeType::Network, "doubleoctagon", "\"#80b1d3\""), // Light blue
-        (HydroNodeType::Sink, "invhouse", "\"#fdb462\""),  // Light orange
-        (HydroNodeType::Tee, "terminator", "\"#b3de69\""), // Light green
+    /// All node types with their string names
+    const NODE_TYPE_DATA: &[(HydroNodeType, &str)] = &[
+        (HydroNodeType::Source, "Source"),
+        (HydroNodeType::Transform, "Transform"),
+        (HydroNodeType::Join, "Join"),
+        (HydroNodeType::Aggregation, "Aggregation"),
+        (HydroNodeType::Network, "Network"),
+        (HydroNodeType::Sink, "Sink"),
+        (HydroNodeType::Tee, "Tee"),
     ];
 
     /// Convert HydroNodeType to string representation (used by JSON format)
     pub fn to_string(node_type: HydroNodeType) -> &'static str {
         NODE_TYPE_DATA
             .iter()
-            .find(|(nt, _, _, _, _)| *nt == node_type)
-            .map(|(_, name, _, _, _)| *name)
+            .find(|(nt, _)| *nt == node_type)
+            .map(|(_, name)| *name)
             .unwrap_or("Unknown")
     }
 
@@ -191,35 +162,8 @@ pub mod node_type_utils {
     pub fn all_types_with_strings() -> Vec<(HydroNodeType, &'static str)> {
         NODE_TYPE_DATA
             .iter()
-            .map(|(nt, name, _, _, _)| (*nt, *name))
+            .map(|(nt, name)| (*nt, *name))
             .collect()
-    }
-
-    /// Get Mermaid class name for node type
-    pub fn to_mermaid_class(node_type: HydroNodeType) -> &'static str {
-        NODE_TYPE_DATA
-            .iter()
-            .find(|(nt, _, _, _, _)| *nt == node_type)
-            .map(|(_, _, class, _, _)| *class)
-            .unwrap_or("defaultClass")
-    }
-
-    /// Get Mermaid shape for node type
-    pub fn to_mermaid_shape(node_type: HydroNodeType) -> (&'static str, &'static str) {
-        NODE_TYPE_DATA
-            .iter()
-            .find(|(nt, _, _, _, _)| *nt == node_type)
-            .map(|(_, _, _, left, right)| (*left, *right))
-            .unwrap_or(("(", ")"))
-    }
-
-    /// Get DOT shape and color for node type
-    pub fn to_dot_style(node_type: HydroNodeType) -> (&'static str, &'static str) {
-        DOT_STYLES
-            .iter()
-            .find(|(nt, _, _)| *nt == node_type)
-            .map(|(_, shape, color)| (*shape, *color))
-            .unwrap_or(("box", "\"#ffffff\""))
     }
 }
 
