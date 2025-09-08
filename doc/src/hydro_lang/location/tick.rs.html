@@ -7,11 +7,11 @@
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use super</span>::{Cluster, Location, LocationId, Process};
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::boundedness::Bounded;
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">crate</span>::builder::FlowState;
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">crate</span>::cycle::{
-<a href=#11 id=11 data-nosnippet>11</a>    CycleCollection, CycleCollectionWithInitial, DeferTick, ForwardRef, ForwardRefMarker,
-<a href=#12 id=12 data-nosnippet>12</a>    TickCycle, TickCycleMarker,
-<a href=#13 id=13 data-nosnippet>13</a>};
-<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::ir::{HydroNode, HydroSource};
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">crate</span>::builder::ir::{HydroNode, HydroSource};
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span><span class="kw">crate</span>::cycle::{
+<a href=#12 id=12 data-nosnippet>12</a>    CycleCollection, CycleCollectionWithInitial, DeferTick, ForwardRef, ForwardRefMarker,
+<a href=#13 id=13 data-nosnippet>13</a>    TickCycle, TickCycleMarker,
+<a href=#14 id=14 data-nosnippet>14</a>};
 <a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::live_collections::optional::Optional;
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span><span class="kw">crate</span>::live_collections::singleton::Singleton;
 <a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span><span class="kw">crate</span>::live_collections::stream::{ExactlyOnce, Stream, TotalOrder};

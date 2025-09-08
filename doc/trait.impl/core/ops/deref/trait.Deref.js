@@ -1,9 +1,9 @@
 (function() {
-    var implementors = Object.fromEntries([["hydro_lang",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/deref/trait.Deref.html\" title=\"trait core::ops::deref::Deref\">Deref</a> for <a class=\"struct\" href=\"hydro_lang/ir/struct.DebugExpr.html\" title=\"struct hydro_lang::ir::DebugExpr\">DebugExpr</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/deref/trait.Deref.html\" title=\"trait core::ops::deref::Deref\">Deref</a> for <a class=\"struct\" href=\"hydro_lang/ir/struct.DebugType.html\" title=\"struct hydro_lang::ir::DebugType\">DebugType</a>"]]]]);
+    var implementors = Object.fromEntries([["hydro_lang",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/deref/trait.Deref.html\" title=\"trait core::ops::deref::Deref\">Deref</a> for <a class=\"struct\" href=\"hydro_lang/builder/ir/struct.DebugExpr.html\" title=\"struct hydro_lang::builder::ir::DebugExpr\">DebugExpr</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/deref/trait.Deref.html\" title=\"trait core::ops::deref::Deref\">Deref</a> for <a class=\"struct\" href=\"hydro_lang/builder/ir/struct.DebugType.html\" title=\"struct hydro_lang::builder::ir::DebugType\">DebugType</a>"]]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
         window.pending_implementors = implementors;
     }
 })()
-//{"start":57,"fragment_lengths":[574]}
+//{"start":57,"fragment_lengths":[608]}
