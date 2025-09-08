@@ -67,8 +67,7 @@ pub mod location;
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod deploy;
 
-#[expect(missing_docs, reason = "TODO")]
-pub mod cycle;
+pub mod forward_handle;
 
 #[expect(missing_docs, reason = "TODO")]
 pub mod builder;

@@ -10,13 +10,12 @@ use super::optional::Optional;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
-use crate::cycle::{
-    CycleCollection, CycleCollectionWithInitial, CycleComplete, DeferTick, ForwardRefMarker,
-    TickCycleMarker,
-};
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
+use crate::forward_handle::{ForwardRef, TickCycle};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
-use crate::location::tick::{Atomic, NoAtomic};
+use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::NonDet;
 
@@ -45,18 +44,21 @@ where
     }
 }
 
-impl<'a, T, L> CycleCollectionWithInitial<'a, TickCycleMarker> for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollectionWithInitial<'a, TickCycle> for Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
     type Location = Tick<L>;
 
-    fn create_source(ident: syn::Ident, initial: Self, location: Tick<L>) -> Self {
+    fn create_source_with_initial(ident: syn::Ident, initial: Self, location: Tick<L>) -> Self {
         Singleton::new(
             location.clone(),
             HydroNode::Chain {
-                first: Box::new(HydroNode::CycleSource {
-                    ident,
+                first: Box::new(HydroNode::DeferTick {
+                    input: Box::new(HydroNode::CycleSource {
+                        ident,
+                        metadata: location.new_node_metadata::<T>(),
+                    }),
                     metadata: location.new_node_metadata::<T>(),
                 }),
                 second: initial
@@ -70,7 +72,7 @@ where
     }
 }
 
-impl<'a, T, L> CycleComplete<'a, TickCycleMarker> for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> ReceiverComplete<'a, TickCycle> for Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
@@ -95,7 +97,7 @@ where
     }
 }
 
-impl<'a, T, L> CycleCollection<'a, ForwardRefMarker> for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollection<'a, ForwardRef> for Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
@@ -112,7 +114,7 @@ where
     }
 }
 
-impl<'a, T, L> CycleComplete<'a, ForwardRefMarker> for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> ReceiverComplete<'a, ForwardRef> for Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
@@ -137,7 +139,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRefMarker> for Singleton<T, L, B>
+impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRef> for Singleton<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -157,7 +159,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> CycleComplete<'a, ForwardRefMarker> for Singleton<T, L, B>
+impl<'a, T, L, B: Boundedness> ReceiverComplete<'a, ForwardRef> for Singleton<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
