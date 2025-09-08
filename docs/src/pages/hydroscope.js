@@ -8,7 +8,8 @@ import BrowserOnly from '@docusaurus/BrowserOnly';
 import { useLocation } from '@docusaurus/router';
 
 // Import CSS from hydroscope npm package
-import '@hydro-project/hydroscope/style.css';
+// Note: CSS file not available in current package version
+// import '@hydro-project/hydroscope/style.css';
 
 // Typography constants for consistent styling
 const TYPOGRAPHY = {
@@ -16,7 +17,7 @@ const TYPOGRAPHY = {
   PAGE_SUBTITLE: '0.9em'
 };
 
-function HydroscopePage() {
+function HydroscopeFn() {
   const location = useLocation();
   const [Hydroscope, setHydroscope] = React.useState(null);
   const [generateCompleteExample, setGenerateCompleteExample] = React.useState(null);
@@ -56,6 +57,8 @@ function HydroscopePage() {
         if (!parseDataFromUrl) {
           throw new Error('parseDataFromUrl function not found in external module');
         }
+
+        console.log('✅ Hydroscope component loaded successfully');
 
         setHydroscope(() => Hydroscope);
         setGenerateCompleteExample(() => generateCompleteExample);
@@ -190,24 +193,29 @@ function HydroscopePage() {
       )}
 
       {!loading && !error && Hydroscope && (
-        <div style={contentStyle}>
-          <Hydroscope
-            data={graphData}
-            showFileUpload={true}
-            showInfoPanel={true}
-            showStylePanel={true}
-            enableCollapse={true}
-            autoFit={true}
-            initialLayoutAlgorithm="mrtree"
-            initialColorPalette="Set3"
-            onFileUpload={handleFileUpload}
-            generatedFilePath={filePath}
-            style={{
-              height: '100%',
-              width: '100%',
-            }}
-          />
-        </div>
+        <>
+          <div style={contentStyle}>
+            <Hydroscope
+              data={graphData}
+              showFileUpload={true}
+              showInfoPanel={true}
+              showStylePanel={true}
+              enableCollapse={true}
+              autoFit={true}
+              initialLayoutAlgorithm="mrtree"
+              initialColorPalette="Set3"
+              generatedFilePath={filePath}
+              generateCompleteExample={generateCompleteExample}
+              onFileUpload={handleFileUpload}
+              onExampleGenerated={handleExampleGenerated}
+              onCreateExample={handleCreateExample}
+              style={{
+                height: '100%',
+                width: '100%',
+              }}
+            />
+          </div>
+        </>
       )}
 
       {!loading && !error && !Hydroscope && (
@@ -215,14 +223,15 @@ function HydroscopePage() {
           <p>Hydroscope component not available</p>
         </div>
       )}
-    </Layout>
+    </div>
+    </Layout >
   );
 }
 
-export default function HydroscopeFullPage() {
+export default function HydroscopePage() {
   return (
     <BrowserOnly fallback={<div>Loading...</div>}>
-      {() => <HydroscopePage />}
+      {() => <HydroscopeFn />}
     </BrowserOnly>
   );
 }
