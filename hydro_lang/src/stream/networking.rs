@@ -6,7 +6,7 @@ use stageleft::{q, quote_type};
 use syn::parse_quote;
 
 use crate::boundedness::Boundedness;
-use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode};
+use crate::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
 use crate::keyed_singleton::KeyedSingleton;
 use crate::keyed_stream::KeyedStream;
 use crate::location::external_process::ExternalBincodeStream;
@@ -309,9 +309,9 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Process<'a, L>, B, O, R> {
         let external_key = flow_state_borrow.next_external_out;
         flow_state_borrow.next_external_out += 1;
 
-        let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
+        let roots = flow_state_borrow.roots.as_mut().expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled()");
 
-        leaves.push(HydroLeaf::SendExternal {
+        roots.push(HydroRoot::SendExternal {
             to_external_id: other.id,
             to_key: external_key,
             to_many: false,
@@ -321,6 +321,7 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Process<'a, L>, B, O, R> {
                 inner: Box::new(self.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata::<T>(),
             }),
+            op_metadata: HydroIrOpMetadata::new(),
         });
 
         ExternalBincodeStream {

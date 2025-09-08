@@ -171,13 +171,6 @@ expression: built.ir()
                 ),
             },
         },
-        metadata: HydroIrMetadata {
-            location_kind: Process(
-                0,
-            ),
-            output_type: Some(
-                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32)),
-            ),
-        },
+        op_metadata: HydroIrOpMetadata,
     },
 ]

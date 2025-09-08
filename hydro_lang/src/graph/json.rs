@@ -12,7 +12,6 @@ pub struct HydroJson<W> {
     locations: HashMap<usize, (String, Vec<usize>)>, // location_id -> (label, node_ids)
     node_locations: HashMap<usize, usize>,           // node_id -> location_id
     edge_count: usize,
-    config: super::render::HydroWriteConfig,
     // Type name mappings
     process_names: HashMap<usize, String>,
     cluster_names: HashMap<usize, String>,
@@ -37,7 +36,6 @@ impl<W> HydroJson<W> {
             locations: HashMap::new(),
             node_locations: HashMap::new(),
             edge_count: 0,
-            config: config.clone(),
             process_names,
             cluster_names,
             external_names,
@@ -757,7 +755,7 @@ impl<W> HydroJson<W> {
 
 /// Create JSON from Hydro IR with type names
 pub fn hydro_ir_to_json(
-    ir: &[crate::ir::HydroLeaf],
+    ir: &[crate::ir::HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
@@ -781,7 +779,7 @@ pub fn hydro_ir_to_json(
 /// Open JSON visualization in browser using the docs visualizer with URL-encoded data
 #[cfg(feature = "viz")]
 pub fn open_json_browser(
-    ir: &[crate::ir::HydroLeaf],
+    ir: &[crate::ir::HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
@@ -800,7 +798,7 @@ pub fn open_json_browser(
 
 /// Save JSON to file using the consolidated debug utilities
 pub fn save_json(
-    ir: &[crate::ir::HydroLeaf],
+    ir: &[crate::ir::HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,

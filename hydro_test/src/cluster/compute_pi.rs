@@ -93,7 +93,7 @@ mod tests {
         };
         let built = builder
             .optimize_with(persist_pullup::persist_pullup)
-            .optimize_with(|leaves| decoupler::decouple(leaves, &decoupler))
+            .optimize_with(|roots| decoupler::decouple(roots, &decoupler))
             .into_deploy::<HydroDeploy>();
 
         hydro_build_utils::assert_debug_snapshot!(built.ir());

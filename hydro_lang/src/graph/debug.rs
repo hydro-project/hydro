@@ -7,74 +7,74 @@ use std::fmt::Write;
 use std::io::Result;
 
 use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
-use crate::ir::HydroLeaf;
+use crate::ir::HydroRoot;
 
 /// URLs longer than ~8000 characters may fail in some browsers.
 /// With modern JSON compression, we can afford a higher limit.
 /// Use a limit of 4000 characters for the base URL + encoded data.
 const MAX_SAFE_URL_LENGTH: usize = 4000;
 
-/// Opens Hydro IR leaves as a single mermaid diagram.
-pub fn open_mermaid(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
-    let mermaid_src = render_with_config(leaves, config, render_hydro_ir_mermaid);
+/// Opens Hydro IR roots as a single mermaid diagram.
+pub fn open_mermaid(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result<()> {
+    let mermaid_src = render_with_config(roots, config, render_hydro_ir_mermaid);
     open_mermaid_browser(&mermaid_src)
 }
 
-/// Opens Hydro IR leaves as a single DOT diagram.
-pub fn open_dot(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
-    let dot_src = render_with_config(leaves, config, render_hydro_ir_dot);
+/// Opens Hydro IR roots as a single DOT diagram.
+pub fn open_dot(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result<()> {
+    let dot_src = render_with_config(roots, config, render_hydro_ir_dot);
     open_dot_browser(&dot_src)
 }
 
-/// Opens Hydro IR leaves by passing JSON to a visualization in a browser.
-/// Creates a complete HTML file with interactive graph visualization.
-pub fn open_json_browser(
-    leaves: &[HydroLeaf],
+/// Opens Hydro IR leaves as a ReactFlow.js visualization in a browser.
+/// Creates a complete HTML file with ReactFlow.js interactive graph visualization.
+pub fn open_reactflow_browser(
+    roots: &[HydroRoot],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
 ) -> Result<()> {
-    let json_content = render_with_config(leaves, config, render_hydro_ir_json);
+    let json_content = render_with_config(roots, config, render_hydro_ir_json);
     let filename = filename.unwrap_or("hydro_graph.html");
     save_and_open_json_browser(&json_content, filename)
 }
 
-/// Saves Hydro IR leaves as a JSON file.
+/// Saves Hydro IR roots as a JSON file.
 /// If no filename is provided, saves to temporary directory.
 pub fn save_json(
-    leaves: &[HydroLeaf],
+    roots: &[HydroRoot],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
 ) -> Result<std::path::PathBuf> {
-    let content = render_with_config(leaves, config, render_hydro_ir_json);
+    let content = render_with_config(roots, config, render_hydro_ir_json);
     save_to_file(content, filename, "hydro_graph.json", "JSON")
 }
 
-/// Saves Hydro IR leaves as a Mermaid diagram file.
+/// Saves Hydro IR roots as a Mermaid diagram file.
 /// If no filename is provided, saves to temporary directory.
 pub fn save_mermaid(
-    leaves: &[HydroLeaf],
+    roots: &[HydroRoot],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
 ) -> Result<std::path::PathBuf> {
-    let content = render_with_config(leaves, config, render_hydro_ir_mermaid);
+    let content = render_with_config(roots, config, render_hydro_ir_mermaid);
     save_to_file(content, filename, "hydro_graph.mermaid", "Mermaid diagram")
 }
 
-/// Saves Hydro IR leaves as a DOT/Graphviz file.
+/// Saves Hydro IR roots as a DOT/Graphviz file.
 /// If no filename is provided, saves to temporary directory.
 pub fn save_dot(
-    leaves: &[HydroLeaf],
+    roots: &[HydroRoot],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
 ) -> Result<std::path::PathBuf> {
-    let content = render_with_config(leaves, config, render_hydro_ir_dot);
+    let content = render_with_config(roots, config, render_hydro_ir_dot);
     save_to_file(content, filename, "hydro_graph.dot", "DOT/Graphviz file")
 }
 
-/// Opens Hydro IR leaves by passing JSON to a visualization in a browser.
+/// Opens Hydro IR roots by passing JSON to a visualization in a browser.
 /// Uses URL compression when possible, falls back to file approach for large graphs.
-pub fn open_json_visualizer(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
-    let json_content = render_with_config(leaves, config, render_hydro_ir_json);
+pub fn open_json_visualizer(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result<()> {
+    let json_content = render_with_config(roots, config, render_hydro_ir_json);
     print_json_debug_info(&json_content);
 
     // Use the centralized compression and URL logic
@@ -230,8 +230,14 @@ fn try_open_visualizer_urls(
     is_compressed: bool,
 ) -> Result<()> {
     let url_param = if is_compressed { "compressed" } else { "data" };
-    let localhost_url = format!("http://localhost:3000/hydroscope#{}={}", url_param, encoded_data);
-    let docs_url = format!("https://hydro.run/docs/hydroscope#{}={}", url_param, encoded_data);
+    let localhost_url = format!(
+        "http://localhost:3000/hydroscope#{}={}",
+        url_param, encoded_data
+    );
+    let docs_url = format!(
+        "https://hydro.run/docs/hydroscope#{}={}",
+        url_param, encoded_data
+    );
 
     // Show the compressed URL for debugging
     if is_compressed {
@@ -264,9 +270,9 @@ fn try_open_visualizer_urls(
     Ok(())
 }
 
-/// Helper function to render multiple Hydro IR leaves as ReactFlow.js JSON.
-fn render_hydro_ir_json(leaves: &[HydroLeaf], config: &HydroWriteConfig) -> String {
-    super::render::render_hydro_ir_json(leaves, config)
+/// Helper function to render multiple Hydro IR roots as ReactFlow.js JSON.
+fn render_hydro_ir_json(roots: &[HydroRoot], config: &HydroWriteConfig) -> String {
+    super::render::render_hydro_ir_json(roots, config)
 }
 
 /// Helper function to save content to a file with consistent path handling.
@@ -290,15 +296,15 @@ fn save_to_file(
 
 /// Helper function to handle config unwrapping and rendering.
 fn render_with_config<F>(
-    leaves: &[HydroLeaf],
+    roots: &[HydroRoot],
     config: Option<HydroWriteConfig>,
     renderer: F,
 ) -> String
 where
-    F: Fn(&[HydroLeaf], &HydroWriteConfig) -> String,
+    F: Fn(&[HydroRoot], &HydroWriteConfig) -> String,
 {
     let config = config.unwrap_or_default();
-    renderer(leaves, &config)
+    renderer(roots, &config)
 }
 
 /// Helper function to print debug content with consistent formatting.

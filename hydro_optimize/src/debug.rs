@@ -1,19 +1,17 @@
 use std::collections::HashMap;
 
-use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
+use hydro_lang::ir::{HydroNode, HydroRoot, traverse_dfir};
 
-fn print_id_leaf(leaf: &mut HydroLeaf, next_stmt_id: &mut usize) {
-    let metadata = leaf.metadata();
+fn print_id_leaf(leaf: &mut HydroRoot, next_stmt_id: &mut usize) {
     let inputs = leaf
         .input_metadata()
         .iter()
         .map(|m| m.id)
         .collect::<Vec<Option<usize>>>();
     println!(
-        "{} Leaf {}, {:?}, Inputs: {:?}",
+        "{} Leaf {}, Inputs: {:?}",
         next_stmt_id,
         leaf.print_root(),
-        metadata,
         inputs,
     );
 }
@@ -34,7 +32,7 @@ fn print_id_node(node: &mut HydroNode, next_stmt_id: &mut usize) {
     );
 }
 
-pub fn print_id(ir: &mut [HydroLeaf]) {
+pub fn print_id(ir: &mut [HydroRoot]) {
     traverse_dfir(ir, print_id_leaf, print_id_node);
 }
 
@@ -49,7 +47,7 @@ fn name_to_id_node(
 }
 
 // Create a mapping from named IR nodes (from `ir_node_named`) to their IDs
-pub fn name_to_id_map(ir: &mut [HydroLeaf]) -> HashMap<String, usize> {
+pub fn name_to_id_map(ir: &mut [HydroRoot]) -> HashMap<String, usize> {
     let mut mapping = HashMap::new();
     traverse_dfir(
         ir,

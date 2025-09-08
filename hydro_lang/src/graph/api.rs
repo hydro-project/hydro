@@ -1,11 +1,11 @@
 use std::error::Error;
 
 use crate::graph::render::HydroWriteConfig;
-use crate::ir::HydroLeaf;
+use crate::ir::HydroRoot;
 
 /// Graph generation API for built flows
 pub struct GraphApi<'a> {
-    ir: &'a [HydroLeaf],
+    ir: &'a [HydroRoot],
     process_id_name: &'a [(usize, String)],
     cluster_id_name: &'a [(usize, String)],
     external_id_name: &'a [(usize, String)],
@@ -39,7 +39,7 @@ impl GraphFormat {
 
 impl<'a> GraphApi<'a> {
     pub fn new(
-        ir: &'a [HydroLeaf],
+        ir: &'a [HydroRoot],
         process_id_name: &'a [(usize, String)],
         cluster_id_name: &'a [(usize, String)],
         external_id_name: &'a [(usize, String)],

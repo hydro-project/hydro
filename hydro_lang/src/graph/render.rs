@@ -4,11 +4,11 @@ use std::fmt::Write;
 
 use auto_impl::auto_impl;
 
+// Re-export specific implementations
 pub use super::dot::{HydroDot, escape_dot};
 pub use super::json::HydroJson;
-// Re-export specific implementations
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
-use crate::ir::{DebugExpr, HydroLeaf, HydroNode, HydroSource};
+use crate::ir::{DebugExpr, HydroNode, HydroRoot, HydroSource};
 
 /// Label for a graph node - can be either a static string or contain expressions.
 #[derive(Debug, Clone)]
@@ -664,7 +664,7 @@ fn extract_edge_properties_from_node(node: &HydroNode) -> HashSet<HydroEdgeType>
     }
 }
 
-impl HydroLeaf {
+impl HydroRoot {
     /// Core graph writing logic that works with any GraphWrite implementation.
     pub fn write_graph<W>(
         &self,
@@ -782,17 +782,17 @@ impl HydroLeaf {
         }
 
         match self {
-            // Sink operations - edge properties extracted from input node
-            HydroLeaf::ForEach { f, input, metadata } => build_sink_node(
+            // Sink operations with Stream edges - grouped by edge type
+            HydroRoot::ForEach { f, input, .. } => build_sink_node(
                 structure,
                 seen_tees,
                 config,
                 input,
-                Some(metadata),
+                None,
                 NodeLabel::with_exprs("for_each".to_string(), vec![f.clone()]),
             ),
 
-            HydroLeaf::SendExternal {
+            HydroRoot::SendExternal {
                 to_external_id,
                 to_key,
                 input,
@@ -809,41 +809,24 @@ impl HydroLeaf {
                 ),
             ),
 
-            HydroLeaf::DestSink {
-                sink,
-                input,
-                metadata,
-            } => build_sink_node(
+            HydroRoot::DestSink { sink, input, .. } => build_sink_node(
                 structure,
                 seen_tees,
                 config,
                 input,
-                Some(metadata),
+                None,
                 NodeLabel::with_exprs("dest_sink".to_string(), vec![sink.clone()]),
             ),
 
-            // Cycle sink - edge properties extracted from input node, plus Cycle property
-            HydroLeaf::CycleSink {
-                ident,
+            // Sink operation with Cycle edge - grouped by edge type
+            HydroRoot::CycleSink { ident, input, .. } => build_sink_node(
+                structure,
+                seen_tees,
+                config,
                 input,
-                metadata,
-                ..
-            } => {
-                let input_id = input.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let sink_id = structure.add_node(
-                    NodeLabel::static_label(format!("cycle_sink({})", ident)),
-                    HydroNodeType::Sink,
-                    location_id,
-                    Some(metadata.backtrace.clone()),
-                );
-
-                // Extract edge properties and add Cycle property
-                let mut edge_properties = extract_edge_properties_from_node(input);
-                edge_properties.insert(HydroEdgeType::Cycle);
-                structure.add_edge(input_id, sink_id, edge_properties, None);
-                sink_id
-            }
+                None,
+                NodeLabel::static_label(format!("cycle_sink({})", ident)),
+            ),
         }
     }
 }
@@ -1112,6 +1095,39 @@ impl HydroNode {
                 NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
                 HydroNodeType::Aggregation,
             ),
+            HydroNode::ReduceKeyedWatermark {
+                f,
+                input,
+                watermark,
+                metadata,
+            } => {
+                let input_id = input.build_graph_structure(structure, seen_tees, config);
+                let watermark_id = watermark.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let node_id = structure.add_node(
+                    NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                    HydroNodeType::Aggregation,
+                    location_id,
+                    Some(metadata.backtrace.clone()),
+                );
+
+                let input_properties = extract_edge_properties_from_node(input);
+                let watermark_properties = extract_edge_properties_from_node(watermark);
+
+                structure.add_edge(
+                    input_id,
+                    node_id,
+                    input_properties,
+                    Some("input".to_string()),
+                );
+                structure.add_edge(
+                    watermark_id,
+                    node_id,
+                    watermark_properties,
+                    Some("watermark".to_string()),
+                );
+                node_id
+            }
             HydroNode::Join {
                 left,
                 right,
@@ -1378,59 +1394,47 @@ impl HydroNode {
                 duration,
                 input,
                 metadata,
-                ..
+                tag,
             } => build_single_input_transform(
                 structure,
                 seen_tees,
                 config,
                 input,
                 metadata,
-                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![duration.clone()]),
+                NodeLabel::with_exprs(
+                    extract_op_name(self.print_root()),
+                    vec![
+                        syn::parse_str::<syn::Expr>(&format!("{:?}", tag))
+                            .unwrap()
+                            .into(),
+                        duration.clone(),
+                    ],
+                ),
                 HydroNodeType::Transform,
             ),
-            HydroNode::ReduceKeyedWatermark {
-                f,
-                input,
-                watermark,
-                metadata,
-            } => {
-                let input_id = input.build_graph_structure(structure, seen_tees, config);
-                let watermark_id = watermark.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let reduce_id = structure.add_node(
-                    NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
-                    HydroNodeType::Aggregation,
-                    location_id,
-                    Some(metadata.backtrace.clone()),
-                );
-                let input_properties = extract_edge_properties_from_node(input);
-                let watermark_properties = extract_edge_properties_from_node(watermark);
-
-                structure.add_edge(
-                    input_id,
-                    reduce_id,
-                    input_properties,
-                    Some("input".to_string()),
-                );
-                structure.add_edge(
-                    watermark_id,
-                    reduce_id,
-                    watermark_properties,
-                    Some("watermark".to_string()),
-                );
-                reduce_id
-            }
         }
+        // build_single_input_transform(
+        //         structure,
+        //         seen_tees,
+        //         config,
+        //         input,
+        //         metadata,
+        //         NodeLabel::with_exprs(
+        //             extract_op_name(self.print_root()),
+        //             vec![init.clone(), acc.clone()],
+        //         ),
+        //         HydroNodeType::Transform,
+        //     ),
     }
 }
 
-/// Utility functions for rendering multiple leaves as a single graph.
+/// Utility functions for rendering multiple roots as a single graph.
 /// Macro to reduce duplication in render functions.
 macro_rules! render_hydro_ir {
     ($name:ident, $write_fn:ident) => {
-        pub fn $name(leaves: &[HydroLeaf], config: &HydroWriteConfig) -> String {
+        pub fn $name(roots: &[HydroRoot], config: &HydroWriteConfig) -> String {
             let mut output = String::new();
-            $write_fn(&mut output, leaves, config).unwrap();
+            $write_fn(&mut output, roots, config).unwrap();
             output
         }
     };
@@ -1441,11 +1445,11 @@ macro_rules! write_hydro_ir {
     ($name:ident, $writer_type:ty, $constructor:expr) => {
         pub fn $name(
             output: impl std::fmt::Write,
-            leaves: &[HydroLeaf],
+            roots: &[HydroRoot],
             config: &HydroWriteConfig,
         ) -> std::fmt::Result {
             let mut graph_write: $writer_type = $constructor(output, config);
-            write_hydro_ir_graph(&mut graph_write, leaves, config)
+            write_hydro_ir_graph(&mut graph_write, roots, config)
         }
     };
 }
@@ -1465,7 +1469,7 @@ write_hydro_ir!(write_hydro_ir_json, HydroJson<_>, HydroJson::new);
 
 fn write_hydro_ir_graph<W>(
     mut graph_write: W,
-    leaves: &[HydroLeaf],
+    roots: &[HydroRoot],
     config: &HydroWriteConfig,
 ) -> Result<(), W::Err>
 where
@@ -1474,12 +1478,12 @@ where
     let mut structure = HydroGraphStructure::new();
     let mut seen_tees = HashMap::new();
 
-    // Build the graph structure for all leaves
-    for leaf in leaves {
+    // Build the graph structure for all roots
+    for leaf in roots {
         leaf.build_graph_structure(&mut structure, &mut seen_tees, config);
     }
 
-    // Write the graph using the same logic as individual leaves
+    // Write the graph using the same logic as individual roots
     graph_write.write_prologue()?;
 
     for (&node_id, (label, node_type, location, backtrace)) in &structure.nodes {

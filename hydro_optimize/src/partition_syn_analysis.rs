@@ -779,7 +779,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use hydro_lang::deploy::HydroDeploy;
-    use hydro_lang::ir::{HydroLeaf, HydroNode, deep_clone, traverse_dfir};
+    use hydro_lang::ir::{HydroNode, HydroRoot, deep_clone, traverse_dfir};
     use hydro_lang::{FlowBuilder, Location};
     use stageleft::q;
     use syn::visit::Visit;
@@ -787,7 +787,7 @@ mod tests {
     use crate::partition_syn_analysis::{AnalyzeClosure, StructOrTuple};
 
     fn partition_analysis_leaf(
-        leaf: &mut HydroLeaf,
+        leaf: &mut HydroRoot,
         next_stmt_id: &mut usize,
         metadata: &RefCell<BTreeMap<usize, StructOrTuple>>,
     ) {
@@ -814,7 +814,7 @@ mod tests {
             .insert(*next_stmt_id, analyzer.output_dependencies);
     }
 
-    fn partition_analysis(ir: &mut [HydroLeaf]) -> BTreeMap<usize, StructOrTuple> {
+    fn partition_analysis(ir: &mut [HydroRoot]) -> BTreeMap<usize, StructOrTuple> {
         let partitioning_metadata = RefCell::new(BTreeMap::new());
         traverse_dfir(
             ir,
