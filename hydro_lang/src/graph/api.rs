@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use crate::graph::config::{GraphConfig, GraphType};
 use crate::graph::render::HydroWriteConfig;
 use crate::ir::HydroRoot;
 
@@ -331,14 +332,14 @@ impl<'a> GraphApi<'a> {
     #[cfg(feature = "build")]
     pub fn generate_graph_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn Error>> {
         if let Some(graph_type) = config.graph {
             let format = match graph_type {
-                crate::graph::config::GraphType::Mermaid => GraphFormat::Mermaid,
-                crate::graph::config::GraphType::Dot => GraphFormat::Dot,
-                crate::graph::config::GraphType::Json => GraphFormat::Json,
+                GraphType::Mermaid => GraphFormat::Mermaid,
+                GraphType::Dot => GraphFormat::Dot,
+                GraphType::Json => GraphFormat::Json,
             };
 
             if config.file {
@@ -368,7 +369,7 @@ impl<'a> GraphApi<'a> {
     #[cfg(feature = "build")]
     pub fn generate_all_files_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn Error>> {
         self.generate_all_files(

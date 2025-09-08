@@ -3,11 +3,11 @@
 //! Similar to the DFIR debugging utilities, this module provides convenient
 //! methods for opening graphs in web browsers and VS Code.
 
+use crate::ir::HydroRoot;
 use std::fmt::Write;
 use std::io::Result;
 
 use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
-use crate::ir::HydroRoot;
 
 /// URLs longer than ~8000 characters may fail in some browsers.
 /// With modern JSON compression, we can afford a higher limit.
@@ -26,9 +26,9 @@ pub fn open_dot(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result
     open_dot_browser(&dot_src)
 }
 
-/// Opens Hydro IR roots as a ReactFlow.js visualization in a browser.
-/// Creates a complete HTML file with ReactFlow.js interactive graph visualization.
-pub fn open_reactflow_browser(
+/// Opens Hydro IR roots by passing JSON to a visualization in a browser.
+/// Creates a complete HTML file with interactive graph visualization.
+pub fn open_json_browser(
     roots: &[HydroRoot],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,

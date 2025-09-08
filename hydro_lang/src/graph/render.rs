@@ -1412,6 +1412,38 @@ impl HydroNode {
                 ),
                 HydroNodeType::Transform,
             ),
+            HydroNode::ReduceKeyedWatermark {
+                f,
+                input,
+                watermark,
+                metadata,
+            } => {
+                let input_id = input.build_graph_structure(structure, seen_tees, config);
+                let watermark_id = watermark.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let reduce_id = structure.add_node(
+                    NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                    HydroNodeType::Aggregation,
+                    location_id,
+                    Some(metadata.op.backtrace.clone()),
+                );
+                let input_properties = extract_edge_properties_from_node(input);
+                let watermark_properties = extract_edge_properties_from_node(watermark);
+
+                structure.add_edge(
+                    input_id,
+                    reduce_id,
+                    input_properties,
+                    Some("input".to_string()),
+                );
+                structure.add_edge(
+                    watermark_id,
+                    reduce_id,
+                    watermark_properties,
+                    Some("watermark".to_string()),
+                );
+                reduce_id
+            }
         }
         // build_single_input_transform(
         //         structure,

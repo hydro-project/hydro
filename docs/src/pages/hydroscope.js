@@ -193,37 +193,37 @@ function HydroscopeFn() {
       )}
 
       {!loading && !error && Hydroscope && (
-        <>
-          <div style={contentStyle}>
-            <Hydroscope
-              data={graphData}
-              showFileUpload={true}
-              showInfoPanel={true}
-              showStylePanel={true}
-              enableCollapse={true}
-              autoFit={true}
-              initialLayoutAlgorithm="mrtree"
-              initialColorPalette="Set3"
-              generatedFilePath={filePath}
-              generateCompleteExample={generateCompleteExample}
-              onFileUpload={handleFileUpload}
-              onExampleGenerated={handleExampleGenerated}
-              onCreateExample={handleCreateExample}
-              style={{
-                height: '100%',
-                width: '100%',
-              }}
-            />
-          </div>
-        </>
-      )}
-
-      {!loading && !error && !Hydroscope && (
-        <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-          <p>Hydroscope component not available</p>
+        <div style={contentStyle}>
+          <Hydroscope
+            data={graphData}
+            showFileUpload={true}
+            showInfoPanel={true}
+            showStylePanel={true}
+            enableCollapse={true}
+            autoFit={true}
+            initialLayoutAlgorithm="mrtree"
+            initialColorPalette="Set3"
+            generatedFilePath={filePath}
+            generateCompleteExample={generateCompleteExample}
+            onFileUpload={handleFileUpload}
+            onExampleGenerated={handleExampleGenerated}
+            onCreateExample={handleCreateExample}
+            style={{
+              height: '100%',
+              width: '100%',
+            }}
+          />
         </div>
-      )}
-    </div>
+      )
+      }
+
+      {
+        !loading && !error && !Hydroscope && (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+            <p>Hydroscope component not available</p>
+          </div>
+        )
+      }
     </Layout >
   );
 }
