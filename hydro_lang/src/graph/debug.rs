@@ -3,11 +3,11 @@
 //! Similar to the DFIR debugging utilities, this module provides convenient
 //! methods for opening graphs in web browsers and VS Code.
 
-use crate::ir::HydroRoot;
 use std::fmt::Write;
 use std::io::Result;
 
 use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
+use crate::ir::HydroRoot;
 
 /// URLs longer than ~8000 characters may fail in some browsers.
 /// With modern JSON compression, we can afford a higher limit.
