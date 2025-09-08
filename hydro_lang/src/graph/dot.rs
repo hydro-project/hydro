@@ -9,6 +9,26 @@ pub fn escape_dot(string: &str, newline: &str) -> String {
     string.replace('"', "\\\"").replace('\n', newline)
 }
 
+/// DOT shape and color data
+const DOT_STYLES: &[(HydroNodeType, &str, &str)] = &[
+    (HydroNodeType::Source, "ellipse", "\"#8dd3c7\""), // Light teal
+    (HydroNodeType::Transform, "box", "\"#ffffb3\""),  // Light yellow
+    (HydroNodeType::Join, "diamond", "\"#bebada\""),   // Light purple
+    (HydroNodeType::Aggregation, "house", "\"#fb8072\""), // Light red/salmon
+    (HydroNodeType::Network, "doubleoctagon", "\"#80b1d3\""), // Light blue
+    (HydroNodeType::Sink, "invhouse", "\"#fdb462\""),  // Light orange
+    (HydroNodeType::Tee, "terminator", "\"#b3de69\""), // Light green
+];
+
+/// Get DOT shape and color for node type
+fn to_dot_style(node_type: HydroNodeType) -> (&'static str, &'static str) {
+    DOT_STYLES
+        .iter()
+        .find(|(nt, _, _)| *nt == node_type)
+        .map(|(_, shape, color)| (*shape, *color))
+        .unwrap_or(("box", "\"#ffffff\""))
+}
+
 /// DOT/Graphviz graph writer for Hydro IR.
 pub struct HydroDot<W> {
     base: IndentedGraphWriter<W>,
@@ -114,7 +134,7 @@ where
         let escaped_label = escape_dot(&display_label, "\\l");
         let label = format!("n{}", node_id);
 
-        let (shape_str, color_str) = super::render::node_type_utils::to_dot_style(node_type);
+        let (shape_str, color_str) = to_dot_style(node_type);
 
         write!(
             self.base.write,

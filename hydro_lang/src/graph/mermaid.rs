@@ -22,6 +22,35 @@ pub fn escape_mermaid(string: &str) -> String {
         .replace('|', "&#124;")
 }
 
+/// Mermaid node type data: (type, class, left_bracket, right_bracket)
+const MERMAID_NODE_DATA: &[(HydroNodeType, &str, &str, &str)] = &[
+    (HydroNodeType::Source, "sourceClass", "[[", "]]"),
+    (HydroNodeType::Transform, "transformClass", "(", ")"),
+    (HydroNodeType::Join, "joinClass", "(", ")"),
+    (HydroNodeType::Aggregation, "aggClass", "(", ")"),
+    (HydroNodeType::Network, "networkClass", "[[", "]]"),
+    (HydroNodeType::Sink, "sinkClass", "[/", "/]"),
+    (HydroNodeType::Tee, "teeClass", "(", ")"),
+];
+
+/// Get Mermaid class name for node type
+fn to_mermaid_class(node_type: HydroNodeType) -> &'static str {
+    MERMAID_NODE_DATA
+        .iter()
+        .find(|(nt, _, _, _)| *nt == node_type)
+        .map(|(_, class, _, _)| *class)
+        .unwrap_or("defaultClass")
+}
+
+/// Get Mermaid shape for node type
+fn to_mermaid_shape(node_type: HydroNodeType) -> (&'static str, &'static str) {
+    MERMAID_NODE_DATA
+        .iter()
+        .find(|(nt, _, _, _)| *nt == node_type)
+        .map(|(_, _, left, right)| (*left, *right))
+        .unwrap_or(("(", ")"))
+}
+
 /// Mermaid graph writer for Hydro IR.
 pub struct HydroMermaid<W> {
     base: IndentedGraphWriter<W>,
@@ -78,8 +107,8 @@ where
         _location_type: Option<&str>,
         _backtrace: Option<&crate::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
-        let class_str = super::render::node_type_utils::to_mermaid_class(node_type);
-        let (lbracket, rbracket) = super::render::node_type_utils::to_mermaid_shape(node_type);
+        let class_str = to_mermaid_class(node_type);
+        let (lbracket, rbracket) = to_mermaid_shape(node_type);
 
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {

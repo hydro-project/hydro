@@ -1050,6 +1050,69 @@ impl HydroNode {
             )
         }
 
+        // Helper function for two-input operations with left/right labels
+        fn build_left_right_join(
+            structure: &mut HydroGraphStructure,
+            seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
+            config: &HydroWriteConfig,
+            left: &HydroNode,
+            right: &HydroNode,
+            metadata: &crate::ir::HydroIrMetadata,
+            op_name: String,
+            node_type: HydroNodeType,
+        ) -> usize {
+            let left_id = left.build_graph_structure(structure, seen_tees, config);
+            let right_id = right.build_graph_structure(structure, seen_tees, config);
+            let location_id = setup_location(structure, metadata);
+            let node_id = structure.add_node(
+                NodeLabel::Static(op_name),
+                node_type,
+                location_id,
+                Some(metadata.op.backtrace.clone()),
+            );
+
+            let left_properties = extract_edge_properties_from_node(left);
+            let right_properties = extract_edge_properties_from_node(right);
+
+            structure.add_edge(left_id, node_id, left_properties, Some("left".to_string()));
+            structure.add_edge(
+                right_id,
+                node_id,
+                right_properties,
+                Some("right".to_string()),
+            );
+            node_id
+        }
+
+        // Helper function for two-input operations with pos/neg labels
+        fn build_pos_neg_join(
+            structure: &mut HydroGraphStructure,
+            seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
+            config: &HydroWriteConfig,
+            pos: &HydroNode,
+            neg: &HydroNode,
+            metadata: &crate::ir::HydroIrMetadata,
+            op_name: String,
+            node_type: HydroNodeType,
+        ) -> usize {
+            let pos_id = pos.build_graph_structure(structure, seen_tees, config);
+            let neg_id = neg.build_graph_structure(structure, seen_tees, config);
+            let location_id = setup_location(structure, metadata);
+            let node_id = structure.add_node(
+                NodeLabel::Static(op_name),
+                node_type,
+                location_id,
+                Some(metadata.op.backtrace.clone()),
+            );
+
+            let pos_properties = extract_edge_properties_from_node(pos);
+            let neg_properties = extract_edge_properties_from_node(neg);
+
+            structure.add_edge(pos_id, node_id, pos_properties, Some("pos".to_string()));
+            structure.add_edge(neg_id, node_id, neg_properties, Some("neg".to_string()));
+            node_id
+        }
+
         match self {
             HydroNode::Placeholder => structure.add_node(
                 NodeLabel::Static("PLACEHOLDER".to_string()),
@@ -1199,7 +1262,11 @@ impl HydroNode {
                 NodeLabel::Static(extract_op_name(self.print_root())),
                 HydroNodeType::Aggregation,
             ),
-            HydroNode::Map { f, input, metadata } => build_single_input_transform(
+            HydroNode::Map { f, input, metadata }
+            | HydroNode::Filter { f, input, metadata }
+            | HydroNode::FlatMap { f, input, metadata }
+            | HydroNode::FilterMap { f, input, metadata }
+            | HydroNode::Inspect { f, input, metadata } => build_single_input_transform(
                 structure,
                 seen_tees,
                 config,
@@ -1208,52 +1275,8 @@ impl HydroNode {
                 NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
                 HydroNodeType::Transform,
             ),
-            HydroNode::Filter { f, input, metadata } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                input,
-                metadata,
-                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
-                HydroNodeType::Transform,
-            ),
-            HydroNode::FlatMap { f, input, metadata } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                input,
-                metadata,
-                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
-                HydroNodeType::Transform,
-            ),
-            HydroNode::FilterMap { f, input, metadata } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                input,
-                metadata,
-                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
-                HydroNodeType::Transform,
-            ),
-            HydroNode::Inspect { f, input, metadata } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                input,
-                metadata,
-                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
-                HydroNodeType::Transform,
-            ),
-            HydroNode::Reduce { f, input, metadata } => build_single_input_transform(
-                structure,
-                seen_tees,
-                config,
-                input,
-                metadata,
-                NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
-                HydroNodeType::Aggregation,
-            ),
-            HydroNode::ReduceKeyed { f, input, metadata } => build_single_input_transform(
+            HydroNode::Reduce { f, input, metadata }
+            | HydroNode::ReduceKeyed { f, input, metadata } => build_single_input_transform(
                 structure,
                 seen_tees,
                 config,
@@ -1299,127 +1322,45 @@ impl HydroNode {
                 left,
                 right,
                 metadata,
-            } => {
-                let left_id = left.build_graph_structure(structure, seen_tees, config);
-                let right_id = right.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let node_id = structure.add_node(
-                    NodeLabel::Static(extract_op_name(self.print_root())),
-                    HydroNodeType::Join,
-                    location_id,
-                    Some(metadata.op.backtrace.clone()),
-                );
-
-                let left_properties = extract_edge_properties_from_node(left);
-                let right_properties = extract_edge_properties_from_node(right);
-
-                structure.add_edge(left_id, node_id, left_properties, Some("left".to_string()));
-                structure.add_edge(
-                    right_id,
-                    node_id,
-                    right_properties,
-                    Some("right".to_string()),
-                );
-                node_id
             }
-            HydroNode::CrossProduct {
+            | HydroNode::CrossProduct {
                 left,
                 right,
                 metadata,
-            } => {
-                let left_id = left.build_graph_structure(structure, seen_tees, config);
-                let right_id = right.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let node_id = structure.add_node(
-                    NodeLabel::Static(extract_op_name(self.print_root())),
-                    HydroNodeType::Join,
-                    location_id,
-                    Some(metadata.op.backtrace.clone()),
-                );
-
-                let left_properties = extract_edge_properties_from_node(left);
-                let right_properties = extract_edge_properties_from_node(right);
-
-                structure.add_edge(left_id, node_id, left_properties, Some("left".to_string()));
-                structure.add_edge(
-                    right_id,
-                    node_id,
-                    right_properties,
-                    Some("right".to_string()),
-                );
-                node_id
             }
-            HydroNode::CrossSingleton {
+            | HydroNode::CrossSingleton {
                 left,
                 right,
                 metadata,
-            } => {
-                let left_id = left.build_graph_structure(structure, seen_tees, config);
-                let right_id = right.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let node_id = structure.add_node(
-                    NodeLabel::Static(extract_op_name(self.print_root())),
-                    HydroNodeType::Join,
-                    location_id,
-                    Some(metadata.op.backtrace.clone()),
-                );
-
-                let left_properties = extract_edge_properties_from_node(left);
-                let right_properties = extract_edge_properties_from_node(right);
-
-                structure.add_edge(left_id, node_id, left_properties, Some("left".to_string()));
-                structure.add_edge(
-                    right_id,
-                    node_id,
-                    right_properties,
-                    Some("right".to_string()),
-                );
-                node_id
-            }
+            } => build_left_right_join(
+                structure,
+                seen_tees,
+                config,
+                left,
+                right,
+                metadata,
+                extract_op_name(self.print_root()),
+                HydroNodeType::Join,
+            ),
             HydroNode::Difference {
                 pos: left,
                 neg: right,
                 metadata,
-            } => {
-                let left_id = left.build_graph_structure(structure, seen_tees, config);
-                let right_id = right.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let node_id = structure.add_node(
-                    NodeLabel::Static(extract_op_name(self.print_root())),
-                    HydroNodeType::Join,
-                    location_id,
-                    Some(metadata.op.backtrace.clone()),
-                );
-
-                let left_properties = extract_edge_properties_from_node(left);
-                let right_properties = extract_edge_properties_from_node(right);
-
-                structure.add_edge(left_id, node_id, left_properties, Some("pos".to_string()));
-                structure.add_edge(right_id, node_id, right_properties, Some("neg".to_string()));
-                node_id
             }
-            HydroNode::AntiJoin {
+            | HydroNode::AntiJoin {
                 pos: left,
                 neg: right,
                 metadata,
-            } => {
-                let left_id = left.build_graph_structure(structure, seen_tees, config);
-                let right_id = right.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let node_id = structure.add_node(
-                    NodeLabel::Static(extract_op_name(self.print_root())),
-                    HydroNodeType::Join,
-                    location_id,
-                    Some(metadata.op.backtrace.clone()),
-                );
-
-                let left_properties = extract_edge_properties_from_node(left);
-                let right_properties = extract_edge_properties_from_node(right);
-
-                structure.add_edge(left_id, node_id, left_properties, Some("pos".to_string()));
-                structure.add_edge(right_id, node_id, right_properties, Some("neg".to_string()));
-                node_id
-            }
+            } => build_pos_neg_join(
+                structure,
+                seen_tees,
+                config,
+                left,
+                right,
+                metadata,
+                extract_op_name(self.print_root()),
+                HydroNodeType::Join,
+            ),
             HydroNode::Fold {
                 init,
                 acc,
