@@ -6,7 +6,7 @@ use stageleft::{q, quote_type};
 use syn::parse_quote;
 
 use crate::boundedness::{Boundedness, Unbounded};
-use crate::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
+use crate::builder::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
 use crate::live_collections::keyed_singleton::KeyedSingleton;
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::stream::{ExactlyOnce, Stream, TotalOrder};

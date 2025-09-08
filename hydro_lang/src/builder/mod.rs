@@ -9,9 +9,11 @@ use compiled::CompiledFlow;
 use deploy::{DeployFlow, DeployResult};
 use stageleft::*;
 
-use crate::ir::HydroRoot;
 use crate::location::{Cluster, External, Process};
 use crate::staging_util::Invariant;
+
+pub mod ir;
+use ir::HydroRoot;
 
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]

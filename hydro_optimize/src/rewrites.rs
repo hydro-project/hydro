@@ -1,5 +1,5 @@
+use hydro_lang::builder::ir::{HydroIrMetadata, HydroNode, HydroRoot, deep_clone};
 use hydro_lang::builder::{FlowBuilder, RewriteIrFlowBuilder};
-use hydro_lang::ir::{HydroIrMetadata, HydroNode, HydroRoot, deep_clone};
 use hydro_lang::location::{Cluster, Location, LocationId};
 use serde::{Deserialize, Serialize};
 use syn::visit_mut::{self, VisitMut};

@@ -9,11 +9,11 @@ use super::optional::Optional;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::builder::FLOW_USED_MESSAGE;
+use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 use crate::cycle::{
     CycleCollection, CycleCollectionWithInitial, CycleComplete, DeferTick, ForwardRefMarker,
     TickCycleMarker,
 };
-use crate::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
 use crate::nondet::NonDet;
