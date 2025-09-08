@@ -338,16 +338,27 @@ impl<'a> GraphApi<'a> {
             let format = match graph_type {
                 crate::graph::config::GraphType::Mermaid => GraphFormat::Mermaid,
                 crate::graph::config::GraphType::Dot => GraphFormat::Dot,
-                crate::graph::config::GraphType::Json => GraphFormat::Json,
+                crate::graph::config::GraphType::Reactflow => GraphFormat::ReactFlow,
             };
 
-            self.open_browser(
-                format,
-                !config.no_metadata,
-                !config.no_location_groups,
-                !config.long_labels, // use_short_labels is the inverse of long_labels
-                message_handler,
-            )
+            if config.file {
+                // Force save to temporary file
+                self.write_graph_to_temp_file(
+                    format,
+                    !config.no_metadata,
+                    !config.no_location_groups,
+                    !config.long_labels, // use_short_labels is the inverse of long_labels
+                )
+            } else {
+                // Open in browser (existing behavior)
+                self.open_browser(
+                    format,
+                    !config.no_metadata,
+                    !config.no_location_groups,
+                    !config.long_labels, // use_short_labels is the inverse of long_labels
+                    message_handler,
+                )
+            }
         } else {
             Ok(())
         }

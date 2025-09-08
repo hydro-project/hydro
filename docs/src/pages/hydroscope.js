@@ -46,17 +46,17 @@ function HydroscopePage() {
     const loadHydroscope = async () => {
       try {
         const hydroscopeModule = await import('@hydro-project/hydroscope');
-        
+
         const { Hydroscope, generateCompleteExample, parseDataFromUrl } = hydroscopeModule;
-        
+
         if (!Hydroscope) {
           throw new Error('Hydroscope component not found in external module');
         }
-        
+
         if (!parseDataFromUrl) {
           throw new Error('parseDataFromUrl function not found in external module');
         }
-        
+
         setHydroscope(() => Hydroscope);
         setGenerateCompleteExample(() => generateCompleteExample);
         setParseDataFromUrl(() => parseDataFromUrl);
@@ -74,13 +74,13 @@ function HydroscopePage() {
   // Handle URL data parameter (for sharing graphs via URL)
   React.useEffect(() => {
     if (loading || !parseDataFromUrl) return;
-    
+
     const urlParams = new URLSearchParams(location.search);
     const hashParams = new URLSearchParams(location.hash.slice(1));
     const dataParam = urlParams.get('data') || hashParams.get('data');
     const compressedParam = urlParams.get('compressed') || hashParams.get('compressed');
-  const fileParam = urlParams.get('file') || hashParams.get('file');
-    
+    const fileParam = urlParams.get('file') || hashParams.get('file');
+
     // Handle file path parameter (from Rust debug output)
     if (fileParam && !graphData) {
       const decodedPath = decodeURIComponent(fileParam);
@@ -89,25 +89,25 @@ function HydroscopePage() {
       setError(null);
       return;
     }
-    
+
     // Handle compressed or uncompressed data parameter using the hydroscope API
-        if ((compressedParam || dataParam) && !graphData) {
-          parseDataFromUrl(dataParam, compressedParam)
-            .then(jsonData => {
-              // Diagnostic: Log the parsed graphData and edgeStyleConfig
-              console.log('[Hydro GraphData]', jsonData);
-              if (jsonData && jsonData.edgeStyleConfig) {
-                console.log('[Hydro EdgeStyleConfig]', jsonData.edgeStyleConfig);
-              } else {
-                console.warn('[Hydro EdgeStyleConfig] MISSING in parsed graphData');
-              }
-              setGraphData(jsonData);
-              setError(null);
-            })
-            .catch(err => {
-              console.error('❌ Failed to load graph from URL:', err);
-              setError(`Failed to load graph from URL: ${err.message}`);
-            });
+    if ((compressedParam || dataParam) && !graphData) {
+      parseDataFromUrl(dataParam, compressedParam)
+        .then(jsonData => {
+          // Diagnostic: Log the parsed graphData and edgeStyleConfig
+          console.log('[Hydro GraphData]', jsonData);
+          if (jsonData && jsonData.edgeStyleConfig) {
+            console.log('[Hydro EdgeStyleConfig]', jsonData.edgeStyleConfig);
+          } else {
+            console.warn('[Hydro EdgeStyleConfig] MISSING in parsed graphData');
+          }
+          setGraphData(jsonData);
+          setError(null);
+        })
+        .catch(err => {
+          console.error('❌ Failed to load graph from URL:', err);
+          setError(`Failed to load graph from URL: ${err.message}`);
+        });
     }
   }, [loading, location.search, location.hash, graphData, parseDataFromUrl]);
 
@@ -118,7 +118,7 @@ function HydroscopePage() {
       setError('No data received from file upload');
       return;
     }
-    
+
     // Let Hydroscope manage its own data internally
     setError(null);
   }, []);
@@ -171,8 +171,8 @@ function HydroscopePage() {
   };
 
   return (
-    <Layout 
-      title="Hydroscope" 
+    <Layout
+      title="Hydroscope"
       description="Complete graph visualization interface"
       noFooter={true}
     >
@@ -202,7 +202,7 @@ function HydroscopePage() {
             initialColorPalette="Set3"
             onFileUpload={handleFileUpload}
             generatedFilePath={filePath}
-            style={{ 
+            style={{
               height: '100%',
               width: '100%',
             }}

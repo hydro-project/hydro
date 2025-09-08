@@ -26,7 +26,7 @@ pub fn open_dot(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result
     open_dot_browser(&dot_src)
 }
 
-/// Opens Hydro IR leaves as a ReactFlow.js visualization in a browser.
+/// Opens Hydro IR roots as a ReactFlow.js visualization in a browser.
 /// Creates a complete HTML file with ReactFlow.js interactive graph visualization.
 pub fn open_reactflow_browser(
     roots: &[HydroRoot],
