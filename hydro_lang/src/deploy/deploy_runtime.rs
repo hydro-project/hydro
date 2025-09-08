@@ -1,3 +1,8 @@
+#![allow(
+    unused,
+    reason = "unused in trybuild but the __staged version is needed"
+)]
+
 use std::collections::HashMap;
 
 use hydro_deploy_integration::{
