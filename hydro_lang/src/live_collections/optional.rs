@@ -9,11 +9,14 @@ use syn::parse_quote;
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::singleton::{Singleton, ZipResult};
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::builder::FLOW_USED_MESSAGE;
-use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
-use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
-use crate::location::tick::{Atomic, NoAtomic};
-use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
+use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::forward_handle::{ForwardRef, TickCycle};
+#[cfg(stageleft_runtime)]
+use crate::location::dynamic::{DynLocation, LocationId};
+use crate::location::tick::{Atomic, DeferTick, NoAtomic};
+use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::NonDet;
 
 pub struct Optional<Type, Loc, Bound: Boundedness> {
@@ -32,7 +35,7 @@ where
     }
 }
 
-impl<'a, T, L> CycleCollection<'a, TickCycleMarker> for Optional<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollection<'a, TickCycle> for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
@@ -49,32 +52,29 @@ where
     }
 }
 
-impl<'a, T, L> CycleComplete<'a, TickCycleMarker> for Optional<T, Tick<L>, Bounded>
+impl<'a, T, L> ReceiverComplete<'a, TickCycle> for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
-            self.location.id(),
+            Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: self.location.id(),
+                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
 }
 
-impl<'a, T, L> CycleCollection<'a, ForwardRefMarker> for Optional<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollection<'a, ForwardRef> for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
@@ -91,32 +91,29 @@ where
     }
 }
 
-impl<'a, T, L> CycleComplete<'a, ForwardRefMarker> for Optional<T, Tick<L>, Bounded>
+impl<'a, T, L> ReceiverComplete<'a, ForwardRef> for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
-            self.location.id(),
+            Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: self.location.id(),
+                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
 }
 
-impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRefMarker> for Optional<T, L, B>
+impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRef> for Optional<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -136,13 +133,13 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> CycleComplete<'a, ForwardRefMarker> for Optional<T, L, B>
+impl<'a, T, L, B: Boundedness> ReceiverComplete<'a, ForwardRef> for Optional<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
-            self.location.id(),
+            Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
@@ -150,16 +147,13 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
                     metadata: metadata.clone(),
                 }),
-                out_location: self.location.id(),
+                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }

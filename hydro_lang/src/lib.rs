@@ -36,7 +36,7 @@ pub mod prelude {
 
     pub use stageleft::q;
 
-    pub use crate::builder::FlowBuilder;
+    pub use crate::compile::builder::FlowBuilder;
     pub use crate::live_collections::boundedness::{Bounded, Unbounded};
     pub use crate::live_collections::keyed_singleton::KeyedSingleton;
     pub use crate::live_collections::keyed_stream::KeyedStream;
@@ -57,7 +57,6 @@ pub mod nondet;
 #[expect(missing_docs, reason = "TODO")]
 pub mod live_collections;
 
-#[expect(missing_docs, reason = "TODO")]
 pub mod location;
 
 #[expect(missing_docs, reason = "TODO")]
@@ -68,11 +67,9 @@ pub mod location;
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod deploy;
 
-#[expect(missing_docs, reason = "TODO")]
-pub mod cycle;
+pub mod forward_handle;
 
-#[expect(missing_docs, reason = "TODO")]
-pub mod builder;
+pub mod compile;
 
 mod manual_expr;
 

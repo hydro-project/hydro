@@ -14,11 +14,14 @@ use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
-use crate::builder::FLOW_USED_MESSAGE;
-use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
-use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
-use crate::location::tick::{Atomic, NoAtomic};
-use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
+use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::forward_handle::{ForwardRef, TickCycle};
+#[cfg(stageleft_runtime)]
+use crate::location::dynamic::{DynLocation, LocationId};
+use crate::location::tick::{Atomic, DeferTick, NoAtomic};
+use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
@@ -154,7 +157,7 @@ where
     }
 }
 
-impl<'a, T, L, O, R> CycleCollection<'a, TickCycleMarker> for Stream<T, Tick<L>, Bounded, O, R>
+impl<'a, T, L, O, R> CycleCollection<'a, TickCycle> for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
@@ -171,32 +174,29 @@ where
     }
 }
 
-impl<'a, T, L, O, R> CycleComplete<'a, TickCycleMarker> for Stream<T, Tick<L>, Bounded, O, R>
+impl<'a, T, L, O, R> ReceiverComplete<'a, TickCycle> for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
-            self.location.id(),
+            Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: self.location.id(),
+                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRefMarker> for Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRef> for Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -216,13 +216,13 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> CycleComplete<'a, ForwardRefMarker> for Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> ReceiverComplete<'a, ForwardRef> for Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
-            self.location.id(),
+            Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
@@ -230,16 +230,13 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
                     metadata: metadata.clone(),
                 }),
-                out_location: self.location.id(),
+                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -2404,10 +2401,7 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::ForEach {
+            .push_root(HydroRoot::ForEach {
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
                     metadata: metadata.clone(),
@@ -2424,10 +2418,7 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::DestSink {
+            .push_root(HydroRoot::DestSink {
                 sink: sink.splice_typed_ctx(&self.location).into(),
                 input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
@@ -2502,7 +2493,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use stageleft::q;
 
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
 
     struct P1 {}
@@ -2581,17 +2572,17 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn backtrace_chained_ops() {
-        use crate::builder::ir::HydroRoot;
+        use crate::compile::ir::HydroRoot;
 
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         node.source_iter(q!([123])).for_each(q!(|_| {}));
 
-        let finalized: crate::builder::built::BuiltFlow<'_> = flow.finalize();
+        let finalized: crate::compile::built::BuiltFlow<'_> = flow.finalize();
 
         let source_meta = if let HydroRoot::ForEach { input, .. } = &finalized.ir()[0] {
-            use crate::builder::ir::HydroNode;
+            use crate::compile::ir::HydroNode;
 
             if let HydroNode::Unpersist { inner, .. } = input.as_ref() {
                 if let HydroNode::Persist { inner, .. } = inner.as_ref() {
