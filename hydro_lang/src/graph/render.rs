@@ -994,32 +994,37 @@ impl HydroNode {
             )
         }
 
-        // Helper function for two-input operations with left/right labels
-        fn build_left_right_join(
-            structure: &mut HydroGraphStructure,
-            seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
-            config: &HydroWriteConfig,
-            left: &HydroNode,
-            right: &HydroNode,
-            metadata: &crate::ir::HydroIrMetadata,
+        // Helper struct to group parameters for two-input operations
+        struct TwoInputParams<'a> {
+            structure: &'a mut HydroGraphStructure,
+            seen_tees: &'a mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
+            config: &'a HydroWriteConfig,
+            metadata: &'a crate::ir::HydroIrMetadata,
             op_name: String,
             node_type: HydroNodeType,
+        }
+
+        // Helper function for two-input operations with left/right labels
+        fn build_left_right_join(
+            params: TwoInputParams<'_>,
+            left: &HydroNode,
+            right: &HydroNode,
         ) -> usize {
-            let left_id = left.build_graph_structure(structure, seen_tees, config);
-            let right_id = right.build_graph_structure(structure, seen_tees, config);
-            let location_id = setup_location(structure, metadata);
-            let node_id = structure.add_node(
-                NodeLabel::Static(op_name),
-                node_type,
+            let left_id = left.build_graph_structure(params.structure, params.seen_tees, params.config);
+            let right_id = right.build_graph_structure(params.structure, params.seen_tees, params.config);
+            let location_id = setup_location(params.structure, params.metadata);
+            let node_id = params.structure.add_node(
+                NodeLabel::Static(params.op_name),
+                params.node_type,
                 location_id,
-                Some(metadata.op.backtrace.clone()),
+                Some(params.metadata.op.backtrace.clone()),
             );
 
             let left_properties = extract_edge_properties_from_node(left);
             let right_properties = extract_edge_properties_from_node(right);
 
-            structure.add_edge(left_id, node_id, left_properties, Some("left".to_string()));
-            structure.add_edge(
+            params.structure.add_edge(left_id, node_id, left_properties, Some("left".to_string()));
+            params.structure.add_edge(
                 right_id,
                 node_id,
                 right_properties,
@@ -1030,30 +1035,25 @@ impl HydroNode {
 
         // Helper function for two-input operations with pos/neg labels
         fn build_pos_neg_join(
-            structure: &mut HydroGraphStructure,
-            seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
-            config: &HydroWriteConfig,
+            params: TwoInputParams<'_>,
             pos: &HydroNode,
             neg: &HydroNode,
-            metadata: &crate::ir::HydroIrMetadata,
-            op_name: String,
-            node_type: HydroNodeType,
         ) -> usize {
-            let pos_id = pos.build_graph_structure(structure, seen_tees, config);
-            let neg_id = neg.build_graph_structure(structure, seen_tees, config);
-            let location_id = setup_location(structure, metadata);
-            let node_id = structure.add_node(
-                NodeLabel::Static(op_name),
-                node_type,
+            let pos_id = pos.build_graph_structure(params.structure, params.seen_tees, params.config);
+            let neg_id = neg.build_graph_structure(params.structure, params.seen_tees, params.config);
+            let location_id = setup_location(params.structure, params.metadata);
+            let node_id = params.structure.add_node(
+                NodeLabel::Static(params.op_name),
+                params.node_type,
                 location_id,
-                Some(metadata.op.backtrace.clone()),
+                Some(params.metadata.op.backtrace.clone()),
             );
 
             let pos_properties = extract_edge_properties_from_node(pos);
             let neg_properties = extract_edge_properties_from_node(neg);
 
-            structure.add_edge(pos_id, node_id, pos_properties, Some("pos".to_string()));
-            structure.add_edge(neg_id, node_id, neg_properties, Some("neg".to_string()));
+            params.structure.add_edge(pos_id, node_id, pos_properties, Some("pos".to_string()));
+            params.structure.add_edge(neg_id, node_id, neg_properties, Some("neg".to_string()));
             node_id
         }
 
@@ -1229,14 +1229,16 @@ impl HydroNode {
                 right,
                 metadata,
             } => build_left_right_join(
-                structure,
-                seen_tees,
-                config,
+                TwoInputParams {
+                    structure,
+                    seen_tees,
+                    config,
+                    metadata,
+                    op_name: extract_op_name(self.print_root()),
+                    node_type: HydroNodeType::Join,
+                },
                 left,
                 right,
-                metadata,
-                extract_op_name(self.print_root()),
-                HydroNodeType::Join,
             ),
             HydroNode::Difference {
                 pos: left,
@@ -1248,14 +1250,16 @@ impl HydroNode {
                 neg: right,
                 metadata,
             } => build_pos_neg_join(
-                structure,
-                seen_tees,
-                config,
+                TwoInputParams {
+                    structure,
+                    seen_tees,
+                    config,
+                    metadata,
+                    op_name: extract_op_name(self.print_root()),
+                    node_type: HydroNodeType::Join,
+                },
                 left,
                 right,
-                metadata,
-                extract_op_name(self.print_root()),
-                HydroNodeType::Join,
             ),
             HydroNode::Fold {
                 init,
