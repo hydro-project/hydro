@@ -1,3 +1,5 @@
+//! Definitions and core APIs for the [`KeyedStream`] live collection.
+
 use std::hash::Hash;
 use std::marker::PhantomData;
 
@@ -16,6 +18,8 @@ use crate::location::tick::NoAtomic;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
+
+pub mod networking;
 
 /// Keyed Streams capture streaming elements of type `V` grouped by a key of type `K`,
 /// where the order of keys is non-deterministic but the order *within* each group may
@@ -1145,6 +1149,7 @@ impl<'a, K, V, L, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn atomic(self, tick: &Tick<L>) -> KeyedStream<K, V, Atomic<L>, B, O, R> {
         KeyedStream {
             underlying: self.underlying.atomic(tick),
@@ -1189,6 +1194,7 @@ impl<'a, K, V, L, O, R> KeyedStream<K, V, L, Bounded, O, R>
 where
     L: Location<'a>,
 {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn chain<O2>(
         self,
         other: KeyedStream<K, V, L, Bounded, O2, R>,
@@ -1207,6 +1213,7 @@ impl<'a, K, V, L, O, R> KeyedStream<K, V, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn all_ticks(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
         KeyedStream {
             underlying: self.underlying.all_ticks(),

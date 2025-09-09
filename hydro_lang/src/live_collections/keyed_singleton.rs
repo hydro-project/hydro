@@ -1,3 +1,5 @@
+//! Definitions and core APIs for the [`KeyedSingleton`] live collection.
+
 use std::hash::Hash;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
@@ -16,6 +18,7 @@ use crate::location::{Atomic, Location, NoTick, Tick};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
+#[expect(missing_docs, reason = "TODO")]
 pub trait KeyedSingletonBound {
     type UnderlyingBound: Boundedness;
     type ValueBound: Boundedness;
@@ -41,6 +44,7 @@ impl KeyedSingletonBound for BoundedValue {
     type ValueBound = Bounded;
 }
 
+#[expect(missing_docs, reason = "TODO")]
 pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
     pub(crate) underlying: Stream<(K, V), Loc, Bound::UnderlyingBound, NoOrder, ExactlyOnce>,
 }
@@ -79,6 +83,7 @@ where
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     KeyedSingleton<K, V, L, B>
 {
@@ -134,6 +139,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, U, L, B>
     where
@@ -213,6 +219,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     pub fn latest(self) -> KeyedSingleton<K, V, L, Unbounded> {
         KeyedSingleton {
@@ -295,6 +302,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
             .into_keyed()
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn get_from<V2: Clone>(
         self,
         from: KeyedSingleton<V, V2, Tick<L>, Bounded>,
@@ -320,6 +328,7 @@ impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn atomic(self, tick: &Tick<L>) -> KeyedSingleton<K, V, Atomic<L>, B> {
         KeyedSingleton {
             underlying: self.underlying.atomic(tick),
@@ -378,6 +387,7 @@ where
         }
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn end_atomic(self) -> KeyedSingleton<K, V, L, B> {
         KeyedSingleton {
             underlying: self.underlying.end_atomic(),
