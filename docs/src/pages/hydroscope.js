@@ -1,5 +1,6 @@
 /**
  * Load the hydroscope visualizer for Hydro JSON
+ * Simplified version - error handling moved to hydroscope package
  */
 
 import React from 'react';
@@ -28,18 +29,59 @@ function HydroscopeFn() {
   const [filePath, setFilePath] = React.useState(null);
   const [availableHeight, setAvailableHeight] = React.useState('100vh');
 
-  // Calculate available height dynamically
+  // Calculate available height dynamically with RAF-based debouncing
   React.useEffect(() => {
+    let rafId;
+    let timeoutId;
+
     const calculateHeight = () => {
-      // Get the navbar height dynamically
-      const navbar = document.querySelector('.navbar');
-      const navbarHeight = navbar ? navbar.offsetHeight : 60;
-      setAvailableHeight(`calc(100vh - ${navbarHeight}px)`);
+      // Cancel any pending RAF/timeout
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      // Use requestAnimationFrame for smooth updates
+      rafId = requestAnimationFrame(() => {
+        // Additional debounce with timeout to prevent excessive calculations
+        timeoutId = setTimeout(() => {
+          try {
+            const navbar = document.querySelector('.navbar');
+            const navbarHeight = navbar ? navbar.offsetHeight : 60;
+            const newHeight = `calc(100vh - ${navbarHeight}px)`;
+
+            // Only update if the height actually changed
+            setAvailableHeight(prevHeight => {
+              if (prevHeight !== newHeight) {
+                return newHeight;
+              }
+              return prevHeight;
+            });
+          } catch (error) {
+            // Silently handle any measurement errors
+            console.debug('Height calculation skipped due to measurement error');
+          }
+        }, 150); // Increased debounce time to reduce frequency
+      });
     };
 
     calculateHeight();
-    window.addEventListener('resize', calculateHeight);
-    return () => window.removeEventListener('resize', calculateHeight);
+
+    // Use passive listeners for better performance
+    const resizeHandler = () => calculateHeight();
+    window.addEventListener('resize', resizeHandler, { passive: true });
+
+    return () => {
+      window.removeEventListener('resize', resizeHandler);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, []);
 
   // Load Hydroscope component from npm package
@@ -112,7 +154,7 @@ function HydroscopeFn() {
           setError(`Failed to load graph from URL: ${err.message}`);
         });
     }
-  }, [loading, location.search, location.hash, graphData, parseDataFromUrl]);
+  }, [loading, location.search, location.hash, parseDataFromUrl]);
 
   // Handle file upload
   const handleFileUpload = React.useCallback((data, filename) => {
@@ -145,33 +187,33 @@ function HydroscopeFn() {
     }
   }, [generateCompleteExample]);
 
-  // Add a test button to trigger example generation
-  const handleTestExample = React.useCallback(() => {
-    handleCreateExample();
-  }, [handleCreateExample]);
-
-  const containerStyle = {
+  // Memoize container styles to prevent unnecessary re-renders
+  const containerStyle = React.useMemo(() => ({
     height: availableHeight,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-  };
+    position: 'relative',
+    contain: 'layout', // CSS containment to help with layout performance
+  }), [availableHeight]);
 
-  const headerStyle = {
+  const headerStyle = React.useMemo(() => ({
     padding: '20px',
     textAlign: 'center',
     borderBottom: '1px solid #e0e0e0',
     background: 'white',
     flexShrink: 0, // Prevent header from shrinking
-  };
+  }), []);
 
-  const contentStyle = {
+  const contentStyle = React.useMemo(() => ({
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
     minHeight: 0, // Allow content to shrink
     overflow: 'hidden',
-  };
+    position: 'relative',
+    contain: 'layout style', // Additional containment for better performance
+  }), []);
 
   return (
     <Layout
@@ -193,38 +235,40 @@ function HydroscopeFn() {
       )}
 
       {!loading && !error && Hydroscope && (
-        <div style={contentStyle}>
-          <Hydroscope
-            data={graphData}
-            showFileUpload={true}
-            showInfoPanel={true}
-            showStylePanel={true}
-            enableCollapse={true}
-            autoFit={true}
-            initialLayoutAlgorithm="mrtree"
-            initialColorPalette="Set3"
-            generatedFilePath={filePath}
-            generateCompleteExample={generateCompleteExample}
-            onFileUpload={handleFileUpload}
-            onExampleGenerated={handleExampleGenerated}
-            onCreateExample={handleCreateExample}
-            style={{
-              height: '100%',
-              width: '100%',
-            }}
-          />
-        </div>
-      )
-      }
-
-      {
-        !loading && !error && !Hydroscope && (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-            <p>Hydroscope component not available</p>
+        <ErrorBoundary>
+          <div style={contentStyle}>
+            <Hydroscope
+              key={`hydroscope-${!!graphData}-${!!filePath}`} // Stable key based on data state
+              data={graphData}
+              showFileUpload={true}
+              showInfoPanel={true}
+              showStylePanel={true}
+              enableCollapse={true}
+              autoFit={true}
+              initialLayoutAlgorithm="mrtree"
+              initialColorPalette="Set3"
+              generatedFilePath={filePath}
+              generateCompleteExample={generateCompleteExample}
+              onFileUpload={handleFileUpload}
+              onExampleGenerated={handleExampleGenerated}
+              style={{
+                height: '100%',
+                width: '100%',
+                position: 'relative',
+                contain: 'layout style size', // Full containment for maximum isolation
+                willChange: 'auto', // Let browser optimize
+              }}
+            />
           </div>
-        )
-      }
-    </Layout >
+        </ErrorBoundary>
+      )}
+
+      {!loading && !error && !Hydroscope && (
+        <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+          <p>Hydroscope component not available</p>
+        </div>
+      )}
+    </Layout>
   );
 }
 
