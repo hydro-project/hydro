@@ -12,7 +12,7 @@ pub struct CompiledFlow<'a, ID> {
 
 impl<'a, ID> CompiledFlow<'a, ID> {
     pub fn dfir_for(&self, location: &impl Location<'a>) -> &DfirGraph {
-        self.dfir.get(&location.id().raw_id()).unwrap()
+        self.dfir.get(&Location::id(location).raw_id()).unwrap()
     }
 
     pub fn all_dfir(&self) -> &BTreeMap<usize, DfirGraph> {
