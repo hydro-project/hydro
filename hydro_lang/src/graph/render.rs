@@ -8,8 +8,8 @@ use auto_impl::auto_impl;
 pub use super::dot::{HydroDot, escape_dot};
 pub use super::json::HydroJson;
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
-pub use super::reactflow::HydroReactFlow;
-use crate::builder::ir::{DebugExpr, HydroNode, HydroRoot, HydroSource};
+use crate::builder::ir::backtrace::Backtrace;
+use crate::builder::ir::{DebugExpr, HydroIrMetadata, HydroNode, HydroRoot, HydroSource};
 
 /// Label for a graph node - can be either a static string or contain expressions.
 #[derive(Debug, Clone)]
@@ -106,7 +106,7 @@ pub trait HydroGraphWrite {
         node_type: HydroNodeType,
         location_id: Option<usize>,
         location_type: Option<&str>,
-        backtrace: Option<&crate::backtrace::Backtrace>,
+        backtrace: Option<&Backtrace>,
     ) -> Result<(), Self::Err>;
 
     /// Write an edge between nodes with optional labeling.
@@ -413,15 +413,7 @@ impl Default for HydroWriteConfig {
 /// Graph structure tracker for Hydro IR rendering.
 #[derive(Default)]
 pub struct HydroGraphStructure {
-    pub nodes: HashMap<
-        usize,
-        (
-            NodeLabel,
-            HydroNodeType,
-            Option<usize>,
-            Option<crate::backtrace::Backtrace>,
-        ),
-    >, // node_id -> (label, type, location, backtrace)
+    pub nodes: HashMap<usize, (NodeLabel, HydroNodeType, Option<usize>, Option<Backtrace>)>, // node_id -> (label, type, location, backtrace)
     pub edges: Vec<(usize, usize, HashSet<HydroEdgeType>, Option<String>)>, /* (src, dst, edge_properties, label) */
     pub locations: HashMap<usize, String>, // location_id -> location_type
     pub next_node_id: usize,
@@ -437,7 +429,7 @@ impl HydroGraphStructure {
         label: NodeLabel,
         node_type: HydroNodeType,
         location: Option<usize>,
-        backtrace: Option<crate::backtrace::Backtrace>,
+        backtrace: Option<Backtrace>,
     ) -> usize {
         let node_id = self.next_node_id;
         self.next_node_id += 1;
@@ -717,9 +709,7 @@ pub fn extract_short_label(full_label: &str) -> String {
 }
 
 /// Helper function to extract location ID and type from metadata.
-fn extract_location_id(
-    metadata: &crate::builder::ir::HydroIrMetadata,
-) -> (Option<usize>, Option<String>) {
+fn extract_location_id(metadata: &HydroIrMetadata) -> (Option<usize>, Option<String>) {
     use crate::location::dynamic::LocationId;
     match &metadata.location_kind {
         LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
@@ -735,7 +725,7 @@ fn extract_location_id(
 /// Helper function to set up location in structure from metadata.
 fn setup_location(
     structure: &mut HydroGraphStructure,
-    metadata: &crate::builder::ir::HydroIrMetadata,
+    metadata: &HydroIrMetadata,
 ) -> Option<usize> {
     let (location_id, location_type) = extract_location_id(metadata);
     if let (Some(loc_id), Some(loc_type)) = (location_id, location_type) {
@@ -865,7 +855,7 @@ impl HydroRoot {
             seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
             config: &HydroWriteConfig,
             input: &HydroNode,
-            metadata: Option<&crate::builder::ir::HydroIrMetadata>,
+            metadata: Option<&HydroIrMetadata>,
             label: NodeLabel,
         ) -> usize {
             let input_id = input.build_graph_structure(structure, seen_tees, config);
@@ -963,7 +953,7 @@ impl HydroNode {
             seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
             config: &HydroWriteConfig,
             input: &HydroNode,
-            metadata: &crate::ir::HydroIrMetadata,
+            metadata: &HydroIrMetadata,
             label: NodeLabel,
             node_type: HydroNodeType,
         ) -> usize {
@@ -985,7 +975,7 @@ impl HydroNode {
         // Helper function for source nodes
         fn build_source_node(
             structure: &mut HydroGraphStructure,
-            metadata: &crate::ir::HydroIrMetadata,
+            metadata: &HydroIrMetadata,
             label: String,
         ) -> usize {
             let location_id = setup_location(structure, metadata);
@@ -1002,8 +992,7 @@ impl HydroNode {
             structure: &'a mut HydroGraphStructure,
             seen_tees: &'a mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
             config: &'a HydroWriteConfig,
-            input: &'a HydroNode,
-            metadata: &'a crate::builder::ir::HydroIrMetadata,
+            metadata: &'a HydroIrMetadata,
             op_name: String,
             node_type: HydroNodeType,
         }
@@ -1069,16 +1058,6 @@ impl HydroNode {
                 .structure
                 .add_edge(neg_id, node_id, neg_properties, Some("neg".to_string()));
             node_id
-        }
-
-        // Helper function for source nodes
-        fn build_source_node(
-            structure: &mut HydroGraphStructure,
-            metadata: &crate::builder::ir::HydroIrMetadata,
-            label: String,
-        ) -> usize {
-            let location_id = setup_location(structure, metadata);
-            structure.add_node(NodeLabel::Static(label), HydroNodeType::Source, location_id)
         }
 
         match self {
@@ -1401,7 +1380,6 @@ impl HydroNode {
                 chain_id
             }
             HydroNode::Counter {
-                tag: _,
                 prefix: _,
                 duration,
                 input,

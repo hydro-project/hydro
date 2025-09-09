@@ -2,6 +2,8 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::fmt::Write;
 
+use crate::builder::ir::backtrace::Backtrace;
+
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
 
 /// Escapes a string for use in a mermaid graph label.
@@ -105,7 +107,7 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
-        _backtrace: Option<&crate::backtrace::Backtrace>,
+        _backtrace: Option<&Backtrace>,
     ) -> Result<(), Self::Err> {
         let class_str = to_mermaid_class(node_type);
         let (lbracket, rbracket) = to_mermaid_shape(node_type);

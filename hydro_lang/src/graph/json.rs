@@ -1,6 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
+use crate::builder::ir::HydroRoot;
+use crate::builder::ir::backtrace::Backtrace;
+
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
 
 /// JSON graph writer for Hydro IR.
@@ -17,7 +20,7 @@ pub struct HydroJson<W> {
     cluster_names: HashMap<usize, String>,
     external_names: HashMap<usize, String>,
     // Store backtraces for hierarchy generation
-    node_backtraces: HashMap<usize, crate::backtrace::Backtrace>,
+    node_backtraces: HashMap<usize, Backtrace>,
 }
 
 impl<W> HydroJson<W> {
@@ -152,7 +155,7 @@ impl<W> HydroJson<W> {
     /// 2. Truncate paths
     /// 3. Remove memory addresses (not useful for visualization)
     /// 4. Limit frame count for size efficiency
-    fn optimize_backtrace(&self, backtrace: &crate::backtrace::Backtrace) -> serde_json::Value {
+    fn optimize_backtrace(&self, backtrace: &Backtrace) -> serde_json::Value {
         #[cfg(feature = "build")]
         {
             let elements = backtrace.elements();
@@ -248,7 +251,7 @@ where
         node_type: HydroNodeType,
         location_id: Option<usize>,
         location_type: Option<&str>,
-        backtrace: Option<&crate::backtrace::Backtrace>,
+        backtrace: Option<&Backtrace>,
     ) -> Result<(), Self::Err> {
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
@@ -785,7 +788,7 @@ impl<W> HydroJson<W> {
 
 /// Create JSON from Hydro IR with type names
 pub fn hydro_ir_to_json(
-    ir: &[crate::ir::HydroRoot],
+    ir: &[HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
@@ -809,7 +812,7 @@ pub fn hydro_ir_to_json(
 /// Open JSON visualization in browser using the docs visualizer with URL-encoded data
 #[cfg(feature = "viz")]
 pub fn open_json_browser(
-    ir: &[crate::ir::HydroRoot],
+    ir: &[HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
@@ -828,7 +831,7 @@ pub fn open_json_browser(
 
 /// Save JSON to file using the consolidated debug utilities
 pub fn save_json(
-    ir: &[crate::ir::HydroRoot],
+    ir: &[HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
