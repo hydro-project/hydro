@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use hydro_lang::ir::{HydroNode, HydroRoot, traverse_dfir};
+use hydro_lang::builder::ir::{HydroNode, HydroRoot, traverse_dfir};
 
 fn print_id_root(root: &mut HydroRoot, next_stmt_id: &mut usize) {
     let inputs = root

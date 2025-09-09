@@ -1,4 +1,4 @@
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 
 pub struct P1 {}
 pub struct P2 {}
@@ -21,7 +21,7 @@ mod tests {
         let mut deployment = Deployment::new();
         let localhost = deployment.Localhost();
 
-        let flow = hydro_lang::FlowBuilder::new();
+        let flow = hydro_lang::builder::FlowBuilder::new();
         let p1 = flow.process();
         let p2 = flow.process();
         super::first_ten_distributed(&p1, &p2);

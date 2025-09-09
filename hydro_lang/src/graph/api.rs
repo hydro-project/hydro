@@ -1,8 +1,8 @@
 use std::error::Error;
 
+use crate::builder::ir::HydroRoot;
 use crate::graph::config::{GraphConfig, GraphType};
 use crate::graph::render::HydroWriteConfig;
-use crate::ir::HydroRoot;
 
 /// Graph generation API for built flows
 pub struct GraphApi<'a> {

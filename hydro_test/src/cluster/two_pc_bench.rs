@@ -1,4 +1,4 @@
-use hydro_lang::*;
+use hydro_lang::prelude::*;
 use hydro_std::bench_client::{bench_client, print_bench_results};
 
 use super::two_pc::{Coordinator, Participant};
@@ -42,12 +42,12 @@ mod tests {
 
     use dfir_lang::graph::WriteConfig;
     use hydro_deploy::Deployment;
-    use hydro_lang::Location;
+    use hydro_lang::builder::ir::deep_clone;
+    use hydro_lang::builder::rewrites::persist_pullup::persist_pullup;
     use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy, TrybuildHost};
-    use hydro_lang::ir::deep_clone;
-    use hydro_lang::rewrites::persist_pullup::persist_pullup;
+    use hydro_lang::location::Location;
     #[cfg(stageleft_runtime)]
-    use hydro_lang::{Cluster, Process};
+    use hydro_lang::location::{Cluster, Process};
     use hydro_optimize::debug::name_to_id_map;
     use hydro_optimize::partition_node_analysis::{nodes_to_partition, partitioning_analysis};
     use hydro_optimize::partitioner::{Partitioner, partition};
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn two_pc_ir() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let coordinator = builder.process();
         let participants = builder.cluster();
         let clients = builder.cluster();
@@ -89,7 +89,7 @@ mod tests {
         create_two_pc(&coordinator, &participants, &clients, &client_aggregator);
         let built = builder.with_default_optimize::<HydroDeploy>();
 
-        hydro_lang::ir::dbg_dedup_tee(|| {
+        hydro_lang::builder::ir::dbg_dedup_tee(|| {
             hydro_build_utils::assert_debug_snapshot!(built.ir());
         });
 
@@ -126,7 +126,7 @@ mod tests {
 
     #[tokio::test]
     async fn two_pc_some_throughput() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let coordinator = builder.process();
         let participants = builder.cluster();
         let clients = builder.cluster();
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn two_pc_partition_coordinator() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let coordinator = builder.process();
         let partitioned_coordinator = builder.cluster::<()>();
         let participants = builder.cluster();
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn two_pc_partition_participant() {
-        let builder = hydro_lang::FlowBuilder::new();
+        let builder = hydro_lang::builder::FlowBuilder::new();
         let coordinator = builder.process();
         let participants = builder.cluster();
         let clients = builder.cluster();

@@ -1,0 +1,33 @@
+---
+source: hydro_lang/src/live_collections/stream.rs
+expression: for_each_meta.backtrace.elements()
+---
+[
+    BacktraceElement {
+        fn_name: "hydro_lang::live_collections::stream::tests::backtrace_chained_ops",
+        lineno: Some(
+            2591,
+        ),
+        colno: Some(
+            37,
+        ),
+    },
+    BacktraceElement {
+        fn_name: "hydro_lang::live_collections::stream::tests::backtrace_chained_ops::{{closure}}",
+        lineno: Some(
+            2585,
+        ),
+        colno: Some(
+            31,
+        ),
+    },
+    BacktraceElement {
+        fn_name: "core::ops::function::FnOnce::call_once",
+        lineno: Some(
+            250,
+        ),
+        colno: Some(
+            5,
+        ),
+    },
+]

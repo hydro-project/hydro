@@ -1,5 +1,5 @@
-use hydro_lang::keyed_stream::KeyedStream;
-use hydro_lang::*;
+use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
+use hydro_lang::prelude::*;
 
 #[derive(Debug, Clone)]
 pub enum RequestType {

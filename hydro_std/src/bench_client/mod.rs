@@ -4,7 +4,8 @@ use std::time::{Duration, Instant};
 
 use hdrhistogram::Histogram;
 use hdrhistogram::serialization::{Deserializer, Serializer, V2Serializer};
-use hydro_lang::*;
+use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
+use hydro_lang::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub mod rolling_average;

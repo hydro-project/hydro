@@ -15,9 +15,9 @@ Think of a keyed stream as a collection of independent sub-streams, each identif
 Any stream of tuples `(K, V)` can be converted into a keyed stream using the `into_keyed()` method:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::stream_transform_test(|process| {
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
 let data = process.source_iter(q!(vec![
     ("user1", "login"),
     ("user2", "click"), 
@@ -50,9 +50,9 @@ Keyed streams are different from regular streams in that they capture a _partial
 Keyed streams support familiar transformation operations like `map` and `filter` ([full API](pathname:///rustdoc/hydro_lang/keyed_stream/struct.KeyedStream)) that operate on the values within each group, and thus preserve any ordering guarantees. Each key maintains its own independent processing pipeline - `user1` events are transformed and filtered separately from `user2` events:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::stream_transform_test(|process| {
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
 let events = process.source_iter(q!(vec![
     ("user1", "login"),
     ("user2", "click"), 
@@ -88,9 +88,9 @@ Keyed streams are most commonly used when dealing with network requests originat
 Keyed streams provide two methods to convert back to regular streams. The `.entries()` method returns a stream of `(K, V)` tuples, while `.values()` returns a stream of just the values, discarding keys. Note that both of these APIs return a stream with `NoOrder` ordering, because they interleave elements across key groups in non-deterministic order. This means that downstream logic must tolerate this unknown interleaving of elements appropriately.
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::stream_transform_test(|process| {
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
 let keyed = process
     .source_iter(q!(vec![("A", 1), ("B", 2), ("A", 3)]))
     .into_keyed();
@@ -113,9 +113,9 @@ let values = keyed.values(); // Stream<V, _, _, NoOrder>
 One of the most powerful features of keyed streams is the ability to perform aggregations within each key group. The `fold` operation accumulates values for each key independently, maintaining separate state for each key while preserving ordering guarantees within each group:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::stream_transform_test(|process| {
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
 let purchases = process.source_iter(q!(vec![
     ("alice", 10),
     ("bob", 5),
@@ -145,9 +145,9 @@ purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount))
 Keyed streams support different fold variants based on ordering and retry guarantees. The basic `fold` requires `TotalOrder` within groups for order-dependent aggregation, while `fold_commutative` works with `NoOrder` and requires commutative operations. For handling potential duplicates, `fold_idempotent` requires idempotent operations, and `fold_commutative_idempotent` is the most flexible, handling both unordered and duplicate messages:
 
 ```rust
-# use hydro_lang::*;
+# use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# tokio_test::block_on(test_util::stream_transform_test(|process| {
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
 let tick = process.tick();
 
 let health_checks = process.source_iter(q!(vec![

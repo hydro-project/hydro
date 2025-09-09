@@ -53,6 +53,10 @@ impl ReusableHosts {
         };
         TrybuildHost::new(self.lazy_create_host(deployment, display_name.clone()))
             .additional_hydro_features(vec!["runtime_measure".to_string()])
+            .build_env(
+                "HYDRO_RUNTIME_MEASURE_CPU_PREFIX",
+                super::deploy_and_analyze::CPU_USAGE_PREFIX,
+            )
             .rustflags(rustflags)
             .tracing(
                 TracingOptions::builder()

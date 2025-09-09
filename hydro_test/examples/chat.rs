@@ -3,8 +3,8 @@ use dfir_rs::tokio_util::codec::LinesCodec;
 use hydro_deploy::Deployment;
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::graph::config::GraphConfig;
-use hydro_lang::location::NetworkHint;
-use hydro_lang::{Location, nondet};
+use hydro_lang::location::{Location, NetworkHint};
+use hydro_lang::nondet::nondet;
 use hydro_test::external_client::chat::ChatServer;
 
 #[derive(Parser, Debug)]
@@ -17,7 +17,7 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let mut deployment = Deployment::new();
-    let flow = hydro_lang::FlowBuilder::new();
+    let flow = hydro_lang::builder::FlowBuilder::new();
 
     let process = flow.process::<ChatServer>();
     let external = flow.external::<()>();

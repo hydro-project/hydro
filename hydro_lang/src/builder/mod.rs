@@ -9,13 +9,20 @@ use compiled::CompiledFlow;
 use deploy::{DeployFlow, DeployResult};
 use stageleft::*;
 
-use crate::ir::HydroRoot;
 use crate::location::{Cluster, External, Process};
 use crate::staging_util::Invariant;
+
+pub mod ir;
+use ir::HydroRoot;
+
+#[cfg(feature = "build")]
+#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
+pub mod rewrites;
 
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 pub mod built;
+
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 pub mod compiled;
@@ -44,9 +51,6 @@ pub struct FlowStateInner {
 
     /// Counters for clock IDs.
     pub(crate) next_clock_id: usize,
-
-    /// Counter for unique HydroNode IDs.
-    pub(crate) next_node_id: usize,
 }
 
 impl FlowStateInner {
@@ -123,7 +127,6 @@ impl<'a> FlowBuilder<'a> {
                 next_external_out: 0,
                 cycle_counts: 0,
                 next_clock_id: 0,
-                next_node_id: 0,
             })),
             processes: RefCell::new(vec![]),
             clusters: RefCell::new(vec![]),
@@ -146,7 +149,6 @@ impl<'a> FlowBuilder<'a> {
                     next_external_out: 0,
                     cycle_counts: 0,
                     next_clock_id: 0,
-                    next_node_id: 0,
                 })),
                 processes: RefCell::new(processes),
                 clusters: RefCell::new(clusters),
