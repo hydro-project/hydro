@@ -1,11 +1,34 @@
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::fmt::Write;
+
+use crate::builder::ir::backtrace::Backtrace;
 
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
 
 /// Escapes a string for use in a DOT graph label.
 pub fn escape_dot(string: &str, newline: &str) -> String {
     string.replace('"', "\\\"").replace('\n', newline)
+}
+
+/// DOT shape and color data
+const DOT_STYLES: &[(HydroNodeType, &str, &str)] = &[
+    (HydroNodeType::Source, "ellipse", "\"#8dd3c7\""), // Light teal
+    (HydroNodeType::Transform, "box", "\"#ffffb3\""),  // Light yellow
+    (HydroNodeType::Join, "diamond", "\"#bebada\""),   // Light purple
+    (HydroNodeType::Aggregation, "house", "\"#fb8072\""), // Light red/salmon
+    (HydroNodeType::Network, "doubleoctagon", "\"#80b1d3\""), // Light blue
+    (HydroNodeType::Sink, "invhouse", "\"#fdb462\""),  // Light orange
+    (HydroNodeType::Tee, "terminator", "\"#b3de69\""), // Light green
+];
+
+/// Get DOT shape and color for node type
+fn to_dot_style(node_type: HydroNodeType) -> (&'static str, &'static str) {
+    DOT_STYLES
+        .iter()
+        .find(|(nt, _, _)| *nt == node_type)
+        .map(|(_, shape, color)| (*shape, *color))
+        .unwrap_or(("box", "\"#ffffff\""))
 }
 
 /// DOT/Graphviz graph writer for Hydro IR.
@@ -87,6 +110,7 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
+        _backtrace: Option<&Backtrace>,
     ) -> Result<(), Self::Err> {
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
@@ -112,20 +136,11 @@ where
         let escaped_label = escape_dot(&display_label, "\\l");
         let label = format!("n{}", node_id);
 
-        let (shape_str, color_str) = match node_type {
-            // ColorBrewer Set3 palette colors (matching Mermaid and ReactFlow)
-            HydroNodeType::Source => ("ellipse", "\"#8dd3c7\""), // Light teal
-            HydroNodeType::Transform => ("box", "\"#ffffb3\""),  // Light yellow
-            HydroNodeType::Join => ("diamond", "\"#bebada\""),   // Light purple
-            HydroNodeType::Aggregation => ("house", "\"#fb8072\""), // Light red/salmon
-            HydroNodeType::Network => ("doubleoctagon", "\"#80b1d3\""), // Light blue
-            HydroNodeType::Sink => ("invhouse", "\"#fdb462\""),  // Light orange
-            HydroNodeType::Tee => ("terminator", "\"#b3de69\""), // Light green
-        };
+        let (shape_str, color_str) = to_dot_style(node_type);
 
         write!(
             self.base.write,
-            "{b:i$}{label} [label=\"({node_id}) {escaped_label}{}\"",
+            "{b:i$}{label} [label=\"{escaped_label}{}\"",
             if escaped_label.contains("\\l") {
                 "\\l"
             } else {
@@ -146,7 +161,7 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_type: HydroEdgeType,
+        edge_properties: &HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
         let mut properties = Vec::<Cow<'static, str>>::new();
@@ -155,21 +170,58 @@ where
             properties.push(format!("label=\"{}\"", escape_dot(label, "\\n")).into());
         }
 
-        // Styling based on edge type
-        match edge_type {
-            HydroEdgeType::Persistent => {
-                properties.push("color=\"#008800\"".into());
-                properties.push("style=\"bold\"".into());
+        // Get unified edge style (DOT doesn't have location context, so pass None)
+        let style = super::render::get_unified_edge_style(edge_properties, None, None);
+
+        // Apply color
+        properties.push(format!("color=\"{}\"", style.color).into());
+
+        // Apply line pattern
+        match style.line_pattern {
+            super::render::LinePattern::Solid => {
+                if style.line_width > 1 {
+                    properties.push("style=\"bold\"".into());
+                }
             }
-            HydroEdgeType::Network => {
-                properties.push("color=\"#880088\"".into());
-                properties.push("style=\"dashed\"".into());
-            }
-            HydroEdgeType::Cycle => {
-                properties.push("color=\"#ff8800\"".into());
+            super::render::LinePattern::Dotted => {
                 properties.push("style=\"dotted\"".into());
             }
-            HydroEdgeType::Stream => {}
+            super::render::LinePattern::Dashed => {
+                properties.push("style=\"dashed\"".into());
+            }
+        }
+
+        // Apply line width through penwidth
+        if style.line_width > 1 {
+            properties.push(format!("penwidth={}", style.line_width).into());
+        }
+
+        // Apply arrowhead style
+        match style.arrowhead {
+            super::render::ArrowheadStyle::TriangleFilled => {
+                properties.push("arrowhead=\"normal\"".into());
+            }
+            super::render::ArrowheadStyle::CircleFilled => {
+                properties.push("arrowhead=\"dot\"".into());
+            }
+            super::render::ArrowheadStyle::DiamondOpen => {
+                properties.push("arrowhead=\"odiamond\"".into());
+            }
+            super::render::ArrowheadStyle::Default => {
+                // DOT default
+            }
+        }
+
+        // For double lines (keyed streams), we can't directly do double lines in DOT,
+        // but we can use a different style to indicate it
+        if style.line_style == super::render::LineStyle::Double {
+            properties.push("style=\"bold,dashed\"".into());
+        }
+
+        // Add tooltip with all properties for debugging
+        if !edge_properties.is_empty() {
+            let props: Vec<String> = edge_properties.iter().map(|p| format!("{:?}", p)).collect();
+            properties.push(format!("tooltip=\"{}\"", props.join(", ")).into());
         }
 
         write!(
@@ -213,10 +265,14 @@ where
             b = "",
             i = self.base.indent
         )?;
+
+        // Use the common location labeling utility
+        let location_label =
+            super::render::get_location_label(location_id, location_type, &self.base.config);
         writeln!(
             self.base.write,
-            "{b:i$}label = \"{location_type} {id}\"",
-            id = location_id,
+            "{b:i$}label = \"{}\"",
+            escape_dot(&location_label, "\\n"),
             b = "",
             i = self.base.indent
         )?;
@@ -269,10 +325,7 @@ pub fn open_browser(
     let config = super::render::HydroWriteConfig {
         show_metadata: false,
         show_location_groups: true,
-        use_short_labels: true, // Default to short labels
-        process_id_name: built_flow.process_id_name().clone(),
-        cluster_id_name: built_flow.cluster_id_name().clone(),
-        external_id_name: built_flow.external_id_name().clone(),
+        ..Default::default()
     };
 
     // Use the existing debug function

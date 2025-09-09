@@ -1,5 +1,8 @@
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::fmt::Write;
+
+use crate::builder::ir::backtrace::Backtrace;
 
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
 
@@ -19,6 +22,35 @@ pub fn escape_mermaid(string: &str) -> String {
         .replace(')', "&#41;")
         // Handle pipes that can conflict with Mermaid edge labels
         .replace('|', "&#124;")
+}
+
+/// Mermaid node type data: (type, class, left_bracket, right_bracket)
+const MERMAID_NODE_DATA: &[(HydroNodeType, &str, &str, &str)] = &[
+    (HydroNodeType::Source, "sourceClass", "[[", "]]"),
+    (HydroNodeType::Transform, "transformClass", "(", ")"),
+    (HydroNodeType::Join, "joinClass", "(", ")"),
+    (HydroNodeType::Aggregation, "aggClass", "(", ")"),
+    (HydroNodeType::Network, "networkClass", "[[", "]]"),
+    (HydroNodeType::Sink, "sinkClass", "[/", "/]"),
+    (HydroNodeType::Tee, "teeClass", "(", ")"),
+];
+
+/// Get Mermaid class name for node type
+fn to_mermaid_class(node_type: HydroNodeType) -> &'static str {
+    MERMAID_NODE_DATA
+        .iter()
+        .find(|(nt, _, _, _)| *nt == node_type)
+        .map(|(_, class, _, _)| *class)
+        .unwrap_or("defaultClass")
+}
+
+/// Get Mermaid shape for node type
+fn to_mermaid_shape(node_type: HydroNodeType) -> (&'static str, &'static str) {
+    MERMAID_NODE_DATA
+        .iter()
+        .find(|(nt, _, _, _)| *nt == node_type)
+        .map(|(_, _, left, right)| (*left, *right))
+        .unwrap_or(("(", ")"))
 }
 
 /// Mermaid graph writer for Hydro IR.
@@ -75,24 +107,10 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
+        _backtrace: Option<&Backtrace>,
     ) -> Result<(), Self::Err> {
-        let class_str = match node_type {
-            HydroNodeType::Source => "sourceClass",
-            HydroNodeType::Transform => "transformClass",
-            HydroNodeType::Join => "joinClass",
-            HydroNodeType::Aggregation => "aggClass",
-            HydroNodeType::Network => "networkClass",
-            HydroNodeType::Sink => "sinkClass",
-            HydroNodeType::Tee => "teeClass",
-        };
-
-        let (lbracket, rbracket) = match node_type {
-            HydroNodeType::Source => ("[[", "]]"),
-            HydroNodeType::Sink => ("[/", "/]"),
-            HydroNodeType::Network => ("[[", "]]"),
-            HydroNodeType::Tee => ("(", ")"),
-            _ => ("[", "]"),
-        };
+        let class_str = to_mermaid_class(node_type);
+        let (lbracket, rbracket) = to_mermaid_shape(node_type);
 
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
@@ -134,17 +152,37 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_type: HydroEdgeType,
+        edge_properties: &HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
-        let arrow_style = match edge_type {
-            HydroEdgeType::Stream => "-->",
-            HydroEdgeType::Persistent => "==>",
-            HydroEdgeType::Network => "-.->",
-            HydroEdgeType::Cycle => "--o",
+        // Get unified edge style (Mermaid doesn't have location context, so pass None)
+        let style = super::render::get_unified_edge_style(edge_properties, None, None);
+
+        // Choose arrow style based on unified style patterns
+        let arrow_style = match (style.line_pattern, style.arrowhead) {
+            // Dotted patterns for network/remote connections
+            (super::render::LinePattern::Dotted, super::render::ArrowheadStyle::CircleFilled) => {
+                "-.->"
+            }
+            (super::render::LinePattern::Dotted, _) => "-.->",
+
+            // Circle arrowhead for singleton/special data
+            (_, super::render::ArrowheadStyle::CircleFilled) => "--o",
+
+            // Cross arrowhead for optional/nullable data
+            (_, super::render::ArrowheadStyle::DiamondOpen) => "--x",
+
+            // Thick lines for bounded/heavy data flows
+            _ if style.line_width > 1 => "==>",
+
+            // Default arrow
+            _ => "-->",
         };
 
-        // Write the edge definition on its own line
+        // For double line style (keyed streams), we'll add a visual indicator in the linkStyle
+        // For wavy lines (no order), we'll use stroke-dasharray to create a wavy pattern
+
+        // Write the edge definition
         writeln!(
             self.base.write,
             "{b:i$}n{src}{arrow}{label}n{dst}",
@@ -160,24 +198,40 @@ where
             i = self.base.indent,
         )?;
 
-        // Add styling for different edge types on a separate line
-        if !matches!(edge_type, HydroEdgeType::Stream) {
-            writeln!(
-                self.base.write,
-                "{b:i$}linkStyle {} stroke:{}",
-                self.link_count,
-                match edge_type {
-                    HydroEdgeType::Persistent => "#008800",
-                    HydroEdgeType::Network => "#880088",
-                    HydroEdgeType::Cycle => "#ff0000",
-                    HydroEdgeType::Stream => "#666666", /* Should not be used here, but for completeness. */
-                },
-                b = "",
-                i = self.base.indent,
-            )?;
+        // Apply advanced styling using linkStyle
+        let link_num = self.link_count;
+        self.link_count += 1;
+
+        // Build linkStyle properties
+        let mut link_style_parts = vec![format!("stroke:{}", style.color)];
+
+        // Apply stroke width
+        if style.line_width > 1 {
+            link_style_parts.push(format!("stroke-width:{}px", style.line_width));
         }
 
-        self.link_count += 1;
+        // Apply special patterns for semantic meaning
+        match (style.line_style, style.waviness) {
+            // Double lines for keyed streams - use stroke-dasharray to simulate
+            (super::render::LineStyle::Double, _) => {
+                link_style_parts.push("stroke-dasharray:8 2 2 2".to_string());
+            }
+            // Wavy lines for no-order - use a wavy dash pattern
+            (_, super::render::WavinessStyle::Wavy) => {
+                link_style_parts.push("stroke-dasharray:4 4".to_string());
+            }
+            _ => {}
+        }
+
+        // Apply the combined linkStyle
+        writeln!(
+            self.base.write,
+            "{b:i$}linkStyle {link_num} {style}",
+            style = link_style_parts.join(","),
+            b = "",
+            i = self.base.indent,
+        )?;
+
         Ok(())
     }
 
@@ -186,10 +240,14 @@ where
         location_id: usize,
         location_type: &str,
     ) -> Result<(), Self::Err> {
+        // Use the common location labeling utility
+        let location_label =
+            super::render::get_location_label(location_id, location_type, &self.base.config);
         writeln!(
             self.base.write,
-            "{b:i$}subgraph loc_{id} [\"{location_type} {id}\"]",
+            "{b:i$}subgraph {id} [\"{label}\"]",
             id = location_id,
+            label = location_label,
             b = "",
             i = self.base.indent,
         )?;

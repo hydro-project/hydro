@@ -1,3 +1,4 @@
+#[cfg(feature = "viz")]
 use clap::{Parser, ValueEnum};
 
 /// Enum for choosing between mermaid, dot, and reactflow graph writing.
@@ -7,8 +8,8 @@ pub enum GraphType {
     Mermaid,
     /// Dot (Graphviz) graphs.
     Dot,
-    /// Reactflow.js interactive graphs.
-    Reactflow,
+    /// JSON format for interactive graphs.
+    Json,
 }
 
 impl std::fmt::Display for GraphType {
@@ -20,23 +21,23 @@ impl std::fmt::Display for GraphType {
 /// Configuration for graph generation in examples.
 #[derive(Parser, Debug, Default)]
 pub struct GraphConfig {
-    /// Graph format to generate and display
+    /// Output graph format
     #[clap(long)]
     pub graph: Option<GraphType>,
 
-    /// Don't show metadata in graph nodes
+    /// Force save to temporary file instead of opening in browser
+    #[clap(long)]
+    pub file: bool,
+
+    /// Don't show metadata in generated graphs
     #[clap(long)]
     pub no_metadata: bool,
 
-    /// Don't show location groups
+    /// Don't show location groups in generated graphs
     #[clap(long)]
     pub no_location_groups: bool,
 
-    /// Don't include tee IDs in nodes
-    #[clap(long)]
-    pub no_tee_ids: bool,
-
-    /// Use full/long labels instead of short ones
+    /// Use long labels in generated graphs
     #[clap(long)]
     pub long_labels: bool,
 }
