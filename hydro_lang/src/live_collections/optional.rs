@@ -11,10 +11,12 @@ use super::singleton::{Singleton, ZipResult};
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
-use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::forward_handle::{ForwardRef, TickCycle};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
-use crate::location::tick::{Atomic, NoAtomic};
+use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::NonDet;
 
@@ -34,7 +36,7 @@ where
     }
 }
 
-impl<'a, T, L> CycleCollection<'a, TickCycleMarker> for Optional<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollection<'a, TickCycle> for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
@@ -51,7 +53,7 @@ where
     }
 }
 
-impl<'a, T, L> CycleComplete<'a, TickCycleMarker> for Optional<T, Tick<L>, Bounded>
+impl<'a, T, L> ReceiverComplete<'a, TickCycle> for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
@@ -76,7 +78,7 @@ where
     }
 }
 
-impl<'a, T, L> CycleCollection<'a, ForwardRefMarker> for Optional<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollection<'a, ForwardRef> for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
@@ -93,7 +95,7 @@ where
     }
 }
 
-impl<'a, T, L> CycleComplete<'a, ForwardRefMarker> for Optional<T, Tick<L>, Bounded>
+impl<'a, T, L> ReceiverComplete<'a, ForwardRef> for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
@@ -118,7 +120,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRefMarker> for Optional<T, L, B>
+impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRef> for Optional<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -138,7 +140,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> CycleComplete<'a, ForwardRefMarker> for Optional<T, L, B>
+impl<'a, T, L, B: Boundedness> ReceiverComplete<'a, ForwardRef> for Optional<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
