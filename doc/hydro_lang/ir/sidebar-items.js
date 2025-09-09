@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["BuildersOrCallback","DebugInstantiate","HydroNode","HydroRoot","HydroSource"],"fn":["dbg_dedup_tee","deep_clone","emit","transform_bottom_up","traverse_dfir"],"struct":["DebugExpr","DebugInstantiateFinalized","DebugType","HydroIrMetadata","HydroIrOpMetadata","QMacroSimplifier","TeeNode"],"type":["SeenTeeLocations","SeenTees"]};

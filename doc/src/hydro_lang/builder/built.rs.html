@@ -7,9 +7,9 @@
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">super</span>::compiled::CompiledFlow;
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">super</span>::deploy::{DeployFlow, DeployResult};
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">super</span>::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
-<a href=#10 id=10 data-nosnippet>10</a><span class="attr">#[cfg(feature = <span class="string">"viz"</span>)]
-<a href=#11 id=11 data-nosnippet>11</a></span><span class="kw">use </span><span class="kw">crate</span>::graph::api::GraphApi;
-<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span><span class="kw">crate</span>::ir::{HydroRoot, emit};
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">super</span>::ir::{HydroRoot, emit};
+<a href=#11 id=11 data-nosnippet>11</a><span class="attr">#[cfg(feature = <span class="string">"viz"</span>)]
+<a href=#12 id=12 data-nosnippet>12</a></span><span class="kw">use </span><span class="kw">crate</span>::graph::api::GraphApi;
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span><span class="kw">crate</span>::location::{Cluster, External, Process};
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::staging_util::Invariant;
 <a href=#15 id=15 data-nosnippet>15</a>
@@ -207,7 +207,7 @@
 <a href=#207 id=207 data-nosnippet>207</a>    }
 <a href=#208 id=208 data-nosnippet>208</a>
 <a href=#209 id=209 data-nosnippet>209</a>    <span class="kw">pub fn </span>with_default_optimize&lt;D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;(<span class="self">self</span>) -&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
-<a href=#210 id=210 data-nosnippet>210</a>        <span class="self">self</span>.optimize_with(<span class="kw">crate</span>::rewrites::persist_pullup::persist_pullup)
+<a href=#210 id=210 data-nosnippet>210</a>        <span class="self">self</span>.optimize_with(<span class="kw">super</span>::rewrites::persist_pullup::persist_pullup)
 <a href=#211 id=211 data-nosnippet>211</a>            .into_deploy()
 <a href=#212 id=212 data-nosnippet>212</a>    }
 <a href=#213 id=213 data-nosnippet>213</a>
