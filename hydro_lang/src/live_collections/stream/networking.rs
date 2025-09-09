@@ -1,3 +1,5 @@
+//! Networking APIs for [`Stream`].
+
 use std::marker::PhantomData;
 
 use serde::Serialize;
@@ -35,6 +37,7 @@ fn track_membership<'a, C, L: Location<'a> + NoTick + NoAtomic>(
         .filter_map(q!(|v| if v { Some(()) } else { None }))
 }
 
+#[expect(missing_docs, reason = "TODO")]
 pub fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr {
     let root = get_this_crate();
 
@@ -57,10 +60,12 @@ pub fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::E
     }
 }
 
-fn serialize_bincode<T: Serialize>(is_demux: bool) -> syn::Expr {
+#[expect(missing_docs, reason = "TODO")]
+pub fn serialize_bincode<T: Serialize>(is_demux: bool) -> syn::Expr {
     serialize_bincode_with_type(is_demux, &quote_type::<T>())
 }
 
+#[expect(missing_docs, reason = "TODO")]
 pub fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type) -> syn::Expr {
     let root = get_this_crate();
 
@@ -84,6 +89,7 @@ pub(crate) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type
     deserialize_bincode_with_type(tagged, &quote_type::<T>())
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L, B: Boundedness, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     pub fn send_bincode<L2>(
         self,
@@ -139,6 +145,7 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
@@ -151,31 +158,7 @@ impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Process<'a, L
     }
 }
 
-impl<'a, T, L, L2, B: Boundedness, O, R> KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R> {
-    pub fn demux_bincode(
-        self,
-        other: &Cluster<'a, L2>,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
-    where
-        T: Serialize + DeserializeOwned,
-    {
-        let serialize_pipeline = Some(serialize_bincode::<T>(true));
-
-        let deserialize_pipeline = Some(deserialize_bincode::<T>(None));
-
-        Stream::new(
-            other.clone(),
-            HydroNode::Network {
-                serialize_fn: serialize_pipeline.map(|e| e.into()),
-                instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.underlying.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<T>(),
-            },
-        )
-    }
-}
-
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
     pub fn round_robin_bincode<L2: 'a>(
         self,
@@ -207,6 +190,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R> {
     pub fn demux_bincode(
         self,
@@ -219,33 +203,7 @@ impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L
     }
 }
 
-impl<'a, T, L, L2, B: Boundedness, O, R> KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R> {
-    pub fn demux_bincode(
-        self,
-        other: &Cluster<'a, L2>,
-    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
-    where
-        T: Serialize + DeserializeOwned,
-    {
-        let serialize_pipeline = Some(serialize_bincode::<T>(true));
-
-        let deserialize_pipeline = Some(deserialize_bincode::<T>(Some(&quote_type::<L>())));
-
-        let raw_stream: Stream<(MemberId<L>, T), Cluster<'a, L2>, Unbounded, O, R> = Stream::new(
-            other.clone(),
-            HydroNode::Network {
-                serialize_fn: serialize_pipeline.map(|e| e.into()),
-                instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.underlying.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<(MemberId<L>, T)>(),
-            },
-        );
-
-        raw_stream.into_keyed()
-    }
-}
-
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L, B: Boundedness, O, R> Stream<T, Process<'a, L>, B, O, R> {
     pub fn send_bincode<L2>(
         self,

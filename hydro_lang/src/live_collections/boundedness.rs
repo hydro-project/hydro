@@ -1,3 +1,6 @@
+//! Type declarations for boundedness markers, which indicate whether a live collection is fully available
+//! in-memory ([`Bounded`]) or asynchronously arriving over time ([`Unbounded`]).
+
 use sealed::sealed;
 
 use super::keyed_singleton::{BoundedValue, KeyedSingletonBound};
