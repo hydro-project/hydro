@@ -10,6 +10,8 @@ use crate::live_collections::boundedness::{Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::KeyedSingleton;
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::stream::{ExactlyOnce, Stream, TotalOrder};
+#[cfg(stageleft_runtime)]
+use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
 use crate::location::tick::NoAtomic;
 use crate::location::{Cluster, External, Location, MemberId, MembershipEvent, NoTick, Process};

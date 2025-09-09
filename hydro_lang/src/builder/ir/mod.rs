@@ -23,7 +23,8 @@ use syn::visit_mut::VisitMut;
 
 #[cfg(feature = "build")]
 use crate::builder::deploy_provider::{Deploy, RegisterPort};
-use crate::location::{LocationId, NetworkHint};
+use crate::location::NetworkHint;
+use crate::location::dynamic::LocationId;
 
 pub mod backtrace;
 use backtrace::Backtrace;
@@ -1011,12 +1012,10 @@ impl HydroIrOpMetadata {
         clippy::new_without_default,
         reason = "explicit calls to new ensure correct backtrace bounds"
     )]
-    #[inline(never)]
     pub fn new() -> HydroIrOpMetadata {
         Self::new_with_skip(1)
     }
 
-    #[inline(never)]
     fn new_with_skip(skip_count: usize) -> HydroIrOpMetadata {
         HydroIrOpMetadata {
             backtrace: Backtrace::get_backtrace(2 + skip_count),

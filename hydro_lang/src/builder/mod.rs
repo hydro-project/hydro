@@ -51,9 +51,6 @@ pub struct FlowStateInner {
 
     /// Counters for clock IDs.
     pub(crate) next_clock_id: usize,
-
-    /// Counter for unique HydroNode IDs.
-    pub(crate) next_node_id: usize,
 }
 
 impl FlowStateInner {
@@ -130,7 +127,6 @@ impl<'a> FlowBuilder<'a> {
                 next_external_out: 0,
                 cycle_counts: 0,
                 next_clock_id: 0,
-                next_node_id: 0,
             })),
             processes: RefCell::new(vec![]),
             clusters: RefCell::new(vec![]),
@@ -153,7 +149,6 @@ impl<'a> FlowBuilder<'a> {
                     next_external_out: 0,
                     cycle_counts: 0,
                     next_clock_id: 0,
-                    next_node_id: 0,
                 })),
                 processes: RefCell::new(processes),
                 clusters: RefCell::new(clusters),

@@ -17,8 +17,10 @@ use super::singleton::Singleton;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
+#[cfg(stageleft_runtime)]
+use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, NoAtomic};
-use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
+use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
@@ -177,7 +179,7 @@ where
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
-            self.location.id(),
+            Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
@@ -190,7 +192,7 @@ where
             .push(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: self.location.id(),
+                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -222,7 +224,7 @@ where
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
-            self.location.id(),
+            Location::id(&self.location),
             expected_location,
             "locations do not match"
         );
@@ -239,7 +241,7 @@ where
                     inner: Box::new(self.ir_node.into_inner()),
                     metadata: metadata.clone(),
                 }),
-                out_location: self.location.id(),
+                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }

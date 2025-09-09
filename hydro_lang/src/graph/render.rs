@@ -275,7 +275,7 @@ pub fn extract_short_label(full_label: &str) -> String {
 fn extract_location_id(
     metadata: &crate::builder::ir::HydroIrMetadata,
 ) -> (Option<usize>, Option<String>) {
-    use crate::location::LocationId;
+    use crate::location::dynamic::LocationId;
     match &metadata.location_kind {
         LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
         LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
@@ -458,7 +458,7 @@ impl HydroNode {
         seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
         config: &HydroWriteConfig,
     ) -> usize {
-        use crate::location::LocationId;
+        use crate::location::dynamic::LocationId;
 
         // Helper functions to reduce duplication, categorized by input/expression patterns
 
