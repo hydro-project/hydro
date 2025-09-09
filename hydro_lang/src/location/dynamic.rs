@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 
 #[cfg(stageleft_runtime)]
-use crate::builder::{FlowState, ir::HydroIrMetadata};
+use crate::compile::{builder::FlowState, ir::HydroIrMetadata};
 
 #[expect(missing_docs, reason = "TODO")]
 #[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
@@ -65,8 +65,8 @@ pub(crate) trait DynLocation: Clone {
     fn new_node_metadata<T>(&self) -> HydroIrMetadata {
         use stageleft::quote_type;
 
-        use crate::builder::ir::HydroIrOpMetadata;
-        use crate::builder::ir::backtrace::Backtrace;
+        use crate::compile::ir::HydroIrOpMetadata;
+        use crate::compile::ir::backtrace::Backtrace;
 
         HydroIrMetadata {
             location_kind: self.id(),

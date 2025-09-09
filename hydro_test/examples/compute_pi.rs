@@ -49,7 +49,7 @@ async fn main() {
         )
     };
 
-    let builder = hydro_lang::builder::FlowBuilder::new();
+    let builder = hydro_lang::compile::builder::FlowBuilder::new();
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
 
     // Extract the IR for graph visualization

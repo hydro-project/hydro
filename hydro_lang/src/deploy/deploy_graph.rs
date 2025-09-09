@@ -25,7 +25,7 @@ use tokio::sync::RwLock;
 
 use super::deploy_runtime::*;
 use super::trybuild::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
-use crate::builder::deploy_provider::{
+use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
 use crate::location::NetworkHint;

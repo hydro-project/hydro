@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use hydro_deploy::Deployment;
-use hydro_lang::builder::deploy::DeployResult;
-use hydro_lang::builder::ir::{HydroNode, HydroRoot, deep_clone, traverse_dfir};
-use hydro_lang::builder::rewrites::persist_pullup::persist_pullup;
-use hydro_lang::builder::{FlowBuilder, RewriteIrFlowBuilder};
+use hydro_lang::compile::builder::{FlowBuilder, RewriteIrFlowBuilder};
+use hydro_lang::compile::deploy::DeployResult;
+use hydro_lang::compile::ir::{HydroNode, HydroRoot, deep_clone, traverse_dfir};
+use hydro_lang::compile::rewrites::persist_pullup::persist_pullup;
 use hydro_lang::deploy::HydroDeploy;
 use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
 use hydro_lang::location::dynamic::LocationId;

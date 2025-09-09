@@ -36,7 +36,7 @@ pub mod prelude {
 
     pub use stageleft::q;
 
-    pub use crate::builder::FlowBuilder;
+    pub use crate::compile::builder::FlowBuilder;
     pub use crate::live_collections::boundedness::{Bounded, Unbounded};
     pub use crate::live_collections::keyed_singleton::KeyedSingleton;
     pub use crate::live_collections::keyed_stream::KeyedStream;
@@ -69,8 +69,7 @@ pub mod deploy;
 
 pub mod forward_handle;
 
-#[expect(missing_docs, reason = "TODO")]
-pub mod builder;
+pub mod compile;
 
 mod manual_expr;
 

@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-use hydro_lang::builder::ir::{HydroNode, HydroRoot, traverse_dfir};
+use hydro_lang::compile::ir::{HydroNode, HydroRoot, traverse_dfir};
 use hydro_lang::location::dynamic::LocationId;
 use syn::visit::Visit;
 
@@ -742,8 +742,8 @@ pub fn nodes_to_partition(
 mod tests {
     use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-    use hydro_lang::builder::ir::deep_clone;
-    use hydro_lang::builder::rewrites::persist_pullup::persist_pullup;
+    use hydro_lang::compile::ir::deep_clone;
+    use hydro_lang::compile::rewrites::persist_pullup::persist_pullup;
     use hydro_lang::deploy::HydroDeploy;
     use hydro_lang::live_collections::stream::NoOrder;
     use hydro_lang::location::dynamic::LocationId;

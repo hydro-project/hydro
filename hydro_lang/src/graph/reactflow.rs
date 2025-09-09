@@ -342,7 +342,7 @@ where
 
 /// Create ReactFlow JSON from Hydro IR with type names
 pub fn hydro_ir_to_reactflow(
-    ir: &[crate::builder::ir::HydroRoot],
+    ir: &[crate::compile::ir::HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
@@ -365,7 +365,7 @@ pub fn hydro_ir_to_reactflow(
 
 /// Open ReactFlow visualization in browser using the consolidated debug utilities
 pub fn open_reactflow_browser(
-    ir: &[crate::builder::ir::HydroRoot],
+    ir: &[crate::compile::ir::HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
@@ -383,7 +383,7 @@ pub fn open_reactflow_browser(
 
 /// Save ReactFlow JSON to file using the consolidated debug utilities
 pub fn save_reactflow_json(
-    ir: &[crate::builder::ir::HydroRoot],
+    ir: &[crate::compile::ir::HydroRoot],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
@@ -403,7 +403,7 @@ pub fn save_reactflow_json(
 /// Open ReactFlow visualization in browser for a BuiltFlow
 #[cfg(feature = "build")]
 pub fn open_browser(
-    built_flow: &crate::builder::built::BuiltFlow,
+    built_flow: &crate::compile::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
     open_reactflow_browser(
         built_flow.ir(),

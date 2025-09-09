@@ -9,8 +9,7 @@ use syn::parse_quote;
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::singleton::{Singleton, ZipResult};
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::builder::FLOW_USED_MESSAGE;
-use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
+use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
@@ -66,10 +65,7 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
                 out_location: Location::id(&self.location),
@@ -108,10 +104,7 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
                 out_location: Location::id(&self.location),
@@ -154,10 +147,7 @@ where
         self.location
             .flow_state()
             .borrow_mut()
-            .roots
-            .as_mut()
-            .expect(FLOW_USED_MESSAGE)
-            .push(HydroRoot::CycleSink {
+            .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),

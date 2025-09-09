@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::builder::FlowState;
+use crate::compile::builder::FlowState;
 use crate::staging_util::Invariant;
 
 pub enum NotMany {}

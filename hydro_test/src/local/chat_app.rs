@@ -58,7 +58,7 @@ mod tests {
     async fn test_chat_app_no_replay() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
@@ -123,7 +123,7 @@ mod tests {
     async fn test_chat_app_replay() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::builder::FlowBuilder::new();
+        let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let external = builder.external::<()>();
         let p1 = builder.process();
 
