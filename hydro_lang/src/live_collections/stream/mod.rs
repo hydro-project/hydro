@@ -1,3 +1,5 @@
+//! Definitions and core APIs for the [`Stream`] live collection.
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::future::Future;
@@ -1325,6 +1327,7 @@ where
         Singleton::new(self.location, core)
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn collect_vec(self) -> Singleton<Vec<T>, L, B> {
         self.fold(
             q!(|| vec![]),
@@ -1709,6 +1712,7 @@ where
 }
 
 impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> Stream<(K, V), L, B, O, R> {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
         KeyedStream {
             underlying: self.weakest_ordering(),
@@ -2217,10 +2221,12 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn end_atomic(self) -> Stream<T, L, B, O, R> {
         Stream::new(self.location.tick.l, self.ir_node.into_inner())
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn atomic_source(&self) -> Tick<L> {
         self.location.tick.clone()
     }
@@ -2230,6 +2236,7 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, O, R> {
         Stream::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
     }
@@ -2391,6 +2398,7 @@ where
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
@@ -2426,6 +2434,7 @@ where
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L, O, R> Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
