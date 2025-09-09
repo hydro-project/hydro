@@ -11,12 +11,13 @@ use anyhow::Result;
 use futures::{FutureExt, StreamExt, TryStreamExt};
 use tokio::sync::RwLock;
 
+use super::aws::AwsNetwork;
 use super::gcp::GcpNetwork;
 use super::{
     CustomService, GcpComputeEngineHost, Host, LocalhostHost, ResourcePool, ResourceResult,
     Service, progress,
 };
-use crate::{AzureHost, ServiceBuilder};
+use crate::{AwsEc2Host, AzureHost, ServiceBuilder};
 
 pub struct Deployment {
     pub hosts: Vec<Weak<dyn Host>>,
@@ -260,5 +261,20 @@ impl Deployment {
         user: Option<String>,
     ) -> Arc<AzureHost> {
         self.add_host(|id| AzureHost::new(id, project, os_type, machine_size, image, region, user))
+    }
+
+    #[builder(entry = "AwsEc2Host", exit = "add")]
+    pub fn add_aws_ec2_host(
+        &mut self,
+        region: String,
+        instance_type: String,
+        ami: String,
+        network: Arc<RwLock<AwsNetwork>>,
+        user: Option<String>,
+        display_name: Option<String>,
+    ) -> Arc<AwsEc2Host> {
+        self.add_host(|id| {
+            AwsEc2Host::new(id, region, instance_type, ami, network, user, display_name)
+        })
     }
 }
