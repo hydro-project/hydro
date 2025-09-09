@@ -18,7 +18,7 @@
 <a href=#18 id=18 data-nosnippet>18</a>
 <a href=#19 id=19 data-nosnippet>19</a>    <span class="attr">#[test]
 <a href=#20 id=20 data-nosnippet>20</a>    </span><span class="kw">fn </span>many_to_many_ir() {
-<a href=#21 id=21 data-nosnippet>21</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#21 id=21 data-nosnippet>21</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#22 id=22 data-nosnippet>22</a>        <span class="kw">let _ </span>= <span class="kw">super</span>::many_to_many(<span class="kw-2">&amp;</span>builder);
 <a href=#23 id=23 data-nosnippet>23</a>        <span class="kw">let </span>built = builder.finalize();
 <a href=#24 id=24 data-nosnippet>24</a>
@@ -29,7 +29,7 @@
 <a href=#29 id=29 data-nosnippet>29</a>    </span><span class="kw">async fn </span>many_to_many() {
 <a href=#30 id=30 data-nosnippet>30</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#31 id=31 data-nosnippet>31</a>
-<a href=#32 id=32 data-nosnippet>32</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#32 id=32 data-nosnippet>32</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#33 id=33 data-nosnippet>33</a>        <span class="kw">let </span>cluster = <span class="kw">super</span>::many_to_many(<span class="kw-2">&amp;</span>builder);
 <a href=#34 id=34 data-nosnippet>34</a>
 <a href=#35 id=35 data-nosnippet>35</a>        <span class="kw">let </span>nodes = builder

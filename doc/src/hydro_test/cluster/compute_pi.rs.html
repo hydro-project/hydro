@@ -55,7 +55,7 @@
 <a href=#55 id=55 data-nosnippet>55</a>
 <a href=#56 id=56 data-nosnippet>56</a><span class="attr">#[cfg(test)]
 <a href=#57 id=57 data-nosnippet>57</a></span><span class="kw">mod </span>tests {
-<a href=#58 id=58 data-nosnippet>58</a>    <span class="kw">use </span>hydro_lang::builder::rewrites::persist_pullup;
+<a href=#58 id=58 data-nosnippet>58</a>    <span class="kw">use </span>hydro_lang::compile::rewrites::persist_pullup;
 <a href=#59 id=59 data-nosnippet>59</a>    <span class="kw">use </span>hydro_lang::deploy::HydroDeploy;
 <a href=#60 id=60 data-nosnippet>60</a>    <span class="kw">use </span>hydro_lang::location::Location;
 <a href=#61 id=61 data-nosnippet>61</a>    <span class="kw">use </span>hydro_optimize::decoupler;
@@ -64,7 +64,7 @@
 <a href=#64 id=64 data-nosnippet>64</a>
 <a href=#65 id=65 data-nosnippet>65</a>    <span class="attr">#[test]
 <a href=#66 id=66 data-nosnippet>66</a>    </span><span class="kw">fn </span>compute_pi_ir() {
-<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let _ </span>= <span class="kw">super</span>::compute_pi(<span class="kw-2">&amp;</span>builder, <span class="number">8192</span>);
 <a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">let </span>built = builder.with_default_optimize::&lt;HydroDeploy&gt;();
 <a href=#70 id=70 data-nosnippet>70</a>
@@ -81,7 +81,7 @@
 <a href=#81 id=81 data-nosnippet>81</a>
 <a href=#82 id=82 data-nosnippet>82</a>    <span class="attr">#[test]
 <a href=#83 id=83 data-nosnippet>83</a>    </span><span class="kw">fn </span>decoupled_compute_pi_ir() {
-<a href=#84 id=84 data-nosnippet>84</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#84 id=84 data-nosnippet>84</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#85 id=85 data-nosnippet>85</a>        <span class="kw">let </span>(cluster, <span class="kw">_</span>) = <span class="kw">super</span>::compute_pi(<span class="kw-2">&amp;</span>builder, <span class="number">8192</span>);
 <a href=#86 id=86 data-nosnippet>86</a>        <span class="kw">let </span>decoupled_cluster = builder.cluster::&lt;DecoupledCluster&gt;();
 <a href=#87 id=87 data-nosnippet>87</a>        <span class="kw">let </span>decoupler = decoupler::Decoupler {

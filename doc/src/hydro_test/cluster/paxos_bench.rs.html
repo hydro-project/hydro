@@ -178,7 +178,7 @@
 <a href=#178 id=178 data-nosnippet>178</a>
 <a href=#179 id=179 data-nosnippet>179</a>    <span class="attr">#[test]
 <a href=#180 id=180 data-nosnippet>180</a>    </span><span class="kw">fn </span>paxos_ir() {
-<a href=#181 id=181 data-nosnippet>181</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#181 id=181 data-nosnippet>181</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#182 id=182 data-nosnippet>182</a>        <span class="kw">let </span>proposers = builder.cluster();
 <a href=#183 id=183 data-nosnippet>183</a>        <span class="kw">let </span>acceptors = builder.cluster();
 <a href=#184 id=184 data-nosnippet>184</a>        <span class="kw">let </span>clients = builder.cluster();
@@ -194,7 +194,7 @@
 <a href=#194 id=194 data-nosnippet>194</a>        );
 <a href=#195 id=195 data-nosnippet>195</a>        <span class="kw">let </span>built = builder.with_default_optimize::&lt;HydroDeploy&gt;();
 <a href=#196 id=196 data-nosnippet>196</a>
-<a href=#197 id=197 data-nosnippet>197</a>        hydro_lang::builder::ir::dbg_dedup_tee(|| {
+<a href=#197 id=197 data-nosnippet>197</a>        hydro_lang::compile::ir::dbg_dedup_tee(|| {
 <a href=#198 id=198 data-nosnippet>198</a>            <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(built.ir());
 <a href=#199 id=199 data-nosnippet>199</a>        });
 <a href=#200 id=200 data-nosnippet>200</a>
@@ -229,7 +229,7 @@
 <a href=#229 id=229 data-nosnippet>229</a>
 <a href=#230 id=230 data-nosnippet>230</a>    <span class="attr">#[tokio::test]
 <a href=#231 id=231 data-nosnippet>231</a>    </span><span class="kw">async fn </span>paxos_some_throughput() {
-<a href=#232 id=232 data-nosnippet>232</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#232 id=232 data-nosnippet>232</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#233 id=233 data-nosnippet>233</a>        <span class="kw">let </span>proposers = builder.cluster();
 <a href=#234 id=234 data-nosnippet>234</a>        <span class="kw">let </span>acceptors = builder.cluster();
 <a href=#235 id=235 data-nosnippet>235</a>        <span class="kw">let </span>clients = builder.cluster();

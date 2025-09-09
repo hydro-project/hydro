@@ -5,7 +5,7 @@
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>stageleft::{q, quote_type};
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>syn::parse_quote;
 <a href=#7 id=7 data-nosnippet>7</a>
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::builder::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">crate</span>::live_collections::boundedness::{Boundedness, Unbounded};
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">crate</span>::live_collections::keyed_singleton::KeyedSingleton;
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span><span class="kw">crate</span>::live_collections::keyed_stream::KeyedStream;
@@ -309,25 +309,23 @@
 <a href=#309 id=309 data-nosnippet>309</a>        <span class="kw">let </span>external_key = flow_state_borrow.next_external_out;
 <a href=#310 id=310 data-nosnippet>310</a>        flow_state_borrow.next_external_out += <span class="number">1</span>;
 <a href=#311 id=311 data-nosnippet>311</a>
-<a href=#312 id=312 data-nosnippet>312</a>        <span class="kw">let </span>roots = flow_state_borrow.roots.as_mut().expect(<span class="string">"Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled()"</span>);
-<a href=#313 id=313 data-nosnippet>313</a>
-<a href=#314 id=314 data-nosnippet>314</a>        roots.push(HydroRoot::SendExternal {
-<a href=#315 id=315 data-nosnippet>315</a>            to_external_id: other.id,
-<a href=#316 id=316 data-nosnippet>316</a>            to_key: external_key,
-<a href=#317 id=317 data-nosnippet>317</a>            to_many: <span class="bool-val">false</span>,
-<a href=#318 id=318 data-nosnippet>318</a>            serialize_fn: serialize_pipeline.map(|e| e.into()),
-<a href=#319 id=319 data-nosnippet>319</a>            instantiate_fn: DebugInstantiate::Building,
-<a href=#320 id=320 data-nosnippet>320</a>            input: Box::new(HydroNode::Unpersist {
-<a href=#321 id=321 data-nosnippet>321</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#322 id=322 data-nosnippet>322</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#323 id=323 data-nosnippet>323</a>            }),
-<a href=#324 id=324 data-nosnippet>324</a>            op_metadata: HydroIrOpMetadata::new(),
-<a href=#325 id=325 data-nosnippet>325</a>        });
-<a href=#326 id=326 data-nosnippet>326</a>
-<a href=#327 id=327 data-nosnippet>327</a>        ExternalBincodeStream {
-<a href=#328 id=328 data-nosnippet>328</a>            process_id: other.id,
-<a href=#329 id=329 data-nosnippet>329</a>            port_id: external_key,
-<a href=#330 id=330 data-nosnippet>330</a>            _phantom: PhantomData,
-<a href=#331 id=331 data-nosnippet>331</a>        }
-<a href=#332 id=332 data-nosnippet>332</a>    }
-<a href=#333 id=333 data-nosnippet>333</a>}</code></pre></div></section></main></body></html>
+<a href=#312 id=312 data-nosnippet>312</a>        flow_state_borrow.push_root(HydroRoot::SendExternal {
+<a href=#313 id=313 data-nosnippet>313</a>            to_external_id: other.id,
+<a href=#314 id=314 data-nosnippet>314</a>            to_key: external_key,
+<a href=#315 id=315 data-nosnippet>315</a>            to_many: <span class="bool-val">false</span>,
+<a href=#316 id=316 data-nosnippet>316</a>            serialize_fn: serialize_pipeline.map(|e| e.into()),
+<a href=#317 id=317 data-nosnippet>317</a>            instantiate_fn: DebugInstantiate::Building,
+<a href=#318 id=318 data-nosnippet>318</a>            input: Box::new(HydroNode::Unpersist {
+<a href=#319 id=319 data-nosnippet>319</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#320 id=320 data-nosnippet>320</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+<a href=#321 id=321 data-nosnippet>321</a>            }),
+<a href=#322 id=322 data-nosnippet>322</a>            op_metadata: HydroIrOpMetadata::new(),
+<a href=#323 id=323 data-nosnippet>323</a>        });
+<a href=#324 id=324 data-nosnippet>324</a>
+<a href=#325 id=325 data-nosnippet>325</a>        ExternalBincodeStream {
+<a href=#326 id=326 data-nosnippet>326</a>            process_id: other.id,
+<a href=#327 id=327 data-nosnippet>327</a>            port_id: external_key,
+<a href=#328 id=328 data-nosnippet>328</a>            _phantom: PhantomData,
+<a href=#329 id=329 data-nosnippet>329</a>        }
+<a href=#330 id=330 data-nosnippet>330</a>    }
+<a href=#331 id=331 data-nosnippet>331</a>}</code></pre></div></section></main></body></html>

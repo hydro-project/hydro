@@ -58,7 +58,7 @@
 <a href=#58 id=58 data-nosnippet>58</a>    </span><span class="kw">async fn </span>test_chat_app_no_replay() {
 <a href=#59 id=59 data-nosnippet>59</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#60 id=60 data-nosnippet>60</a>
-<a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#62 id=62 data-nosnippet>62</a>        <span class="kw">let </span>external = builder.external::&lt;()&gt;();
 <a href=#63 id=63 data-nosnippet>63</a>        <span class="kw">let </span>p1 = builder.process();
 <a href=#64 id=64 data-nosnippet>64</a>
@@ -123,7 +123,7 @@
 <a href=#123 id=123 data-nosnippet>123</a>    </span><span class="kw">async fn </span>test_chat_app_replay() {
 <a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#125 id=125 data-nosnippet>125</a>
-<a href=#126 id=126 data-nosnippet>126</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#126 id=126 data-nosnippet>126</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#127 id=127 data-nosnippet>127</a>        <span class="kw">let </span>external = builder.external::&lt;()&gt;();
 <a href=#128 id=128 data-nosnippet>128</a>        <span class="kw">let </span>p1 = builder.process();
 <a href=#129 id=129 data-nosnippet>129</a>

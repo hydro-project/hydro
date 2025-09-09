@@ -80,7 +80,7 @@
 <a href=#80 id=80 data-nosnippet>80</a>    <span class="kw">use </span>std::collections::HashMap;
 <a href=#81 id=81 data-nosnippet>81</a>
 <a href=#82 id=82 data-nosnippet>82</a>    <span class="kw">use </span>hydro_deploy::Deployment;
-<a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">use </span>hydro_lang::builder::rewrites::persist_pullup;
+<a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">use </span>hydro_lang::compile::rewrites::persist_pullup;
 <a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">use </span>hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy};
 <a href=#85 id=85 data-nosnippet>85</a>    <span class="kw">use </span>hydro_lang::location::{Location, MemberId};
 <a href=#86 id=86 data-nosnippet>86</a>    <span class="kw">use </span>hydro_optimize::partitioner::{<span class="self">self</span>, Partitioner};
@@ -88,7 +88,7 @@
 <a href=#88 id=88 data-nosnippet>88</a>
 <a href=#89 id=89 data-nosnippet>89</a>    <span class="attr">#[test]
 <a href=#90 id=90 data-nosnippet>90</a>    </span><span class="kw">fn </span>simple_cluster_ir() {
-<a href=#91 id=91 data-nosnippet>91</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#91 id=91 data-nosnippet>91</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#92 id=92 data-nosnippet>92</a>        <span class="kw">let _ </span>= <span class="kw">super</span>::simple_cluster(<span class="kw-2">&amp;</span>builder);
 <a href=#93 id=93 data-nosnippet>93</a>        <span class="kw">let </span>built = builder.finalize();
 <a href=#94 id=94 data-nosnippet>94</a>
@@ -99,7 +99,7 @@
 <a href=#99 id=99 data-nosnippet>99</a>    </span><span class="kw">async fn </span>simple_cluster() {
 <a href=#100 id=100 data-nosnippet>100</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#101 id=101 data-nosnippet>101</a>
-<a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">let </span>(node, cluster) = <span class="kw">super</span>::simple_cluster(<span class="kw-2">&amp;</span>builder);
 <a href=#104 id=104 data-nosnippet>104</a>
 <a href=#105 id=105 data-nosnippet>105</a>        <span class="kw">let </span>nodes = builder
@@ -157,7 +157,7 @@
 <a href=#157 id=157 data-nosnippet>157</a>    </span><span class="kw">async fn </span>decouple_process() {
 <a href=#158 id=158 data-nosnippet>158</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#159 id=159 data-nosnippet>159</a>
-<a href=#160 id=160 data-nosnippet>160</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#160 id=160 data-nosnippet>160</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#161 id=161 data-nosnippet>161</a>        <span class="kw">let </span>(process1, process2) = <span class="kw">super</span>::decouple_process(<span class="kw-2">&amp;</span>builder);
 <a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">let </span>built = builder.with_default_optimize();
 <a href=#163 id=163 data-nosnippet>163</a>
@@ -179,7 +179,7 @@
 <a href=#179 id=179 data-nosnippet>179</a>    </span><span class="kw">async fn </span>decouple_cluster() {
 <a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#181 id=181 data-nosnippet>181</a>
-<a href=#182 id=182 data-nosnippet>182</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#182 id=182 data-nosnippet>182</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#183 id=183 data-nosnippet>183</a>        <span class="kw">let </span>(cluster1, cluster2) = <span class="kw">super</span>::decouple_cluster(<span class="kw-2">&amp;</span>builder);
 <a href=#184 id=184 data-nosnippet>184</a>        <span class="kw">let </span>built = builder.with_default_optimize();
 <a href=#185 id=185 data-nosnippet>185</a>
@@ -218,7 +218,7 @@
 <a href=#218 id=218 data-nosnippet>218</a>
 <a href=#219 id=219 data-nosnippet>219</a>        <span class="kw">let </span>num_nodes = <span class="number">3</span>;
 <a href=#220 id=220 data-nosnippet>220</a>        <span class="kw">let </span>num_partitions = <span class="number">2</span>;
-<a href=#221 id=221 data-nosnippet>221</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#221 id=221 data-nosnippet>221</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#222 id=222 data-nosnippet>222</a>        <span class="kw">let </span>(cluster1, cluster2) = <span class="kw">super</span>::partition(
 <a href=#223 id=223 data-nosnippet>223</a>            builder.cluster::&lt;()&gt;(),
 <a href=#224 id=224 data-nosnippet>224</a>            builder.cluster::&lt;()&gt;(),
@@ -264,7 +264,7 @@
 <a href=#264 id=264 data-nosnippet>264</a>
 <a href=#265 id=265 data-nosnippet>265</a>    <span class="attr">#[test]
 <a href=#266 id=266 data-nosnippet>266</a>    </span><span class="kw">fn </span>partitioned_simple_cluster_ir() {
-<a href=#267 id=267 data-nosnippet>267</a>        <span class="kw">let </span>builder = hydro_lang::builder::FlowBuilder::new();
+<a href=#267 id=267 data-nosnippet>267</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#268 id=268 data-nosnippet>268</a>        <span class="kw">let </span>(<span class="kw">_</span>, cluster) = <span class="kw">super</span>::simple_cluster(<span class="kw-2">&amp;</span>builder);
 <a href=#269 id=269 data-nosnippet>269</a>        <span class="kw">let </span>partitioner = Partitioner {
 <a href=#270 id=270 data-nosnippet>270</a>            nodes_to_partition: HashMap::from([(<span class="number">5</span>, <span class="macro">vec!</span>[<span class="string">"1"</span>.to_string()])]),

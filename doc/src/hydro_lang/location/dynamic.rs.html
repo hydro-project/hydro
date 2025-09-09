@@ -7,7 +7,7 @@
 <a href=#7 id=7 data-nosnippet>7</a></span><span class="kw">use </span>serde::{Deserialize, Serialize};
 <a href=#8 id=8 data-nosnippet>8</a>
 <a href=#9 id=9 data-nosnippet>9</a><span class="attr">#[cfg(stageleft_runtime)]
-<a href=#10 id=10 data-nosnippet>10</a></span><span class="kw">use </span><span class="kw">crate</span>::builder::{FlowState, ir::HydroIrMetadata};
+<a href=#10 id=10 data-nosnippet>10</a></span><span class="kw">use </span><span class="kw">crate</span>::compile::{builder::FlowState, ir::HydroIrMetadata};
 <a href=#11 id=11 data-nosnippet>11</a>
 <a href=#12 id=12 data-nosnippet>12</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
 <a href=#13 id=13 data-nosnippet>13</a>#[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
@@ -65,8 +65,8 @@
 <a href=#65 id=65 data-nosnippet>65</a>    <span class="kw">fn </span>new_node_metadata&lt;T&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HydroIrMetadata {
 <a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">use </span>stageleft::quote_type;
 <a href=#67 id=67 data-nosnippet>67</a>
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">use </span><span class="kw">crate</span>::builder::ir::HydroIrOpMetadata;
-<a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">use </span><span class="kw">crate</span>::builder::ir::backtrace::Backtrace;
+<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">use </span><span class="kw">crate</span>::compile::ir::HydroIrOpMetadata;
+<a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">use </span><span class="kw">crate</span>::compile::ir::backtrace::Backtrace;
 <a href=#70 id=70 data-nosnippet>70</a>
 <a href=#71 id=71 data-nosnippet>71</a>        HydroIrMetadata {
 <a href=#72 id=72 data-nosnippet>72</a>            location_kind: <span class="self">self</span>.id(),
