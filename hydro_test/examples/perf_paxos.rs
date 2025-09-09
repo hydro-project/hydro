@@ -37,7 +37,7 @@ async fn main() {
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
-    let mut builder = hydro_lang::builder::FlowBuilder::new();
+    let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
     let f = 1;
     let num_clients = 3;
     let num_clients_per_node = 500; // Change based on experiment between 1, 50, 100.

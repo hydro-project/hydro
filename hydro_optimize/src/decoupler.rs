@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use hydro_lang::builder::ir::{
+use hydro_lang::compile::ir::{
     DebugInstantiate, DebugType, HydroIrMetadata, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode,
     transform_bottom_up, traverse_dfir,
 };
@@ -275,8 +275,9 @@ mod tests {
     use std::collections::HashSet;
 
     use hydro_deploy::Deployment;
-    use hydro_lang::builder::rewrites::persist_pullup::persist_pullup;
-    use hydro_lang::builder::{FlowBuilder, ir};
+    use hydro_lang::compile::builder::FlowBuilder;
+    use hydro_lang::compile::ir;
+    use hydro_lang::compile::rewrites::persist_pullup::persist_pullup;
     use hydro_lang::location::Location;
     use hydro_lang::nondet::nondet;
     use stageleft::q;
@@ -293,7 +294,7 @@ mod tests {
         hydro_lang::location::Cluster<'a, ()>,
         hydro_lang::location::Cluster<'a, ()>,
         hydro_lang::location::Cluster<'a, ()>,
-        hydro_lang::builder::built::BuiltFlow<'a>,
+        hydro_lang::compile::built::BuiltFlow<'a>,
     ) {
         let builder = FlowBuilder::new();
         let send_cluster = builder.cluster::<()>();

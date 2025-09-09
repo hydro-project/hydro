@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use stageleft::{q, quote_type};
 use syn::parse_quote;
 
-use crate::builder::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
+use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::KeyedSingleton;
 use crate::live_collections::keyed_stream::KeyedStream;
@@ -309,9 +309,7 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Process<'a, L>, B, O, R> {
         let external_key = flow_state_borrow.next_external_out;
         flow_state_borrow.next_external_out += 1;
 
-        let roots = flow_state_borrow.roots.as_mut().expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled()");
-
-        roots.push(HydroRoot::SendExternal {
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: other.id,
             to_key: external_key,
             to_many: false,

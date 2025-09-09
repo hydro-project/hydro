@@ -50,7 +50,7 @@ async fn main() {
         network: network.clone(),
     };
 
-    let builder = hydro_lang::builder::FlowBuilder::new();
+    let builder = hydro_lang::compile::builder::FlowBuilder::new();
     let (cluster, leader) = compute_pi(&builder, 8192);
 
     let clusters = vec![(

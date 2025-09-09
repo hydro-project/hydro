@@ -7,8 +7,8 @@ use stageleft::{QuotedWithContext, q};
 #[cfg(stageleft_runtime)]
 use super::dynamic::DynLocation;
 use super::{Cluster, Location, LocationId, Process};
-use crate::builder::FlowState;
-use crate::builder::ir::{HydroNode, HydroSource};
+use crate::compile::builder::FlowState;
+use crate::compile::ir::{HydroNode, HydroSource};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
 use crate::forward_handle::{ForwardHandle, ForwardRef, TickCycle, TickCycleHandle};

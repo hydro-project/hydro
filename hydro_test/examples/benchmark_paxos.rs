@@ -67,7 +67,7 @@ async fn main() {
                 num_clients, num_clients_per_node, run_seconds
             );
 
-            let builder = hydro_lang::builder::FlowBuilder::new();
+            let builder = hydro_lang::compile::builder::FlowBuilder::new();
             let proposers = builder.cluster();
             let acceptors = builder.cluster();
             let clients = builder.cluster();

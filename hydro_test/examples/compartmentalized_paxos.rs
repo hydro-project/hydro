@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let builder = hydro_lang::builder::FlowBuilder::new();
+    let builder = hydro_lang::compile::builder::FlowBuilder::new();
     let f = 1;
     let num_clients = 1;
     let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.

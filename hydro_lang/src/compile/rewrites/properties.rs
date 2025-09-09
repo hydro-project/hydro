@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use stageleft::*;
 
-use crate::builder::ir::{HydroNode, HydroRoot, transform_bottom_up};
+use crate::compile::ir::{HydroNode, HydroRoot, transform_bottom_up};
 
 /// Structure for tracking expressions known to have particular algebraic properties.
 ///
@@ -69,7 +69,7 @@ pub fn properties_optimize(ir: &mut [HydroRoot], db: &mut PropertyDatabase) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::deploy::HydroDeploy;
     use crate::location::Location;
     use crate::nondet::nondet;

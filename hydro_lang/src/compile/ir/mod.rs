@@ -22,7 +22,7 @@ use syn::visit::{self, Visit};
 use syn::visit_mut::VisitMut;
 
 #[cfg(feature = "build")]
-use crate::builder::deploy_provider::{Deploy, RegisterPort};
+use crate::compile::deploy_provider::{Deploy, RegisterPort};
 use crate::location::NetworkHint;
 use crate::location::dynamic::LocationId;
 

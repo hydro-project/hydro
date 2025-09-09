@@ -29,7 +29,7 @@ mod tests {
         let mut deployment = Deployment::new();
         let localhost = deployment.Localhost();
 
-        let flow = hydro_lang::builder::FlowBuilder::new();
+        let flow = hydro_lang::compile::builder::FlowBuilder::new();
         let leader = flow.process();
         let workers = flow.cluster();
         super::first_ten_cluster(&leader, &workers);

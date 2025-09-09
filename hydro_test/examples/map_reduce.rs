@@ -49,7 +49,7 @@ async fn main() {
         )
     };
 
-    let builder = hydro_lang::builder::FlowBuilder::new();
+    let builder = hydro_lang::compile::builder::FlowBuilder::new();
     let (leader, cluster) = hydro_test::cluster::map_reduce::map_reduce(&builder);
 
     // Extract the IR for graph visualization
