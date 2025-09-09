@@ -1863,8 +1863,8 @@ mod tests {
         ]);
         // IR nodes aren't exposed, so we'll have to find them through relative positioning
         let unnamed_expected_taint = BTreeMap::from([
-            (("teed cycle 1", -1), BTreeSet::from(["network"])), // CycleSource
-            (("teed cycle 2", -1), BTreeSet::from(["network"])), // DeferTick
+            (("teed cycle 1", -2), BTreeSet::from(["network"])), // CycleSource
+            (("teed cycle 1", -1), BTreeSet::from(["network"])), // DeferTick
         ]);
 
         let mut implicit_map_dependencies = StructOrTuple::default();
@@ -1905,11 +1905,11 @@ mod tests {
 
         let unnamed_expected_dependencies = BTreeMap::from([
             (
-                ("teed cycle 1", -1),
+                ("teed cycle 1", -2),
                 BTreeMap::from([("network", cycle_dependencies.clone())]),
             ), // CycleSource
             (
-                ("teed cycle 2", -1),
+                ("teed cycle 1", -1),
                 BTreeMap::from([("network", cycle_dependencies)]),
             ), // DeferTick
         ]);
@@ -1969,11 +1969,12 @@ mod tests {
         let (complete_cycle2, cycle2) =
             cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
         let chained = {
-            cycle1.join(input.batch(&cluster2_tick, nondet!(/** test */)))
+            cycle1.ir_node_named("teed chain 1 cycled")
+                .join(input.batch(&cluster2_tick, nondet!(/** test */)))
                 .ir_node_named("join")
                 .map(q!(|(_, (b1,b2))| (b1,b2))) // Both values are influenced by the join with cycle2_out
                 .ir_node_named("map (x,(a,b)) to (a,b)")
-                .chain(cycle2)
+                .chain(cycle2.ir_node_named("teed map (a,b) to (b,b) 1 cycled"))
         };
         complete_cycle1.complete_next_tick(chained.clone().ir_node_named("teed chain 1"));
         let cycle2_out = chained
@@ -2001,16 +2002,19 @@ mod tests {
             ("teed map (a,b) to (b,b) 2", BTreeSet::from(["network"])), // Tee(map)
         ]);
         let unnamed_expected_taint = BTreeMap::from([
-            (("network", -8), BTreeSet::from(["network"])), /* CycleSource(cycle1), parent = DeferTick(cycle1) */
-            (("map (x,(a,b)) to (a,b)", 1), BTreeSet::from(["network"])), // CycleSource(cycle2)
-            (("teed chain 1", -1), BTreeSet::from(["network"])), // Chain
-            (("teed chain 1", 1), BTreeSet::from(["network"])), // DeferTick(cycle1)
+            (("teed chain 1 cycled", -1), BTreeSet::from(["network"])), /* CycleSource(cycle1), parent = DeferTick(cycle1) */
+            (
+                ("teed map (a,b) to (b,b) 1 cycled", -1),
+                BTreeSet::from(["network"]),
+            ), // CycleSource(cycle2)
+            (("teed chain 1", -1), BTreeSet::from(["network"])),        // Chain
+            (("teed chain 1 cycled", 0), BTreeSet::from(["network"])),  // DeferTick(cycle1)
             (
                 ("teed map (a,b) to (b,b) 1", -1),
                 BTreeSet::from(["network"]),
             ), // map (a,b) to (b,b)
             (
-                ("teed map (a,b) to (b,b) 1", 1),
+                ("teed map (a,b) to (b,b) 1 cycled", 0),
                 BTreeSet::from(["network"]),
             ), // DeferTick(cycle2)
         ]);
@@ -2074,11 +2078,11 @@ mod tests {
         ]);
         let unnamed_expected_dependencies = BTreeMap::from([
             (
-                ("network", -8),
+                ("teed chain 1 cycled", -1),
                 BTreeMap::from([("network", other_dependencies.clone())]),
             ), // CycleSource(cycle1), parent = DeferTick(cycle1)
             (
-                ("map (x,(a,b)) to (a,b)", 1),
+                ("teed map (a,b) to (b,b) 1 cycled", -1),
                 BTreeMap::from([("network", other_dependencies.clone())]),
             ), // CycleSource(cycle2)
             (
@@ -2086,7 +2090,7 @@ mod tests {
                 BTreeMap::from([("network", other_dependencies.clone())]),
             ), // Chain
             (
-                ("teed chain 1", 1),
+                ("teed chain 1 cycled", 0),
                 BTreeMap::from([("network", other_dependencies.clone())]),
             ), // DeferTick(cycle1)
             (
@@ -2094,7 +2098,7 @@ mod tests {
                 BTreeMap::from([("network", other_dependencies.clone())]),
             ), // map (a,b) to (b,b)
             (
-                ("teed map (a,b) to (b,b) 1", 1),
+                ("teed map (a,b) to (b,b) 1 cycled", 0),
                 BTreeMap::from([("network", other_dependencies)]),
             ), // DeferTick(cycle2)
         ]);

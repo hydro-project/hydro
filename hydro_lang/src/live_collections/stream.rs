@@ -16,10 +16,12 @@ use super::optional::Optional;
 use super::singleton::Singleton;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::builder::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
-use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::forward_handle::{ForwardRef, TickCycle};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
-use crate::location::tick::{Atomic, NoAtomic};
+use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
@@ -156,7 +158,7 @@ where
     }
 }
 
-impl<'a, T, L, O, R> CycleCollection<'a, TickCycleMarker> for Stream<T, Tick<L>, Bounded, O, R>
+impl<'a, T, L, O, R> CycleCollection<'a, TickCycle> for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
@@ -173,7 +175,7 @@ where
     }
 }
 
-impl<'a, T, L, O, R> CycleComplete<'a, TickCycleMarker> for Stream<T, Tick<L>, Bounded, O, R>
+impl<'a, T, L, O, R> ReceiverComplete<'a, TickCycle> for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
@@ -198,7 +200,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRefMarker> for Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRef> for Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -218,7 +220,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> CycleComplete<'a, ForwardRefMarker> for Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O, R> ReceiverComplete<'a, ForwardRef> for Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {

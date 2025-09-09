@@ -9,10 +9,9 @@ use super::dynamic::DynLocation;
 use super::{Cluster, Location, LocationId, Process};
 use crate::builder::FlowState;
 use crate::builder::ir::{HydroNode, HydroSource};
-use crate::cycle::{
-    CycleCollection, CycleCollectionWithInitial, DeferTick, ForwardRef, ForwardRefMarker,
-    TickCycle, TickCycleMarker,
-};
+#[cfg(stageleft_runtime)]
+use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
+use crate::forward_handle::{ForwardHandle, ForwardRef, TickCycle, TickCycleHandle};
 use crate::live_collections::boundedness::Bounded;
 use crate::live_collections::optional::Optional;
 use crate::live_collections::singleton::Singleton;
@@ -67,6 +66,10 @@ where
 
 #[sealed]
 impl<L> NoTick for Atomic<L> {}
+
+pub trait DeferTick {
+    fn defer_tick(self) -> Self;
+}
 
 /// Marks the stream as being inside the single global clock domain.
 #[derive(Clone)]
@@ -151,16 +154,20 @@ where
         )
     }
 
-    pub fn forward_ref<S>(&self) -> (ForwardRef<'a, S>, S)
+    #[expect(
+        private_bounds,
+        reason = "only Hydro collections can implement ReceiverComplete"
+    )]
+    pub fn forward_ref<S>(&self) -> (ForwardHandle<'a, S>, S)
     where
-        S: CycleCollection<'a, ForwardRefMarker, Location = Self>,
+        S: CycleCollection<'a, ForwardRef, Location = Self>,
         L: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
-            ForwardRef {
+            ForwardHandle {
                 completed: false,
                 ident: ident.clone(),
                 expected_location: Location::id(self),
@@ -170,59 +177,50 @@ where
         )
     }
 
-    pub fn forward_ref_atomic<S>(&self) -> (ForwardRef<'a, S>, S)
+    #[expect(
+        private_bounds,
+        reason = "only Hydro collections can implement ReceiverComplete"
+    )]
+    pub fn cycle<S>(&self) -> (TickCycleHandle<'a, S>, S)
     where
-        S: CycleCollection<'a, ForwardRefMarker, Location = Atomic<L>>,
-    {
-        let next_id = self.flow_state().borrow_mut().next_cycle_id();
-        let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
-
-        (
-            ForwardRef {
-                completed: false,
-                ident: ident.clone(),
-                expected_location: Location::id(self),
-                _phantom: PhantomData,
-            },
-            S::create_source(ident, Atomic { tick: self.clone() }),
-        )
-    }
-
-    pub fn cycle<S>(&self) -> (TickCycle<'a, S>, S)
-    where
-        S: CycleCollection<'a, TickCycleMarker, Location = Self> + DeferTick,
+        S: CycleCollection<'a, TickCycle, Location = Self> + DeferTick,
         L: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
-            TickCycle {
+            TickCycleHandle {
                 completed: false,
                 ident: ident.clone(),
                 expected_location: Location::id(self),
                 _phantom: PhantomData,
             },
-            S::create_source(ident, self.clone()),
+            S::create_source(ident, self.clone()).defer_tick(),
         )
     }
 
-    pub fn cycle_with_initial<S>(&self, initial: S) -> (TickCycle<'a, S>, S)
+    #[expect(
+        private_bounds,
+        reason = "only Hydro collections can implement ReceiverComplete"
+    )]
+    pub fn cycle_with_initial<S>(&self, initial: S) -> (TickCycleHandle<'a, S>, S)
     where
-        S: CycleCollectionWithInitial<'a, TickCycleMarker, Location = Self> + DeferTick,
+        S: CycleCollectionWithInitial<'a, TickCycle, Location = Self>,
         L: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
-            TickCycle {
+            TickCycleHandle {
                 completed: false,
                 ident: ident.clone(),
                 expected_location: Location::id(self),
                 _phantom: PhantomData,
             },
-            S::create_source(ident, initial, self.clone()),
+            // no need to defer_tick, create_source_with_initial does it for us
+            S::create_source_with_initial(ident, initial, self.clone()),
         )
     }
 }
