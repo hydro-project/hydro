@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["chat_server"],"struct":["ChatServer"]};
+window.SIDEBAR_ITEMS = {"fn":["chat_server"]};
