@@ -1,3 +1,5 @@
+//! Definitions and core APIs for the [`Optional`] live collection.
+
 use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -19,6 +21,7 @@ use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::NonDet;
 
+#[expect(missing_docs, reason = "TODO")]
 pub struct Optional<Type, Loc, Bound: Boundedness> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
@@ -207,6 +210,7 @@ where
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L, B: Boundedness> Optional<T, L, B>
 where
     L: Location<'a>,
@@ -481,6 +485,7 @@ where
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L> Optional<T, L, Bounded>
 where
     L: Location<'a>,
@@ -536,6 +541,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn end_atomic(self) -> Optional<T, L, B> {
         Optional::new(self.location.tick.l, self.ir_node.into_inner())
     }
@@ -545,6 +551,7 @@ impl<'a, T, L, B: Boundedness> Optional<T, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn atomic(self, tick: &Tick<L>) -> Optional<T, Atomic<L>, B> {
         Optional::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
     }
@@ -597,6 +604,7 @@ where
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L> Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
