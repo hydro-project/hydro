@@ -11,10 +11,10 @@ Install `wasm-bindgen-cli` globally: `cargo install wasm-bindgen-cli`.
 
 ### Running Tests
 
-Run (in the root hydroflow directory):
+Run (in the repo root directory):
 
 ```
-CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner cargo test --target wasm32-unknown-unknown -p hydroflow --tests
+CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner cargo test --target wasm32-unknown-unknown -p dfir_rs --tests
 ```
 
 Flag explanation:

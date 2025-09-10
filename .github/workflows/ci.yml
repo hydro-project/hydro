@@ -279,7 +279,7 @@ jobs:
         run: cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
 
       - run: cargo check -p dfir_rs --target wasm32-unknown-unknown
-  
+
   test-wasm-all:
     if: ${{ always() }}
     runs-on: ubuntu-latest

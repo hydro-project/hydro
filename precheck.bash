@@ -81,11 +81,15 @@ cargo test $TARGETS --doc
 # Test website_playground wasm build.
 if [ "$TEST_WEBSITE" = true ]; then
     pushd website_playground
-    RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" wasm-pack build
+    rustup toolchain install nightly
+    RUSTUP_TOOLCHAIN="nightly" RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" wasm-pack build
     popd
 fi
 
-[ "$TEST_DFIR" = false ] || CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
+if [ "$TEST_DFIR" = true ]; then
+    rustup toolchain install nightly
+    RUSTUP_TOOLCHAIN="nightly" CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
+fi
 
 # Test that docs build.
 RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo +nightly doc --no-deps --all-features
