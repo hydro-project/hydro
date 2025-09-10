@@ -54,7 +54,6 @@ pub mod runtime_context;
 
 pub mod nondet;
 
-#[expect(missing_docs, reason = "TODO")]
 pub mod live_collections;
 
 pub mod location;
