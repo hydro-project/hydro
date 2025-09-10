@@ -1,3 +1,5 @@
+//! Definitions and core APIs for the [`Singleton`] live collection.
+
 use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -18,6 +20,7 @@ use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::NonDet;
 
+#[expect(missing_docs, reason = "TODO")]
 pub struct Singleton<Type, Loc, Bound: Boundedness> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
@@ -220,6 +223,22 @@ where
         }
     }
 
+    /// Transforms the singleton value by applying a function `f` to it,
+    /// continuously as the input is updated.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!(5));
+    /// singleton.map(q!(|v| v * 2)).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 10
+    /// # assert_eq!(stream.next().await.unwrap(), 10);
+    /// # }));
+    /// ```
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Singleton<U, L, B>
     where
         F: Fn(T) -> U + 'a,
@@ -235,6 +254,31 @@ where
         )
     }
 
+    /// Transforms the singleton value by applying a function `f` to it and then flattening
+    /// the result into a stream, preserving the order of elements.
+    ///
+    /// The function `f` is applied to the singleton value to produce an iterator, and all items
+    /// from that iterator are emitted in the output stream in deterministic order.
+    ///
+    /// The implementation of [`Iterator`] for the output type `I` must produce items in a
+    /// **deterministic** order. For example, `I` could be a `Vec`, but not a `HashSet`.
+    /// If the order is not deterministic, use [`Singleton::flat_map_unordered`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!(vec![1, 2, 3]));
+    /// singleton.flat_map_ordered(q!(|v| v)).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1, 2, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn flat_map_ordered<U, I, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -254,6 +298,32 @@ where
         )
     }
 
+    /// Like [`Singleton::flat_map_ordered`], but allows the implementation of [`Iterator`]
+    /// for the output type `I` to produce items in any order.
+    ///
+    /// The function `f` is applied to the singleton value to produce an iterator, and all items
+    /// from that iterator are emitted in the output stream in non-deterministic order.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!(
+    ///     std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3])
+    /// ));
+    /// singleton.flat_map_unordered(q!(|v| v)).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3, but in no particular order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2, 3]);
+    /// # }));
+    /// ```
     pub fn flat_map_unordered<U, I, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -273,6 +343,30 @@ where
         )
     }
 
+    /// Flattens the singleton value into a stream, preserving the order of elements.
+    ///
+    /// The singleton value must implement [`IntoIterator`], and all items from that iterator
+    /// are emitted in the output stream in deterministic order.
+    ///
+    /// The implementation of [`Iterator`] for the element type `T` must produce items in a
+    /// **deterministic** order. For example, `T` could be a `Vec`, but not a `HashSet`.
+    /// If the order is not deterministic, use [`Singleton::flatten_unordered`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!(vec![1, 2, 3]));
+    /// singleton.flatten_ordered().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1, 2, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn flatten_ordered<U>(self) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
         T: IntoIterator<Item = U>,
@@ -280,6 +374,32 @@ where
         self.flat_map_ordered(q!(|x| x))
     }
 
+    /// Like [`Singleton::flatten_ordered`], but allows the implementation of [`Iterator`]
+    /// for the element type `T` to produce items in any order.
+    ///
+    /// The singleton value must implement [`IntoIterator`], and all items from that iterator
+    /// are emitted in the output stream in non-deterministic order.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!(
+    ///     std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3])
+    /// ));
+    /// singleton.flatten_unordered().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3, but in no particular order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2, 3]);
+    /// # }));
+    /// ```
     pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder, ExactlyOnce>
     where
         T: IntoIterator<Item = U>,
@@ -287,6 +407,28 @@ where
         self.flat_map_unordered(q!(|x| x))
     }
 
+    /// Creates an optional containing the singleton value if it satisfies a predicate `f`.
+    ///
+    /// If the predicate returns `true`, the output optional contains the same value.
+    /// If the predicate returns `false`, the output optional is empty.
+    ///
+    /// The closure `f` receives a reference `&T` rather than an owned value `T` because filtering does
+    /// not modify or take ownership of the value. If you need to modify the value while filtering
+    /// use [`Singleton::filter_map`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!(5));
+    /// singleton.filter(q!(|&x| x > 3)).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 5
+    /// # assert_eq!(stream.next().await.unwrap(), 5);
+    /// # }));
+    /// ```
     pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
     where
         F: Fn(&T) -> bool + 'a,
@@ -302,6 +444,27 @@ where
         )
     }
 
+    /// An operator that both filters and maps. It yields the value only if the supplied
+    /// closure `f` returns `Some(value)`.
+    ///
+    /// If the closure returns `Some(new_value)`, the output optional contains `new_value`.
+    /// If the closure returns `None`, the output optional is empty.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!("42"));
+    /// singleton
+    ///     .filter_map(q!(|s| s.parse::<i32>().ok()))
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 42
+    /// # assert_eq!(stream.next().await.unwrap(), 42);
+    /// # }));
+    /// ```
     pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
     where
         F: Fn(T) -> Option<U> + 'a,
@@ -317,6 +480,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn zip<O>(self, other: O) -> <Self as ZipResult<'a, O>>::Out
     where
         Self: ZipResult<'a, O, Location = L>,
@@ -364,6 +528,7 @@ where
         }
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn continue_if<U>(self, signal: Optional<U, L, Bounded>) -> Optional<T, L, Bounded>
     where
         Self: ZipResult<
@@ -376,6 +541,7 @@ where
         self.zip(signal.map(q!(|_u| ()))).map(q!(|(d, _signal)| d))
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn continue_unless<U>(self, other: Optional<U, L, Bounded>) -> Optional<T, L, Bounded>
     where
         Singleton<T, L, B>: ZipResult<
@@ -422,6 +588,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn end_atomic(self) -> Optional<T, L, B> {
         Optional::new(self.location.tick.l, self.ir_node.into_inner())
     }
@@ -431,6 +598,7 @@ impl<'a, T, L, B: Boundedness> Singleton<T, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn atomic(self, tick: &Tick<L>) -> Singleton<T, Atomic<L>, B> {
         Singleton::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
     }
@@ -486,6 +654,7 @@ where
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L> Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
@@ -569,6 +738,7 @@ where
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 pub trait ZipResult<'a, Other> {
     type Out;
     type ElementType;
