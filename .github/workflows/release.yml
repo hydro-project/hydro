@@ -75,7 +75,7 @@ jobs:
           --bump ${{ inputs.bump }} --bump-dependencies auto
           ${{ inputs.execute && '--execute' || '--no-publish' }}
           dfir_rs dfir_lang dfir_macro
-          hydro_lang hydro_optimize hydro_std
+          hydro_lang hydro_std
           hydro_deploy hydro_deploy_integration
           multiplatform_test
           |& tee release.log
