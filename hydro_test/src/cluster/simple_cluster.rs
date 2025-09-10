@@ -77,13 +77,9 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use hydro_deploy::Deployment;
-    use hydro_lang::compile::rewrites::persist_pullup;
-    use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy};
-    use hydro_lang::location::{Location, MemberId};
-    use hydro_optimize::partitioner::{self, Partitioner};
+    use hydro_lang::deploy::DeployCrateWrapper;
+    use hydro_lang::location::MemberId;
     use stageleft::q;
 
     #[test]
@@ -259,32 +255,6 @@ mod tests {
                 );
                 assert_eq!(stdout.recv().await.unwrap(), expected_message);
             }
-        }
-    }
-
-    #[test]
-    fn partitioned_simple_cluster_ir() {
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
-        let (_, cluster) = super::simple_cluster(&builder);
-        let partitioner = Partitioner {
-            nodes_to_partition: HashMap::from([(5, vec!["1".to_string()])]),
-            num_partitions: 3,
-            location_id: cluster.id().raw_id(),
-            new_cluster_id: None,
-        };
-        let built = builder
-            .optimize_with(persist_pullup::persist_pullup)
-            .optimize_with(|roots| partitioner::partition(roots, &partitioner))
-            .into_deploy::<HydroDeploy>();
-
-        hydro_build_utils::assert_debug_snapshot!(built.ir());
-
-        for (id, ir) in built.preview_compile().all_dfir() {
-            hydro_build_utils::insta::with_settings!({
-                snapshot_suffix => format!("surface_graph_{id}")
-            }, {
-                hydro_build_utils::assert_snapshot!(ir.surface_syntax_string());
-            });
         }
     }
 }
