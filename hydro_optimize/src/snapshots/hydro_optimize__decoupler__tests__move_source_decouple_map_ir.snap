@@ -6,7 +6,7 @@ expression: built.ir()
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: decoupler :: tests :: * ; | a | println ! ("Got it: {}" , a) }),
         input: Map {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , i32) , i32 > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
+            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) , i32 > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
             input: Network {
                 serialize_fn: Some(
                     :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: MemberId < _ > , i32) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
@@ -17,15 +17,15 @@ expression: built.ir()
                 ),
                 input: CrossProduct {
                     left: Map {
-                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , ()) , hydro_lang :: __staged :: location :: member_id :: MemberId < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
                         input: FilterMap {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , bool) , core :: option :: Option < (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
                             input: FoldKeyed {
                                 init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | | false }),
-                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_lang :: __staged :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
+                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
                                 input: Persist {
                                     inner: Map {
-                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_lang :: __staged :: location :: member_id :: MemberId < () > , (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , hydro_lang :: __staged :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
                                         input: Source {
                                             source: Iter(
                                                 { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_memberids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: location :: MemberId < () >] > (__hydro_lang_cluster_ids_1) } ; underlying_memberids__free },
@@ -35,7 +35,7 @@ expression: built.ir()
                                                     0,
                                                 ),
                                                 output_type: Some(
-                                                    & hydro_lang :: __staged :: location :: member_id :: MemberId < () >,
+                                                    & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
                                                 ),
                                             },
                                         },
@@ -44,7 +44,7 @@ expression: built.ir()
                                                 0,
                                             ),
                                             output_type: Some(
-                                                (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , hydro_lang :: __staged :: location :: MembershipEvent),
+                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
                                             ),
                                         },
                                     },
@@ -53,7 +53,7 @@ expression: built.ir()
                                             0,
                                         ),
                                         output_type: Some(
-                                            (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , hydro_lang :: __staged :: location :: MembershipEvent),
+                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
                                         ),
                                     },
                                 },
@@ -62,7 +62,7 @@ expression: built.ir()
                                         0,
                                     ),
                                     output_type: Some(
-                                        (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , bool),
+                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool),
                                     ),
                                 },
                             },
@@ -71,7 +71,7 @@ expression: built.ir()
                                     0,
                                 ),
                                 output_type: Some(
-                                    (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , ()),
+                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , ()),
                                 ),
                             },
                         },
@@ -83,7 +83,7 @@ expression: built.ir()
                                 ),
                             ),
                             output_type: Some(
-                                hydro_lang :: __staged :: location :: member_id :: MemberId < () >,
+                                hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
                             ),
                         },
                     },
@@ -128,7 +128,7 @@ expression: built.ir()
                                         2,
                                     ),
                                     output_type: Some(
-                                        (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , i32),
+                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
                                     ),
                                 },
                             },
@@ -137,7 +137,7 @@ expression: built.ir()
                                     0,
                                 ),
                                 output_type: Some(
-                                    (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , i32),
+                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
                                 ),
                             },
                         },
@@ -158,7 +158,7 @@ expression: built.ir()
                             ),
                         ),
                         output_type: Some(
-                            (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , i32),
+                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
                         ),
                     },
                 },
@@ -167,7 +167,7 @@ expression: built.ir()
                         1,
                     ),
                     output_type: Some(
-                        (hydro_lang :: __staged :: location :: member_id :: MemberId < () > , i32),
+                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
                     ),
                 },
             },

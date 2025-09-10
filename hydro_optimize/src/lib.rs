@@ -11,6 +11,9 @@ pub mod repair;
 pub mod rewrites;
 
 #[cfg(test)]
+mod tests;
+
+#[cfg(test)]
 mod test_init {
     #[ctor::ctor]
     fn init() {
