@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["KeyedStream"]};
+window.SIDEBAR_ITEMS = {"mod":["networking"],"struct":["KeyedStream"]};
