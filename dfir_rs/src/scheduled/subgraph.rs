@@ -4,15 +4,24 @@ use super::graph::HandoffData;
 use crate::util::slot_vec::SlotVec;
 
 /// Represents a compiled subgraph. Used internally by [Dataflow] to erase the input/output [Handoff] types.
-pub(crate) trait Subgraph {
-    // TODO: pass in some scheduling info?
-    fn run(&mut self, context: &mut Context, handoffs: &mut SlotVec<HandoffTag, HandoffData>);
+pub(crate) trait Subgraph<'a> {
+    fn run(
+        &mut self,
+        context: &mut Context,
+        handoffs: &mut SlotVec<HandoffTag, HandoffData>,
+    ) -> Box<dyn 'a + Future<Output = ()>>;
 }
-impl<F> Subgraph for F
+
+impl<'a, Func, Fut> Subgraph<'a> for Func
 where
-    F: FnMut(&mut Context, &mut SlotVec<HandoffTag, HandoffData>),
+    Func: FnMut(&mut Context, &mut SlotVec<HandoffTag, HandoffData>) -> Fut,
+    Fut: 'a + Future<Output = ()>,
 {
-    fn run(&mut self, context: &mut Context, handoffs: &mut SlotVec<HandoffTag, HandoffData>) {
-        (self)(context, handoffs);
+    fn run(
+        &mut self,
+        context: &mut Context,
+        handoffs: &mut SlotVec<HandoffTag, HandoffData>,
+    ) -> Box<dyn 'a + Future<Output = ()>> {
+        Box::new((self)(context, handoffs))
     }
 }

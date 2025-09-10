@@ -286,7 +286,7 @@ pub fn run_server<RX>(
                 meta_graph.open_graph(graph, write_config).unwrap();
             }
 
-            let df_task = df.run_async();
+            let df_task = df.run();
 
             futures::join!(inbound_networking_task, outbound_networking_task, df_task, f3);
         });

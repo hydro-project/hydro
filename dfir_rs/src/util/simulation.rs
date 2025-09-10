@@ -151,8 +151,8 @@ pub struct Host {
 impl Host {
     /// Run a single tick on the host's process. Returns true if any work was done by the
     /// process. This effectively "advances" time on the process.
-    pub fn run_tick(&mut self) -> bool {
-        self.process.run_tick()
+    pub async fn run_tick(&mut self) -> bool {
+        self.process.run_tick().await
     }
 }
 
@@ -304,7 +304,7 @@ impl Fleet {
 
         for (name, host) in self.hosts.iter_mut() {
             trace!("Running tick for host: {}", name);
-            work_done |= host.run_tick();
+            work_done |= host.run_tick().await;
         }
 
         self.process_network().await;

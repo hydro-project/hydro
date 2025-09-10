@@ -29,7 +29,7 @@ fn test_basic() {
             -> assert(|x: &MyGht| x.eq(&merged))
             -> null();
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[test]
@@ -64,7 +64,7 @@ fn test_join() {
             -> lattice_reduce()
             -> for_each(|x| out_send.send(x).unwrap());
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[ResultGht::new_from(vec![var_expr!(1, 10, 10),])],

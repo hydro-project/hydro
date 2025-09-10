@@ -181,7 +181,7 @@ fn benchmark_hydroflow(c: &mut Criterion) {
                 }
             });
 
-            df.run_available();
+            df.run_available_sync();
         });
     });
 }
@@ -218,7 +218,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
                 -> for_each(|x| { black_box(x); });
             };
 
-            df.run_available();
+            df.run_available_sync();
         })
     });
 }

@@ -17,7 +17,7 @@ pub fn test_stratum_loop() {
         union_tee -> for_each(|v| out_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -51,7 +51,7 @@ pub fn test_tick_loop() {
         union_tee -> for_each(|v| out_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -85,7 +85,7 @@ async fn test_persist_stratum_run_available() -> Result<(), Box<dyn Error>> {
             -> for_each(|x| out_send.send(x).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available().await;
 
     let seen: Vec<_> = dfir_rs::util::collect_ready_async(out_recv).await;
     rassert_eq!(
@@ -110,7 +110,7 @@ async fn test_persist_stratum_run_async() -> Result<(), Box<dyn Error>> {
     };
     assert_graphvis_snapshots!(df);
 
-    timeout(Duration::from_millis(200), df.run_async())
+    timeout(Duration::from_millis(200), df.run())
         .await
         .expect_err("Expected time out");
 
@@ -136,7 +136,7 @@ pub fn test_issue_800_1050_persist() {
         my_union_tee -> for_each(|x| println!("A {} {} {:?}", context.current_tick(), context.current_stratum(), x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test(test, wasm, env_tracing)]
@@ -150,7 +150,7 @@ pub fn test_issue_800_1050_fold_keyed() {
         my_union_tee -> for_each(|x| println!("A {} {} {:?}", context.current_tick(), context.current_stratum(), x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test(test, wasm, env_tracing)]
@@ -164,7 +164,7 @@ pub fn test_issue_800_1050_reduce_keyed() {
         my_union_tee -> for_each(|x| println!("A {} {} {:?}", context.current_tick(), context.current_stratum(), x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test(dfir, env_tracing)]
@@ -178,7 +178,7 @@ async fn test_nospin_issue_961() {
     };
     assert_graphvis_snapshots!(df);
 
-    timeout(Duration::from_millis(100), df.run_available_async())
+    timeout(Duration::from_millis(100), df.run_available())
         .await
         .expect("Should not spin.");
 }
@@ -202,7 +202,7 @@ async fn test_nospin_issue_961_complicated() {
     };
     assert_graphvis_snapshots!(df);
 
-    timeout(Duration::from_millis(100), df.run_available_async())
+    timeout(Duration::from_millis(100), df.run_available())
         .await
         .expect("Should not spin.");
 }

@@ -59,14 +59,19 @@ macro_rules! subgraph_ext {
                 name,
                 crate::var_expr!($($recv_param),*),
                 crate::var_expr!($($send_param),*),
-                move |ctx, crate::var_args!($($recv_param),*), crate::var_args!($($send_param),*)|
-                    (subgraph)(ctx, $($recv_param,)* $($send_param),*),
+                move |ctx, crate::var_args!($($recv_param),*), crate::var_args!($($send_param),*)| {
+                    (subgraph)(ctx, $($recv_param,)* $($send_param),*);
+                    ::std::future::ready(())
+                }
             )
         }
     };
 }
 
 /// Convenience extension methods for the [`Dfir`] struct.
+///
+/// Prefer DFIR syntax to avoid subgraph-per-op strucuring.
+#[sealed::sealed]
 pub trait GraphExt {
     subgraph_ext!(add_subgraph_sink, (recv_port: R), ());
     subgraph_ext!(add_subgraph_2sink, (recv_port_1: R1, recv_port_2: R2), ());
@@ -126,6 +131,7 @@ pub trait GraphExt {
         W: 'static + Handoff + CanReceive<T>;
 }
 
+#[sealed::sealed]
 impl GraphExt for Dfir<'_> {
     subgraph_ext!(impl add_subgraph_sink, (recv_port: R), ());
     subgraph_ext!(

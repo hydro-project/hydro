@@ -6,5 +6,5 @@ fn main() {
         source_iter([(3, 3), (4, 4)]) -> j;
         j = join() -> for_each(std::mem::drop);
     };
-    df.run_available();
+    df.run_available_sync();
 }

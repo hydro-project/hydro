@@ -1,32 +1,10 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::handoff::Iter;
-use dfir_rs::scheduled::query::Query as Q;
 use static_assertions::const_assert;
 use timely::dataflow::operators::{Map, ToStream};
 
 const NUM_OPS: usize = 20;
 const NUM_INTS: usize = 1_000_000;
-
-fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
-    c.bench_function("fan_out/dfir_rs/scheduled", |b| {
-        b.iter(|| {
-            let mut q = Q::new();
-
-            let source = q.source(|_ctx, send| {
-                send.give(Iter(0..NUM_INTS));
-            });
-
-            for op in source.tee(NUM_OPS) {
-                op.sink(|x| {
-                    black_box(x);
-                });
-            }
-
-            q.run_available();
-        })
-    });
-}
 
 fn benchmark_hydroflow_surface(c: &mut Criterion) {
     const_assert!(NUM_OPS == 20); // This benchmark is hardcoded for 20 ops, so assert that NUM_OPS is 20.
@@ -62,7 +40,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
                 my_tee -> for_each(|x| { black_box(x); });
             };
 
-            df.run_available();
+            df.run_available_sync();
         })
     });
 }
@@ -126,7 +104,6 @@ fn benchmark_sol(c: &mut Criterion) {
 
 criterion_group!(
     fan_out_dataflow,
-    benchmark_hydroflow_scheduled,
     benchmark_hydroflow_surface,
     // benchmark_hydroflow_teer,
     benchmark_timely,

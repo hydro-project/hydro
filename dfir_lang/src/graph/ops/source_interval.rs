@@ -31,7 +31,7 @@ use super::{
 ///     };
 ///
 ///     // Will print 4 times (fencepost counting).
-///     tokio::time::timeout(Duration::from_secs_f32(3.5), hf.run_async())
+///     tokio::time::timeout(Duration::from_secs_f32(3.5), hf.run())
 ///         .await
 ///         .expect_err("Expected time out");
 ///

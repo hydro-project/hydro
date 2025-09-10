@@ -6,5 +6,5 @@ fn main() {
         source_iter([1]) -> [pos]diff;
         diff -> [neg]diff;
     };
-    df.run_available();
+    df.run_available_sync();
 }

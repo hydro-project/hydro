@@ -12,5 +12,5 @@ fn main() {
         my_demux[a] -> for_each(std::mem::drop);
         my_demux[b] -> for_each(std::mem::drop);
     };
-    df.run_available();
+    df.run_available_sync();
 }

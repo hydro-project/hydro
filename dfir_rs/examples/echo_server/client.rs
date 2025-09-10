@@ -70,5 +70,5 @@ pub(crate) async fn run_client(opts: Opts) {
     }
 
     // Run the client. This is an async function, so we need to await it.
-    flow.run_async().await;
+    flow.run().await;
 }

@@ -5,5 +5,5 @@ pub fn main() {
         source_iter(vec!["Hello", "world"])
             -> map(|x| x.to_uppercase()) -> for_each(|x| println!("{}", x));
     };
-    flow.run_available();
+    flow.run_available_sync();
 }

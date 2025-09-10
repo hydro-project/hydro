@@ -32,7 +32,7 @@ pub fn test_basic_2() {
         source_iter([1]) -> for_each(|v| out_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
@@ -45,7 +45,7 @@ pub fn test_basic_3() {
         source_iter([1]) -> map(|v| v + 1) -> for_each(|v| out_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[2], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
@@ -60,7 +60,7 @@ pub fn test_basic_union() {
         source_iter([2]) -> [1]m;
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1, 2], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
@@ -75,7 +75,7 @@ pub fn test_basic_tee() {
         t[0] -> for_each(|v| out_send_a.send(format!("A {}", v)).unwrap());
         t[1] -> for_each(|v| out_send_b.send(format!("B {}", v)).unwrap());
     };
-    df.run_available();
+    df.run_available_sync();
 
     let out: HashSet<_> = collect_ready(&mut out_recv);
     assert_eq!(2, out.len());
@@ -94,7 +94,7 @@ pub fn test_basic_inspect_null() {
     let mut df = dfir_syntax! {
         source_iter([1, 2, 3, 4]) -> inspect(|&x| seen_inner.borrow_mut().push(x)) -> null();
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1, 2, 3, 4], &**seen.borrow());
 }
@@ -110,7 +110,7 @@ pub fn test_basic_inspect_no_null() {
     let mut df = dfir_syntax! {
         source_iter([1, 2, 3, 4]) -> inspect(|&x| seen_inner.borrow_mut().push(x));
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1, 2, 3, 4], &**seen.borrow());
 }
@@ -125,7 +125,7 @@ pub fn test_large_diamond() {
         t[0] -> map(std::convert::identity) -> map(std::convert::identity) -> [0]j;
         t[1] -> map(std::convert::identity) -> map(std::convert::identity) -> [1]j;
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 /// Test that source_stream can handle "complex" expressions.
@@ -138,13 +138,13 @@ pub fn test_recv_expr() {
             -> for_each(|v| print!("{:?}", v));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     let items_send = send_recv.0;
     items_send.send(9).unwrap();
     items_send.send(2).unwrap();
     items_send.send(5).unwrap();
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -175,7 +175,7 @@ pub fn test_multiset_join() {
             source_iter([(0, 2)]) -> [1]my_join;
         };
 
-        df.run_available();
+        df.run_available_sync();
 
         let out: Vec<_> = collect_ready(&mut out_rx);
         assert_eq!(out, vec![(0, (1, 2))]);
@@ -192,7 +192,7 @@ pub fn test_multiset_join() {
             source_iter([(1, 2), (1, 2), (1, 2), (1, 2)]) -> [1]my_join;
         };
 
-        df.run_available();
+        df.run_available_sync();
 
         let out: Vec<_> = collect_ready(&mut out_rx);
         assert_eq!(out, [(1, (1, 2)); 12].to_vec());
@@ -209,7 +209,7 @@ pub fn test_multiset_join() {
             source_iter([(1, 2), (1, 2), (1, 2)]) -> [1]my_join;
         };
 
-        df.run_available();
+        df.run_available_sync();
 
         let out: Vec<_> = collect_ready(&mut out_rx);
         assert_eq!(out, [(1, (1, 2)); 12].to_vec());
@@ -225,7 +225,7 @@ pub fn test_cross_join() {
         source_iter([1, 2, 2, 3]) -> [0]cj;
         source_iter(["a", "b", "c", "c"]) -> [1]cj;
     };
-    df.run_available();
+    df.run_available_sync();
 
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort();
@@ -254,7 +254,7 @@ pub fn test_cross_join_multiset() {
         source_iter([1, 2, 2, 3]) -> [0]cj;
         source_iter(["a", "b", "c", "c"]) -> [1]cj;
     };
-    df.run_available();
+    df.run_available_sync();
 
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort();
@@ -295,14 +295,14 @@ pub fn test_defer_tick() {
     for x in [1, 2, 3, 4] {
         inp_send.send(x).unwrap();
     }
-    flow.run_tick();
+    flow.run_tick_sync();
 
     for x in [3, 4, 5, 6] {
         inp_send.send(x).unwrap();
     }
-    flow.run_tick();
+    flow.run_tick_sync();
 
-    flow.run_available();
+    flow.run_available_sync();
     assert_eq!(
         HashMultiSet::from_iter([1, 2, 3, 4, 5, 6]),
         collect_ready(&mut out_recv)
@@ -323,14 +323,14 @@ pub fn test_anti_join() {
     for x in [(1, 2), (1, 2), (2, 3), (3, 4), (4, 5)] {
         inp_send.send(x).unwrap();
     }
-    flow.run_tick();
+    flow.run_tick_sync();
 
     for x in [(3, 2), (4, 3), (5, 4), (6, 5)] {
         inp_send.send(x).unwrap();
     }
-    flow.run_tick();
+    flow.run_tick_sync();
 
-    flow.run_available();
+    flow.run_available_sync();
     let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(
         &[(1, 2), (1, 2), (2, 3), (3, 4), (4, 5), (5, 4), (6, 5)],
@@ -357,13 +357,13 @@ pub fn test_anti_join_static() {
     for x in [200, 300] {
         neg_send.send(x).unwrap();
     }
-    flow.run_tick();
+    flow.run_tick_sync();
     let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(1, 2), (1, 2), (5, 6), (400, 5)], &*out);
 
     neg_send.send(400).unwrap();
 
-    flow.run_available();
+    flow.run_available_sync();
     let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(1, 2), (5, 6)], &*out);
 }
@@ -387,7 +387,7 @@ pub fn test_anti_join_tick_static() {
     for x in [200, 300] {
         neg_send.send(x).unwrap();
     }
-    flow.run_tick();
+    flow.run_tick_sync();
     let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(1, 2), (1, 2), (5, 6), (400, 5)], &*out);
 
@@ -395,7 +395,7 @@ pub fn test_anti_join_tick_static() {
         pos_send.send(x).unwrap();
     }
 
-    flow.run_available();
+    flow.run_available_sync();
     let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(10, 10), (10, 10)], &*out);
 }
@@ -419,7 +419,7 @@ pub fn test_anti_join_multiset_tick_static() {
     for x in [200, 300] {
         neg_send.send(x).unwrap();
     }
-    flow.run_tick();
+    flow.run_tick_sync();
     let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(1, 2), (1, 2), (5, 6), (400, 5),], &*out);
 
@@ -427,7 +427,7 @@ pub fn test_anti_join_multiset_tick_static() {
         pos_send.send(x).unwrap();
     }
 
-    flow.run_available();
+    flow.run_available_sync();
     let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(10, 10), (10, 10)], &*out);
 }
@@ -451,13 +451,13 @@ pub fn test_anti_join_multiset_static() {
     for x in [200, 300] {
         neg_send.send(x).unwrap();
     }
-    flow.run_tick();
+    flow.run_tick_sync();
     let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(1, 2), (1, 2), (5, 6), (400, 5)], &*out);
 
     neg_send.send(400).unwrap();
 
-    flow.run_available();
+    flow.run_available_sync();
     let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(1, 2), (1, 2), (5, 6)], &*out);
 }
@@ -472,14 +472,14 @@ pub fn test_sort() {
             -> for_each(|v| print!("{:?}, ", v));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     print!("\nA: ");
 
     items_send.send(9).unwrap();
     items_send.send(2).unwrap();
     items_send.send(5).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     print!("\nB: ");
 
@@ -488,7 +488,7 @@ pub fn test_sort() {
     items_send.send(2).unwrap();
     items_send.send(0).unwrap();
     items_send.send(3).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     println!();
 }
@@ -501,7 +501,7 @@ pub fn test_sort_by_key() {
             -> for_each(|v| println!("{:?}", v));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
     println!();
 }
 
@@ -530,7 +530,7 @@ fn test_sort_by_owned() {
     let mut df = dfir_syntax! {
         source_iter(dummies) -> sort_by_key(|d| &d.x) -> for_each(|d| out_send.send(d).unwrap());
     };
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     dummies_saved.sort_unstable_by(|d1, d2| d1.y.cmp(&d2.y));
     assert_ne!(&dummies_saved, &*results);
@@ -552,15 +552,15 @@ pub fn test_channel_minimal() {
         source_stream(recv) -> for_each(|x| out_send.send(x).unwrap());
     };
 
-    df2.run_available();
+    df2.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([] as [usize; 0], *results);
 
-    df1.run_available();
+    df1.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([] as [usize; 0], *results);
 
-    df2.run_available();
+    df2.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([1, 2, 3], *results);
 }
@@ -588,33 +588,33 @@ pub fn test_surface_syntax_reachability_generated() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([] as [usize; 0], *results);
 
     pairs_send.send((0, 1)).unwrap();
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([1], *results);
 
     pairs_send.send((2, 4)).unwrap();
     pairs_send.send((3, 4)).unwrap();
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([] as [usize; 0], *results);
 
     pairs_send.send((1, 2)).unwrap();
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([2, 4], *results);
 
     pairs_send.send((0, 3)).unwrap();
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([3], *results);
 
     pairs_send.send((0, 3)).unwrap();
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([] as [usize; 0], *results);
 }
@@ -642,33 +642,33 @@ pub fn test_transitive_closure() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([] as [(usize, usize); 0], *results);
 
     pairs_send.send((0, 1)).unwrap();
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([(0, 1)], *results);
 
     pairs_send.send((2, 4)).unwrap();
     pairs_send.send((3, 4)).unwrap();
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([(2, 4), (3, 4)], *results);
 
     pairs_send.send((1, 2)).unwrap();
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([(1, 2), (0, 2), (1, 4), (0, 4)], *results);
 
     pairs_send.send((0, 3)).unwrap();
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([(0, 3), (0, 4)], *results);
 
     pairs_send.send((0, 3)).unwrap();
-    df.run_available();
+    df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
     assert_eq!([(0, 3)], *results);
 }
@@ -748,7 +748,7 @@ pub fn test_covid_tracing() {
             ))
             .unwrap();
 
-        df.run_available();
+        df.run_available_sync();
         let results = collect_ready::<Vec<_>, _>(&mut out_recv);
         assert_eq!([] as [String; 0], *results);
         println!("A");
@@ -757,7 +757,7 @@ pub fn test_covid_tracing() {
             .send((101, 103, mae_diag_datetime + 6))
             .unwrap(); // Mingwei + Mae
 
-        df.run_available();
+        df.run_available_sync();
         let results = collect_ready::<Vec<_>, _>(&mut out_recv);
         assert_eq!(
             [
@@ -774,7 +774,7 @@ pub fn test_covid_tracing() {
             .send((103, ("Joe H", "+1 510 555 9999")))
             .unwrap();
 
-        df.run_available();
+        df.run_available_sync();
         let results = collect_ready::<Vec<_>, _>(&mut out_recv);
         assert_eq!(
             [
@@ -797,7 +797,7 @@ pub fn test_assert_eq() {
         source_iter([1, 2, 3]) -> assert_eq(vec![1, 2, 3]) -> assert_eq([1, 2, 3]);
         source_iter(vec![1, 2, 3]) -> assert_eq([1, 2, 3]) -> assert_eq([1, 2, 3]);
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test(test)]
@@ -808,7 +808,7 @@ pub fn test_assert_failures() {
                 source_iter([0]) -> assert_eq([1]);
             };
 
-            df.run_available();
+            df.run_available_sync();
         })
         .is_err()
     );
@@ -819,7 +819,7 @@ pub fn test_assert_failures() {
                 source_iter([0]) -> assert_eq([1]) -> null();
             };
 
-            df.run_available();
+            df.run_available_sync();
         })
         .is_err()
     );
@@ -841,5 +841,5 @@ pub fn test_iter_stream_batches() {
             -> map(|x| (context.current_tick(), x))
             -> assert_eq(expected);
     };
-    df.run_available();
+    df.run_available_sync();
 }

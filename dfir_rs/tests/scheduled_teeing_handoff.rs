@@ -46,7 +46,7 @@ fn test_basic() {
             out3_inner.borrow_mut().extend(v);
         }
     });
-    df.run_available();
+    df.run_available_sync();
     assert_eq!((*out1).borrow().clone(), vec![1, 2, 3, 4]);
     assert_eq!((*out2).borrow().clone(), vec![1, 2, 3, 4]);
     assert_eq!((*out3).borrow().clone(), vec![1, 2, 3, 4]);
@@ -95,7 +95,7 @@ fn test_scheduling() {
         }
     });
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(&*out1.borrow(), &[1, 2, 3, 4], "out1");
     assert_eq!(&*out2.borrow(), &[1, 2, 3, 4], "out2");
     assert_eq!(&*out3.borrow(), &[1, 2, 3, 4], "out3");
@@ -103,7 +103,7 @@ fn test_scheduling() {
     input.borrow_mut().extend(5..=8);
     df.schedule_subgraph(src_sg_id);
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(&*out1.borrow(), &[1, 2, 3, 4, 5, 6, 7, 8], "out1");
     assert_eq!(&*out2.borrow(), &[1, 2, 3, 4, 5, 6, 7, 8], "out2");
     assert_eq!(&*out3.borrow(), &[1, 2, 3, 4, 5, 6, 7, 8], "out3");
@@ -154,7 +154,7 @@ fn test_scheduling_tee_after() {
         }
     });
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(&*out1.borrow(), &[1, 2, 3, 4], "out1");
     assert_eq!(&*out2.borrow(), &[1, 2, 3, 4], "out2");
     assert_eq!(&*out3.borrow(), &[1, 2, 3, 4], "out3");
@@ -162,7 +162,7 @@ fn test_scheduling_tee_after() {
     input.borrow_mut().extend(5..=8);
     df.schedule_subgraph(src_sg_id);
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(&*out1.borrow(), &[1, 2, 3, 4, 5, 6, 7, 8], "out1");
     assert_eq!(&*out2.borrow(), &[1, 2, 3, 4, 5, 6, 7, 8], "out2");
     assert_eq!(&*out3.borrow(), &[1, 2, 3, 4, 5, 6, 7, 8], "out3");
@@ -208,14 +208,14 @@ fn test_scheduling_drop() {
         }
     });
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(&*out2.borrow(), &[1, 2, 3, 4], "out2");
     assert_eq!(&*out3.borrow(), &[1, 2, 3, 4], "out3");
 
     input.borrow_mut().extend(5..=8);
     df.schedule_subgraph(src_sg_id);
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(&*out2.borrow(), &[1, 2, 3, 4, 5, 6, 7, 8], "out2");
     assert_eq!(&*out3.borrow(), &[1, 2, 3, 4, 5, 6, 7, 8], "out3");
 }

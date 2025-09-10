@@ -40,7 +40,7 @@ pub async fn launch_flow(mut flow: Dfir<'_>) {
     });
 
     let local_set = tokio::task::LocalSet::new();
-    let flow = local_set.run_until(flow.run_async());
+    let flow = local_set.run_until(flow.run());
 
     tokio::select! {
         _ = stop.1 => {},

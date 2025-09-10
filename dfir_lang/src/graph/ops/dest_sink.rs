@@ -28,7 +28,7 @@ use super::{
 ///     source_iter(0..10) -> dest_sink(send);
 /// };
 /// // Call `run_async()` to allow async events to propagate, run for one second.
-/// tokio::time::timeout(std::time::Duration::from_secs(1), flow.run_async())
+/// tokio::time::timeout(std::time::Duration::from_secs(1), flow.run())
 ///     .await
 ///     .expect_err("Expected time out");
 ///
@@ -71,7 +71,7 @@ use super::{
 ///         Bytes::from_static(b"world"),
 ///     ]) -> dest_sink(sink);
 /// };
-/// tokio::time::timeout(std::time::Duration::from_secs(1), flow.run_async())
+/// tokio::time::timeout(std::time::Duration::from_secs(1), flow.run())
 ///     .await
 ///     .expect_err("Expected time out");
 ///

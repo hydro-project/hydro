@@ -8,5 +8,5 @@ pub fn main() {
             -> null();
 
     };
-    df.run_available();
+    df.run_available_sync();
 }

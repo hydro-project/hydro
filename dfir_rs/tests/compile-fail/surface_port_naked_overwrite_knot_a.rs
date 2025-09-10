@@ -13,5 +13,5 @@ fn main() {
         out_0[0] -> inn_0; // Error: `pivot[0][0]`
         out_1 -> inn_1;
     };
-    df.run_available();
+    df.run_available_sync();
 }

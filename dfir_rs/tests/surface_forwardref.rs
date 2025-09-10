@@ -11,7 +11,7 @@ pub fn test_forwardref_basic_forward() {
         forward_ref = for_each(|v| out_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -28,7 +28,7 @@ pub fn test_forwardref_basic_backward() {
         forward_ref = source_iter(0..10);
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -46,7 +46,7 @@ pub fn test_forwardref_basic_middle() {
         forward_ref = identity();
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],

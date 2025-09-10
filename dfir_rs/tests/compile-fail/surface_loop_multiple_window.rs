@@ -7,5 +7,5 @@ fn main() {
             };
         };
     };
-    df.run_available();
+    df.run_available_sync();
 }

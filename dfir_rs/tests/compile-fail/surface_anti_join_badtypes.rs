@@ -6,5 +6,5 @@ fn main() {
         source_iter(0..10) -> map(|x| (x, x)) -> [pos]j;
         source_iter(0..10) -> map(|_| "string") -> [neg]j;
     };
-    df.run_available();
+    df.run_available_sync();
 }

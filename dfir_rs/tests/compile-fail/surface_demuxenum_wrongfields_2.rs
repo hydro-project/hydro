@@ -19,5 +19,5 @@ fn main() {
         my_demux[Circle] -> for_each(std::mem::drop);
         my_demux[Square] -> for_each(|side: (u32,)| ());
     };
-    df.run_available();
+    df.run_available_sync();
 }

@@ -24,7 +24,7 @@ pub fn test_fold_tick() {
 
     items_send.send(vec![1, 2]).unwrap();
     items_send.send(vec![3, 4]).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(1), 0),
@@ -37,7 +37,7 @@ pub fn test_fold_tick() {
 
     items_send.send(vec![5, 6]).unwrap();
     items_send.send(vec![7, 8]).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(2), 0),
@@ -48,7 +48,7 @@ pub fn test_fold_tick() {
         &*collect_ready::<Vec<_>, _>(&mut result_recv)
     );
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -70,7 +70,7 @@ pub fn test_fold_static() {
 
     items_send.send(vec![1, 2]).unwrap();
     items_send.send(vec![3, 4]).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(1), 0),
@@ -83,7 +83,7 @@ pub fn test_fold_static() {
 
     items_send.send(vec![5, 6]).unwrap();
     items_send.send(vec![7, 8]).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(2), 0),
@@ -94,7 +94,7 @@ pub fn test_fold_static() {
         &*collect_ready::<Vec<_>, _>(&mut result_recv)
     );
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -122,7 +122,7 @@ pub fn test_fold_static_join() {
     );
 
     items_send.send(0).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         (TickInstant::new(1), 0),
@@ -131,7 +131,7 @@ pub fn test_fold_static_join() {
     assert_eq!(&[(0, 0)], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
     items_send.send(1).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         (TickInstant::new(2), 0),
@@ -158,7 +158,7 @@ pub fn test_fold_flatten() {
         (TickInstant::new(0), 0),
         (df_pull.current_tick(), df_pull.current_stratum())
     );
-    df_pull.run_tick();
+    df_pull.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df_pull.current_tick(), df_pull.current_stratum())
@@ -185,7 +185,7 @@ pub fn test_fold_flatten() {
         (TickInstant::new(0), 0),
         (df_push.current_tick(), df_push.current_stratum())
     );
-    df_push.run_tick();
+    df_push.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df_push.current_tick(), df_push.current_stratum())
@@ -196,8 +196,8 @@ pub fn test_fold_flatten() {
         assert!(out.contains(&pair));
     }
 
-    df_push.run_available(); // Should return quickly and not hang
-    df_pull.run_available(); // Should return quickly and not hang
+    df_push.run_available_sync(); // Should return quickly and not hang
+    df_pull.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -215,7 +215,7 @@ pub fn test_fold_sort() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
@@ -226,7 +226,7 @@ pub fn test_fold_sort() {
     items_send.send(9).unwrap();
     items_send.send(2).unwrap();
     items_send.send(5).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
@@ -239,7 +239,7 @@ pub fn test_fold_sort() {
     items_send.send(2).unwrap();
     items_send.send(0).unwrap();
     items_send.send(3).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
@@ -247,7 +247,7 @@ pub fn test_fold_sort() {
 
     println!();
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -285,7 +285,7 @@ fn test_fold_loop_lifetime() {
             };
         };
     };
-    df.run_available();
+    df.run_available_sync();
 
     // `'none` resets each iteration.
     assert_eq!(

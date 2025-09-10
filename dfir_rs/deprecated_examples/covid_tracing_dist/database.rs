@@ -148,5 +148,5 @@ pub(crate) async fn run_database(opts: Opts) {
         },
     );
 
-    df.run_async().await.unwrap();
+    df.run().await.unwrap();
 }

@@ -21,7 +21,7 @@ pub async fn test_fib() {
             -> _counter("nums", Duration::from_millis(50));
     };
 
-    df.run_available_async().await;
+    df.run_available().await;
     // _counter(nums): 1
     // _counter(nums): 34
     // _counter(nums): 36
@@ -37,7 +37,7 @@ pub async fn test_stream() {
             -> _counter("nums", Duration::from_millis(100));
     };
 
-    df.run_available_async().await;
+    df.run_available().await;
     // _counter(nums): 1
     // _counter(nums): 6202
     // _counter(nums): 12540

@@ -13,5 +13,5 @@ pub fn main() {
             .expect("No graph found, maybe failed to parse.")
             .to_mermaid(&Default::default())
     );
-    flow.run_available();
+    flow.run_available_sync();
 }

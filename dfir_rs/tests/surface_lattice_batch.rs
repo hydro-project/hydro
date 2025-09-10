@@ -23,5 +23,5 @@ pub fn test_lattice_batch() {
         b3 = _lattice_fold_batch::<SetUnionHashSet>() -> assert(|_| false);
     };
 
-    df.run_available();
+    df.run_available_sync();
 }

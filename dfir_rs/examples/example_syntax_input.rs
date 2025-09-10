@@ -8,5 +8,5 @@ fn main() {
     };
     input_send.send("Hello").unwrap();
     input_send.send("World").unwrap();
-    flow.run_available();
+    flow.run_available_sync();
 }

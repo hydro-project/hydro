@@ -16,12 +16,12 @@ pub fn test_basic_2() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, [0; 0]);
 
     signal_tx.send(()).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![1, 2, 3]);

@@ -9,5 +9,5 @@ fn test_basic() {
             -> lattice_reduce()
             -> for_each(|x: Max<u32>| println!("Least upper bound: {:?}", x));
     };
-    df.run_available();
+    df.run_available_sync();
 }

@@ -42,7 +42,7 @@ pub fn tick_tick_lhs_blocking_rhs_streaming() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(
         results,
@@ -71,7 +71,7 @@ pub fn static_tick_lhs_blocking_rhs_streaming() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(
         results,
@@ -110,7 +110,7 @@ pub fn static_static_lhs_blocking_rhs_streaming() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     #[rustfmt::skip]
     {
@@ -140,7 +140,7 @@ pub fn tick_tick_lhs_streaming_rhs_blocking() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(
         results,
@@ -169,7 +169,7 @@ pub fn static_tick_lhs_streaming_rhs_blocking() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(
         results,
@@ -209,7 +209,7 @@ pub fn static_static_lhs_streaming_rhs_blocking() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     #[rustfmt::skip]
     {
@@ -239,7 +239,7 @@ pub fn tick_tick_lhs_fold_rhs_reduce() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(
         results,

@@ -70,5 +70,5 @@ pub(crate) async fn run_client(opts: Opts) {
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
 
-    hf.run_async().await.unwrap();
+    hf.run().await.unwrap();
 }

@@ -3,7 +3,6 @@ use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::scheduled::graph_ext::GraphExt;
 use dfir_rs::scheduled::handoff::{Iter, VecHandoff};
-use dfir_rs::scheduled::query::Query as Q;
 use timely::dataflow::operators::{Concatenate, Filter, Inspect, ToStream};
 
 const NUM_OPS: usize = 20;
@@ -78,7 +77,7 @@ fn benchmark_hydroflow(c: &mut Criterion) {
                 }
             });
 
-            df.run_available()
+            df.run_available_sync();
         })
     });
 }
@@ -87,34 +86,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
     c.bench_function("fork_join/dfir_rs/surface", |b| {
         b.iter(|| {
             let mut hf = include!("fork_join_20.hf");
-            hf.run_available();
-        })
-    });
-}
-
-fn benchmark_hydroflow_builder(c: &mut Criterion) {
-    c.bench_function("fork_join/hydroflow_builder", |b| {
-        b.iter(|| {
-            // TODO(justin): this creates more operators than necessary.
-            let mut q = Q::new();
-
-            let mut source = q.source(|_ctx, send| {
-                send.give(Iter(0..NUM_INTS));
-            });
-
-            for _ in 0..NUM_OPS {
-                let mut outs = source.tee(2).into_iter();
-                let (mut out1, mut out2) = (outs.next().unwrap(), outs.next().unwrap());
-                out1 = out1.filter(|x| x % 2 == 0);
-                out2 = out2.filter(|x| x % 2 == 1);
-                source = out1.concat(out2);
-            }
-
-            source.sink(|v| {
-                black_box(v);
-            });
-
-            q.run_available();
+            hf.run_available_sync();
         })
     });
 }
@@ -165,7 +137,6 @@ criterion_group!(
     fork_join_dataflow,
     benchmark_hydroflow,
     benchmark_hydroflow_surface,
-    benchmark_hydroflow_builder,
     benchmark_timely,
     benchmark_raw,
 );

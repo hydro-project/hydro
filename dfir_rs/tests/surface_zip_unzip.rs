@@ -12,7 +12,7 @@ pub fn test_zip_basic() {
         source_iter(["Hello", "World"]) -> [1]my_zip;
         my_zip = zip() -> for_each(|pair| result_send.send(pair).unwrap());
     };
-    df.run_available();
+    df.run_available_sync();
 
     let result: Vec<_> = collect_ready(&mut result_recv);
     assert_eq!(&[(0, "Hello"), (1, "World")], &*result);
@@ -32,7 +32,7 @@ pub fn test_zip_loop() {
 
         my_zip = zip() -> for_each(|pair| result_send.send(pair).unwrap());
     };
-    df.run_available();
+    df.run_available_sync();
 
     let result: Vec<_> = collect_ready(&mut result_recv);
     assert_eq!(
@@ -65,7 +65,7 @@ pub fn test_zip_longest_basic() {
         source_iter(["Hello", "World"]) -> [1]my_zip_longest;
         my_zip_longest = zip_longest() -> for_each(|pair| result_send.send(pair).unwrap());
     };
-    df.run_available();
+    df.run_available_sync();
 
     let result: Vec<_> = collect_ready(&mut result_recv);
     assert_eq!(
@@ -90,7 +90,7 @@ pub fn test_unzip_basic() {
         my_unzip[1] -> for_each(|v| send1.send(v).unwrap());
     };
 
-    df.run_available();
+    df.run_available_sync();
 
     let out0: Vec<_> = collect_ready(&mut recv0);
     assert_eq!(&["Hello", "World"], &*out0);
@@ -131,7 +131,7 @@ pub fn test_loop_lifetime() {
         };
     };
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[(0, (0, 0)), (0, (1, 1))],

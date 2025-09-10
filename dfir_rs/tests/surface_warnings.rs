@@ -15,7 +15,7 @@ fn test_degenerate_union() {
         },
         ("`union` should have at least 2 input(s), actually has 1.", 2:38),
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1, 2, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
@@ -28,7 +28,7 @@ fn test_empty_union() {
         },
         ("`union` should have at least 2 input(s), actually has 0.", 2:12),
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn test_degenerate_tee() {
         },
         ("`tee` should have at least 2 output(s), actually has 1.", 2:38)
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1, 2, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
@@ -57,7 +57,7 @@ fn test_empty_tee() {
         },
         ("`tee` should have at least 2 output(s), actually has 0.", 2:89),
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1, 2, 3], &**output.borrow());
 }
@@ -84,7 +84,7 @@ pub fn test_warped_diamond() {
         },
         ("`union` should have at least 2 input(s), actually has 1.", 3:20),
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[test]
@@ -110,5 +110,5 @@ pub fn test_warped_diamond_2() {
         ("`union` should have at least 2 input(s), actually has 1.", 3:20),
         ("`tee` should have at least 2 output(s), actually has 0.", 16:45),
     };
-    hf.run_available();
+    hf.run_available_sync();
 }

@@ -6,5 +6,5 @@ fn main() {
             })
             -> for_each(|(k, v)| println!("({:?}, {:?})", k, v));
     };
-    df.run_available();
+    df.run_available_sync();
 }

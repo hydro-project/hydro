@@ -5,5 +5,5 @@ fn main() {
         g = f -> map(|x: usize| x) -> f;
         f = g;
     };
-    df.run_available();
+    df.run_available_sync();
 }

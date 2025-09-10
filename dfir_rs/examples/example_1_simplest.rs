@@ -10,6 +10,6 @@ pub fn main() {
     //[/macro_call]//
 
     //[run]//
-    flow.run_available();
+    flow.run_available_sync();
     //[/run]//
 }

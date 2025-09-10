@@ -198,7 +198,7 @@ pub(crate) async fn run_gossiping_server(opts: Opts) {
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
 
-    hf.run_async().await.unwrap();
+    hf.run().await.unwrap();
 }
 
 /// The address on which the gossip protocol runs. Servers communicate with each other using these

@@ -13,7 +13,7 @@ pub fn test_context_ref() {
             -> for_each(|()| println!("Current tick: {}, stratum: {}", context.current_tick(), context.current_stratum()));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -27,7 +27,7 @@ pub fn test_context_mut() {
             -> for_each(|handle| println!("{:?}: {}", handle, context.state_ref(handle)));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test(dfir)]
@@ -44,19 +44,11 @@ pub async fn test_context_current_tick_start_does_not_count_time_between_ticks_a
     };
     assert_graphvis_snapshots!(df);
     tokio::time::sleep(Duration::from_millis(100)).await;
-    df.run_tick();
+    df.run_tick().await;
     assert!(time.take().unwrap() < Duration::from_millis(50));
 
     tokio::time::sleep(Duration::from_millis(100)).await;
-    df.run_tick();
-    assert!(time.take().unwrap() < Duration::from_millis(50));
-
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    df.run_available();
-    assert!(time.take().unwrap() < Duration::from_millis(50));
-
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    df.run_available_async().await;
+    df.run_available().await;
     assert!(time.take().unwrap() < Duration::from_millis(50));
 }
 
@@ -71,7 +63,7 @@ pub async fn test_defered_tick_and_no_io_with_run_async() {
     };
 
     tokio::select! {
-        _ = df.run_async() => {},
+        _ = df.run() => {},
         _ = rx.recv() => {},
     }
 }

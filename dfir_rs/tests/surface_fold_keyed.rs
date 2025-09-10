@@ -30,13 +30,13 @@ pub fn test_fold_keyed_infer_basic() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 
     assert_eq!(
         &[("123", 318), ("123", 318)],
@@ -59,7 +59,7 @@ pub fn test_fold_keyed_tick() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
@@ -69,7 +69,7 @@ pub fn test_fold_keyed_tick() {
     items_send.send((0, vec![3, 4])).unwrap();
     items_send.send((1, vec![1])).unwrap();
     items_send.send((1, vec![1, 2])).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(2), 0),
@@ -86,7 +86,7 @@ pub fn test_fold_keyed_tick() {
     items_send.send((0, vec![7, 8])).unwrap();
     items_send.send((1, vec![10])).unwrap();
     items_send.send((1, vec![11, 12])).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(3), 0),
@@ -99,7 +99,7 @@ pub fn test_fold_keyed_tick() {
         collect_ready::<BTreeSet<_>, _>(&mut result_recv)
     );
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -117,7 +117,7 @@ pub fn test_fold_keyed_static() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
@@ -127,7 +127,7 @@ pub fn test_fold_keyed_static() {
     items_send.send((0, vec![3, 4])).unwrap();
     items_send.send((1, vec![1])).unwrap();
     items_send.send((1, vec![1, 2])).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(2), 0),
@@ -144,7 +144,7 @@ pub fn test_fold_keyed_static() {
     items_send.send((0, vec![7, 8])).unwrap();
     items_send.send((1, vec![10])).unwrap();
     items_send.send((1, vec![11, 12])).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(3), 0),
@@ -160,7 +160,7 @@ pub fn test_fold_keyed_static() {
         collect_ready::<BTreeSet<_>, _>(&mut result_recv)
     );
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -205,7 +205,7 @@ pub fn test_fold_keyed_loop_lifetime() {
             };
         };
     };
-    df.run_available();
+    df.run_available_sync();
 
     // `'none` resets each iteration.
     assert_eq!(

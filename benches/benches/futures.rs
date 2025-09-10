@@ -50,11 +50,11 @@ fn benchmark_immediately_available(c: &mut Criterion) {
                     -> for_each(|_| {});
                 };
 
-                df.run_tick(); // skip loading and mapping to future
+                df.run_tick_sync(); // skip loading and mapping to future
                 df
             },
             |mut df| {
-                df.run_tick();
+                df.run_tick_sync();
             },
             criterion::BatchSize::SmallInput,
         );
@@ -109,7 +109,7 @@ fn benchmark_delayed(c: &mut Criterion) {
         b.iter_batched(
             || setup(NUM_ELEMS, false).0,
             |mut df| {
-                df.run_tick();
+                df.run_tick_sync();
             },
             criterion::BatchSize::SmallInput,
         );
@@ -120,14 +120,14 @@ fn benchmark_delayed(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let (mut df, wakes) = setup(NUM_ELEMS, true);
-                df.run_tick();
-                df.run_tick();
-                df.run_tick();
+                df.run_tick_sync();
+                df.run_tick_sync();
+                df.run_tick_sync();
                 wake_all(wakes);
                 df
             },
             |mut df| {
-                df.run_tick();
+                df.run_tick_sync();
             },
             criterion::BatchSize::SmallInput,
         );
@@ -138,12 +138,12 @@ fn benchmark_delayed(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let (mut df, wakes) = setup(NUM_ELEMS, false);
-                df.run_tick();
+                df.run_tick_sync();
                 wake_all(wakes);
                 df
             },
             |mut df| {
-                df.run_tick();
+                df.run_tick_sync();
             },
             criterion::BatchSize::SmallInput,
         );
@@ -153,13 +153,13 @@ fn benchmark_delayed(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let (mut df, wakes) = setup(NUM_ELEMS, false);
-                df.run_tick();
+                df.run_tick_sync();
                 wake_all(wakes);
-                df.run_tick();
+                df.run_tick_sync();
                 df
             },
             |mut df| {
-                df.run_tick();
+                df.run_tick_sync();
             },
             criterion::BatchSize::SmallInput,
         );

@@ -43,7 +43,7 @@ fn dfir_rs_diamond(c: &mut Criterion) {
                     *n += s.len();
                 }) -> assert_eq([OUTPUT]);
             };
-            df.run_available();
+            df.run_available_sync();
         })
     });
 }

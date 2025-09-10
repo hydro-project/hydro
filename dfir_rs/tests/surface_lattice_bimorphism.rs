@@ -31,7 +31,7 @@ pub fn test_cartesian_product() {
     };
 
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[SetUnionHashSet::new(HashSet::from_iter([
@@ -65,7 +65,7 @@ pub fn test_cartesian_product_1401() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[SetUnionHashSet::new(HashSet::from_iter([(0, 1)]))],
@@ -93,7 +93,7 @@ pub fn test_join() {
     };
 
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[MapUnionHashMap::new(HashMap::from_iter([(
@@ -141,7 +141,7 @@ pub fn test_cartesian_product_tick_state() {
     for x in 3..5 {
         rhs_send.send(x).unwrap();
     }
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(
         &[SetUnionHashSet::new(HashSet::from_iter([
             (0, 3),
@@ -157,7 +157,7 @@ pub fn test_cartesian_product_tick_state() {
     for x in 3..5 {
         lhs_send.send(x).unwrap();
     }
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(
         &[SetUnionHashSet::default()],
         &*collect_ready::<Vec<_>, _>(&mut out_recv)
@@ -205,5 +205,5 @@ fn test_ght_join_bimorphism() {
             -> flat_map(|(_num, ght)| ght.recursive_iter().map(<JoinSchema as CloneVariadic>::clone_ref_var).collect::<Vec<_>>())
             -> null();
     };
-    hf.run_available();
+    hf.run_available_sync();
 }

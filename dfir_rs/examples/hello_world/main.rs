@@ -5,7 +5,7 @@ pub fn main() {
         source_iter(["Hello World"])
             -> assert_eq(["Hello World"]);
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[test]

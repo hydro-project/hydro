@@ -6,5 +6,5 @@ fn main() {
         dst = for_each(drop);
         [0]src -> dst[0];
     };
-    df.run_available();
+    df.run_available_sync();
 }

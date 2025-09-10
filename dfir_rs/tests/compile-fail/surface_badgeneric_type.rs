@@ -5,5 +5,5 @@ fn main() {
         // no generic arguments for `inspect`.
         source_iter(0..10) -> inspect::<usize>(std::mem::drop) -> for_each(std::mem::drop);
     };
-    df.run_available();
+    df.run_available_sync();
 }

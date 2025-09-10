@@ -42,7 +42,7 @@ pub fn tick_tick() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 0)), (7, (2, 0))]);
     assert_contains_each_by_tick!(results, TickInstant::new(1), &[]);
@@ -67,7 +67,7 @@ pub fn tick_static() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 0)), (7, (2, 0))]);
     assert_contains_each_by_tick!(results, TickInstant::new(1), &[]);
@@ -92,7 +92,7 @@ pub fn static_tick() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 0)), (7, (2, 0))]);
     assert_contains_each_by_tick!(results, TickInstant::new(1), &[(7, (1, 1)), (7, (2, 1))]);
@@ -119,7 +119,7 @@ pub fn static_static() {
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     #[rustfmt::skip]
     {
@@ -141,9 +141,9 @@ pub fn replay_static() {
         my_join = join::<'static, 'static>()
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    df.run_tick();
-    df.run_tick();
-    df.run_tick();
+    df.run_tick_sync();
+    df.run_tick_sync();
+    df.run_tick_sync();
 
     #[rustfmt::skip]
     {
@@ -198,7 +198,7 @@ pub fn loop_lifetimes() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[

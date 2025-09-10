@@ -163,6 +163,7 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
                         .into_iter()
                         .filter(|v| seen_state.insert(*v));
                     send.give(Iter(iter));
+                    std::future::ready(())
                 },
             );
 
@@ -209,7 +210,7 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
                 (*reachable_inner).borrow_mut().extend(recv.take_inner());
             });
 
-            df.run_available();
+            df.run_available_sync();
 
             assert_eq!(&*reachable_verts.borrow(), reachable);
         });
@@ -281,6 +282,7 @@ fn benchmark_hydroflow(c: &mut Criterion) {
                         });
 
                     pivot.run();
+                    std::future::ready(())
                 },
             );
 
@@ -290,7 +292,7 @@ fn benchmark_hydroflow(c: &mut Criterion) {
                 (*reachable_inner).borrow_mut().extend(recv.take_inner());
             });
 
-            df.run_available();
+            df.run_available_sync();
 
             assert_eq!(&*reachable_verts.borrow(), reachable);
         });
@@ -319,7 +321,7 @@ fn benchmark_hydroflow_surface_cheating(c: &mut Criterion) {
                 (df, reachable_verts)
             },
             |(mut df, reachable_verts)| {
-                df.run_available();
+                df.run_available_sync();
                 assert_eq!(&*reachable_verts.borrow(), &*REACHABLE);
             },
             criterion::BatchSize::LargeInput,
@@ -362,7 +364,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
                 (df, reachable_verts)
             },
             |(mut df, reachable_verts)| {
-                df.run_available();
+                df.run_available_sync();
                 assert_eq!(&*reachable_verts.borrow(), &*REACHABLE);
             },
             criterion::BatchSize::LargeInput,

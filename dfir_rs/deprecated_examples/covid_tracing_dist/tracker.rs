@@ -115,5 +115,5 @@ pub(crate) async fn run_tracker(opts: Opts) {
         },
     );
 
-    df.run_async().await.unwrap();
+    df.run().await.unwrap();
 }

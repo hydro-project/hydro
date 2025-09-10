@@ -44,5 +44,5 @@ pub fn main() {
     pairs_send.send((3, 6)).unwrap();
     pairs_send.send((6, 5)).unwrap();
     pairs_send.send((11, 12)).unwrap();
-    flow.run_available();
+    flow.run_available_sync();
 }

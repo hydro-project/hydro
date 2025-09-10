@@ -26,12 +26,12 @@ pub fn main() {
     input_example.send(3).unwrap();
     input_example.send(4).unwrap();
     input_example.send(5).unwrap();
-    flow.run_available();
+    flow.run_available_sync();
 
     println!("B");
     input_example.send(6).unwrap();
     input_example.send(7).unwrap();
     input_example.send(8).unwrap();
     input_example.send(9).unwrap();
-    flow.run_available();
+    flow.run_available_sync();
 }

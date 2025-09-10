@@ -51,21 +51,21 @@ pub fn main() {
     }
     let _ = opts;
 
-    df.run_available();
+    df.run_available_sync();
 
     println!("A");
 
     edges_send.send((5, 10)).unwrap();
     edges_send.send((0, 3)).unwrap();
     edges_send.send((3, 6)).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     println!("B");
 
     edges_send.send((6, 5)).unwrap();
     edges_send.send((6, 0)).unwrap();
     edges_send.send((10, 6)).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     // A
     // B

@@ -203,7 +203,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
                 }
             },
             |mut df| {
-                df.run_available();
+                df.run_available_sync();
             },
             criterion::BatchSize::SmallInput,
         )
