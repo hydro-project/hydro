@@ -1,3 +1,5 @@
+//! Definitions and core APIs for the [`KeyedSingleton`] live collection.
+
 use std::hash::Hash;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
@@ -16,6 +18,7 @@ use crate::location::{Atomic, Location, NoTick, Tick};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
+#[expect(missing_docs, reason = "TODO")]
 pub trait KeyedSingletonBound {
     type UnderlyingBound: Boundedness;
     type ValueBound: Boundedness;
@@ -41,6 +44,7 @@ impl KeyedSingletonBound for BoundedValue {
     type ValueBound = Bounded;
 }
 
+#[expect(missing_docs, reason = "TODO")]
 pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
     pub(crate) underlying: Stream<(K, V), Loc, Bound::UnderlyingBound, NoOrder, ExactlyOnce>,
 }
@@ -79,6 +83,7 @@ where
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     KeyedSingleton<K, V, L, B>
 {
@@ -135,6 +140,34 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
 }
 
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
+    /// Transforms each value by invoking `f` on each element, with keys staying the same
+    /// after transformation. If you need access to the key, see [`KeyedStream::map_with_key`].
+    ///
+    /// If you do not want to modify the stream and instead only want to view
+    /// each item use [`KeyedStream::inspect`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.map(q!(|v| v + 1))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 3, 2: 5 }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (2, 5)]);
+    /// # }));
+    /// ```
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, U, L, B>
     where
         F: Fn(V) -> U + 'a,
@@ -148,6 +181,34 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         }
     }
 
+    /// Transforms each value by invoking `f` on each key-value pair, with keys staying the same
+    /// after transformation. Unlike [`KeyedSingleton::map`], this gives access to both the key and value.
+    ///
+    /// The closure `f` receives a tuple `(K, V)` containing both the key and value, and returns
+    /// the new value `U`. The key remains unchanged in the output.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.map_with_key(q!(|(k, v)| k + v))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 3, 2: 6 }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (2, 6)]);
+    /// # }));
+    /// ```
     pub fn map_with_key<U, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
@@ -168,6 +229,38 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         }
     }
 
+    /// Creates a keyed singleton containing only the key-value pairs where the value satisfies a predicate `f`.
+    ///
+    /// The closure `f` receives a reference `&V` to each value and returns a boolean. If the predicate
+    /// returns `true`, the key-value pair is included in the output. If it returns `false`, the pair
+    /// is filtered out.
+    ///
+    /// The closure `f` receives a reference `&V` rather than an owned value `V` because filtering does
+    /// not modify or take ownership of the values. If you need to modify the values while filtering
+    /// use [`KeyedSingleton::filter_map`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4, 3: 1 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4), (3, 1)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.filter(q!(|&v| v > 1))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 2, 2: 4 }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (2, 4)]);
+    /// # }));
+    /// ```
     pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, V, L, B>
     where
         F: Fn(&V) -> bool + 'a,
@@ -181,6 +274,35 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         }
     }
 
+    /// An operator that both filters and maps values. It yields only the key-value pairs where
+    /// the supplied closure `f` returns `Some(value)`.
+    ///
+    /// The closure `f` receives each value `V` and returns `Option<U>`. If the closure returns
+    /// `Some(new_value)`, the key-value pair `(key, new_value)` is included in the output.
+    /// If it returns `None`, the key-value pair is filtered out.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: "42", 2: "hello", 3: "100" }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, "42"), (2, "hello"), (3, "100")]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.filter_map(q!(|s| s.parse::<i32>().ok()))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 42, 3: 100 }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 42), (3, 100)]);
+    /// # }));
+    /// ```
     pub fn filter_map<F, U>(
         self,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
@@ -197,6 +319,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         }
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
         self.underlying.count()
     }
@@ -213,6 +336,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     pub fn latest(self) -> KeyedSingleton<K, V, L, Unbounded> {
         KeyedSingleton {
@@ -295,6 +419,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
             .into_keyed()
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn get_from<V2: Clone>(
         self,
         from: KeyedSingleton<V, V2, Tick<L>, Bounded>,
@@ -320,6 +445,7 @@ impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn atomic(self, tick: &Tick<L>) -> KeyedSingleton<K, V, Atomic<L>, B> {
         KeyedSingleton {
             underlying: self.underlying.atomic(tick),
@@ -378,6 +504,7 @@ where
         }
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn end_atomic(self) -> KeyedSingleton<K, V, L, B> {
         KeyedSingleton {
             underlying: self.underlying.end_atomic(),
