@@ -17,17 +17,17 @@ linkStyle default stroke:#aaa
 7v1["<div style=text-align:center>(7v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
 8v1["<div style=text-align:center>(8v1)</div> <code><br>chain()</code>"]:::otherClass
 9v1["<div style=text-align:center>(9v1)</div> <code><br>tee()</code>"]:::otherClass
-10v1["<div style=text-align:center>(10v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        0<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
-11v1["<div style=text-align:center>(11v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
-12v1["<div style=text-align:center>(12v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        ()<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
-13v1["<div style=text-align:center>(13v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
-14v1["<div style=text-align:center>(14v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-15v1["<div style=text-align:center>(15v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
-16v1["<div style=text-align:center>(16v1)</div> <code><br>chain()</code>"]:::otherClass
-17v1["<div style=text-align:center>(17v1)</div> <code><br>tee()</code>"]:::otherClass
-18v1["<div style=text-align:center>(18v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-19v1["<div style=text-align:center>(19v1)</div> <code><br>map({<br>    let CLUSTER_SELF_ID__free = hydro_lang::location::MemberId::&lt;<br>        hydro_test::__staged::cluster::paxos::Proposer,<br>    &gt;::from_raw(__hydro_lang_cluster_self_id_0);<br>    move |(received_max_ballot, ballot_num)| {<br>        if received_max_ballot<br>            &gt; (Ballot {<br>                num: ballot_num,<br>                proposer_id: CLUSTER_SELF_ID__free,<br>            })<br>        {<br>            received_max_ballot.num + 1<br>        } else {<br>            ballot_num<br>        }<br>    }<br>})</code>"]:::otherClass
-20v1["<div style=text-align:center>(20v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+10v1["<div style=text-align:center>(10v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+11v1["<div style=text-align:center>(11v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        0<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
+12v1["<div style=text-align:center>(12v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
+13v1["<div style=text-align:center>(13v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        ()<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
+14v1["<div style=text-align:center>(14v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
+15v1["<div style=text-align:center>(15v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+16v1["<div style=text-align:center>(16v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
+17v1["<div style=text-align:center>(17v1)</div> <code><br>chain()</code>"]:::otherClass
+18v1["<div style=text-align:center>(18v1)</div> <code><br>tee()</code>"]:::otherClass
+19v1["<div style=text-align:center>(19v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+20v1["<div style=text-align:center>(20v1)</div> <code><br>map({<br>    let CLUSTER_SELF_ID__free = hydro_lang::location::MemberId::&lt;<br>        hydro_test::__staged::cluster::paxos::Proposer,<br>    &gt;::from_raw(__hydro_lang_cluster_self_id_0);<br>    move |(received_max_ballot, ballot_num)| {<br>        if received_max_ballot<br>            &gt; (Ballot {<br>                num: ballot_num,<br>                proposer_id: CLUSTER_SELF_ID__free,<br>            })<br>        {<br>            received_max_ballot.num + 1<br>        } else {<br>            ballot_num<br>        }<br>    }<br>})</code>"]:::otherClass
 21v1["<div style=text-align:center>(21v1)</div> <code><br>source_iter({<br>    let underlying_memberids__free = unsafe {<br>        ::std::mem::transmute::&lt;<br>            _,<br>            &amp;[hydro_lang::location::MemberId&lt;<br>                hydro_test::__staged::cluster::paxos::Proposer,<br>            &gt;],<br>        &gt;(__hydro_lang_cluster_ids_0)<br>    };<br>    underlying_memberids__free<br>})</code>"]:::otherClass
 22v1["<div style=text-align:center>(22v1)</div> <code><br>map({<br>    |id| (*id, MembershipEvent::Joined)<br>})</code>"]:::otherClass
 23v1["<div style=text-align:center>(23v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
@@ -51,51 +51,51 @@ linkStyle default stroke:#aaa
 41v1["<div style=text-align:center>(41v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::paxos::Proposer,<br>        &gt;::from_raw(id),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            hydro_test::__staged::cluster::paxos::Ballot,<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
 42v1["<div style=text-align:center>(42v1)</div> <code><br>map({<br>    |(_, v)| v<br>})</code>"]:::otherClass
 43v1["<div style=text-align:center>(43v1)</div> <code><br>tee()</code>"]:::otherClass
-44v1["<div style=text-align:center>(44v1)</div> <code><br>source_iter({<br>    let underlying_memberids__free = unsafe {<br>        ::std::mem::transmute::&lt;<br>            _,<br>            &amp;[hydro_lang::location::MemberId&lt;<br>                hydro_test::__staged::cluster::paxos::Acceptor,<br>            &gt;],<br>        &gt;(__hydro_lang_cluster_ids_1)<br>    };<br>    underlying_memberids__free<br>})</code>"]:::otherClass
-45v1["<div style=text-align:center>(45v1)</div> <code><br>map({<br>    |id| (*id, MembershipEvent::Joined)<br>})</code>"]:::otherClass
-46v1["<div style=text-align:center>(46v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
-47v1["<div style=text-align:center>(47v1)</div> <code><br>filter_map({<br>    let f__free = {<br>        |v| if v { Some(()) } else { None }<br>    };<br>    {<br>        let orig = f__free;<br>        move |(k, v)| orig(v).map(|v| (k, v))<br>    }<br>})</code>"]:::otherClass
-48v1["<div style=text-align:center>(48v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-49v1["<div style=text-align:center>(49v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || None<br>    },<br>    {<br>        |latest, _| {<br>            *latest = Some(Instant::now());<br>        }<br>    },<br>)</code>"]:::otherClass
-50v1["<div style=text-align:center>(50v1)</div> <code><br>filter_map({<br>    let duration__free = {<br>        let i_am_leader_check_timeout__free = 10u64;<br>        Duration::from_secs(i_am_leader_check_timeout__free)<br>    };<br>    move |latest_received| {<br>        if let Some(latest_received) = latest_received {<br>            if Instant::now().duration_since(latest_received) &gt; duration__free {<br>                Some(())<br>            } else {<br>                None<br>            }<br>        } else {<br>            Some(())<br>        }<br>    }<br>})</code>"]:::otherClass
-51v1["<div style=text-align:center>(51v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        || 0usize<br>    },<br>    {<br>        |count, _| *count += 1<br>    },<br>)</code>"]:::otherClass
-52v1["<div style=text-align:center>(52v1)</div> <code><br>filter({<br>    |c| *c == 0<br>})</code>"]:::otherClass
-53v1["<div style=text-align:center>(53v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
-54v1["<div style=text-align:center>(54v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-55v1["<div style=text-align:center>(55v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
-56v1["<div style=text-align:center>(56v1)</div> <code><br>source_stream({<br>    let delay__free = {<br>        let CLUSTER_SELF_ID__free = hydro_lang::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::paxos::Proposer,<br>        &gt;::from_raw(__hydro_lang_cluster_self_id_0);<br>        let i_am_leader_check_timeout_delay_multiplier__free = 15usize;<br>        Duration::from_secs(<br>            (CLUSTER_SELF_ID__free.raw_id<br>                * i_am_leader_check_timeout_delay_multiplier__free as u32)<br>                .into(),<br>        )<br>    };<br>    let interval__free = {<br>        let i_am_leader_check_timeout__free = 10u64;<br>        Duration::from_secs(i_am_leader_check_timeout__free)<br>    };<br>    tokio_stream::wrappers::IntervalStream::new(<br>        tokio::time::interval_at(<br>            tokio::time::Instant::now() + delay__free,<br>            interval__free,<br>        ),<br>    )<br>})</code>"]:::otherClass
-57v1["<div style=text-align:center>(57v1)</div> <code><br>reduce::&lt;<br>    'tick,<br>&gt;({<br>    |_, _| {}<br>})</code>"]:::otherClass
-58v1["<div style=text-align:center>(58v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
-59v1["<div style=text-align:center>(59v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-60v1["<div style=text-align:center>(60v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
-61v1["<div style=text-align:center>(61v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
-62v1["<div style=text-align:center>(62v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-63v1["<div style=text-align:center>(63v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
-64v1["<div style=text-align:center>(64v1)</div> <code><br>inspect({<br>    |_| println!(&quot;Proposer leader expired, sending P1a&quot;)<br>})</code>"]:::otherClass
-65v1["<div style=text-align:center>(65v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-66v1["<div style=text-align:center>(66v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.raw_id,<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
-67v1["<div style=text-align:center>(67v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-68v1["<div style=text-align:center>(68v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
-69v1["<div style=text-align:center>(69v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::paxos::Acceptor,<br>        &gt;::from_raw(id),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                hydro_test::__staged::cluster::paxos::Ballot,<br>                core::result::Result&lt;<br>                    (<br>                        core::option::Option&lt;usize&gt;,<br>                        std::collections::hash_map::HashMap&lt;<br>                            usize,<br>                            hydro_test::__staged::cluster::paxos::LogValue&lt;<br>                                hydro_test::__staged::cluster::kv_replica::KvPayload&lt;<br>                                    u32,<br>                                    (<br>                                        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                                            hydro_test::__staged::cluster::paxos_bench::Client,<br>                                        &gt;,<br>                                        u32,<br>                                    ),<br>                                &gt;,<br>                            &gt;,<br>                        &gt;,<br>                    ),<br>                    hydro_test::__staged::cluster::paxos::Ballot,<br>                &gt;,<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
-70v1["<div style=text-align:center>(70v1)</div> <code><br>map({<br>    |(_, v)| v<br>})</code>"]:::otherClass
-71v1["<div style=text-align:center>(71v1)</div> <code><br>inspect({<br>    |p1b| println!(&quot;Proposer received P1b: {:?}&quot;, p1b)<br>})</code>"]:::otherClass
-72v1["<div style=text-align:center>(72v1)</div> <code><br>tee()</code>"]:::otherClass
-73v1["<div style=text-align:center>(73v1)</div> <code><br>chain()</code>"]:::otherClass
-74v1["<div style=text-align:center>(74v1)</div> <code><br>tee()</code>"]:::otherClass
-75v1["<div style=text-align:center>(75v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        move || (0, 0)<br>    },<br>    {<br>        move |accum, value| {<br>            if value.is_ok() {<br>                accum.0 += 1;<br>            } else {<br>                accum.1 += 1;<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
-76v1["<div style=text-align:center>(76v1)</div> <code><br>tee()</code>"]:::otherClass
-77v1["<div style=text-align:center>(77v1)</div> <code><br>filter({<br>    let f__free = {<br>        let min__free = 2usize;<br>        move |(success, _error)| success &gt;= &amp;min__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |(_k, v)| orig(v)<br>    }<br>})</code>"]:::otherClass
-78v1["<div style=text-align:center>(78v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-79v1["<div style=text-align:center>(79v1)</div> <code><br>filter({<br>    let f__free = {<br>        let max__free = 3usize;<br>        move |(success, error)| (success + error) &gt;= max__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |(_k, v)| orig(v)<br>    }<br>})</code>"]:::otherClass
-80v1["<div style=text-align:center>(80v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-81v1["<div style=text-align:center>(81v1)</div> <code><br>tee()</code>"]:::otherClass
-82v1["<div style=text-align:center>(82v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-83v1["<div style=text-align:center>(83v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+44v1["<div style=text-align:center>(44v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+45v1["<div style=text-align:center>(45v1)</div> <code><br>source_iter({<br>    let underlying_memberids__free = unsafe {<br>        ::std::mem::transmute::&lt;<br>            _,<br>            &amp;[hydro_lang::location::MemberId&lt;<br>                hydro_test::__staged::cluster::paxos::Acceptor,<br>            &gt;],<br>        &gt;(__hydro_lang_cluster_ids_1)<br>    };<br>    underlying_memberids__free<br>})</code>"]:::otherClass
+46v1["<div style=text-align:center>(46v1)</div> <code><br>map({<br>    |id| (*id, MembershipEvent::Joined)<br>})</code>"]:::otherClass
+47v1["<div style=text-align:center>(47v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
+48v1["<div style=text-align:center>(48v1)</div> <code><br>filter_map({<br>    let f__free = {<br>        |v| if v { Some(()) } else { None }<br>    };<br>    {<br>        let orig = f__free;<br>        move |(k, v)| orig(v).map(|v| (k, v))<br>    }<br>})</code>"]:::otherClass
+49v1["<div style=text-align:center>(49v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
+50v1["<div style=text-align:center>(50v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || None<br>    },<br>    {<br>        |latest, _| {<br>            *latest = Some(Instant::now());<br>        }<br>    },<br>)</code>"]:::otherClass
+51v1["<div style=text-align:center>(51v1)</div> <code><br>filter_map({<br>    let duration__free = {<br>        let i_am_leader_check_timeout__free = 10u64;<br>        Duration::from_secs(i_am_leader_check_timeout__free)<br>    };<br>    move |latest_received| {<br>        if let Some(latest_received) = latest_received {<br>            if Instant::now().duration_since(latest_received) &gt; duration__free {<br>                Some(())<br>            } else {<br>                None<br>            }<br>        } else {<br>            Some(())<br>        }<br>    }<br>})</code>"]:::otherClass
+52v1["<div style=text-align:center>(52v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        || 0usize<br>    },<br>    {<br>        |count, _| *count += 1<br>    },<br>)</code>"]:::otherClass
+53v1["<div style=text-align:center>(53v1)</div> <code><br>filter({<br>    |c| *c == 0<br>})</code>"]:::otherClass
+54v1["<div style=text-align:center>(54v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
+55v1["<div style=text-align:center>(55v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+56v1["<div style=text-align:center>(56v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
+57v1["<div style=text-align:center>(57v1)</div> <code><br>source_stream({<br>    let delay__free = {<br>        let CLUSTER_SELF_ID__free = hydro_lang::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::paxos::Proposer,<br>        &gt;::from_raw(__hydro_lang_cluster_self_id_0);<br>        let i_am_leader_check_timeout_delay_multiplier__free = 15usize;<br>        Duration::from_secs(<br>            (CLUSTER_SELF_ID__free.raw_id<br>                * i_am_leader_check_timeout_delay_multiplier__free as u32)<br>                .into(),<br>        )<br>    };<br>    let interval__free = {<br>        let i_am_leader_check_timeout__free = 10u64;<br>        Duration::from_secs(i_am_leader_check_timeout__free)<br>    };<br>    tokio_stream::wrappers::IntervalStream::new(<br>        tokio::time::interval_at(<br>            tokio::time::Instant::now() + delay__free,<br>            interval__free,<br>        ),<br>    )<br>})</code>"]:::otherClass
+58v1["<div style=text-align:center>(58v1)</div> <code><br>reduce::&lt;<br>    'tick,<br>&gt;({<br>    |_, _| {}<br>})</code>"]:::otherClass
+59v1["<div style=text-align:center>(59v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
+60v1["<div style=text-align:center>(60v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+61v1["<div style=text-align:center>(61v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
+62v1["<div style=text-align:center>(62v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
+63v1["<div style=text-align:center>(63v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+64v1["<div style=text-align:center>(64v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
+65v1["<div style=text-align:center>(65v1)</div> <code><br>inspect({<br>    |_| println!(&quot;Proposer leader expired, sending P1a&quot;)<br>})</code>"]:::otherClass
+66v1["<div style=text-align:center>(66v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+67v1["<div style=text-align:center>(67v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.raw_id,<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
+68v1["<div style=text-align:center>(68v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
+69v1["<div style=text-align:center>(69v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
+70v1["<div style=text-align:center>(70v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::paxos::Acceptor,<br>        &gt;::from_raw(id),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                hydro_test::__staged::cluster::paxos::Ballot,<br>                core::result::Result&lt;<br>                    (<br>                        core::option::Option&lt;usize&gt;,<br>                        std::collections::hash_map::HashMap&lt;<br>                            usize,<br>                            hydro_test::__staged::cluster::paxos::LogValue&lt;<br>                                hydro_test::__staged::cluster::kv_replica::KvPayload&lt;<br>                                    u32,<br>                                    (<br>                                        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                                            hydro_test::__staged::cluster::paxos_bench::Client,<br>                                        &gt;,<br>                                        u32,<br>                                    ),<br>                                &gt;,<br>                            &gt;,<br>                        &gt;,<br>                    ),<br>                    hydro_test::__staged::cluster::paxos::Ballot,<br>                &gt;,<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
+71v1["<div style=text-align:center>(71v1)</div> <code><br>map({<br>    |(_, v)| v<br>})</code>"]:::otherClass
+72v1["<div style=text-align:center>(72v1)</div> <code><br>inspect({<br>    |p1b| println!(&quot;Proposer received P1b: {:?}&quot;, p1b)<br>})</code>"]:::otherClass
+73v1["<div style=text-align:center>(73v1)</div> <code><br>tee()</code>"]:::otherClass
+74v1["<div style=text-align:center>(74v1)</div> <code><br>chain()</code>"]:::otherClass
+75v1["<div style=text-align:center>(75v1)</div> <code><br>tee()</code>"]:::otherClass
+76v1["<div style=text-align:center>(76v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        move || (0, 0)<br>    },<br>    {<br>        move |accum, value| {<br>            if value.is_ok() {<br>                accum.0 += 1;<br>            } else {<br>                accum.1 += 1;<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
+77v1["<div style=text-align:center>(77v1)</div> <code><br>tee()</code>"]:::otherClass
+78v1["<div style=text-align:center>(78v1)</div> <code><br>filter({<br>    let f__free = {<br>        let min__free = 2usize;<br>        move |(success, _error)| success &gt;= &amp;min__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |(_k, v)| orig(v)<br>    }<br>})</code>"]:::otherClass
+79v1["<div style=text-align:center>(79v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
+80v1["<div style=text-align:center>(80v1)</div> <code><br>filter({<br>    let f__free = {<br>        let max__free = 3usize;<br>        move |(success, error)| (success + error) &gt;= max__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |(_k, v)| orig(v)<br>    }<br>})</code>"]:::otherClass
+81v1["<div style=text-align:center>(81v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
+82v1["<div style=text-align:center>(82v1)</div> <code><br>tee()</code>"]:::otherClass
+83v1["<div style=text-align:center>(83v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 84v1["<div style=text-align:center>(84v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-85v1["<div style=text-align:center>(85v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-86v1["<div style=text-align:center>(86v1)</div> <code><br>filter({<br>    let f__free = {<br>        let min__free = 2usize;<br>        move |(success, _error)| success &lt; &amp;min__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |(_k, v)| orig(v)<br>    }<br>})</code>"]:::otherClass
-87v1["<div style=text-align:center>(87v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-88v1["<div style=text-align:center>(88v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+85v1["<div style=text-align:center>(85v1)</div> <code><br>filter({<br>    let f__free = {<br>        let min__free = 2usize;<br>        move |(success, _error)| success &lt; &amp;min__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |(_k, v)| orig(v)<br>    }<br>})</code>"]:::otherClass
+86v1["<div style=text-align:center>(86v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
+87v1["<div style=text-align:center>(87v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+88v1["<div style=text-align:center>(88v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
 89v1["<div style=text-align:center>(89v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 90v1["<div style=text-align:center>(90v1)</div> <code><br>filter_map({<br>    move |(key, res)| match res {<br>        Ok(v) =&gt; Some((key, v)),<br>        Err(_) =&gt; None,<br>    }<br>})</code>"]:::otherClass
 91v1["<div style=text-align:center>(91v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || vec![]<br>    },<br>    {<br>        |logs, log| {<br>            logs.push(log);<br>        }<br>    },<br>)</code>"]:::otherClass
@@ -148,80 +148,80 @@ linkStyle default stroke:#aaa
 140v1["<div style=text-align:center>(140v1)</div> <code><br>reduce::&lt;<br>    'tick,<br>&gt;({<br>    |curr, new| {<br>        if new &gt; *curr {<br>            *curr = new;<br>        }<br>    }<br>})</code>"]:::otherClass
 141v1["<div style=text-align:center>(141v1)</div> <code><br>tee()</code>"]:::otherClass
 142v1["<div style=text-align:center>(142v1)</div> <code><br>map({<br>    |max_slot| max_slot + 1<br>})</code>"]:::otherClass
-143v1["<div style=text-align:center>(143v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        0<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
-144v1["<div style=text-align:center>(144v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
-145v1["<div style=text-align:center>(145v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        ()<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
-146v1["<div style=text-align:center>(146v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
-147v1["<div style=text-align:center>(147v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-148v1["<div style=text-align:center>(148v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
-149v1["<div style=text-align:center>(149v1)</div> <code><br>chain()</code>"]:::otherClass
+143v1["<div style=text-align:center>(143v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+144v1["<div style=text-align:center>(144v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        0<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
+145v1["<div style=text-align:center>(145v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
+146v1["<div style=text-align:center>(146v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        ()<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
+147v1["<div style=text-align:center>(147v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
+148v1["<div style=text-align:center>(148v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+149v1["<div style=text-align:center>(149v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
 150v1["<div style=text-align:center>(150v1)</div> <code><br>chain()</code>"]:::otherClass
-151v1["<div style=text-align:center>(151v1)</div> <code><br>tee()</code>"]:::otherClass
-152v1["<div style=text-align:center>(152v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-153v1["<div style=text-align:center>(153v1)</div> <code><br>map({<br>    |((index, payload), base_slot)| (base_slot + index, payload)<br>})</code>"]:::otherClass
-154v1["<div style=text-align:center>(154v1)</div> <code><br>tee()</code>"]:::otherClass
-155v1["<div style=text-align:center>(155v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        || 0usize<br>    },<br>    {<br>        |count, _| *count += 1<br>    },<br>)</code>"]:::otherClass
-157v1["<div style=text-align:center>(157v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-158v1["<div style=text-align:center>(158v1)</div> <code><br>map({<br>    |(num_payloads, base_slot)| base_slot + num_payloads<br>})</code>"]:::otherClass
-159v1["<div style=text-align:center>(159v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-160v1["<div style=text-align:center>(160v1)</div> <code><br>source_iter({<br>    let underlying_memberids__free = unsafe {<br>        ::std::mem::transmute::&lt;<br>            _,<br>            &amp;[hydro_lang::location::MemberId&lt;<br>                hydro_test::__staged::cluster::paxos::Acceptor,<br>            &gt;],<br>        &gt;(__hydro_lang_cluster_ids_1)<br>    };<br>    underlying_memberids__free<br>})</code>"]:::otherClass
-161v1["<div style=text-align:center>(161v1)</div> <code><br>map({<br>    |id| (*id, MembershipEvent::Joined)<br>})</code>"]:::otherClass
-162v1["<div style=text-align:center>(162v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
-163v1["<div style=text-align:center>(163v1)</div> <code><br>filter_map({<br>    let f__free = {<br>        |v| if v { Some(()) } else { None }<br>    };<br>    {<br>        let orig = f__free;<br>        move |(k, v)| orig(v).map(|v| (k, v))<br>    }<br>})</code>"]:::otherClass
-164v1["<div style=text-align:center>(164v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-165v1["<div style=text-align:center>(165v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-166v1["<div style=text-align:center>(166v1)</div> <code><br>map({<br>    |((slot, payload), ballot)| ((slot, ballot), Some(payload))<br>})</code>"]:::otherClass
-167v1["<div style=text-align:center>(167v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-168v1["<div style=text-align:center>(168v1)</div> <code><br>filter_map({<br>    |(checkpoint, _log)| checkpoint<br>})</code>"]:::otherClass
-169v1["<div style=text-align:center>(169v1)</div> <code><br>reduce::&lt;<br>    'tick,<br>&gt;({<br>    |curr, new| {<br>        if new &gt; *curr {<br>            *curr = new;<br>        }<br>    }<br>})</code>"]:::otherClass
-170v1["<div style=text-align:center>(170v1)</div> <code><br>map({<br>    |v| Some(v)<br>})</code>"]:::otherClass
-171v1["<div style=text-align:center>(171v1)</div> <code><br>source_iter([::std::option::Option::None])</code>"]:::otherClass
-172v1["<div style=text-align:center>(172v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
-173v1["<div style=text-align:center>(173v1)</div> <code><br>chain()</code>"]:::otherClass
-174v1["<div style=text-align:center>(174v1)</div> <code><br>tee()</code>"]:::otherClass
-175v1["<div style=text-align:center>(175v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-176v1["<div style=text-align:center>(176v1)</div> <code><br>filter_map({<br>    let f__free = 1usize;<br>    move |(((slot, (count, entry)), ballot), checkpoint)| {<br>        if count &gt; f__free {<br>            return None;<br>        } else if let Some(checkpoint) = checkpoint &amp;&amp; slot &lt;= checkpoint {<br>            return None;<br>        }<br>        Some(((slot, ballot), entry.value))<br>    }<br>})</code>"]:::otherClass
-177v1["<div style=text-align:center>(177v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-178v1["<div style=text-align:center>(178v1)</div> <code><br>flat_map({<br>    |(max_slot, checkpoint)| {<br>        if let Some(checkpoint) = checkpoint {<br>            (checkpoint + 1)..max_slot<br>        } else {<br>            0..max_slot<br>        }<br>    }<br>})</code>"]:::otherClass
-179v1["<div style=text-align:center>(179v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-180v1["<div style=text-align:center>(180v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-181v1["<div style=text-align:center>(181v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-182v1["<div style=text-align:center>(182v1)</div> <code><br>map({<br>    move |(slot, ballot)| ((slot, ballot), None)<br>})</code>"]:::otherClass
-183v1["<div style=text-align:center>(183v1)</div> <code><br>chain()</code>"]:::otherClass
+151v1["<div style=text-align:center>(151v1)</div> <code><br>chain()</code>"]:::otherClass
+152v1["<div style=text-align:center>(152v1)</div> <code><br>tee()</code>"]:::otherClass
+153v1["<div style=text-align:center>(153v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+154v1["<div style=text-align:center>(154v1)</div> <code><br>map({<br>    |((index, payload), base_slot)| (base_slot + index, payload)<br>})</code>"]:::otherClass
+155v1["<div style=text-align:center>(155v1)</div> <code><br>tee()</code>"]:::otherClass
+156v1["<div style=text-align:center>(156v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        || 0usize<br>    },<br>    {<br>        |count, _| *count += 1<br>    },<br>)</code>"]:::otherClass
+158v1["<div style=text-align:center>(158v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+159v1["<div style=text-align:center>(159v1)</div> <code><br>map({<br>    |(num_payloads, base_slot)| base_slot + num_payloads<br>})</code>"]:::otherClass
+160v1["<div style=text-align:center>(160v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+161v1["<div style=text-align:center>(161v1)</div> <code><br>source_iter({<br>    let underlying_memberids__free = unsafe {<br>        ::std::mem::transmute::&lt;<br>            _,<br>            &amp;[hydro_lang::location::MemberId&lt;<br>                hydro_test::__staged::cluster::paxos::Acceptor,<br>            &gt;],<br>        &gt;(__hydro_lang_cluster_ids_1)<br>    };<br>    underlying_memberids__free<br>})</code>"]:::otherClass
+162v1["<div style=text-align:center>(162v1)</div> <code><br>map({<br>    |id| (*id, MembershipEvent::Joined)<br>})</code>"]:::otherClass
+163v1["<div style=text-align:center>(163v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
+164v1["<div style=text-align:center>(164v1)</div> <code><br>filter_map({<br>    let f__free = {<br>        |v| if v { Some(()) } else { None }<br>    };<br>    {<br>        let orig = f__free;<br>        move |(k, v)| orig(v).map(|v| (k, v))<br>    }<br>})</code>"]:::otherClass
+165v1["<div style=text-align:center>(165v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
+166v1["<div style=text-align:center>(166v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+167v1["<div style=text-align:center>(167v1)</div> <code><br>map({<br>    |((slot, payload), ballot)| ((slot, ballot), Some(payload))<br>})</code>"]:::otherClass
+168v1["<div style=text-align:center>(168v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+169v1["<div style=text-align:center>(169v1)</div> <code><br>filter_map({<br>    |(checkpoint, _log)| checkpoint<br>})</code>"]:::otherClass
+170v1["<div style=text-align:center>(170v1)</div> <code><br>reduce::&lt;<br>    'tick,<br>&gt;({<br>    |curr, new| {<br>        if new &gt; *curr {<br>            *curr = new;<br>        }<br>    }<br>})</code>"]:::otherClass
+171v1["<div style=text-align:center>(171v1)</div> <code><br>map({<br>    |v| Some(v)<br>})</code>"]:::otherClass
+172v1["<div style=text-align:center>(172v1)</div> <code><br>source_iter([::std::option::Option::None])</code>"]:::otherClass
+173v1["<div style=text-align:center>(173v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
+174v1["<div style=text-align:center>(174v1)</div> <code><br>chain()</code>"]:::otherClass
+175v1["<div style=text-align:center>(175v1)</div> <code><br>tee()</code>"]:::otherClass
+176v1["<div style=text-align:center>(176v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+177v1["<div style=text-align:center>(177v1)</div> <code><br>filter_map({<br>    let f__free = 1usize;<br>    move |(((slot, (count, entry)), ballot), checkpoint)| {<br>        if count &gt; f__free {<br>            return None;<br>        } else if let Some(checkpoint) = checkpoint &amp;&amp; slot &lt;= checkpoint {<br>            return None;<br>        }<br>        Some(((slot, ballot), entry.value))<br>    }<br>})</code>"]:::otherClass
+178v1["<div style=text-align:center>(178v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+179v1["<div style=text-align:center>(179v1)</div> <code><br>flat_map({<br>    |(max_slot, checkpoint)| {<br>        if let Some(checkpoint) = checkpoint {<br>            (checkpoint + 1)..max_slot<br>        } else {<br>            0..max_slot<br>        }<br>    }<br>})</code>"]:::otherClass
+180v1["<div style=text-align:center>(180v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
+181v1["<div style=text-align:center>(181v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+182v1["<div style=text-align:center>(182v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+183v1["<div style=text-align:center>(183v1)</div> <code><br>map({<br>    move |(slot, ballot)| ((slot, ballot), None)<br>})</code>"]:::otherClass
 184v1["<div style=text-align:center>(184v1)</div> <code><br>chain()</code>"]:::otherClass
-185v1["<div style=text-align:center>(185v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
-186v1["<div style=text-align:center>(186v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-187v1["<div style=text-align:center>(187v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
-188v1["<div style=text-align:center>(188v1)</div> <code><br>tee()</code>"]:::otherClass
-189v1["<div style=text-align:center>(189v1)</div> <code><br>map({<br>    let CLUSTER_SELF_ID__free = hydro_lang::location::MemberId::&lt;<br>        hydro_test::__staged::cluster::paxos::Proposer,<br>    &gt;::from_raw(__hydro_lang_cluster_self_id_0);<br>    move |((slot, ballot), value)| P2a {<br>        sender: CLUSTER_SELF_ID__free,<br>        ballot,<br>        slot,<br>        value,<br>    }<br>})</code>"]:::otherClass
-190v1["<div style=text-align:center>(190v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-191v1["<div style=text-align:center>(191v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.raw_id,<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
-192v1["<div style=text-align:center>(192v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-193v1["<div style=text-align:center>(193v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
-194v1["<div style=text-align:center>(194v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::paxos::Acceptor,<br>        &gt;::from_raw(id),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                (usize, hydro_test::__staged::cluster::paxos::Ballot),<br>                core::result::Result&lt;<br>                    (),<br>                    hydro_test::__staged::cluster::paxos::Ballot,<br>                &gt;,<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
-195v1["<div style=text-align:center>(195v1)</div> <code><br>map({<br>    |(_, v)| v<br>})</code>"]:::otherClass
-196v1["<div style=text-align:center>(196v1)</div> <code><br>tee()</code>"]:::otherClass
-197v1["<div style=text-align:center>(197v1)</div> <code><br>chain()</code>"]:::otherClass
-198v1["<div style=text-align:center>(198v1)</div> <code><br>tee()</code>"]:::otherClass
-199v1["<div style=text-align:center>(199v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        move || (0, 0)<br>    },<br>    {<br>        move |accum, value| {<br>            if value.is_ok() {<br>                accum.0 += 1;<br>            } else {<br>                accum.1 += 1;<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
-200v1["<div style=text-align:center>(200v1)</div> <code><br>tee()</code>"]:::otherClass
-201v1["<div style=text-align:center>(201v1)</div> <code><br>filter_map({<br>    let min__free = 2usize;<br>    move |(key, (success, _error))| {<br>        if success &gt;= min__free { Some(key) } else { None }<br>    }<br>})</code>"]:::otherClass
-202v1["<div style=text-align:center>(202v1)</div> <code><br>tee()</code>"]:::otherClass
-203v1["<div style=text-align:center>(203v1)</div> <code><br>filter({<br>    let f__free = {<br>        let max__free = 3usize;<br>        move |(success, error)| (success + error) &gt;= max__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |(_k, v)| orig(v)<br>    }<br>})</code>"]:::otherClass
-204v1["<div style=text-align:center>(204v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-205v1["<div style=text-align:center>(205v1)</div> <code><br>tee()</code>"]:::otherClass
-206v1["<div style=text-align:center>(206v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-207v1["<div style=text-align:center>(207v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+185v1["<div style=text-align:center>(185v1)</div> <code><br>chain()</code>"]:::otherClass
+186v1["<div style=text-align:center>(186v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
+187v1["<div style=text-align:center>(187v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+188v1["<div style=text-align:center>(188v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
+189v1["<div style=text-align:center>(189v1)</div> <code><br>tee()</code>"]:::otherClass
+190v1["<div style=text-align:center>(190v1)</div> <code><br>map({<br>    let CLUSTER_SELF_ID__free = hydro_lang::location::MemberId::&lt;<br>        hydro_test::__staged::cluster::paxos::Proposer,<br>    &gt;::from_raw(__hydro_lang_cluster_self_id_0);<br>    move |((slot, ballot), value)| P2a {<br>        sender: CLUSTER_SELF_ID__free,<br>        ballot,<br>        slot,<br>        value,<br>    }<br>})</code>"]:::otherClass
+191v1["<div style=text-align:center>(191v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+192v1["<div style=text-align:center>(192v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.raw_id,<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
+193v1["<div style=text-align:center>(193v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
+194v1["<div style=text-align:center>(194v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
+195v1["<div style=text-align:center>(195v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::paxos::Acceptor,<br>        &gt;::from_raw(id),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                (usize, hydro_test::__staged::cluster::paxos::Ballot),<br>                core::result::Result&lt;<br>                    (),<br>                    hydro_test::__staged::cluster::paxos::Ballot,<br>                &gt;,<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
+196v1["<div style=text-align:center>(196v1)</div> <code><br>map({<br>    |(_, v)| v<br>})</code>"]:::otherClass
+197v1["<div style=text-align:center>(197v1)</div> <code><br>tee()</code>"]:::otherClass
+198v1["<div style=text-align:center>(198v1)</div> <code><br>chain()</code>"]:::otherClass
+199v1["<div style=text-align:center>(199v1)</div> <code><br>tee()</code>"]:::otherClass
+200v1["<div style=text-align:center>(200v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        move || (0, 0)<br>    },<br>    {<br>        move |accum, value| {<br>            if value.is_ok() {<br>                accum.0 += 1;<br>            } else {<br>                accum.1 += 1;<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
+201v1["<div style=text-align:center>(201v1)</div> <code><br>tee()</code>"]:::otherClass
+202v1["<div style=text-align:center>(202v1)</div> <code><br>filter_map({<br>    let min__free = 2usize;<br>    move |(key, (success, _error))| {<br>        if success &gt;= min__free { Some(key) } else { None }<br>    }<br>})</code>"]:::otherClass
+203v1["<div style=text-align:center>(203v1)</div> <code><br>tee()</code>"]:::otherClass
+204v1["<div style=text-align:center>(204v1)</div> <code><br>filter({<br>    let f__free = {<br>        let max__free = 3usize;<br>        move |(success, error)| (success + error) &gt;= max__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |(_k, v)| orig(v)<br>    }<br>})</code>"]:::otherClass
+205v1["<div style=text-align:center>(205v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
+206v1["<div style=text-align:center>(206v1)</div> <code><br>tee()</code>"]:::otherClass
+207v1["<div style=text-align:center>(207v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 208v1["<div style=text-align:center>(208v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 209v1["<div style=text-align:center>(209v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
 210v1["<div style=text-align:center>(210v1)</div> <code><br>chain()</code>"]:::otherClass
 211v1["<div style=text-align:center>(211v1)</div> <code><br>tee()</code>"]:::otherClass
-212v1["<div style=text-align:center>(212v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-213v1["<div style=text-align:center>(213v1)</div> <code><br>map({<br>    |k| (k, ())<br>})</code>"]:::otherClass
-214v1["<div style=text-align:center>(214v1)</div> <code><br>tee()</code>"]:::otherClass
-215v1["<div style=text-align:center>(215v1)</div> <code><br>map({<br>    |(key, _)| key<br>})</code>"]:::otherClass
-216v1["<div style=text-align:center>(216v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-217v1["<div style=text-align:center>(217v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+212v1["<div style=text-align:center>(212v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
+213v1["<div style=text-align:center>(213v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+214v1["<div style=text-align:center>(214v1)</div> <code><br>map({<br>    |k| (k, ())<br>})</code>"]:::otherClass
+215v1["<div style=text-align:center>(215v1)</div> <code><br>tee()</code>"]:::otherClass
+216v1["<div style=text-align:center>(216v1)</div> <code><br>map({<br>    |(key, _)| key<br>})</code>"]:::otherClass
+217v1["<div style=text-align:center>(217v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 218v1["<div style=text-align:center>(218v1)</div> <code><br>filter_map({<br>    move |(key, res)| match res {<br>        Ok(_) =&gt; None,<br>        Err(e) =&gt; Some((key, e)),<br>    }<br>})</code>"]:::otherClass
 219v1["<div style=text-align:center>(219v1)</div> <code><br>map({<br>    |(_, ballot)| ballot<br>})</code>"]:::otherClass
 220v1["<div style=text-align:center>(220v1)</div> <code><br>source_iter({<br>    let underlying_memberids__free = unsafe {<br>        ::std::mem::transmute::&lt;<br>            _,<br>            &amp;[hydro_lang::location::MemberId&lt;<br>                hydro_test::__staged::cluster::kv_replica::Replica,<br>            &gt;],<br>        &gt;(__hydro_lang_cluster_ids_4)<br>    };<br>    underlying_memberids__free<br>})</code>"]:::otherClass
@@ -253,23 +253,23 @@ linkStyle default stroke:#aaa
 5v1--x|0|8v1; linkStyle 7 stroke:red
 7v1-->|1|8v1
 8v1-->9v1
-10v1-->11v1
-12v1-->13v1
-11v1-->|input|14v1
-13v1--x|single|14v1; linkStyle 13 stroke:red
-14v1-->15v1
-20v1--x|0|16v1; linkStyle 15 stroke:red
-15v1-->|1|16v1
-16v1-->17v1
-9v1-->|input|18v1
-17v1--x|single|18v1; linkStyle 19 stroke:red
-18v1-->19v1
-19v1-->330v1
+20v1-->330v1
+11v1-->12v1
+13v1-->14v1
+12v1-->|input|15v1
+14v1--x|single|15v1; linkStyle 14 stroke:red
+15v1-->16v1
+10v1--x|0|17v1; linkStyle 16 stroke:red
+16v1-->|1|17v1
+17v1-->18v1
+9v1-->|input|19v1
+18v1--x|single|19v1; linkStyle 20 stroke:red
+19v1-->20v1
 21v1-->22v1
 22v1--x23v1; linkStyle 23 stroke:red
 23v1-->24v1
 24v1-->25v1
-17v1-->26v1
+18v1-->26v1
 26v1-->27v1
 104v1-->28v1
 28v1-->29v1
@@ -288,58 +288,58 @@ linkStyle default stroke:#aaa
 40v1-->41v1
 41v1-->42v1
 42v1-->43v1
-44v1-->45v1
-45v1--x46v1; linkStyle 46 stroke:red
-46v1-->47v1
+84v1-->332v1
+45v1-->46v1
+46v1--x47v1; linkStyle 47 stroke:red
 47v1-->48v1
-43v1--x49v1; linkStyle 49 stroke:red
-49v1-->50v1
-28v1--x51v1; linkStyle 51 stroke:red
-51v1-->52v1
+48v1-->49v1
+43v1--x50v1; linkStyle 50 stroke:red
+50v1-->51v1
+28v1--x52v1; linkStyle 52 stroke:red
 52v1-->53v1
-50v1-->|input|54v1
-53v1--x|single|54v1; linkStyle 55 stroke:red
-54v1-->55v1
-56v1--x57v1; linkStyle 57 stroke:red
-57v1-->58v1
-55v1-->|input|59v1
-58v1--x|single|59v1; linkStyle 60 stroke:red
-59v1-->60v1
+53v1-->54v1
+51v1-->|input|55v1
+54v1--x|single|55v1; linkStyle 56 stroke:red
+55v1-->56v1
+57v1--x58v1; linkStyle 58 stroke:red
+58v1-->59v1
+56v1-->|input|60v1
+59v1--x|single|60v1; linkStyle 61 stroke:red
 60v1-->61v1
-27v1-->|input|62v1
-61v1--x|single|62v1; linkStyle 64 stroke:red
-62v1-->63v1
+61v1-->62v1
+27v1-->|input|63v1
+62v1--x|single|63v1; linkStyle 65 stroke:red
 63v1-->64v1
-48v1-->|0|65v1
-64v1-->|1|65v1
+64v1-->65v1
+49v1-->|0|66v1
+65v1-->|1|66v1
+67v1-->68v1
 66v1-->67v1
-65v1-->66v1
-68v1-->69v1
 69v1-->70v1
 70v1-->71v1
 71v1-->72v1
-85v1--x|0|73v1; linkStyle 75 stroke:red
-72v1-->|1|73v1
-73v1-->74v1
-74v1--x75v1; linkStyle 78 stroke:red
-75v1-->76v1
+72v1-->73v1
+44v1--x|0|74v1; linkStyle 76 stroke:red
+73v1-->|1|74v1
+74v1-->75v1
+75v1--x76v1; linkStyle 79 stroke:red
 76v1-->77v1
 77v1-->78v1
-76v1-->79v1
-79v1-->80v1
+78v1-->79v1
+77v1-->80v1
 80v1-->81v1
-78v1-->|pos|82v1
-81v1--x|neg|82v1; linkStyle 86 stroke:red
-82v1-->332v1
-74v1-->|pos|84v1
-81v1--x|neg|84v1; linkStyle 89 stroke:red
-84v1-->334v1
-76v1-->86v1
-86v1-->87v1
-74v1-->|pos|88v1
-87v1--x|neg|88v1; linkStyle 94 stroke:red
-88v1-->|pos|89v1
-83v1--x|neg|89v1; linkStyle 96 stroke:red
+81v1-->82v1
+79v1-->|pos|83v1
+82v1--x|neg|83v1; linkStyle 87 stroke:red
+75v1-->|pos|84v1
+82v1--x|neg|84v1; linkStyle 89 stroke:red
+77v1-->85v1
+85v1-->86v1
+75v1-->|pos|87v1
+86v1--x|neg|87v1; linkStyle 93 stroke:red
+83v1-->334v1
+87v1-->|pos|89v1
+88v1--x|neg|89v1; linkStyle 96 stroke:red
 89v1-->90v1
 90v1--x91v1; linkStyle 98 stroke:red
 91v1--x92v1; linkStyle 99 stroke:red
@@ -357,7 +357,7 @@ linkStyle default stroke:#aaa
 101v1--x|single|102v1; linkStyle 111 stroke:red
 102v1-->103v1
 103v1-->104v1
-72v1-->105v1
+73v1-->105v1
 105v1-->106v1
 107v1-->108v1
 108v1--x109v1; linkStyle 117 stroke:red
@@ -396,128 +396,128 @@ linkStyle default stroke:#aaa
 139v1--x140v1; linkStyle 150 stroke:red
 140v1-->141v1
 141v1-->142v1
-143v1-->144v1
-145v1-->146v1
-144v1-->|input|147v1
-146v1--x|single|147v1; linkStyle 156 stroke:red
-147v1-->148v1
-159v1--x|0|149v1; linkStyle 158 stroke:red
-148v1-->|1|149v1
-142v1--x|0|150v1; linkStyle 160 stroke:red
+159v1-->338v1
+144v1-->145v1
+146v1-->147v1
+145v1-->|input|148v1
+147v1--x|single|148v1; linkStyle 157 stroke:red
+148v1-->149v1
+143v1--x|0|150v1; linkStyle 159 stroke:red
 149v1-->|1|150v1
-150v1-->151v1
-131v1-->|input|152v1
-151v1--x|single|152v1; linkStyle 164 stroke:red
-152v1-->153v1
+142v1--x|0|151v1; linkStyle 161 stroke:red
+150v1-->|1|151v1
+151v1-->152v1
+131v1-->|input|153v1
+152v1--x|single|153v1; linkStyle 165 stroke:red
 153v1-->154v1
-154v1--x155v1; linkStyle 167 stroke:red
-155v1-->|input|157v1
-151v1--x|single|157v1; linkStyle 169 stroke:red
-157v1-->158v1
-158v1-->338v1
-160v1-->161v1
-161v1--x162v1; linkStyle 173 stroke:red
-162v1-->163v1
+154v1-->155v1
+155v1--x156v1; linkStyle 168 stroke:red
+156v1-->|input|158v1
+152v1--x|single|158v1; linkStyle 170 stroke:red
+158v1-->159v1
+208v1-->340v1
+161v1-->162v1
+162v1--x163v1; linkStyle 174 stroke:red
 163v1-->164v1
-154v1-->|input|165v1
-27v1--x|single|165v1; linkStyle 177 stroke:red
-165v1-->166v1
-138v1-->|input|167v1
-27v1--x|single|167v1; linkStyle 180 stroke:red
-133v1-->168v1
-168v1--x169v1; linkStyle 182 stroke:red
-169v1-->170v1
-171v1-->172v1
-170v1--x|0|173v1; linkStyle 185 stroke:red
-172v1-->|1|173v1
-173v1-->174v1
-167v1-->|input|175v1
-174v1--x|single|175v1; linkStyle 189 stroke:red
-175v1-->176v1
-141v1-->|input|177v1
-174v1--x|single|177v1; linkStyle 192 stroke:red
-177v1-->178v1
-138v1-->179v1
-178v1-->|pos|180v1
-179v1--x|neg|180v1; linkStyle 196 stroke:red
-180v1-->|input|181v1
-27v1--x|single|181v1; linkStyle 198 stroke:red
-181v1-->182v1
-176v1--x|0|183v1; linkStyle 200 stroke:red
-182v1-->|1|183v1
-166v1--x|0|184v1; linkStyle 202 stroke:red
+164v1-->165v1
+155v1-->|input|166v1
+27v1--x|single|166v1; linkStyle 178 stroke:red
+166v1-->167v1
+138v1-->|input|168v1
+27v1--x|single|168v1; linkStyle 181 stroke:red
+133v1-->169v1
+169v1--x170v1; linkStyle 183 stroke:red
+170v1-->171v1
+172v1-->173v1
+171v1--x|0|174v1; linkStyle 186 stroke:red
+173v1-->|1|174v1
+174v1-->175v1
+168v1-->|input|176v1
+175v1--x|single|176v1; linkStyle 190 stroke:red
+176v1-->177v1
+141v1-->|input|178v1
+175v1--x|single|178v1; linkStyle 193 stroke:red
+178v1-->179v1
+138v1-->180v1
+179v1-->|pos|181v1
+180v1--x|neg|181v1; linkStyle 197 stroke:red
+181v1-->|input|182v1
+27v1--x|single|182v1; linkStyle 199 stroke:red
+182v1-->183v1
+177v1--x|0|184v1; linkStyle 201 stroke:red
 183v1-->|1|184v1
-104v1-->185v1
-184v1-->|input|186v1
-185v1--x|single|186v1; linkStyle 206 stroke:red
-186v1-->187v1
+167v1--x|0|185v1; linkStyle 203 stroke:red
+184v1-->|1|185v1
+104v1-->186v1
+185v1-->|input|187v1
+186v1--x|single|187v1; linkStyle 207 stroke:red
 187v1-->188v1
 188v1-->189v1
-164v1-->|0|190v1
-189v1-->|1|190v1
+189v1-->190v1
+165v1-->|0|191v1
+190v1-->|1|191v1
+192v1-->193v1
 191v1-->192v1
-190v1-->191v1
-193v1-->194v1
 194v1-->195v1
 195v1-->196v1
-209v1--x|0|197v1; linkStyle 217 stroke:red
-196v1-->|1|197v1
-197v1-->198v1
-198v1--x199v1; linkStyle 220 stroke:red
-199v1-->200v1
+196v1-->197v1
+160v1--x|0|198v1; linkStyle 218 stroke:red
+197v1-->|1|198v1
+198v1-->199v1
+199v1--x200v1; linkStyle 221 stroke:red
 200v1-->201v1
 201v1-->202v1
-200v1-->203v1
-203v1-->204v1
+202v1-->203v1
+201v1-->204v1
 204v1-->205v1
-202v1-->|pos|206v1
-205v1--x|neg|206v1; linkStyle 228 stroke:red
-206v1-->340v1
-198v1-->|pos|208v1
-205v1--x|neg|208v1; linkStyle 231 stroke:red
-208v1-->342v1
-217v1--x|0|210v1; linkStyle 233 stroke:red
-188v1-->|1|210v1
+205v1-->206v1
+203v1-->|pos|207v1
+206v1--x|neg|207v1; linkStyle 229 stroke:red
+199v1-->|pos|208v1
+206v1--x|neg|208v1; linkStyle 231 stroke:red
+217v1-->342v1
+209v1--x|0|210v1; linkStyle 233 stroke:red
+189v1-->|1|210v1
 210v1-->211v1
-202v1-->|pos|212v1
-207v1--x|neg|212v1; linkStyle 237 stroke:red
-212v1-->213v1
+207v1-->344v1
+203v1-->|pos|213v1
+212v1--x|neg|213v1; linkStyle 238 stroke:red
 213v1-->214v1
 214v1-->215v1
-211v1-->|pos|216v1
-215v1--x|neg|216v1; linkStyle 242 stroke:red
-216v1-->344v1
-196v1-->218v1
+215v1-->216v1
+211v1-->|pos|217v1
+216v1--x|neg|217v1; linkStyle 243 stroke:red
+197v1-->218v1
 218v1-->219v1
 220v1-->221v1
 221v1--x222v1; linkStyle 247 stroke:red
 222v1-->223v1
 223v1-->224v1
 211v1-->|0|225v1
-214v1-->|1|225v1
+215v1-->|1|225v1
 225v1-->226v1
 226v1-->227v1
 224v1-->|0|228v1
 227v1-->|1|228v1
 229v1-->230v1
 228v1-->229v1
-330v1--o20v1; linkStyle 258 stroke:red
-332v1--o83v1; linkStyle 259 stroke:red
-334v1--o85v1; linkStyle 260 stroke:red
+330v1--o10v1; linkStyle 258 stroke:red
+332v1--o44v1; linkStyle 259 stroke:red
+334v1--o88v1; linkStyle 260 stroke:red
 336v1--o112v1; linkStyle 261 stroke:red
-338v1--o159v1; linkStyle 262 stroke:red
-340v1--o207v1; linkStyle 263 stroke:red
+338v1--o143v1; linkStyle 262 stroke:red
+340v1--o160v1; linkStyle 263 stroke:red
 342v1--o209v1; linkStyle 264 stroke:red
-344v1--o217v1; linkStyle 265 stroke:red
+344v1--o212v1; linkStyle 265 stroke:red
 2v1
 38v1
 39v1
-66v1
 67v1
+68v1
 123v1
 124v1
-191v1
 192v1
+193v1
 229v1
 230v1
 330v1
@@ -556,8 +556,8 @@ subgraph var_stream_106 ["var <tt>stream_106</tt>"]
     style var_stream_106 fill:transparent
     84v1
 end
-subgraph var_stream_107 ["var <tt>stream_107</tt>"]
-    style var_stream_107 fill:transparent
+subgraph var_stream_109 ["var <tt>stream_109</tt>"]
+    style var_stream_109 fill:transparent
     85v1
 end
 subgraph var_stream_11 ["var <tt>stream_11</tt>"]
@@ -572,8 +572,8 @@ subgraph var_stream_111 ["var <tt>stream_111</tt>"]
     style var_stream_111 fill:transparent
     87v1
 end
-subgraph var_stream_112 ["var <tt>stream_112</tt>"]
-    style var_stream_112 fill:transparent
+subgraph var_stream_113 ["var <tt>stream_113</tt>"]
+    style var_stream_113 fill:transparent
     88v1
 end
 subgraph var_stream_114 ["var <tt>stream_114</tt>"]
@@ -652,29 +652,25 @@ subgraph var_stream_135 ["var <tt>stream_135</tt>"]
     style var_stream_135 fill:transparent
     106v1
 end
-subgraph var_stream_141 ["var <tt>stream_141</tt>"]
-    style var_stream_141 fill:transparent
-    107v1
-end
 subgraph var_stream_142 ["var <tt>stream_142</tt>"]
     style var_stream_142 fill:transparent
-    108v1
+    107v1
 end
 subgraph var_stream_143 ["var <tt>stream_143</tt>"]
     style var_stream_143 fill:transparent
-    109v1
+    108v1
 end
 subgraph var_stream_144 ["var <tt>stream_144</tt>"]
     style var_stream_144 fill:transparent
-    110v1
+    109v1
 end
 subgraph var_stream_145 ["var <tt>stream_145</tt>"]
     style var_stream_145 fill:transparent
-    111v1
+    110v1
 end
-subgraph var_stream_149 ["var <tt>stream_149</tt>"]
-    style var_stream_149 fill:transparent
-    112v1
+subgraph var_stream_146 ["var <tt>stream_146</tt>"]
+    style var_stream_146 fill:transparent
+    111v1
 end
 subgraph var_stream_15 ["var <tt>stream_15</tt>"]
     style var_stream_15 fill:transparent
@@ -682,43 +678,47 @@ subgraph var_stream_15 ["var <tt>stream_15</tt>"]
 end
 subgraph var_stream_150 ["var <tt>stream_150</tt>"]
     style var_stream_150 fill:transparent
-    113v1
+    112v1
 end
 subgraph var_stream_151 ["var <tt>stream_151</tt>"]
     style var_stream_151 fill:transparent
-    114v1
+    113v1
 end
 subgraph var_stream_152 ["var <tt>stream_152</tt>"]
     style var_stream_152 fill:transparent
-    115v1
+    114v1
 end
 subgraph var_stream_153 ["var <tt>stream_153</tt>"]
     style var_stream_153 fill:transparent
-    116v1
+    115v1
 end
 subgraph var_stream_154 ["var <tt>stream_154</tt>"]
     style var_stream_154 fill:transparent
-    117v1
+    116v1
 end
-subgraph var_stream_156 ["var <tt>stream_156</tt>"]
-    style var_stream_156 fill:transparent
-    119v1
+subgraph var_stream_155 ["var <tt>stream_155</tt>"]
+    style var_stream_155 fill:transparent
+    117v1
 end
 subgraph var_stream_157 ["var <tt>stream_157</tt>"]
     style var_stream_157 fill:transparent
-    120v1
+    119v1
 end
 subgraph var_stream_158 ["var <tt>stream_158</tt>"]
     style var_stream_158 fill:transparent
-    121v1
+    120v1
 end
 subgraph var_stream_159 ["var <tt>stream_159</tt>"]
     style var_stream_159 fill:transparent
-    122v1
+    121v1
 end
 subgraph var_stream_16 ["var <tt>stream_16</tt>"]
     style var_stream_16 fill:transparent
     11v1
+end
+subgraph var_stream_160 ["var <tt>stream_160</tt>"]
+    style var_stream_160 fill:transparent
+    122v1
 end
 subgraph var_stream_17 ["var <tt>stream_17</tt>"]
     style var_stream_17 fill:transparent
@@ -857,13 +857,13 @@ subgraph var_stream_208 ["var <tt>stream_208</tt>"]
     style var_stream_208 fill:transparent
     155v1
 end
+subgraph var_stream_209 ["var <tt>stream_209</tt>"]
+    style var_stream_209 fill:transparent
+    156v1
+end
 subgraph var_stream_21 ["var <tt>stream_21</tt>"]
     style var_stream_21 fill:transparent
     16v1
-end
-subgraph var_stream_211 ["var <tt>stream_211</tt>"]
-    style var_stream_211 fill:transparent
-    157v1
 end
 subgraph var_stream_212 ["var <tt>stream_212</tt>"]
     style var_stream_212 fill:transparent
@@ -897,20 +897,20 @@ subgraph var_stream_22 ["var <tt>stream_22</tt>"]
     style var_stream_22 fill:transparent
     17v1
 end
-subgraph var_stream_222 ["var <tt>stream_222</tt>"]
-    style var_stream_222 fill:transparent
+subgraph var_stream_220 ["var <tt>stream_220</tt>"]
+    style var_stream_220 fill:transparent
     165v1
 end
 subgraph var_stream_223 ["var <tt>stream_223</tt>"]
     style var_stream_223 fill:transparent
     166v1
 end
-subgraph var_stream_226 ["var <tt>stream_226</tt>"]
-    style var_stream_226 fill:transparent
+subgraph var_stream_224 ["var <tt>stream_224</tt>"]
+    style var_stream_224 fill:transparent
     167v1
 end
-subgraph var_stream_228 ["var <tt>stream_228</tt>"]
-    style var_stream_228 fill:transparent
+subgraph var_stream_227 ["var <tt>stream_227</tt>"]
+    style var_stream_227 fill:transparent
     168v1
 end
 subgraph var_stream_229 ["var <tt>stream_229</tt>"]
@@ -949,8 +949,8 @@ subgraph var_stream_236 ["var <tt>stream_236</tt>"]
     style var_stream_236 fill:transparent
     176v1
 end
-subgraph var_stream_239 ["var <tt>stream_239</tt>"]
-    style var_stream_239 fill:transparent
+subgraph var_stream_237 ["var <tt>stream_237</tt>"]
+    style var_stream_237 fill:transparent
     177v1
 end
 subgraph var_stream_24 ["var <tt>stream_24</tt>"]
@@ -961,16 +961,16 @@ subgraph var_stream_240 ["var <tt>stream_240</tt>"]
     style var_stream_240 fill:transparent
     178v1
 end
-subgraph var_stream_242 ["var <tt>stream_242</tt>"]
-    style var_stream_242 fill:transparent
+subgraph var_stream_241 ["var <tt>stream_241</tt>"]
+    style var_stream_241 fill:transparent
     179v1
 end
 subgraph var_stream_243 ["var <tt>stream_243</tt>"]
     style var_stream_243 fill:transparent
     180v1
 end
-subgraph var_stream_245 ["var <tt>stream_245</tt>"]
-    style var_stream_245 fill:transparent
+subgraph var_stream_244 ["var <tt>stream_244</tt>"]
+    style var_stream_244 fill:transparent
     181v1
 end
 subgraph var_stream_246 ["var <tt>stream_246</tt>"]
@@ -985,13 +985,13 @@ subgraph var_stream_248 ["var <tt>stream_248</tt>"]
     style var_stream_248 fill:transparent
     184v1
 end
+subgraph var_stream_249 ["var <tt>stream_249</tt>"]
+    style var_stream_249 fill:transparent
+    185v1
+end
 subgraph var_stream_25 ["var <tt>stream_25</tt>"]
     style var_stream_25 fill:transparent
     20v1
-end
-subgraph var_stream_250 ["var <tt>stream_250</tt>"]
-    style var_stream_250 fill:transparent
-    185v1
 end
 subgraph var_stream_251 ["var <tt>stream_251</tt>"]
     style var_stream_251 fill:transparent
@@ -1013,17 +1013,17 @@ subgraph var_stream_255 ["var <tt>stream_255</tt>"]
     style var_stream_255 fill:transparent
     190v1
 end
+subgraph var_stream_256 ["var <tt>stream_256</tt>"]
+    style var_stream_256 fill:transparent
+    191v1
+end
 subgraph var_stream_26 ["var <tt>stream_26</tt>"]
     style var_stream_26 fill:transparent
     21v1
 end
-subgraph var_stream_262 ["var <tt>stream_262</tt>"]
-    style var_stream_262 fill:transparent
-    193v1
-    194v1
-end
 subgraph var_stream_263 ["var <tt>stream_263</tt>"]
     style var_stream_263 fill:transparent
+    194v1
     195v1
 end
 subgraph var_stream_264 ["var <tt>stream_264</tt>"]
@@ -1058,8 +1058,8 @@ subgraph var_stream_270 ["var <tt>stream_270</tt>"]
     style var_stream_270 fill:transparent
     202v1
 end
-subgraph var_stream_272 ["var <tt>stream_272</tt>"]
-    style var_stream_272 fill:transparent
+subgraph var_stream_271 ["var <tt>stream_271</tt>"]
+    style var_stream_271 fill:transparent
     203v1
 end
 subgraph var_stream_273 ["var <tt>stream_273</tt>"]
@@ -1086,8 +1086,8 @@ subgraph var_stream_28 ["var <tt>stream_28</tt>"]
     style var_stream_28 fill:transparent
     23v1
 end
-subgraph var_stream_280 ["var <tt>stream_280</tt>"]
-    style var_stream_280 fill:transparent
+subgraph var_stream_281 ["var <tt>stream_281</tt>"]
+    style var_stream_281 fill:transparent
     209v1
 end
 subgraph var_stream_283 ["var <tt>stream_283</tt>"]
@@ -1255,16 +1255,16 @@ subgraph var_stream_53 ["var <tt>stream_53</tt>"]
     style var_stream_53 fill:transparent
     48v1
 end
-subgraph var_stream_56 ["var <tt>stream_56</tt>"]
-    style var_stream_56 fill:transparent
+subgraph var_stream_54 ["var <tt>stream_54</tt>"]
+    style var_stream_54 fill:transparent
     49v1
 end
 subgraph var_stream_57 ["var <tt>stream_57</tt>"]
     style var_stream_57 fill:transparent
     50v1
 end
-subgraph var_stream_59 ["var <tt>stream_59</tt>"]
-    style var_stream_59 fill:transparent
+subgraph var_stream_58 ["var <tt>stream_58</tt>"]
+    style var_stream_58 fill:transparent
     51v1
 end
 subgraph var_stream_6 ["var <tt>stream_6</tt>"]
@@ -1327,17 +1327,17 @@ subgraph var_stream_73 ["var <tt>stream_73</tt>"]
     style var_stream_73 fill:transparent
     65v1
 end
+subgraph var_stream_74 ["var <tt>stream_74</tt>"]
+    style var_stream_74 fill:transparent
+    66v1
+end
 subgraph var_stream_8 ["var <tt>stream_8</tt>"]
     style var_stream_8 fill:transparent
     4v1
 end
-subgraph var_stream_88 ["var <tt>stream_88</tt>"]
-    style var_stream_88 fill:transparent
-    68v1
-    69v1
-end
 subgraph var_stream_89 ["var <tt>stream_89</tt>"]
     style var_stream_89 fill:transparent
+    69v1
     70v1
 end
 subgraph var_stream_9 ["var <tt>stream_9</tt>"]
@@ -1376,7 +1376,7 @@ subgraph var_stream_97 ["var <tt>stream_97</tt>"]
     style var_stream_97 fill:transparent
     78v1
 end
-subgraph var_stream_99 ["var <tt>stream_99</tt>"]
-    style var_stream_99 fill:transparent
+subgraph var_stream_98 ["var <tt>stream_98</tt>"]
+    style var_stream_98 fill:transparent
     79v1
 end
