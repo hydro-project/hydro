@@ -32,6 +32,11 @@ tokio = { version = "1.29.0", features = ["full"] }
 [dev-dependencies]
 ctor = "0.2"
 hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
+hydro_lang = { path = "../hydro_lang", version = "^0.14.0", features = ["viz"] }
+hydro_test = { path = "../hydro_test", version = "^0.0.0" }
+hydro_std = { path = "../hydro_std", version = "^0.14.0" }
+clap = { version = "4.4", features = ["derive"] }
+include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
 
 [build-dependencies]
 hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
