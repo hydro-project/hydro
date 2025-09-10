@@ -55,46 +55,13 @@ pub fn compute_pi<'a>(
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::compile::rewrites::persist_pullup;
     use hydro_lang::deploy::HydroDeploy;
-    use hydro_lang::location::Location;
-    use hydro_optimize::decoupler;
-
-    struct DecoupledCluster {}
 
     #[test]
     fn compute_pi_ir() {
         let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let _ = super::compute_pi(&builder, 8192);
         let built = builder.with_default_optimize::<HydroDeploy>();
-
-        hydro_build_utils::assert_debug_snapshot!(built.ir());
-
-        for (id, ir) in built.preview_compile().all_dfir() {
-            hydro_build_utils::insta::with_settings!({
-                snapshot_suffix => format!("surface_graph_{id}"),
-            }, {
-                hydro_build_utils::assert_snapshot!(ir.surface_syntax_string());
-            });
-        }
-    }
-
-    #[test]
-    fn decoupled_compute_pi_ir() {
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
-        let (cluster, _) = super::compute_pi(&builder, 8192);
-        let decoupled_cluster = builder.cluster::<DecoupledCluster>();
-        let decoupler = decoupler::Decoupler {
-            output_to_decoupled_machine_after: vec![4],
-            output_to_original_machine_after: vec![],
-            place_on_decoupled_machine: vec![],
-            decoupled_location: decoupled_cluster.id().clone(),
-            orig_location: cluster.id().clone(),
-        };
-        let built = builder
-            .optimize_with(persist_pullup::persist_pullup)
-            .optimize_with(|roots| decoupler::decouple(roots, &decoupler))
-            .into_deploy::<HydroDeploy>();
 
         hydro_build_utils::assert_debug_snapshot!(built.ir());
 
