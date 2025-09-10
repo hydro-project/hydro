@@ -11,7 +11,7 @@ fn test_surface_flows_1() {
         my_union = union() -> for_each(|x| println!("{}", x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[dfir_rs::test]
@@ -27,7 +27,7 @@ async fn test_source_interval() {
     };
 
     // Will print 4 times (fencepost counting).
-    tokio::time::timeout(Duration::from_secs_f32(3.5), hf.run_async())
+    tokio::time::timeout(Duration::from_secs_f32(3.5), hf.run())
         .await
         .expect_err("Expected time out");
 }

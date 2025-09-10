@@ -140,13 +140,11 @@ impl Context {
     pub fn waker(&self) -> std::task::Waker {
         use std::sync::Arc;
 
-        use futures::task::ArcWake;
-
         struct ContextWaker {
             subgraph_id: SubgraphId,
             event_queue_send: UnboundedSender<(SubgraphId, bool)>,
         }
-        impl ArcWake for ContextWaker {
+        impl futures::task::ArcWake for ContextWaker {
             fn wake_by_ref(arc_self: &Arc<Self>) {
                 let _recv_closed_error =
                     arc_self.event_queue_send.send((arc_self.subgraph_id, true));

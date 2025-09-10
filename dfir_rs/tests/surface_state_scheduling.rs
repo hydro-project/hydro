@@ -14,17 +14,17 @@ pub fn test_repeat_iter() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
@@ -32,7 +32,7 @@ pub fn test_repeat_iter() {
 
     assert_eq!(&[1, 1, 1], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -46,17 +46,17 @@ pub fn test_fold_tick() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
@@ -64,7 +64,7 @@ pub fn test_fold_tick() {
 
     assert_eq!(&[1, 0, 0], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -78,17 +78,17 @@ pub fn test_fold_static() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
@@ -96,7 +96,7 @@ pub fn test_fold_static() {
 
     assert_eq!(&[1, 1, 1], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -110,17 +110,17 @@ pub fn test_reduce_tick() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
@@ -128,7 +128,7 @@ pub fn test_reduce_tick() {
 
     assert_eq!(&[1], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -142,17 +142,17 @@ pub fn test_reduce_static() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
@@ -160,7 +160,7 @@ pub fn test_reduce_static() {
 
     assert_eq!(&[1, 1, 1], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -174,17 +174,17 @@ pub fn test_fold_keyed_tick() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
@@ -192,7 +192,7 @@ pub fn test_fold_keyed_tick() {
 
     assert_eq!(&[('a', 3)], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -206,17 +206,17 @@ pub fn test_fold_keyed_static() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
@@ -227,7 +227,7 @@ pub fn test_fold_keyed_static() {
         &*collect_ready::<Vec<_>, _>(&mut out_recv)
     );
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 /// Check that the scheduler does not unnecsarily schedule internal events,
@@ -247,28 +247,28 @@ pub fn test_resume_external_event() {
     );
     assert_eq!(&[] as &[usize], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
     assert_eq!(&[0], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
     );
     assert_eq!(&[0], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
     );
     assert_eq!(&[0], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(
         (TickInstant::new(4), 0),
         (df.current_tick(), df.current_stratum())
@@ -276,7 +276,7 @@ pub fn test_resume_external_event() {
     assert_eq!(&[0], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
     in_send.send(1).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(5), 0),
         (df.current_tick(), df.current_stratum())
@@ -284,14 +284,14 @@ pub fn test_resume_external_event() {
     assert_eq!(&[1], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
     in_send.send(2).unwrap();
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(
         (TickInstant::new(6), 0),
         (df.current_tick(), df.current_stratum())
     );
     assert_eq!(&[3], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(
         (TickInstant::new(7), 0),
         (df.current_tick(), df.current_stratum())

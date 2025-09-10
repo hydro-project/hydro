@@ -12,7 +12,6 @@ pub mod handoff;
 pub mod input;
 pub mod net;
 pub mod port;
-pub mod query;
 pub mod reactor;
 pub mod state;
 pub(crate) mod subgraph;

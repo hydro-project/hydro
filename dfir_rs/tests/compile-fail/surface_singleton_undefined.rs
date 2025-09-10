@@ -5,5 +5,5 @@ pub fn main() {
             -> filter(|value| value <= #unknown.as_reveal_ref())
         -> null();
     };
-    df.run_available();
+    df.run_available_sync();
 }

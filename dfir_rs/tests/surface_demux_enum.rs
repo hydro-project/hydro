@@ -89,7 +89,7 @@ pub fn test_demux_enum() {
 
         out = union() -> for_each(|area| println!("Area: {}", area));
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -118,7 +118,7 @@ pub fn test_demux_enum_generic() {
 
             out = union() -> for_each(|area| println!("Area: {}", area));
         };
-        df.run_available();
+        df.run_available_sync();
     }
     test::<f32>(9., 10., 8., 5.);
     test::<u32>(9, 10, 8, 5);
@@ -134,7 +134,7 @@ fn test_zero_variants() {
         source_stream(rx)
             -> demux_enum::<Never>();
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -148,5 +148,5 @@ fn test_one_variant() {
         input = source_iter([Request::OnlyMessage("hi")]) -> demux_enum::<Request<&'static str>>();
         input[OnlyMessage] -> assert_eq([("hi",)]);
     };
-    df.run_available();
+    df.run_available_sync();
 }

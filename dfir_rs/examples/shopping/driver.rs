@@ -32,7 +32,7 @@ async fn spawn_listener(
         let local = tokio::task::LocalSet::new();
         local.block_on(&runtime, async {
             let mut hf = listener_flow(tuple_listener_in, bp_listener_in, ssiv_listener_in).await;
-            hf.run_async().await;
+            hf.run().await;
         });
     });
 }
@@ -118,7 +118,7 @@ pub(crate) async fn run_driver(opts: Opts) {
                         }
                         _ => unreachable!(),
                     };
-                    hf.run_async().await;
+                    hf.run().await;
                 });
             });
 
@@ -202,7 +202,7 @@ pub(crate) async fn run_driver(opts: Opts) {
                             gossip_addrs.into_iter(),
                         )
                         .await;
-                        hf.run_async().await;
+                        hf.run().await;
                     });
                 });
             }
@@ -239,7 +239,7 @@ pub(crate) async fn run_driver(opts: Opts) {
     }
 
     // Run the client for 1 second; should be long enough to get all the results
-    let _timeout = tokio::time::timeout(std::time::Duration::from_secs(1), hf.run_async())
+    let _timeout = tokio::time::timeout(std::time::Duration::from_secs(1), hf.run())
         .await
         .unwrap_err();
 }

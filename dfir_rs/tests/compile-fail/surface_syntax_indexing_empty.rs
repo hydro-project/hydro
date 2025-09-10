@@ -4,5 +4,5 @@ fn main() {
     let mut df = dfir_syntax! {
         source_iter(0..10) -> [0]();
     };
-    df.run_available();
+    df.run_available_sync();
 }

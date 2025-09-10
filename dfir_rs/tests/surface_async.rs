@@ -44,7 +44,7 @@ pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {
         };
 
         tokio::select! {
-            _ = df.run_async() => (),
+            _ = df.run() => (),
             _ = tokio::time::sleep(Duration::from_secs(1)) => (),
         };
 
@@ -79,7 +79,7 @@ pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {
         };
 
         tokio::select! {
-            _ = df.run_async() => (),
+            _ = df.run() => (),
             _ = tokio::time::sleep(Duration::from_secs(1)) => (),
         };
 
@@ -110,7 +110,7 @@ pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {
         };
 
         tokio::select! {
-            _ = df.run_async() => (),
+            _ = df.run() => (),
             _ = tokio::time::sleep(Duration::from_secs(1)) => (),
         };
 
@@ -153,7 +153,7 @@ pub async fn test_echo_tcp() -> Result<(), Box<dyn Error>> {
             rev[1] -> for_each(|s| seen_send.send(s).unwrap());
         };
 
-        tokio::time::timeout(Duration::from_secs(1), df.run_async())
+        tokio::time::timeout(Duration::from_secs(1), df.run())
             .await
             .expect_err("Expected time out");
 
@@ -188,7 +188,7 @@ pub async fn test_echo_tcp() -> Result<(), Box<dyn Error>> {
 
         println!("Client running!");
 
-        tokio::time::timeout(Duration::from_secs(1), df.run_async())
+        tokio::time::timeout(Duration::from_secs(1), df.run())
             .await
             .expect_err("Expected time out");
 
@@ -217,15 +217,15 @@ pub async fn test_echo() {
         source_stream(lines_recv) -> dest_sink(stdout_lines);
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available().await;
 
     lines_send.send("Hello".to_owned()).unwrap();
     lines_send.send("World".to_owned()).unwrap();
-    df.run_available();
+    df.run_available().await;
 
     lines_send.send("Hello".to_owned()).unwrap();
     lines_send.send("World".to_owned()).unwrap();
-    df.run_available();
+    df.run_available().await;
 
     // Allow background thread to catch up.
     tokio::time::sleep(Duration::from_secs(1)).await;
@@ -248,7 +248,7 @@ pub async fn test_futures_stream_sink() {
         recv[1] -> for_each(|x| seen_send.send(x).unwrap());
     };
 
-    tokio::time::timeout(Duration::from_secs(1), df.run_async())
+    tokio::time::timeout(Duration::from_secs(1), df.run())
         .await
         .expect_err("Expected timeout, `run_async` doesn't return.");
 
@@ -268,7 +268,7 @@ async fn asynctest_dest_sink_bounded_channel() {
     let mut flow = dfir_syntax! {
         source_iter(0..10) -> dest_sink(send);
     };
-    tokio::time::timeout(Duration::from_secs(1), flow.run_async())
+    tokio::time::timeout(Duration::from_secs(1), flow.run())
         .await
         .expect_err("Expected time out");
 
@@ -302,7 +302,7 @@ async fn asynctest_dest_sink_duplex() {
             Bytes::from_static(b"world"),
         ]) -> dest_sink(sink);
     };
-    tokio::time::timeout(Duration::from_secs(1), flow.run_async())
+    tokio::time::timeout(Duration::from_secs(1), flow.run())
         .await
         .expect_err("Expected time out");
 
@@ -327,7 +327,7 @@ async fn asynctest_dest_asyncwrite_duplex() {
             Bytes::from_static("world".as_bytes()),
         ]) -> dest_sink(sink);
     };
-    tokio::time::timeout(Duration::from_secs(1), flow.run_async())
+    tokio::time::timeout(Duration::from_secs(1), flow.run())
         .await
         .expect_err("Expected time out");
 
@@ -347,13 +347,13 @@ async fn asynctest_source_stream() {
         let mut flow = dfir_syntax! {
             source_stream(a_recv) -> for_each(|x| { b_send.send(x).unwrap(); });
         };
-        flow.run_async().await.unwrap();
+        flow.run().await.unwrap();
     });
     let task_b = tokio::task::spawn_local(async move {
         let mut flow = dfir_syntax! {
             source_stream(b_recv) -> for_each(|x| { c_send.send(x).unwrap(); });
         };
-        flow.run_async().await.unwrap();
+        flow.run().await.unwrap();
     });
 
     a_send.send(1).unwrap();
@@ -373,7 +373,7 @@ async fn asynctest_source_stream() {
     );
 }
 
-/// Check to make sure hf.run_async() does not hang due to replaying stateful operators saturating
+/// Check to make sure hf.run() does not hang due to replaying stateful operators saturating
 /// `run_available()`.
 ///
 /// This test is a little bit race-ey... if for some insane reason a tick (task_b) runs longer than
@@ -406,7 +406,7 @@ async fn asynctest_check_state_yielding() {
 
             tokio::select! {
                 biased;
-                _ = hf.run_async() => panic!("`run_async()` should run forever."),
+                _ = hf.run() => panic!("`run_async()` should run forever."),
                 _ = task_a => tracing::info!("`task_a` (sending) complete."),
             }
 
@@ -431,7 +431,7 @@ async fn asynctest_repeat_iter() {
         source_iter(0..3) -> persist::<'static>()
             -> for_each(|x| b_send.send(x).unwrap());
     };
-    hf.run_available_async().await;
+    hf.run_available().await;
 
     let seen: Vec<_> = collect_ready_async(b_recv).await;
     assert_eq!(&[0, 1, 2], &*seen);
@@ -461,7 +461,7 @@ async fn asynctest_event_repeat_iter() {
     // Run until barrier completes.
     tokio::select! {
         biased; // `run_async` needs to be polled to process the data first, otherwise the task may complete before data is processed.
-        _ = hf.run_async() => panic!("`run_async()` should run forever."),
+        _ = hf.run() => panic!("`run_async()` should run forever."),
         _ = send_task => tracing::info!("sending complete"),
     };
 
@@ -493,7 +493,7 @@ async fn asynctest_tcp() {
 
     tokio::time::timeout(
         Duration::from_millis(200),
-        futures::future::join(echo_server.run_async(), echo_client.run_async()),
+        futures::future::join(echo_server.run(), echo_client.run()),
     )
     .await
     .expect_err("Expected timeout");
@@ -526,7 +526,7 @@ async fn asynctest_udp() {
 
     tokio::time::timeout(
         Duration::from_millis(200),
-        futures::future::join(echo_server.run_async(), echo_client.run_async()),
+        futures::future::join(echo_server.run(), echo_client.run()),
     )
     .await
     .expect_err("Expected timeout");

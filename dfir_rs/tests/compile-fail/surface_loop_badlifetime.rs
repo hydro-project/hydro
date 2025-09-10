@@ -11,5 +11,5 @@ fn main() {
             }) -> for_each(|v| println!("{:?}", v));
         };
     };
-    df.run_available();
+    df.run_available_sync();
 }

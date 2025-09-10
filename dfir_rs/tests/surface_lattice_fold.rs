@@ -10,7 +10,7 @@ fn test_basic() {
             -> lattice_fold::<'static>(|| Max::<u32>::new(0))
             -> for_each(|x: Max<u32>| println!("Least upper bound: {:?}", x));
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[test]
@@ -29,7 +29,7 @@ fn test_fold_loop() {
         folder -> inspect(|v| println!("{:?}", v))
             -> for_each(|v: Max<u8>| output_send.send(*v.as_reveal_ref()).unwrap());
     };
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(&[2], &*collect_ready::<Vec<_>, _>(output_recv));
 }
 
@@ -49,7 +49,7 @@ fn test_lattice_fold_loop() {
         folder
             -> for_each(|v: Max<u8>| output_send.send(*v.as_reveal_ref()).unwrap());
     };
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         &(2..=254).collect::<Vec<u8>>(),
         &*collect_ready::<Vec<_>, _>(output_recv)

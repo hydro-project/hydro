@@ -1202,7 +1202,7 @@ impl DfirGraph {
                             fn #pivot_fn_ident<Pull: ::std::iter::Iterator<Item = Item>, Push: #root::pusherator::Pusherator<Item = Item>, Item>(pull: Pull, push: Push) {
                                 #root::pusherator::pivot::Pivot::new(pull, push).run();
                             }
-                            #pivot_fn_ident(#pull_ident, #push_ident);
+                            (#pivot_fn_ident)(#pull_ident, #push_ident);
                         });
                     }
                 };
@@ -1234,6 +1234,7 @@ impl DfirGraph {
                             #( #send_port_code )*
                             #( #subgraph_op_iter_code )*
                             #( #subgraph_op_iter_after_code )*
+                            ::std::future::ready(())
                         },
                     );
                 });

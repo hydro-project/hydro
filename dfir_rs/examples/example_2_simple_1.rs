@@ -10,5 +10,5 @@ pub fn main() {
             -> for_each(|n| println!("Howdy {}", n));
     };
 
-    flow.run_available();
+    flow.run_available_sync();
 }

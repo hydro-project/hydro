@@ -21,7 +21,7 @@ pub fn test_persist_basic() {
 
     for tick in 0..10 {
         assert_eq!(TickInstant::new(tick), hf.current_tick());
-        hf.run_tick();
+        hf.run_tick_sync();
     }
     assert_eq!(
         &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -47,7 +47,7 @@ pub fn test_persist_pull() {
 
     for tick in 0..10 {
         assert_eq!(TickInstant::new(tick), hf.current_tick());
-        hf.run_tick();
+        hf.run_tick_sync();
     }
     assert_eq!(
         &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -70,7 +70,7 @@ pub fn test_persist_push() {
 
     for tick in 0..10 {
         assert_eq!(TickInstant::new(tick), hf.current_tick());
-        hf.run_tick();
+        hf.run_tick_sync();
     }
     assert_eq!(
         &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -87,9 +87,9 @@ pub fn test_persist_join() {
         my_join = join::<'tick>() -> for_each(|(k, (v1, v2))| println!("({}, ({}, {}))", k, v1, v2));
     };
     input_send.send(("hello", "oakland")).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     input_send.send(("hello", "san francisco")).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
 }
 
 #[multiplatform_test]
@@ -113,16 +113,16 @@ pub fn test_persist_replay_join() {
 
     persist_input_send.send(1).unwrap();
     other_input_send.send(2).unwrap();
-    hf.run_tick();
+    hf.run_tick_sync();
     assert_eq!(&[(1, 2)], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
     persist_input_send.send(2).unwrap();
     other_input_send.send(2).unwrap();
-    hf.run_tick();
+    hf.run_tick_sync();
     assert_eq!(&[(3, 2)], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
     other_input_send.send(3).unwrap();
-    hf.run_tick();
+    hf.run_tick_sync();
     assert_eq!(&[(3, 3)], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
 
@@ -145,12 +145,12 @@ pub fn test_persist_double_handoff() {
     println!("A {}:{}", flow.current_tick(), flow.current_stratum());
 
     input_send.send(0).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     println!("B {}:{}", flow.current_tick(), flow.current_stratum());
     assert!(collect_ready::<Vec<_>, _>(&mut output_recv).is_empty());
 
     input_2_send.send(1).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     println!("C {}:{}", flow.current_tick(), flow.current_stratum());
     assert_eq!(&[(0, 1)], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 }
@@ -175,12 +175,12 @@ pub fn test_persist_single_handoff() {
     println!("A {}:{}", flow.current_tick(), flow.current_stratum());
 
     input_send.send(0).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     println!("B {}:{}", flow.current_tick(), flow.current_stratum());
     assert!(collect_ready::<Vec<_>, _>(&mut output_recv).is_empty());
 
     input_2_send.send(1).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     println!("C {}:{}", flow.current_tick(), flow.current_stratum());
     assert_eq!(&[(0, 1)], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 }
@@ -201,12 +201,12 @@ pub fn test_persist_single_subgraph() {
     println!("A {}:{}", flow.current_tick(), flow.current_stratum());
 
     input_send.send(0).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     println!("B {}:{}", flow.current_tick(), flow.current_stratum());
     assert!(collect_ready::<Vec<_>, _>(&mut output_recv).is_empty());
 
     input_2_send.send(1).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     println!("C {}:{}", flow.current_tick(), flow.current_stratum());
     assert_eq!(&[(0, 1)], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 }
@@ -230,7 +230,7 @@ pub fn test_persist() {
             -> for_each(|v| push_tx.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1, 2, 3], &*collect_ready::<Vec<_>, _>(&mut pull_rx));
     assert_eq!(&[1, 2, 3], &*collect_ready::<Vec<_>, _>(&mut push_rx));
@@ -258,7 +258,7 @@ pub fn test_persist_mut() {
             -> for_each(|v| push_tx.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1, 3, 4], &*collect_ready::<Vec<_>, _>(&mut pull_rx));
     assert_eq!(&[1, 4], &*collect_ready::<Vec<_>, _>(&mut push_rx));
@@ -286,7 +286,7 @@ pub fn test_persist_mut_keyed() {
             -> for_each(|(_k, v)| push_tx.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         HashSet::from_iter([1, 3, 4]),

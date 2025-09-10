@@ -5,5 +5,5 @@ fn main() {
         source_iter(0..10) -> dst[0];
         dst = for_each(drop);
     };
-    df.run_available();
+    df.run_available_sync();
 }

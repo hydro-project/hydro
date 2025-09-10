@@ -5,5 +5,5 @@ fn main() {
         x = for_each(std::mem::drop);
         source_iter(0..10) [0]x;
     };
-    df.run_available();
+    df.run_available_sync();
 }

@@ -15,5 +15,5 @@ fn main() {
 
         j -> null();
     };
-    df.run_available();
+    df.run_available_sync();
 }

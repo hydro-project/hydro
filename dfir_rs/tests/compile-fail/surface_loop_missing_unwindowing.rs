@@ -6,5 +6,5 @@ fn main() {
         };
         b -> null();
     };
-    df.run_available();
+    df.run_available_sync();
 }

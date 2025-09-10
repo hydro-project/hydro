@@ -13,5 +13,5 @@ fn main() {
         my_partition[evens] -> for_each(std::mem::drop);
         my_partition -> for_each(std::mem::drop);
     };
-    df.run_available();
+    df.run_available_sync();
 }

@@ -27,7 +27,7 @@ async fn single_batch_test() {
         );
     });
 
-    tokio::time::timeout(Duration::from_secs(2), df.run_async())
+    tokio::time::timeout(Duration::from_secs(2), df.run())
         .await
         .expect_err("Expected time out");
 
@@ -56,7 +56,7 @@ async fn multi_batch_test() {
         );
     });
 
-    tokio::time::timeout(Duration::from_secs(2), df.run_async())
+    tokio::time::timeout(Duration::from_secs(2), df.run())
         .await
         .expect_err("Expected time out");
 
@@ -86,7 +86,7 @@ async fn pusherator_test() {
         );
     });
 
-    tokio::time::timeout(Duration::from_secs(2), df.run_async())
+    tokio::time::timeout(Duration::from_secs(2), df.run())
         .await
         .expect_err("Expected time out");
 

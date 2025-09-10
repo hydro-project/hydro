@@ -90,7 +90,7 @@ const BATCH_C: &[Employee] = &[
 /// Basic monotonic threshold: find all departments with total salary at least 20_000.
 /// Uses the core API.
 /// SQL: SELECT department FROM employees WHERE 20_000 <= SUM(salary) GROUP BY department
-#[multiplatform_test]
+#[multiplatform_test(test, env_tracing)]
 fn fold_keyed_monotonic_core() {
     let mut hf = Dfir::new();
 
@@ -126,17 +126,17 @@ fn fold_keyed_monotonic_core() {
 
     input.give(Iter(BATCH_A.iter().cloned()));
     input.flush();
-    hf.run_available();
+    hf.run_available_sync();
     assert_eq!(0, output.borrow().len());
 
     input.give(Iter(BATCH_B.iter().cloned()));
     input.flush();
-    hf.run_available();
+    hf.run_available_sync();
     assert_eq!(&["sales", "accounting"], &**output.borrow());
 
     input.give(Iter(BATCH_C.iter().cloned()));
     input.flush();
-    hf.run_available();
+    hf.run_available_sync();
     assert_eq!(&["sales", "accounting", "engineering"], &**output.borrow());
 }
 
@@ -180,17 +180,17 @@ fn fold_keyed_monotonic_core() {
 
 //     input.give(Iter(BATCH_A.iter().cloned()));
 //     input.flush();
-//     hf.run_available();
+//     hf.run_available_sync();
 //     assert_eq!(0, output.borrow().len());
 
 //     input.give(Iter(BATCH_B.iter().cloned()));
 //     input.flush();
-//     hf.run_available();
+//     hf.run_available_sync();
 //     assert_eq!(&["sales", "accounting"], &**output.borrow());
 
 //     input.give(Iter(BATCH_C.iter().cloned()));
 //     input.flush();
-//     hf.run_available();
+//     hf.run_available_sync();
 //     assert_eq!(&["sales", "accounting", "engineering"], &**output.borrow());
 // }
 
@@ -261,7 +261,7 @@ fn fold_keyed_monotonic_core() {
 
 //     assert_eq!(0, output.borrow().len());
 
-//     hf.run_available();
+//     hf.run_available_sync();
 //     assert_eq!((1, 1), (hf.current_tick(), hf.current_stratum()));
 
 //     assert_eq!(
@@ -284,7 +284,7 @@ fn fold_keyed_monotonic_core() {
 //     input.give(Iter(BATCH_C.iter().cloned()));
 //     input.flush();
 
-//     hf.run_available();
+//     hf.run_available_sync();
 //     assert_eq!((3, 1), (hf.current_tick(), hf.current_stratum()));
 
 //     // Second batch has 7+3 = 10 items.

@@ -30,7 +30,7 @@ pub fn test_demux_1() {
         my_demux[circ] -> map(|r| std::f64::consts::PI * r * r) -> out;
         my_demux[rect] -> map(|(w, h)| w * h) -> out;
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[78_539, 80_000, 81_000],
@@ -55,7 +55,7 @@ pub fn test_demux_fizzbuzz_1() {
         my_demux[buzz] -> for_each(|_| println!("buzz"));
         my_demux[vals] -> for_each(|x| println!("{}", x));
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -75,7 +75,7 @@ pub fn test_demux_fizzbuzz_2() {
         my_demux[buzz] -> for_each(|_| println!("buzz"));
         my_demux[vals] -> for_each(|x| println!("{}", x));
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -95,7 +95,7 @@ pub fn test_partition_fizzbuzz() {
         my_partition[buzz] -> for_each(|_| println!("buzz"));
         my_partition[fzbz] -> for_each(|_| println!("fizzbuzz"));
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -108,5 +108,5 @@ pub fn test_partition_round() {
         my_partition[3] -> for_each(|x| println!("{} 3", x));
         my_partition[0] -> for_each(|x| println!("{} 0", x));
     };
-    df.run_available();
+    df.run_available_sync();
 }

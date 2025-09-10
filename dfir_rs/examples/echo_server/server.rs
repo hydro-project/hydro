@@ -59,5 +59,5 @@ pub(crate) async fn run_server(opts: Opts) {
     }
 
     // Run the server. This is an async function, so we need to await it.
-    flow.run_async().await;
+    flow.run().await;
 }

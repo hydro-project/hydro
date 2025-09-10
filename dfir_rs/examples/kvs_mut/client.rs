@@ -52,5 +52,5 @@ pub(crate) async fn run_client(opts: Opts) {
         print_graph(&flow, graph, opts.write_config);
     }
 
-    flow.run_async().await.unwrap();
+    flow.run().await.unwrap();
 }

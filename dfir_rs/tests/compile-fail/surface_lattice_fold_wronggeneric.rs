@@ -6,5 +6,5 @@ fn main() {
             -> lattice_fold::<'static, dfir_rs::lattices::set_union::SetUnionHashSet<u32>>(dfir_rs::lattices::set_union::SetUnionHashSet::<u32>::default())
             -> for_each(|x| println!("Least upper bound: {:?}", x));
     };
-    df.run_available();
+    df.run_available_sync();
 }

@@ -1,7 +1,5 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::handoff::Iter;
-use dfir_rs::scheduled::query::Query as Q;
 use static_assertions::const_assert;
 use timely::dataflow::operators::{Concatenate, Inspect, ToStream};
 
@@ -10,30 +8,6 @@ const NUM_INTS: usize = 1_000_000;
 
 fn make_ints(i: usize) -> impl Iterator<Item = usize> {
     (i * NUM_INTS)..((i + 1) * NUM_INTS)
-}
-
-fn benchmark_hydroflow(c: &mut Criterion) {
-    c.bench_function("fan_in/dfir_rs", |b| {
-        b.iter(|| {
-            let mut q = Q::new();
-
-            let sources: Vec<_> = (0..NUM_OPS)
-                .map(|i| {
-                    q.source(move |_ctx, send| {
-                        send.give(Iter(make_ints(i)));
-                    })
-                })
-                .collect();
-
-            let op = q.concat(sources);
-
-            op.sink(move |v| {
-                black_box(v);
-            });
-
-            q.run_available();
-        })
-    });
 }
 
 fn benchmark_hydroflow_surface(c: &mut Criterion) {
@@ -71,7 +45,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
                 my_union -> for_each(|x| { black_box(x); });
             };
 
-            df.run_available();
+            df.run_available_sync();
         })
     });
 }
@@ -119,7 +93,6 @@ fn benchmark_for_loops(c: &mut Criterion) {
 
 criterion_group!(
     fan_in_dataflow,
-    benchmark_hydroflow,
     benchmark_hydroflow_surface,
     benchmark_timely,
     benchmark_iters,

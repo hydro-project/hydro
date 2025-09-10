@@ -15,7 +15,7 @@ fn check_cartesian_product_multi_tick(
     rhs_send: UnboundedSender<u32>,
     mut out_recv: UnboundedReceiverStream<SetUnionHashSet<(u32, u32)>>,
 ) {
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(0, collect_ready::<Vec<_>, _>(&mut out_recv).len());
 
     for x in 0..3 {
@@ -24,7 +24,7 @@ fn check_cartesian_product_multi_tick(
     for x in 3..5 {
         rhs_send.send(x).unwrap();
     }
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(
         &[SetUnionHashSet::new(HashSet::from_iter([
             (0, 3),
@@ -37,7 +37,7 @@ fn check_cartesian_product_multi_tick(
         &*collect_ready::<Vec<_>, _>(&mut out_recv)
     );
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(0, collect_ready::<Vec<_>, _>(&mut out_recv).len());
 }
 

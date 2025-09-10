@@ -21,7 +21,7 @@ pub fn test_reduce_tick() {
 
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(1), 0),
@@ -31,7 +31,7 @@ pub fn test_reduce_tick() {
 
     items_send.send(3).unwrap();
     items_send.send(4).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(2), 0),
@@ -58,7 +58,7 @@ pub fn test_reduce_static() {
 
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(1), 0),
@@ -68,7 +68,7 @@ pub fn test_reduce_static() {
 
     items_send.send(3).unwrap();
     items_send.send(4).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(2), 0),
@@ -91,7 +91,7 @@ pub fn test_reduce_sum() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
@@ -102,7 +102,7 @@ pub fn test_reduce_sum() {
     items_send.send(9).unwrap();
     items_send.send(2).unwrap();
     items_send.send(5).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
@@ -115,7 +115,7 @@ pub fn test_reduce_sum() {
     items_send.send(2).unwrap();
     items_send.send(0).unwrap();
     items_send.send(3).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
@@ -147,7 +147,7 @@ pub fn test_reduce() {
         (TickInstant::new(0), 0),
         (df.current_tick(), df.current_stratum())
     );
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
@@ -159,7 +159,7 @@ pub fn test_reduce() {
     pairs_send.send((2, 4)).unwrap();
     pairs_send.send((3, 4)).unwrap();
     pairs_send.send((1, 2)).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
@@ -169,7 +169,7 @@ pub fn test_reduce() {
 
     pairs_send.send((0, 3)).unwrap();
     pairs_send.send((0, 3)).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
@@ -200,7 +200,7 @@ fn test_reduce_loop_lifetime() {
             };
         };
     };
-    df.run_available();
+    df.run_available_sync();
 
     // `'none` resets each iteration.
     assert_eq!(

@@ -31,7 +31,7 @@ pub fn test_state() {
 
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -52,7 +52,7 @@ pub fn test_state() {
         &*collect_ready::<Vec<_>, _>(&mut max_recv)
     );
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -77,7 +77,7 @@ pub fn test_state_unused() {
 
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
 }
 
 /// Just tests that the codegen is valid.
@@ -97,11 +97,11 @@ pub fn test_state_tick() {
     input_send.send(3).unwrap();
     input_send.send(4).unwrap();
     input_send.send(5).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     input_send.send(2).unwrap();
-    df.run_tick();
-    df.run_tick();
+    df.run_tick_sync();
+    df.run_tick_sync();
 
     assert_eq!(
         &[
@@ -144,7 +144,7 @@ pub fn test_fold_cross() {
 
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -187,7 +187,7 @@ pub fn test_fold_singleton() {
 
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -226,7 +226,7 @@ pub fn test_fold_singleton_push() {
 
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -266,7 +266,7 @@ pub fn test_reduce_singleton() {
 
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -305,7 +305,7 @@ pub fn test_reduce_singleton_push() {
 
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -342,11 +342,11 @@ pub fn test_scheduling() {
     for x in [1, 2, 3] {
         inn_send.send(x).unwrap();
     }
-    df.run_available();
+    df.run_available_sync();
     for x in [4, 5, 6] {
         inn_send.send(x).unwrap();
     }
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -390,7 +390,7 @@ pub fn test_multi_tick() {
 
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(
         &[
             (TickInstant::new(0), 1),
@@ -410,6 +410,6 @@ pub fn test_multi_tick() {
         &*collect_ready::<Vec<_>, _>(&mut max_recv)
     );
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(0, collect_ready::<Vec<_>, _>(&mut max_recv).len());
 }

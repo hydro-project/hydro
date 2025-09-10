@@ -30,7 +30,7 @@ pub fn test_difference_a() {
         a -> for_each(|x| output_inner.borrow_mut().insert(x));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(HashMultiSet::from_iter([2, 4]), output.take());
 }
@@ -56,19 +56,19 @@ pub fn test_difference_b() -> Result<(), SendError<&'static str>> {
     inp_send.send("01")?;
     inp_send.send("02")?;
     inp_send.send("03")?;
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(HashMultiSet::from_iter(["01", "02", "03"]), output.take());
 
     inp_send.send("02")?;
     inp_send.send("11")?;
     inp_send.send("12")?;
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(HashMultiSet::from_iter(["11", "12"]), output.take());
 
     inp_send.send("02")?;
     inp_send.send("11")?;
     inp_send.send("12")?;
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(HashMultiSet::from_iter(["02"]), output.take());
 
     Ok(())
@@ -89,16 +89,16 @@ pub fn test_tick_loop_1() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(&[1, 3], &*output.take());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(&[2, 6], &*output.take());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(&[4, 12], &*output.take());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(&[8, 24], &*output.take());
 }
 
@@ -115,19 +115,19 @@ pub fn test_tick_loop_2() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(&[1, 3], &*output.take());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert!(output.take().is_empty());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(&[2, 6], &*output.take());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert!(output.take().is_empty());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(&[4, 12], &*output.take());
 }
 
@@ -144,19 +144,19 @@ pub fn test_tick_loop_3() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(&[1, 3], &*output.take());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert!(output.take().is_empty());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert!(output.take().is_empty());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert_eq!(&[2, 6], &*output.take());
 
-    df.run_tick();
+    df.run_tick_sync();
     assert!(output.take().is_empty());
 }
 
@@ -186,7 +186,7 @@ pub fn test_surface_syntax_graph_unreachability() {
         my_join_tee[1] -> [neg]diff;
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     println!("A");
 
@@ -194,12 +194,12 @@ pub fn test_surface_syntax_graph_unreachability() {
     pairs_send.send((2, 4)).unwrap();
     pairs_send.send((3, 5)).unwrap();
     pairs_send.send((1, 2)).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     // println!("B");
 
     // pairs_send.send((0, 3)).unwrap();
-    // df.run_available();
+    // df.run_available_sync();
 }
 
 /// Test that subgraphs are in the same stratum when possible.
@@ -220,10 +220,10 @@ pub fn test_subgraph_stratum_consolidation() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(2 * usize::pow(2, 3), output.take().len());
 
-    df.run_available();
+    df.run_available_sync();
     assert!(output.take().is_empty());
 }
 
@@ -246,15 +246,15 @@ pub fn test_defer_lazy() {
 
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(&[1, 3], &*output.take());
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(&[2, 6], &*output.take());
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(&[4, 12], &*output.take());
 
-    df.run_available();
+    df.run_available_sync();
     assert_eq!(&[8, 24], &*output.take());
 }

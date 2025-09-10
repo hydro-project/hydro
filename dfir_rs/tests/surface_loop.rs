@@ -13,7 +13,7 @@ pub fn test_batches_basic() {
                 -> for_each(|x| result_send.send((context.loop_iter_count(), x)).unwrap());
         };
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -48,7 +48,7 @@ pub fn test_flo_syntax() {
         };
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -101,7 +101,7 @@ pub fn test_flo_nested() {
         };
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -153,7 +153,7 @@ pub fn test_flo_repeat_n() {
         };
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -217,7 +217,7 @@ pub fn test_flo_repeat_n_nested() {
         };
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -255,7 +255,7 @@ pub fn test_flo_repeat_n_multiple_nested() {
         };
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[
@@ -361,7 +361,7 @@ pub fn test_flo_repeat_kmeans() {
         };
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     let mut result = collect_ready::<Vec<_>, _>(&mut result_recv);
     let n = result.len();
@@ -403,7 +403,7 @@ fn test_state_codegen() {
             a -> batch() -> [pos]aj;
         };
     };
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -421,7 +421,7 @@ pub fn test_enumerate_loop() {
         };
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[

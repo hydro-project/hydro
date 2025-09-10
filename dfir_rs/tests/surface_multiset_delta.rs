@@ -17,14 +17,14 @@ pub fn test_multiset_delta() {
     input_send.send(3).unwrap();
     input_send.send(4).unwrap();
     input_send.send(3).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     assert_eq!(&[3, 4, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
     input_send.send(3).unwrap();
     input_send.send(5).unwrap();
     input_send.send(3).unwrap();
     input_send.send(3).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     // First two "3"s are removed due to previous tick.
     assert_eq!(&[5, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
@@ -41,13 +41,13 @@ pub fn test_persist_multiset_delta() {
     };
 
     input_send.send(1).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     assert_eq!(&[(1)], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 
-    flow.run_tick();
+    flow.run_tick_sync();
     assert!(collect_ready::<Vec<_>, _>(&mut output_recv).is_empty());
 
-    flow.run_tick();
+    flow.run_tick_sync();
     assert!(collect_ready::<Vec<_>, _>(&mut output_recv).is_empty());
 }
 
@@ -65,14 +65,14 @@ pub fn test_multiset_delta_2() {
     input_send.send(3).unwrap();
     input_send.send(4).unwrap();
     input_send.send(3).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
     assert_eq!(&[3, 4, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
     input_send.send(3).unwrap();
     input_send.send(4).unwrap();
     input_send.send(3).unwrap();
     input_send.send(3).unwrap();
-    flow.run_tick();
+    flow.run_tick_sync();
 
     assert_eq!(&[3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
@@ -101,7 +101,7 @@ fn test_chat_app_replay() {
     messages_send.send("hello".to_string()).unwrap();
     messages_send.send("world".to_string()).unwrap();
 
-    chat_server.run_tick();
+    chat_server.run_tick_sync();
 
     assert_eq!(
         &[
@@ -117,7 +117,7 @@ fn test_chat_app_replay() {
 
     messages_send.send("goodbye".to_string()).unwrap();
 
-    chat_server.run_tick();
+    chat_server.run_tick_sync();
 
     // fails with: [(1, "hello"), (2, "hello"), (3, "hello"), (1, "world"), (2, "world"), (3, "world"), (1, "goodbye"), (2, "goodbye"), (3, "goodbye")]
 
@@ -149,7 +149,7 @@ fn test_chat_app_replay_manual() {
     input_send.send((1, "world".to_owned())).unwrap();
     input_send.send((2, "world".to_owned())).unwrap();
 
-    flow.run_tick();
+    flow.run_tick_sync();
     assert_eq!(
         &[
             (1, "hello".to_string()),
@@ -170,7 +170,7 @@ fn test_chat_app_replay_manual() {
     input_send.send((2, "goodbye".to_owned())).unwrap();
     input_send.send((3, "goodbye".to_owned())).unwrap();
 
-    flow.run_tick();
+    flow.run_tick_sync();
     assert_eq!(
         &[
             (3, "hello".to_string()),

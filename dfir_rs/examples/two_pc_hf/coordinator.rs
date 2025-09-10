@@ -135,5 +135,5 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
 
-    df.run_async().await.unwrap();
+    df.run().await.unwrap();
 }

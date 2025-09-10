@@ -24,7 +24,7 @@ pub fn test_lattice_join_fused_join_reducing_behavior() {
             ]);
     };
 
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -41,7 +41,7 @@ pub fn test_lattice_join_fused_join_set_union() {
             -> assert_eq([SingletonMap(7, (HashSet::from_iter([5, 6]), HashSet::from_iter([5, 6])))]);
     };
 
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -67,7 +67,7 @@ pub fn test_lattice_join_fused_join_map_union() {
             ]);
     };
 
-    df.run_available();
+    df.run_available_sync();
 }
 
 #[multiplatform_test]
@@ -98,7 +98,7 @@ pub fn test_lattice_join_fused_join() {
         rhs_tx.send((7, Max::new(6))).unwrap();
         rhs_tx.send((7, Max::new(5))).unwrap();
 
-        df.run_tick();
+        df.run_tick_sync();
 
         let out: Vec<_> = collect_ready(&mut out_rx);
         assert_eq!(out, [SingletonMap(7, (4, 6))]);
@@ -107,7 +107,7 @@ pub fn test_lattice_join_fused_join() {
         rhs_tx.send((7, Max::new(6))).unwrap();
         rhs_tx.send((7, Max::new(5))).unwrap();
 
-        df.run_tick();
+        df.run_tick_sync();
 
         let out: Vec<_> = collect_ready(&mut out_rx);
         assert_eq!(out, [SingletonMap(7, (4, 6))]);
@@ -136,7 +136,7 @@ pub fn test_lattice_join_fused_join() {
         rhs_tx.send((7, Max::new(6))).unwrap();
         rhs_tx.send((7, Max::new(5))).unwrap();
 
-        df.run_tick();
+        df.run_tick_sync();
         let out: Vec<_> = collect_ready(&mut out_rx);
         assert_eq!(out, [SingletonMap(7, (4, 6))]);
 
@@ -144,7 +144,7 @@ pub fn test_lattice_join_fused_join() {
         lhs_tx.send((7, Max::new(4))).unwrap();
         rhs_tx.send((7, Max::new(5))).unwrap();
 
-        df.run_tick();
+        df.run_tick_sync();
         let out: Vec<_> = collect_ready(&mut out_rx);
         // TODO(mingwei): Should only be one, but bug: https://github.com/hydro-project/hydro/issues/1050#issuecomment-1924338317
         assert_eq!(out, [SingletonMap(7, (4, 6)), SingletonMap(7, (4, 6))]);

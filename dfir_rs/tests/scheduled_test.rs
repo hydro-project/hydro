@@ -30,6 +30,7 @@ fn map_filter() {
             for x in data {
                 send.give(Some(x));
             }
+            std::future::ready(())
         },
     );
 
@@ -41,6 +42,7 @@ fn map_filter() {
             for x in recv.take_inner() {
                 send.give(Some(3 * x + 1));
             }
+            std::future::ready(())
         },
     );
 
@@ -54,6 +56,7 @@ fn map_filter() {
                     send.give(Some(x));
                 }
             }
+            std::future::ready(())
         },
     );
 
@@ -67,10 +70,11 @@ fn map_filter() {
             for x in recv.take_inner() {
                 (*inner_outputs).borrow_mut().push(x);
             }
+            std::future::ready(())
         },
     );
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!((*outputs).borrow().clone(), vec![4, 10]);
 }
@@ -93,7 +97,7 @@ fn test_basic_variadic() {
         }
     });
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(Some(5), val.get());
 }
@@ -110,6 +114,7 @@ fn test_basic_n_m() {
         vec![source_send],
         move |_ctx, _recv: &[&RecvCtx<VecHandoff<usize>>], send| {
             send[0].give(Some(5));
+            std::future::ready(())
         },
     );
 
@@ -125,10 +130,11 @@ fn test_basic_n_m() {
                 let old_val = val_ref.replace(Some(v));
                 assert!(old_val.is_none()); // Only run once.
             }
+            std::future::ready(())
         },
     );
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(Some(5), val.get());
 }
@@ -234,7 +240,7 @@ fn test_cycle() {
         }
     });
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&*reachable_verts.borrow(), &[1, 2, 3, 4, 5]);
 }
@@ -264,7 +270,7 @@ fn test_input_handle() {
     input.give(Some(3));
     input.flush();
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!((*vec).borrow().clone(), vec![1, 2, 3]);
 
@@ -273,7 +279,7 @@ fn test_input_handle() {
     input.give(Some(6));
     input.flush();
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!((*vec).borrow().clone(), vec![1, 2, 3, 4, 5, 6]);
 }
@@ -311,7 +317,7 @@ fn test_input_handle_thread() {
 
     wait.recv().unwrap();
 
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!((*vec).borrow().clone(), vec![1, 2, 3]);
 }
@@ -361,7 +367,7 @@ fn test_input_channel() {
             });
 
             while !done.get() {
-                df.run_available();
+                df.run_available_sync();
             }
         });
     }

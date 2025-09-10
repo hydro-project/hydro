@@ -12,14 +12,14 @@ pub fn test_unique() {
             -> for_each(|v| print!("{:?}, ", v));
     };
     assert_graphvis_snapshots!(df);
-    df.run_available();
+    df.run_available_sync();
 
     print!("\nA: ");
 
     items_send.send(9).unwrap();
     items_send.send(9).unwrap();
     items_send.send(5).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     print!("\nB: ");
 
@@ -28,7 +28,7 @@ pub fn test_unique() {
     items_send.send(2).unwrap();
     items_send.send(0).unwrap();
     items_send.send(2).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     println!();
 }
@@ -45,12 +45,12 @@ pub fn test_unique_tick_pull() {
         m2 = union() -> for_each(|v| out_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_tick();
+    df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
     assert_eq!((0..15).collect::<Vec<_>>(), out);
 
-    df.run_tick();
+    df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
     assert_eq!((0..15).collect::<Vec<_>>(), out);
@@ -68,12 +68,12 @@ pub fn test_unique_static_pull() {
         m2 = union() -> for_each(|v| out_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    df.run_tick();
+    df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
     assert_eq!((0..15).collect::<Vec<_>>(), out);
 
-    df.run_tick();
+    df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
     assert_eq!(Vec::<usize>::new(), out);
@@ -91,12 +91,12 @@ pub fn test_unique_tick_push() {
         pivot -> for_each(std::mem::drop); // Force to be push.
     };
     assert_graphvis_snapshots!(df);
-    df.run_tick();
+    df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
     assert_eq!((0..15).collect::<Vec<_>>(), out);
 
-    df.run_tick();
+    df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
     assert_eq!((0..15).collect::<Vec<_>>(), out);
@@ -114,12 +114,12 @@ pub fn test_unique_static_push() {
         pivot -> for_each(std::mem::drop); // Force to be push.
     };
     assert_graphvis_snapshots!(df);
-    df.run_tick();
+    df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
     assert_eq!((0..15).collect::<Vec<_>>(), out);
 
-    df.run_tick();
+    df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
     assert_eq!(Vec::<usize>::new(), out);
@@ -139,7 +139,7 @@ pub fn test_loop_lifetime() {
             };
         };
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],

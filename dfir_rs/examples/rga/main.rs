@@ -81,7 +81,7 @@ pub async fn main() {
     keystroke((10, 0, 'l'), (9, 0), &input_send).await;
     keystroke((11, 0, 'l'), (10, 0), &input_send).await;
 
-    hf.run_tick();
+    hf.run_tick_sync();
 
     let mut output = String::new();
     write_to_dot(&mut rga_recv, &mut list_recv, &mut output).await;

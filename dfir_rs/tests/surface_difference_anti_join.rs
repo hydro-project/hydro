@@ -11,7 +11,7 @@ pub fn test_difference() {
         source_iter([2, 3, 4]) -> [neg]diff;
         diff = difference() -> for_each(|x| result_send.send(x).unwrap());
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1, 5], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
@@ -25,7 +25,7 @@ pub fn test_difference_multiset() {
         source_iter([2, 3, 4]) -> [neg]diff;
         diff = difference_multiset() -> for_each(|x| result_send.send(x).unwrap());
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(&[1, 5, 5], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
@@ -45,7 +45,7 @@ pub fn test_diff_timing() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_tick();
+    df.run_tick_sync();
     println!("{}x{}", df.current_tick(), df.current_stratum());
 
     println!("A");
@@ -57,7 +57,7 @@ pub fn test_diff_timing() {
     pos_send.send(4).unwrap();
     neg_send.send(2).unwrap();
     neg_send.send(3).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         &[(1, 1), (1, 4), (1, 4)],
@@ -66,7 +66,7 @@ pub fn test_diff_timing() {
 
     println!("B");
     neg_send.send(1).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         &[] as &[(u64, usize)],
@@ -95,7 +95,7 @@ pub fn test_diff_static() {
 
     neg_send.send(2).unwrap();
 
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(&[1, 1], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 
@@ -104,7 +104,7 @@ pub fn test_diff_static() {
     pos_send.send(2).unwrap();
     pos_send.send(3).unwrap();
 
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(&[1, 1, 3], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 }
@@ -124,7 +124,7 @@ pub fn test_diff_multiset_timing() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_tick();
+    df.run_tick_sync();
     println!("{}x{}", df.current_tick(), df.current_stratum());
 
     println!("A");
@@ -136,7 +136,7 @@ pub fn test_diff_multiset_timing() {
     pos_send.send(4).unwrap();
     neg_send.send(2).unwrap();
     neg_send.send(3).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         &[(1, 1), (1, 4), (1, 4)],
@@ -145,7 +145,7 @@ pub fn test_diff_multiset_timing() {
 
     println!("B");
     neg_send.send(1).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         &[] as &[(u64, usize)],
@@ -182,7 +182,7 @@ pub fn test_diff_multiset_static() {
 
     neg_send.send(2).unwrap();
 
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(&[1, 1], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 
@@ -191,7 +191,7 @@ pub fn test_diff_multiset_static() {
     pos_send.send(2).unwrap();
     pos_send.send(3).unwrap();
 
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         &[1, 1, 1, 1, 3],
@@ -228,7 +228,7 @@ pub fn test_diff_multiset_tick_static() {
 
     neg_send.send(2).unwrap();
 
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(&[1, 1], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 
@@ -237,7 +237,7 @@ pub fn test_diff_multiset_tick_static() {
     pos_send.send(2).unwrap();
     pos_send.send(3).unwrap();
 
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(&[1, 1, 3], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 }
@@ -271,7 +271,7 @@ pub fn test_diff_multiset_static_tick() {
 
     neg_send.send(2).unwrap();
 
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(&[1, 1], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 
@@ -279,7 +279,7 @@ pub fn test_diff_multiset_static_tick() {
 
     neg_send.send(3).unwrap();
 
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(&[1, 1, 2], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 }
@@ -298,14 +298,14 @@ pub fn test_anti_join_multiset() {
     for x in [(1, 2), (1, 2), (2, 3), (3, 4), (4, 5)] {
         inp_send.send(x).unwrap();
     }
-    flow.run_tick();
+    flow.run_tick_sync();
 
     for x in [(3, 2), (4, 3), (5, 4), (6, 5)] {
         inp_send.send(x).unwrap();
     }
-    flow.run_tick();
+    flow.run_tick_sync();
 
-    flow.run_available();
+    flow.run_available_sync();
     let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(
         &[(1, 2), (1, 2), (2, 3), (3, 4), (4, 5), (5, 4), (6, 5)],
@@ -342,7 +342,7 @@ pub fn test_difference_loop_lifetimes() {
             diff_ll = difference::<'loop, 'loop>() -> for_each(|x| result_ll_send.send((context.loop_iter_count(), x)).unwrap());
         };
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],
@@ -400,7 +400,7 @@ pub fn test_difference_multiset_loop_lifetimes() {
             diff_ll = difference_multiset::<'loop, 'loop>() -> for_each(|x| result_ll_send.send((context.loop_iter_count(), x)).unwrap());
         };
     };
-    df.run_available();
+    df.run_available_sync();
 
     assert_eq!(
         &[(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],

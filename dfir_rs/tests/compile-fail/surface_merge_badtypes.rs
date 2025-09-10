@@ -6,5 +6,5 @@ fn main() {
         source_iter(0..10) -> m;
         source_iter("hello".chars()) -> m;
     };
-    df.run_available();
+    df.run_available_sync();
 }

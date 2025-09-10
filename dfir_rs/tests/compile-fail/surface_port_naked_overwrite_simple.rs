@@ -7,5 +7,5 @@ fn main() {
         out = id[0];
         out[0] -> [0]inn; // Error, equivalent to: `[0][0]id[0][0]`
     };
-    df.run_available();
+    df.run_available_sync();
 }

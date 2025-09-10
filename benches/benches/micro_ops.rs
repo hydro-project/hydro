@@ -19,7 +19,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -37,7 +37,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -55,7 +55,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -73,7 +73,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -99,7 +99,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -125,7 +125,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -149,7 +149,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -172,7 +172,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -192,7 +192,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -210,7 +210,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -237,7 +237,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -262,7 +262,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )
@@ -298,7 +298,7 @@ fn ops(c: &mut Criterion) {
         };
 
         b.iter(|| {
-            df.run_tick();
+            df.run_tick_sync();
         })
     });
 
@@ -331,7 +331,7 @@ fn ops(c: &mut Criterion) {
         };
 
         b.iter(|| {
-            df.run_tick();
+            df.run_tick_sync();
         })
     });
 
@@ -354,7 +354,7 @@ fn ops(c: &mut Criterion) {
                 }
             },
             |df| {
-                df.run_available();
+                df.run_available_sync();
             },
             BatchSize::LargeInput,
         )

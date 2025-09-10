@@ -7,5 +7,5 @@ fn main() {
             -> for_each(|s| println!("{}", s));
     };
 
-    df.run_available();
+    df.run_available_sync();
 }

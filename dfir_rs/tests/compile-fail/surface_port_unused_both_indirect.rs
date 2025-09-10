@@ -8,5 +8,5 @@ fn main() {
         dst_0 = dst[0];
         src_0 -> dst_0;
     };
-    df.run_available();
+    df.run_available_sync();
 }

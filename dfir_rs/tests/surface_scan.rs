@@ -31,7 +31,7 @@ pub fn test_scan_tick() {
     // First tick with values 1, 2
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(1), 0),
@@ -44,7 +44,7 @@ pub fn test_scan_tick() {
     // Second tick with values 3, 4
     items_send.send(3).unwrap();
     items_send.send(4).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(2), 0),
@@ -55,7 +55,7 @@ pub fn test_scan_tick() {
     // So we should get: 3, 7 (not 6, 10)
     assert_eq!(&[3, 7], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -82,7 +82,7 @@ pub fn test_scan_static() {
     // First tick with values 1, 2
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(1), 0),
@@ -95,7 +95,7 @@ pub fn test_scan_static() {
     // Second tick with values 3, 4
     items_send.send(3).unwrap();
     items_send.send(4).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     assert_eq!(
         (TickInstant::new(2), 0),
@@ -106,7 +106,7 @@ pub fn test_scan_static() {
     // So we should get: 6, 10 (continuing from previous sum of 3)
     assert_eq!(&[6, 10], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 // Edge case tests
@@ -127,7 +127,7 @@ pub fn test_scan_empty_input() {
     };
 
     // Run a tick without sending any items
-    df.run_tick();
+    df.run_tick_sync();
 
     // Should receive no results since there were no inputs
     assert_eq!(
@@ -135,7 +135,7 @@ pub fn test_scan_empty_input() {
         &*collect_ready::<Vec<_>, _>(&mut result_recv)
     );
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -162,7 +162,7 @@ pub fn test_scan_different_types() {
     // Send some strings
     items_send.send("hello".to_string()).unwrap();
     items_send.send("world".to_string()).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     // Should receive tuples with count and concatenated strings
     let results = collect_ready::<Vec<_>, _>(&mut result_recv);
@@ -170,7 +170,7 @@ pub fn test_scan_different_types() {
     assert_eq!((1, "hello".to_string()), results[0]);
     assert_eq!((2, "hello, world".to_string()), results[1]);
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -198,7 +198,7 @@ pub fn test_scan_early_termination() {
     items_send.send(2).unwrap(); // acc = 3
     items_send.send(3).unwrap(); // acc = 6 > 5, should terminate
     items_send.send(4).unwrap(); // This should be ignored due to termination
-    df.run_tick();
+    df.run_tick_sync();
 
     // Should only receive values before termination: 1, 3
     assert_eq!(&[1, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
@@ -206,13 +206,13 @@ pub fn test_scan_early_termination() {
     // Send more values in a new tick
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     // With 'tick' persistence, accumulator resets each tick
     // So we should get new values: 1, 3
     assert_eq!(&[1, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -240,7 +240,7 @@ pub fn test_scan_static_early_termination() {
     items_send.send(2).unwrap(); // acc = 3
     items_send.send(3).unwrap(); // acc = 6 > 5, should terminate
     items_send.send(4).unwrap(); // This should be ignored due to termination
-    df.run_tick();
+    df.run_tick_sync();
 
     // Should only receive values before termination: 1, 3
     assert_eq!(&[1, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
@@ -248,7 +248,7 @@ pub fn test_scan_static_early_termination() {
     // Second tick: Send more values
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     // With 'static' persistence, termination state is preserved across ticks
     // So we should get no values in the second tick
@@ -257,7 +257,7 @@ pub fn test_scan_static_early_termination() {
         &*collect_ready::<Vec<_>, _>(&mut result_recv)
     );
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }
 
 #[multiplatform_test]
@@ -282,7 +282,7 @@ pub fn test_scan_complex_accumulator() {
     items_send.send(("apple".to_string(), 1)).unwrap();
     items_send.send(("banana".to_string(), 2)).unwrap();
     items_send.send(("apple".to_string(), 3)).unwrap();
-    df.run_tick();
+    df.run_tick_sync();
 
     // Should receive HashMaps with accumulated counts
     let results = collect_ready::<Vec<_>, _>(&mut result_recv);
@@ -305,5 +305,5 @@ pub fn test_scan_complex_accumulator() {
     expected3.insert("banana".to_string(), 2);
     assert_eq!(expected3, results[2]);
 
-    df.run_available(); // Should return quickly and not hang
+    df.run_available_sync(); // Should return quickly and not hang
 }

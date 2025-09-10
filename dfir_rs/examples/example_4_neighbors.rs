@@ -30,5 +30,5 @@ pub fn main() {
     edges_send.send((1, 2)).unwrap();
     edges_send.send((0, 3)).unwrap();
     edges_send.send((0, 3)).unwrap();
-    flow.run_available();
+    flow.run_available_sync();
 }

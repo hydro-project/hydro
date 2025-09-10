@@ -16,12 +16,12 @@ pub fn test_basic() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, []);
 
     single_tx.send(()).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![(1, ()), (2, ()), (3, ())]);
@@ -57,14 +57,14 @@ pub fn test_union_defer_tick() {
     };
     assert_graphvis_snapshots!(df);
 
-    df.run_available();
+    df.run_available_sync();
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![]);
 
     cross_tx.send(1).unwrap();
     cross_tx.send(2).unwrap();
     cross_tx.send(3).unwrap();
-    df.run_available();
+    df.run_available_sync();
 
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![(1, 0), (2, 0), (3, 0)]);

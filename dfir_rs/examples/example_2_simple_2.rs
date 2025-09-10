@@ -15,5 +15,5 @@ pub fn main() {
         -> for_each(|n| println!("G'day {}", n));
     };
 
-    flow.run_available();
+    flow.run_available_sync();
 }
