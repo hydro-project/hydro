@@ -151,9 +151,9 @@
 <a href=#151 id=151 data-nosnippet>151</a><span class="kw">impl </span>Host {
 <a href=#152 id=152 data-nosnippet>152</a>    <span class="doccomment">/// Run a single tick on the host's process. Returns true if any work was done by the
 <a href=#153 id=153 data-nosnippet>153</a>    /// process. This effectively "advances" time on the process.
-<a href=#154 id=154 data-nosnippet>154</a>    </span><span class="kw">pub fn </span>run_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
-<a href=#155 id=155 data-nosnippet>155</a>        <span class="self">self</span>.process.run_tick()
-<a href=#156 id=156 data-nosnippet>156</a>    }
+<a href=#154 id=154 data-nosnippet>154</a>    </span><span class="kw">pub async fn </span>run_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="self">self</span>.process.run_tick().<span class="kw">await
+<a href=#156 id=156 data-nosnippet>156</a>    </span>}
 <a href=#157 id=157 data-nosnippet>157</a>}
 <a href=#158 id=158 data-nosnippet>158</a>
 <a href=#159 id=159 data-nosnippet>159</a><span class="doccomment">/// A builder for constructing a host in the simulation.
@@ -304,7 +304,7 @@
 <a href=#304 id=304 data-nosnippet>304</a>
 <a href=#305 id=305 data-nosnippet>305</a>        <span class="kw">for </span>(name, host) <span class="kw">in </span><span class="self">self</span>.hosts.iter_mut() {
 <a href=#306 id=306 data-nosnippet>306</a>            <span class="macro">trace!</span>(<span class="string">"Running tick for host: {}"</span>, name);
-<a href=#307 id=307 data-nosnippet>307</a>            work_done |= host.run_tick();
+<a href=#307 id=307 data-nosnippet>307</a>            work_done |= host.run_tick().<span class="kw">await</span>;
 <a href=#308 id=308 data-nosnippet>308</a>        }
 <a href=#309 id=309 data-nosnippet>309</a>
 <a href=#310 id=310 data-nosnippet>310</a>        <span class="self">self</span>.process_network().<span class="kw">await</span>;
