@@ -2146,11 +2146,15 @@ dependencies = [
 name = "hydro_optimize"
 version = "0.13.0"
 dependencies = [
+ "clap",
  "ctor 0.2.9",
  "good_lp",
  "hydro_build_utils",
  "hydro_deploy",
  "hydro_lang",
+ "hydro_std",
+ "hydro_test",
+ "include_mdtests",
  "proc-macro2",
  "regex",
  "serde",
@@ -2187,7 +2191,6 @@ dependencies = [
  "hydro_build_utils",
  "hydro_deploy",
  "hydro_lang",
- "hydro_optimize",
  "hydro_std",
  "include_mdtests",
  "palette",

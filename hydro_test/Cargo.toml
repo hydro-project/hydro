@@ -33,7 +33,6 @@ dfir_lang = { path = "../dfir_lang", version = "^0.14.0" }
 example_test = { path = "../example_test", version = "^0.0.0" }
 futures = "0.3.0"
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0" }
-hydro_optimize = { path = "../hydro_optimize", version = "^0.13.0" }
 hydro_lang = { path = "../hydro_lang", version = "^0.14.0", features = [
     "deploy",
     "viz",
