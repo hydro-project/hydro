@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["debug","decouple_analysis","decoupler","deploy","deploy_and_analyze","parse_results","partition_node_analysis","partition_syn_analysis","partitioner","repair","rewrites"]};

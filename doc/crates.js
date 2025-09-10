@@ -1,2 +1,2 @@
-window.ALL_CRATES = ["dfir_lang","dfir_macro","dfir_rs","example_test","hydro_build_utils","hydro_deploy","hydro_deploy_integration","hydro_lang","hydro_optimize","hydro_std","hydro_test","include_mdtests","lattices","lattices_macro","multiplatform_test","pusherator","variadics","variadics_macro","website_playground"];
-//{"start":21,"fragment_lengths":[11,13,10,15,20,15,27,13,17,12,13,18,11,17,21,13,12,18,21]}
+window.ALL_CRATES = ["dfir_lang","dfir_macro","dfir_rs","example_test","hydro_build_utils","hydro_deploy","hydro_deploy_integration","hydro_lang","hydro_std","hydro_test","include_mdtests","lattices","lattices_macro","multiplatform_test","pusherator","variadics","variadics_macro","website_playground"];
+//{"start":21,"fragment_lengths":[11,13,10,15,20,15,27,13,12,13,18,11,17,21,13,12,18,21]}

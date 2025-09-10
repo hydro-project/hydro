@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ClusterSelfIdReplace","NetworkType","Rewrite"],"fn":["get_network_type","relevant_inputs","replay"],"struct":["RewriteMetadata"],"type":["Rewrites"]};

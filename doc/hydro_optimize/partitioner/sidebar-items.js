@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["partition"],"struct":["ClusterMembersReplace","Partitioner"]};

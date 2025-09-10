@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["AnalyzeClosure","StructOrTuple"],"type":["StructOrTupleIndex"]};

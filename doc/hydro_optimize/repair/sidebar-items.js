@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["cycle_source_to_sink_input","inject_id","inject_location","remove_counter"]};

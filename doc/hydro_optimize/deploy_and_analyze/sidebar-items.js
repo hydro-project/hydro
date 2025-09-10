@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["deploy_and_analyze"]};
