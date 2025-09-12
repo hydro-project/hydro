@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Deployment"],"type":["AddAzureHostDeploymentBuilder","AddGcpComputeEngineHostDeploymentBuilder"]};
+window.SIDEBAR_ITEMS = {"struct":["Deployment"],"type":["AddAwsEc2HostDeploymentBuilder","AddAzureHostDeploymentBuilder","AddGcpComputeEngineHostDeploymentBuilder"]};
