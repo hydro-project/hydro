@@ -2165,6 +2165,7 @@ dependencies = [
  "stageleft_tool",
  "tokio",
  "tokio-test",
+ "tracing-subscriber",
 ]
 
 [[package]]

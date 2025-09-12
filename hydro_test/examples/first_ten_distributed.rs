@@ -1,12 +1,15 @@
 use std::sync::Arc;
 
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use futures::SinkExt;
+use hydro_deploy::aws::AwsNetwork;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::graph::config::GraphConfig;
 use tokio::sync::RwLock;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
@@ -16,13 +19,27 @@ struct Args {
     #[clap(long)]
     gcp: Option<String>,
 
+    /// use AWS, make sure credentials are set up
+    #[arg(short, long, action = ArgAction::SetTrue)]
+    aws: bool,
+
     #[clap(flatten)]
     graph: GraphConfig,
 }
 
-// run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP
+// run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP, with `--aws=true` for AWS.
 #[tokio::main]
 async fn main() {
+    let subscriber = tracing_subscriber::fmt::layer().with_target(false);
+
+    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("trace"));
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(subscriber)
+        .init();
+
     let args = Args::parse();
     let mut deployment = Deployment::new();
 
@@ -41,6 +58,21 @@ async fn main() {
                     .add()
             }),
             "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off",
+        )
+    } else if args.aws {
+        let network = Arc::new(RwLock::new(AwsNetwork::new("us-east-1", None)));
+
+        (
+            Box::new(move |deployment| -> Arc<dyn Host> {
+                deployment
+                    .AwsEc2Host()
+                    .region("us-east-1")
+                    .instance_type("t3.micro")
+                    .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
+                    .network(network.clone())
+                    .add()
+            }),
+            "-C opt-level=3 -C codegen-units=1 -C strip=debuginfo -C debuginfo=0 -C lto=off",
         )
     } else {
         let localhost = deployment.Localhost();
