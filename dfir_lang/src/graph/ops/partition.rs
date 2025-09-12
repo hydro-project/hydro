@@ -4,7 +4,7 @@ use proc_macro2::Span;
 use quote::quote_spanned;
 use syn::spanned::Spanned;
 use syn::token::Colon;
-use syn::{parse_quote_spanned, Expr, Ident, LitInt, LitStr, Pat, PatType};
+use syn::{parse_quote_spanned, Expr, Ident, LitInt, Pat, PatType};
 
 use super::{
     OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput, PortIndexValue,
@@ -69,7 +69,7 @@ pub const PARTITION: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: Some(|| PortListSpec::Variadic),
     input_delaytype_fn: |_| None,
-    write_fn: |wc @ &WriteContextArgs {
+    write_fn: |&WriteContextArgs {
                    root,
                    op_span,
                    ident,
@@ -91,7 +91,7 @@ pub const PARTITION: OperatorConstraints = OperatorConstraints {
             .collect::<Vec<_>>();
 
         let mut output_sort_permutation: Vec<_> = (0..outputs.len()).collect();
-        let (output_idents, arg2_val) = if let Some(port_idents) =
+        let arg2_val = if let Some(port_idents) =
             determine_indices_or_idents(output_ports, op_span, op_name, diagnostics)?
         {
             // All idents.
@@ -114,51 +114,27 @@ pub const PARTITION: OperatorConstraints = OperatorConstraints {
             });
             let arg2_val = quote_spanned! {arg2_span.span()=> [ #( #idx_ints ),* ] };
 
-            (closure_idents, arg2_val)
+            arg2_val
         } else {
             // All indices.
-            let numeric_idents = (0..output_ports.len())
-                .map(|i| wc.make_ident(format!("{}_push", i)))
-                .collect();
             let len_lit = LitInt::new(&format!("{}_usize", output_ports.len()), op_span);
             let arg2_val = quote_spanned! {op_span=> #len_lit };
-            (numeric_idents, arg2_val)
+            arg2_val
         };
-
-        let err_str = LitStr::new(
-            &format!(
-                "Index `{{}}` returned by `{}(..)` closure is out-of-bounds.",
-                op_name
-            ),
-            op_span,
-        );
-        let ident_item = wc.make_ident("item");
-        let ident_index = wc.make_ident("index");
-        let ident_unknown = wc.make_ident("match_unknown");
 
         let sorted_outputs = output_sort_permutation.into_iter().map(|i| &outputs[i]);
 
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = {
-                #root::pusherator::demux::Demux::new(
-                    |#ident_item, #root::var_args!( #( #output_idents ),* )| {
-                        #[allow(unused_imports)]
-                        use #root::pusherator::Pusherator;
-
-                        let #ident_index = {
-                            #[allow(clippy::redundant_closure_call)]
-                            (#func)(&#ident_item, #arg2_val)
-                        };
-                        match #ident_index {
-                            #(
-                                #idx_ints => #output_idents.give(#ident_item),
-                            )*
-                            #ident_unknown => panic!(#err_str, #ident_unknown),
-                        };
-                    },
+            let #ident = #root::sinktools::map(
+                |__item| {
+                    #[allow(clippy::redundant_closure_call)]
+                    let __idx = (#func)(&__item, #arg2_val);
+                    (__idx, __item)
+                },
+                #root::sinktools::demux_var(
                     #root::var_expr!( #( #sorted_outputs ),* ),
-                )
-            };
+                ),
+            );
         };
 
         Ok(OperatorWriteOutput {

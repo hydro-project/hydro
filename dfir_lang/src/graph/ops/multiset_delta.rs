@@ -121,7 +121,7 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
         } else {
             quote_spanned! {op_span=>
                 #work_fn(|| #tick_swap);
-                let #ident = #root::pusherator::filter::Filter::new(#filter_fn, #output);
+                let #ident = #root::sinktools::filter(#filter_fn, #output);
             }
         };
 

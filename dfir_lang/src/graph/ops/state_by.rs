@@ -154,14 +154,14 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         mapfn: MappingFn,
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
                         context: &'a #root::scheduled::context::Context,
-                    ) -> impl 'a + #root::pusherator::Pusherator<Item = Item>
+                    ) -> impl 'a + #root::futures::sink::Sink<Item, Error = Push::Error>
                     where
                         Item: 'a + ::std::clone::Clone,
                         MappingFn: 'a + Fn(Item) -> MappedItem,
-                        Push: 'a + #root::pusherator::Pusherator<Item = Item>,
+                        Push: 'a + #root::futures::sink::Sink<Item>,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        #root::pusherator::filter::Filter::new(move |item| {
+                        #root::sinktools::filter(move |item| {
                             let state = unsafe {
                                 // SAFETY: handle from `#df_ident.add_state(..)`.
                                 context.state_ref_unchecked(state_handle)
@@ -180,14 +180,14 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
                         mapfn: MappingFn,
                         context: &'a #root::scheduled::context::Context,
-                    ) -> impl 'a + #root::pusherator::Pusherator<Item = Item>
+                    ) -> impl 'a + #root::futures::sink::Sink<Item, Error = #root::Never>
                     where
                         Item: 'a,
                         MappedItem: 'a,
                         MappingFn: 'a + Fn(Item) -> MappedItem,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        #root::pusherator::for_each::ForEach::new(move |item| {
+                        #root::sinktools::for_each::ForEach::new(move |item| {
                             let state = unsafe {
                                 // SAFETY: handle from `#df_ident.add_state(..)`.
                                 context.state_ref_unchecked(state_handle)

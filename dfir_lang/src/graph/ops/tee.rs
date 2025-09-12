@@ -1,8 +1,8 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{ToTokens, quote_spanned};
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
-    RANGE_ANY,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, RANGE_ANY,
+    WriteContextArgs,
 };
 
 /// > 1 input stream, *n* output streams
@@ -48,9 +48,11 @@ pub const TEE: OperatorConstraints = OperatorConstraints {
                 .iter()
                 .rev()
                 .map(|i| i.to_token_stream())
-                .reduce(|b, a| quote_spanned! {op_span=> #root::pusherator::tee::Tee::new(#a, #b) })
+                .reduce(|b, a|
+                    quote_spanned! {op_span=> #root::futures::sink::SinkExt::fanout(#a, #b) },
+                )
                 .unwrap_or_else(
-                    || quote_spanned! {op_span=> #root::pusherator::for_each::ForEach::new(std::mem::drop) },
+                    || quote_spanned! {op_span=> #root::sinktools::for_each::ForEach::new(::std::mem::drop) },
                 );
             quote_spanned! {op_span=>
                 let #ident = #tees;

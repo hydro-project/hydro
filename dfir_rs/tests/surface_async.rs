@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use bytes::Bytes;
 use dfir_rs::scheduled::graph::Dfir;
-use dfir_rs::util::{collect_ready_async, ready_iter, tcp_lines};
+use dfir_rs::util::{collect_ready_async, tcp_lines};
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax, rassert, rassert_eq};
 use multiplatform_test::multiplatform_test;
 use tokio::net::{TcpListener, TcpStream, UdpSocket};
@@ -258,9 +258,8 @@ pub async fn test_futures_stream_sink() {
 
 #[multiplatform_test(dfir, env_tracing)]
 async fn asynctest_dest_sink_bounded_channel() {
-    // In this example we use a _bounded_ channel for our `Sink`. This is for demonstration only,
-    // instead you should use [`dfir_rs::util::unbounded_channel`]. A bounded channel results in
-    // buffering items internally instead of within the channel.
+    // In this example we use a _bounded_ channel for our `Sink`. Users should consider using
+    // `for_each()` with an `dfir_rs::util::unbounded_channel`.
     let (send, recv) = tokio::sync::mpsc::channel::<usize>(5);
     let send = tokio_util::sync::PollSender::new(send);
     let mut recv = tokio_stream::wrappers::ReceiverStream::new(recv);
@@ -268,17 +267,20 @@ async fn asynctest_dest_sink_bounded_channel() {
     let mut flow = dfir_syntax! {
         source_iter(0..10) -> dest_sink(send);
     };
-    tokio::time::timeout(Duration::from_secs(1), flow.run())
+    let mut run_fut = std::pin::pin!(flow.run());
+    tokio::time::timeout(Duration::from_millis(100), &mut run_fut)
         .await
         .expect_err("Expected time out");
 
     // Only 5 elemts received due to buffer size
-    let out: Vec<_> = ready_iter(&mut recv).collect();
+    let out: Vec<_> = collect_ready_async(&mut recv).await;
     assert_eq!(&[0, 1, 2, 3, 4], &*out);
 
-    tokio::task::yield_now().await;
+    tokio::time::timeout(Duration::from_millis(100), &mut run_fut)
+        .await
+        .expect_err("Expected time out");
 
-    let out: Vec<_> = ready_iter(&mut recv).collect();
+    let out: Vec<_> = collect_ready_async(&mut recv).await;
     assert_eq!(&[5, 6, 7, 8, 9], &*out);
 }
 

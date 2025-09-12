@@ -45,15 +45,16 @@ pub const FILTER: OperatorConstraints = OperatorConstraints {
                    ..
                },
                _| {
+        let func = &arguments[0];
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #input.filter(#arguments);
+                let #ident = #input.filter(#func);
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::filter::Filter::new(#arguments, #output);
+                let #ident = #root::sinktools::filter(#func, #output);
             }
         };
         Ok(OperatorWriteOutput {

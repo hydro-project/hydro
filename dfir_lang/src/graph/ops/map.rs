@@ -57,7 +57,7 @@ pub const MAP: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::map::Map::new(#func, #output);
+                let #ident = #root::sinktools::map(#func, #output);
             }
         };
         Ok(OperatorWriteOutput {

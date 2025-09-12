@@ -361,5 +361,5 @@ fn ops(c: &mut Criterion) {
     });
 }
 
-criterion_group!(micro_ops, ops,);
+criterion_group!(micro_ops, ops);
 criterion_main!(micro_ops);

@@ -92,3 +92,33 @@ async fn pusherator_test() {
 
     handle.await.unwrap();
 }
+
+#[multiplatform_test(dfir, env_tracing)]
+async fn pusherator_ordered_test() {
+    let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u64>();
+
+    let mut df = dfir_syntax! {
+        ins = source_iter([2, 3, 1, 9, 6, 5, 4, 7, 8])
+            -> tee();
+
+        ins -> for_each(|_| {});
+        ins -> map(|x| async move {
+            sleep(Duration::from_millis(10*x)).await;
+            x
+        }) -> resolve_futures_ordered() -> for_each(|x| result_send.send(x).unwrap());
+    };
+
+    let handle = tokio::task::spawn(async move {
+        sleep(Duration::from_secs(1)).await;
+        assert_eq!(
+            &[2, 3, 1, 9, 6, 5, 4, 7, 8],
+            &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await
+        );
+    });
+
+    tokio::time::timeout(Duration::from_secs(2), df.run())
+        .await
+        .expect_err("Expected time out");
+
+    handle.await.unwrap();
+}

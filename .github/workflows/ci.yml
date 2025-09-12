@@ -87,7 +87,8 @@ jobs:
       - run: cargo check --all-targets
       - run: cargo check --all-targets --no-default-features
 
-      - run: cargo fmt --all -- --check
+      - run: rustup component add --toolchain nightly rustfmt
+      - run: cargo +nightly fmt --all -- --check
 
       # Nightly snapshot update logic
       - name: Check for snapshot changes (nightly only)
