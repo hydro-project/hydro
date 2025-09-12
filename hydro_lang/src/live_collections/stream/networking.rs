@@ -357,7 +357,7 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     /// using [`bincode`] to serialize/deserialize messages.
     ///
     /// Each cluster member sends its local stream elements, and they are collected at the destination
-    /// as a [`KeyedStream`] where keys identify which cluster member sent each element.
+    /// as a [`KeyedStream`] where keys identify the source cluster member.
     ///
     /// # Example
     /// ```rust
@@ -380,7 +380,7 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     /// # }));
     /// ```
     ///
-    /// If you don't need to know which cluster member sent each element, you can use `.values()`
+    /// If you don't need to know the source for each element, you can use `.values()`
     /// to get just the data:
     /// ```rust
     /// # use hydro_lang::prelude::*;
@@ -389,7 +389,6 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     /// # let workers: Cluster<()> = flow.cluster::<()>();
     /// # let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
     /// numbers.send_bincode(&process).values() // Stream<i32, ..., NoOrder>
-    /// //
     /// # }, |mut stream| async move {
     /// // if there are 4 members in the cluster, we should receive 4 elements
     /// // 1, 1, 1, 1
@@ -510,8 +509,7 @@ impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L
     /// all members.
     ///
     /// Each cluster member sends its local stream elements, and they are collected at each
-    /// destination member as a [`KeyedStream`] where keys identify which cluster member sent each
-    /// element.
+    /// destination member as a [`KeyedStream`] where keys identify the source cluster member.
     ///
     /// # Example
     /// ```rust
