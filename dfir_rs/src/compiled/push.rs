@@ -95,9 +95,8 @@ pin_project! {
     pub struct Flatten<Si, Item, Iter, Out> {
         #[pin]
         sink: Si,
-        // INVARIANT: `iter` is some IFF `out` is some.
-        iter: Option<Iter>,
-        out: Option<Out>,
+        // Current iterator and the next item.
+        iter_next: Option<(Iter, Out)>,
         _marker: PhantomData<fn(Item)>,
     }
 }
@@ -105,11 +104,10 @@ pin_project! {
 impl<Si, Item, Iter, Out> Flatten<Si, Item, Iter, Out> {
     /// Create with following `sink`.
     pub fn new(sink: Si) -> Self {
-        let (iter, out, _marker) = Default::default();
+        let (iter_next, _marker) = Default::default();
         Self {
             sink,
-            iter,
-            out,
+            iter_next,
             _marker,
         }
     }
@@ -125,34 +123,28 @@ where
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.project();
-        debug_assert_eq!(this.iter.is_some(), this.out.is_some(), "INVARIANT");
 
-        while this.out.is_some() {
+        while this.iter_next.is_some() {
             // Ensure following sink is ready for `this.out`.
             ready!(this.sink.as_mut().poll_ready(cx))?; // INVARIANT: if `Poll::Pending` returned, invariant stays same
-            // Send the output item `this.out`.
-            this.sink.as_mut().start_send(this.out.take().unwrap())?;
 
-            // Repopulate `this.out` using `this.iter`
-            *this.out = this.iter.as_mut().unwrap().next();
+            // Send the output the next item.
+            let (mut iter, next) = this.iter_next.take().unwrap();
+            this.sink.as_mut().start_send(next)?;
+
+            // Replace the iterator and next item (if any).
+            *this.iter_next = iter.next().map(|next| (iter, next));
         }
-        // INVARIANT: `this.iter` is now empty; set `this.out` to none.
-        *this.iter = None;
 
         Poll::Ready(Ok(()))
     }
 
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
         let this = self.project();
-        debug_assert_eq!(this.iter.is_some(), this.out.is_some(), "INVARIANT");
 
-        assert!(this.iter.is_none(), "Sink not ready.");
+        assert!(this.iter_next.is_none(), "Sink not ready.");
         let mut iter = item.into_iter();
-        *this.out = iter.next();
-        if this.out.is_some() {
-            // INVARIANT: `this.out` is now some; set `this.iter` to some.
-            *this.iter = Some(iter);
-        }
+        *this.iter_next = iter.next().map(|next| (iter, next));
         Ok(())
     }
 
