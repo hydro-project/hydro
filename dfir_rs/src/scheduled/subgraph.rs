@@ -5,23 +5,22 @@ use crate::util::slot_vec::SlotVec;
 
 /// Represents a compiled subgraph. Used internally by [Dataflow] to erase the input/output [Handoff] types.
 pub(crate) trait Subgraph<'a> {
-    fn run(
-        &mut self,
-        context: &mut Context,
-        handoffs: &mut SlotVec<HandoffTag, HandoffData>,
-    ) -> Box<dyn 'a + Future<Output = ()>>;
+    fn run<'ctx>(
+        &'ctx mut self,
+        context: &'ctx mut Context,
+        handoffs: &'ctx mut SlotVec<HandoffTag, HandoffData>,
+    ) -> Box<dyn 'ctx + Future<Output = ()>>;
 }
 
-impl<'a, Func, Fut> Subgraph<'a> for Func
+impl<'a, Func> Subgraph<'a> for Func
 where
-    Func: FnMut(&mut Context, &mut SlotVec<HandoffTag, HandoffData>) -> Fut,
-    Fut: 'a + Future<Output = ()>,
+    Func: 'a + AsyncFnMut(&mut Context, &mut SlotVec<HandoffTag, HandoffData>),
 {
-    fn run(
-        &mut self,
-        context: &mut Context,
-        handoffs: &mut SlotVec<HandoffTag, HandoffData>,
-    ) -> Box<dyn 'a + Future<Output = ()>> {
+    fn run<'ctx>(
+        &'ctx mut self,
+        context: &'ctx mut Context,
+        handoffs: &'ctx mut SlotVec<HandoffTag, HandoffData>,
+    ) -> Box<dyn 'ctx + Future<Output = ()>> {
         Box::new((self)(context, handoffs))
     }
 }

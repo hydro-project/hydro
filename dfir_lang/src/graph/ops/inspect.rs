@@ -46,19 +46,24 @@ pub const INSPECT: OperatorConstraints = OperatorConstraints {
                    ..
                },
                _| {
+        let func = &arguments[0];
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #input.inspect(#arguments);
+                let #ident = #input.inspect(#func);
             }
         } else if outputs.is_empty() {
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::inspect::Inspect::new(#arguments, #root::pusherator::null::Null::new());
+                let #ident = #root::pusherator::inspect::Inspect::new(#func, #root::pusherator::null::Null::new());
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::inspect::Inspect::new(#arguments, #output);
+                let #ident = #root::futures::sink::SinkExt::with(#output, |item| {
+                    // TODO(mingwei): suppress the warning I forgot what it is
+                    (#func)(&item);
+                    item
+                });
             }
         };
         Ok(OperatorWriteOutput {

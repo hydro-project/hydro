@@ -693,7 +693,7 @@ impl<'a> Dfir<'a> {
     }
 
     /// Adds a new compiled subgraph with the specified inputs and outputs in stratum 0.
-    pub fn add_subgraph<Name, R, W, Func, Fut>(
+    pub fn add_subgraph<Name, R, W, Func>(
         &mut self,
         name: Name,
         recv_ports: R,
@@ -704,8 +704,7 @@ impl<'a> Dfir<'a> {
         Name: Into<Cow<'static, str>>,
         R: 'static + PortList<RECV>,
         W: 'static + PortList<SEND>,
-        Func: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>) -> Fut,
-        Fut: 'a + Future<Output = ()>,
+        Func: 'a + for<'ctx> AsyncFnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
         self.add_subgraph_stratified(name, 0, recv_ports, send_ports, false, subgraph)
     }
@@ -713,7 +712,7 @@ impl<'a> Dfir<'a> {
     /// Adds a new compiled subgraph with the specified inputs, outputs, and stratum number.
     ///
     /// TODO(mingwei): add example in doc.
-    pub fn add_subgraph_stratified<Name, R, W, Func, Fut>(
+    pub fn add_subgraph_stratified<Name, R, W, Func>(
         &mut self,
         name: Name,
         stratum: usize,
@@ -726,8 +725,7 @@ impl<'a> Dfir<'a> {
         Name: Into<Cow<'static, str>>,
         R: 'static + PortList<RECV>,
         W: 'static + PortList<SEND>,
-        Func: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>) -> Fut,
-        Fut: 'a + Future<Output = ()>,
+        Func: 'a + for<'ctx> AsyncFnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
         self.add_subgraph_full(
             name, stratum, recv_ports, send_ports, laziness, None, subgraph,
@@ -736,7 +734,7 @@ impl<'a> Dfir<'a> {
 
     /// Adds a new compiled subgraph with all options.
     #[expect(clippy::too_many_arguments, reason = "Mainly for internal use.")]
-    pub fn add_subgraph_full<Name, R, W, Func, Fut>(
+    pub fn add_subgraph_full<Name, R, W, Func>(
         &mut self,
         name: Name,
         stratum: usize,
@@ -750,8 +748,7 @@ impl<'a> Dfir<'a> {
         Name: Into<Cow<'static, str>>,
         R: 'static + PortList<RECV>,
         W: 'static + PortList<SEND>,
-        Func: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>) -> Fut,
-        Fut: 'a + Future<Output = ()>,
+        Func: 'a + for<'ctx> AsyncFnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
         // SAFETY: Check that the send and recv ports are from `self.handoffs`.
         recv_ports.assert_is_from(&self.handoffs);
@@ -768,7 +765,8 @@ impl<'a> Dfir<'a> {
             send_ports.set_graph_meta(&mut self.handoffs, &mut subgraph_succs, sg_id, false);
 
             let subgraph =
-                move |context: &mut Context, handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
+                async move |context: &mut Context,
+                            handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
                     let (recv, send) = unsafe {
                         // SAFETY:
                         // 1. We checked `assert_is_from` at assembly time, above.
@@ -778,7 +776,7 @@ impl<'a> Dfir<'a> {
                             send_ports.make_ctx(&*handoffs),
                         )
                     };
-                    (subgraph)(context, recv, send)
+                    (subgraph)(context, recv, send).await;
                 };
             SubgraphData::new(
                 name.into(),
@@ -799,7 +797,7 @@ impl<'a> Dfir<'a> {
     }
 
     /// Adds a new compiled subgraph with a variable number of inputs and outputs of the same respective handoff types.
-    pub fn add_subgraph_n_m<Name, R, W, Func, Fut>(
+    pub fn add_subgraph_n_m<Name, R, W, Func>(
         &mut self,
         name: Name,
         recv_ports: Vec<RecvPort<R>>,
@@ -810,19 +808,13 @@ impl<'a> Dfir<'a> {
         Name: Into<Cow<'static, str>>,
         R: 'static + Handoff,
         W: 'static + Handoff,
-        Func: 'a
-            + for<'ctx> FnMut(
-                &'ctx mut Context,
-                &'ctx [&'ctx RecvCtx<R>],
-                &'ctx [&'ctx SendCtx<W>],
-            ) -> Fut,
-        Fut: 'a + Future<Output = ()>,
+        Func: 'a + for<'ctx> AsyncFnMut(&'ctx mut Context, &'ctx [&'ctx RecvCtx<R>], &'ctx [&'ctx SendCtx<W>]),
     {
         self.add_subgraph_stratified_n_m(name, 0, recv_ports, send_ports, subgraph)
     }
 
     /// Adds a new compiled subgraph with a variable number of inputs and outputs of the same respective handoff types.
-    pub fn add_subgraph_stratified_n_m<Name, R, W, Func, Fut>(
+    pub fn add_subgraph_stratified_n_m<Name, R, W, Func>(
         &mut self,
         name: Name,
         stratum: usize,
@@ -834,13 +826,7 @@ impl<'a> Dfir<'a> {
         Name: Into<Cow<'static, str>>,
         R: 'static + Handoff,
         W: 'static + Handoff,
-        Func: 'a
-            + for<'ctx> FnMut(
-                &'ctx mut Context,
-                &'ctx [&'ctx RecvCtx<R>],
-                &'ctx [&'ctx SendCtx<W>],
-            ) -> Fut,
-        Fut: 'a + Future<Output = ()>,
+        Func: 'a + for<'ctx> AsyncFnMut(&'ctx mut Context, &'ctx [&'ctx RecvCtx<R>], &'ctx [&'ctx SendCtx<W>]),
     {
         let sg_id = self.subgraphs.insert_with_key(|sg_id| {
             let subgraph_preds = recv_ports.iter().map(|port| port.handoff_id).collect();
@@ -854,7 +840,7 @@ impl<'a> Dfir<'a> {
             }
 
             let subgraph =
-                move |context: &mut Context, handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
+                async move |context: &mut Context, handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
                     let recvs: Vec<&RecvCtx<R>> = recv_ports
                         .iter()
                         .map(|hid| hid.handoff_id)
@@ -877,7 +863,7 @@ impl<'a> Dfir<'a> {
                         .map(RefCast::ref_cast)
                         .collect();
 
-                    (subgraph)(context, &recvs, &sends)
+                    (subgraph)(context, &recvs, &sends).await;
                 };
             SubgraphData::new(
                 name.into(),

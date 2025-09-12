@@ -39,9 +39,7 @@ pub use dfir_macro::{
     monotonic_fn, morphism,
 };
 
-// TODO(mingwei): Use the [nightly "never" type `!`](https://doc.rust-lang.org/std/primitive.never.html)
-/// Stand-in for the [nightly "never" type `!`](https://doc.rust-lang.org/std/primitive.never.html)
-pub type Never = std::convert::Infallible;
+pub use futures::never::Never;
 
 #[cfg(doctest)]
 mod booktest {

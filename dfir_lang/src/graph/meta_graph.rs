@@ -902,7 +902,7 @@ impl DfirGraph {
                 });
                 let send_port_code = send_ports.iter().map(|ident| {
                     quote! {
-                        let #ident = #root::pusherator::for_each::ForEach::new(|v| {
+                        let #ident = #root::compiled::push::ForEach::new(|v| {
                             #ident.give(Some(v));
                         });
                     }
@@ -1135,24 +1135,27 @@ impl DfirGraph {
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
-                                            pub fn #fn_ident<Item, Input: #root::pusherator::Pusherator<Item = Item>>(input: Input) -> impl #root::pusherator::Pusherator<Item = Item> {
-                                                #[repr(transparent)]
-                                                struct Push<Item, Input: #root::pusherator::Pusherator<Item = Item>> {
-                                                    inner: Input
-                                                }
+                                            pub fn #fn_ident<Item, Input: #root::futures::sink::Sink<Item>>(input: Input) -> impl #root::futures::sink::Sink<Item> {
+                                                // #[repr(transparent)]
+                                                // struct Push<Item, Input: #root::futures::sink::Sink<Item>> {
+                                                //     inner: Input
+                                                // }
 
-                                                impl<Item, Input: #root::pusherator::Pusherator<Item = Item>> #root::pusherator::Pusherator for Push<Item, Input> {
-                                                    type Item = Item;
+                                                // impl<Item, Input: #root::pusherator::Pusherator<Item = Item>> #root::pusherator::Pusherator for Push<Item, Input> {
+                                                //     type Item = Item;
 
-                                                    #[inline(always)]
-                                                    fn give(&mut self, item: Self::Item) {
-                                                        self.inner.give(item)
-                                                    }
-                                                }
+                                                //     #[inline(always)]
+                                                //     fn give(&mut self, item: Self::Item) {
+                                                //         self.inner.give(item)
+                                                //     }
+                                                // }
 
-                                                Push {
-                                                    inner: input
-                                                }
+                                                // Push {
+                                                //     inner: input
+                                                // }
+
+                                                // TODO(mingwei): RE-ADD THE TYPE ERASURE WRAPPER
+                                                input
                                             }
                                             #fn_ident( #ident )
                                         };
@@ -1199,10 +1202,16 @@ impl DfirGraph {
                             Ident::new(&format!("pivot_run_sg_{:?}", subgraph_id.0), pivot_span);
                         subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
                             #[inline(always)]
-                            fn #pivot_fn_ident<Pull: ::std::iter::Iterator<Item = Item>, Push: #root::pusherator::Pusherator<Item = Item>, Item>(pull: Pull, push: Push) {
-                                #root::pusherator::pivot::Pivot::new(pull, push).run();
+                            async fn #pivot_fn_ident<Pull: ::std::iter::Iterator<Item = Item>, Push: #root::futures::sink::Sink<Item>, Item>(pull: Pull, push: Push) {
+                                let mut push = ::std::pin::pin!(push);
+                                for item in pull {
+                                    // TODO(mingwei): handle unwrap.
+                                    #root::futures::sink::SinkExt::feed(&mut push, item).await.unwrap_or_else(|_| panic!("FEED FAILED!"));
+                                }
+                                // TODO(mingwei): handle unwrap.
+                                #root::futures::sink::SinkExt::flush(&mut push).await.unwrap_or_else(|_| panic!("FLUSH FAILED!"));
                             }
-                            (#pivot_fn_ident)(#pull_ident, #push_ident);
+                            (#pivot_fn_ident)(#pull_ident, #push_ident).await;
                         });
                     }
                 };
@@ -1229,12 +1238,11 @@ impl DfirGraph {
                         var_expr!( #( #send_ports ),* ),
                         #laziness,
                         #loop_id_opt,
-                        move |#context, var_args!( #( #recv_ports ),* ), var_args!( #( #send_ports ),* )| {
+                        async move |#context, var_args!( #( #recv_ports ),* ), var_args!( #( #send_ports ),* )| {
                             #( #recv_port_code )*
                             #( #send_port_code )*
                             #( #subgraph_op_iter_code )*
                             #( #subgraph_op_iter_after_code )*
-                            ::std::future::ready(())
                         },
                     );
                 });
