@@ -59,7 +59,7 @@ pub const INSPECT: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::futures::sink::SinkExt::with(#output, |item| {
+                let #ident = #root::compiled::push::Map::new(#output, |item| {
                     // TODO(mingwei): suppress the warning I forgot what it is
                     (#func)(&item);
                     item

@@ -1135,7 +1135,12 @@ impl DfirGraph {
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
-                                            pub fn #fn_ident<Item, Input: #root::futures::sink::Sink<Item>>(input: Input) -> impl #root::futures::sink::Sink<Item> {
+                                            pub fn #fn_ident<Item, Input>(input: Input) -> impl #root::futures::sink::Sink<Item, Error = #root::Never>
+                                            where
+                                                Input: #root::futures::sink::Sink<Item, Error = #root::Never>
+                                            {
+                                                // TODO(mingwei): RE-ADD THE TYPE ERASURE WRAPPER
+
                                                 // #[repr(transparent)]
                                                 // struct Push<Item, Input: #root::futures::sink::Sink<Item>> {
                                                 //     inner: Input
@@ -1153,8 +1158,6 @@ impl DfirGraph {
                                                 // Push {
                                                 //     inner: input
                                                 // }
-
-                                                // TODO(mingwei): RE-ADD THE TYPE ERASURE WRAPPER
                                                 input
                                             }
                                             #fn_ident( #ident )
@@ -1202,7 +1205,11 @@ impl DfirGraph {
                             Ident::new(&format!("pivot_run_sg_{:?}", subgraph_id.0), pivot_span);
                         subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
                             #[inline(always)]
-                            async fn #pivot_fn_ident<Pull: ::std::iter::Iterator<Item = Item>, Push: #root::futures::sink::Sink<Item>, Item>(pull: Pull, push: Push) {
+                            async fn #pivot_fn_ident<Pull, Push, Item>(pull: Pull, push: Push)
+                            where
+                                Pull: ::std::iter::Iterator<Item = Item>,
+                                Push: #root::futures::sink::Sink<Item, Error = #root::Never>,
+                            {
                                 let mut push = ::std::pin::pin!(push);
                                 for item in pull {
                                     // TODO(mingwei): handle unwrap.

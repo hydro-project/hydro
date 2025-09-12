@@ -6,13 +6,13 @@ use std::{
     task::{Context, Poll, ready},
 };
 
-use futures::{never::Never, sink::Sink};
+use futures::sink::Sink;
 use pin_project_lite::pin_project;
 
 pin_project! {
     /// Same as [`std::iterator::ForEach`] but as a [`Sink`].
     ///
-    /// Synchronously consumes items using `f` and always returns `Poll::Ready(Ok(())`.
+    /// Synchronously consumes items and always returns `Poll::Ready(Ok(())`.
     #[must_use = "sinks do nothing unless polled"]
     pub struct ForEach<Func> {
         func: Func,
@@ -28,7 +28,7 @@ impl<Func, Item> Sink<Item> for ForEach<Func>
 where
     Func: FnMut(Item),
 {
-    type Error = Never;
+    type Error = crate::Never;
 
     fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
@@ -48,7 +48,7 @@ where
 pin_project! {
     /// Same as [`std::iterator::Map`] but as a [`Sink`].
     ///
-    /// Synchronously maps items using `f` and sends the output to the following sink.
+    /// Synchronously maps items and sends the output to the following sink.
     #[must_use = "sinks do nothing unless polled"]
     pub struct Map<Si, Func> {
         #[pin]
@@ -155,9 +155,169 @@ where
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         ready!(self.as_mut().poll_ready(cx)?);
-        self.project().sink.poll_flush(cx)
+        self.project().sink.poll_close(cx)
     }
 }
+
+pin_project! {
+    /// Same as [`std::iterator::Filter`] but as a [`Sink`].
+    ///
+    /// Synchronously filters items and sends the outputs to the following sink.
+    #[must_use = "sinks do nothing unless polled"]
+    pub struct Filter<Si, Func> {
+        #[pin]
+        sink: Si,
+        func: Func,
+    }
+}
+
+impl<Si, Func> Filter<Si, Func> {
+    /// Creates with filtering `func`, following `sink`.
+    pub fn new(func: Func, sink: Si) -> Self {
+        Self { sink, func }
+    }
+}
+
+impl<Si, Func, Item> Sink<Item> for Filter<Si, Func>
+where
+    Si: Sink<Item>,
+    Func: FnMut(&Item) -> bool,
+{
+    type Error = Si::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().sink.poll_ready(cx)
+    }
+    fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
+        let this = self.project();
+        if (this.func)(&item) {
+            this.sink.start_send(item)
+        } else {
+            Ok(())
+        }
+    }
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().sink.poll_flush(cx)
+    }
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().sink.poll_close(cx)
+    }
+}
+
+pin_project! {
+    /// Same as [`std::iterator::FilterMap`] but as a [`Sink`].
+    ///
+    /// Synchronously filter-maps items and sends the outputs to the following sink.
+    #[must_use = "sinks do nothing unless polled"]
+    pub struct FilterMap<Si, Func> {
+        #[pin]
+        sink: Si,
+        func: Func,
+    }
+}
+
+impl<Si, Func> FilterMap<Si, Func> {
+    /// Creates with mapping `func`, following `sink`.
+    pub fn new(func: Func, sink: Si) -> Self {
+        Self { sink, func }
+    }
+}
+
+impl<Si, Func, Item, Out> Sink<Item> for FilterMap<Si, Func>
+where
+    Si: Sink<Out>,
+    Func: FnMut(Item) -> Option<Out>,
+{
+    type Error = Si::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().sink.poll_ready(cx)
+    }
+    fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
+        let this = self.project();
+        if let Some(item) = (this.func)(item) {
+            this.sink.start_send(item)
+        } else {
+            Ok(())
+        }
+    }
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().sink.poll_flush(cx)
+    }
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().sink.poll_close(cx)
+    }
+}
+
+pin_project! {
+    /// Special sink for the `persist` operator.
+    #[must_use = "sinks do nothing unless polled"]
+    pub struct Persist<'ctx, Si, Item> {
+        #[pin]
+        sink: Si,
+        replay: std::slice::Iter<'ctx, Item>,
+    }
+}
+
+impl<'ctx, Si, Item> Persist<'ctx, Si, Item> {
+    /// Create with the given replay and following sink.
+    pub fn new(replay: std::slice::Iter<'ctx, Item>, sink: Si) -> Self {
+        Self { sink, replay }
+    }
+
+    fn empty_replay(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>>
+    where
+        Si: Sink<Item>,
+        Item: Clone,
+    {
+        let mut this = self.project();
+        while let Some(item) = this.replay.next() {
+            ready!(this.sink.as_mut().poll_ready(cx))?;
+            this.sink.as_mut().start_send(item.clone())?;
+        }
+        Poll::Ready(Ok(()))
+    }
+}
+
+impl<'ctx, Si, Item> Sink<Item> for Persist<'ctx, Si, Item>
+where
+    Si: Sink<Item>,
+    Item: Clone,
+{
+    type Error = Si::Error;
+
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().empty_replay(cx))?;
+        self.project().sink.poll_ready(cx)
+    }
+    fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
+        self.project().sink.start_send(item)
+    }
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().empty_replay(cx))?; // TODO(mingwei): needed?
+        self.project().sink.poll_flush(cx)
+    }
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().empty_replay(cx))?; // TODO(mingwei): needed?
+        self.project().sink.poll_close(cx)
+    }
+}
+
+// fn constrain_types<'ctx, Push, Item>(vec: &'ctx mut Vec<Item>, mut output: Push, is_new_tick: bool) -> impl 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>
+// where
+//     Push: 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>,
+//     Item: ::std::clone::Clone,
+// {
+//     if is_new_tick {
+//         #work_fn(|| vec.iter().cloned().for_each(|item| {
+//             #root::pusherator::Pusherator::give(&mut output, item);
+//         }));
+//     }
+//     #root::pusherator::map::Map::new(|item| {
+//         vec.push(item);
+//         vec.last().unwrap().clone()
+//     }, output)
+// }
 
 #[cfg(test)]
 mod tests {

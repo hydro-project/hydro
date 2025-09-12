@@ -170,7 +170,7 @@ pub struct ProcessBuilderContext<'context> {
     outboxes: &'context mut HashMap<InterfaceName, Outbox>,
 }
 
-fn sink_from_fn<T>(mut f: impl FnMut(T)) -> impl Sink<T, Error = Infallible> {
+fn sink_from_fn<T>(mut f: impl FnMut(T)) -> impl Sink<T, Error = crate::Never> {
     sink::drain().with(move |item| {
         (f)(item);
         ready(Result::<(), Infallible>::Ok(()))
@@ -199,7 +199,7 @@ impl ProcessBuilderContext<'_> {
     pub fn new_outbox<T: 'static>(
         &mut self,
         interface: InterfaceName,
-    ) -> impl use<T> + Sink<(T, Address), Error = Infallible> {
+    ) -> impl use<T> + Sink<(T, Address), Error = crate::Never> {
         let (sender, receiver) = unbounded_channel::<(T, Address)>();
 
         let receiver = receiver.map(|(msg, addr)| (Box::new(msg) as Box<dyn Any>, addr));

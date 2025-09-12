@@ -118,20 +118,26 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = {
-                    fn constrain_types<'ctx, Push, Item>(vec: &'ctx mut Vec<Item>, mut output: Push, is_new_tick: bool) -> impl 'ctx + #root::pusherator::Pusherator<Item = Item>
+                    fn constrain_types<'ctx, Push, Item>(vec: &'ctx mut Vec<Item>, output: Push, is_new_tick: bool) -> impl 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>
                     where
-                        Push: 'ctx + #root::pusherator::Pusherator<Item = Item>,
+                        Push: 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>,
                         Item: ::std::clone::Clone,
                     {
-                        if is_new_tick {
-                            #work_fn(|| vec.iter().cloned().for_each(|item| {
-                                #root::pusherator::Pusherator::give(&mut output, item);
-                            }));
-                        }
-                        #root::pusherator::map::Map::new(|item| {
-                            vec.push(item);
-                            vec.last().unwrap().clone()
-                        }, output)
+                        // if is_new_tick {
+                        //     #work_fn(|| vec.iter().cloned().for_each(|item| {
+                        //         #root::pusherator::Pusherator::give(&mut output, item);
+                        //     }));
+                        // }
+                        // #root::pusherator::map::Map::new(|item| {
+                        //     vec.push(item);
+                        //     vec.last().unwrap().clone()
+                        // }, output)
+                        let replay = if is_new_tick {
+                            vec.iter()
+                        } else {
+                            [].iter()
+                        };
+                        #root::compiled::push::Persist::new(replay, output)
                     }
                     constrain_types(&mut *#vec_ident, #output, #context.is_first_run_this_tick())
                 };

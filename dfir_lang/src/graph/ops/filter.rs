@@ -53,7 +53,7 @@ pub const FILTER: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::filter::Filter::new(#arguments, #output);
+                let #ident = #root::compiled::push::Filter::new(#arguments, #output);
             }
         };
         Ok(OperatorWriteOutput {

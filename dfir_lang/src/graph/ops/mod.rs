@@ -223,7 +223,7 @@ pub fn null_write_iterator_fn(
         quote_spanned! {op_span=>
             #[allow(clippy::let_unit_value)]
             let _ = (#(#outputs),*);
-            let #ident = #root::pusherator::null::Null::<#iter_type>::new();
+            let #ident = #root::futures::sink::drain::<#iter_type>();
         }
     }
 }
