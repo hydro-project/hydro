@@ -808,7 +808,12 @@ impl<'a> Dfir<'a> {
         Name: Into<Cow<'static, str>>,
         R: 'static + Handoff,
         W: 'static + Handoff,
-        Func: 'a + for<'ctx> AsyncFnMut(&'ctx mut Context, &'ctx [&'ctx RecvCtx<R>], &'ctx [&'ctx SendCtx<W>]),
+        Func: 'a
+            + for<'ctx> AsyncFnMut(
+                &'ctx mut Context,
+                &'ctx [&'ctx RecvCtx<R>],
+                &'ctx [&'ctx SendCtx<W>],
+            ),
     {
         self.add_subgraph_stratified_n_m(name, 0, recv_ports, send_ports, subgraph)
     }
@@ -826,7 +831,12 @@ impl<'a> Dfir<'a> {
         Name: Into<Cow<'static, str>>,
         R: 'static + Handoff,
         W: 'static + Handoff,
-        Func: 'a + for<'ctx> AsyncFnMut(&'ctx mut Context, &'ctx [&'ctx RecvCtx<R>], &'ctx [&'ctx SendCtx<W>]),
+        Func: 'a
+            + for<'ctx> AsyncFnMut(
+                &'ctx mut Context,
+                &'ctx [&'ctx RecvCtx<R>],
+                &'ctx [&'ctx SendCtx<W>],
+            ),
     {
         let sg_id = self.subgraphs.insert_with_key(|sg_id| {
             let subgraph_preds = recv_ports.iter().map(|port| port.handoff_id).collect();
@@ -840,7 +850,8 @@ impl<'a> Dfir<'a> {
             }
 
             let subgraph =
-                async move |context: &mut Context, handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
+                async move |context: &mut Context,
+                            handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
                     let recvs: Vec<&RecvCtx<R>> = recv_ports
                         .iter()
                         .map(|hid| hid.handoff_id)

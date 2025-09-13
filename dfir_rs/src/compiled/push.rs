@@ -1,10 +1,7 @@
 //! Push-based operator helpers, i.e. [`futures::sink::Sink`] helpers.
 
-use std::{
-    marker::PhantomData,
-    pin::Pin,
-    task::{Context, Poll, ready},
-};
+use std::pin::Pin;
+use std::task::{Context, Poll, ready};
 
 use futures::sink::Sink;
 use pin_project_lite::pin_project;
@@ -92,36 +89,29 @@ pin_project! {
     ///
     /// Synchronously flattens items and sends the outputs to the following sink.
     #[must_use = "sinks do nothing unless polled"]
-    pub struct Flatten<Si, Item, Iter, Out> {
+    pub struct Flatten<Si, Iter, Out> {
         #[pin]
         sink: Si,
         // Current iterator and the next item.
         iter_next: Option<(Iter, Out)>,
-        _marker: PhantomData<fn(Item)>,
+        // _marker: PhantomData<fn(Item)>,
     }
 }
 
-impl<Si, Item, Iter, Out> Flatten<Si, Item, Iter, Out> {
+impl<Si, Iter, Out> Flatten<Si, Iter, Out> {
     /// Create with following `sink`.
     pub fn new(sink: Si) -> Self {
-        let (iter_next, _marker) = Default::default();
         Self {
             sink,
-            iter_next,
-            _marker,
+            iter_next: None,
         }
     }
-}
 
-impl<Si, Item, Iter, Out> Sink<Item> for Flatten<Si, Item, Iter, Out>
-where
-    Si: Sink<Out>,
-    Item: IntoIterator<IntoIter = Iter, Item = Out>,
-    Item::IntoIter: Iterator<Item = Out>,
-{
-    type Error = Si::Error;
-
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready_impl(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>>
+    where
+        Si: Sink<Out>,
+        Iter: Iterator<Item = Out>,
+    {
         let mut this = self.project();
 
         while this.iter_next.is_some() {
@@ -138,6 +128,18 @@ where
 
         Poll::Ready(Ok(()))
     }
+}
+
+impl<Si, Item> Sink<Item> for Flatten<Si, Item::IntoIter, Item::Item>
+where
+    Si: Sink<Item::Item>,
+    Item: IntoIterator,
+{
+    type Error = Si::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_ready_impl(cx)
+    }
 
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
         let this = self.project();
@@ -149,12 +151,91 @@ where
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().poll_ready(cx)?);
+        ready!(self.as_mut().poll_ready_impl(cx)?);
         self.project().sink.poll_flush(cx)
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().poll_ready(cx)?);
+        ready!(self.as_mut().poll_ready_impl(cx)?);
+        self.project().sink.poll_close(cx)
+    }
+}
+
+pin_project! {
+    /// Same as [`std::iterator::FlatMap`] but as a [`Sink`].
+    ///
+    /// Synchronously maps and flattens items, and sends the outputs to the following sink.
+    #[must_use = "sinks do nothing unless polled"]
+    pub struct FlatMap<Si, Func, Iter, Out> {
+        #[pin]
+        sink: Si,
+        func: Func,
+        // Current iterator and the next item.
+        iter_next: Option<(Iter, Out)>,
+    }
+}
+
+impl<Si, Func, Iter, Out> FlatMap<Si, Func, Iter, Out> {
+    /// Create with following `sink`.
+    pub fn new(func: Func, sink: Si) -> Self {
+        Self {
+            sink,
+            func,
+            iter_next: None,
+        }
+    }
+
+    fn poll_ready_impl(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>>
+    where
+        Si: Sink<Out>,
+        Iter: Iterator<Item = Out>,
+    {
+        let mut this = self.project();
+
+        while this.iter_next.is_some() {
+            // Ensure following sink is ready for `this.out`.
+            ready!(this.sink.as_mut().poll_ready(cx))?; // INVARIANT: if `Poll::Pending` returned, invariant stays same
+
+            // Send the output the next item.
+            let (mut iter, next) = this.iter_next.take().unwrap();
+            this.sink.as_mut().start_send(next)?;
+
+            // Replace the iterator and next item (if any).
+            *this.iter_next = iter.next().map(|next| (iter, next));
+        }
+
+        Poll::Ready(Ok(()))
+    }
+}
+
+impl<Si, Item, Func, IntoIter> Sink<Item> for FlatMap<Si, Func, IntoIter::IntoIter, IntoIter::Item>
+where
+    Si: Sink<IntoIter::Item>,
+    Func: FnMut(Item) -> IntoIter,
+    IntoIter: IntoIterator,
+{
+    type Error = Si::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_ready_impl(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
+        let this = self.project();
+
+        assert!(this.iter_next.is_none(), "Sink not ready.");
+        let mut iter = (this.func)(item).into_iter();
+        *this.iter_next = iter.next().map(|next| (iter, next));
+        Ok(())
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_ready_impl(cx)?);
+        self.project().sink.poll_flush(cx)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_ready_impl(cx)?);
         self.project().sink.poll_close(cx)
     }
 }
@@ -303,22 +384,6 @@ where
     }
 }
 
-// fn constrain_types<'ctx, Push, Item>(vec: &'ctx mut Vec<Item>, mut output: Push, is_new_tick: bool) -> impl 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>
-// where
-//     Push: 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>,
-//     Item: ::std::clone::Clone,
-// {
-//     if is_new_tick {
-//         #work_fn(|| vec.iter().cloned().for_each(|item| {
-//             #root::pusherator::Pusherator::give(&mut output, item);
-//         }));
-//     }
-//     #root::pusherator::map::Map::new(|item| {
-//         vec.push(item);
-//         vec.last().unwrap().clone()
-//     }, output)
-// }
-
 #[cfg(test)]
 mod tests {
     use futures::sink::SinkExt;
@@ -349,6 +414,38 @@ mod tests {
         println!("{}", line!());
         assert_eq!(
             &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            &*out_recv.by_ref().collect::<Vec<_>>().await
+        );
+        println!("{}", line!());
+        a.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_filter_map() {
+        let (out_send, out_recv) = channel(1);
+        let out_send = PollSender::new(out_send);
+        let mut out_recv = ReceiverStream::new(out_recv);
+
+        let mut sink = FilterMap::new(std::convert::identity, out_send);
+
+        let a = tokio::task::spawn(async move {
+            sink.send(Some(0)).await.unwrap();
+            sink.send(Some(1)).await.unwrap();
+            sink.send(None).await.unwrap();
+            sink.send(Some(2)).await.unwrap();
+            sink.send(None).await.unwrap();
+            sink.send(None).await.unwrap();
+            sink.send(Some(3)).await.unwrap();
+            sink.send(None).await.unwrap();
+            sink.send(None).await.unwrap();
+            sink.send(None).await.unwrap();
+            sink.send(Some(4)).await.unwrap();
+            sink.send(Some(5)).await.unwrap();
+            sink.send(None).await.unwrap();
+        });
+        println!("{}", line!());
+        assert_eq!(
+            &[0, 1, 2, 3, 4, 5],
             &*out_recv.by_ref().collect::<Vec<_>>().await
         );
         println!("{}", line!());
