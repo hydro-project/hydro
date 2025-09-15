@@ -519,11 +519,11 @@ impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L
     /// # type Source = ();
     /// # type Destination = ();
     /// let source: Cluster<Source> = flow.cluster::<Source>();
-    /// let numbers: Stream<_, Cluster<_>, _> = source
+    /// let to_send: Stream<_, Cluster<_>, _> = source
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw(x), x)));
     /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
-    /// let all_received = numbers.demux_bincode(&destination); // KeyedStream<MemberId<Source>, i32, ...>
+    /// let all_received = to_send.demux_bincode(&destination); // KeyedStream<MemberId<Source>, i32, ...>
     /// # all_received.entries().send_bincode(&p2).entries()
     /// # }, |mut stream| async move {
     /// // if there are 4 members in the destination cluster, each receives one message from each source member
