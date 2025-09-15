@@ -1818,7 +1818,6 @@ where
         f: impl IntoQuotedMut<'a, F, L> + Copy,
     ) -> Stream<(K, A), L, B, TotalOrder, ExactlyOnce>
     where
-        K: Clone,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> bool + 'a,
     {
@@ -1827,9 +1826,16 @@ where
         self.scan(
             q!(|| HashMap::new()),
             q!(move |acc, (k, v)| {
-                let existing_state = acc.entry(k.clone()).or_insert_with(&init);
-                if f(existing_state, v) {
-                    let out = acc.remove(&k).unwrap();
+                let existing_state = acc.entry(k);
+                let mut occupied = match existing_state {
+                    ::std::collections::hash_map::Entry::Occupied(entry) => entry,
+                    ::std::collections::hash_map::Entry::Vacant(entry) => {
+                        entry.insert_entry(init())
+                    }
+                };
+
+                if f(occupied.get_mut(), v) {
+                    let (k, out) = occupied.remove_entry();
                     Some(Some((k, out)))
                 } else {
                     Some(None)

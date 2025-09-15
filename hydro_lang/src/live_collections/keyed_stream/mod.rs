@@ -572,10 +572,12 @@ where
         }
     }
 
-    /// A variant of [`Stream::fold`], intended for keyed streams. The aggregation is executed in-order across the values
-    /// in each group. But the aggregation function returns a boolean, which when true indicates that the aggregated
-    /// result is complete and can be released to downstream computation. Unlike [`Stream::fold_keyed`], this means that
-    /// even if the input stream is [`super::boundedness::Unbounded`], the outputs of the fold can be processed like normal stream elements.
+    /// A variant of [`Stream::fold`], intended for keyed streams. The aggregation is executed
+    /// in-order across the values in each group. But the aggregation function returns a boolean,
+    /// which when true indicates that the aggregated result is complete and can be released to
+    /// downstream computation. Unlike [`Stream::fold_keyed`], this means that even if the input
+    /// stream is [`super::boundedness::Unbounded`], the outputs of the fold can be processed like
+    /// normal stream elements.
     ///
     /// # Example
     /// ```rust
@@ -606,7 +608,6 @@ where
         f: impl IntoQuotedMut<'a, F, L> + Copy,
     ) -> KeyedSingleton<K, A, L, B::WhenValueBounded>
     where
-        K: Clone,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> bool + 'a,
     {
@@ -623,10 +624,7 @@ where
     }
 
     #[expect(missing_docs, reason = "TODO")]
-    pub fn first(self) -> KeyedSingleton<K, V, L, B::WhenValueBounded>
-    where
-        K: Clone,
-    {
+    pub fn first(self) -> KeyedSingleton<K, V, L, B::WhenValueBounded> {
         self.fold_early_stop(
             q!(|| None),
             q!(|acc, v| {
