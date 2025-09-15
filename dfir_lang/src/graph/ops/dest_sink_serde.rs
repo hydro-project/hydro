@@ -59,7 +59,7 @@ pub const DEST_SINK_SERDE: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             ::std::debug_assert!(#root::tokio::runtime::Handle::try_current().is_ok(), #missing_runtime_msg);
             #write_iterator
-            let #ident = #root::compiled::push:Map::new(
+            let #ident = #root::compiled::push::Map::new(
                 |(payload, addr)| (#root::util::serialize_to_bytes(payload), addr),
                 #ident,
             );
