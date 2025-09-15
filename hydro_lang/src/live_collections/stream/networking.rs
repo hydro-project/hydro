@@ -112,6 +112,7 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Process<'a, L>, B, O, R> {
     /// #     assert_eq!(stream.next().await, Some(w));
     /// # }
     /// # }));
+    /// ```
     pub fn send_bincode<L2>(
         self,
         other: &Process<'a, L2>,
@@ -201,7 +202,37 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Process<'a, L>, B, O, R> {
             .demux_bincode(other)
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Sends the elements of this stream to an external (non-Hydro) process, using [`bincode`]
+    /// serialization. The external process can receive these elements by establishing a TCP
+    /// connection and decoding using [`tokio_util::codec::LengthDelimitedCodec`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(async move {
+    /// let flow = FlowBuilder::new();
+    /// let process = flow.process::<()>();
+    /// let numbers: Stream<_, Process<_>, Unbounded> = process.source_iter(q!(vec![1, 2, 3]));
+    /// let external = flow.external::<()>();
+    /// let external_handle = numbers.send_bincode_external(&external);
+    ///
+    /// let mut deployment = hydro_deploy::Deployment::new();
+    /// let nodes = flow
+    ///     .with_process(&process, deployment.Localhost())
+    ///     .with_external(&external, deployment.Localhost())
+    ///     .deploy(&mut deployment);
+    ///
+    /// deployment.deploy().await.unwrap();
+    /// // establish the TCP connection
+    /// let mut external_recv_stream = nodes.connect_source_bincode(external_handle).await;
+    /// deployment.start().await.unwrap();
+    ///
+    /// for w in 1..=3 {
+    ///     assert_eq!(external_recv_stream.next().await, Some(w));
+    /// }
+    /// # });
+    /// ```
     pub fn send_bincode_external<L2>(self, other: &External<L2>) -> ExternalBincodeStream<T>
     where
         T: Serialize + DeserializeOwned,
@@ -519,11 +550,11 @@ impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L
     /// # type Source = ();
     /// # type Destination = ();
     /// let source: Cluster<Source> = flow.cluster::<Source>();
-    /// let numbers: Stream<_, Cluster<_>, _> = source
+    /// let to_send: Stream<_, Cluster<_>, _> = source
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw(x), x)));
     /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
-    /// let all_received = numbers.demux_bincode(&destination); // KeyedStream<MemberId<Source>, i32, ...>
+    /// let all_received = to_send.demux_bincode(&destination); // KeyedStream<MemberId<Source>, i32, ...>
     /// # all_received.entries().send_bincode(&p2).entries()
     /// # }, |mut stream| async move {
     /// // if there are 4 members in the destination cluster, each receives one message from each source member
