@@ -175,7 +175,7 @@ pub fn identity_write_iterator_fn(
         let output = &outputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_output<Push: #root::pusherator::Pusherator<Item = Item>, Item>(push: Push) -> impl #root::pusherator::Pusherator<Item = Item> { push }
+                fn check_output<Push: #root::futures::sink::Sink<Item>, Item>(push: Push) -> impl #root::futures::sink::Sink<Item> { push }
                 check_output::<_, #generic_type>(#output)
             };
         }

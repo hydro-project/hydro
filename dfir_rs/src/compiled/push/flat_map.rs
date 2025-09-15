@@ -36,10 +36,10 @@ impl<Si, Func, Iter, Out> FlatMap<Si, Func, Iter, Out> {
         let mut this = self.project();
 
         while this.iter_next.is_some() {
-            // Ensure following sink is ready for `this.out`.
-            ready!(this.sink.as_mut().poll_ready(cx))?; // INVARIANT: if `Poll::Pending` returned, invariant stays same
+            // Ensure following sink is ready.
+            ready!(this.sink.as_mut().poll_ready(cx))?;
 
-            // Send the output the next item.
+            // Send the item.
             let (mut iter, next) = this.iter_next.take().unwrap();
             this.sink.as_mut().start_send(next)?;
 

@@ -92,12 +92,12 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
             }
         } else if outputs.is_empty() {
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::inspect::Inspect::new(|_| { #count_ident += 1; }, #root::pusherator::null::Null::new());
+                let #ident = #root::compiled::push::Inspect::new(|_| { #count_ident += 1; }, #root::futures::sink::drain());
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::inspect::Inspect::new(|_| { #count_ident += 1; }, #output);
+                let #ident = #root::compiled::push::Inspect::new(|_| { #count_ident += 1; }, #output);
             }
         };
         let write_iterator = quote_spanned! {op_span=>

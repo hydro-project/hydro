@@ -53,7 +53,7 @@ pub const ASSERT_EQ: OperatorConstraints = OperatorConstraints {
 
         let arg = &arguments[0];
 
-        let inspect_fn = parse_quote_spanned! {op_span=>
+        let inspect_fn: syn::punctuated::Punctuated<syn::Expr, syn::token::Comma> = parse_quote_spanned! {op_span=>
             |item| {
                 // This is to help constrain the types so that type inference works nicely.
                 fn __constrain_types<T>(array: &impl ::std::ops::Index<usize, Output = T>, index: usize) -> &T {

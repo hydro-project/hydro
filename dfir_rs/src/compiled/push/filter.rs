@@ -4,6 +4,7 @@ use std::task::{Context, Poll};
 use futures::sink::Sink;
 use pin_project_lite::pin_project;
 
+// TODO(mingwei): use Option<T> buffer instead of extra `poll_ready`ing.
 pin_project! {
     /// Same as [`std::iterator::Filter`] but as a [`Sink`].
     ///
@@ -18,7 +19,10 @@ pin_project! {
 
 impl<Si, Func> Filter<Si, Func> {
     /// Creates with filtering `func`, following `sink`.
-    pub fn new(func: Func, sink: Si) -> Self {
+    pub fn new<Item>(func: Func, sink: Si) -> Self
+    where
+        Self: Sink<Item>,
+    {
         Self { sink, func }
     }
 }

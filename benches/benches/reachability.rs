@@ -152,7 +152,7 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
                 "distinct",
                 var_expr!(distinct_in),
                 var_expr!(distinct_out),
-                move |context, var_args!(recv), var_args!(send)| {
+                async move |context, var_args!(recv), var_args!(send)| {
                     let mut seen_state = unsafe {
                         // SAFETY: handle from `df.add_state(..)`.
                         context.state_ref_unchecked(seen_handle)
@@ -163,7 +163,6 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
                         .into_iter()
                         .filter(|v| seen_state.insert(*v));
                     send.give(Iter(iter));
-                    std::future::ready(())
                 },
             );
 

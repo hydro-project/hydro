@@ -4,6 +4,7 @@ use std::task::{Context, Poll};
 use futures::sink::Sink;
 use pin_project_lite::pin_project;
 
+// TODO(mingwei): use Option<T> buffer instead of extra `poll_ready`ing.
 pin_project! {
     /// Same as [`std::iterator::FilterMap`] but as a [`Sink`].
     ///
