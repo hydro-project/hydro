@@ -1,0 +1,84 @@
+use std::pin::Pin;
+use std::task::{Context, Poll, ready};
+
+use futures::sink::Sink;
+use pin_project_lite::pin_project;
+
+pin_project! {
+    /// Same as [`std::iterator::FlatMap`] but as a [`Sink`].
+    ///
+    /// Synchronously maps and flattens items, and sends the outputs to the following sink.
+    #[must_use = "sinks do nothing unless polled"]
+    pub struct FlatMap<Si, Func, Iter, Out> {
+        #[pin]
+        sink: Si,
+        func: Func,
+        // Current iterator and the next item.
+        iter_next: Option<(Iter, Out)>,
+    }
+}
+
+impl<Si, Func, Iter, Out> FlatMap<Si, Func, Iter, Out> {
+    /// Create with following `sink`.
+    pub fn new(func: Func, sink: Si) -> Self {
+        Self {
+            sink,
+            func,
+            iter_next: None,
+        }
+    }
+
+    fn poll_ready_impl(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>>
+    where
+        Si: Sink<Out>,
+        Iter: Iterator<Item = Out>,
+    {
+        let mut this = self.project();
+
+        while this.iter_next.is_some() {
+            // Ensure following sink is ready for `this.out`.
+            ready!(this.sink.as_mut().poll_ready(cx))?; // INVARIANT: if `Poll::Pending` returned, invariant stays same
+
+            // Send the output the next item.
+            let (mut iter, next) = this.iter_next.take().unwrap();
+            this.sink.as_mut().start_send(next)?;
+
+            // Replace the iterator and next item (if any).
+            *this.iter_next = iter.next().map(|next| (iter, next));
+        }
+
+        Poll::Ready(Ok(()))
+    }
+}
+
+impl<Si, Item, Func, IntoIter> Sink<Item> for FlatMap<Si, Func, IntoIter::IntoIter, IntoIter::Item>
+where
+    Si: Sink<IntoIter::Item>,
+    Func: FnMut(Item) -> IntoIter,
+    IntoIter: IntoIterator,
+{
+    type Error = Si::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_ready_impl(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
+        let this = self.project();
+
+        assert!(this.iter_next.is_none(), "Sink not ready.");
+        let mut iter = (this.func)(item).into_iter();
+        *this.iter_next = iter.next().map(|next| (iter, next));
+        Ok(())
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_ready_impl(cx)?);
+        self.project().sink.poll_flush(cx)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_ready_impl(cx)?);
+        self.project().sink.poll_close(cx)
+    }
+}

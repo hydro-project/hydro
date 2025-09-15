@@ -109,7 +109,7 @@ pub fn resolve_futures_writer(
                     }
                 });
 
-                let consumer = #root::pusherator::for_each::ForEach::new(|fut| {
+                let consumer = #root::compiled::push::ForEach::new(|fut| {
                     #work_fn(|| {
                         let fut = ::std::boxed::Box::pin(fut);
                         unsafe {
