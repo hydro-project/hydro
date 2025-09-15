@@ -1,3 +1,5 @@
+//! Deployment backend for Hydro that uses [`hydro_deploy`] to provision and launch services.
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::future::Future;
@@ -31,7 +33,11 @@ use crate::compile::deploy_provider::{
 use crate::location::NetworkHint;
 use crate::staging_util::get_this_crate;
 
-pub struct HydroDeploy {}
+/// Deployment backend that uses [`hydro_deploy`] for provisioning and launching.
+///
+/// Automatically used when you call [`crate::compile::builder::FlowBuilder::deploy`] and pass in
+/// an `&mut` reference to [`hydro_deploy::Deployment`] as the deployment context.
+pub enum HydroDeploy {}
 
 impl<'a> Deploy<'a> for HydroDeploy {
     type InstantiateEnv = Deployment;
@@ -452,6 +458,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 pub trait DeployCrateWrapper {
     fn underlying(&self) -> Arc<RwLock<RustCrateService>>;
 
@@ -487,17 +494,18 @@ pub trait DeployCrateWrapper {
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
 pub struct TrybuildHost {
-    pub host: Arc<dyn Host>,
-    pub display_name: Option<String>,
-    pub rustflags: Option<String>,
-    pub additional_hydro_features: Vec<String>,
-    pub features: Vec<String>,
-    pub tracing: Option<TracingOptions>,
-    pub build_envs: Vec<(String, String)>,
-    pub name_hint: Option<String>,
-    pub cluster_idx: Option<usize>,
+    host: Arc<dyn Host>,
+    display_name: Option<String>,
+    rustflags: Option<String>,
+    additional_hydro_features: Vec<String>,
+    features: Vec<String>,
+    tracing: Option<TracingOptions>,
+    build_envs: Vec<(String, String)>,
+    name_hint: Option<String>,
+    cluster_idx: Option<usize>,
 }
 
 impl From<Arc<dyn Host>> for TrybuildHost {
@@ -532,6 +540,7 @@ impl<H: Host + 'static> From<Arc<H>> for TrybuildHost {
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 impl TrybuildHost {
     pub fn new(host: Arc<dyn Host>) -> Self {
         Self {
@@ -640,6 +649,7 @@ impl<H: Host + 'static> IntoProcessSpec<'_, HydroDeploy> for Arc<H> {
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
 pub struct DeployExternal {
     next_port: Rc<RefCell<usize>>,
@@ -647,15 +657,6 @@ pub struct DeployExternal {
     underlying: Rc<RefCell<Option<Arc<RwLock<CustomService>>>>>,
     client_ports: Rc<RefCell<HashMap<String, CustomClientPort>>>,
     allocated_ports: Rc<RefCell<HashMap<usize, String>>>,
-}
-
-impl DeployExternal {
-    pub fn take_port(&self, key: usize) -> CustomClientPort {
-        self.client_ports
-            .borrow_mut()
-            .remove(self.allocated_ports.borrow().get(&key).unwrap())
-            .unwrap()
-    }
 }
 
 impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
@@ -792,11 +793,12 @@ impl<H: Host + 'static> ExternalSpec<'_, HydroDeploy> for Arc<H> {
     }
 }
 
-pub enum CrateOrTrybuild {
+pub(crate) enum CrateOrTrybuild {
     Crate(RustCrate),
     Trybuild(TrybuildHost),
 }
 
+#[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
 pub struct DeployNode {
     id: usize,
@@ -859,6 +861,7 @@ impl Node for DeployNode {
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
 pub struct DeployClusterNode {
     underlying: Arc<RwLock<RustCrateService>>,
@@ -869,7 +872,7 @@ impl DeployCrateWrapper for DeployClusterNode {
         self.underlying.clone()
     }
 }
-
+#[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
 pub struct DeployCluster {
     id: usize,
@@ -880,6 +883,7 @@ pub struct DeployCluster {
 }
 
 impl DeployCluster {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn members(&self) -> Vec<DeployClusterNode> {
         self.members.borrow().clone()
     }
@@ -961,10 +965,12 @@ impl Node for DeployCluster {
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
 pub struct DeployProcessSpec(RustCrate);
 
 impl DeployProcessSpec {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn new(t: RustCrate) -> Self {
         Self(t)
     }
@@ -993,10 +999,12 @@ impl ProcessSpec<'_, HydroDeploy> for TrybuildHost {
     }
 }
 
+#[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
 pub struct DeployClusterSpec(Vec<RustCrate>);
 
 impl DeployClusterSpec {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn new(crates: Vec<RustCrate>) -> Self {
         Self(crates)
     }
