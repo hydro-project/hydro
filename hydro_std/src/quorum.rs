@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::live_collections::stream::{NoOrder, Ordering};
 use hydro_lang::location::{Atomic, Location, NoTick};
 use hydro_lang::prelude::*;
 
@@ -8,7 +8,7 @@ use hydro_lang::prelude::*;
 pub fn collect_quorum_with_response<
     'a,
     L: Location<'a> + NoTick,
-    Order,
+    Order: Ordering,
     K: Clone + Eq + Hash,
     V: Clone,
     E: Clone,
@@ -88,7 +88,13 @@ pub fn collect_quorum_with_response<
 }
 
 #[expect(clippy::type_complexity, reason = "stream types with ordering")]
-pub fn collect_quorum<'a, L: Location<'a> + NoTick, Order, K: Clone + Eq + Hash, E: Clone>(
+pub fn collect_quorum<
+    'a,
+    L: Location<'a> + NoTick,
+    Order: Ordering,
+    K: Clone + Eq + Hash,
+    E: Clone,
+>(
     responses: Stream<(K, Result<(), E>), Atomic<L>, Unbounded, Order>,
     min: usize,
     max: usize,
