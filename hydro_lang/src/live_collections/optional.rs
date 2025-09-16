@@ -1,4 +1,4 @@
-//! Definitions and core APIs for the [`Optional`] live collection.
+//! Definitions for the [`Optional`] live collection.
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
@@ -21,7 +21,19 @@ use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::NonDet;
 
-#[expect(missing_docs, reason = "TODO")]
+/// A *nullable* Rust value that can asynchronously change over time.
+///
+/// Optionals are the live collection equivalent of [`Option`]. If the optional is [`Bounded`],
+/// the value is frozen and will not change. But if it is [`Unbounded`], the value will
+/// asynchronously change over time, including becoming present of uninhabited.
+///
+/// Optionals are used in many of the same places as [`Singleton`], but when the value may be
+/// nullable. For example, the first element of a [`Stream`] is exposed as an [`Optional`].
+///
+/// Type Parameters:
+/// - `Type`: the type of the value in this optional (when it is not null)
+/// - `Loc`: the [`Location`] where the optional is materialized
+/// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing asynchronously)
 pub struct Optional<Type, Loc, Bound: Boundedness> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,

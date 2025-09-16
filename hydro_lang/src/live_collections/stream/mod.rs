@@ -1,4 +1,4 @@
-//! Definitions and core APIs for the [`Stream`] live collection.
+//! Definitions for the [`Stream`] live collection.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -93,7 +93,7 @@ impl MinRetries<AtLeastOnce> for ExactlyOnce {
     type Min = AtLeastOnce;
 }
 
-/// An ordered sequence stream of elements of type `T`.
+/// Streaming sequence of elements with type `Type`.
 ///
 /// Type Parameters:
 /// - `Type`: the type of elements in the stream
