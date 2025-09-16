@@ -8,7 +8,7 @@ or <a href="../boundedness/enum.Unbounded.html" title="enum hydro_lang::live_col
 <li><code>Order</code>: the ordering of the stream, which is either <a href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder"><code>TotalOrder</code></a>
 or <a href="enum.NoOrder.html" title="enum hydro_lang::live_collections::stream::NoOrder"><code>NoOrder</code></a> (default is <a href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder"><code>TotalOrder</code></a>)</li>
 </ul>
-</div></details><h2 id="implementations" class="section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3CT,+Process%3C'a,+L%3E,+B,+O,+R%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#89-235">Source</a><a href="#impl-Stream%3CT,+Process%3C'a,+L%3E,+B,+O,+R%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, <a class="struct" href="../../location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, L&gt;, B, O, R&gt;</h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.send_bincode" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#115-136">Source</a><h4 class="code-header">pub fn <a href="#method.send_bincode" class="fn">send_bincode</a>&lt;L2&gt;(
+</div></details><h2 id="implementations" class="section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3CT,+Process%3C'a,+L%3E,+B,+O,+R%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#89-266">Source</a><a href="#impl-Stream%3CT,+Process%3C'a,+L%3E,+B,+O,+R%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, <a class="struct" href="../../location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, L&gt;, B, O, R&gt;</h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.send_bincode" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#116-137">Source</a><h4 class="code-header">pub fn <a href="#method.send_bincode" class="fn">send_bincode</a>&lt;L2&gt;(
     self,
     other: &amp;<a class="struct" href="../../location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, L2&gt;,
 ) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, <a class="struct" href="../../location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, L2&gt;, <a class="enum" href="../boundedness/enum.Unbounded.html" title="enum hydro_lang::live_collections::boundedness::Unbounded">Unbounded</a>, O, R&gt;<div class="where">where
@@ -24,7 +24,7 @@ dropped no further messages will be sent.</p>
 <span class="kw">let </span>numbers: Stream&lt;<span class="kw">_</span>, Process&lt;<span class="kw">_</span>&gt;, Unbounded&gt; = p1.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]));
 <span class="kw">let </span>p2 = flow.process::&lt;()&gt;();
 <span class="kw">let </span>on_p2: Stream&lt;<span class="kw">_</span>, Process&lt;<span class="kw">_</span>&gt;, Unbounded&gt; = numbers.send_bincode(<span class="kw-2">&amp;</span>p2);
-<span class="comment">// 1, 2, 3</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.broadcast_bincode" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#176-202">Source</a><h4 class="code-header">pub fn <a href="#method.broadcast_bincode" class="fn">broadcast_bincode</a>&lt;L2: 'a&gt;(
+<span class="comment">// 1, 2, 3</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.broadcast_bincode" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#177-203">Source</a><h4 class="code-header">pub fn <a href="#method.broadcast_bincode" class="fn">broadcast_bincode</a>&lt;L2: 'a&gt;(
     self,
     other: &amp;<a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L2&gt;,
     nondet_membership: <a class="struct" href="../../nondet/struct.NonDet.html" title="struct hydro_lang::nondet::NonDet">NonDet</a>,
@@ -49,11 +49,34 @@ membership changes, we will broadcast each element to different members.</p>
 // - MemberId::&lt;()&gt;(0): [123]
 // - MemberId::&lt;()&gt;(1): [123]
 // - MemberId::&lt;()&gt;(2): [123]
-// - MemberId::&lt;()&gt;(3): [123]</span></code></pre></div></div></details><section id="method.send_bincode_external" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#205-234">Source</a><h4 class="code-header">pub fn <a href="#method.send_bincode_external" class="fn">send_bincode_external</a>&lt;L2&gt;(
+// - MemberId::&lt;()&gt;(3): [123]</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.send_bincode_external" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#236-265">Source</a><h4 class="code-header">pub fn <a href="#method.send_bincode_external" class="fn">send_bincode_external</a>&lt;L2&gt;(
     self,
     other: &amp;<a class="struct" href="../../location/external_process/struct.External.html" title="struct hydro_lang::location::external_process::External">External</a>&lt;'_, L2&gt;,
 ) -&gt; <a class="struct" href="../../location/external_process/struct.ExternalBincodeStream.html" title="struct hydro_lang::location::external_process::ExternalBincodeStream">ExternalBincodeStream</a>&lt;T&gt;<div class="where">where
-    T: <a class="trait" href="https://docs.rs/serde/1.0.219/serde/ser/trait.Serialize.html" title="trait serde::ser::Serialize">Serialize</a> + <a class="trait" href="https://docs.rs/serde/1.0.219/serde/de/trait.DeserializeOwned.html" title="trait serde::de::DeserializeOwned">DeserializeOwned</a>,</div></h4></section></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3C(MemberId%3CL2%3E,+T),+Process%3C'a,+L%3E,+B,+O,+R%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#237-281">Source</a><a href="#impl-Stream%3C(MemberId%3CL2%3E,+T),+Process%3C'a,+L%3E,+B,+O,+R%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, L2, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;(<a class="struct" href="../../location/member_id/struct.MemberId.html" title="struct hydro_lang::location::member_id::MemberId">MemberId</a>&lt;L2&gt;, T), <a class="struct" href="../../location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, L&gt;, B, O, R&gt;</h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.demux_bincode" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#272-280">Source</a><h4 class="code-header">pub fn <a href="#method.demux_bincode" class="fn">demux_bincode</a>(
+    T: <a class="trait" href="https://docs.rs/serde/1.0.219/serde/ser/trait.Serialize.html" title="trait serde::ser::Serialize">Serialize</a> + <a class="trait" href="https://docs.rs/serde/1.0.219/serde/de/trait.DeserializeOwned.html" title="trait serde::de::DeserializeOwned">DeserializeOwned</a>,</div></h4></section></summary><div class="docblock"><p>Sends the elements of this stream to an external (non-Hydro) process, using <a href="https://docs.rs/bincode/1.3.3/bincode/index.html" title="mod bincode"><code>bincode</code></a>
+serialization. The external process can receive these elements by establishing a TCP
+connection and decoding using [<code>tokio_util::codec::LengthDelimitedCodec</code>].</p>
+<h5 id="example-2"><a class="doc-anchor" href="#example-2">§</a>Example</h5>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>flow = FlowBuilder::new();
+<span class="kw">let </span>process = flow.process::&lt;()&gt;();
+<span class="kw">let </span>numbers: Stream&lt;<span class="kw">_</span>, Process&lt;<span class="kw">_</span>&gt;, Unbounded&gt; = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]));
+<span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<span class="kw">let </span>external_handle = numbers.send_bincode_external(<span class="kw-2">&amp;</span>external);
+
+<span class="kw">let </span><span class="kw-2">mut </span>deployment = hydro_deploy::Deployment::new();
+<span class="kw">let </span>nodes = flow
+    .with_process(<span class="kw-2">&amp;</span>process, deployment.Localhost())
+    .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
+    .deploy(<span class="kw-2">&amp;mut </span>deployment);
+
+deployment.deploy().<span class="kw">await</span>.unwrap();
+<span class="comment">// establish the TCP connection
+</span><span class="kw">let </span><span class="kw-2">mut </span>external_recv_stream = nodes.connect_source_bincode(external_handle).<span class="kw">await</span>;
+deployment.start().<span class="kw">await</span>.unwrap();
+
+<span class="kw">for </span>w <span class="kw">in </span><span class="number">1</span>..=<span class="number">3 </span>{
+    <span class="macro">assert_eq!</span>(external_recv_stream.next().<span class="kw">await</span>, <span class="prelude-val">Some</span>(w));
+}</code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3C(MemberId%3CL2%3E,+T),+Process%3C'a,+L%3E,+B,+O,+R%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#268-312">Source</a><a href="#impl-Stream%3C(MemberId%3CL2%3E,+T),+Process%3C'a,+L%3E,+B,+O,+R%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, L2, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;(<a class="struct" href="../../location/member_id/struct.MemberId.html" title="struct hydro_lang::location::member_id::MemberId">MemberId</a>&lt;L2&gt;, T), <a class="struct" href="../../location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, L&gt;, B, O, R&gt;</h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.demux_bincode" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#303-311">Source</a><h4 class="code-header">pub fn <a href="#method.demux_bincode" class="fn">demux_bincode</a>(
     self,
     other: &amp;<a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L2&gt;,
 ) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, <a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L2&gt;, <a class="enum" href="../boundedness/enum.Unbounded.html" title="enum hydro_lang::live_collections::boundedness::Unbounded">Unbounded</a>, O, R&gt;<div class="where">where
@@ -63,7 +86,7 @@ using <a href="https://docs.rs/bincode/1.3.3/bincode/index.html" title="mod binc
 specifies which cluster member should receive the data. Unlike <a href="struct.Stream.html#method.broadcast_bincode" title="method hydro_lang::live_collections::stream::Stream::broadcast_bincode"><code>Stream::broadcast_bincode</code></a>,
 this API allows precise targeting of specific cluster members rather than broadcasting to
 all members.</p>
-<h5 id="example-2"><a class="doc-anchor" href="#example-2">§</a>Example</h5>
+<h5 id="example-3"><a class="doc-anchor" href="#example-3">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>p1 = flow.process::&lt;()&gt;();
 <span class="kw">let </span>workers: Cluster&lt;()&gt; = flow.cluster::&lt;()&gt;();
 <span class="kw">let </span>numbers: Stream&lt;<span class="kw">_</span>, Process&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = p1.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]));
@@ -74,7 +97,7 @@ all members.</p>
 // - MemberId::&lt;()&gt;(0): [0]
 // - MemberId::&lt;()&gt;(1): [1]
 // - MemberId::&lt;()&gt;(2): [2]
-// - MemberId::&lt;()&gt;(3): [3]</span></code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3CT,+Process%3C'a,+L%3E,+B%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#283-353">Source</a><a href="#impl-Stream%3CT,+Process%3C'a,+L%3E,+B%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, <a class="struct" href="../../location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, L&gt;, B, <a class="enum" href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder">TotalOrder</a>, <a class="enum" href="enum.ExactlyOnce.html" title="enum hydro_lang::live_collections::stream::ExactlyOnce">ExactlyOnce</a>&gt;</h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.round_robin_bincode" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#327-352">Source</a><h4 class="code-header">pub fn <a href="#method.round_robin_bincode" class="fn">round_robin_bincode</a>&lt;L2: 'a&gt;(
+// - MemberId::&lt;()&gt;(3): [3]</span></code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3CT,+Process%3C'a,+L%3E,+B%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#314-384">Source</a><a href="#impl-Stream%3CT,+Process%3C'a,+L%3E,+B%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, <a class="struct" href="../../location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, L&gt;, B, <a class="enum" href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder">TotalOrder</a>, <a class="enum" href="enum.ExactlyOnce.html" title="enum hydro_lang::live_collections::stream::ExactlyOnce">ExactlyOnce</a>&gt;</h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.round_robin_bincode" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#358-383">Source</a><h4 class="code-header">pub fn <a href="#method.round_robin_bincode" class="fn">round_robin_bincode</a>&lt;L2: 'a&gt;(
     self,
     other: &amp;<a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L2&gt;,
     nondet_membership: <a class="struct" href="../../nondet/struct.NonDet.html" title="struct hydro_lang::nondet::NonDet">NonDet</a>,
@@ -92,7 +115,7 @@ membership is stable, the order of members in the round-robin pattern may change
 <h5 id="ordering-requirements"><a class="doc-anchor" href="#ordering-requirements">§</a>Ordering Requirements</h5>
 <p>This method is only available on streams with <a href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder"><code>TotalOrder</code></a> and <a href="enum.ExactlyOnce.html" title="enum hydro_lang::live_collections::stream::ExactlyOnce"><code>ExactlyOnce</code></a>, since the
 order of messages and retries affects the round-robin pattern.</p>
-<h5 id="example-3"><a class="doc-anchor" href="#example-3">§</a>Example</h5>
+<h5 id="example-4"><a class="doc-anchor" href="#example-4">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>p1 = flow.process::&lt;()&gt;();
 <span class="kw">let </span>workers: Cluster&lt;()&gt; = flow.cluster::&lt;()&gt;();
 <span class="kw">let </span>numbers: Stream&lt;<span class="kw">_</span>, Process&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>, TotalOrder, ExactlyOnce&gt; = p1.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
@@ -102,7 +125,7 @@ on_worker.send_bincode(<span class="kw-2">&amp;</span>p2)
 // - MemberId::&lt;()&gt;(?): [1]
 // - MemberId::&lt;()&gt;(?): [2]
 // - MemberId::&lt;()&gt;(?): [3]
-// - MemberId::&lt;()&gt;(?): [4]</span></code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3CT,+Cluster%3C'a,+L%3E,+B,+O,+R%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#355-500">Source</a><a href="#impl-Stream%3CT,+Cluster%3C'a,+L%3E,+B,+O,+R%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, <a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L&gt;, B, O, R&gt;</h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.send_bincode-1" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#403-426">Source</a><h4 class="code-header">pub fn <a href="#method.send_bincode-1" class="fn">send_bincode</a>&lt;L2&gt;(
+// - MemberId::&lt;()&gt;(?): [4]</span></code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3CT,+Cluster%3C'a,+L%3E,+B,+O,+R%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#386-531">Source</a><a href="#impl-Stream%3CT,+Cluster%3C'a,+L%3E,+B,+O,+R%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, <a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L&gt;, B, O, R&gt;</h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.send_bincode-1" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#434-457">Source</a><h4 class="code-header">pub fn <a href="#method.send_bincode-1" class="fn">send_bincode</a>&lt;L2&gt;(
     self,
     other: &amp;<a class="struct" href="../../location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, L2&gt;,
 ) -&gt; <a class="struct" href="../keyed_stream/struct.KeyedStream.html" title="struct hydro_lang::live_collections::keyed_stream::KeyedStream">KeyedStream</a>&lt;<a class="struct" href="../../location/member_id/struct.MemberId.html" title="struct hydro_lang::location::member_id::MemberId">MemberId</a>&lt;L&gt;, T, <a class="struct" href="../../location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, L2&gt;, <a class="enum" href="../boundedness/enum.Unbounded.html" title="enum hydro_lang::live_collections::boundedness::Unbounded">Unbounded</a>, O, R&gt;<div class="where">where
@@ -110,7 +133,7 @@ on_worker.send_bincode(<span class="kw-2">&amp;</span>p2)
 using <a href="https://docs.rs/bincode/1.3.3/bincode/index.html" title="mod bincode"><code>bincode</code></a> to serialize/deserialize messages.</p>
 <p>Each cluster member sends its local stream elements, and they are collected at the destination
 as a <a href="../keyed_stream/struct.KeyedStream.html" title="struct hydro_lang::live_collections::keyed_stream::KeyedStream"><code>KeyedStream</code></a> where keys identify the source cluster member.</p>
-<h5 id="example-4"><a class="doc-anchor" href="#example-4">§</a>Example</h5>
+<h5 id="example-5"><a class="doc-anchor" href="#example-5">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>workers: Cluster&lt;()&gt; = flow.cluster::&lt;()&gt;();
 <span class="kw">let </span>numbers: Stream&lt;<span class="kw">_</span>, Cluster&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = workers.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>]));
 <span class="kw">let </span>all_received = numbers.send_bincode(<span class="kw-2">&amp;</span>process); <span class="comment">// KeyedStream&lt;MemberId&lt;()&gt;, i32, ...&gt;
@@ -121,7 +144,7 @@ to get just the data:</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>numbers.send_bincode(<span class="kw-2">&amp;</span>process).values() <span class="comment">// Stream&lt;i32, ..., NoOrder&gt;
 // if there are 4 members in the cluster, we should receive 4 elements
-// 1, 1, 1, 1</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.broadcast_bincode-1" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#473-499">Source</a><h4 class="code-header">pub fn <a href="#method.broadcast_bincode-1" class="fn">broadcast_bincode</a>&lt;L2: 'a&gt;(
+// 1, 1, 1, 1</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.broadcast_bincode-1" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#504-530">Source</a><h4 class="code-header">pub fn <a href="#method.broadcast_bincode-1" class="fn">broadcast_bincode</a>&lt;L2: 'a&gt;(
     self,
     other: &amp;<a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L2&gt;,
     nondet_membership: <a class="struct" href="../../nondet/struct.NonDet.html" title="struct hydro_lang::nondet::NonDet">NonDet</a>,
@@ -137,7 +160,7 @@ based on its latest membership information. Unlike <a href="struct.Stream.html#m
 to the current cluster members known <em>at that point in time</em> at the source member. Depending
 on when each source member is notified of membership changes, it will broadcast each element
 to different members.</p>
-<h5 id="example-5"><a class="doc-anchor" href="#example-5">§</a>Example</h5>
+<h5 id="example-6"><a class="doc-anchor" href="#example-6">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>source: Cluster&lt;Source&gt; = flow.cluster::&lt;Source&gt;();
 <span class="kw">let </span>numbers: Stream&lt;<span class="kw">_</span>, Cluster&lt;Source&gt;, <span class="kw">_</span>&gt; = source.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">123</span>]));
 <span class="kw">let </span>destination: Cluster&lt;Destination&gt; = flow.cluster::&lt;Destination&gt;();
@@ -145,7 +168,7 @@ to different members.</p>
 <span class="comment">// if there are 4 members in the desination, each receives one element from each source member
 // - Destination(0): { Source(0): [123], Source(1): [123], ... }
 // - Destination(1): { Source(0): [123], Source(1): [123], ... }
-// - ...</span></code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3C(MemberId%3CL2%3E,+T),+Cluster%3C'a,+L%3E,+B,+O,+R%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#502-555">Source</a><a href="#impl-Stream%3C(MemberId%3CL2%3E,+T),+Cluster%3C'a,+L%3E,+B,+O,+R%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, L2, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;(<a class="struct" href="../../location/member_id/struct.MemberId.html" title="struct hydro_lang::location::member_id::MemberId">MemberId</a>&lt;L2&gt;, T), <a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L&gt;, B, O, R&gt;</h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.demux_bincode-1" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#546-554">Source</a><h4 class="code-header">pub fn <a href="#method.demux_bincode-1" class="fn">demux_bincode</a>(
+// - ...</span></code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3C(MemberId%3CL2%3E,+T),+Cluster%3C'a,+L%3E,+B,+O,+R%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#533-586">Source</a><a href="#impl-Stream%3C(MemberId%3CL2%3E,+T),+Cluster%3C'a,+L%3E,+B,+O,+R%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, L2, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;(<a class="struct" href="../../location/member_id/struct.MemberId.html" title="struct hydro_lang::location::member_id::MemberId">MemberId</a>&lt;L2&gt;, T), <a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L&gt;, B, O, R&gt;</h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.demux_bincode-1" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/networking.rs.html#577-585">Source</a><h4 class="code-header">pub fn <a href="#method.demux_bincode-1" class="fn">demux_bincode</a>(
     self,
     other: &amp;<a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L2&gt;,
 ) -&gt; <a class="struct" href="../keyed_stream/struct.KeyedStream.html" title="struct hydro_lang::live_collections::keyed_stream::KeyedStream">KeyedStream</a>&lt;<a class="struct" href="../../location/member_id/struct.MemberId.html" title="struct hydro_lang::location::member_id::MemberId">MemberId</a>&lt;L&gt;, T, <a class="struct" href="../../location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, L2&gt;, <a class="enum" href="../boundedness/enum.Unbounded.html" title="enum hydro_lang::live_collections::boundedness::Unbounded">Unbounded</a>, O, R&gt;<div class="where">where
@@ -157,13 +180,13 @@ this API allows precise targeting of specific cluster members rather than broadc
 all members.</p>
 <p>Each cluster member sends its local stream elements, and they are collected at each
 destination member as a <a href="../keyed_stream/struct.KeyedStream.html" title="struct hydro_lang::live_collections::keyed_stream::KeyedStream"><code>KeyedStream</code></a> where keys identify the source cluster member.</p>
-<h5 id="example-6"><a class="doc-anchor" href="#example-6">§</a>Example</h5>
+<h5 id="example-7"><a class="doc-anchor" href="#example-7">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>source: Cluster&lt;Source&gt; = flow.cluster::&lt;Source&gt;();
-<span class="kw">let </span>numbers: Stream&lt;<span class="kw">_</span>, Cluster&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = source
+<span class="kw">let </span>to_send: Stream&lt;<span class="kw">_</span>, Cluster&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = source
     .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]))
     .map(<span class="macro">q!</span>(|x| (hydro_lang::location::MemberId::from_raw(x), x)));
 <span class="kw">let </span>destination: Cluster&lt;Destination&gt; = flow.cluster::&lt;Destination&gt;();
-<span class="kw">let </span>all_received = numbers.demux_bincode(<span class="kw-2">&amp;</span>destination); <span class="comment">// KeyedStream&lt;MemberId&lt;Source&gt;, i32, ...&gt;
+<span class="kw">let </span>all_received = to_send.demux_bincode(<span class="kw-2">&amp;</span>destination); <span class="comment">// KeyedStream&lt;MemberId&lt;Source&gt;, i32, ...&gt;
 // if there are 4 members in the destination cluster, each receives one message from each source member
 // - Destination(0): { Source(0): [0], Source(1): [0], ... }
 // - Destination(1): { Source(0): [1], Source(1): [1], ... }
@@ -172,7 +195,7 @@ destination member as a <a href="../keyed_stream/struct.KeyedStream.html" title=
     F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(T) -&gt; U + 'a,</div></h4></section></summary><div class="docblock"><p>Produces a stream based on invoking <code>f</code> on each element.
 If you do not want to modify the stream and instead only want to view
 each item use <a href="struct.Stream.html#method.inspect" title="method hydro_lang::live_collections::stream::Stream::inspect"><code>Stream::inspect</code></a> instead.</p>
-<h5 id="example-7"><a class="doc-anchor" href="#example-7">§</a>Example</h5>
+<h5 id="example-8"><a class="doc-anchor" href="#example-8">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>words = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="string">"hello"</span>, <span class="string">"world"</span>]));
 words.map(<span class="macro">q!</span>(|x| x.to_uppercase()))</code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.flat_map_ordered" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#343-357">Source</a><h4 class="code-header">pub fn <a href="#method.flat_map_ordered" class="fn">flat_map_ordered</a>&lt;U, I, F&gt;(
     self,
@@ -184,7 +207,7 @@ result as an <a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterato
 for the output type <code>U</code> must produce items in a <strong>deterministic</strong> order.</p>
 <p>For example, <code>U</code> could be a <code>Vec</code>, but not a <code>HashSet</code>. If the order of the items in <code>U</code> is
 not deterministic, use <a href="struct.Stream.html#method.flat_map_unordered" title="method hydro_lang::live_collections::stream::Stream::flat_map_unordered"><code>Stream::flat_map_unordered</code></a> instead.</p>
-<h5 id="example-8"><a class="doc-anchor" href="#example-8">§</a>Example</h5>
+<h5 id="example-9"><a class="doc-anchor" href="#example-9">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>process
     .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>], <span class="macro">vec!</span>[<span class="number">3</span>, <span class="number">4</span>]]))
     .flat_map_ordered(<span class="macro">q!</span>(|x| x))
@@ -195,7 +218,7 @@ not deterministic, use <a href="struct.Stream.html#method.flat_map_unordered" ti
     I: <a class="trait" href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html" title="trait core::iter::traits::collect::IntoIterator">IntoIterator</a>&lt;Item = U&gt;,
     F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(T) -&gt; I + 'a,</div></h4></section></summary><div class="docblock"><p>Like <a href="struct.Stream.html#method.flat_map_ordered" title="method hydro_lang::live_collections::stream::Stream::flat_map_ordered"><code>Stream::flat_map_ordered</code></a>, but allows the implementation of <a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html" title="trait core::iter::traits::iterator::Iterator"><code>Iterator</code></a>
 for the output type <code>U</code> to produce items in any order.</p>
-<h5 id="example-9"><a class="doc-anchor" href="#example-9">§</a>Example</h5>
+<h5 id="example-10"><a class="doc-anchor" href="#example-10">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>process
     .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[
         std::collections::HashSet::&lt;i32&gt;::from_iter(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>]),
@@ -214,7 +237,7 @@ not deterministic, use <a href="struct.Stream.html#method.flatten_unordered" tit
 <span class="comment">// 1, 2, 3, 4</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.flatten_unordered" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#452-457">Source</a><h4 class="code-header">pub fn <a href="#method.flatten_unordered" class="fn">flatten_unordered</a>&lt;U&gt;(self) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;U, L, B, <a class="enum" href="enum.NoOrder.html" title="enum hydro_lang::live_collections::stream::NoOrder">NoOrder</a>, R&gt;<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html" title="trait core::iter::traits::collect::IntoIterator">IntoIterator</a>&lt;Item = U&gt;,</div></h4></section></summary><div class="docblock"><p>Like <a href="struct.Stream.html#method.flatten_ordered" title="method hydro_lang::live_collections::stream::Stream::flatten_ordered"><code>Stream::flatten_ordered</code></a>, but allows the implementation of <a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html" title="trait core::iter::traits::iterator::Iterator"><code>Iterator</code></a>
 for the element type <code>T</code> to produce items in any order.</p>
-<h5 id="example-10"><a class="doc-anchor" href="#example-10">§</a>Example</h5>
+<h5 id="example-11"><a class="doc-anchor" href="#example-11">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>process
     .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[
         std::collections::HashSet::&lt;i32&gt;::from_iter(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>]),
@@ -227,7 +250,7 @@ for the element type <code>T</code> to produce items in any order.</p>
 <p>The closure <code>f</code> receives a reference <code>&amp;T</code> rather than an owned value <code>T</code> because filtering does
 not modify or take ownership of the values. If you need to modify the values while filtering
 use <a href="struct.Stream.html#method.filter_map" title="method hydro_lang::live_collections::stream::Stream::filter_map"><code>Stream::filter_map</code></a> instead.</p>
-<h5 id="example-11"><a class="doc-anchor" href="#example-11">§</a>Example</h5>
+<h5 id="example-12"><a class="doc-anchor" href="#example-12">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>process
     .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]))
     .filter(<span class="macro">q!</span>(|<span class="kw-2">&amp;</span>x| x &gt; <span class="number">2</span>))
@@ -236,7 +259,7 @@ use <a href="struct.Stream.html#method.filter_map" title="method hydro_lang::liv
     f: impl IntoQuotedMut&lt;'a, F, L&gt;,
 ) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;U, L, B, O, R&gt;<div class="where">where
     F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(T) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;U&gt; + 'a,</div></h4></section></summary><div class="docblock"><p>An operator that both filters and maps. It yields only the items for which the supplied closure <code>f</code> returns <code>Some(value)</code>.</p>
-<h5 id="example-12"><a class="doc-anchor" href="#example-12">§</a>Example</h5>
+<h5 id="example-13"><a class="doc-anchor" href="#example-13">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>process
     .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="string">"1"</span>, <span class="string">"hello"</span>, <span class="string">"world"</span>, <span class="string">"2"</span>]))
     .filter_map(<span class="macro">q!</span>(|s| s.parse::&lt;usize&gt;().ok()))
@@ -246,7 +269,7 @@ use <a href="struct.Stream.html#method.filter_map" title="method hydro_lang::liv
 ) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(T, O2)</a>, L, B, O, R&gt;<div class="where">where
     O2: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a>,</div></h4></section></summary><div class="docblock"><p>Generates a stream that maps each input element <code>i</code> to a tuple <code>(i, x)</code>,
 where <code>x</code> is the final value of <code>other</code>, a bounded <a href="../singleton/struct.Singleton.html" title="struct hydro_lang::live_collections::singleton::Singleton"><code>Singleton</code></a>.</p>
-<h5 id="example-13"><a class="doc-anchor" href="#example-13">§</a>Example</h5>
+<h5 id="example-14"><a class="doc-anchor" href="#example-14">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>batch = process
   .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]))
@@ -268,14 +291,14 @@ where <code>x</code> is the final value of <code>other</code>, a bounded <a href
     T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a>,
     T2: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a>,</div></h4></section></summary><div class="docblock"><p>Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams, returning all
 tupled pairs in a non-deterministic order.</p>
-<h5 id="example-14"><a class="doc-anchor" href="#example-14">§</a>Example</h5>
+<h5 id="example-15"><a class="doc-anchor" href="#example-15">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>stream1 = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="string">'a'</span>, <span class="string">'b'</span>, <span class="string">'c'</span>]));
 <span class="kw">let </span>stream2 = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]));
 stream1.cross_product(stream2)</code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.unique" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#630-641">Source</a><h4 class="code-header">pub fn <a href="#method.unique" class="fn">unique</a>(self) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, L, B, O, <a class="enum" href="enum.ExactlyOnce.html" title="enum hydro_lang::live_collections::stream::ExactlyOnce">ExactlyOnce</a>&gt;<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html" title="trait core::cmp::Eq">Eq</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/hash/trait.Hash.html" title="trait core::hash::Hash">Hash</a>,</div></h4></section></summary><div class="docblock"><p>Takes one stream as input and filters out any duplicate occurrences. The output
 contains all unique values from the input.</p>
-<h5 id="example-15"><a class="doc-anchor" href="#example-15">§</a>Example</h5>
+<h5 id="example-16"><a class="doc-anchor" href="#example-16">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
     process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">4</span>])).unique()</code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.filter_not_in" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#665-682">Source</a><h4 class="code-header">pub fn <a href="#method.filter_not_in" class="fn">filter_not_in</a>&lt;O2&gt;(
     self,
@@ -284,7 +307,7 @@ contains all unique values from the input.</p>
     T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html" title="trait core::cmp::Eq">Eq</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/hash/trait.Hash.html" title="trait core::hash::Hash">Hash</a>,</div></h4></section></summary><div class="docblock"><p>Outputs everything in this stream that is <em>not</em> contained in the <code>other</code> stream.</p>
 <p>The <code>other</code> stream must be <a href="../boundedness/enum.Bounded.html" title="enum hydro_lang::live_collections::boundedness::Bounded"><code>Bounded</code></a>, since this function will wait until
 all its elements are available before producing any output.</p>
-<h5 id="example-16"><a class="doc-anchor" href="#example-16">§</a>Example</h5>
+<h5 id="example-17"><a class="doc-anchor" href="#example-17">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>stream = process
   .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[ <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4 </span>]))
@@ -299,7 +322,7 @@ stream.filter_not_in(batch).all_ticks()</code></pre></div></div></details><detai
     F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;T</a>) + 'a,</div></h4></section></summary><div class="docblock"><p>An operator which allows you to “inspect” each element of a stream without
 modifying it. The closure <code>f</code> is called on a reference to each item. This is
 mainly useful for debugging, and should not be used to generate side-effects.</p>
-<h5 id="example-17"><a class="doc-anchor" href="#example-17">§</a>Example</h5>
+<h5 id="example-18"><a class="doc-anchor" href="#example-18">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>nums = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>]));
 <span class="comment">// prints "1 * 10 = 10" and "2 * 10 = 20"
 </span>nums.inspect(<span class="macro">q!</span>(|x| <span class="macro">println!</span>(<span class="string">"{} * 10 = {}"</span>, x, x * <span class="number">10</span>)))</code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.ir_node_named" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#737-744">Source</a><h4 class="code-header">pub fn <a href="#method.ir_node_named" class="fn">ir_node_named</a>(self, name: &amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, L, B, O, R&gt;</h4></section></summary><div class="docblock"><p>An operator which allows you to “name” a <code>HydroNode</code>.
@@ -334,7 +357,7 @@ always be weaker than the input.</p>
 </div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3C%26T,+L,+B,+O,+R%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#809-834">Source</a><a href="#impl-Stream%3C%26T,+L,+B,+O,+R%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;T</a>, L, B, O, R&gt;<div class="where">where
     L: <a class="trait" href="../../location/trait.Location.html" title="trait hydro_lang::location::Location">Location</a>&lt;'a&gt;,</div></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.cloned" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#828-833">Source</a><h4 class="code-header">pub fn <a href="#method.cloned" class="fn">cloned</a>(self) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, L, B, O, R&gt;<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a>,</div></h4></section></summary><div class="docblock"><p>Clone each element of the stream; akin to <code>map(q!(|d| d.clone()))</code>.</p>
-<h5 id="example-18"><a class="doc-anchor" href="#example-18">§</a>Example</h5>
+<h5 id="example-19"><a class="doc-anchor" href="#example-19">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>process.source_iter(<span class="macro">q!</span>(<span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])).cloned()
 <span class="comment">// 1, 2, 3</span></code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3CT,+L,+B,+O,+R%3E-1" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#836-1020">Source</a><a href="#impl-Stream%3CT,+L,+B,+O,+R%3E-1" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, L, B, O, R&gt;<div class="where">where
     L: <a class="trait" href="../../location/trait.Location.html" title="trait hydro_lang::location::Location">Location</a>&lt;'a&gt;,</div></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.fold_commutative_idempotent" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#863-876">Source</a><h4 class="code-header">pub fn <a href="#method.fold_commutative_idempotent" class="fn">fold_commutative_idempotent</a>&lt;A, I, F&gt;(
@@ -348,7 +371,7 @@ generated by the <code>init</code> closure, and then applying the <code>comb</co
 Unlike iterators, <code>comb</code> takes the accumulator by <code>&amp;mut</code> reference, so that it can be modified in place.</p>
 <p>The <code>comb</code> closure must be <strong>commutative</strong> AND <strong>idempotent</strong>, as the order of input items is not guaranteed
 and there may be duplicates.</p>
-<h5 id="example-19"><a class="doc-anchor" href="#example-19">§</a>Example</h5>
+<h5 id="example-20"><a class="doc-anchor" href="#example-20">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>bools = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>]));
 <span class="kw">let </span>batch = bools.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -365,7 +388,7 @@ until the first element in the input arrives. Unlike iterators, <code>comb</code
 reference, so that it can be modified in place.</p>
 <p>The <code>comb</code> closure must be <strong>commutative</strong> AND <strong>idempotent</strong>, as the order of input items is not guaranteed
 and there may be duplicates.</p>
-<h5 id="example-20"><a class="doc-anchor" href="#example-20">§</a>Example</h5>
+<h5 id="example-21"><a class="doc-anchor" href="#example-21">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>bools = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>]));
 <span class="kw">let </span>batch = bools.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -375,7 +398,7 @@ batch
 <span class="comment">// true</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.max" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#932-941">Source</a><h4 class="code-header">pub fn <a href="#method.max" class="fn">max</a>(self) -&gt; <a class="struct" href="../optional/struct.Optional.html" title="struct hydro_lang::live_collections::optional::Optional">Optional</a>&lt;T, L, B&gt;<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html" title="trait core::cmp::Ord">Ord</a>,</div></h4></section></summary><div class="docblock"><p>Computes the maximum element in the stream as an <a href="../optional/struct.Optional.html" title="struct hydro_lang::live_collections::optional::Optional"><code>Optional</code></a>, which
 will be empty until the first element in the input arrives.</p>
-<h5 id="example-21"><a class="doc-anchor" href="#example-21">§</a>Example</h5>
+<h5 id="example-22"><a class="doc-anchor" href="#example-22">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -388,7 +411,7 @@ batch.max().all_ticks()
     F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;T</a>) -&gt; K + 'a,</div></h4></section></summary><div class="docblock"><p>Computes the maximum element in the stream as an <a href="../optional/struct.Optional.html" title="struct hydro_lang::live_collections::optional::Optional"><code>Optional</code></a>, where the
 maximum is determined according to the <code>key</code> function. The <a href="../optional/struct.Optional.html" title="struct hydro_lang::live_collections::optional::Optional"><code>Optional</code></a> will
 be empty until the first element in the input arrives.</p>
-<h5 id="example-22"><a class="doc-anchor" href="#example-22">§</a>Example</h5>
+<h5 id="example-23"><a class="doc-anchor" href="#example-23">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -396,7 +419,7 @@ batch.max_by_key(<span class="macro">q!</span>(|x| -x)).all_ticks()
 <span class="comment">// 1</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.min" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#1010-1019">Source</a><h4 class="code-header">pub fn <a href="#method.min" class="fn">min</a>(self) -&gt; <a class="struct" href="../optional/struct.Optional.html" title="struct hydro_lang::live_collections::optional::Optional">Optional</a>&lt;T, L, B&gt;<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html" title="trait core::cmp::Ord">Ord</a>,</div></h4></section></summary><div class="docblock"><p>Computes the minimum element in the stream as an <a href="../optional/struct.Optional.html" title="struct hydro_lang::live_collections::optional::Optional"><code>Optional</code></a>, which
 will be empty until the first element in the input arrives.</p>
-<h5 id="example-23"><a class="doc-anchor" href="#example-23">§</a>Example</h5>
+<h5 id="example-24"><a class="doc-anchor" href="#example-24">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -412,7 +435,7 @@ batch.min().all_ticks()
 generated by the <code>init</code> closure, and then applying the <code>comb</code> closure to each element in the stream.
 Unlike iterators, <code>comb</code> takes the accumulator by <code>&amp;mut</code> reference, so that it can be modified in place.</p>
 <p>The <code>comb</code> closure must be <strong>commutative</strong>, as the order of input items is not guaranteed.</p>
-<h5 id="example-24"><a class="doc-anchor" href="#example-24">§</a>Example</h5>
+<h5 id="example-25"><a class="doc-anchor" href="#example-25">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -428,7 +451,7 @@ and then applying the <code>comb</code> closure to each element in the stream. T
 until the first element in the input arrives. Unlike iterators, <code>comb</code> takes the accumulator by <code>&amp;mut</code>
 reference, so that it can be modified in place.</p>
 <p>The <code>comb</code> closure must be <strong>commutative</strong>, as the order of input items is not guaranteed.</p>
-<h5 id="example-25"><a class="doc-anchor" href="#example-25">§</a>Example</h5>
+<h5 id="example-26"><a class="doc-anchor" href="#example-26">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -436,7 +459,7 @@ batch
     .reduce_commutative(<span class="macro">q!</span>(|curr, new| <span class="kw-2">*</span>curr += new))
     .all_ticks()
 <span class="comment">// 10</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.count" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#1108-1110">Source</a><h4 class="code-header">pub fn <a href="#method.count" class="fn">count</a>(self) -&gt; <a class="struct" href="../singleton/struct.Singleton.html" title="struct hydro_lang::live_collections::singleton::Singleton">Singleton</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, L, B&gt;</h4></section></summary><div class="docblock"><p>Computes the number of elements in the stream as a <a href="../singleton/struct.Singleton.html" title="struct hydro_lang::live_collections::singleton::Singleton"><code>Singleton</code></a>.</p>
-<h5 id="example-26"><a class="doc-anchor" href="#example-26">§</a>Example</h5>
+<h5 id="example-27"><a class="doc-anchor" href="#example-27">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -452,7 +475,7 @@ batch.count().all_ticks()
 generated by the <code>init</code> closure, and then applying the <code>comb</code> closure to each element in the stream.
 Unlike iterators, <code>comb</code> takes the accumulator by <code>&amp;mut</code> reference, so that it can be modified in place.</p>
 <p>The <code>comb</code> closure must be <strong>idempotent</strong>, as there may be non-deterministic duplicates.</p>
-<h5 id="example-27"><a class="doc-anchor" href="#example-27">§</a>Example</h5>
+<h5 id="example-28"><a class="doc-anchor" href="#example-28">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>bools = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>]));
 <span class="kw">let </span>batch = bools.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -468,7 +491,7 @@ and then applying the <code>comb</code> closure to each element in the stream. T
 until the first element in the input arrives. Unlike iterators, <code>comb</code> takes the accumulator by <code>&amp;mut</code>
 reference, so that it can be modified in place.</p>
 <p>The <code>comb</code> closure must be <strong>idempotent</strong>, as there may be non-deterministic duplicates.</p>
-<h5 id="example-28"><a class="doc-anchor" href="#example-28">§</a>Example</h5>
+<h5 id="example-29"><a class="doc-anchor" href="#example-29">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>bools = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>]));
 <span class="kw">let </span>batch = bools.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -477,7 +500,7 @@ batch.reduce_idempotent(<span class="macro">q!</span>(|acc, x| <span class="kw-2
 will be empty until the first element in the input arrives.</p>
 <p>This requires the stream to have a <a href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder"><code>TotalOrder</code></a> guarantee, otherwise
 re-ordering of elements may cause the first element to change.</p>
-<h5 id="example-29"><a class="doc-anchor" href="#example-29">§</a>Example</h5>
+<h5 id="example-30"><a class="doc-anchor" href="#example-30">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -486,14 +509,14 @@ batch.first().all_ticks()
 will be empty until an element in the input arrives.</p>
 <p>This requires the stream to have a <a href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder"><code>TotalOrder</code></a> guarantee, otherwise
 re-ordering of elements may cause the last element to change.</p>
-<h5 id="example-30"><a class="doc-anchor" href="#example-30">§</a>Example</h5>
+<h5 id="example-31"><a class="doc-anchor" href="#example-31">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 batch.last().all_ticks()
 <span class="comment">// 4</span></code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3CT,+L,+B%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#1230-1481">Source</a><a href="#impl-Stream%3CT,+L,+B%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, B: <a class="trait" href="../boundedness/trait.Boundedness.html" title="trait hydro_lang::live_collections::boundedness::Boundedness">Boundedness</a>&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, L, B, <a class="enum" href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder">TotalOrder</a>, <a class="enum" href="enum.ExactlyOnce.html" title="enum hydro_lang::live_collections::stream::ExactlyOnce">ExactlyOnce</a>&gt;<div class="where">where
     L: <a class="trait" href="../../location/trait.Location.html" title="trait hydro_lang::location::Location">Location</a>&lt;'a&gt;,</div></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.enumerate" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#1251-1277">Source</a><h4 class="code-header">pub fn <a href="#method.enumerate" class="fn">enumerate</a>(self) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;(<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, T), L, B, <a class="enum" href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder">TotalOrder</a>, <a class="enum" href="enum.ExactlyOnce.html" title="enum hydro_lang::live_collections::stream::ExactlyOnce">ExactlyOnce</a>&gt;</h4></section></summary><div class="docblock"><p>Returns a stream with the current count tupled with each element in the input stream.</p>
-<h5 id="example-31"><a class="doc-anchor" href="#example-31">§</a>Example</h5>
+<h5 id="example-32"><a class="doc-anchor" href="#example-32">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 numbers.enumerate()
@@ -506,7 +529,7 @@ generated by the <code>init</code> closure, and then applying the <code>comb</co
 Unlike iterators, <code>comb</code> takes the accumulator by <code>&amp;mut</code> reference, so that it can be modified in place.</p>
 <p>The input stream must have a <a href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder"><code>TotalOrder</code></a> guarantee, which means that the <code>comb</code> closure is allowed
 to depend on the order of elements in the stream.</p>
-<h5 id="example-32"><a class="doc-anchor" href="#example-32">§</a>Example</h5>
+<h5 id="example-33"><a class="doc-anchor" href="#example-33">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>words = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="string">"HELLO"</span>, <span class="string">"WORLD"</span>]));
 <span class="kw">let </span>batch = words.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -559,7 +582,7 @@ and then applying the <code>comb</code> closure to each element in the stream. T
 until the first element in the input arrives.</p>
 <p>The input stream must have a <a href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder"><code>TotalOrder</code></a> guarantee, which means that the <code>comb</code> closure is allowed
 to depend on the order of elements in the stream.</p>
-<h5 id="example-33"><a class="doc-anchor" href="#example-33">§</a>Example</h5>
+<h5 id="example-34"><a class="doc-anchor" href="#example-34">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>words = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="string">"HELLO"</span>, <span class="string">"WORLD"</span>]));
 <span class="kw">let </span>batch = words.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -575,7 +598,7 @@ batch
 The result has <a href="enum.NoOrder.html" title="enum hydro_lang::live_collections::stream::NoOrder"><code>NoOrder</code></a> because the order of interleaving is not guaranteed.</p>
 <p>Currently, both input streams must be <a href="../boundedness/enum.Unbounded.html" title="enum hydro_lang::live_collections::boundedness::Unbounded"><code>Unbounded</code></a>. When the streams are
 <a href="../boundedness/enum.Bounded.html" title="enum hydro_lang::live_collections::boundedness::Bounded"><code>Bounded</code></a>, you can use <a href="struct.Stream.html#method.chain" title="method hydro_lang::live_collections::stream::Stream::chain"><code>Stream::chain</code></a> instead.</p>
-<h5 id="example-34"><a class="doc-anchor" href="#example-34">§</a>Example</h5>
+<h5 id="example-35"><a class="doc-anchor" href="#example-35">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 numbers.clone().map(<span class="macro">q!</span>(|x| x + <span class="number">1</span>)).interleave(numbers)
 <span class="comment">// 2, 3, 4, 5, and 1, 2, 3, 4 interleaved in unknown order</span></code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Stream%3CT,+L,+Bounded,+O,+R%3E" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#1527-1631">Source</a><a href="#impl-Stream%3CT,+L,+Bounded,+O,+R%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a, T, L, O, R&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, L, <a class="enum" href="../boundedness/enum.Bounded.html" title="enum hydro_lang::live_collections::boundedness::Bounded">Bounded</a>, O, R&gt;<div class="where">where
@@ -585,7 +608,7 @@ numbers.clone().map(<span class="macro">q!</span>(|x| x + <span class="number">1
 will have a <a href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder"><code>TotalOrder</code></a> guarantee. This operator will block until all
 elements in the input stream are available, so it requires the input stream
 to be <a href="../boundedness/enum.Bounded.html" title="enum hydro_lang::live_collections::boundedness::Bounded"><code>Bounded</code></a>.</p>
-<h5 id="example-35"><a class="doc-anchor" href="#example-35">§</a>Example</h5>
+<h5 id="example-36"><a class="doc-anchor" href="#example-36">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">1</span>]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -601,7 +624,7 @@ a <a href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::strea
 <p>Currently, both input streams must be <a href="../boundedness/enum.Bounded.html" title="enum hydro_lang::live_collections::boundedness::Bounded"><code>Bounded</code></a>. This operator will block
 on the first stream until all its elements are available. In a future version,
 we will relax the requirement on the <code>other</code> stream.</p>
-<h5 id="example-36"><a class="doc-anchor" href="#example-36">§</a>Example</h5>
+<h5 id="example-37"><a class="doc-anchor" href="#example-37">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -622,7 +645,7 @@ because this is compiled into a nested loop.</p>
 ) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;(K, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(V1, V2)</a>), L, B, <a class="enum" href="enum.NoOrder.html" title="enum hydro_lang::live_collections::stream::NoOrder">NoOrder</a>, R&gt;<div class="where">where
     K: <a class="trait" href="https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html" title="trait core::cmp::Eq">Eq</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/hash/trait.Hash.html" title="trait core::hash::Hash">Hash</a>,</div></h4></section></summary><div class="docblock"><p>Given two streams of pairs <code>(K, V1)</code> and <code>(K, V2)</code>, produces a new stream of nested pairs <code>(K, (V1, V2))</code>
 by equi-joining the two streams on the key attribute <code>K</code>.</p>
-<h5 id="example-37"><a class="doc-anchor" href="#example-37">§</a>Example</h5>
+<h5 id="example-38"><a class="doc-anchor" href="#example-38">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>stream1 = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="string">'a'</span>), (<span class="number">2</span>, <span class="string">'b'</span>)]));
 <span class="kw">let </span>stream2 = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="string">'x'</span>), (<span class="number">2</span>, <span class="string">'y'</span>)]));
@@ -635,7 +658,7 @@ stream1.join(stream2)
 computes the anti-join of the items in the input – i.e. returns
 unique items in the first input that do not have a matching key
 in the second input.</p>
-<h5 id="example-38"><a class="doc-anchor" href="#example-38">§</a>Example</h5>
+<h5 id="example-39"><a class="doc-anchor" href="#example-39">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>stream = process
   .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[ (<span class="number">1</span>, <span class="string">'a'</span>), (<span class="number">2</span>, <span class="string">'b'</span>), (<span class="number">3</span>, <span class="string">'c'</span>), (<span class="number">4</span>, <span class="string">'d'</span>) ]))
@@ -661,7 +684,7 @@ early by returning <code>None</code>.</p>
 <p>The function takes a mutable reference to the accumulator and the current element, and returns
 an <code>Option&lt;U&gt;</code>. If the function returns <code>Some(value)</code>, <code>value</code> is emitted to the output stream.
 If the function returns <code>None</code>, the stream is terminated and no more elements are processed.</p>
-<h5 id="example-39"><a class="doc-anchor" href="#example-39">§</a>Example</h5>
+<h5 id="example-40"><a class="doc-anchor" href="#example-40">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>process
     .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">0</span>, <span class="number">1</span>), (<span class="number">0</span>, <span class="number">2</span>), (<span class="number">1</span>, <span class="number">3</span>), (<span class="number">1</span>, <span class="number">4</span>)]))
     .scan_keyed(
@@ -682,7 +705,7 @@ If the function returns <code>None</code>, the stream is terminated and no more 
 function returns a boolean, which when true indicates that the aggregated result is complete and can be
 released to downstream computation. Unlike <a href="struct.Stream.html#method.fold_keyed" title="method hydro_lang::live_collections::stream::Stream::fold_keyed"><code>Stream::fold_keyed</code></a>, this means that even if the input stream
 is <a href="../boundedness/enum.Unbounded.html" title="enum hydro_lang::live_collections::boundedness::Unbounded"><code>Unbounded</code></a>, the outputs of the fold can be processed like normal stream elements.</p>
-<h5 id="example-40"><a class="doc-anchor" href="#example-40">§</a>Example</h5>
+<h5 id="example-41"><a class="doc-anchor" href="#example-41">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>process
     .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">0</span>, <span class="number">2</span>), (<span class="number">0</span>, <span class="number">3</span>), (<span class="number">1</span>, <span class="number">3</span>), (<span class="number">1</span>, <span class="number">6</span>)]))
     .fold_keyed_early_stop(
@@ -707,7 +730,7 @@ in the second element are accumulated via the <code>comb</code> closure.</p>
 to depend on the order of elements in the stream.</p>
 <p>If the input and output value types are the same and do not require initialization then use
 <a href="struct.Stream.html#method.reduce_keyed" title="method hydro_lang::live_collections::stream::Stream::reduce_keyed"><code>Stream::reduce_keyed</code></a>.</p>
-<h5 id="example-41"><a class="doc-anchor" href="#example-41">§</a>Example</h5>
+<h5 id="example-42"><a class="doc-anchor" href="#example-42">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>), (<span class="number">1</span>, <span class="number">3</span>), (<span class="number">2</span>, <span class="number">4</span>)]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -724,7 +747,7 @@ in the second element are accumulated via the <code>comb</code> closure.</p>
 <p>The input stream must have a <a href="enum.TotalOrder.html" title="enum hydro_lang::live_collections::stream::TotalOrder"><code>TotalOrder</code></a> guarantee, which means that the <code>comb</code> closure is allowed
 to depend on the order of elements in the stream.</p>
 <p>If you need the accumulated value to have a different type than the input, use <a href="struct.Stream.html#method.fold_keyed" title="method hydro_lang::live_collections::stream::Stream::fold_keyed"><code>Stream::fold_keyed</code></a>.</p>
-<h5 id="example-42"><a class="doc-anchor" href="#example-42">§</a>Example</h5>
+<h5 id="example-43"><a class="doc-anchor" href="#example-43">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>), (<span class="number">1</span>, <span class="number">3</span>), (<span class="number">2</span>, <span class="number">4</span>)]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -744,7 +767,7 @@ in the second element are accumulated via the <code>comb</code> closure.</p>
 as there may be non-deterministic duplicates.</p>
 <p>If the input and output value types are the same and do not require initialization then use
 <a href="struct.Stream.html#method.reduce_keyed_commutative_idempotent" title="method hydro_lang::live_collections::stream::Stream::reduce_keyed_commutative_idempotent"><code>Stream::reduce_keyed_commutative_idempotent</code></a>.</p>
-<h5 id="example-43"><a class="doc-anchor" href="#example-43">§</a>Example</h5>
+<h5 id="example-44"><a class="doc-anchor" href="#example-44">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="bool-val">false</span>), (<span class="number">2</span>, <span class="bool-val">true</span>), (<span class="number">1</span>, <span class="bool-val">false</span>), (<span class="number">2</span>, <span class="bool-val">false</span>)]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -752,7 +775,7 @@ batch
     .fold_keyed_commutative_idempotent(<span class="macro">q!</span>(|| <span class="bool-val">false</span>), <span class="macro">q!</span>(|acc, x| <span class="kw-2">*</span>acc |= x))
     .all_ticks()
 <span class="comment">// (1, false), (2, true)</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.keys" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#1996-2000">Source</a><h4 class="code-header">pub fn <a href="#method.keys" class="fn">keys</a>(self) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;K, <a class="struct" href="../../location/tick/struct.Tick.html" title="struct hydro_lang::location::tick::Tick">Tick</a>&lt;L&gt;, <a class="enum" href="../boundedness/enum.Bounded.html" title="enum hydro_lang::live_collections::boundedness::Bounded">Bounded</a>, <a class="enum" href="enum.NoOrder.html" title="enum hydro_lang::live_collections::stream::NoOrder">NoOrder</a>, <a class="enum" href="enum.ExactlyOnce.html" title="enum hydro_lang::live_collections::stream::ExactlyOnce">ExactlyOnce</a>&gt;</h4></section></summary><div class="docblock"><p>Given a stream of pairs <code>(K, V)</code>, produces a new stream of unique keys <code>K</code>.</p>
-<h5 id="example-44"><a class="doc-anchor" href="#example-44">§</a>Example</h5>
+<h5 id="example-45"><a class="doc-anchor" href="#example-45">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>), (<span class="number">1</span>, <span class="number">3</span>), (<span class="number">2</span>, <span class="number">4</span>)]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -767,7 +790,7 @@ in the second element are accumulated via the <code>comb</code> closure.</p>
 <p>The <code>comb</code> closure must be <strong>commutative</strong>, as the order of input items is not guaranteed, and <strong>idempotent</strong>,
 as there may be non-deterministic duplicates.</p>
 <p>If you need the accumulated value to have a different type than the input, use <a href="struct.Stream.html#method.fold_keyed_commutative_idempotent" title="method hydro_lang::live_collections::stream::Stream::fold_keyed_commutative_idempotent"><code>Stream::fold_keyed_commutative_idempotent</code></a>.</p>
-<h5 id="example-45"><a class="doc-anchor" href="#example-45">§</a>Example</h5>
+<h5 id="example-46"><a class="doc-anchor" href="#example-46">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="bool-val">false</span>), (<span class="number">2</span>, <span class="bool-val">true</span>), (<span class="number">1</span>, <span class="bool-val">false</span>), (<span class="number">2</span>, <span class="bool-val">false</span>)]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -788,7 +811,7 @@ in the second element are accumulated via the <code>comb</code> closure.</p>
 <p>The <code>comb</code> closure must be <strong>commutative</strong>, as the order of input items is not guaranteed.</p>
 <p>If the input and output value types are the same and do not require initialization then use
 <a href="struct.Stream.html#method.reduce_keyed_commutative" title="method hydro_lang::live_collections::stream::Stream::reduce_keyed_commutative"><code>Stream::reduce_keyed_commutative</code></a>.</p>
-<h5 id="example-46"><a class="doc-anchor" href="#example-46">§</a>Example</h5>
+<h5 id="example-47"><a class="doc-anchor" href="#example-47">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>), (<span class="number">1</span>, <span class="number">3</span>), (<span class="number">2</span>, <span class="number">4</span>)]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -804,7 +827,7 @@ tuples are partitioned into groups by the first element (“keys”), and for ea
 in the second element are accumulated via the <code>comb</code> closure.</p>
 <p>The <code>comb</code> closure must be <strong>commutative</strong>, as the order of input items is not guaranteed.</p>
 <p>If you need the accumulated value to have a different type than the input, use <a href="struct.Stream.html#method.fold_keyed_commutative" title="method hydro_lang::live_collections::stream::Stream::fold_keyed_commutative"><code>Stream::fold_keyed_commutative</code></a>.</p>
-<h5 id="example-47"><a class="doc-anchor" href="#example-47">§</a>Example</h5>
+<h5 id="example-48"><a class="doc-anchor" href="#example-48">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>), (<span class="number">1</span>, <span class="number">3</span>), (<span class="number">2</span>, <span class="number">4</span>)]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -825,7 +848,7 @@ in the second element are accumulated via the <code>comb</code> closure.</p>
 <p>The <code>comb</code> closure must be <strong>idempotent</strong> as there may be non-deterministic duplicates.</p>
 <p>If the input and output value types are the same and do not require initialization then use
 <a href="struct.Stream.html#method.reduce_keyed_idempotent" title="method hydro_lang::live_collections::stream::Stream::reduce_keyed_idempotent"><code>Stream::reduce_keyed_idempotent</code></a>.</p>
-<h5 id="example-48"><a class="doc-anchor" href="#example-48">§</a>Example</h5>
+<h5 id="example-49"><a class="doc-anchor" href="#example-49">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="bool-val">false</span>), (<span class="number">2</span>, <span class="bool-val">true</span>), (<span class="number">1</span>, <span class="bool-val">false</span>), (<span class="number">2</span>, <span class="bool-val">false</span>)]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -841,7 +864,7 @@ The input tuples are partitioned into groups by the first element (“keys”), 
 in the second element are accumulated via the <code>comb</code> closure.</p>
 <p>The <code>comb</code> closure must be <strong>idempotent</strong>, as there may be non-deterministic duplicates.</p>
 <p>If you need the accumulated value to have a different type than the input, use <a href="struct.Stream.html#method.fold_keyed_idempotent" title="method hydro_lang::live_collections::stream::Stream::fold_keyed_idempotent"><code>Stream::fold_keyed_idempotent</code></a>.</p>
-<h5 id="example-49"><a class="doc-anchor" href="#example-49">§</a>Example</h5>
+<h5 id="example-50"><a class="doc-anchor" href="#example-50">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>tick = process.tick();
 <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[(<span class="number">1</span>, <span class="bool-val">false</span>), (<span class="number">2</span>, <span class="bool-val">true</span>), (<span class="number">1</span>, <span class="bool-val">false</span>), (<span class="number">2</span>, <span class="bool-val">false</span>)]));
 <span class="kw">let </span>batch = numbers.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
@@ -858,7 +881,7 @@ the order of the input.</p>
     L: <a class="trait" href="../../location/trait.Location.html" title="trait hydro_lang::location::Location">Location</a>&lt;'a&gt; + <a class="trait" href="../../location/tick/trait.NoTick.html" title="trait hydro_lang::location::tick::NoTick">NoTick</a> + <a class="trait" href="../../location/tick/trait.NoAtomic.html" title="trait hydro_lang::location::tick::NoAtomic">NoAtomic</a>,</div></h3></section></summary><div class="impl-items"><section id="method.atomic" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#2240-2242">Source</a><h4 class="code-header">pub fn <a href="#method.atomic" class="fn">atomic</a>(self, tick: &amp;<a class="struct" href="../../location/tick/struct.Tick.html" title="struct hydro_lang::location::tick::Tick">Tick</a>&lt;L&gt;) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, <a class="struct" href="../../location/tick/struct.Atomic.html" title="struct hydro_lang::location::tick::Atomic">Atomic</a>&lt;L&gt;, B, O, R&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.resolve_futures" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#2272-2283">Source</a><h4 class="code-header">pub fn <a href="#method.resolve_futures" class="fn">resolve_futures</a>&lt;T2&gt;(self) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T2, L, B, <a class="enum" href="enum.NoOrder.html" title="enum hydro_lang::live_collections::stream::NoOrder">NoOrder</a>, R&gt;<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = T2&gt;,</div></h4></section></summary><div class="docblock"><p>Consumes a stream of <code>Future&lt;T&gt;</code>, produces a new stream of the resulting <code>T</code> outputs.
 Future outputs are produced as available, regardless of input arrival order.</p>
-<h5 id="example-50"><a class="doc-anchor" href="#example-50">§</a>Example</h5>
+<h5 id="example-51"><a class="doc-anchor" href="#example-51">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>process.source_iter(<span class="macro">q!</span>([<span class="number">2</span>, <span class="number">3</span>, <span class="number">1</span>, <span class="number">9</span>, <span class="number">6</span>, <span class="number">5</span>, <span class="number">4</span>, <span class="number">7</span>, <span class="number">8</span>]))
     .map(<span class="macro">q!</span>(|x| <span class="kw">async move </span>{
         tokio::time::sleep(tokio::time::Duration::from_millis(<span class="number">10</span>)).<span class="kw">await</span>;
@@ -901,7 +924,7 @@ detected based on when the next sample is taken.</p>
     L: <a class="trait" href="../../location/trait.Location.html" title="trait hydro_lang::location::Location">Location</a>&lt;'a&gt; + <a class="trait" href="../../location/tick/trait.NoTick.html" title="trait hydro_lang::location::tick::NoTick">NoTick</a> + <a class="trait" href="../../location/tick/trait.NoAtomic.html" title="trait hydro_lang::location::tick::NoAtomic">NoAtomic</a>,
     F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = T&gt;,</div></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.resolve_futures_ordered" class="method"><a class="src rightside" href="../../../src/hydro_lang/live_collections/stream/mod.rs.html#2390-2398">Source</a><h4 class="code-header">pub fn <a href="#method.resolve_futures_ordered" class="fn">resolve_futures_ordered</a>(self) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::stream::Stream">Stream</a>&lt;T, L, B, O, R&gt;</h4></section></summary><div class="docblock"><p>Consumes a stream of <code>Future&lt;T&gt;</code>, produces a new stream of the resulting <code>T</code> outputs.
 Future outputs are produced in the same order as the input stream.</p>
-<h5 id="example-51"><a class="doc-anchor" href="#example-51">§</a>Example</h5>
+<h5 id="example-52"><a class="doc-anchor" href="#example-52">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>process.source_iter(<span class="macro">q!</span>([<span class="number">2</span>, <span class="number">3</span>, <span class="number">1</span>, <span class="number">9</span>, <span class="number">6</span>, <span class="number">5</span>, <span class="number">4</span>, <span class="number">7</span>, <span class="number">8</span>]))
     .map(<span class="macro">q!</span>(|x| <span class="kw">async move </span>{
         tokio::time::sleep(tokio::time::Duration::from_millis(<span class="number">10</span>)).<span class="kw">await</span>;
