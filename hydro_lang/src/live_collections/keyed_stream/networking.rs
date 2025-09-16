@@ -7,14 +7,16 @@ use stageleft::quote_type;
 use super::KeyedStream;
 use crate::compile::ir::{DebugInstantiate, HydroNode};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
-use crate::live_collections::stream::Stream;
 use crate::live_collections::stream::networking::{deserialize_bincode, serialize_bincode};
+use crate::live_collections::stream::{Ordering, Retries, Stream};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::{Cluster, MemberId, Process};
 
 #[expect(missing_docs, reason = "TODO")]
-impl<'a, T, L, L2, B: Boundedness, O, R> KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R>
+{
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
@@ -40,7 +42,9 @@ impl<'a, T, L, L2, B: Boundedness, O, R> KeyedStream<MemberId<L2>, T, Process<'a
 }
 
 #[expect(missing_docs, reason = "TODO")]
-impl<'a, T, L, L2, B: Boundedness, O, R> KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R>
+{
     pub fn demux_bincode(
         self,
         other: &Cluster<'a, L2>,
