@@ -56,7 +56,7 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: Some(|| PortListSpec::Variadic),
     input_delaytype_fn: |_| None,
-    write_fn: |&WriteContextArgs {
+    write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
                    ident,
@@ -139,7 +139,7 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
             } else {
                 let output = &outputs[0];
                 quote_spanned! {op_span=>
-                    let #ident = #root::pusherator::map::Map::new(#map_fn, #output);
+                    let #ident = #root::compiled::push::Map::new(#map_fn, #output);
                 }
             }
         } else {
@@ -149,17 +149,15 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
             sort_permute.sort_by_key(|&i| &port_idents[i]);
 
             let sorted_outputs = sort_permute.iter().map(|&i| &outputs[i]);
+            let outputs_ident = wc.make_ident("outputs");
 
             quote_spanned! {op_span=>
-                let #ident = {
-                    let mut __outputs = ( #( #sorted_outputs, )* );
-                    #root::pusherator::for_each::ForEach::new(move |__item: #enum_type| {
-                        #root::util::demux_enum::DemuxEnum::demux_enum(
-                            __item,
-                            &mut __outputs,
-                        );
-                    })
-                };
+                let #outputs_ident = (
+                    #(
+                        ::std::pin::pin!( #sorted_outputs ),
+                    )*
+                );
+                let #ident = #root::compiled::push::DemuxEnum::new(#outputs_ident);
             }
         };
 

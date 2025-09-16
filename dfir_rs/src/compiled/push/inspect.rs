@@ -18,7 +18,10 @@ pin_project! {
 
 impl<Si, Func> Inspect<Si, Func> {
     /// Creates with inspecting `func`, following `sink`.
-    pub fn new(func: Func, sink: Si) -> Self {
+    pub fn new<Item>(func: Func, sink: Si) -> Self
+    where
+        Self: Sink<Item>,
+    {
         Self { sink, func }
     }
 }

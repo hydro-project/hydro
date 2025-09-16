@@ -93,7 +93,6 @@ async fn pusherator_test() {
     handle.await.unwrap();
 }
 
-
 #[multiplatform_test(dfir, env_tracing)]
 async fn pusherator_ordered_test() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u64>();

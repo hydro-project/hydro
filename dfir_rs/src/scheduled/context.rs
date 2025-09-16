@@ -12,8 +12,8 @@ use std::pin::Pin;
 
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
-use web_time::SystemTime;
 use tracing::trace;
+use web_time::SystemTime;
 
 use super::graph::StateLifespan;
 use super::state::StateHandle;

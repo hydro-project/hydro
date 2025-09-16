@@ -37,6 +37,7 @@ where
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.project().sink.poll_ready(cx)
     }
+
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
         let this = self.project();
         if (this.func)(&item) {
@@ -45,9 +46,11 @@ where
             Ok(())
         }
     }
+
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.project().sink.poll_flush(cx)
     }
+
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.project().sink.poll_close(cx)
     }

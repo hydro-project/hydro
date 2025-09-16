@@ -1,5 +1,7 @@
 //! Trait for the `demux_enum` derive and operator.
 
+use std::task::{Context, Poll};
+
 pub use dfir_macro::DemuxEnum;
 
 /// Trait for use with the `demux_enum` operator.
@@ -15,6 +17,37 @@ pub use dfir_macro::DemuxEnum;
 pub trait DemuxEnum<Outputs>: DemuxEnumBase {
     /// Pushes self into the corresponding output pusherator in `outputs`.
     fn demux_enum(self, outputs: &mut Outputs);
+}
+
+/// Trait for use with the `demux_enum` operator.
+///
+/// This trait is meant to be derived: `#[derive(DemuxEnum)]`.
+///
+/// The derive will implement this such that `Outputs` can be any tuple where each item is a
+/// `Sink` that corresponds to each of the variants of the tuple, in alphabetic order.
+#[diagnostic::on_unimplemented(
+    note = "ensure there is exactly one output for each enum variant.",
+    note = "ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`."
+)]
+pub trait DemuxEnumSink<Outputs>: DemuxEnumBase {
+    /// The error type for pushing self into the `Otuputs` `Sink`s.
+    type Error;
+
+    /// Poll whether the output corresponding to the enum variant in `&self` is ready.
+    fn poll_ready(
+        &self,
+        outputs: &mut Outputs,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>>;
+
+    /// Pushes `self` into the corresponding output pusherator in `outputs`.
+    fn start_send(self, outputs: &mut Outputs) -> Result<(), Self::Error>;
+
+    /// Call `poll_flush` on all `Outputs`.
+    fn poll_flush(outputs: &mut Outputs, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>>;
+
+    /// Call `poll_close` on all `Outputs`.
+    fn poll_close(outputs: &mut Outputs, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>>;
 }
 
 /// Special case of [`DemuxEnum`] for when there is only one variant.

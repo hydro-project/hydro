@@ -251,9 +251,9 @@ fn benchmark_hydroflow(c: &mut Criterion) {
                 "main",
                 var_expr!(origins_in, possible_reach_in),
                 var_expr!(did_reach_out, output_out),
-                move |context,
-                      var_args!(origins, did_reach_recv),
-                      var_args!(did_reach_send, output)| {
+                async move |context,
+                            var_args!(origins, did_reach_recv),
+                            var_args!(did_reach_send, output)| {
                     let origins = origins.take_inner().into_iter();
                     let possible_reach = did_reach_recv
                         .take_inner()
@@ -281,7 +281,6 @@ fn benchmark_hydroflow(c: &mut Criterion) {
                         });
 
                     pivot.run();
-                    std::future::ready(())
                 },
             );
 

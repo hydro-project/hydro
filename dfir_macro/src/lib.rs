@@ -7,10 +7,10 @@ use dfir_lang::diagnostic::{Diagnostic, Level};
 use dfir_lang::graph::{FlatGraphBuilder, build_hfcode, partition_graph};
 use dfir_lang::parse::DfirCode;
 use proc_macro2::{Ident, Literal, Span};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, quote_spanned};
 use syn::{
-    Attribute, Fields, GenericParam, ItemEnum, Variant, WherePredicate, parse_macro_input,
-    parse_quote,
+    Attribute, Fields, GenericParam, ItemEnum, Type, Variant, WherePredicate, parse_macro_input,
+    parse_quote, parse_quote_spanned,
 };
 
 /// Create a runnable graph instance using DFIR's custom syntax.
@@ -195,7 +195,7 @@ pub fn dfir_main(
 }
 
 #[proc_macro_derive(DemuxEnum)]
-pub fn derive_answer_fn(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let root = root();
 
     let ItemEnum {
@@ -209,20 +209,7 @@ pub fn derive_answer_fn(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
     let mut variants = variants.into_iter().collect::<Vec<_>>();
     variants.sort_by(|a, b| a.ident.cmp(&b.ident));
 
-    let variant_pusherator_generics = variants
-        .iter()
-        .map(|variant| format_ident!("__Pusherator{}", variant.ident))
-        .collect::<Vec<_>>();
-    let variant_pusherator_localvars = variants
-        .iter()
-        .map(|variant| {
-            format_ident!(
-                "__pusherator_{}",
-                variant.ident.to_string().to_lowercase(),
-                span = variant.ident.span()
-            )
-        })
-        .collect::<Vec<_>>();
+    // Return type for each variant.
     let variant_output_types = variants
         .iter()
         .map(|variant| match &variant.fields {
@@ -242,29 +229,44 @@ pub fn derive_answer_fn(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
         })
         .collect::<Vec<_>>();
 
-    let mut full_generics = generics.clone();
-    full_generics.params.extend(
-        variant_pusherator_generics
+    let variant_generics_pusherator = variants
+        .iter()
+        .map(|variant| format_ident!("__Pusherator{}", variant.ident))
+        .collect::<Vec<_>>();
+    let variant_localvars_pusherator = variants
+        .iter()
+        .map(|variant| {
+            format_ident!(
+                "__pusherator_{}",
+                variant.ident.to_string().to_lowercase(),
+                span = variant.ident.span()
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let mut full_generics_pusherator = generics.clone();
+    full_generics_pusherator.params.extend(
+        variant_generics_pusherator
             .iter()
             .map::<GenericParam, _>(|ident| parse_quote!(#ident)),
     );
-    full_generics.make_where_clause().predicates.extend(
-        variant_pusherator_generics
-            .iter()
-            .zip(variant_output_types.iter())
-            .map::<WherePredicate, _>(|(pusherator_generic, output_type)| {
-                parse_quote! {
-                    #pusherator_generic: #root::pusherator::Pusherator<Item = #output_type>
-                }
-            }),
-    );
+    full_generics_pusherator
+        .make_where_clause()
+        .predicates
+        .extend(
+            variant_generics_pusherator
+                .iter()
+                .zip(variant_output_types.iter())
+                .map::<WherePredicate, _>(|(pusherator_generic, output_type)| {
+                    parse_quote! {
+                        #pusherator_generic: #root::pusherator::Pusherator<Item = #output_type>
+                    }
+                }),
+        );
 
-    let (impl_generics_item, ty_generics, where_clause_item) = generics.split_for_impl();
-    let (impl_generics, _ty_generics, where_clause) = full_generics.split_for_impl();
-
-    let variant_pats = variants
+    let variant_pats_pusherator = variants
         .iter()
-        .zip(variant_pusherator_localvars.iter())
+        .zip(variant_localvars_pusherator.iter())
         .map(|(variant, pushvar)| {
             let Variant { ident, fields, .. } = variant;
             let (fields_pat, push_item) = field_pattern_item(fields);
@@ -272,6 +274,79 @@ pub fn derive_answer_fn(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
                 Self::#ident #fields_pat => #pushvar.give(#push_item)
             }
         });
+
+    let variant_generics_sink = variants
+        .iter()
+        .map(|variant| format_ident!("__Sink{}", variant.ident))
+        .collect::<Vec<_>>();
+    let variant_generics_pinned_sink = variant_generics_sink.iter().map(|ident| {
+        quote_spanned! {ident.span()=>
+            ::std::pin::Pin::<&mut #ident>
+        }
+    });
+    let variant_generics_pinned_sink_all = quote! {
+        ( #( #variant_generics_pinned_sink, )* )
+    };
+    let variant_localvars_sink = variants
+        .iter()
+        .map(|variant| {
+            format_ident!(
+                "__sink_{}",
+                variant.ident.to_string().to_lowercase(),
+                span = variant.ident.span()
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let mut full_generics_sink = generics.clone();
+    full_generics_sink.params.extend(
+        variant_generics_sink
+            .iter()
+            .map::<GenericParam, _>(|ident| parse_quote!(#ident)),
+    );
+    full_generics_sink.make_where_clause().predicates.extend(
+        variant_generics_sink
+            .iter()
+            .zip(variant_output_types.iter())
+            .map::<WherePredicate, _>(|(sink_generic, output_type)| {
+                parse_quote! {
+                    // TODO(mingwei): generic error types?
+                    #sink_generic: #root::futures::sink::Sink<#output_type, Error = #root::Never>
+                }
+            }),
+    );
+
+    let variant_pats_sink_poll_ready =
+        variants
+            .iter()
+            .zip(variant_localvars_sink.iter())
+            .map(|(variant, sinkvar)| {
+                let Variant { ident, fields, .. } = variant;
+                let (fields_pat, push_item) = field_pattern_item(fields);
+                quote! {
+                    Self::#ident #fields_pat => {
+                        let _ = #push_item;
+                        #sinkvar.as_mut().poll_ready(__cx)
+                    }
+                }
+            });
+    let variant_pats_sink_start_send =
+        variants
+            .iter()
+            .zip(variant_localvars_sink.iter())
+            .map(|(variant, sinkvar)| {
+                let Variant { ident, fields, .. } = variant;
+                let (fields_pat, push_item) = field_pattern_item(fields);
+                quote! {
+                    Self::#ident #fields_pat => #sinkvar.as_mut().start_send(#push_item)
+                }
+            });
+
+    let (impl_generics_item, ty_generics, where_clause_item) = generics.split_for_impl();
+    let (impl_generics_pusherator, _ty_generics_pusherator, where_clause_pusherator) =
+        full_generics_pusherator.split_for_impl();
+    let (impl_generics_sink, _ty_generics_sink, where_clause_sink) =
+        full_generics_sink.split_for_impl();
 
     let single_impl = (1 == variants.len()).then(|| {
         let Variant { ident, fields, .. } = variants.first().unwrap();
@@ -292,17 +367,65 @@ pub fn derive_answer_fn(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
     });
 
     quote! {
-        impl #impl_generics #root::util::demux_enum::DemuxEnum<( #( #variant_pusherator_generics, )* )>
-            for #item_ident #ty_generics #where_clause
+        impl #impl_generics_pusherator #root::util::demux_enum::DemuxEnum<( #( #variant_generics_pusherator, )* )>
+            for #item_ident #ty_generics #where_clause_pusherator
         {
             fn demux_enum(
                 self,
-                ( #( #variant_pusherator_localvars, )* ):
-                    &mut ( #( #variant_pusherator_generics, )* )
+                ( #( #variant_localvars_pusherator, )* ):
+                    &mut ( #( #variant_generics_pusherator, )* )
             ) {
                 match self {
-                    #( #variant_pats, )*
+                    #( #variant_pats_pusherator, )*
                 }
+            }
+        }
+
+        impl #impl_generics_sink #root::util::demux_enum::DemuxEnumSink<#variant_generics_pinned_sink_all>
+            for #item_ident #ty_generics #where_clause_sink
+        {
+            type Error = #root::Never;
+
+            fn poll_ready(
+                &self,
+                ( #( #variant_localvars_sink, )* ): &mut #variant_generics_pinned_sink_all,
+                __cx: &mut ::std::task::Context<'_>,
+            ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                match self {
+                    #( #variant_pats_sink_poll_ready, )*
+                    _ => ::std::unreachable!(),
+                }
+            }
+
+            fn start_send(
+                self,
+                ( #( #variant_localvars_sink, )* ): &mut #variant_generics_pinned_sink_all,
+            ) -> ::std::result::Result<(), Self::Error> {
+                match self {
+                    #( #variant_pats_sink_start_send, )*
+                }
+            }
+
+            fn poll_flush(
+                ( #( #variant_localvars_sink, )* ): &mut #variant_generics_pinned_sink_all,
+                __cx: &mut ::std::task::Context<'_>,
+            ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                #(
+                    // TODO(mingwei): This will re-flush the earlier items. Is this OK?
+                    ::std::task::ready!(#variant_localvars_sink.as_mut().poll_flush(__cx))?;
+                )*
+                ::std::task::Poll::Ready(::std::result::Result::Ok(()))
+            }
+
+            fn poll_close(
+                ( #( #variant_localvars_sink, )* ): &mut #variant_generics_pinned_sink_all,
+                __cx: &mut ::std::task::Context<'_>,
+            ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                #(
+                    // TODO(mingwei): This will re-close the earlier items. Is this OK?
+                    ::std::task::ready!(#variant_localvars_sink.as_mut().poll_close(__cx))?;
+                )*
+                ::std::task::Poll::Ready(::std::result::Result::Ok(()))
             }
         }
 

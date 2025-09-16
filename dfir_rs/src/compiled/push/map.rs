@@ -20,7 +20,7 @@ impl<Si, Func> Map<Si, Func> {
     /// Creates with mapping `func`, following `sink`.
     pub fn new<Item>(func: Func, sink: Si) -> Self
     where
-        Self: Sink<Item>
+        Self: Sink<Item>,
     {
         Self { sink, func }
     }

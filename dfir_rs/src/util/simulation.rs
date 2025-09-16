@@ -69,12 +69,10 @@
 //! Check the tests module for examples on how to use the simulation framework.
 use std::any::Any;
 use std::collections::HashMap;
-use std::convert::Infallible;
 use std::fmt::Debug;
-use std::future::ready;
 use std::pin::Pin;
 
-use futures::{Sink, SinkExt, StreamExt, sink};
+use futures::{Sink, StreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::Stream;
@@ -170,11 +168,8 @@ pub struct ProcessBuilderContext<'context> {
     outboxes: &'context mut HashMap<InterfaceName, Outbox>,
 }
 
-fn sink_from_fn<T>(mut f: impl FnMut(T)) -> impl Sink<T, Error = crate::Never> {
-    sink::drain().with(move |item| {
-        (f)(item);
-        ready(Result::<(), Infallible>::Ok(()))
-    })
+fn sink_from_fn<T>(f: impl FnMut(T)) -> impl Sink<T, Error = crate::Never> {
+    crate::compiled::push::ForEach::new(f)
 }
 
 impl ProcessBuilderContext<'_> {

@@ -39,7 +39,10 @@ impl<'ctx, Si, Queue> ResolveFutures<'ctx, Si, Queue> {
             // Ensure the following sink is ready.
             ready!(this.sink.as_mut().poll_ready(cx))?;
 
-            if let Poll::Ready(Some(out)) = Stream::poll_next(Pin::new(&mut **this.queue), &mut Context::from_waker(&this.subgraph_waker)) {
+            if let Poll::Ready(Some(out)) = Stream::poll_next(
+                Pin::new(&mut **this.queue),
+                &mut Context::from_waker(&this.subgraph_waker),
+            ) {
                 this.sink.as_mut().start_send(out)?;
             } else {
                 return Poll::Ready(Ok(()));
@@ -68,7 +71,10 @@ where
         // current subgraph execution.
         // We would use `cx` if we want the subgraph execution to yield ("block") until all queued
         // futures are ready.
-        if let Poll::Ready(Some(out)) = Stream::poll_next(Pin::new(&mut **this.queue), &mut Context::from_waker(&this.subgraph_waker)) {
+        if let Poll::Ready(Some(out)) = Stream::poll_next(
+            Pin::new(&mut **this.queue),
+            &mut Context::from_waker(&this.subgraph_waker),
+        ) {
             this.sink.as_mut().start_send(out)?;
         }
         Ok(())

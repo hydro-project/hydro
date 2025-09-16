@@ -1,5 +1,6 @@
 //! Push-based operator helpers, i.e. [`futures::sink::Sink`] helpers.
 
+mod demux_enum;
 mod filter;
 mod filter_map;
 mod flat_map;
@@ -10,6 +11,7 @@ mod map;
 mod persist;
 mod resolve_futures;
 mod unzip;
+pub use demux_enum::DemuxEnum;
 pub use filter::Filter;
 pub use filter_map::FilterMap;
 pub use flat_map::FlatMap;
