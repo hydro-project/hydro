@@ -2398,11 +2398,16 @@ where
     }
 }
 
-#[expect(missing_docs, reason = "TODO")]
-impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce>
 where
     L: Location<'a> + NoTick,
 {
+    /// Executes the provided closure for every element in this stream.
+    ///
+    /// Because the closure may have side effects, the stream must have deterministic order
+    /// ([`TotalOrder`]) and no retries ([`ExactlyOnce`]). If the side effects can tolerate
+    /// out-of-order or duplicate execution, use [`Stream::assume_ordering`] and
+    /// [`Stream::assume_retries`] with an explanation for why this is the case.
     pub fn for_each<F: Fn(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) {
         let f = f.splice_fn1_ctx(&self.location).into();
         let metadata = self.location.new_node_metadata::<T>();
@@ -2419,6 +2424,11 @@ where
             });
     }
 
+    /// Sends all elements of this stream to a provided [`futures::Sink`], such as an external
+    /// TCP socket to some other server. You should _not_ use this API for interacting with
+    /// external clients, instead see [`Location::bidi_external_many_bytes`] and
+    /// [`Location::bidi_external_many_bincode`]. This should be used for custom, low-level
+    /// interaction with asynchronous sinks.
     pub fn dest_sink<S>(self, sink: impl QuotedWithContext<'a, S, L>)
     where
         S: 'a + futures::Sink<T> + Unpin,

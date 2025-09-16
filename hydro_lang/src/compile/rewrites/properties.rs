@@ -108,6 +108,7 @@ mod tests {
             .fold(q!(|| 0), counter_func)
             .entries()
             .all_ticks()
+            .assume_ordering(nondet!(/** test */))
             .for_each(q!(|(string, count)| println!("{}: {}", string, count)));
 
         let built = flow
