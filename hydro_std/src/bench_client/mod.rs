@@ -227,6 +227,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
         .clone()
         .all_ticks()
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
         .for_each(q!(|num_clients_not_responded| println!(
             "Awaiting {} clients",
             num_clients_not_responded
@@ -246,6 +247,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
         .cross_singleton(client_count.clone())
         .continue_unless(waiting_for_clients.clone())
         .all_ticks()
+        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
         .for_each(q!(move |(throughputs, num_client_machines)| {
             if throughputs.sample_count() >= 2 {
                 let mean = throughputs.sample_mean() * num_client_machines as f64;
@@ -289,6 +291,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
         .batch(&print_tick, nondet_client_count)
         .continue_unless(waiting_for_clients)
         .all_ticks()
+        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
         .for_each(q!(move |latencies| {
             println!(
                 "Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)",
