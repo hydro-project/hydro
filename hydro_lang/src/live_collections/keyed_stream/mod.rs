@@ -1,4 +1,4 @@
-//! Definitions and core APIs for the [`KeyedStream`] live collection.
+//! Definitions for the [`KeyedStream`] live collection.
 
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -21,9 +21,10 @@ use crate::nondet::{NonDet, nondet};
 
 pub mod networking;
 
-/// Keyed Streams capture streaming elements of type `V` grouped by a key of type `K`,
-/// where the order of keys is non-deterministic but the order *within* each group may
-/// be deterministic.
+/// Streaming elements of type `V` grouped by a key of type `K`.
+///
+/// Unlike regular streams, where the ordering applies across all elements, the ordering of keys is
+/// non-deterministic but the order *within* each group may be deterministic.
 ///
 /// Type Parameters:
 /// - `K`: the type of the key for each group

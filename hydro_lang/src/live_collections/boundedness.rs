@@ -1,5 +1,5 @@
-//! Type declarations for boundedness markers, which indicate whether a live collection is fully available
-//! in-memory ([`Bounded`]) or asynchronously arriving over time ([`Unbounded`]).
+//! Type declarations for boundedness markers, which indicate whether a live collection is finite
+//! and immutable ([`Bounded`]) or asynchronously arriving over time ([`Unbounded`]).
 
 use sealed::sealed;
 

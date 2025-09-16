@@ -1,4 +1,4 @@
-//! Definitions and core APIs for the [`KeyedSingleton`] live collection.
+//! Definitions for the [`KeyedSingleton`] live collection.
 
 use std::hash::Hash;
 
