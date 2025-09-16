@@ -16,6 +16,7 @@ pub fn partition<'a, F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + '
             format!("Hello from {}", id.raw_id)
         )))
         .send_partitioned(&cluster2, dist_policy)
+        .assume_ordering(nondet!(/** testing, order does not matter */))
         .for_each(q!(move |message| println!(
             "My self id is {}, my message is {:?}",
             CLUSTER_SELF_ID.raw_id, message
@@ -70,6 +71,7 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
         )))
         .send_bincode(&process)
         .entries()
+        .assume_ordering(nondet!(/** testing, order does not matter */))
         .for_each(q!(|(id, d)| println!("node received: ({}, {:?})", id, d)));
 
     (process, cluster)

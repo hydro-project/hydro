@@ -42,6 +42,7 @@ pub fn compute_pi<'a>(
             q!(Duration::from_secs(1)),
             nondet!(/** intentional output */),
         )
+        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
         .for_each(q!(|(inside, total)| {
             println!(
                 "pi: {} ({} trials)",
