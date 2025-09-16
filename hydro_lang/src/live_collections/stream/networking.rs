@@ -7,11 +7,12 @@ use serde::de::DeserializeOwned;
 use stageleft::{q, quote_type};
 use syn::parse_quote;
 
+use super::{ExactlyOnce, Ordering, Stream, TotalOrder};
 use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::KeyedSingleton;
 use crate::live_collections::keyed_stream::KeyedStream;
-use crate::live_collections::stream::{ExactlyOnce, Stream, TotalOrder};
+use crate::live_collections::stream::Retries;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
@@ -86,7 +87,7 @@ pub(crate) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type
     deserialize_bincode_with_type(tagged, &quote_type::<T>())
 }
 
-impl<'a, T, L, B: Boundedness, O, R> Stream<T, Process<'a, L>, B, O, R> {
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>, B, O, R> {
     /// "Moves" elements of this stream to a new distributed location by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -190,13 +191,8 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Process<'a, L>, B, O, R> {
             .assume_ordering::<TotalOrder>(
                 nondet!(/** we send to each member independently, order does not matter */),
             )
-            .cross_product_nested_loop(
-                self.batch(&join_tick, nondet_membership)
-                    .assume_ordering::<TotalOrder>(
-                        nondet!(/** we weaken the ordering back later */),
-                    ),
-            )
-            .assume_ordering::<O>(nondet!(/** strictly weaker than TotalOrder */))
+            .cross_product_nested_loop(self.batch(&join_tick, nondet_membership))
+            .weaken_ordering::<O>()
             .all_ticks()
             .demux_bincode(other)
     }
@@ -234,7 +230,9 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Process<'a, L>, B, O, R> {
     }
 }
 
-impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+    Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R>
+{
     /// Sends elements of this stream to specific members of a cluster, identified by a [`MemberId`],
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -352,7 +350,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>, B, O, R> {
     /// "Moves" elements of this stream from a cluster to a process by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -389,6 +387,7 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
     /// # let workers: Cluster<()> = flow.cluster::<()>();
     /// # let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
     /// numbers.send_bincode(&process).values() // Stream<i32, ..., NoOrder>
+    /// //
     /// # }, |mut stream| async move {
     /// // if there are 4 members in the cluster, we should receive 4 elements
     /// // 1, 1, 1, 1
@@ -487,19 +486,15 @@ impl<'a, T, L, B: Boundedness, O, R> Stream<T, Cluster<'a, L>, B, O, R> {
             .assume_ordering::<TotalOrder>(
                 nondet!(/** we send to each member independently, order does not matter */),
             )
-            .cross_product_nested_loop(
-                self.batch(&join_tick, nondet_membership)
-                    .assume_ordering::<TotalOrder>(
-                        nondet!(/** we weaken the ordering back later */),
-                    ),
-            )
-            .assume_ordering::<O>(nondet!(/** strictly weaker than TotalOrder */))
+            .cross_product_nested_loop(self.batch(&join_tick, nondet_membership))
             .all_ticks()
             .demux_bincode(other)
     }
 }
 
-impl<'a, T, L, L2, B: Boundedness, O, R> Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+    Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R>
+{
     /// Sends elements of this stream at each source member to specific members of a destination
     /// cluster, identified by a [`MemberId`], using [`bincode`] to serialize/deserialize messages.
     ///
