@@ -1327,7 +1327,29 @@ where
         Singleton::new(self.location, core)
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Collects all the elements of this stream into a single [`Vec`] element.
+    ///
+    /// If the input stream is [`Unbounded`], the output [`Singleton`] will be [`Unbounded`] as
+    /// well, which means that the value of the [`Vec`] will asynchronously grow as new elements
+    /// are added. On such a value, you can use [`Singleton::snapshot`] to grab an instance of
+    /// the vector at an arbitrary point in time.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// batch.collect_vec().all_ticks() // emit each tick's Vec into an unbounded stream
+    /// # }, |mut stream| async move {
+    /// // [ vec![1, 2, 3, 4] ]
+    /// # for w in vec![vec![1, 2, 3, 4]] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn collect_vec(self) -> Singleton<Vec<T>, L, B> {
         self.fold(
             q!(|| vec![]),
