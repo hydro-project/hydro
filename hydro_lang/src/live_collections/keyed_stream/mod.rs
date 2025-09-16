@@ -1209,7 +1209,32 @@ impl<'a, K, V, L, O, R> KeyedStream<K, V, L, Bounded, O, R>
 where
     L: Location<'a>,
 {
-    #[expect(missing_docs, reason = "TODO")]
+    /// Produces a new keyed stream that combines the groups of the inputs by first emitting the
+    /// elements of the `self` stream, and then emits the elements of the `other` stream (if a key
+    /// is only present in one of the inputs, its values are passed through as-is). The output has
+    /// a [`TotalOrder`] guarantee if and only if both inputs have a [`TotalOrder`] guarantee.
+    ///
+    /// Currently, both input streams must be [`Bounded`]. This operator will block
+    /// on the first stream until all its elements are available. In a future version,
+    /// we will relax the requirement on the `other` stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(0, 1), (1, 3)])).into_keyed();
+    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// batch.clone().map(q!(|x| x + 1)).chain(batch).all_ticks()
+    /// # .entries()
+    /// # }, |mut stream| async move {
+    /// // { 0: [2, 1], 1: [4, 3] }
+    /// # for w in vec![(0, 2), (1, 4), (0, 1), (1, 3)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn chain<O2>(
         self,
         other: KeyedStream<K, V, L, Bounded, O2, R>,
