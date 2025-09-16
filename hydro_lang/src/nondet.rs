@@ -71,6 +71,10 @@ pub use crate::__nondet__ as nondet;
 ///       /// non-deterministic timing will result in non-determistic samples printed
 ///       nondet_samples
 ///     ))
+///     .assume_retries(nondet!(
+///         /// non-deterministic duplicated logs are okay
+///         nondet_samples
+///     ))
 ///     .for_each(q!(|v| println!("Sample: {:?}", v)))
 /// }
 /// ```
