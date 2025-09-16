@@ -1,5 +1,6 @@
 //! Definitions and core APIs for the [`KeyedStream`] live collection.
 
+use std::collections::HashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
@@ -512,12 +513,25 @@ impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, U
     }
 }
 
+/// The output of a Hydro generator created with [`KeyedStream::generator`], which can yield elements and
+/// control the processing of future elements.
+pub enum Generate<T> {
+    /// Emit the provided element, and keep processing future inputs.
+    Yield(T),
+    /// Emit the provided element as the _final_ element, do not process future inputs.
+    Return(T),
+    /// Do not emit anything, but continue processing future inputs.
+    Continue,
+    /// Do not emit anything, and do not process further inputs.
+    Break,
+}
+
 impl<'a, K, V, L, B: Boundedness> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
 {
-    /// A special case of [`Stream::scan`] for keyd streams. For each key group the values are transformed via the `f` combinator.
+    /// A special case of [`Stream::scan`] for keyed streams. For each key group the values are transformed via the `f` combinator.
     ///
     /// Unlike [`Stream::fold_keyed`] which only returns the final accumulated value, `scan` produces a new stream
     /// containing all intermediate accumulated values paired with the key. The scan operation can also terminate
@@ -533,19 +547,19 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// process
-    ///     .source_iter(q!(vec![(0, 1), (0, 2), (1, 3), (1, 4)]))
+    ///     .source_iter(q!(vec![(0, 1), (0, 3), (1, 3), (1, 4)]))
     ///     .into_keyed()
     ///     .scan(
     ///         q!(|| 0),
     ///         q!(|acc, x| {
     ///             *acc += x;
-    ///             Some(*acc)
+    ///             if *acc % 2 == 0 { None } else { Some(*acc) }
     ///         }),
     ///     )
     /// #   .entries()
     /// # }, |mut stream| async move {
-    /// // Output: { 0: [1, 3], 1: [3, 7] }
-    /// # for w in vec![(0, 1), (0, 3), (1, 3), (1, 7)] {
+    /// // Output: { 0: [1], 1: [3, 7] }
+    /// # for w in vec![(0, 1), (1, 3), (1, 7)] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
@@ -560,22 +574,118 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> Option<U> + 'a,
     {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        self.generator(
+            init,
+            q!({
+                let orig = f;
+                move |state, v| {
+                    if let Some(out) = orig(state, v) {
+                        Generate::Yield(out)
+                    } else {
+                        Generate::Break
+                    }
+                }
+            }),
+        )
+    }
+
+    /// Iteratively processes the elements in each group using a state machine that can yield
+    /// elements as it processes its inputs. This is designed to mirror the unstable generator
+    /// syntax in Rust, without requiring special syntax.
+    ///
+    /// Like [`KeyedStream::scan`], this function takes in an initializer that emits the initial
+    /// state for each group. The second argument defines the processing logic, taking in a
+    /// mutable reference to the group's state and the value to be processed. It emits a
+    /// [`Generate`] value, whose variants define what is emitted and whether further inputs
+    /// should be processed.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(0, 1), (0, 3), (0, 100), (0, 10), (1, 3), (1, 4), (1, 3)]))
+    ///     .into_keyed()
+    ///     .generator(
+    ///         q!(|| 0),
+    ///         q!(|acc, x| {
+    ///             *acc += x;
+    ///             if *acc > 100 {
+    ///                 hydro_lang::live_collections::keyed_stream::Generate::Return(
+    ///                     "done!".to_string()
+    ///                 )
+    ///             } else if *acc % 2 == 0 {
+    ///                 hydro_lang::live_collections::keyed_stream::Generate::Yield(
+    ///                     "even".to_string()
+    ///                 )
+    ///             } else {
+    ///                 hydro_lang::live_collections::keyed_stream::Generate::Continue
+    ///             }
+    ///         }),
+    ///     )
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // Output: { 0: ["even", "done!"], 1: ["even"] }
+    /// # for w in vec![(0, "even".to_string()), (0, "done!".to_string()), (1, "even".to_string())] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn generator<A, U, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedStream<K, U, L, B, TotalOrder, ExactlyOnce>
+    where
+        K: Clone,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, V) -> Generate<U> + 'a,
+    {
+        let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        let underlying_scanned = self
+            .underlying
+            .assume_ordering(nondet!(
+                /** we do not rely on the order of keys */
+            ))
+            .scan(
+                q!(|| HashMap::new()),
+                q!(move |acc, (k, v)| {
+                    let existing_state = acc.entry(k.clone()).or_insert_with(|| Some(init()));
+                    if let Some(existing_state_value) = existing_state {
+                        match f(existing_state_value, v) {
+                            Generate::Yield(out) => Some(Some((k, out))),
+                            Generate::Return(out) => {
+                                let _ = existing_state.take(); // TODO(shadaj): garbage collect with termination markers
+                                Some(Some((k, out)))
+                            }
+                            Generate::Break => {
+                                let _ = existing_state.take(); // TODO(shadaj): garbage collect with termination markers
+                                Some(None)
+                            }
+                            Generate::Continue => Some(None),
+                        }
+                    } else {
+                        Some(None)
+                    }
+                }),
+            )
+            .flatten_ordered();
+
         KeyedStream {
-            underlying: self
-                .underlying
-                .assume_ordering::<TotalOrder>(
-                    nondet!(/** keyed scan does not rely on order of keys */),
-                )
-                .scan_keyed(init, f)
-                .into(),
+            underlying: underlying_scanned.into(),
             _phantom_order: Default::default(),
         }
     }
 
-    /// A variant of [`Stream::fold`], intended for keyed streams. The aggregation is executed in-order across the values
-    /// in each group. But the aggregation function returns a boolean, which when true indicates that the aggregated
-    /// result is complete and can be released to downstream computation. Unlike [`Stream::fold_keyed`], this means that
-    /// even if the input stream is [`super::boundedness::Unbounded`], the outputs of the fold can be processed like normal stream elements.
+    /// A variant of [`Stream::fold`], intended for keyed streams. The aggregation is executed
+    /// in-order across the values in each group. But the aggregation function returns a boolean,
+    /// which when true indicates that the aggregated result is complete and can be released to
+    /// downstream computation. Unlike [`Stream::fold_keyed`], this means that even if the input
+    /// stream is [`super::boundedness::Unbounded`], the outputs of the fold can be processed like
+    /// normal stream elements.
     ///
     /// # Example
     /// ```rust
@@ -610,19 +720,51 @@ where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> bool + 'a,
     {
+        let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        let out_without_bound_cast = self
+            .generator(
+                q!(move || Some(init())),
+                q!(move |key_state, v| {
+                    if let Some(key_state_value) = key_state.as_mut() {
+                        if f(key_state_value, v) {
+                            Generate::Return(key_state.take().unwrap())
+                        } else {
+                            Generate::Continue
+                        }
+                    } else {
+                        unreachable!()
+                    }
+                }),
+            )
+            .underlying;
+
         KeyedSingleton {
-            underlying: {
-                self.underlying
-                    .assume_ordering::<TotalOrder>(
-                        nondet!(/** keyed fold does not rely on order of keys */),
-                    )
-                    .fold_keyed_early_stop(init, f)
-                    .into()
-            },
+            underlying: out_without_bound_cast,
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Gets the first element inside each group of values as a [`KeyedSingleton`] that preserves
+    /// the original group keys. Requires the input stream to have [`TotalOrder`] guarantees,
+    /// otherwise the first element would be non-deterministic.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(0, 2), (0, 3), (1, 3), (1, 6)]))
+    ///     .into_keyed()
+    ///     .first()
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // Output: { 0: 2, 1: 3 }
+    /// # for w in vec![(0, 2), (1, 3)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn first(self) -> KeyedSingleton<K, V, L, B::WhenValueBounded>
     where
         K: Clone,
