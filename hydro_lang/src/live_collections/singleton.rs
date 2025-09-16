@@ -66,24 +66,18 @@ where
     type Location = Tick<L>;
 
     fn create_source_with_initial(ident: syn::Ident, initial: Self, location: Tick<L>) -> Self {
-        Singleton::new(
+        let from_previous_tick: Optional<T, Tick<L>, Bounded> = Optional::new(
             location.clone(),
-            HydroNode::Chain {
-                first: Box::new(HydroNode::DeferTick {
-                    input: Box::new(HydroNode::CycleSource {
-                        ident,
-                        metadata: location.new_node_metadata::<T>(),
-                    }),
+            HydroNode::DeferTick {
+                input: Box::new(HydroNode::CycleSource {
+                    ident,
                     metadata: location.new_node_metadata::<T>(),
                 }),
-                second: initial
-                    .continue_if(location.optional_first_tick(q!(())))
-                    .ir_node
-                    .into_inner()
-                    .into(),
                 metadata: location.new_node_metadata::<T>(),
             },
-        )
+        );
+
+        from_previous_tick.unwrap_or(initial)
     }
 }
 

@@ -96,10 +96,11 @@ pub trait Location<'a>: dynamic::DynLocation {
         dynamic::DynLocation::id(self)
     }
 
-    fn tick(&self) -> Tick<Self>
-    where
-        Self: NoTick,
-    {
+    fn tick(&self) -> Tick<Self> {
+        if !Self::is_top_level() {
+            panic!("Nested ticks are not currently supported")
+        }
+
         let next_id = self.flow_state().borrow_mut().next_clock_id;
         self.flow_state().borrow_mut().next_clock_id += 1;
         Tick {
