@@ -39,6 +39,7 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
         .snapshot(&process.tick(), nondet!(/** intentional output */))
         .entries()
         .all_ticks()
+        .assume_ordering(nondet!(/** unordered logs across keys are okay */))
         .for_each(q!(|(string, count)| println!("{}: {}", string, count)));
 
     (process, cluster)
