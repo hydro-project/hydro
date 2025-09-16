@@ -29,10 +29,20 @@ use crate::nondet::{NonDet, nondet};
 
 pub mod networking;
 
+/// A trait implemented by valid ordering markers ([`TotalOrder`] and [`NoOrder`]).
+#[sealed::sealed]
+pub trait Ordering:
+    MinOrder<Self, Min = Self> + MinOrder<TotalOrder, Min = Self> + MinOrder<NoOrder, Min = NoOrder>
+{
+}
+
 /// Marks the stream as being totally ordered, which means that there are
 /// no sources of non-determinism (other than intentional ones) that will
 /// affect the order of elements.
 pub enum TotalOrder {}
+
+#[sealed::sealed]
+impl Ordering for TotalOrder {}
 
 /// Marks the stream as having no order, which means that the order of
 /// elements may be affected by non-determinism.
@@ -41,16 +51,14 @@ pub enum TotalOrder {}
 /// be used with commutative aggregation functions.
 pub enum NoOrder {}
 
+#[sealed::sealed]
+impl Ordering for NoOrder {}
+
 /// Helper trait for determining the weakest of two orderings.
 #[sealed::sealed]
-pub trait MinOrder<Other> {
+pub trait MinOrder<Other: ?Sized> {
     /// The weaker of the two orderings.
-    type Min;
-}
-
-#[sealed::sealed]
-impl<T> MinOrder<T> for T {
-    type Min = T;
+    type Min: Ordering;
 }
 
 #[sealed::sealed]
@@ -59,28 +67,58 @@ impl MinOrder<NoOrder> for TotalOrder {
 }
 
 #[sealed::sealed]
+impl MinOrder<TotalOrder> for TotalOrder {
+    type Min = TotalOrder;
+}
+
+#[sealed::sealed]
 impl MinOrder<TotalOrder> for NoOrder {
     type Min = NoOrder;
+}
+
+#[sealed::sealed]
+impl MinOrder<NoOrder> for NoOrder {
+    type Min = NoOrder;
+}
+
+/// A trait implemented by valid retries markers ([`ExactlyOnce`] and [`AtLeastOnce`]).
+#[sealed::sealed]
+pub trait Retries:
+    MinRetries<Self, Min = Self>
+    + MinRetries<ExactlyOnce, Min = Self>
+    + MinRetries<AtLeastOnce, Min = AtLeastOnce>
+{
 }
 
 /// Marks the stream as having deterministic message cardinality, with no
 /// possibility of duplicates.
 pub enum ExactlyOnce {}
 
+#[sealed::sealed]
+impl Retries for ExactlyOnce {}
+
 /// Marks the stream as having non-deterministic message cardinality, which
 /// means that duplicates may occur, but messages will not be dropped.
 pub enum AtLeastOnce {}
 
+#[sealed::sealed]
+impl Retries for AtLeastOnce {}
+
 /// Helper trait for determining the weakest of two retry guarantees.
 #[sealed::sealed]
-pub trait MinRetries<Other> {
+pub trait MinRetries<Other: ?Sized> {
     /// The weaker of the two retry guarantees.
-    type Min;
+    type Min: Retries;
 }
 
 #[sealed::sealed]
-impl<T> MinRetries<T> for T {
-    type Min = T;
+impl MinRetries<AtLeastOnce> for ExactlyOnce {
+    type Min = AtLeastOnce;
+}
+
+#[sealed::sealed]
+impl MinRetries<ExactlyOnce> for ExactlyOnce {
+    type Min = ExactlyOnce;
 }
 
 #[sealed::sealed]
@@ -89,27 +127,44 @@ impl MinRetries<ExactlyOnce> for AtLeastOnce {
 }
 
 #[sealed::sealed]
-impl MinRetries<AtLeastOnce> for ExactlyOnce {
+impl MinRetries<AtLeastOnce> for AtLeastOnce {
     type Min = AtLeastOnce;
 }
 
-/// An ordered sequence stream of elements of type `T`.
+/// A sequential stream of elements of type `T`.
+///
+/// This live collection represents a growing sequence of elements, with new elements being
+/// asynchronously appended to the end of the sequence. This can be used to model the arrival
+/// of network input, such as API requests, or streaming ingestion.
+///
+/// By default all streams have deterministic ordering and each element is materialized exactly
+/// once. But streams can also capture non-determinism via the `Order` and `Retries` type
+/// parameters. When the ordering / retries guarantee is relaxed, fewer APIs will be available
+/// on the stream. For example, if the stream is unordered, you cannot invoke [`Stream::first`].
 ///
 /// Type Parameters:
 /// - `Type`: the type of elements in the stream
 /// - `Loc`: the location where the stream is being materialized
-/// - `Bound`: the boundedness of the stream, which is either [`Bounded`]
-///   or [`Unbounded`]
-/// - `Order`: the ordering of the stream, which is either [`TotalOrder`]
-///   or [`NoOrder`] (default is [`TotalOrder`])
-pub struct Stream<Type, Loc, Bound: Boundedness, Order = TotalOrder, Retries = ExactlyOnce> {
+/// - `Bound`: the boundedness of the stream, which is either [`Bounded`] or [`Unbounded`]
+/// - `Order`: the ordering of the stream, which is either [`TotalOrder`] or [`NoOrder`]
+///   (default is [`TotalOrder`])
+/// - `Retries`: the retry guarantee of the stream, which is either [`ExactlyOnce`] or
+///   [`AtLeastOnce`] (default is [`ExactlyOnce`])
+pub struct Stream<
+    Type,
+    Loc,
+    Bound: Boundedness,
+    Order: Ordering = TotalOrder,
+    Retry: Retries = ExactlyOnce,
+> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
-    _phantom: PhantomData<(Type, Loc, Bound, Order, Retries)>,
+    _phantom: PhantomData<(Type, Loc, Bound, Order, Retry)>,
 }
 
-impl<'a, T, L, O, R> From<Stream<T, L, Bounded, O, R>> for Stream<T, L, Unbounded, O, R>
+impl<'a, T, L, O: Ordering, R: Retries> From<Stream<T, L, Bounded, O, R>>
+    for Stream<T, L, Unbounded, O, R>
 where
     L: Location<'a>,
 {
@@ -122,7 +177,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, R> From<Stream<T, L, B, TotalOrder, R>>
+impl<'a, T, L, B: Boundedness, R: Retries> From<Stream<T, L, B, TotalOrder, R>>
     for Stream<T, L, B, NoOrder, R>
 where
     L: Location<'a>,
@@ -136,7 +191,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O> From<Stream<T, L, B, O, ExactlyOnce>>
+impl<'a, T, L, B: Boundedness, O: Ordering> From<Stream<T, L, B, O, ExactlyOnce>>
     for Stream<T, L, B, O, AtLeastOnce>
 where
     L: Location<'a>,
@@ -150,7 +205,7 @@ where
     }
 }
 
-impl<'a, T, L, O, R> DeferTick for Stream<T, Tick<L>, Bounded, O, R>
+impl<'a, T, L, O: Ordering, R: Retries> DeferTick for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
@@ -159,7 +214,8 @@ where
     }
 }
 
-impl<'a, T, L, O, R> CycleCollection<'a, TickCycle> for Stream<T, Tick<L>, Bounded, O, R>
+impl<'a, T, L, O: Ordering, R: Retries> CycleCollection<'a, TickCycle>
+    for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
@@ -176,7 +232,8 @@ where
     }
 }
 
-impl<'a, T, L, O, R> ReceiverComplete<'a, TickCycle> for Stream<T, Tick<L>, Bounded, O, R>
+impl<'a, T, L, O: Ordering, R: Retries> ReceiverComplete<'a, TickCycle>
+    for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
@@ -198,7 +255,8 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRef> for Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> CycleCollection<'a, ForwardRef>
+    for Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -218,7 +276,8 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> ReceiverComplete<'a, ForwardRef> for Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> ReceiverComplete<'a, ForwardRef>
+    for Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -244,7 +303,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> Clone for Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Clone for Stream<T, L, B, O, R>
 where
     T: Clone,
     L: Location<'a>,
@@ -274,7 +333,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
@@ -592,7 +651,7 @@ where
     /// # let expected = HashSet::from([('a', 1), ('b', 1), ('c', 1), ('a', 2), ('b', 2), ('c', 2), ('a', 3), ('b', 3), ('c', 3)]);
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
-    pub fn cross_product<T2, O2>(
+    pub fn cross_product<T2, O2: Ordering>(
         self,
         other: Stream<T2, L, B, O2, R>,
     ) -> Stream<(T, T2), L, B, NoOrder, R>
@@ -662,7 +721,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
-    pub fn filter_not_in<O2>(
+    pub fn filter_not_in<O2: Ordering>(
         self,
         other: Stream<T, L, Bounded, O2, R>,
     ) -> Stream<T, L, Bounded, O, R>
@@ -751,15 +810,25 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_ordering<O2>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
+    pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
         Stream::new(self.location, self.ir_node.into_inner())
     }
 
     /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
     /// which is always safe because that is the weakest possible guarantee.
     pub fn weakest_ordering(self) -> Stream<T, L, B, NoOrder, R> {
-        let nondet = nondet!(/** this is a weaker odering guarantee, so it is safe to assume */);
+        let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
         self.assume_ordering::<NoOrder>(nondet)
+    }
+
+    /// Weakens the ordering guarantee provided by the stream to `O2`, with the type-system
+    /// enforcing that `O2` is weaker than the input ordering guarantee.
+    pub fn weaken_ordering<O2: Ordering>(self) -> Stream<T, L, B, O2, R>
+    where
+        O2: MinOrder<O, Min = O2>,
+    {
+        let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
+        self.assume_ordering::<O2>(nondet)
     }
 
     /// Explicitly "casts" the stream to a type with a different retries
@@ -770,7 +839,7 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_retries<R2>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
+    pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
         Stream::new(self.location, self.ir_node.into_inner())
     }
 
@@ -781,32 +850,31 @@ where
         self.assume_retries::<AtLeastOnce>(nondet)
     }
 
-    /// Weakens the retries guarantee provided by the stream to be the weaker of the
-    /// current guarantee and `R2`. This is safe because the output guarantee will
-    /// always be weaker than the input.
-    pub fn weaken_retries<R2>(self) -> Stream<T, L, B, O, <R as MinRetries<R2>>::Min>
+    /// Weakens the retries guarantee provided by the stream to `R2`, with the type-system
+    /// enforcing that `R2` is weaker than the input retries guarantee.
+    pub fn weaken_retries<R2: Retries>(self) -> Stream<T, L, B, O, R2>
     where
-        R: MinRetries<R2>,
+        R2: MinRetries<R, Min = R2>,
     {
         let nondet = nondet!(/** this is a weaker retry guarantee, so it is safe to assume */);
-        self.assume_retries::<<R as MinRetries<R2>>::Min>(nondet)
+        self.assume_retries::<R2>(nondet)
     }
 }
 
-impl<'a, T, L, B: Boundedness, O> Stream<T, L, B, O, ExactlyOnce>
+impl<'a, T, L, B: Boundedness, O: Ordering> Stream<T, L, B, O, ExactlyOnce>
 where
     L: Location<'a>,
 {
     /// Given a stream with [`ExactlyOnce`] retry guarantees, weakens it to an arbitrary guarantee
     /// `R2`, which is safe because all guarantees are equal to or weaker than [`ExactlyOnce`]
-    pub fn weaker_retries<R2>(self) -> Stream<T, L, B, O, R2> {
+    pub fn weaker_retries<R2: Retries>(self) -> Stream<T, L, B, O, R2> {
         self.assume_retries(
             nondet!(/** any retry ordering is the same or weaker than ExactlyOnce */),
         )
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> Stream<&T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<&T, L, B, O, R>
 where
     L: Location<'a>,
 {
@@ -833,7 +901,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
@@ -1019,7 +1087,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O> Stream<T, L, B, O, ExactlyOnce>
+impl<'a, T, L, B: Boundedness, O: Ordering> Stream<T, L, B, O, ExactlyOnce>
 where
     L: Location<'a>,
 {
@@ -1110,7 +1178,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, R> Stream<T, L, B, TotalOrder, R>
+impl<'a, T, L, B: Boundedness, R: Retries> Stream<T, L, B, TotalOrder, R>
 where
     L: Location<'a>,
 {
@@ -1480,7 +1548,9 @@ where
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O, R> {
+impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O: Ordering, R: Retries>
+    Stream<T, L, Unbounded, O, R>
+{
     /// Produces a new stream that interleaves the elements of the two input streams.
     /// The result has [`NoOrder`] because the order of interleaving is not guaranteed.
     ///
@@ -1501,30 +1571,28 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O, R> Stream<T, L, Unbounded, O
     /// # }
     /// # }));
     /// ```
-    pub fn interleave<O2, R2: MinRetries<R>>(
+    pub fn interleave<O2: Ordering, R2: Retries>(
         self,
         other: Stream<T, L, Unbounded, O2, R2>,
-    ) -> Stream<T, L, Unbounded, NoOrder, R::Min>
+    ) -> Stream<T, L, Unbounded, NoOrder, <R as MinRetries<R2>>::Min>
     where
-        R: MinRetries<R2, Min = R2::Min>,
+        R: MinRetries<R2>,
     {
         let tick = self.location.tick();
         // Because the outputs are unordered, we can interleave batches from both streams.
         let nondet_batch_interleaving = nondet!(/** output stream is NoOrder, can interleave */);
         self.batch(&tick, nondet_batch_interleaving)
             .weakest_ordering()
-            .weaken_retries::<R2>()
             .chain(
                 other
                     .batch(&tick, nondet_batch_interleaving)
-                    .weakest_ordering()
-                    .weaken_retries::<R>(),
+                    .weakest_ordering(),
             )
             .all_ticks()
     }
 }
 
-impl<'a, T, L, O, R> Stream<T, L, Bounded, O, R>
+impl<'a, T, L, O: Ordering, R: Retries> Stream<T, L, Bounded, O, R>
 where
     L: Location<'a>,
 {
@@ -1589,9 +1657,13 @@ where
     /// # }
     /// # }));
     /// ```
-    pub fn chain<O2>(self, other: Stream<T, L, Bounded, O2, R>) -> Stream<T, L, Bounded, O::Min, R>
+    pub fn chain<O2: Ordering, R2: Retries>(
+        self,
+        other: Stream<T, L, Bounded, O2, R2>,
+    ) -> Stream<T, L, Bounded, <O as MinOrder<O2>>::Min, <R as MinRetries<R2>>::Min>
     where
         O: MinOrder<O2>,
+        R: MinRetries<R2>,
     {
         check_matching_location(&self.location, &other.location);
 
@@ -1608,14 +1680,14 @@ where
     /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams.
     /// Unlike [`Stream::cross_product`], the output order is totally ordered when the inputs are
     /// because this is compiled into a nested loop.
-    pub fn cross_product_nested_loop<T2, O2>(
+    pub fn cross_product_nested_loop<T2, O2: Ordering>(
         self,
         other: Stream<T2, L, Bounded, O2, R>,
-    ) -> Stream<(T, T2), L, Bounded, O::Min, R>
+    ) -> Stream<(T, T2), L, Bounded, <O2 as MinOrder<O>>::Min, R>
     where
         T: Clone,
         T2: Clone,
-        O: MinOrder<O2>,
+        O2: MinOrder<O>,
     {
         check_matching_location(&self.location, &other.location);
 
@@ -1630,7 +1702,7 @@ where
     }
 }
 
-impl<'a, K, V1, L, B: Boundedness, O, R> Stream<(K, V1), L, B, O, R>
+impl<'a, K, V1, L, B: Boundedness, O: Ordering, R: Retries> Stream<(K, V1), L, B, O, R>
 where
     L: Location<'a>,
 {
@@ -1652,12 +1724,13 @@ where
     /// # let expected = HashSet::from([(1, ('a', 'x')), (2, ('b', 'y'))]);
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
-    pub fn join<V2, O2>(
+    pub fn join<V2, O2: Ordering, R2: Retries>(
         self,
-        n: Stream<(K, V2), L, B, O2, R>,
-    ) -> Stream<(K, (V1, V2)), L, B, NoOrder, R>
+        n: Stream<(K, V2), L, B, O2, R2>,
+    ) -> Stream<(K, (V1, V2)), L, B, NoOrder, <R as MinRetries<R2>>::Min>
     where
         K: Eq + Hash,
+        R: MinRetries<R2>,
     {
         check_matching_location(&self.location, &n.location);
 
@@ -1694,7 +1767,10 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
-    pub fn anti_join<O2, R2>(self, n: Stream<K, L, Bounded, O2, R2>) -> Stream<(K, V1), L, B, O, R>
+    pub fn anti_join<O2: Ordering, R2: Retries>(
+        self,
+        n: Stream<K, L, Bounded, O2, R2>,
+    ) -> Stream<(K, V1), L, B, O, R>
     where
         K: Eq + Hash,
     {
@@ -1711,7 +1787,9 @@ where
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> Stream<(K, V), L, B, O, R> {
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Stream<(K, V), L, B, O, R>
+{
     #[expect(missing_docs, reason = "TODO")]
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
         KeyedStream {
@@ -1930,7 +2008,7 @@ where
     }
 }
 
-impl<'a, K, V, L, O, R> Stream<(K, V), Tick<L>, Bounded, O, R>
+impl<'a, K, V, L, O: Ordering, R: Retries> Stream<(K, V), Tick<L>, Bounded, O, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -2039,7 +2117,7 @@ where
     }
 }
 
-impl<'a, K, V, L, O> Stream<(K, V), Tick<L>, Bounded, O, ExactlyOnce>
+impl<'a, K, V, L, O: Ordering> Stream<(K, V), Tick<L>, Bounded, O, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -2120,7 +2198,7 @@ where
     }
 }
 
-impl<'a, K, V, L, R> Stream<(K, V), Tick<L>, Bounded, TotalOrder, R>
+impl<'a, K, V, L, R: Retries> Stream<(K, V), Tick<L>, Bounded, TotalOrder, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -2201,7 +2279,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> Stream<T, Atomic<L>, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Atomic<L>, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -2232,7 +2310,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
@@ -2354,7 +2432,7 @@ where
     }
 }
 
-impl<'a, F, T, L, B: Boundedness, O, R> Stream<F, L, B, O, R>
+impl<'a, F, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<F, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
     F: Future<Output = T>,
@@ -2399,7 +2477,7 @@ where
 }
 
 #[expect(missing_docs, reason = "TODO")]
-impl<'a, T, L, B: Boundedness, O, R> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick,
 {
@@ -2435,7 +2513,7 @@ where
 }
 
 #[expect(missing_docs, reason = "TODO")]
-impl<'a, T, L, O, R> Stream<T, Tick<L>, Bounded, O, R>
+impl<'a, T, L, O: Ordering, R: Retries> Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
