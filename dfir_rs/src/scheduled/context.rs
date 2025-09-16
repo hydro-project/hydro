@@ -13,6 +13,7 @@ use std::pin::Pin;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
 use web_time::SystemTime;
+use tracing::trace;
 
 use super::graph::StateLifespan;
 use super::state::StateHandle;
@@ -146,6 +147,7 @@ impl Context {
         }
         impl futures::task::ArcWake for ContextWaker {
             fn wake_by_ref(arc_self: &Arc<Self>) {
+                trace!("Waking context for subgraph {}", arc_self.subgraph_id);
                 let _recv_closed_error =
                     arc_self.event_queue_send.send((arc_self.subgraph_id, true));
             }
