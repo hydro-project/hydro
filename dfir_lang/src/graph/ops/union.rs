@@ -42,9 +42,24 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                    inputs,
                    outputs,
                    is_pull,
+                   arguments,
                    ..
                },
                _| {
+        let max_output = arguments.get(0); // used in chain_first_n
+
+        let without_limit = if is_pull {
+            quote_spanned!(op_span=>a.chain(b))
+        } else {
+            quote::quote!(()) // unused
+        };
+
+        let with_limit = if let Some(max) = max_output {
+            quote_spanned!(op_span=>#without_limit.take(#max))
+        } else {
+            without_limit
+        };
+
         let write_iterator = if is_pull {
             let chains = inputs
                 .iter()
@@ -56,7 +71,7 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                     #[allow(unused)]
                     #[inline(always)]
                     fn check_inputs<A: ::std::iter::Iterator<Item = Item>, B: ::std::iter::Iterator<Item = Item>, Item>(a: A, b: B) -> impl ::std::iter::Iterator<Item = Item> {
-                        a.chain(b)
+                        #with_limit
                     }
                     #chains
                 };
