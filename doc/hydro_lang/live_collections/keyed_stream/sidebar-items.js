@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["networking"],"struct":["KeyedStream"]};
+window.SIDEBAR_ITEMS = {"enum":["Generate"],"mod":["networking"],"struct":["KeyedStream"]};
