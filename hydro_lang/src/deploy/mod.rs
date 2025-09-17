@@ -1,3 +1,5 @@
+//! Infrastructure for deploying Hydro programs to the cloud using [`hydro_deploy`].
+
 #[cfg(feature = "deploy_integration")]
 mod deploy_runtime;
 

@@ -19,6 +19,19 @@ static IS_TEST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::n
 
 static CONCURRENT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
+/// Enables "test mode" for Hydro, which makes it possible to compile Hydro programs written
+/// inside a `#[cfg(test)]` module. This should be enabled in a global [`ctor`] hook.
+///
+/// # Example
+/// ```ignore
+/// #[cfg(test)]
+/// mod test_init {
+///    #[ctor::ctor]
+///    fn init() {
+///        hydro_lang::deploy::init_test();
+///    }
+/// }
+/// ```
 pub fn init_test() {
     IS_TEST.store(true, std::sync::atomic::Ordering::Relaxed);
 }

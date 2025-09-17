@@ -57,7 +57,6 @@ pub mod live_collections;
 
 pub mod location;
 
-#[expect(missing_docs, reason = "TODO")]
 #[cfg(any(
     feature = "deploy",
     feature = "deploy_integration" // hidden internal feature enabled in the trybuild
