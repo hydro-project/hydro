@@ -19,9 +19,16 @@ use crate::location::{Atomic, Location, NoTick, Tick};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
-#[expect(missing_docs, reason = "TODO")]
+/// A marker trait indicating which components of a [`KeyedSingleton`] may change.
+///
+/// In addition to [`Bounded`] (all entries are fixed) and [`Unbounded`] (entries may be added /
+/// removed / changed), this also includes an additional variant [`BoundedValue`], which indicates
+/// that entries may be added over time, but once an entry is added it will never be removed and
+/// its value will never change.
 pub trait KeyedSingletonBound {
+    /// The [`Boundedness`] of the [`Stream`] underlying the keyed singleton.
     type UnderlyingBound: Boundedness;
+    /// The [`Boundedness`] of each entry's value; [`Bounded`] means it is immutable.
     type ValueBound: Boundedness;
 }
 
@@ -45,7 +52,22 @@ impl KeyedSingletonBound for BoundedValue {
     type ValueBound = Bounded;
 }
 
-#[expect(missing_docs, reason = "TODO")]
+/// Mapping from keys of type `K` to values of type `V`.
+///
+/// Keyed Singletons capture an asynchronously updated mapping from keys of the `K` to values of
+/// type `V`, where the order of keys is non-deterministic. In addition to the standard boundedness
+/// variants ([`Bounded`] for finite and immutable, [`Unbounded`] for asynchronously changing),
+/// keyed singletons can use [`BoundedValue`] to declare that new keys may be added over time, but
+/// keys cannot be removed and the value for each key is immutable.
+///
+/// Type Parameters:
+/// - `K`: the type of the key for each entry
+/// - `V`: the type of the value for each entry
+/// - `Loc`: the [`Location`] where the keyed singleton is materialized
+/// - `Bound`: tracks whether the entries are:
+///     - [`Bounded`] (local and finite)
+///     - [`Unbounded`] (asynchronous with entries added / removed / changed over time)
+///     - [`BoundedValue`] (asynchronous with immutable values for each key and no removals)
 pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
     pub(crate) underlying: Stream<(K, V), Loc, Bound::UnderlyingBound, NoOrder, ExactlyOnce>,
 }
@@ -84,22 +106,103 @@ where
     }
 }
 
-#[expect(missing_docs, reason = "TODO")]
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     KeyedSingleton<K, V, L, B>
 {
+    /// Flattens the keyed singleton into an unordered stream of key-value pairs.
+    ///
+    /// The value for each key must be bounded, otherwise the resulting stream elements would be
+    /// non-determinstic. As new entries are added to the keyed singleton, they will be streamed
+    /// into the output.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.entries()
+    /// # }, |mut stream| async move {
+    /// // (1, 2), (2, 4) in any order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (2, 4)]);
+    /// # }));
+    /// ```
     pub fn entries(self) -> Stream<(K, V), L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
         self.underlying
     }
 
+    /// Flattens the keyed singleton into an unordered stream of just the values.
+    ///
+    /// The value for each key must be bounded, otherwise the resulting stream elements would be
+    /// non-determinstic. As new entries are added to the keyed singleton, they will be streamed
+    /// into the output.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.values()
+    /// # }, |mut stream| async move {
+    /// // 2, 4 in any order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![2, 4]);
+    /// # }));
+    /// ```
     pub fn values(self) -> Stream<V, L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
         self.entries().map(q!(|(_, v)| v))
     }
 
+    /// Flattens the keyed singleton into an unordered stream of just the keys.
+    ///
+    /// The value for each key must be bounded, otherwise the removal of keys would result in
+    /// non-determinism. As new entries are added to the keyed singleton, they will be streamed
+    /// into the output.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.keys()
+    /// # }, |mut stream| async move {
+    /// // 1, 2 in any order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2]);
+    /// # }));
+    /// ```
     pub fn keys(self) -> Stream<K, L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
         self.entries().map(q!(|(k, _)| k))
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn filter_key_not_in<O2: Ordering, R2: Retries>(
         self,
         other: Stream<K, L, Bounded, O2, R2>,
@@ -112,6 +215,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         }
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, V, L, B>
     where
         F: Fn(&V) + 'a,
@@ -125,6 +229,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         }
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn inspect_with_key<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> KeyedSingleton<K, V, L, B>
     where
         F: Fn(&(K, V)) + 'a,
@@ -134,6 +239,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         }
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn into_keyed_stream(
         self,
     ) -> KeyedStream<K, V, L, B::UnderlyingBound, TotalOrder, ExactlyOnce> {
@@ -340,19 +446,6 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     }
 }
 
-#[expect(missing_docs, reason = "TODO")]
-impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
-    pub fn latest(self) -> KeyedSingleton<K, V, L, Unbounded> {
-        KeyedSingleton {
-            underlying: Stream::new(
-                self.underlying.location.outer().clone(),
-                // no need to persist due to top-level replay
-                self.underlying.ir_node.into_inner(),
-            ),
-        }
-    }
-}
-
 impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     /// Gets the value associated with a specific key from the keyed singleton.
     ///
@@ -449,20 +542,26 @@ impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
-    #[expect(missing_docs, reason = "TODO")]
+    /// Shifts this keyed singleton into an atomic context, which guarantees that any downstream logic
+    /// will all be executed synchronously before any outputs are yielded (in [`KeyedSingleton::end_atomic`]).
+    ///
+    /// This is useful to enforce local consistency constraints, such as ensuring that a write is
+    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
+    /// argument that declares where the keyed singleton will be atomically processed. Batching a
+    /// keyed singleton into the _same_ [`Tick`] will preserve the synchronous execution, while
+    /// batching into a different [`Tick`] will introduce asynchrony.
     pub fn atomic(self, tick: &Tick<L>) -> KeyedSingleton<K, V, Atomic<L>, B> {
         KeyedSingleton {
             underlying: self.underlying.atomic(tick),
         }
     }
 
-    /// Given a tick, returns a keyed singleton with a entries consisting of keys with
-    /// snapshots of the value singleton.
+    /// Returns a keyed singleton with a snapshot of each key-value entry at a non-deterministic
+    /// point in time.
     ///
     /// # Non-Determinism
-    /// Because this picks a snapshot of each singleton whose value is continuously changing,
-    /// the output singleton has a non-deterministic value since each snapshot can be at an
-    /// arbitrary point in time.
+    /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
+    /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
     pub fn snapshot(
         self,
         tick: &Tick<L>,
@@ -472,32 +571,16 @@ where
     }
 }
 
-impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Bounded>> KeyedSingleton<K, V, L, B>
-where
-    L: Location<'a> + NoTick + NoAtomic,
-{
-    /// Returns a keyed singleton with entries consisting of _new_ key-value pairs that have
-    /// arrived since the previous batch was released.
-    ///
-    /// # Non-Determinism
-    /// Because this picks a batch of asynchronously added entries, each output keyed singleton
-    /// has a non-deterministic set of key-value pairs.
-    pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
-        self.atomic(tick).batch(nondet)
-    }
-}
-
 impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, Atomic<L>, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
-    /// Returns a keyed singleton with a entries consisting of keys with snapshots of the value
-    /// singleton being atomically processed.
+    /// Returns a keyed singleton with a snapshot of each key-value entry, consistent with the
+    /// state of the keyed singleton being atomically processed.
     ///
     /// # Non-Determinism
-    /// Because this picks a snapshot of each singleton whose value is continuously changing,
-    /// each output singleton has a non-deterministic value since each snapshot can be at an
-    /// arbitrary point in time.
+    /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
+    /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
     pub fn snapshot(self, _nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
         KeyedSingleton {
             underlying: Stream::new(
@@ -508,7 +591,8 @@ where
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Yields the elements of this keyed singleton back into a top-level, asynchronous execution context.
+    /// See [`KeyedSingleton::atomic`] for more details.
     pub fn end_atomic(self) -> KeyedSingleton<K, V, L, B> {
         KeyedSingleton {
             underlying: self.underlying.end_atomic(),
@@ -516,12 +600,111 @@ where
     }
 }
 
-impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Bounded>> KeyedSingleton<K, V, Atomic<L>, B>
+impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    /// Asynchronously yields this keyed singleton outside the tick, which will
+    /// be asynchronously updated with the latest set of entries inside the tick.
+    ///
+    /// This converts a bounded value _inside_ a tick into an asynchronous value outside the
+    /// tick that tracks the inner value. This is useful for getting the value as of the
+    /// "most recent" tick, but note that updates are propagated asynchronously outside the tick.
+    ///
+    /// The entire set of entries are propagated on each tick, which means that if a tick
+    /// does not have a key "XYZ" that was present in the previous tick, the entry for "XYZ" will
+    /// also be removed from the output.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![(1, 2), (2, 3)]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .into_keyed();
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![(2, 4), (3, 5)]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .into_keyed()
+    /// #   .defer_tick(); // appears on the second tick
+    /// # let input_batch = batch_first_tick.chain(batch_second_tick).first();
+    /// input_batch // first tick: { 1: 2, 2: 3 }, second tick: { 2: 4, 3: 5 }
+    ///     .latest()
+    /// # .snapshot(&tick, nondet!(/** test */))
+    /// # .entries()
+    /// # .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // asynchronously changes from { 1: 2, 2: 3 } ~> { 2: 4, 3: 5 }
+    /// # for w in vec![(1, 2), (2, 3), (2, 4), (3, 5)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn latest(self) -> KeyedSingleton<K, V, L, Unbounded> {
+        KeyedSingleton {
+            underlying: Stream::new(
+                self.underlying.location.outer().clone(),
+                // no need to persist due to top-level replay
+                self.underlying.ir_node.into_inner(),
+            ),
+        }
+    }
+
+    /// Synchronously yields this keyed singleton outside the tick as an unbounded keyed singleton,
+    /// which will be updated with the latest set of entries inside the tick.
+    ///
+    /// Unlike [`KeyedSingleton::latest`], this preserves synchronous execution, as the output
+    /// keyed singleton is emitted in an [`Atomic`] context that will process elements synchronously
+    /// with the input keyed singleton's [`Tick`] context.
+    pub fn latest_atomic(self) -> KeyedSingleton<K, V, Atomic<L>, Unbounded> {
+        KeyedSingleton {
+            underlying: Stream::new(
+                Atomic {
+                    tick: self.underlying.location,
+                },
+                // no need to persist due to top-level replay
+                self.underlying.ir_node.into_inner(),
+            ),
+        }
+    }
+
+    #[expect(missing_docs, reason = "TODO")]
+    pub fn defer_tick(self) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+        KeyedSingleton {
+            underlying: self.underlying.defer_tick(),
+        }
+    }
+}
+
+impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Bounded>> KeyedSingleton<K, V, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
     /// Returns a keyed singleton with entries consisting of _new_ key-value pairs that have
     /// arrived since the previous batch was released.
+    ///
+    /// Currently, there is no `all_ticks` dual on [`KeyedSingleton`], instead you may want to use
+    /// [`KeyedSingleton::into_keyed_stream`] then yield with [`KeyedStream::all_ticks`].
+    ///
+    /// # Non-Determinism
+    /// Because this picks a batch of asynchronously added entries, each output keyed singleton
+    /// has a non-deterministic set of key-value pairs.
+    pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+        self.atomic(tick).batch(nondet)
+    }
+}
+
+impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Bounded>> KeyedSingleton<K, V, Atomic<L>, B>
+where
+    L: Location<'a> + NoTick + NoAtomic,
+{
+    /// Returns a keyed singleton with entries consisting of _new_ key-value pairs that are being
+    /// atomically processed.
+    ///
+    /// Currently, there is no dual to asynchronously yield back outside the tick, instead you
+    /// should use [`KeyedSingleton::into_keyed_stream`] and yield a [`KeyedStream`].
     ///
     /// # Non-Determinism
     /// Because this picks a batch of asynchronously added entries, each output keyed singleton
