@@ -641,7 +641,6 @@ where
     }
 }
 
-#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L> Optional<T, L, Bounded>
 where
     L: Location<'a>,
@@ -727,16 +726,9 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded> {
         value.filter_if_some(self)
-    }
-
-    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce> {
-        if L::is_top_level() {
-            panic!("Converting an optional to a stream is not yet supported at the top level");
-        }
-
-        Stream::new(self.location, self.ir_node.into_inner())
     }
 }
 
@@ -838,33 +830,94 @@ where
     }
 }
 
-#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L> Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
+    /// Asynchronously yields the value of this singleton outside the tick as an unbounded stream,
+    /// which will stream the value computed in _each_ tick as a separate stream element (skipping
+    /// null values).
+    ///
+    /// Unlike [`Optional::latest`], the value computed in each tick is emitted separately,
+    /// producing one element in the output for each (non-null) tick. This is useful for batched
+    /// computations, where the results from each tick must be combined together.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![]))
+    /// #   .batch(&tick, nondet!(/** test */));
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![1, 2, 3]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick(); // appears on the second tick
+    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+    /// input_batch // first tick: [], second tick: [1, 2, 3]
+    ///     .max()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [3]
+    /// # for w in vec![3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, TotalOrder, ExactlyOnce> {
-        Stream::new(
-            self.location.outer().clone(),
-            HydroNode::Persist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            },
-        )
+        self.into_stream().all_ticks()
     }
 
+    /// Synchronously yields the value of this optional outside the tick as an unbounded stream,
+    /// which will stream the value computed in _each_ tick as a separate stream element.
+    ///
+    /// Unlike [`Optional::all_ticks`], this preserves synchronous execution, as the output stream
+    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+    /// optional's [`Tick`] context.
     pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded, TotalOrder, ExactlyOnce> {
-        Stream::new(
-            Atomic {
-                tick: self.location.clone(),
-            },
-            HydroNode::Persist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            },
-        )
+        self.into_stream().all_ticks_atomic()
     }
 
+    /// Asynchronously yields this optional outside the tick as an unbounded optional, which will
+    /// be asynchronously updated with the latest value of the optional inside the tick, including
+    /// whether the optional is null or not.
+    ///
+    /// This converts a bounded value _inside_ a tick into an asynchronous value outside the
+    /// tick that tracks the inner value. This is useful for getting the value as of the
+    /// "most recent" tick, but note that updates are propagated asynchronously outside the tick.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![]))
+    /// #   .batch(&tick, nondet!(/** test */));
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![1, 2, 3]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick(); // appears on the second tick
+    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+    /// input_batch // first tick: [], second tick: [1, 2, 3]
+    ///     .max()
+    ///     .latest()
+    /// # .into_singleton()
+    /// # .sample_eager(nondet!(/** test */))
+    /// # }, |mut stream| async move {
+    /// // asynchronously changes from None ~> 3
+    /// # for w in vec![None, Some(3)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn latest(self) -> Optional<T, L, Unbounded> {
         Optional::new(
             self.location.outer().clone(),
@@ -875,6 +928,12 @@ where
         )
     }
 
+    /// Synchronously yields this optional outside the tick as an unbounded optional, which will
+    /// be updated with the latest value of the optional inside the tick.
+    ///
+    /// Unlike [`Optional::latest`], this preserves synchronous execution, as the output optional
+    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+    /// optional's [`Tick`] context.
     pub fn latest_atomic(self) -> Optional<T, Atomic<L>, Unbounded> {
         Optional::new(
             Atomic {
@@ -887,6 +946,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn defer_tick(self) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
             self.location.clone(),
@@ -897,6 +957,8 @@ where
         )
     }
 
+    #[deprecated(note = "use .into_stream().persist()")]
+    #[expect(missing_docs, reason = "deprecated")]
     pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             self.location.clone(),
@@ -907,14 +969,40 @@ where
         )
     }
 
-    pub fn delta(self) -> Optional<T, Tick<L>, Bounded> {
-        Optional::new(
-            self.location.clone(),
-            HydroNode::Delta {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            },
-        )
+    /// Converts this optional into a [`Stream`] containing a single element, the value, if it is
+    /// non-null. Otherwise, the stream is empty.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![]))
+    /// #   .batch(&tick, nondet!(/** test */));
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![123, 456]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick(); // appears on the second tick
+    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+    /// input_batch // first tick: [], second tick: [123, 456]
+    ///     .clone()
+    ///     .max()
+    ///     .into_stream()
+    ///     .chain(input_batch)
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [456, 123, 456]
+    /// # for w in vec![456, 123, 456] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
+        Stream::new(self.location, self.ir_node.into_inner())
     }
 }
 
