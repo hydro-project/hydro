@@ -188,7 +188,7 @@ where
     L: Location<'a>,
 {
     fn from(singleton: Singleton<T, L, B>) -> Self {
-        Optional::some(singleton)
+        Optional::new(singleton.location, singleton.ir_node.into_inner())
     }
 }
 
@@ -232,11 +232,6 @@ where
             ir_node: RefCell::new(ir_node),
             _phantom: PhantomData,
         }
-    }
-
-    #[expect(missing_docs, reason = "TODO")]
-    pub fn some(singleton: Singleton<T, L, B>) -> Self {
-        Optional::new(singleton.location, singleton.ir_node.into_inner())
     }
 
     /// Transforms the optional value by applying a function `f` to it,
@@ -505,40 +500,6 @@ where
     }
 
     #[expect(missing_docs, reason = "TODO")]
-    pub fn union(self, other: Optional<T, L, B>) -> Optional<T, L, B> {
-        check_matching_location(&self.location, &other.location);
-
-        if L::is_top_level() {
-            Optional::new(
-                self.location.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::Chain {
-                        first: Box::new(HydroNode::Unpersist {
-                            inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
-                        }),
-                        second: Box::new(HydroNode::Unpersist {
-                            inner: Box::new(other.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
-                        }),
-                        metadata: self.location.new_node_metadata::<T>(),
-                    }),
-                    metadata: self.location.new_node_metadata::<T>(),
-                },
-            )
-        } else {
-            Optional::new(
-                self.location.clone(),
-                HydroNode::Chain {
-                    first: Box::new(self.ir_node.into_inner()),
-                    second: Box::new(other.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<T>(),
-                },
-            )
-        }
-    }
-
-    #[expect(missing_docs, reason = "TODO")]
     pub fn zip<O>(self, other: impl Into<Optional<O, L, B>>) -> Optional<(T, O), L, B>
     where
         O: Clone,
@@ -577,14 +538,14 @@ where
     }
 
     #[expect(missing_docs, reason = "TODO")]
-    pub fn unwrap_or(self, other: Singleton<T, L, B>) -> Singleton<T, L, B> {
+    pub fn or(self, other: Optional<T, L, B>) -> Optional<T, L, B> {
         check_matching_location(&self.location, &other.location);
 
         if L::is_top_level() {
-            Singleton::new(
+            Optional::new(
                 self.location.clone(),
                 HydroNode::Persist {
-                    inner: Box::new(HydroNode::Chain {
+                    inner: Box::new(HydroNode::ChainFirst {
                         first: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
                             metadata: self.location.new_node_metadata::<T>(),
@@ -599,15 +560,21 @@ where
                 },
             )
         } else {
-            Singleton::new(
+            Optional::new(
                 self.location.clone(),
-                HydroNode::Chain {
+                HydroNode::ChainFirst {
                     first: Box::new(self.ir_node.into_inner()),
                     second: Box::new(other.ir_node.into_inner()),
                     metadata: self.location.new_node_metadata::<T>(),
                 },
             )
         }
+    }
+
+    #[expect(missing_docs, reason = "TODO")]
+    pub fn unwrap_or(self, other: Singleton<T, L, B>) -> Singleton<T, L, B> {
+        let res_option = self.or(other.into());
+        Singleton::new(res_option.location, res_option.ir_node.into_inner())
     }
 
     #[expect(missing_docs, reason = "TODO")]
@@ -847,5 +814,49 @@ where
                 metadata: self.location.new_node_metadata::<T>(),
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::StreamExt;
+    use hydro_deploy::Deployment;
+    use stageleft::q;
+
+    use super::Optional;
+    use crate::compile::builder::FlowBuilder;
+    use crate::location::Location;
+
+    #[tokio::test]
+    async fn optional_or_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let node_tick = node.tick();
+        let tick_singleton = node_tick.singleton(q!(123));
+        let tick_optional_inhabited: Optional<_, _, _> = tick_singleton.into();
+        let counts = tick_optional_inhabited
+            .clone()
+            .or(tick_optional_inhabited)
+            .into_stream()
+            .count()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_out = nodes.connect_source_bincode(counts).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), 1);
     }
 }
