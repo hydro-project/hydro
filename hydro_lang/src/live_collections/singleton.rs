@@ -752,11 +752,11 @@ where
     }
 }
 
-#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L> Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             self.location.outer().clone(),
@@ -767,6 +767,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             Atomic {
@@ -779,6 +780,41 @@ where
         )
     }
 
+    /// Asynchronously yields this singleton outside the tick as an unbounded singleton, which will
+    /// be asynchronously updated with the latest value of the singleton inside the tick.
+    ///
+    /// This converts a bounded value _inside_ a tick into an asynchronous value outside the
+    /// tick that tracks the inner value. This is useful for getting the value as of the
+    /// "most recent" tick, but note that updates are propagated asynchronously outside the tick.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![1]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![1, 2, 3]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    ///
+    /// batch_first_tick.chain(batch_second_tick)
+    ///   .count()
+    ///   .latest()
+    /// # .sample_eager(nondet!(/** test */))
+    /// # }, |mut stream| async move {
+    /// // asynchronously changes from 1 ~> 3
+    /// # for w in vec![1, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn latest(self) -> Singleton<T, L, Unbounded> {
         Singleton::new(
             self.location.outer().clone(),
@@ -789,6 +825,12 @@ where
         )
     }
 
+    /// Asynchronously yields this singleton outside the tick as an unbounded singleton, which will
+    /// be updated with the latest value of the singleton inside the tick.
+    ///
+    /// Unlike [`Singleton::latest`], this preserves synchronous execution, as the output singleton
+    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+    /// singleton's [`Tick`] context.
     pub fn latest_atomic(self) -> Singleton<T, Atomic<L>, Unbounded> {
         Singleton::new(
             Atomic {
@@ -801,6 +843,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn defer_tick(self) -> Singleton<T, Tick<L>, Bounded> {
         Singleton::new(
             self.location.clone(),
@@ -811,6 +854,8 @@ where
         )
     }
 
+    #[deprecated(note = "use .into_stream().persist()")]
+    #[expect(missing_docs, reason = "deprecated")]
     pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             self.location.clone(),
@@ -821,6 +866,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn delta(self) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
             self.location.clone(),
@@ -831,23 +877,36 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(self.location, self.ir_node.into_inner())
     }
 }
 
-#[expect(missing_docs, reason = "TODO")]
+#[doc(hidden)]
+/// Helper trait that determines the output collection type for [`Singleton::zip`].
+///
+/// The output will be an [`Optional`] if the second input is an [`Optional`], otherwise it is a
+/// [`Singleton`].
+#[sealed::sealed]
 pub trait ZipResult<'a, Other> {
+    /// The output collection type.
     type Out;
+    /// The type of the tupled output value.
     type ElementType;
-    type Location;
+    /// The location where the tupled result will be materialized.
+    type Location: Location<'a>;
 
+    /// The location of the second input to the `zip`.
     fn other_location(other: &Other) -> Self::Location;
+    /// The IR node of the second input to the `zip`.
     fn other_ir_node(other: Other) -> HydroNode;
 
+    /// Constructs the output live collection given an IR node containing the zip result.
     fn make(location: Self::Location, ir_node: HydroNode) -> Self::Out;
 }
 
+#[sealed::sealed]
 impl<'a, T, U, L, B: Boundedness> ZipResult<'a, Singleton<U, L, B>> for Singleton<T, L, B>
 where
     L: Location<'a>,
@@ -869,6 +928,7 @@ where
     }
 }
 
+#[sealed::sealed]
 impl<'a, T, U, L, B: Boundedness> ZipResult<'a, Optional<U, L, B>> for Singleton<T, L, B>
 where
     L: Location<'a>,
