@@ -1,4 +1,4 @@
-//! Definitions and core APIs for the [`Singleton`] live collection.
+//! Definitions for the [`Singleton`] live collection.
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
@@ -20,7 +20,20 @@ use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::NonDet;
 
-#[expect(missing_docs, reason = "TODO")]
+/// A single Rust value that can asynchronously change over time.
+///
+/// If the singleton is [`Bounded`], the value is frozen and will not change. But if it is
+/// [`Unbounded`], the value will asynchronously change over time.
+///
+/// Singletons are often used to capture state in a Hydro program, such as an event counter which is
+/// a single number that will asynchronously change as events are processed. Singletons also appear
+/// when dealing with bounded collections, to perform regular Rust computations on concrete values,
+/// such as getting the length of a batch of requests.
+///
+/// Type Parameters:
+/// - `Type`: the type of the value in this singleton
+/// - `Loc`: the [`Location`] where the singleton is materialized
+/// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing asynchronously)
 pub struct Singleton<Type, Loc, Bound: Boundedness> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,

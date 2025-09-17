@@ -17,7 +17,21 @@
 pub mod boundedness;
 
 pub mod keyed_singleton;
+#[doc(inline)]
+pub use keyed_singleton::KeyedSingleton;
+
 pub mod keyed_stream;
+#[doc(inline)]
+pub use keyed_stream::KeyedStream;
+
 pub mod optional;
+#[doc(inline)]
+pub use optional::Optional;
+
 pub mod singleton;
+#[doc(inline)]
+pub use singleton::Singleton;
+
 pub mod stream;
+#[doc(inline)]
+pub use stream::Stream;
