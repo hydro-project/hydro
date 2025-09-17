@@ -19,9 +19,16 @@ use crate::location::{Atomic, Location, NoTick, Tick};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
-#[expect(missing_docs, reason = "TODO")]
+/// A market trait indicating which components of a [`KeyedSingleton`] may change.
+///
+/// In addition to [`Bounded`] (all entries are fixed) and [`Unbounded`] (entries may be added /
+/// removed / changed), this also includes an additional variant [`BoundedValue`], which indicates
+/// that entries may be added over time, but ones an entry is added it will never be removed and
+/// its value will never change.
 pub trait KeyedSingletonBound {
+    /// The [`Boundedness`] of the [`Stream`] underlying the keyed singleton.
     type UnderlyingBound: Boundedness;
+    /// The [`Boundedness`] of each entry's value; [`Bounded`] means it is immutable.
     type ValueBound: Boundedness;
 }
 
@@ -45,7 +52,22 @@ impl KeyedSingletonBound for BoundedValue {
     type ValueBound = Bounded;
 }
 
-#[expect(missing_docs, reason = "TODO")]
+/// Mapping from keys of type `K` to values of type `V`.
+///
+/// Keyed Singletons capture an asynchronously updated mapping from keys of the `K` to values of
+/// type `V`, where the order of keys is non-deterministic. In addition to the standard boundedness
+/// variants ([`Bounded`] for finite and immutable [`Unbounded`] for asynchronously changing), keyed
+/// singletons can use [`BoundedValue`] to declare that new keys may be added over time, but keys
+/// cannot be removed and the value for each key is immutable.
+///
+/// Type Parameters:
+/// - `K`: the type of the key for each entry
+/// - `V`: the type of the value for each entry
+/// - `Loc`: the [`Location`] where the keyed singleton is materialized
+/// - `Bound`: tracks whether the entries are:
+///     - [`Bounded`] (local and finite)
+///     - [`Unbounded`] (asynchronous with entries added / remove)
+///     - [`BoundedValue`] (asynchronous with immutable values for each key and no removals)
 pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
     pub(crate) underlying: Stream<(K, V), Loc, Bound::UnderlyingBound, NoOrder, ExactlyOnce>,
 }
