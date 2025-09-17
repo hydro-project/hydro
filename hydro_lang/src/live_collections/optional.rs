@@ -499,7 +499,30 @@ where
         )
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Combines this singleton with another [`Singleton`] or [`Optional`] by tupling their values.
+    ///
+    /// If the other value is a [`Optional`], the output will be non-null only if the argument is
+    /// non-null. This is useful for combining several pieces of state together.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///   .source_iter(q!(vec![123, 456, 789]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let min = numbers.clone().min(); // Optional
+    /// let max = numbers.max(); // Optional
+    /// min.zip(max).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [(123, 789)]
+    /// # for w in vec![(123, 789)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn zip<O>(self, other: impl Into<Optional<O, L, B>>) -> Optional<(T, O), L, B>
     where
         O: Clone,
