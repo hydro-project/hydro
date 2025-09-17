@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_std/src/quorum.rs`."><title>quorum.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-e56847b5.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydro_std" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0-nightly (a9d0a6f15 2025-09-16)" data-channel="nightly" data-search-js="search-cb266a1a.js" data-stringdex-js="stringdex-5af928a3.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-6dc2a7f3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_std/</div>quorum.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::hash::Hash;
 <a href=#2 id=2 data-nosnippet>2</a>
-<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::live_collections::stream::NoOrder;
+<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::live_collections::stream::{NoOrder, Ordering};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>hydro_lang::location::{Atomic, Location, NoTick};
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
 <a href=#6 id=6 data-nosnippet>6</a>
@@ -8,7 +8,7 @@
 <a href=#8 id=8 data-nosnippet>8</a></span><span class="kw">pub fn </span>collect_quorum_with_response&lt;
 <a href=#9 id=9 data-nosnippet>9</a>    <span class="lifetime">'a</span>,
 <a href=#10 id=10 data-nosnippet>10</a>    L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick,
-<a href=#11 id=11 data-nosnippet>11</a>    Order,
+<a href=#11 id=11 data-nosnippet>11</a>    Order: Ordering,
 <a href=#12 id=12 data-nosnippet>12</a>    K: Clone + Eq + Hash,
 <a href=#13 id=13 data-nosnippet>13</a>    V: Clone,
 <a href=#14 id=14 data-nosnippet>14</a>    E: Clone,
@@ -88,74 +88,80 @@
 <a href=#88 id=88 data-nosnippet>88</a>}
 <a href=#89 id=89 data-nosnippet>89</a>
 <a href=#90 id=90 data-nosnippet>90</a><span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"stream types with ordering"</span>)]
-<a href=#91 id=91 data-nosnippet>91</a></span><span class="kw">pub fn </span>collect_quorum&lt;<span class="lifetime">'a</span>, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, Order, K: Clone + Eq + Hash, E: Clone&gt;(
-<a href=#92 id=92 data-nosnippet>92</a>    responses: Stream&lt;(K, <span class="prelude-ty">Result</span>&lt;(), E&gt;), Atomic&lt;L&gt;, Unbounded, Order&gt;,
-<a href=#93 id=93 data-nosnippet>93</a>    min: usize,
-<a href=#94 id=94 data-nosnippet>94</a>    max: usize,
-<a href=#95 id=95 data-nosnippet>95</a>) -&gt; (
-<a href=#96 id=96 data-nosnippet>96</a>    Stream&lt;K, Atomic&lt;L&gt;, Unbounded, NoOrder&gt;,
-<a href=#97 id=97 data-nosnippet>97</a>    Stream&lt;(K, E), Atomic&lt;L&gt;, Unbounded, Order&gt;,
-<a href=#98 id=98 data-nosnippet>98</a>) {
-<a href=#99 id=99 data-nosnippet>99</a>    <span class="kw">let </span>tick = responses.atomic_source();
-<a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">let </span>(not_all_complete_cycle, not_all) = tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, Order&gt;&gt;();
-<a href=#101 id=101 data-nosnippet>101</a>
-<a href=#102 id=102 data-nosnippet>102</a>    <span class="kw">let </span>current_responses = not_all.chain(responses.clone().batch(<span class="macro">nondet!</span>(
-<a href=#103 id=103 data-nosnippet>103</a>        <span class="doccomment">/// We always persist values that have not reached quorum, so even
-<a href=#104 id=104 data-nosnippet>104</a>        /// with arbitrary batching we always produce deterministic quorum results.
-<a href=#105 id=105 data-nosnippet>105</a>    </span>)));
-<a href=#106 id=106 data-nosnippet>106</a>
-<a href=#107 id=107 data-nosnippet>107</a>    <span class="kw">let </span>count_per_key = current_responses.clone().into_keyed().fold_commutative(
-<a href=#108 id=108 data-nosnippet>108</a>        <span class="macro">q!</span>(<span class="kw">move </span>|| (<span class="number">0</span>, <span class="number">0</span>)),
-<a href=#109 id=109 data-nosnippet>109</a>        <span class="macro">q!</span>(<span class="kw">move </span>|accum, value| {
-<a href=#110 id=110 data-nosnippet>110</a>            <span class="kw">if </span>value.is_ok() {
-<a href=#111 id=111 data-nosnippet>111</a>                accum.<span class="number">0 </span>+= <span class="number">1</span>;
-<a href=#112 id=112 data-nosnippet>112</a>            } <span class="kw">else </span>{
-<a href=#113 id=113 data-nosnippet>113</a>                accum.<span class="number">1 </span>+= <span class="number">1</span>;
-<a href=#114 id=114 data-nosnippet>114</a>            }
-<a href=#115 id=115 data-nosnippet>115</a>        }),
-<a href=#116 id=116 data-nosnippet>116</a>    );
-<a href=#117 id=117 data-nosnippet>117</a>
-<a href=#118 id=118 data-nosnippet>118</a>    <span class="kw">let </span>reached_min_count =
-<a href=#119 id=119 data-nosnippet>119</a>        count_per_key
-<a href=#120 id=120 data-nosnippet>120</a>            .clone()
-<a href=#121 id=121 data-nosnippet>121</a>            .entries()
-<a href=#122 id=122 data-nosnippet>122</a>            .filter_map(<span class="macro">q!</span>(<span class="kw">move </span>|(key, (success, _error))| <span class="kw">if </span>success &gt;= min {
-<a href=#123 id=123 data-nosnippet>123</a>                <span class="prelude-val">Some</span>(key)
-<a href=#124 id=124 data-nosnippet>124</a>            } <span class="kw">else </span>{
-<a href=#125 id=125 data-nosnippet>125</a>                <span class="prelude-val">None
-<a href=#126 id=126 data-nosnippet>126</a>            </span>}));
-<a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a>    <span class="kw">let </span>just_reached_quorum = <span class="kw">if </span>max == min {
-<a href=#129 id=129 data-nosnippet>129</a>        not_all_complete_cycle.complete_next_tick(
-<a href=#130 id=130 data-nosnippet>130</a>            current_responses
-<a href=#131 id=131 data-nosnippet>131</a>                .clone()
-<a href=#132 id=132 data-nosnippet>132</a>                .anti_join(reached_min_count.clone()),
-<a href=#133 id=133 data-nosnippet>133</a>        );
-<a href=#134 id=134 data-nosnippet>134</a>
-<a href=#135 id=135 data-nosnippet>135</a>        reached_min_count
-<a href=#136 id=136 data-nosnippet>136</a>    } <span class="kw">else </span>{
-<a href=#137 id=137 data-nosnippet>137</a>        <span class="kw">let </span>(min_but_not_max_complete_cycle, min_but_not_max) = tick.cycle();
-<a href=#138 id=138 data-nosnippet>138</a>
-<a href=#139 id=139 data-nosnippet>139</a>        <span class="kw">let </span>received_from_all = count_per_key
-<a href=#140 id=140 data-nosnippet>140</a>            .filter(<span class="macro">q!</span>(<span class="kw">move </span>|(success, error)| (success + error) &gt;= max))
-<a href=#141 id=141 data-nosnippet>141</a>            .keys();
-<a href=#142 id=142 data-nosnippet>142</a>
-<a href=#143 id=143 data-nosnippet>143</a>        min_but_not_max_complete_cycle.complete_next_tick(
-<a href=#144 id=144 data-nosnippet>144</a>            reached_min_count
-<a href=#145 id=145 data-nosnippet>145</a>                .clone()
-<a href=#146 id=146 data-nosnippet>146</a>                .filter_not_in(received_from_all.clone()),
-<a href=#147 id=147 data-nosnippet>147</a>        );
+<a href=#91 id=91 data-nosnippet>91</a></span><span class="kw">pub fn </span>collect_quorum&lt;
+<a href=#92 id=92 data-nosnippet>92</a>    <span class="lifetime">'a</span>,
+<a href=#93 id=93 data-nosnippet>93</a>    L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick,
+<a href=#94 id=94 data-nosnippet>94</a>    Order: Ordering,
+<a href=#95 id=95 data-nosnippet>95</a>    K: Clone + Eq + Hash,
+<a href=#96 id=96 data-nosnippet>96</a>    E: Clone,
+<a href=#97 id=97 data-nosnippet>97</a>&gt;(
+<a href=#98 id=98 data-nosnippet>98</a>    responses: Stream&lt;(K, <span class="prelude-ty">Result</span>&lt;(), E&gt;), Atomic&lt;L&gt;, Unbounded, Order&gt;,
+<a href=#99 id=99 data-nosnippet>99</a>    min: usize,
+<a href=#100 id=100 data-nosnippet>100</a>    max: usize,
+<a href=#101 id=101 data-nosnippet>101</a>) -&gt; (
+<a href=#102 id=102 data-nosnippet>102</a>    Stream&lt;K, Atomic&lt;L&gt;, Unbounded, NoOrder&gt;,
+<a href=#103 id=103 data-nosnippet>103</a>    Stream&lt;(K, E), Atomic&lt;L&gt;, Unbounded, Order&gt;,
+<a href=#104 id=104 data-nosnippet>104</a>) {
+<a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">let </span>tick = responses.atomic_source();
+<a href=#106 id=106 data-nosnippet>106</a>    <span class="kw">let </span>(not_all_complete_cycle, not_all) = tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, Order&gt;&gt;();
+<a href=#107 id=107 data-nosnippet>107</a>
+<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">let </span>current_responses = not_all.chain(responses.clone().batch(<span class="macro">nondet!</span>(
+<a href=#109 id=109 data-nosnippet>109</a>        <span class="doccomment">/// We always persist values that have not reached quorum, so even
+<a href=#110 id=110 data-nosnippet>110</a>        /// with arbitrary batching we always produce deterministic quorum results.
+<a href=#111 id=111 data-nosnippet>111</a>    </span>)));
+<a href=#112 id=112 data-nosnippet>112</a>
+<a href=#113 id=113 data-nosnippet>113</a>    <span class="kw">let </span>count_per_key = current_responses.clone().into_keyed().fold_commutative(
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="macro">q!</span>(<span class="kw">move </span>|| (<span class="number">0</span>, <span class="number">0</span>)),
+<a href=#115 id=115 data-nosnippet>115</a>        <span class="macro">q!</span>(<span class="kw">move </span>|accum, value| {
+<a href=#116 id=116 data-nosnippet>116</a>            <span class="kw">if </span>value.is_ok() {
+<a href=#117 id=117 data-nosnippet>117</a>                accum.<span class="number">0 </span>+= <span class="number">1</span>;
+<a href=#118 id=118 data-nosnippet>118</a>            } <span class="kw">else </span>{
+<a href=#119 id=119 data-nosnippet>119</a>                accum.<span class="number">1 </span>+= <span class="number">1</span>;
+<a href=#120 id=120 data-nosnippet>120</a>            }
+<a href=#121 id=121 data-nosnippet>121</a>        }),
+<a href=#122 id=122 data-nosnippet>122</a>    );
+<a href=#123 id=123 data-nosnippet>123</a>
+<a href=#124 id=124 data-nosnippet>124</a>    <span class="kw">let </span>reached_min_count =
+<a href=#125 id=125 data-nosnippet>125</a>        count_per_key
+<a href=#126 id=126 data-nosnippet>126</a>            .clone()
+<a href=#127 id=127 data-nosnippet>127</a>            .entries()
+<a href=#128 id=128 data-nosnippet>128</a>            .filter_map(<span class="macro">q!</span>(<span class="kw">move </span>|(key, (success, _error))| <span class="kw">if </span>success &gt;= min {
+<a href=#129 id=129 data-nosnippet>129</a>                <span class="prelude-val">Some</span>(key)
+<a href=#130 id=130 data-nosnippet>130</a>            } <span class="kw">else </span>{
+<a href=#131 id=131 data-nosnippet>131</a>                <span class="prelude-val">None
+<a href=#132 id=132 data-nosnippet>132</a>            </span>}));
+<a href=#133 id=133 data-nosnippet>133</a>
+<a href=#134 id=134 data-nosnippet>134</a>    <span class="kw">let </span>just_reached_quorum = <span class="kw">if </span>max == min {
+<a href=#135 id=135 data-nosnippet>135</a>        not_all_complete_cycle.complete_next_tick(
+<a href=#136 id=136 data-nosnippet>136</a>            current_responses
+<a href=#137 id=137 data-nosnippet>137</a>                .clone()
+<a href=#138 id=138 data-nosnippet>138</a>                .anti_join(reached_min_count.clone()),
+<a href=#139 id=139 data-nosnippet>139</a>        );
+<a href=#140 id=140 data-nosnippet>140</a>
+<a href=#141 id=141 data-nosnippet>141</a>        reached_min_count
+<a href=#142 id=142 data-nosnippet>142</a>    } <span class="kw">else </span>{
+<a href=#143 id=143 data-nosnippet>143</a>        <span class="kw">let </span>(min_but_not_max_complete_cycle, min_but_not_max) = tick.cycle();
+<a href=#144 id=144 data-nosnippet>144</a>
+<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span>received_from_all = count_per_key
+<a href=#146 id=146 data-nosnippet>146</a>            .filter(<span class="macro">q!</span>(<span class="kw">move </span>|(success, error)| (success + error) &gt;= max))
+<a href=#147 id=147 data-nosnippet>147</a>            .keys();
 <a href=#148 id=148 data-nosnippet>148</a>
-<a href=#149 id=149 data-nosnippet>149</a>        not_all_complete_cycle.complete_next_tick(current_responses.anti_join(received_from_all));
-<a href=#150 id=150 data-nosnippet>150</a>
-<a href=#151 id=151 data-nosnippet>151</a>        reached_min_count.filter_not_in(min_but_not_max)
-<a href=#152 id=152 data-nosnippet>152</a>    };
-<a href=#153 id=153 data-nosnippet>153</a>
-<a href=#154 id=154 data-nosnippet>154</a>    (
-<a href=#155 id=155 data-nosnippet>155</a>        just_reached_quorum.all_ticks_atomic(),
-<a href=#156 id=156 data-nosnippet>156</a>        responses.filter_map(<span class="macro">q!</span>(<span class="kw">move </span>|(key, res)| <span class="kw">match </span>res {
-<a href=#157 id=157 data-nosnippet>157</a>            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
-<a href=#158 id=158 data-nosnippet>158</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Some</span>((key, e)),
-<a href=#159 id=159 data-nosnippet>159</a>        })),
-<a href=#160 id=160 data-nosnippet>160</a>    )
-<a href=#161 id=161 data-nosnippet>161</a>}</code></pre></div></section></main></body></html>
+<a href=#149 id=149 data-nosnippet>149</a>        min_but_not_max_complete_cycle.complete_next_tick(
+<a href=#150 id=150 data-nosnippet>150</a>            reached_min_count
+<a href=#151 id=151 data-nosnippet>151</a>                .clone()
+<a href=#152 id=152 data-nosnippet>152</a>                .filter_not_in(received_from_all.clone()),
+<a href=#153 id=153 data-nosnippet>153</a>        );
+<a href=#154 id=154 data-nosnippet>154</a>
+<a href=#155 id=155 data-nosnippet>155</a>        not_all_complete_cycle.complete_next_tick(current_responses.anti_join(received_from_all));
+<a href=#156 id=156 data-nosnippet>156</a>
+<a href=#157 id=157 data-nosnippet>157</a>        reached_min_count.filter_not_in(min_but_not_max)
+<a href=#158 id=158 data-nosnippet>158</a>    };
+<a href=#159 id=159 data-nosnippet>159</a>
+<a href=#160 id=160 data-nosnippet>160</a>    (
+<a href=#161 id=161 data-nosnippet>161</a>        just_reached_quorum.all_ticks_atomic(),
+<a href=#162 id=162 data-nosnippet>162</a>        responses.filter_map(<span class="macro">q!</span>(<span class="kw">move </span>|(key, res)| <span class="kw">match </span>res {
+<a href=#163 id=163 data-nosnippet>163</a>            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+<a href=#164 id=164 data-nosnippet>164</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Some</span>((key, e)),
+<a href=#165 id=165 data-nosnippet>165</a>        })),
+<a href=#166 id=166 data-nosnippet>166</a>    )
+<a href=#167 id=167 data-nosnippet>167</a>}</code></pre></div></section></main></body></html>
