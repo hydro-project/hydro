@@ -12,6 +12,7 @@ use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::dynamic::LocationId;
 use crate::location::tick::NoAtomic;
 use crate::location::{Atomic, Location, NoTick, Tick};
@@ -99,7 +100,10 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         self.entries().map(q!(|(k, _)| k))
     }
 
-    pub fn filter_key_not_in<O2, R2>(self, other: Stream<K, L, Bounded, O2, R2>) -> Self
+    pub fn filter_key_not_in<O2: Ordering, R2: Retries>(
+        self,
+        other: Stream<K, L, Bounded, O2, R2>,
+    ) -> Self
     where
         K: Hash + Eq,
     {
@@ -409,12 +413,12 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     /// # assert_eq!(results, vec![(1, (10, 100)), (1, (10, 101)), (2, (20, 200))]);
     /// # }));
     /// ```
-    pub fn get_many_if_present<O2, R2, V2>(
+    pub fn get_many_if_present<O2: Ordering, R2: Retries, V2>(
         self,
         requests: KeyedStream<K, V2, Tick<L>, Bounded, O2, R2>,
     ) -> KeyedStream<K, (V, V2), Tick<L>, Bounded, NoOrder, R2> {
         self.entries()
-            .weaker_retries()
+            .weaker_retries::<R2>()
             .join(requests.entries())
             .into_keyed()
     }
