@@ -118,7 +118,11 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
     // Send checkpoints to the acceptors when we've processed enough payloads
     let (r_checkpointed_seqs_complete_cycle, r_checkpointed_seqs) =
         replica_tick.cycle::<Optional<usize, _, _>>();
-    let r_max_checkpointed_seq = r_checkpointed_seqs.persist().max().into_singleton();
+    let r_max_checkpointed_seq = r_checkpointed_seqs
+        .into_stream()
+        .persist()
+        .max()
+        .into_singleton();
     let r_checkpoint_seq_new = r_max_checkpointed_seq
         .zip(r_next_slot)
         .filter_map(q!(
