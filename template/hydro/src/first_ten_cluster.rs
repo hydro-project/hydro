@@ -14,6 +14,9 @@ pub fn first_ten_cluster<'a>(leader: &Process<'a, Leader>, workers: &Cluster<'a,
         .inspect(q!(|n| println!("{}", n))) // : Stream<i32, Cluster<Worker>, ...>
         .send_bincode(leader) // : KeyedStream<MemberId<Worker>, i32, Process<Leader>, ...>
         .values() // : Stream<i32, Process<Leader>, ...>
+        .assume_ordering(nondet!(
+            /// intentionally logging with non-deterministic order
+        ))
         .for_each(q!(|n| println!("{}", n)));
 }
 
