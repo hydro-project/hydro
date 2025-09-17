@@ -980,7 +980,38 @@ where
         )
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Converts this optional into a [`Stream`] containing a single element, the value, if it is
+    /// non-null. Otherwise, the stream is empty.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![]))
+    /// #   .batch(&tick, nondet!(/** test */));
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![123, 456]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick(); // appears on the second tick
+    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+    /// input_batch // first tick: [], second tick: [123, 456]
+    ///     .clone()
+    ///     .max()
+    ///     .into_stream()
+    ///     .chain(input_batch)
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [456, 123, 456]
+    /// # for w in vec![456, 123, 456] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(self.location, self.ir_node.into_inner())
     }
