@@ -535,30 +535,84 @@ where
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
-    pub fn continue_if<U>(self, signal: Optional<U, L, Bounded>) -> Optional<T, L, Bounded>
-    where
-        Self: ZipResult<
-                'a,
-                Optional<(), L, Bounded>,
-                Location = L,
-                Out = Optional<(T, ()), L, Bounded>,
-            >,
-    {
-        self.zip(signal.map(q!(|_u| ()))).map(q!(|(d, _signal)| d))
+    /// Filters this singleton into an [`Optional`], passing through the singleton value if the
+    /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
+    ///
+    /// Useful for conditionally processing, such as only emitting a singleton's value outside
+    /// a tick if some other condition is satisfied.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![1]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![1, 2, 3]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// batch_first_tick.chain(batch_second_tick).count()
+    ///   .filter_if_some(some_on_first_tick)
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [1]
+    /// # for w in vec![1] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter_if_some<U>(self, signal: Optional<U, L, B>) -> Optional<T, L, B> {
+        self.zip::<Optional<(), L, B>>(signal.map(q!(|_u| ())))
+            .map(q!(|(d, _signal)| d))
     }
 
-    #[expect(missing_docs, reason = "TODO")]
-    pub fn continue_unless<U>(self, other: Optional<U, L, Bounded>) -> Optional<T, L, Bounded>
-    where
-        Singleton<T, L, B>: ZipResult<
-                'a,
-                Optional<(), L, Bounded>,
-                Location = L,
-                Out = Optional<(T, ()), L, Bounded>,
-            >,
-    {
-        self.continue_if(other.into_stream().count().filter(q!(|c| *c == 0)))
+    /// Filters this singleton into an [`Optional`], passing through the singleton value if the
+    /// argument (a [`Bounded`] [`Optional`]`) is null, otherwise the output is null.
+    ///
+    /// Like [`Singleton::filter_if_some`], this is useful for conditional processing, but inverts
+    /// the condition.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![1]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![1, 2, 3]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// batch_first_tick.chain(batch_second_tick).count()
+    ///   .filter_if_none(some_on_first_tick)
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [3]
+    /// # for w in vec![3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter_if_none<U>(self, other: Optional<U, L, B>) -> Optional<T, L, B> {
+        self.filter_if_some(
+            other
+                .map(q!(|_| ()))
+                .into_singleton()
+                .filter(q!(|o| o.is_none())),
+        )
     }
 
     /// An operator which allows you to "name" a `HydroNode`.
@@ -668,7 +722,7 @@ where
         let tick = self.location.tick();
 
         self.snapshot(&tick, nondet)
-            .continue_if(samples.batch(&tick, nondet).first())
+            .filter_if_some(samples.batch(&tick, nondet).first())
             .all_ticks()
             .weakest_retries()
     }
@@ -770,48 +824,44 @@ pub trait ZipResult<'a, Other> {
     fn make(location: Self::Location, ir_node: HydroNode) -> Self::Out;
 }
 
-impl<'a, T, U, L, B: Boundedness> ZipResult<'a, Singleton<U, Tick<L>, B>>
-    for Singleton<T, Tick<L>, B>
+impl<'a, T, U, L, B: Boundedness> ZipResult<'a, Singleton<U, L, B>> for Singleton<T, L, B>
 where
-    U: Clone,
     L: Location<'a>,
 {
-    type Out = Singleton<(T, U), Tick<L>, B>;
+    type Out = Singleton<(T, U), L, B>;
     type ElementType = (T, U);
-    type Location = Tick<L>;
+    type Location = L;
 
-    fn other_location(other: &Singleton<U, Tick<L>, B>) -> Tick<L> {
+    fn other_location(other: &Singleton<U, L, B>) -> L {
         other.location.clone()
     }
 
-    fn other_ir_node(other: Singleton<U, Tick<L>, B>) -> HydroNode {
+    fn other_ir_node(other: Singleton<U, L, B>) -> HydroNode {
         other.ir_node.into_inner()
     }
 
-    fn make(location: Tick<L>, ir_node: HydroNode) -> Self::Out {
+    fn make(location: L, ir_node: HydroNode) -> Self::Out {
         Singleton::new(location, ir_node)
     }
 }
 
-impl<'a, T, U, L, B: Boundedness> ZipResult<'a, Optional<U, Tick<L>, B>>
-    for Singleton<T, Tick<L>, B>
+impl<'a, T, U, L, B: Boundedness> ZipResult<'a, Optional<U, L, B>> for Singleton<T, L, B>
 where
-    U: Clone,
     L: Location<'a>,
 {
-    type Out = Optional<(T, U), Tick<L>, B>;
+    type Out = Optional<(T, U), L, B>;
     type ElementType = (T, U);
-    type Location = Tick<L>;
+    type Location = L;
 
-    fn other_location(other: &Optional<U, Tick<L>, B>) -> Tick<L> {
+    fn other_location(other: &Optional<U, L, B>) -> L {
         other.location.clone()
     }
 
-    fn other_ir_node(other: Optional<U, Tick<L>, B>) -> HydroNode {
+    fn other_ir_node(other: Optional<U, L, B>) -> HydroNode {
         other.ir_node.into_inner()
     }
 
-    fn make(location: Tick<L>, ir_node: HydroNode) -> Self::Out {
+    fn make(location: L, ir_node: HydroNode) -> Self::Out {
         Optional::new(location, ir_node)
     }
 }
@@ -842,7 +892,7 @@ mod tests {
             .clone()
             .into_stream()
             .count()
-            .continue_if(input.batch(&node_tick, nondet!(/** testing */)).first())
+            .filter_if_some(input.batch(&node_tick, nondet!(/** testing */)).first())
             .all_ticks()
             .send_bincode_external(&external);
         complete_cycle.complete_next_tick(singleton);

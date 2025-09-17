@@ -163,7 +163,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
 
     let just_became_leader = p_is_leader
         .clone()
-        .continue_unless(p_is_leader.clone().defer_tick());
+        .filter_if_none(p_is_leader.clone().defer_tick());
 
     let c_to_proposers = c_to_proposers(
         just_became_leader
@@ -263,7 +263,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
                     nondet_commit_leader_change
                 ),
             )
-            .continue_if(p_is_leader.clone()),
+            .filter_if_some(p_is_leader.clone()),
     );
 
     let num_proxy_leaders = config.num_proxy_leaders;

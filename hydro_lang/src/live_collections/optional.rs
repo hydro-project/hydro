@@ -9,7 +9,7 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
-use super::singleton::{Singleton, ZipResult};
+use super::singleton::Singleton;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
 #[cfg(stageleft_runtime)]
@@ -623,24 +623,89 @@ impl<'a, T, L> Optional<T, L, Bounded>
 where
     L: Location<'a>,
 {
-    pub fn continue_if<U>(self, signal: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
+    /// Filters this optional, passing through the optional value if it is non-null **and** the
+    /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
+    ///
+    /// Useful for conditionally processing, such as only emitting an optional's value outside
+    /// a tick if some other condition is satisfied.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![456]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// batch_first_tick.chain(batch_second_tick).first()
+    ///   .filter_if_some(some_on_first_tick)
+    ///   .unwrap_or(tick.singleton(q!(789)))
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [789, 789]
+    /// # for w in vec![789, 789] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter_if_some<U>(self, signal: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
         self.zip(signal.map(q!(|_u| ()))).map(q!(|(d, _signal)| d))
     }
 
-    pub fn continue_unless<U>(self, other: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
-        self.continue_if(other.into_stream().count().filter(q!(|c| *c == 0)))
+    /// Filters this optional, passing through the optional value if it is non-null **and** the
+    /// argument (a [`Bounded`] [`Optional`]`) is _null_, otherwise the output is null.
+    ///
+    /// Useful for conditionally processing, such as only emitting an optional's value outside
+    /// a tick if some other condition is satisfied.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![456]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// batch_first_tick.chain(batch_second_tick).first()
+    ///   .filter_if_none(some_on_first_tick)
+    ///   .unwrap_or(tick.singleton(q!(789)))
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [789, 789]
+    /// # for w in vec![789, 456] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter_if_none<U>(self, other: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
+        self.filter_if_some(
+            other
+                .map(q!(|_| ()))
+                .into_singleton()
+                .filter(q!(|o| o.is_none())),
+        )
     }
 
-    pub fn then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded>
-    where
-        Singleton<U, L, Bounded>: ZipResult<
-                'a,
-                Optional<(), L, Bounded>,
-                Location = L,
-                Out = Optional<(U, ()), L, Bounded>,
-            >,
-    {
-        value.continue_if(self)
+    pub fn then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded> {
+        value.filter_if_some(self)
     }
 
     pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce> {
@@ -744,7 +809,7 @@ where
         let tick = self.location.tick();
 
         self.snapshot(&tick, nondet)
-            .continue_if(samples.batch(&tick, nondet).first())
+            .filter_if_some(samples.batch(&tick, nondet).first())
             .all_ticks()
             .weakest_retries()
     }

@@ -89,7 +89,7 @@ pub trait PaxosLike<'a>: Sized {
                     let all_payloads = unsent_payloads.chain(payload_batch);
 
                     unsent_payloads_complete.complete_next_tick(
-                        all_payloads.clone().continue_unless(latest_leader.clone()),
+                        all_payloads.clone().filter_if_none(latest_leader.clone()),
                     );
 
                     all_payloads.cross_singleton(latest_leader).all_ticks()
