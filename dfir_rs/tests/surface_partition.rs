@@ -1,4 +1,5 @@
-use dfir_rs::{dfir_syntax, util::collect_ready};
+use dfir_rs::dfir_syntax;
+use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
@@ -17,11 +18,11 @@ pub fn test_partition_fizzbuzz() {
             );
         my_partition[vals] -> map(|x| format!("{}", x))
             -> for_each(|s| out_send.send(s).unwrap());
-        my_partition[fizz] -> map(|_| format!("fizz"))
+        my_partition[fizz] -> map(|_| "fizz".to_owned())
             -> for_each(|s| out_send.send(s).unwrap());
-        my_partition[buzz] -> map(|_| format!("buzz"))
+        my_partition[buzz] -> map(|_| "buzz".to_owned())
             -> for_each(|s| out_send.send(s).unwrap());
-        my_partition[fzbz] -> map(|_| format!("fizzbuzz"))
+        my_partition[fzbz] -> map(|_| "fizzbuzz".to_owned())
             -> for_each(|s| out_send.send(s).unwrap());
     };
     df.run_available_sync();

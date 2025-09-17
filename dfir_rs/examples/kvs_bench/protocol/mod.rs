@@ -58,6 +58,6 @@ pub enum KvsRequestDemux<const SIZE: usize> {
         update: MyLastWriteWins<SIZE>,
     },
     Gossip {
-        map: MapUnionHashMap<u64, MyLastWriteWins<SIZE>>
+        map: MapUnionHashMap<u64, MyLastWriteWins<SIZE>>,
     },
 }

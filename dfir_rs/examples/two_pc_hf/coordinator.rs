@@ -5,7 +5,7 @@ use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::{UdpSink, UdpStream};
 
 use crate::helpers::parse_out;
-use crate::protocol::{CoordMsg, MsgType, SubordResponse};
+use crate::protocol::Msg;
 use crate::{Addresses, Opts};
 
 pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts: Opts) {
@@ -31,16 +31,14 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         outbound_chan = tee();
         outbound_chan[0] -> dest_sink_serde(outbound);
         inbound_chan = source_stream_serde(inbound) -> map(Result::unwrap) -> map(|(m, _a)| m) -> tee();
-        msgs = inbound_chan[0] ->  demux(|m:SubordResponse, var_args!(commits, aborts, acks, endeds, errs)| match m.mtype {
-                    MsgType::Commit => commits.give(m),
-                    MsgType::Abort => aborts.give(m),
-                    MsgType::AckP2 => acks.give(m),
-                    MsgType::Ended => endeds.give(m),
-                    _ => errs.give(m),
-                });
-        msgs[errs] -> for_each(|m| println!("Received unexpected message type: {:?}", m));
-        msgs[endeds]
-            -> map(|m: SubordResponse| dfir_rs::util::PersistenceKeyed::Delete(m.xid))
+        msgs = inbound_chan[0] -> demux_enum::<Msg>();
+
+        msgs[Prepare] -> errs;
+        msgs[End] -> errs;
+        errs = union() -> for_each(|m| println!("Received unexpected message type: {:?}", m));
+
+        msgs[Ended]
+            -> map(|(xid,)| dfir_rs::util::PersistenceKeyed::Delete(xid))
             -> defer_tick()
             -> phase_map;
 
@@ -64,26 +62,26 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
             -> flat_map(|xid: u16| [dfir_rs::util::PersistenceKeyed::Delete(xid), dfir_rs::util::PersistenceKeyed::Persist(xid, 1)])
             -> phase_map;
         initiate
-            -> map(|xid:u16| CoordMsg{xid, mtype: MsgType::Prepare})
+            -> map(|xid: u16| Msg::Prepare(xid))
             -> [0]broadcast;
 
         // Phase 1 responses:
         // as soon as we get an abort message for P1, we start Phase 2 with Abort.
         // We'll respond to each abort message: this is redundant but correct (and monotone)
-        abort_p1s = msgs[aborts] -> tee();
+        abort_p1s = msgs[Abort] -> tee();
         abort_p1s
-            -> flat_map(|m: SubordResponse| [dfir_rs::util::PersistenceKeyed::Delete(m.xid), dfir_rs::util::PersistenceKeyed::Persist(m.xid, 2)])
+            -> flat_map(|(xid,)| [dfir_rs::util::PersistenceKeyed::Delete(xid), dfir_rs::util::PersistenceKeyed::Persist(xid, 2)])
             -> defer_tick()
             -> phase_map;
         abort_p1s
-            -> map(|m: SubordResponse| CoordMsg{xid: m.xid, mtype: MsgType::Abort})
+            -> map(|(xid,)| Msg::Abort(xid))
             -> [1]broadcast;
 
         // count commit votes
         // XXX This fold_keyed accumulates xids without bound.
         // Should be replaced with a persist_mut_keyed and logic to manage it.
-        commit_votes = msgs[commits]
-            -> map(|m: SubordResponse| (m.xid, 1))
+        commit_votes = msgs[Commit]
+            -> map(|(xid,)| (xid, 1))
             -> fold_keyed::<'static, u16, u32>(|| 0, |acc: &mut _, val| *acc += val);
 
         // count subordinates
@@ -111,17 +109,17 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
             -> phase_map;
         // broadcast the P2 commit message
         check_committed
-            -> map(|xid| CoordMsg{xid, mtype: MsgType::Commit})
+            -> map(Msg::Commit)
             -> [2]broadcast;
 
         // Handle p2 acknowledgments by sending an End message
-        ack_p2s = msgs[acks] -> tee();
+        ack_p2s = msgs[AckP2] -> tee();
         ack_p2s
-        -> flat_map(|m: SubordResponse| [dfir_rs::util::PersistenceKeyed::Delete(m.xid), dfir_rs::util::PersistenceKeyed::Persist(m.xid, 3)])
-        -> defer_tick()
-        -> phase_map;
+            -> flat_map(|(xid,)| [dfir_rs::util::PersistenceKeyed::Delete(xid), dfir_rs::util::PersistenceKeyed::Persist(xid, 3)])
+            -> defer_tick()
+            -> phase_map;
         ack_p2s
-            -> map(|m:SubordResponse| CoordMsg{xid: m.xid, mtype: MsgType::End,})
+            -> map(|(xid,)| Msg::End(xid))
             -> [3]broadcast;
 
         // Handler for ended acknowledgments not necessary; we just print them
