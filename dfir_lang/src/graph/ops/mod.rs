@@ -261,7 +261,6 @@ declare_ops![
     cross_join::CROSS_JOIN,
     cross_join_multiset::CROSS_JOIN_MULTISET,
     cross_singleton::CROSS_SINGLETON,
-    demux::DEMUX,
     demux_enum::DEMUX_ENUM,
     dest_file::DEST_FILE,
     dest_sink::DEST_SINK,

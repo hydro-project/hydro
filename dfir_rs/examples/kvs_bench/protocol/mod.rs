@@ -3,6 +3,7 @@ mod serialization;
 #[cfg(test)]
 mod test;
 
+use dfir_rs::DemuxEnum;
 use lattices::map_union::MapUnionHashMap;
 use lattices::set_union::SetUnionHashSet;
 use lattices::{DomPair, Max, Point, WithBot};
@@ -42,5 +43,21 @@ pub enum KvsResponse<const SIZE: usize> {
     GetResponse {
         key: u64,
         reg: MyLastWriteWins<SIZE>,
+    },
+}
+
+#[derive(DemuxEnum)]
+pub enum KvsRequestDemux<const SIZE: usize> {
+    Get {
+        key: u64,
+        addr: NodeId,
+    },
+    /// Put or Delete.
+    Update {
+        key: u64,
+        update: MyLastWriteWins<SIZE>,
+    },
+    Gossip {
+        map: MapUnionHashMap<u64, MyLastWriteWins<SIZE>>
     },
 }

@@ -1,1 +1,0 @@
-../compile-fail/surface_demux_badclosure.rs
