@@ -132,8 +132,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         }
     }
 
-    /// Flattens the keyed stream into a single stream of key-value pairs, with non-deterministic
-    /// element ordering.
+    /// Flattens the keyed stream into an unordered stream of key-value pairs.
     ///
     /// # Example
     /// ```rust
@@ -155,8 +154,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         self.underlying
     }
 
-    /// Flattens the keyed stream into a single stream of only the values, with non-deterministic
-    /// element ordering.
+    /// Flattens the keyed stream into an unordered stream of only the values.
     ///
     /// # Example
     /// ```rust
@@ -1452,6 +1450,14 @@ where
     pub fn all_ticks_atomic(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
         KeyedStream {
             underlying: self.underlying.all_ticks(),
+            _phantom_order: Default::default(),
+        }
+    }
+
+    #[expect(missing_docs, reason = "TODO")]
+    pub fn defer_tick(self) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+        KeyedStream {
+            underlying: self.underlying.defer_tick(),
             _phantom_order: Default::default(),
         }
     }
