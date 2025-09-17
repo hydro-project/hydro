@@ -730,14 +730,6 @@ where
     pub fn then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded> {
         value.filter_if_some(self)
     }
-
-    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce> {
-        if L::is_top_level() {
-            panic!("Converting an optional to a stream is not yet supported at the top level");
-        }
-
-        Stream::new(self.location, self.ir_node.into_inner())
-    }
 }
 
 impl<'a, T, L, B: Boundedness> Optional<T, Atomic<L>, B>
@@ -838,11 +830,11 @@ where
     }
 }
 
-#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L> Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
+    #[expect(missing_docs, reason = "TODO")]
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             self.location.outer().clone(),
@@ -853,6 +845,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             Atomic {
@@ -865,6 +858,43 @@ where
         )
     }
 
+    /// Asynchronously yields this optional outside the tick as an unbounded optional, which will
+    /// be asynchronously updated with the latest value of the optional inside the tick, including
+    /// whether the optional is null or not.
+    ///
+    /// This converts a bounded value _inside_ a tick into an asynchronous value outside the
+    /// tick that tracks the inner value. This is useful for getting the value as of the
+    /// "most recent" tick, but note that updates are propagated asynchronously outside the tick.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![1, 2, 3]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    ///
+    /// batch_first_tick.chain(batch_second_tick)
+    ///   .max()
+    ///   .latest()
+    /// # .into_singleton()
+    /// # .sample_eager(nondet!(/** test */))
+    /// # }, |mut stream| async move {
+    /// // asynchronously changes from None ~> 3
+    /// # for w in vec![None, Some(3)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn latest(self) -> Optional<T, L, Unbounded> {
         Optional::new(
             self.location.outer().clone(),
@@ -875,6 +905,12 @@ where
         )
     }
 
+    /// Asynchronously yields this optional outside the tick as an unbounded optional, which will
+    /// be updated with the latest value of the optional inside the tick.
+    ///
+    /// Unlike [`Optional::latest`], this preserves synchronous execution, as the output optional
+    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+    /// optional's [`Tick`] context.
     pub fn latest_atomic(self) -> Optional<T, Atomic<L>, Unbounded> {
         Optional::new(
             Atomic {
@@ -887,6 +923,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn defer_tick(self) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
             self.location.clone(),
@@ -897,6 +934,8 @@ where
         )
     }
 
+    #[deprecated(note = "use .into_stream().persist()")]
+    #[expect(missing_docs, reason = "deprecated")]
     pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             self.location.clone(),
@@ -907,6 +946,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn delta(self) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
             self.location.clone(),
@@ -915,6 +955,11 @@ where
                 metadata: self.location.new_node_metadata::<T>(),
             },
         )
+    }
+
+    #[expect(missing_docs, reason = "TODO")]
+    pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
+        Stream::new(self.location, self.ir_node.into_inner())
     }
 }
 
