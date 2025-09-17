@@ -189,7 +189,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
 
     let just_became_leader = p_is_leader
         .clone()
-        .continue_unless(p_is_leader.clone().defer_tick());
+        .filter_if_none(p_is_leader.clone().defer_tick());
 
     let c_to_proposers = c_to_proposers(
         just_became_leader
@@ -429,10 +429,10 @@ fn p_leader_heartbeat<'a>(
             ),
         )
         .snapshot(proposer_tick, nondet!(/** absorbed into timeout */))
-        .continue_unless(p_is_leader);
+        .filter_if_none(p_is_leader);
 
     // Add random delay depending on node ID so not everyone sends p1a at the same time
-    let p_trigger_election = p_leader_expired.continue_if(
+    let p_trigger_election = p_leader_expired.filter_if_some(
         proposers
             .source_interval_delayed(
                 q!(Duration::from_secs(
@@ -546,7 +546,7 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
     let p_is_leader = p_received_quorum_of_p1bs
         .clone()
         .map(q!(|_| ()))
-        .continue_if(p_has_largest_ballot.clone());
+        .filter_if_some(p_has_largest_ballot.clone());
 
     (
         p_is_leader,
@@ -689,7 +689,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
                     nondet_commit
                 ),
             )
-            .continue_if(p_is_leader.clone()),
+            .filter_if_some(p_is_leader.clone()),
     );
 
     let payloads_to_send = indexed_payloads
@@ -699,7 +699,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
             Some(payload)
         )))
         .chain(p_log_to_recommit)
-        .continue_if(p_is_leader)
+        .filter_if_some(p_is_leader)
         .all_ticks_atomic();
 
     let (a_log, a_to_proposers_p2b) = acceptor_p2(

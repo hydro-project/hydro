@@ -150,7 +150,7 @@ where
 
     let c_throughput_new_batch = c_received_quorum_payloads
         .count()
-        .continue_unless(c_stats_output_timer.clone())
+        .filter_if_none(c_stats_output_timer.clone())
         .map(q!(|batch_size| (batch_size, false)));
 
     let c_throughput_reset = c_stats_output_timer.map(q!(|_| (0, true))).defer_tick();
@@ -246,7 +246,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
         .batch(&print_tick, nondet_client_count)
         .cross_singleton(client_count.clone())
-        .continue_unless(waiting_for_clients.clone())
+        .filter_if_none(waiting_for_clients.clone())
         .all_ticks()
         .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
         .for_each(q!(move |(throughputs, num_client_machines)| {
@@ -290,7 +290,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     combined_latencies
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
         .batch(&print_tick, nondet_client_count)
-        .continue_unless(waiting_for_clients)
+        .filter_if_none(waiting_for_clients)
         .all_ticks()
         .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
         .for_each(q!(move |latencies| {

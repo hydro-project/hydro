@@ -506,6 +506,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2, 3, 4]);
     /// # }));
+    /// ```
     pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder, R>
     where
         T: IntoIterator<Item = U>,
@@ -566,6 +567,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// ```
     pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B, O, R>
     where
         F: Fn(T) -> Option<U> + 'a,
@@ -601,6 +603,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// ```
     pub fn cross_singleton<O2>(
         self,
         other: impl Into<Optional<O2, L, Bounded>>,
@@ -621,15 +624,82 @@ where
         )
     }
 
-    /// Allow this stream through if the argument (a Bounded Optional) is non-empty, otherwise the output is empty.
-    pub fn continue_if<U>(self, signal: Optional<U, L, Bounded>) -> Stream<T, L, B, O, R> {
+    /// Passes this stream through if the argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is empty.
+    ///
+    /// Useful for gating the release of elements based on a condition, such as only processing requests if you are the
+    /// leader of a cluster.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![1, 2, 3, 4]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![5, 6, 7, 8]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// batch_first_tick.chain(batch_second_tick)
+    ///   .filter_if_some(some_on_first_tick)
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [1, 2, 3, 4]
+    /// # for w in vec![1, 2, 3, 4] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter_if_some<U>(self, signal: Optional<U, L, Bounded>) -> Stream<T, L, B, O, R> {
         self.cross_singleton(signal.map(q!(|_u| ())))
             .map(q!(|(d, _signal)| d))
     }
 
-    /// Allow this stream through if the argument (a Bounded Optional) is empty, otherwise the output is empty.
-    pub fn continue_unless<U>(self, other: Optional<U, L, Bounded>) -> Stream<T, L, B, O, R> {
-        self.continue_if(other.into_stream().count().filter(q!(|c| *c == 0)))
+    /// Passes this stream through if the argument (a [`Bounded`] [`Optional`]`) is null, otherwise the output is empty.
+    ///
+    /// Useful for gating the release of elements based on a condition, such as triggering a protocol if you are missing
+    /// some local state.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![1, 2, 3, 4]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![5, 6, 7, 8]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// batch_first_tick.chain(batch_second_tick)
+    ///   .filter_if_none(some_on_first_tick)
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [5, 6, 7, 8]
+    /// # for w in vec![5, 6, 7, 8] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter_if_none<U>(self, other: Optional<U, L, Bounded>) -> Stream<T, L, B, O, R> {
+        self.filter_if_some(
+            other
+                .map(q!(|_| ()))
+                .into_singleton()
+                .filter(q!(|o| o.is_none())),
+        )
     }
 
     /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams, returning all
@@ -649,6 +719,7 @@ where
     /// # let expected = HashSet::from([('a', 1), ('b', 1), ('c', 1), ('a', 2), ('b', 2), ('c', 2), ('a', 3), ('b', 3), ('c', 3)]);
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
+    /// ```
     pub fn cross_product<T2, O2: Ordering>(
         self,
         other: Stream<T2, L, B, O2, R>,
@@ -678,12 +749,13 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    ///     process.source_iter(q!(vec![1, 2, 3, 2, 1, 4])).unique()
+    /// process.source_iter(q!(vec![1, 2, 3, 2, 1, 4])).unique()
     /// # }, |mut stream| async move {
     /// # for w in vec![1, 2, 3, 4] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// ```
     pub fn unique(self) -> Stream<T, L, B, O, ExactlyOnce>
     where
         T: Eq + Hash,
@@ -719,6 +791,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// ```
     pub fn filter_not_in<O2: Ordering>(
         self,
         other: Stream<T, L, Bounded, O2, R>,
@@ -2314,7 +2387,7 @@ where
 
         let tick = self.location.tick();
         self.batch(&tick, nondet)
-            .continue_if(samples.batch(&tick, nondet).first())
+            .filter_if_some(samples.batch(&tick, nondet).first())
             .all_ticks()
             .weakest_retries()
     }
