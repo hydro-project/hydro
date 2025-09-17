@@ -1455,6 +1455,14 @@ where
             _phantom_order: Default::default(),
         }
     }
+
+    #[expect(missing_docs, reason = "TODO")]
+    pub fn defer_tick(self) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+        KeyedStream {
+            underlying: self.underlying.defer_tick(),
+            _phantom_order: Default::default(),
+        }
+    }
 }
 
 #[cfg(test)]
