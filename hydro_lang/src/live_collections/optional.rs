@@ -658,7 +658,9 @@ where
 {
     /// Returns an optional value corresponding to the latest snapshot of the optional
     /// being atomically processed. The snapshot at tick `t + 1` is guaranteed to include
-    /// at least all relevant data that contributed to the snapshot at tick `t`.
+    /// at least all relevant data that contributed to the snapshot at tick `t`. Furthermore,
+    /// all snapshots of this optional into the atomic-associated tick will observe the
+    /// same value each tick.
     ///
     /// # Non-Determinism
     /// Because this picks a snapshot of a optional whose value is continuously changing,
@@ -674,7 +676,8 @@ where
         )
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Returns this optional back into a top-level, asynchronous execution context where updates
+    /// to the value will be asynchronously propagated.
     pub fn end_atomic(self) -> Optional<T, L, B> {
         Optional::new(self.location.tick.l, self.ir_node.into_inner())
     }
@@ -684,7 +687,17 @@ impl<'a, T, L, B: Boundedness> Optional<T, L, B>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
-    #[expect(missing_docs, reason = "TODO")]
+    /// Shifts this optional into an atomic context, which guarantees that any downstream logic
+    /// will observe the same version of the value and will be executed synchronously before any
+    /// outputs are yielded (in [`Optional::end_atomic`]).
+    ///
+    /// This is useful to enforce local consistency constraints, such as ensuring that several readers
+    /// see a consistent version of local state (since otherwise each [`Optional::snapshot`] may pick
+    /// a different version).
+    ///
+    /// Entering an atomic section requires a [`Tick`] argument that declares where the optional will
+    /// be atomically processed. Snapshotting an optional into the _same_ [`Tick`] will preserve the
+    /// synchronous execution, and all such snapshots in the same [`Tick`] will have the same value.
     pub fn atomic(self, tick: &Tick<L>) -> Optional<T, Atomic<L>, B> {
         Optional::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
     }

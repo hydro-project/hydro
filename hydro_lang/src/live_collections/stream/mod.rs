@@ -1804,7 +1804,30 @@ where
 impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     Stream<(K, V), L, B, O, R>
 {
-    #[expect(missing_docs, reason = "TODO")]
+    /// Transforms this stream into a [`KeyedStream`], where the first element of each tuple
+    /// is used as the key and the second element is added to the entries associated with that key.
+    ///
+    /// Because [`KeyedStream`] lazily groups values into buckets, this operator has zero computational
+    /// cost and _does not_ require that the key type is hashable. Keyed streams are useful for
+    /// performing grouped aggregations, but also for more precise ordering guarantees such as
+    /// total ordering _within_ each group but no ordering _across_ groups.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2, 3], 2: [4] }
+    /// # for w in vec![(1, 2), (1, 3), (2, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
         KeyedStream {
             underlying: self.weakest_ordering(),
@@ -2194,12 +2217,13 @@ where
         )
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Yields the elements of this stream back into a top-level, asynchronous execution context.
+    /// See [`Stream::atomic`] for more details.
     pub fn end_atomic(self) -> Stream<T, L, B, O, R> {
         Stream::new(self.location.tick.l, self.ir_node.into_inner())
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Gets the [`Tick`] inside which this stream is synchronously processed. See [`Stream::atomic`].
     pub fn atomic_source(&self) -> Tick<L> {
         self.location.tick.clone()
     }
@@ -2209,7 +2233,14 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
-    #[expect(missing_docs, reason = "TODO")]
+    /// Shifts this stream into an atomic context, which guarantees that any downstream logic
+    /// will all be executed synchronously before any outputs are yielded (in [`Stream::end_atomic`]).
+    ///
+    /// This is useful to enforce local consistency constraints, such as ensuring that a write is
+    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
+    /// argument that declares where the stream will be atomically processed. Batching a stream into
+    /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
+    /// [`Tick`] will introduce asynchrony.
     pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, O, R> {
         Stream::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
     }
@@ -2257,7 +2288,8 @@ where
 
     /// Given a tick, returns a stream corresponding to a batch of elements segmented by
     /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
-    /// the order of the input.
+    /// the order of the input. The output stream will execute in the [`Tick`] that was
+    /// used to create the atomic section.
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
@@ -2417,11 +2449,12 @@ where
     }
 }
 
-#[expect(missing_docs, reason = "TODO")]
 impl<'a, T, L, O: Ordering, R: Retries> Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
+    /// Asynchronously yields this batch of elements outside the tick as an unbounded stream,
+    /// which will stream all the elements across _all_ tick iterations by concatenating the batches.
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, O, R> {
         Stream::new(
             self.location.outer().clone(),
@@ -2432,6 +2465,12 @@ where
         )
     }
 
+    /// Synchronously yields this batch of elements outside the tick as an unbounded stream,
+    /// which will stream all the elements across _all_ tick iterations by concatenating the batches.
+    ///
+    /// Unlike [`Stream::all_ticks`], this preserves synchronous execution, as the output stream
+    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+    /// stream's [`Tick`] context.
     pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded, O, R> {
         Stream::new(
             Atomic {
@@ -2444,6 +2483,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn persist(self) -> Stream<T, Tick<L>, Bounded, O, R>
     where
         T: Clone,
@@ -2457,6 +2497,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn defer_tick(self) -> Stream<T, Tick<L>, Bounded, O, R> {
         Stream::new(
             self.location.clone(),
@@ -2467,6 +2508,7 @@ where
         )
     }
 
+    #[expect(missing_docs, reason = "TODO")]
     pub fn delta(self) -> Stream<T, Tick<L>, Bounded, O, R> {
         Stream::new(
             self.location.clone(),
