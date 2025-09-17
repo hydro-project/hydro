@@ -7,13 +7,15 @@ use stageleft::quote_type;
 use super::KeyedStream;
 use crate::compile::ir::{DebugInstantiate, HydroNode};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
-use crate::live_collections::stream::Stream;
 use crate::live_collections::stream::networking::{deserialize_bincode, serialize_bincode};
+use crate::live_collections::stream::{Ordering, Retries, Stream};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::{Cluster, MemberId, Process};
 
-impl<'a, T, L, L2, B: Boundedness, O, R> KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R>
+{
     /// Sends each group of this stream to a specific member of a cluster, with the [`MemberId`] key
     /// identifying the recipient for each group and using [`bincode`] to serialize/deserialize messages.
     ///
@@ -73,7 +75,9 @@ impl<'a, T, L, L2, B: Boundedness, O, R> KeyedStream<MemberId<L2>, T, Process<'a
     }
 }
 
-impl<'a, T, L, L2, B: Boundedness, O, R> KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R>
+{
     /// Sends each group of this stream at each source member to a specific member of a destination
     /// cluster, with the [`MemberId`] key identifying the recipient for each group and using
     /// [`bincode`] to serialize/deserialize messages.
