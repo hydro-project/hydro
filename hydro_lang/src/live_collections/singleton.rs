@@ -899,7 +899,27 @@ where
         )
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Converts this singleton into a [`Stream`] containing a single element, the value.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let batch_input = process
+    ///   .source_iter(q!(vec![123, 456]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// batch_input.clone().chain(
+    ///   batch_input.count().into_stream()
+    /// ).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [123, 456, 2]
+    /// # for w in vec![123, 456, 2] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(self.location, self.ir_node.into_inner())
     }
