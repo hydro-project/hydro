@@ -641,93 +641,93 @@
 <a href=#641 id=641 data-nosnippet>641</a>    </span>}
 <a href=#642 id=642 data-nosnippet>642</a>}
 <a href=#643 id=643 data-nosnippet>643</a>
-<a href=#644 id=644 data-nosnippet>644</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#645 id=645 data-nosnippet>645</a></span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L&gt; Optional&lt;T, L, Bounded&gt;
-<a href=#646 id=646 data-nosnippet>646</a><span class="kw">where
-<a href=#647 id=647 data-nosnippet>647</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
-<a href=#648 id=648 data-nosnippet>648</a>{
-<a href=#649 id=649 data-nosnippet>649</a>    <span class="doccomment">/// Filters this optional, passing through the optional value if it is non-null **and** the
-<a href=#650 id=650 data-nosnippet>650</a>    /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
-<a href=#651 id=651 data-nosnippet>651</a>    ///
-<a href=#652 id=652 data-nosnippet>652</a>    /// Useful for conditionally processing, such as only emitting an optional's value outside
-<a href=#653 id=653 data-nosnippet>653</a>    /// a tick if some other condition is satisfied.
-<a href=#654 id=654 data-nosnippet>654</a>    ///
-<a href=#655 id=655 data-nosnippet>655</a>    /// # Example
-<a href=#656 id=656 data-nosnippet>656</a>    /// ```rust
-<a href=#657 id=657 data-nosnippet>657</a>    /// # use hydro_lang::prelude::*;
-<a href=#658 id=658 data-nosnippet>658</a>    /// # use futures::StreamExt;
-<a href=#659 id=659 data-nosnippet>659</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-<a href=#660 id=660 data-nosnippet>660</a>    /// let tick = process.tick();
-<a href=#661 id=661 data-nosnippet>661</a>    /// // ticks are lazy by default, forces the second tick to run
-<a href=#662 id=662 data-nosnippet>662</a>    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-<a href=#663 id=663 data-nosnippet>663</a>    ///
-<a href=#664 id=664 data-nosnippet>664</a>    /// let batch_first_tick = process
-<a href=#665 id=665 data-nosnippet>665</a>    ///   .source_iter(q!(vec![]))
-<a href=#666 id=666 data-nosnippet>666</a>    ///   .batch(&amp;tick, nondet!(/** test */));
-<a href=#667 id=667 data-nosnippet>667</a>    /// let batch_second_tick = process
-<a href=#668 id=668 data-nosnippet>668</a>    ///   .source_iter(q!(vec![456]))
-<a href=#669 id=669 data-nosnippet>669</a>    ///   .batch(&amp;tick, nondet!(/** test */))
-<a href=#670 id=670 data-nosnippet>670</a>    ///   .defer_tick(); // appears on the second tick
-<a href=#671 id=671 data-nosnippet>671</a>    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
-<a href=#672 id=672 data-nosnippet>672</a>    /// batch_first_tick.chain(batch_second_tick).first()
-<a href=#673 id=673 data-nosnippet>673</a>    ///   .filter_if_some(some_on_first_tick)
-<a href=#674 id=674 data-nosnippet>674</a>    ///   .unwrap_or(tick.singleton(q!(789)))
-<a href=#675 id=675 data-nosnippet>675</a>    ///   .all_ticks()
-<a href=#676 id=676 data-nosnippet>676</a>    /// # }, |mut stream| async move {
-<a href=#677 id=677 data-nosnippet>677</a>    /// // [789, 789]
-<a href=#678 id=678 data-nosnippet>678</a>    /// # for w in vec![789, 789] {
-<a href=#679 id=679 data-nosnippet>679</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
-<a href=#680 id=680 data-nosnippet>680</a>    /// # }
-<a href=#681 id=681 data-nosnippet>681</a>    /// # }));
-<a href=#682 id=682 data-nosnippet>682</a>    /// ```
-<a href=#683 id=683 data-nosnippet>683</a>    </span><span class="kw">pub fn </span>filter_if_some&lt;U&gt;(<span class="self">self</span>, signal: Optional&lt;U, L, Bounded&gt;) -&gt; Optional&lt;T, L, Bounded&gt; {
-<a href=#684 id=684 data-nosnippet>684</a>        <span class="self">self</span>.zip(signal.map(<span class="macro">q!</span>(|_u| ()))).map(<span class="macro">q!</span>(|(d, _signal)| d))
-<a href=#685 id=685 data-nosnippet>685</a>    }
-<a href=#686 id=686 data-nosnippet>686</a>
-<a href=#687 id=687 data-nosnippet>687</a>    <span class="doccomment">/// Filters this optional, passing through the optional value if it is non-null **and** the
-<a href=#688 id=688 data-nosnippet>688</a>    /// argument (a [`Bounded`] [`Optional`]`) is _null_, otherwise the output is null.
-<a href=#689 id=689 data-nosnippet>689</a>    ///
-<a href=#690 id=690 data-nosnippet>690</a>    /// Useful for conditionally processing, such as only emitting an optional's value outside
-<a href=#691 id=691 data-nosnippet>691</a>    /// a tick if some other condition is satisfied.
-<a href=#692 id=692 data-nosnippet>692</a>    ///
-<a href=#693 id=693 data-nosnippet>693</a>    /// # Example
-<a href=#694 id=694 data-nosnippet>694</a>    /// ```rust
-<a href=#695 id=695 data-nosnippet>695</a>    /// # use hydro_lang::prelude::*;
-<a href=#696 id=696 data-nosnippet>696</a>    /// # use futures::StreamExt;
-<a href=#697 id=697 data-nosnippet>697</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-<a href=#698 id=698 data-nosnippet>698</a>    /// let tick = process.tick();
-<a href=#699 id=699 data-nosnippet>699</a>    /// // ticks are lazy by default, forces the second tick to run
-<a href=#700 id=700 data-nosnippet>700</a>    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-<a href=#701 id=701 data-nosnippet>701</a>    ///
-<a href=#702 id=702 data-nosnippet>702</a>    /// let batch_first_tick = process
-<a href=#703 id=703 data-nosnippet>703</a>    ///   .source_iter(q!(vec![]))
-<a href=#704 id=704 data-nosnippet>704</a>    ///   .batch(&amp;tick, nondet!(/** test */));
-<a href=#705 id=705 data-nosnippet>705</a>    /// let batch_second_tick = process
-<a href=#706 id=706 data-nosnippet>706</a>    ///   .source_iter(q!(vec![456]))
-<a href=#707 id=707 data-nosnippet>707</a>    ///   .batch(&amp;tick, nondet!(/** test */))
-<a href=#708 id=708 data-nosnippet>708</a>    ///   .defer_tick(); // appears on the second tick
-<a href=#709 id=709 data-nosnippet>709</a>    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
-<a href=#710 id=710 data-nosnippet>710</a>    /// batch_first_tick.chain(batch_second_tick).first()
-<a href=#711 id=711 data-nosnippet>711</a>    ///   .filter_if_none(some_on_first_tick)
-<a href=#712 id=712 data-nosnippet>712</a>    ///   .unwrap_or(tick.singleton(q!(789)))
-<a href=#713 id=713 data-nosnippet>713</a>    ///   .all_ticks()
-<a href=#714 id=714 data-nosnippet>714</a>    /// # }, |mut stream| async move {
-<a href=#715 id=715 data-nosnippet>715</a>    /// // [789, 789]
-<a href=#716 id=716 data-nosnippet>716</a>    /// # for w in vec![789, 456] {
-<a href=#717 id=717 data-nosnippet>717</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
-<a href=#718 id=718 data-nosnippet>718</a>    /// # }
-<a href=#719 id=719 data-nosnippet>719</a>    /// # }));
-<a href=#720 id=720 data-nosnippet>720</a>    /// ```
-<a href=#721 id=721 data-nosnippet>721</a>    </span><span class="kw">pub fn </span>filter_if_none&lt;U&gt;(<span class="self">self</span>, other: Optional&lt;U, L, Bounded&gt;) -&gt; Optional&lt;T, L, Bounded&gt; {
-<a href=#722 id=722 data-nosnippet>722</a>        <span class="self">self</span>.filter_if_some(
-<a href=#723 id=723 data-nosnippet>723</a>            other
-<a href=#724 id=724 data-nosnippet>724</a>                .map(<span class="macro">q!</span>(|<span class="kw">_</span>| ()))
-<a href=#725 id=725 data-nosnippet>725</a>                .into_singleton()
-<a href=#726 id=726 data-nosnippet>726</a>                .filter(<span class="macro">q!</span>(|o| o.is_none())),
-<a href=#727 id=727 data-nosnippet>727</a>        )
-<a href=#728 id=728 data-nosnippet>728</a>    }
-<a href=#729 id=729 data-nosnippet>729</a>
-<a href=#730 id=730 data-nosnippet>730</a>    <span class="kw">pub fn </span>then&lt;U&gt;(<span class="self">self</span>, value: Singleton&lt;U, L, Bounded&gt;) -&gt; Optional&lt;U, L, Bounded&gt; {
+<a href=#644 id=644 data-nosnippet>644</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L&gt; Optional&lt;T, L, Bounded&gt;
+<a href=#645 id=645 data-nosnippet>645</a><span class="kw">where
+<a href=#646 id=646 data-nosnippet>646</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
+<a href=#647 id=647 data-nosnippet>647</a>{
+<a href=#648 id=648 data-nosnippet>648</a>    <span class="doccomment">/// Filters this optional, passing through the optional value if it is non-null **and** the
+<a href=#649 id=649 data-nosnippet>649</a>    /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
+<a href=#650 id=650 data-nosnippet>650</a>    ///
+<a href=#651 id=651 data-nosnippet>651</a>    /// Useful for conditionally processing, such as only emitting an optional's value outside
+<a href=#652 id=652 data-nosnippet>652</a>    /// a tick if some other condition is satisfied.
+<a href=#653 id=653 data-nosnippet>653</a>    ///
+<a href=#654 id=654 data-nosnippet>654</a>    /// # Example
+<a href=#655 id=655 data-nosnippet>655</a>    /// ```rust
+<a href=#656 id=656 data-nosnippet>656</a>    /// # use hydro_lang::prelude::*;
+<a href=#657 id=657 data-nosnippet>657</a>    /// # use futures::StreamExt;
+<a href=#658 id=658 data-nosnippet>658</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+<a href=#659 id=659 data-nosnippet>659</a>    /// let tick = process.tick();
+<a href=#660 id=660 data-nosnippet>660</a>    /// // ticks are lazy by default, forces the second tick to run
+<a href=#661 id=661 data-nosnippet>661</a>    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+<a href=#662 id=662 data-nosnippet>662</a>    ///
+<a href=#663 id=663 data-nosnippet>663</a>    /// let batch_first_tick = process
+<a href=#664 id=664 data-nosnippet>664</a>    ///   .source_iter(q!(vec![]))
+<a href=#665 id=665 data-nosnippet>665</a>    ///   .batch(&amp;tick, nondet!(/** test */));
+<a href=#666 id=666 data-nosnippet>666</a>    /// let batch_second_tick = process
+<a href=#667 id=667 data-nosnippet>667</a>    ///   .source_iter(q!(vec![456]))
+<a href=#668 id=668 data-nosnippet>668</a>    ///   .batch(&amp;tick, nondet!(/** test */))
+<a href=#669 id=669 data-nosnippet>669</a>    ///   .defer_tick(); // appears on the second tick
+<a href=#670 id=670 data-nosnippet>670</a>    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+<a href=#671 id=671 data-nosnippet>671</a>    /// batch_first_tick.chain(batch_second_tick).first()
+<a href=#672 id=672 data-nosnippet>672</a>    ///   .filter_if_some(some_on_first_tick)
+<a href=#673 id=673 data-nosnippet>673</a>    ///   .unwrap_or(tick.singleton(q!(789)))
+<a href=#674 id=674 data-nosnippet>674</a>    ///   .all_ticks()
+<a href=#675 id=675 data-nosnippet>675</a>    /// # }, |mut stream| async move {
+<a href=#676 id=676 data-nosnippet>676</a>    /// // [789, 789]
+<a href=#677 id=677 data-nosnippet>677</a>    /// # for w in vec![789, 789] {
+<a href=#678 id=678 data-nosnippet>678</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
+<a href=#679 id=679 data-nosnippet>679</a>    /// # }
+<a href=#680 id=680 data-nosnippet>680</a>    /// # }));
+<a href=#681 id=681 data-nosnippet>681</a>    /// ```
+<a href=#682 id=682 data-nosnippet>682</a>    </span><span class="kw">pub fn </span>filter_if_some&lt;U&gt;(<span class="self">self</span>, signal: Optional&lt;U, L, Bounded&gt;) -&gt; Optional&lt;T, L, Bounded&gt; {
+<a href=#683 id=683 data-nosnippet>683</a>        <span class="self">self</span>.zip(signal.map(<span class="macro">q!</span>(|_u| ()))).map(<span class="macro">q!</span>(|(d, _signal)| d))
+<a href=#684 id=684 data-nosnippet>684</a>    }
+<a href=#685 id=685 data-nosnippet>685</a>
+<a href=#686 id=686 data-nosnippet>686</a>    <span class="doccomment">/// Filters this optional, passing through the optional value if it is non-null **and** the
+<a href=#687 id=687 data-nosnippet>687</a>    /// argument (a [`Bounded`] [`Optional`]`) is _null_, otherwise the output is null.
+<a href=#688 id=688 data-nosnippet>688</a>    ///
+<a href=#689 id=689 data-nosnippet>689</a>    /// Useful for conditionally processing, such as only emitting an optional's value outside
+<a href=#690 id=690 data-nosnippet>690</a>    /// a tick if some other condition is satisfied.
+<a href=#691 id=691 data-nosnippet>691</a>    ///
+<a href=#692 id=692 data-nosnippet>692</a>    /// # Example
+<a href=#693 id=693 data-nosnippet>693</a>    /// ```rust
+<a href=#694 id=694 data-nosnippet>694</a>    /// # use hydro_lang::prelude::*;
+<a href=#695 id=695 data-nosnippet>695</a>    /// # use futures::StreamExt;
+<a href=#696 id=696 data-nosnippet>696</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+<a href=#697 id=697 data-nosnippet>697</a>    /// let tick = process.tick();
+<a href=#698 id=698 data-nosnippet>698</a>    /// // ticks are lazy by default, forces the second tick to run
+<a href=#699 id=699 data-nosnippet>699</a>    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+<a href=#700 id=700 data-nosnippet>700</a>    ///
+<a href=#701 id=701 data-nosnippet>701</a>    /// let batch_first_tick = process
+<a href=#702 id=702 data-nosnippet>702</a>    ///   .source_iter(q!(vec![]))
+<a href=#703 id=703 data-nosnippet>703</a>    ///   .batch(&amp;tick, nondet!(/** test */));
+<a href=#704 id=704 data-nosnippet>704</a>    /// let batch_second_tick = process
+<a href=#705 id=705 data-nosnippet>705</a>    ///   .source_iter(q!(vec![456]))
+<a href=#706 id=706 data-nosnippet>706</a>    ///   .batch(&amp;tick, nondet!(/** test */))
+<a href=#707 id=707 data-nosnippet>707</a>    ///   .defer_tick(); // appears on the second tick
+<a href=#708 id=708 data-nosnippet>708</a>    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+<a href=#709 id=709 data-nosnippet>709</a>    /// batch_first_tick.chain(batch_second_tick).first()
+<a href=#710 id=710 data-nosnippet>710</a>    ///   .filter_if_none(some_on_first_tick)
+<a href=#711 id=711 data-nosnippet>711</a>    ///   .unwrap_or(tick.singleton(q!(789)))
+<a href=#712 id=712 data-nosnippet>712</a>    ///   .all_ticks()
+<a href=#713 id=713 data-nosnippet>713</a>    /// # }, |mut stream| async move {
+<a href=#714 id=714 data-nosnippet>714</a>    /// // [789, 789]
+<a href=#715 id=715 data-nosnippet>715</a>    /// # for w in vec![789, 456] {
+<a href=#716 id=716 data-nosnippet>716</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
+<a href=#717 id=717 data-nosnippet>717</a>    /// # }
+<a href=#718 id=718 data-nosnippet>718</a>    /// # }));
+<a href=#719 id=719 data-nosnippet>719</a>    /// ```
+<a href=#720 id=720 data-nosnippet>720</a>    </span><span class="kw">pub fn </span>filter_if_none&lt;U&gt;(<span class="self">self</span>, other: Optional&lt;U, L, Bounded&gt;) -&gt; Optional&lt;T, L, Bounded&gt; {
+<a href=#721 id=721 data-nosnippet>721</a>        <span class="self">self</span>.filter_if_some(
+<a href=#722 id=722 data-nosnippet>722</a>            other
+<a href=#723 id=723 data-nosnippet>723</a>                .map(<span class="macro">q!</span>(|<span class="kw">_</span>| ()))
+<a href=#724 id=724 data-nosnippet>724</a>                .into_singleton()
+<a href=#725 id=725 data-nosnippet>725</a>                .filter(<span class="macro">q!</span>(|o| o.is_none())),
+<a href=#726 id=726 data-nosnippet>726</a>        )
+<a href=#727 id=727 data-nosnippet>727</a>    }
+<a href=#728 id=728 data-nosnippet>728</a>
+<a href=#729 id=729 data-nosnippet>729</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#730 id=730 data-nosnippet>730</a>    </span><span class="kw">pub fn </span>then&lt;U&gt;(<span class="self">self</span>, value: Singleton&lt;U, L, Bounded&gt;) -&gt; Optional&lt;U, L, Bounded&gt; {
 <a href=#731 id=731 data-nosnippet>731</a>        value.filter_if_some(<span class="self">self</span>)
 <a href=#732 id=732 data-nosnippet>732</a>    }
 <a href=#733 id=733 data-nosnippet>733</a>}
@@ -834,111 +834,111 @@
 <a href=#834 id=834 data-nosnippet>834</a><span class="kw">where
 <a href=#835 id=835 data-nosnippet>835</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
 <a href=#836 id=836 data-nosnippet>836</a>{
-<a href=#837 id=837 data-nosnippet>837</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#838 id=838 data-nosnippet>838</a>    </span><span class="kw">pub fn </span>all_ticks(<span class="self">self</span>) -&gt; Stream&lt;T, L, Unbounded, TotalOrder, ExactlyOnce&gt; {
-<a href=#839 id=839 data-nosnippet>839</a>        Stream::new(
-<a href=#840 id=840 data-nosnippet>840</a>            <span class="self">self</span>.location.outer().clone(),
-<a href=#841 id=841 data-nosnippet>841</a>            HydroNode::Persist {
-<a href=#842 id=842 data-nosnippet>842</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#843 id=843 data-nosnippet>843</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#844 id=844 data-nosnippet>844</a>            },
-<a href=#845 id=845 data-nosnippet>845</a>        )
-<a href=#846 id=846 data-nosnippet>846</a>    }
-<a href=#847 id=847 data-nosnippet>847</a>
-<a href=#848 id=848 data-nosnippet>848</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#849 id=849 data-nosnippet>849</a>    </span><span class="kw">pub fn </span>all_ticks_atomic(<span class="self">self</span>) -&gt; Stream&lt;T, Atomic&lt;L&gt;, Unbounded, TotalOrder, ExactlyOnce&gt; {
-<a href=#850 id=850 data-nosnippet>850</a>        Stream::new(
-<a href=#851 id=851 data-nosnippet>851</a>            Atomic {
-<a href=#852 id=852 data-nosnippet>852</a>                tick: <span class="self">self</span>.location.clone(),
-<a href=#853 id=853 data-nosnippet>853</a>            },
-<a href=#854 id=854 data-nosnippet>854</a>            HydroNode::Persist {
-<a href=#855 id=855 data-nosnippet>855</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#856 id=856 data-nosnippet>856</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#857 id=857 data-nosnippet>857</a>            },
-<a href=#858 id=858 data-nosnippet>858</a>        )
-<a href=#859 id=859 data-nosnippet>859</a>    }
-<a href=#860 id=860 data-nosnippet>860</a>
-<a href=#861 id=861 data-nosnippet>861</a>    <span class="doccomment">/// Asynchronously yields this optional outside the tick as an unbounded optional, which will
-<a href=#862 id=862 data-nosnippet>862</a>    /// be asynchronously updated with the latest value of the optional inside the tick, including
-<a href=#863 id=863 data-nosnippet>863</a>    /// whether the optional is null or not.
-<a href=#864 id=864 data-nosnippet>864</a>    ///
-<a href=#865 id=865 data-nosnippet>865</a>    /// This converts a bounded value _inside_ a tick into an asynchronous value outside the
-<a href=#866 id=866 data-nosnippet>866</a>    /// tick that tracks the inner value. This is useful for getting the value as of the
-<a href=#867 id=867 data-nosnippet>867</a>    /// "most recent" tick, but note that updates are propagated asynchronously outside the tick.
-<a href=#868 id=868 data-nosnippet>868</a>    ///
-<a href=#869 id=869 data-nosnippet>869</a>    /// # Example
-<a href=#870 id=870 data-nosnippet>870</a>    /// ```rust
-<a href=#871 id=871 data-nosnippet>871</a>    /// # use hydro_lang::prelude::*;
-<a href=#872 id=872 data-nosnippet>872</a>    /// # use futures::StreamExt;
-<a href=#873 id=873 data-nosnippet>873</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-<a href=#874 id=874 data-nosnippet>874</a>    /// let tick = process.tick();
-<a href=#875 id=875 data-nosnippet>875</a>    /// // ticks are lazy by default, forces the second tick to run
-<a href=#876 id=876 data-nosnippet>876</a>    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+<a href=#837 id=837 data-nosnippet>837</a>    <span class="doccomment">/// Asynchronously yields the value of this singleton outside the tick as an unbounded stream,
+<a href=#838 id=838 data-nosnippet>838</a>    /// which will stream the value computed in _each_ tick as a separate stream element (skipping
+<a href=#839 id=839 data-nosnippet>839</a>    /// null values).
+<a href=#840 id=840 data-nosnippet>840</a>    ///
+<a href=#841 id=841 data-nosnippet>841</a>    /// Unlike [`Optional::latest`], the value computed in each tick is emitted separately,
+<a href=#842 id=842 data-nosnippet>842</a>    /// producing one element in the output for each (non-null) tick. This is useful for batched
+<a href=#843 id=843 data-nosnippet>843</a>    /// computations, where the results from each tick must be combined together.
+<a href=#844 id=844 data-nosnippet>844</a>    ///
+<a href=#845 id=845 data-nosnippet>845</a>    /// # Example
+<a href=#846 id=846 data-nosnippet>846</a>    /// ```rust
+<a href=#847 id=847 data-nosnippet>847</a>    /// # use hydro_lang::prelude::*;
+<a href=#848 id=848 data-nosnippet>848</a>    /// # use futures::StreamExt;
+<a href=#849 id=849 data-nosnippet>849</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+<a href=#850 id=850 data-nosnippet>850</a>    /// # let tick = process.tick();
+<a href=#851 id=851 data-nosnippet>851</a>    /// # // ticks are lazy by default, forces the second tick to run
+<a href=#852 id=852 data-nosnippet>852</a>    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+<a href=#853 id=853 data-nosnippet>853</a>    /// # let batch_first_tick = process
+<a href=#854 id=854 data-nosnippet>854</a>    /// #   .source_iter(q!(vec![]))
+<a href=#855 id=855 data-nosnippet>855</a>    /// #   .batch(&amp;tick, nondet!(/** test */));
+<a href=#856 id=856 data-nosnippet>856</a>    /// # let batch_second_tick = process
+<a href=#857 id=857 data-nosnippet>857</a>    /// #   .source_iter(q!(vec![1, 2, 3]))
+<a href=#858 id=858 data-nosnippet>858</a>    /// #   .batch(&amp;tick, nondet!(/** test */))
+<a href=#859 id=859 data-nosnippet>859</a>    /// #   .defer_tick(); // appears on the second tick
+<a href=#860 id=860 data-nosnippet>860</a>    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+<a href=#861 id=861 data-nosnippet>861</a>    /// input_batch // first tick: [], second tick: [1, 2, 3]
+<a href=#862 id=862 data-nosnippet>862</a>    ///     .max()
+<a href=#863 id=863 data-nosnippet>863</a>    ///     .all_ticks()
+<a href=#864 id=864 data-nosnippet>864</a>    /// # }, |mut stream| async move {
+<a href=#865 id=865 data-nosnippet>865</a>    /// // [3]
+<a href=#866 id=866 data-nosnippet>866</a>    /// # for w in vec![3] {
+<a href=#867 id=867 data-nosnippet>867</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
+<a href=#868 id=868 data-nosnippet>868</a>    /// # }
+<a href=#869 id=869 data-nosnippet>869</a>    /// # }));
+<a href=#870 id=870 data-nosnippet>870</a>    /// ```
+<a href=#871 id=871 data-nosnippet>871</a>    </span><span class="kw">pub fn </span>all_ticks(<span class="self">self</span>) -&gt; Stream&lt;T, L, Unbounded, TotalOrder, ExactlyOnce&gt; {
+<a href=#872 id=872 data-nosnippet>872</a>        <span class="self">self</span>.into_stream().all_ticks()
+<a href=#873 id=873 data-nosnippet>873</a>    }
+<a href=#874 id=874 data-nosnippet>874</a>
+<a href=#875 id=875 data-nosnippet>875</a>    <span class="doccomment">/// Synchronously yields the value of this optional outside the tick as an unbounded stream,
+<a href=#876 id=876 data-nosnippet>876</a>    /// which will stream the value computed in _each_ tick as a separate stream element.
 <a href=#877 id=877 data-nosnippet>877</a>    ///
-<a href=#878 id=878 data-nosnippet>878</a>    /// let batch_first_tick = process
-<a href=#879 id=879 data-nosnippet>879</a>    ///   .source_iter(q!(vec![]))
-<a href=#880 id=880 data-nosnippet>880</a>    ///   .batch(&amp;tick, nondet!(/** test */));
-<a href=#881 id=881 data-nosnippet>881</a>    /// let batch_second_tick = process
-<a href=#882 id=882 data-nosnippet>882</a>    ///   .source_iter(q!(vec![1, 2, 3]))
-<a href=#883 id=883 data-nosnippet>883</a>    ///   .batch(&amp;tick, nondet!(/** test */))
-<a href=#884 id=884 data-nosnippet>884</a>    ///   .defer_tick(); // appears on the second tick
-<a href=#885 id=885 data-nosnippet>885</a>    ///
-<a href=#886 id=886 data-nosnippet>886</a>    /// batch_first_tick.chain(batch_second_tick)
-<a href=#887 id=887 data-nosnippet>887</a>    ///   .max()
-<a href=#888 id=888 data-nosnippet>888</a>    ///   .latest()
-<a href=#889 id=889 data-nosnippet>889</a>    /// # .into_singleton()
-<a href=#890 id=890 data-nosnippet>890</a>    /// # .sample_eager(nondet!(/** test */))
-<a href=#891 id=891 data-nosnippet>891</a>    /// # }, |mut stream| async move {
-<a href=#892 id=892 data-nosnippet>892</a>    /// // asynchronously changes from None ~&gt; 3
-<a href=#893 id=893 data-nosnippet>893</a>    /// # for w in vec![None, Some(3)] {
-<a href=#894 id=894 data-nosnippet>894</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
-<a href=#895 id=895 data-nosnippet>895</a>    /// # }
-<a href=#896 id=896 data-nosnippet>896</a>    /// # }));
-<a href=#897 id=897 data-nosnippet>897</a>    /// ```
-<a href=#898 id=898 data-nosnippet>898</a>    </span><span class="kw">pub fn </span>latest(<span class="self">self</span>) -&gt; Optional&lt;T, L, Unbounded&gt; {
-<a href=#899 id=899 data-nosnippet>899</a>        Optional::new(
-<a href=#900 id=900 data-nosnippet>900</a>            <span class="self">self</span>.location.outer().clone(),
-<a href=#901 id=901 data-nosnippet>901</a>            HydroNode::Persist {
-<a href=#902 id=902 data-nosnippet>902</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#903 id=903 data-nosnippet>903</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#904 id=904 data-nosnippet>904</a>            },
-<a href=#905 id=905 data-nosnippet>905</a>        )
-<a href=#906 id=906 data-nosnippet>906</a>    }
-<a href=#907 id=907 data-nosnippet>907</a>
-<a href=#908 id=908 data-nosnippet>908</a>    <span class="doccomment">/// Asynchronously yields this optional outside the tick as an unbounded optional, which will
-<a href=#909 id=909 data-nosnippet>909</a>    /// be updated with the latest value of the optional inside the tick.
-<a href=#910 id=910 data-nosnippet>910</a>    ///
-<a href=#911 id=911 data-nosnippet>911</a>    /// Unlike [`Optional::latest`], this preserves synchronous execution, as the output optional
-<a href=#912 id=912 data-nosnippet>912</a>    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
-<a href=#913 id=913 data-nosnippet>913</a>    /// optional's [`Tick`] context.
-<a href=#914 id=914 data-nosnippet>914</a>    </span><span class="kw">pub fn </span>latest_atomic(<span class="self">self</span>) -&gt; Optional&lt;T, Atomic&lt;L&gt;, Unbounded&gt; {
-<a href=#915 id=915 data-nosnippet>915</a>        Optional::new(
-<a href=#916 id=916 data-nosnippet>916</a>            Atomic {
-<a href=#917 id=917 data-nosnippet>917</a>                tick: <span class="self">self</span>.location.clone(),
-<a href=#918 id=918 data-nosnippet>918</a>            },
-<a href=#919 id=919 data-nosnippet>919</a>            HydroNode::Persist {
-<a href=#920 id=920 data-nosnippet>920</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#921 id=921 data-nosnippet>921</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#922 id=922 data-nosnippet>922</a>            },
-<a href=#923 id=923 data-nosnippet>923</a>        )
-<a href=#924 id=924 data-nosnippet>924</a>    }
-<a href=#925 id=925 data-nosnippet>925</a>
-<a href=#926 id=926 data-nosnippet>926</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#927 id=927 data-nosnippet>927</a>    </span><span class="kw">pub fn </span>defer_tick(<span class="self">self</span>) -&gt; Optional&lt;T, Tick&lt;L&gt;, Bounded&gt; {
-<a href=#928 id=928 data-nosnippet>928</a>        Optional::new(
-<a href=#929 id=929 data-nosnippet>929</a>            <span class="self">self</span>.location.clone(),
-<a href=#930 id=930 data-nosnippet>930</a>            HydroNode::DeferTick {
-<a href=#931 id=931 data-nosnippet>931</a>                input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#932 id=932 data-nosnippet>932</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#933 id=933 data-nosnippet>933</a>            },
-<a href=#934 id=934 data-nosnippet>934</a>        )
-<a href=#935 id=935 data-nosnippet>935</a>    }
-<a href=#936 id=936 data-nosnippet>936</a>
-<a href=#937 id=937 data-nosnippet>937</a>    <span class="attr">#[deprecated(note = <span class="string">"use .into_stream().persist()"</span>)]
-<a href=#938 id=938 data-nosnippet>938</a>    #[expect(missing_docs, reason = <span class="string">"deprecated"</span>)]
-<a href=#939 id=939 data-nosnippet>939</a>    </span><span class="kw">pub fn </span>persist(<span class="self">self</span>) -&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, TotalOrder, ExactlyOnce&gt; {
-<a href=#940 id=940 data-nosnippet>940</a>        Stream::new(
-<a href=#941 id=941 data-nosnippet>941</a>            <span class="self">self</span>.location.clone(),
+<a href=#878 id=878 data-nosnippet>878</a>    /// Unlike [`Optional::all_ticks`], this preserves synchronous execution, as the output stream
+<a href=#879 id=879 data-nosnippet>879</a>    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+<a href=#880 id=880 data-nosnippet>880</a>    /// optional's [`Tick`] context.
+<a href=#881 id=881 data-nosnippet>881</a>    </span><span class="kw">pub fn </span>all_ticks_atomic(<span class="self">self</span>) -&gt; Stream&lt;T, Atomic&lt;L&gt;, Unbounded, TotalOrder, ExactlyOnce&gt; {
+<a href=#882 id=882 data-nosnippet>882</a>        <span class="self">self</span>.into_stream().all_ticks_atomic()
+<a href=#883 id=883 data-nosnippet>883</a>    }
+<a href=#884 id=884 data-nosnippet>884</a>
+<a href=#885 id=885 data-nosnippet>885</a>    <span class="doccomment">/// Asynchronously yields this optional outside the tick as an unbounded optional, which will
+<a href=#886 id=886 data-nosnippet>886</a>    /// be asynchronously updated with the latest value of the optional inside the tick, including
+<a href=#887 id=887 data-nosnippet>887</a>    /// whether the optional is null or not.
+<a href=#888 id=888 data-nosnippet>888</a>    ///
+<a href=#889 id=889 data-nosnippet>889</a>    /// This converts a bounded value _inside_ a tick into an asynchronous value outside the
+<a href=#890 id=890 data-nosnippet>890</a>    /// tick that tracks the inner value. This is useful for getting the value as of the
+<a href=#891 id=891 data-nosnippet>891</a>    /// "most recent" tick, but note that updates are propagated asynchronously outside the tick.
+<a href=#892 id=892 data-nosnippet>892</a>    ///
+<a href=#893 id=893 data-nosnippet>893</a>    /// # Example
+<a href=#894 id=894 data-nosnippet>894</a>    /// ```rust
+<a href=#895 id=895 data-nosnippet>895</a>    /// # use hydro_lang::prelude::*;
+<a href=#896 id=896 data-nosnippet>896</a>    /// # use futures::StreamExt;
+<a href=#897 id=897 data-nosnippet>897</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+<a href=#898 id=898 data-nosnippet>898</a>    /// # let tick = process.tick();
+<a href=#899 id=899 data-nosnippet>899</a>    /// # // ticks are lazy by default, forces the second tick to run
+<a href=#900 id=900 data-nosnippet>900</a>    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+<a href=#901 id=901 data-nosnippet>901</a>    /// # let batch_first_tick = process
+<a href=#902 id=902 data-nosnippet>902</a>    /// #   .source_iter(q!(vec![]))
+<a href=#903 id=903 data-nosnippet>903</a>    /// #   .batch(&amp;tick, nondet!(/** test */));
+<a href=#904 id=904 data-nosnippet>904</a>    /// # let batch_second_tick = process
+<a href=#905 id=905 data-nosnippet>905</a>    /// #   .source_iter(q!(vec![1, 2, 3]))
+<a href=#906 id=906 data-nosnippet>906</a>    /// #   .batch(&amp;tick, nondet!(/** test */))
+<a href=#907 id=907 data-nosnippet>907</a>    /// #   .defer_tick(); // appears on the second tick
+<a href=#908 id=908 data-nosnippet>908</a>    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+<a href=#909 id=909 data-nosnippet>909</a>    /// input_batch // first tick: [], second tick: [1, 2, 3]
+<a href=#910 id=910 data-nosnippet>910</a>    ///     .max()
+<a href=#911 id=911 data-nosnippet>911</a>    ///     .latest()
+<a href=#912 id=912 data-nosnippet>912</a>    /// # .into_singleton()
+<a href=#913 id=913 data-nosnippet>913</a>    /// # .sample_eager(nondet!(/** test */))
+<a href=#914 id=914 data-nosnippet>914</a>    /// # }, |mut stream| async move {
+<a href=#915 id=915 data-nosnippet>915</a>    /// // asynchronously changes from None ~&gt; 3
+<a href=#916 id=916 data-nosnippet>916</a>    /// # for w in vec![None, Some(3)] {
+<a href=#917 id=917 data-nosnippet>917</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
+<a href=#918 id=918 data-nosnippet>918</a>    /// # }
+<a href=#919 id=919 data-nosnippet>919</a>    /// # }));
+<a href=#920 id=920 data-nosnippet>920</a>    /// ```
+<a href=#921 id=921 data-nosnippet>921</a>    </span><span class="kw">pub fn </span>latest(<span class="self">self</span>) -&gt; Optional&lt;T, L, Unbounded&gt; {
+<a href=#922 id=922 data-nosnippet>922</a>        Optional::new(
+<a href=#923 id=923 data-nosnippet>923</a>            <span class="self">self</span>.location.outer().clone(),
+<a href=#924 id=924 data-nosnippet>924</a>            HydroNode::Persist {
+<a href=#925 id=925 data-nosnippet>925</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#926 id=926 data-nosnippet>926</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+<a href=#927 id=927 data-nosnippet>927</a>            },
+<a href=#928 id=928 data-nosnippet>928</a>        )
+<a href=#929 id=929 data-nosnippet>929</a>    }
+<a href=#930 id=930 data-nosnippet>930</a>
+<a href=#931 id=931 data-nosnippet>931</a>    <span class="doccomment">/// Synchronously yields this optional outside the tick as an unbounded optional, which will
+<a href=#932 id=932 data-nosnippet>932</a>    /// be updated with the latest value of the optional inside the tick.
+<a href=#933 id=933 data-nosnippet>933</a>    ///
+<a href=#934 id=934 data-nosnippet>934</a>    /// Unlike [`Optional::latest`], this preserves synchronous execution, as the output optional
+<a href=#935 id=935 data-nosnippet>935</a>    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+<a href=#936 id=936 data-nosnippet>936</a>    /// optional's [`Tick`] context.
+<a href=#937 id=937 data-nosnippet>937</a>    </span><span class="kw">pub fn </span>latest_atomic(<span class="self">self</span>) -&gt; Optional&lt;T, Atomic&lt;L&gt;, Unbounded&gt; {
+<a href=#938 id=938 data-nosnippet>938</a>        Optional::new(
+<a href=#939 id=939 data-nosnippet>939</a>            Atomic {
+<a href=#940 id=940 data-nosnippet>940</a>                tick: <span class="self">self</span>.location.clone(),
+<a href=#941 id=941 data-nosnippet>941</a>            },
 <a href=#942 id=942 data-nosnippet>942</a>            HydroNode::Persist {
 <a href=#943 id=943 data-nosnippet>943</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
 <a href=#944 id=944 data-nosnippet>944</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
@@ -947,62 +947,85 @@
 <a href=#947 id=947 data-nosnippet>947</a>    }
 <a href=#948 id=948 data-nosnippet>948</a>
 <a href=#949 id=949 data-nosnippet>949</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#950 id=950 data-nosnippet>950</a>    </span><span class="kw">pub fn </span>delta(<span class="self">self</span>) -&gt; Optional&lt;T, Tick&lt;L&gt;, Bounded&gt; {
+<a href=#950 id=950 data-nosnippet>950</a>    </span><span class="kw">pub fn </span>defer_tick(<span class="self">self</span>) -&gt; Optional&lt;T, Tick&lt;L&gt;, Bounded&gt; {
 <a href=#951 id=951 data-nosnippet>951</a>        Optional::new(
 <a href=#952 id=952 data-nosnippet>952</a>            <span class="self">self</span>.location.clone(),
-<a href=#953 id=953 data-nosnippet>953</a>            HydroNode::Delta {
-<a href=#954 id=954 data-nosnippet>954</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#953 id=953 data-nosnippet>953</a>            HydroNode::DeferTick {
+<a href=#954 id=954 data-nosnippet>954</a>                input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
 <a href=#955 id=955 data-nosnippet>955</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
 <a href=#956 id=956 data-nosnippet>956</a>            },
 <a href=#957 id=957 data-nosnippet>957</a>        )
 <a href=#958 id=958 data-nosnippet>958</a>    }
 <a href=#959 id=959 data-nosnippet>959</a>
-<a href=#960 id=960 data-nosnippet>960</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#961 id=961 data-nosnippet>961</a>    </span><span class="kw">pub fn </span>into_stream(<span class="self">self</span>) -&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, TotalOrder, ExactlyOnce&gt; {
-<a href=#962 id=962 data-nosnippet>962</a>        Stream::new(<span class="self">self</span>.location, <span class="self">self</span>.ir_node.into_inner())
-<a href=#963 id=963 data-nosnippet>963</a>    }
-<a href=#964 id=964 data-nosnippet>964</a>}
-<a href=#965 id=965 data-nosnippet>965</a>
-<a href=#966 id=966 data-nosnippet>966</a><span class="attr">#[cfg(test)]
-<a href=#967 id=967 data-nosnippet>967</a></span><span class="kw">mod </span>tests {
-<a href=#968 id=968 data-nosnippet>968</a>    <span class="kw">use </span>futures::StreamExt;
-<a href=#969 id=969 data-nosnippet>969</a>    <span class="kw">use </span>hydro_deploy::Deployment;
-<a href=#970 id=970 data-nosnippet>970</a>    <span class="kw">use </span>stageleft::q;
+<a href=#960 id=960 data-nosnippet>960</a>    <span class="attr">#[deprecated(note = <span class="string">"use .into_stream().persist()"</span>)]
+<a href=#961 id=961 data-nosnippet>961</a>    #[expect(missing_docs, reason = <span class="string">"deprecated"</span>)]
+<a href=#962 id=962 data-nosnippet>962</a>    </span><span class="kw">pub fn </span>persist(<span class="self">self</span>) -&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, TotalOrder, ExactlyOnce&gt; {
+<a href=#963 id=963 data-nosnippet>963</a>        Stream::new(
+<a href=#964 id=964 data-nosnippet>964</a>            <span class="self">self</span>.location.clone(),
+<a href=#965 id=965 data-nosnippet>965</a>            HydroNode::Persist {
+<a href=#966 id=966 data-nosnippet>966</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#967 id=967 data-nosnippet>967</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+<a href=#968 id=968 data-nosnippet>968</a>            },
+<a href=#969 id=969 data-nosnippet>969</a>        )
+<a href=#970 id=970 data-nosnippet>970</a>    }
 <a href=#971 id=971 data-nosnippet>971</a>
-<a href=#972 id=972 data-nosnippet>972</a>    <span class="kw">use </span><span class="kw">super</span>::Optional;
-<a href=#973 id=973 data-nosnippet>973</a>    <span class="kw">use </span><span class="kw">crate</span>::compile::builder::FlowBuilder;
-<a href=#974 id=974 data-nosnippet>974</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
-<a href=#975 id=975 data-nosnippet>975</a>
-<a href=#976 id=976 data-nosnippet>976</a>    <span class="attr">#[tokio::test]
-<a href=#977 id=977 data-nosnippet>977</a>    </span><span class="kw">async fn </span>optional_or_cardinality() {
-<a href=#978 id=978 data-nosnippet>978</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
-<a href=#979 id=979 data-nosnippet>979</a>
-<a href=#980 id=980 data-nosnippet>980</a>        <span class="kw">let </span>flow = FlowBuilder::new();
-<a href=#981 id=981 data-nosnippet>981</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#982 id=982 data-nosnippet>982</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
-<a href=#983 id=983 data-nosnippet>983</a>
-<a href=#984 id=984 data-nosnippet>984</a>        <span class="kw">let </span>node_tick = node.tick();
-<a href=#985 id=985 data-nosnippet>985</a>        <span class="kw">let </span>tick_singleton = node_tick.singleton(<span class="macro">q!</span>(<span class="number">123</span>));
-<a href=#986 id=986 data-nosnippet>986</a>        <span class="kw">let </span>tick_optional_inhabited: Optional&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>&gt; = tick_singleton.into();
-<a href=#987 id=987 data-nosnippet>987</a>        <span class="kw">let </span>counts = tick_optional_inhabited
-<a href=#988 id=988 data-nosnippet>988</a>            .clone()
-<a href=#989 id=989 data-nosnippet>989</a>            .or(tick_optional_inhabited)
-<a href=#990 id=990 data-nosnippet>990</a>            .into_stream()
-<a href=#991 id=991 data-nosnippet>991</a>            .count()
-<a href=#992 id=992 data-nosnippet>992</a>            .all_ticks()
-<a href=#993 id=993 data-nosnippet>993</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#972 id=972 data-nosnippet>972</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#973 id=973 data-nosnippet>973</a>    </span><span class="kw">pub fn </span>delta(<span class="self">self</span>) -&gt; Optional&lt;T, Tick&lt;L&gt;, Bounded&gt; {
+<a href=#974 id=974 data-nosnippet>974</a>        Optional::new(
+<a href=#975 id=975 data-nosnippet>975</a>            <span class="self">self</span>.location.clone(),
+<a href=#976 id=976 data-nosnippet>976</a>            HydroNode::Delta {
+<a href=#977 id=977 data-nosnippet>977</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#978 id=978 data-nosnippet>978</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+<a href=#979 id=979 data-nosnippet>979</a>            },
+<a href=#980 id=980 data-nosnippet>980</a>        )
+<a href=#981 id=981 data-nosnippet>981</a>    }
+<a href=#982 id=982 data-nosnippet>982</a>
+<a href=#983 id=983 data-nosnippet>983</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#984 id=984 data-nosnippet>984</a>    </span><span class="kw">pub fn </span>into_stream(<span class="self">self</span>) -&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, TotalOrder, ExactlyOnce&gt; {
+<a href=#985 id=985 data-nosnippet>985</a>        Stream::new(<span class="self">self</span>.location, <span class="self">self</span>.ir_node.into_inner())
+<a href=#986 id=986 data-nosnippet>986</a>    }
+<a href=#987 id=987 data-nosnippet>987</a>}
+<a href=#988 id=988 data-nosnippet>988</a>
+<a href=#989 id=989 data-nosnippet>989</a><span class="attr">#[cfg(test)]
+<a href=#990 id=990 data-nosnippet>990</a></span><span class="kw">mod </span>tests {
+<a href=#991 id=991 data-nosnippet>991</a>    <span class="kw">use </span>futures::StreamExt;
+<a href=#992 id=992 data-nosnippet>992</a>    <span class="kw">use </span>hydro_deploy::Deployment;
+<a href=#993 id=993 data-nosnippet>993</a>    <span class="kw">use </span>stageleft::q;
 <a href=#994 id=994 data-nosnippet>994</a>
-<a href=#995 id=995 data-nosnippet>995</a>        <span class="kw">let </span>nodes = flow
-<a href=#996 id=996 data-nosnippet>996</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
-<a href=#997 id=997 data-nosnippet>997</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
-<a href=#998 id=998 data-nosnippet>998</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
-<a href=#999 id=999 data-nosnippet>999</a>
-<a href=#1000 id=1000 data-nosnippet>1000</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
-<a href=#1001 id=1001 data-nosnippet>1001</a>
-<a href=#1002 id=1002 data-nosnippet>1002</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(counts).<span class="kw">await</span>;
-<a href=#1003 id=1003 data-nosnippet>1003</a>
-<a href=#1004 id=1004 data-nosnippet>1004</a>        deployment.start().<span class="kw">await</span>.unwrap();
-<a href=#1005 id=1005 data-nosnippet>1005</a>
-<a href=#1006 id=1006 data-nosnippet>1006</a>        <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap(), <span class="number">1</span>);
-<a href=#1007 id=1007 data-nosnippet>1007</a>    }
-<a href=#1008 id=1008 data-nosnippet>1008</a>}</code></pre></div></section></main></body></html>
+<a href=#995 id=995 data-nosnippet>995</a>    <span class="kw">use </span><span class="kw">super</span>::Optional;
+<a href=#996 id=996 data-nosnippet>996</a>    <span class="kw">use </span><span class="kw">crate</span>::compile::builder::FlowBuilder;
+<a href=#997 id=997 data-nosnippet>997</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
+<a href=#998 id=998 data-nosnippet>998</a>
+<a href=#999 id=999 data-nosnippet>999</a>    <span class="attr">#[tokio::test]
+<a href=#1000 id=1000 data-nosnippet>1000</a>    </span><span class="kw">async fn </span>optional_or_cardinality() {
+<a href=#1001 id=1001 data-nosnippet>1001</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
+<a href=#1002 id=1002 data-nosnippet>1002</a>
+<a href=#1003 id=1003 data-nosnippet>1003</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1004 id=1004 data-nosnippet>1004</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1005 id=1005 data-nosnippet>1005</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#1006 id=1006 data-nosnippet>1006</a>
+<a href=#1007 id=1007 data-nosnippet>1007</a>        <span class="kw">let </span>node_tick = node.tick();
+<a href=#1008 id=1008 data-nosnippet>1008</a>        <span class="kw">let </span>tick_singleton = node_tick.singleton(<span class="macro">q!</span>(<span class="number">123</span>));
+<a href=#1009 id=1009 data-nosnippet>1009</a>        <span class="kw">let </span>tick_optional_inhabited: Optional&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>&gt; = tick_singleton.into();
+<a href=#1010 id=1010 data-nosnippet>1010</a>        <span class="kw">let </span>counts = tick_optional_inhabited
+<a href=#1011 id=1011 data-nosnippet>1011</a>            .clone()
+<a href=#1012 id=1012 data-nosnippet>1012</a>            .or(tick_optional_inhabited)
+<a href=#1013 id=1013 data-nosnippet>1013</a>            .into_stream()
+<a href=#1014 id=1014 data-nosnippet>1014</a>            .count()
+<a href=#1015 id=1015 data-nosnippet>1015</a>            .all_ticks()
+<a href=#1016 id=1016 data-nosnippet>1016</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#1017 id=1017 data-nosnippet>1017</a>
+<a href=#1018 id=1018 data-nosnippet>1018</a>        <span class="kw">let </span>nodes = flow
+<a href=#1019 id=1019 data-nosnippet>1019</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
+<a href=#1020 id=1020 data-nosnippet>1020</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
+<a href=#1021 id=1021 data-nosnippet>1021</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#1022 id=1022 data-nosnippet>1022</a>
+<a href=#1023 id=1023 data-nosnippet>1023</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#1024 id=1024 data-nosnippet>1024</a>
+<a href=#1025 id=1025 data-nosnippet>1025</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(counts).<span class="kw">await</span>;
+<a href=#1026 id=1026 data-nosnippet>1026</a>
+<a href=#1027 id=1027 data-nosnippet>1027</a>        deployment.start().<span class="kw">await</span>.unwrap();
+<a href=#1028 id=1028 data-nosnippet>1028</a>
+<a href=#1029 id=1029 data-nosnippet>1029</a>        <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap(), <span class="number">1</span>);
+<a href=#1030 id=1030 data-nosnippet>1030</a>    }
+<a href=#1031 id=1031 data-nosnippet>1031</a>}</code></pre></div></section></main></body></html>

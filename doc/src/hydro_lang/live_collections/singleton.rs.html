@@ -756,249 +756,271 @@
 <a href=#756 id=756 data-nosnippet>756</a><span class="kw">where
 <a href=#757 id=757 data-nosnippet>757</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
 <a href=#758 id=758 data-nosnippet>758</a>{
-<a href=#759 id=759 data-nosnippet>759</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#760 id=760 data-nosnippet>760</a>    </span><span class="kw">pub fn </span>all_ticks(<span class="self">self</span>) -&gt; Stream&lt;T, L, Unbounded, TotalOrder, ExactlyOnce&gt; {
-<a href=#761 id=761 data-nosnippet>761</a>        Stream::new(
-<a href=#762 id=762 data-nosnippet>762</a>            <span class="self">self</span>.location.outer().clone(),
-<a href=#763 id=763 data-nosnippet>763</a>            HydroNode::Persist {
-<a href=#764 id=764 data-nosnippet>764</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#765 id=765 data-nosnippet>765</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#766 id=766 data-nosnippet>766</a>            },
-<a href=#767 id=767 data-nosnippet>767</a>        )
-<a href=#768 id=768 data-nosnippet>768</a>    }
-<a href=#769 id=769 data-nosnippet>769</a>
-<a href=#770 id=770 data-nosnippet>770</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#771 id=771 data-nosnippet>771</a>    </span><span class="kw">pub fn </span>all_ticks_atomic(<span class="self">self</span>) -&gt; Stream&lt;T, Atomic&lt;L&gt;, Unbounded, TotalOrder, ExactlyOnce&gt; {
-<a href=#772 id=772 data-nosnippet>772</a>        Stream::new(
-<a href=#773 id=773 data-nosnippet>773</a>            Atomic {
-<a href=#774 id=774 data-nosnippet>774</a>                tick: <span class="self">self</span>.location.clone(),
-<a href=#775 id=775 data-nosnippet>775</a>            },
-<a href=#776 id=776 data-nosnippet>776</a>            HydroNode::Persist {
-<a href=#777 id=777 data-nosnippet>777</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#778 id=778 data-nosnippet>778</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#779 id=779 data-nosnippet>779</a>            },
-<a href=#780 id=780 data-nosnippet>780</a>        )
-<a href=#781 id=781 data-nosnippet>781</a>    }
-<a href=#782 id=782 data-nosnippet>782</a>
-<a href=#783 id=783 data-nosnippet>783</a>    <span class="doccomment">/// Asynchronously yields this singleton outside the tick as an unbounded singleton, which will
-<a href=#784 id=784 data-nosnippet>784</a>    /// be asynchronously updated with the latest value of the singleton inside the tick.
-<a href=#785 id=785 data-nosnippet>785</a>    ///
-<a href=#786 id=786 data-nosnippet>786</a>    /// This converts a bounded value _inside_ a tick into an asynchronous value outside the
-<a href=#787 id=787 data-nosnippet>787</a>    /// tick that tracks the inner value. This is useful for getting the value as of the
-<a href=#788 id=788 data-nosnippet>788</a>    /// "most recent" tick, but note that updates are propagated asynchronously outside the tick.
-<a href=#789 id=789 data-nosnippet>789</a>    ///
-<a href=#790 id=790 data-nosnippet>790</a>    /// # Example
-<a href=#791 id=791 data-nosnippet>791</a>    /// ```rust
-<a href=#792 id=792 data-nosnippet>792</a>    /// # use hydro_lang::prelude::*;
-<a href=#793 id=793 data-nosnippet>793</a>    /// # use futures::StreamExt;
-<a href=#794 id=794 data-nosnippet>794</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-<a href=#795 id=795 data-nosnippet>795</a>    /// let tick = process.tick();
-<a href=#796 id=796 data-nosnippet>796</a>    /// // ticks are lazy by default, forces the second tick to run
-<a href=#797 id=797 data-nosnippet>797</a>    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+<a href=#759 id=759 data-nosnippet>759</a>    <span class="doccomment">/// Asynchronously yields the value of this singleton outside the tick as an unbounded stream,
+<a href=#760 id=760 data-nosnippet>760</a>    /// which will stream the value computed in _each_ tick as a separate stream element.
+<a href=#761 id=761 data-nosnippet>761</a>    ///
+<a href=#762 id=762 data-nosnippet>762</a>    /// Unlike [`Singleton::latest`], the value computed in each tick is emitted separately,
+<a href=#763 id=763 data-nosnippet>763</a>    /// producing one element in the output for each tick. This is useful for batched computations,
+<a href=#764 id=764 data-nosnippet>764</a>    /// where the results from each tick must be combined together.
+<a href=#765 id=765 data-nosnippet>765</a>    ///
+<a href=#766 id=766 data-nosnippet>766</a>    /// # Example
+<a href=#767 id=767 data-nosnippet>767</a>    /// ```rust
+<a href=#768 id=768 data-nosnippet>768</a>    /// # use hydro_lang::prelude::*;
+<a href=#769 id=769 data-nosnippet>769</a>    /// # use futures::StreamExt;
+<a href=#770 id=770 data-nosnippet>770</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+<a href=#771 id=771 data-nosnippet>771</a>    /// let tick = process.tick();
+<a href=#772 id=772 data-nosnippet>772</a>    /// # // ticks are lazy by default, forces the second tick to run
+<a href=#773 id=773 data-nosnippet>773</a>    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+<a href=#774 id=774 data-nosnippet>774</a>    /// # let batch_first_tick = process
+<a href=#775 id=775 data-nosnippet>775</a>    /// #   .source_iter(q!(vec![1]))
+<a href=#776 id=776 data-nosnippet>776</a>    /// #   .batch(&amp;tick, nondet!(/** test */));
+<a href=#777 id=777 data-nosnippet>777</a>    /// # let batch_second_tick = process
+<a href=#778 id=778 data-nosnippet>778</a>    /// #   .source_iter(q!(vec![1, 2, 3]))
+<a href=#779 id=779 data-nosnippet>779</a>    /// #   .batch(&amp;tick, nondet!(/** test */))
+<a href=#780 id=780 data-nosnippet>780</a>    /// #   .defer_tick(); // appears on the second tick
+<a href=#781 id=781 data-nosnippet>781</a>    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+<a href=#782 id=782 data-nosnippet>782</a>    /// input_batch // first tick: [1], second tick: [1, 2, 3]
+<a href=#783 id=783 data-nosnippet>783</a>    ///     .count()
+<a href=#784 id=784 data-nosnippet>784</a>    ///     .all_ticks()
+<a href=#785 id=785 data-nosnippet>785</a>    /// # }, |mut stream| async move {
+<a href=#786 id=786 data-nosnippet>786</a>    /// // [1, 3]
+<a href=#787 id=787 data-nosnippet>787</a>    /// # for w in vec![1, 3] {
+<a href=#788 id=788 data-nosnippet>788</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
+<a href=#789 id=789 data-nosnippet>789</a>    /// # }
+<a href=#790 id=790 data-nosnippet>790</a>    /// # }));
+<a href=#791 id=791 data-nosnippet>791</a>    /// ```
+<a href=#792 id=792 data-nosnippet>792</a>    </span><span class="kw">pub fn </span>all_ticks(<span class="self">self</span>) -&gt; Stream&lt;T, L, Unbounded, TotalOrder, ExactlyOnce&gt; {
+<a href=#793 id=793 data-nosnippet>793</a>        <span class="self">self</span>.into_stream().all_ticks()
+<a href=#794 id=794 data-nosnippet>794</a>    }
+<a href=#795 id=795 data-nosnippet>795</a>
+<a href=#796 id=796 data-nosnippet>796</a>    <span class="doccomment">/// Synchronously yields the value of this singleton outside the tick as an unbounded stream,
+<a href=#797 id=797 data-nosnippet>797</a>    /// which will stream the value computed in _each_ tick as a separate stream element.
 <a href=#798 id=798 data-nosnippet>798</a>    ///
-<a href=#799 id=799 data-nosnippet>799</a>    /// let batch_first_tick = process
-<a href=#800 id=800 data-nosnippet>800</a>    ///   .source_iter(q!(vec![1]))
-<a href=#801 id=801 data-nosnippet>801</a>    ///   .batch(&amp;tick, nondet!(/** test */));
-<a href=#802 id=802 data-nosnippet>802</a>    /// let batch_second_tick = process
-<a href=#803 id=803 data-nosnippet>803</a>    ///   .source_iter(q!(vec![1, 2, 3]))
-<a href=#804 id=804 data-nosnippet>804</a>    ///   .batch(&amp;tick, nondet!(/** test */))
-<a href=#805 id=805 data-nosnippet>805</a>    ///   .defer_tick(); // appears on the second tick
-<a href=#806 id=806 data-nosnippet>806</a>    ///
-<a href=#807 id=807 data-nosnippet>807</a>    /// batch_first_tick.chain(batch_second_tick)
-<a href=#808 id=808 data-nosnippet>808</a>    ///   .count()
-<a href=#809 id=809 data-nosnippet>809</a>    ///   .latest()
-<a href=#810 id=810 data-nosnippet>810</a>    /// # .sample_eager(nondet!(/** test */))
-<a href=#811 id=811 data-nosnippet>811</a>    /// # }, |mut stream| async move {
-<a href=#812 id=812 data-nosnippet>812</a>    /// // asynchronously changes from 1 ~&gt; 3
-<a href=#813 id=813 data-nosnippet>813</a>    /// # for w in vec![1, 3] {
-<a href=#814 id=814 data-nosnippet>814</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
-<a href=#815 id=815 data-nosnippet>815</a>    /// # }
-<a href=#816 id=816 data-nosnippet>816</a>    /// # }));
-<a href=#817 id=817 data-nosnippet>817</a>    /// ```
-<a href=#818 id=818 data-nosnippet>818</a>    </span><span class="kw">pub fn </span>latest(<span class="self">self</span>) -&gt; Singleton&lt;T, L, Unbounded&gt; {
-<a href=#819 id=819 data-nosnippet>819</a>        Singleton::new(
-<a href=#820 id=820 data-nosnippet>820</a>            <span class="self">self</span>.location.outer().clone(),
-<a href=#821 id=821 data-nosnippet>821</a>            HydroNode::Persist {
-<a href=#822 id=822 data-nosnippet>822</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#823 id=823 data-nosnippet>823</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#824 id=824 data-nosnippet>824</a>            },
-<a href=#825 id=825 data-nosnippet>825</a>        )
-<a href=#826 id=826 data-nosnippet>826</a>    }
-<a href=#827 id=827 data-nosnippet>827</a>
-<a href=#828 id=828 data-nosnippet>828</a>    <span class="doccomment">/// Asynchronously yields this singleton outside the tick as an unbounded singleton, which will
-<a href=#829 id=829 data-nosnippet>829</a>    /// be updated with the latest value of the singleton inside the tick.
-<a href=#830 id=830 data-nosnippet>830</a>    ///
-<a href=#831 id=831 data-nosnippet>831</a>    /// Unlike [`Singleton::latest`], this preserves synchronous execution, as the output singleton
-<a href=#832 id=832 data-nosnippet>832</a>    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
-<a href=#833 id=833 data-nosnippet>833</a>    /// singleton's [`Tick`] context.
-<a href=#834 id=834 data-nosnippet>834</a>    </span><span class="kw">pub fn </span>latest_atomic(<span class="self">self</span>) -&gt; Singleton&lt;T, Atomic&lt;L&gt;, Unbounded&gt; {
-<a href=#835 id=835 data-nosnippet>835</a>        Singleton::new(
-<a href=#836 id=836 data-nosnippet>836</a>            Atomic {
-<a href=#837 id=837 data-nosnippet>837</a>                tick: <span class="self">self</span>.location.clone(),
-<a href=#838 id=838 data-nosnippet>838</a>            },
-<a href=#839 id=839 data-nosnippet>839</a>            HydroNode::Persist {
-<a href=#840 id=840 data-nosnippet>840</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#841 id=841 data-nosnippet>841</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#842 id=842 data-nosnippet>842</a>            },
-<a href=#843 id=843 data-nosnippet>843</a>        )
-<a href=#844 id=844 data-nosnippet>844</a>    }
-<a href=#845 id=845 data-nosnippet>845</a>
-<a href=#846 id=846 data-nosnippet>846</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#847 id=847 data-nosnippet>847</a>    </span><span class="kw">pub fn </span>defer_tick(<span class="self">self</span>) -&gt; Singleton&lt;T, Tick&lt;L&gt;, Bounded&gt; {
-<a href=#848 id=848 data-nosnippet>848</a>        Singleton::new(
-<a href=#849 id=849 data-nosnippet>849</a>            <span class="self">self</span>.location.clone(),
-<a href=#850 id=850 data-nosnippet>850</a>            HydroNode::DeferTick {
-<a href=#851 id=851 data-nosnippet>851</a>                input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#852 id=852 data-nosnippet>852</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#853 id=853 data-nosnippet>853</a>            },
-<a href=#854 id=854 data-nosnippet>854</a>        )
-<a href=#855 id=855 data-nosnippet>855</a>    }
-<a href=#856 id=856 data-nosnippet>856</a>
-<a href=#857 id=857 data-nosnippet>857</a>    <span class="attr">#[deprecated(note = <span class="string">"use .into_stream().persist()"</span>)]
-<a href=#858 id=858 data-nosnippet>858</a>    #[expect(missing_docs, reason = <span class="string">"deprecated"</span>)]
-<a href=#859 id=859 data-nosnippet>859</a>    </span><span class="kw">pub fn </span>persist(<span class="self">self</span>) -&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, TotalOrder, ExactlyOnce&gt; {
-<a href=#860 id=860 data-nosnippet>860</a>        Stream::new(
-<a href=#861 id=861 data-nosnippet>861</a>            <span class="self">self</span>.location.clone(),
-<a href=#862 id=862 data-nosnippet>862</a>            HydroNode::Persist {
-<a href=#863 id=863 data-nosnippet>863</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#864 id=864 data-nosnippet>864</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#865 id=865 data-nosnippet>865</a>            },
-<a href=#866 id=866 data-nosnippet>866</a>        )
-<a href=#867 id=867 data-nosnippet>867</a>    }
-<a href=#868 id=868 data-nosnippet>868</a>
-<a href=#869 id=869 data-nosnippet>869</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#870 id=870 data-nosnippet>870</a>    </span><span class="kw">pub fn </span>delta(<span class="self">self</span>) -&gt; Optional&lt;T, Tick&lt;L&gt;, Bounded&gt; {
-<a href=#871 id=871 data-nosnippet>871</a>        Optional::new(
-<a href=#872 id=872 data-nosnippet>872</a>            <span class="self">self</span>.location.clone(),
-<a href=#873 id=873 data-nosnippet>873</a>            HydroNode::Delta {
-<a href=#874 id=874 data-nosnippet>874</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#875 id=875 data-nosnippet>875</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#876 id=876 data-nosnippet>876</a>            },
-<a href=#877 id=877 data-nosnippet>877</a>        )
-<a href=#878 id=878 data-nosnippet>878</a>    }
-<a href=#879 id=879 data-nosnippet>879</a>
-<a href=#880 id=880 data-nosnippet>880</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#881 id=881 data-nosnippet>881</a>    </span><span class="kw">pub fn </span>into_stream(<span class="self">self</span>) -&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, TotalOrder, ExactlyOnce&gt; {
-<a href=#882 id=882 data-nosnippet>882</a>        Stream::new(<span class="self">self</span>.location, <span class="self">self</span>.ir_node.into_inner())
-<a href=#883 id=883 data-nosnippet>883</a>    }
-<a href=#884 id=884 data-nosnippet>884</a>}
-<a href=#885 id=885 data-nosnippet>885</a>
-<a href=#886 id=886 data-nosnippet>886</a><span class="attr">#[doc(hidden)]
-<a href=#887 id=887 data-nosnippet>887</a></span><span class="doccomment">/// Helper trait that determines the output collection type for [`Singleton::zip`].
-<a href=#888 id=888 data-nosnippet>888</a>///
-<a href=#889 id=889 data-nosnippet>889</a>/// The output will be an [`Optional`] if the second input is an [`Optional`], otherwise it is a
-<a href=#890 id=890 data-nosnippet>890</a>/// [`Singleton`].
-<a href=#891 id=891 data-nosnippet>891</a></span><span class="attr">#[sealed::sealed]
-<a href=#892 id=892 data-nosnippet>892</a></span><span class="kw">pub trait </span>ZipResult&lt;<span class="lifetime">'a</span>, Other&gt; {
-<a href=#893 id=893 data-nosnippet>893</a>    <span class="doccomment">/// The output collection type.
-<a href=#894 id=894 data-nosnippet>894</a>    </span><span class="kw">type </span>Out;
-<a href=#895 id=895 data-nosnippet>895</a>    <span class="doccomment">/// The type of the tupled output value.
-<a href=#896 id=896 data-nosnippet>896</a>    </span><span class="kw">type </span>ElementType;
-<a href=#897 id=897 data-nosnippet>897</a>    <span class="doccomment">/// The location where the tupled result will be materialized.
-<a href=#898 id=898 data-nosnippet>898</a>    </span><span class="kw">type </span>Location: Location&lt;<span class="lifetime">'a</span>&gt;;
-<a href=#899 id=899 data-nosnippet>899</a>
-<a href=#900 id=900 data-nosnippet>900</a>    <span class="doccomment">/// The location of the second input to the `zip`.
-<a href=#901 id=901 data-nosnippet>901</a>    </span><span class="kw">fn </span>other_location(other: <span class="kw-2">&amp;</span>Other) -&gt; <span class="self">Self</span>::Location;
-<a href=#902 id=902 data-nosnippet>902</a>    <span class="doccomment">/// The IR node of the second input to the `zip`.
-<a href=#903 id=903 data-nosnippet>903</a>    </span><span class="kw">fn </span>other_ir_node(other: Other) -&gt; HydroNode;
-<a href=#904 id=904 data-nosnippet>904</a>
-<a href=#905 id=905 data-nosnippet>905</a>    <span class="doccomment">/// Constructs the output live collection given an IR node containing the zip result.
-<a href=#906 id=906 data-nosnippet>906</a>    </span><span class="kw">fn </span>make(location: <span class="self">Self</span>::Location, ir_node: HydroNode) -&gt; <span class="self">Self</span>::Out;
-<a href=#907 id=907 data-nosnippet>907</a>}
-<a href=#908 id=908 data-nosnippet>908</a>
-<a href=#909 id=909 data-nosnippet>909</a><span class="attr">#[sealed::sealed]
-<a href=#910 id=910 data-nosnippet>910</a></span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, U, L, B: Boundedness&gt; ZipResult&lt;<span class="lifetime">'a</span>, Singleton&lt;U, L, B&gt;&gt; <span class="kw">for </span>Singleton&lt;T, L, B&gt;
-<a href=#911 id=911 data-nosnippet>911</a><span class="kw">where
-<a href=#912 id=912 data-nosnippet>912</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
-<a href=#913 id=913 data-nosnippet>913</a>{
-<a href=#914 id=914 data-nosnippet>914</a>    <span class="kw">type </span>Out = Singleton&lt;(T, U), L, B&gt;;
-<a href=#915 id=915 data-nosnippet>915</a>    <span class="kw">type </span>ElementType = (T, U);
-<a href=#916 id=916 data-nosnippet>916</a>    <span class="kw">type </span>Location = L;
-<a href=#917 id=917 data-nosnippet>917</a>
-<a href=#918 id=918 data-nosnippet>918</a>    <span class="kw">fn </span>other_location(other: <span class="kw-2">&amp;</span>Singleton&lt;U, L, B&gt;) -&gt; L {
-<a href=#919 id=919 data-nosnippet>919</a>        other.location.clone()
-<a href=#920 id=920 data-nosnippet>920</a>    }
+<a href=#799 id=799 data-nosnippet>799</a>    /// Unlike [`Singleton::all_ticks`], this preserves synchronous execution, as the output stream
+<a href=#800 id=800 data-nosnippet>800</a>    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+<a href=#801 id=801 data-nosnippet>801</a>    /// singleton's [`Tick`] context.
+<a href=#802 id=802 data-nosnippet>802</a>    </span><span class="kw">pub fn </span>all_ticks_atomic(<span class="self">self</span>) -&gt; Stream&lt;T, Atomic&lt;L&gt;, Unbounded, TotalOrder, ExactlyOnce&gt; {
+<a href=#803 id=803 data-nosnippet>803</a>        <span class="self">self</span>.into_stream().all_ticks_atomic()
+<a href=#804 id=804 data-nosnippet>804</a>    }
+<a href=#805 id=805 data-nosnippet>805</a>
+<a href=#806 id=806 data-nosnippet>806</a>    <span class="doccomment">/// Asynchronously yields this singleton outside the tick as an unbounded singleton, which will
+<a href=#807 id=807 data-nosnippet>807</a>    /// be asynchronously updated with the latest value of the singleton inside the tick.
+<a href=#808 id=808 data-nosnippet>808</a>    ///
+<a href=#809 id=809 data-nosnippet>809</a>    /// This converts a bounded value _inside_ a tick into an asynchronous value outside the
+<a href=#810 id=810 data-nosnippet>810</a>    /// tick that tracks the inner value. This is useful for getting the value as of the
+<a href=#811 id=811 data-nosnippet>811</a>    /// "most recent" tick, but note that updates are propagated asynchronously outside the tick.
+<a href=#812 id=812 data-nosnippet>812</a>    ///
+<a href=#813 id=813 data-nosnippet>813</a>    /// # Example
+<a href=#814 id=814 data-nosnippet>814</a>    /// ```rust
+<a href=#815 id=815 data-nosnippet>815</a>    /// # use hydro_lang::prelude::*;
+<a href=#816 id=816 data-nosnippet>816</a>    /// # use futures::StreamExt;
+<a href=#817 id=817 data-nosnippet>817</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+<a href=#818 id=818 data-nosnippet>818</a>    /// let tick = process.tick();
+<a href=#819 id=819 data-nosnippet>819</a>    /// # // ticks are lazy by default, forces the second tick to run
+<a href=#820 id=820 data-nosnippet>820</a>    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+<a href=#821 id=821 data-nosnippet>821</a>    /// # let batch_first_tick = process
+<a href=#822 id=822 data-nosnippet>822</a>    /// #   .source_iter(q!(vec![1]))
+<a href=#823 id=823 data-nosnippet>823</a>    /// #   .batch(&amp;tick, nondet!(/** test */));
+<a href=#824 id=824 data-nosnippet>824</a>    /// # let batch_second_tick = process
+<a href=#825 id=825 data-nosnippet>825</a>    /// #   .source_iter(q!(vec![1, 2, 3]))
+<a href=#826 id=826 data-nosnippet>826</a>    /// #   .batch(&amp;tick, nondet!(/** test */))
+<a href=#827 id=827 data-nosnippet>827</a>    /// #   .defer_tick(); // appears on the second tick
+<a href=#828 id=828 data-nosnippet>828</a>    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+<a href=#829 id=829 data-nosnippet>829</a>    /// input_batch // first tick: [1], second tick: [1, 2, 3]
+<a href=#830 id=830 data-nosnippet>830</a>    ///     .count()
+<a href=#831 id=831 data-nosnippet>831</a>    ///     .latest()
+<a href=#832 id=832 data-nosnippet>832</a>    /// # .sample_eager(nondet!(/** test */))
+<a href=#833 id=833 data-nosnippet>833</a>    /// # }, |mut stream| async move {
+<a href=#834 id=834 data-nosnippet>834</a>    /// // asynchronously changes from 1 ~&gt; 3
+<a href=#835 id=835 data-nosnippet>835</a>    /// # for w in vec![1, 3] {
+<a href=#836 id=836 data-nosnippet>836</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
+<a href=#837 id=837 data-nosnippet>837</a>    /// # }
+<a href=#838 id=838 data-nosnippet>838</a>    /// # }));
+<a href=#839 id=839 data-nosnippet>839</a>    /// ```
+<a href=#840 id=840 data-nosnippet>840</a>    </span><span class="kw">pub fn </span>latest(<span class="self">self</span>) -&gt; Singleton&lt;T, L, Unbounded&gt; {
+<a href=#841 id=841 data-nosnippet>841</a>        Singleton::new(
+<a href=#842 id=842 data-nosnippet>842</a>            <span class="self">self</span>.location.outer().clone(),
+<a href=#843 id=843 data-nosnippet>843</a>            HydroNode::Persist {
+<a href=#844 id=844 data-nosnippet>844</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#845 id=845 data-nosnippet>845</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+<a href=#846 id=846 data-nosnippet>846</a>            },
+<a href=#847 id=847 data-nosnippet>847</a>        )
+<a href=#848 id=848 data-nosnippet>848</a>    }
+<a href=#849 id=849 data-nosnippet>849</a>
+<a href=#850 id=850 data-nosnippet>850</a>    <span class="doccomment">/// Synchronously yields this singleton outside the tick as an unbounded singleton, which will
+<a href=#851 id=851 data-nosnippet>851</a>    /// be updated with the latest value of the singleton inside the tick.
+<a href=#852 id=852 data-nosnippet>852</a>    ///
+<a href=#853 id=853 data-nosnippet>853</a>    /// Unlike [`Singleton::latest`], this preserves synchronous execution, as the output singleton
+<a href=#854 id=854 data-nosnippet>854</a>    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+<a href=#855 id=855 data-nosnippet>855</a>    /// singleton's [`Tick`] context.
+<a href=#856 id=856 data-nosnippet>856</a>    </span><span class="kw">pub fn </span>latest_atomic(<span class="self">self</span>) -&gt; Singleton&lt;T, Atomic&lt;L&gt;, Unbounded&gt; {
+<a href=#857 id=857 data-nosnippet>857</a>        Singleton::new(
+<a href=#858 id=858 data-nosnippet>858</a>            Atomic {
+<a href=#859 id=859 data-nosnippet>859</a>                tick: <span class="self">self</span>.location.clone(),
+<a href=#860 id=860 data-nosnippet>860</a>            },
+<a href=#861 id=861 data-nosnippet>861</a>            HydroNode::Persist {
+<a href=#862 id=862 data-nosnippet>862</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#863 id=863 data-nosnippet>863</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+<a href=#864 id=864 data-nosnippet>864</a>            },
+<a href=#865 id=865 data-nosnippet>865</a>        )
+<a href=#866 id=866 data-nosnippet>866</a>    }
+<a href=#867 id=867 data-nosnippet>867</a>
+<a href=#868 id=868 data-nosnippet>868</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#869 id=869 data-nosnippet>869</a>    </span><span class="kw">pub fn </span>defer_tick(<span class="self">self</span>) -&gt; Singleton&lt;T, Tick&lt;L&gt;, Bounded&gt; {
+<a href=#870 id=870 data-nosnippet>870</a>        Singleton::new(
+<a href=#871 id=871 data-nosnippet>871</a>            <span class="self">self</span>.location.clone(),
+<a href=#872 id=872 data-nosnippet>872</a>            HydroNode::DeferTick {
+<a href=#873 id=873 data-nosnippet>873</a>                input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#874 id=874 data-nosnippet>874</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+<a href=#875 id=875 data-nosnippet>875</a>            },
+<a href=#876 id=876 data-nosnippet>876</a>        )
+<a href=#877 id=877 data-nosnippet>877</a>    }
+<a href=#878 id=878 data-nosnippet>878</a>
+<a href=#879 id=879 data-nosnippet>879</a>    <span class="attr">#[deprecated(note = <span class="string">"use .into_stream().persist()"</span>)]
+<a href=#880 id=880 data-nosnippet>880</a>    #[expect(missing_docs, reason = <span class="string">"deprecated"</span>)]
+<a href=#881 id=881 data-nosnippet>881</a>    </span><span class="kw">pub fn </span>persist(<span class="self">self</span>) -&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, TotalOrder, ExactlyOnce&gt; {
+<a href=#882 id=882 data-nosnippet>882</a>        Stream::new(
+<a href=#883 id=883 data-nosnippet>883</a>            <span class="self">self</span>.location.clone(),
+<a href=#884 id=884 data-nosnippet>884</a>            HydroNode::Persist {
+<a href=#885 id=885 data-nosnippet>885</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#886 id=886 data-nosnippet>886</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+<a href=#887 id=887 data-nosnippet>887</a>            },
+<a href=#888 id=888 data-nosnippet>888</a>        )
+<a href=#889 id=889 data-nosnippet>889</a>    }
+<a href=#890 id=890 data-nosnippet>890</a>
+<a href=#891 id=891 data-nosnippet>891</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#892 id=892 data-nosnippet>892</a>    </span><span class="kw">pub fn </span>delta(<span class="self">self</span>) -&gt; Optional&lt;T, Tick&lt;L&gt;, Bounded&gt; {
+<a href=#893 id=893 data-nosnippet>893</a>        Optional::new(
+<a href=#894 id=894 data-nosnippet>894</a>            <span class="self">self</span>.location.clone(),
+<a href=#895 id=895 data-nosnippet>895</a>            HydroNode::Delta {
+<a href=#896 id=896 data-nosnippet>896</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#897 id=897 data-nosnippet>897</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+<a href=#898 id=898 data-nosnippet>898</a>            },
+<a href=#899 id=899 data-nosnippet>899</a>        )
+<a href=#900 id=900 data-nosnippet>900</a>    }
+<a href=#901 id=901 data-nosnippet>901</a>
+<a href=#902 id=902 data-nosnippet>902</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#903 id=903 data-nosnippet>903</a>    </span><span class="kw">pub fn </span>into_stream(<span class="self">self</span>) -&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, TotalOrder, ExactlyOnce&gt; {
+<a href=#904 id=904 data-nosnippet>904</a>        Stream::new(<span class="self">self</span>.location, <span class="self">self</span>.ir_node.into_inner())
+<a href=#905 id=905 data-nosnippet>905</a>    }
+<a href=#906 id=906 data-nosnippet>906</a>}
+<a href=#907 id=907 data-nosnippet>907</a>
+<a href=#908 id=908 data-nosnippet>908</a><span class="attr">#[doc(hidden)]
+<a href=#909 id=909 data-nosnippet>909</a></span><span class="doccomment">/// Helper trait that determines the output collection type for [`Singleton::zip`].
+<a href=#910 id=910 data-nosnippet>910</a>///
+<a href=#911 id=911 data-nosnippet>911</a>/// The output will be an [`Optional`] if the second input is an [`Optional`], otherwise it is a
+<a href=#912 id=912 data-nosnippet>912</a>/// [`Singleton`].
+<a href=#913 id=913 data-nosnippet>913</a></span><span class="attr">#[sealed::sealed]
+<a href=#914 id=914 data-nosnippet>914</a></span><span class="kw">pub trait </span>ZipResult&lt;<span class="lifetime">'a</span>, Other&gt; {
+<a href=#915 id=915 data-nosnippet>915</a>    <span class="doccomment">/// The output collection type.
+<a href=#916 id=916 data-nosnippet>916</a>    </span><span class="kw">type </span>Out;
+<a href=#917 id=917 data-nosnippet>917</a>    <span class="doccomment">/// The type of the tupled output value.
+<a href=#918 id=918 data-nosnippet>918</a>    </span><span class="kw">type </span>ElementType;
+<a href=#919 id=919 data-nosnippet>919</a>    <span class="doccomment">/// The location where the tupled result will be materialized.
+<a href=#920 id=920 data-nosnippet>920</a>    </span><span class="kw">type </span>Location: Location&lt;<span class="lifetime">'a</span>&gt;;
 <a href=#921 id=921 data-nosnippet>921</a>
-<a href=#922 id=922 data-nosnippet>922</a>    <span class="kw">fn </span>other_ir_node(other: Singleton&lt;U, L, B&gt;) -&gt; HydroNode {
-<a href=#923 id=923 data-nosnippet>923</a>        other.ir_node.into_inner()
-<a href=#924 id=924 data-nosnippet>924</a>    }
-<a href=#925 id=925 data-nosnippet>925</a>
-<a href=#926 id=926 data-nosnippet>926</a>    <span class="kw">fn </span>make(location: L, ir_node: HydroNode) -&gt; <span class="self">Self</span>::Out {
-<a href=#927 id=927 data-nosnippet>927</a>        Singleton::new(location, ir_node)
-<a href=#928 id=928 data-nosnippet>928</a>    }
+<a href=#922 id=922 data-nosnippet>922</a>    <span class="doccomment">/// The location of the second input to the `zip`.
+<a href=#923 id=923 data-nosnippet>923</a>    </span><span class="kw">fn </span>other_location(other: <span class="kw-2">&amp;</span>Other) -&gt; <span class="self">Self</span>::Location;
+<a href=#924 id=924 data-nosnippet>924</a>    <span class="doccomment">/// The IR node of the second input to the `zip`.
+<a href=#925 id=925 data-nosnippet>925</a>    </span><span class="kw">fn </span>other_ir_node(other: Other) -&gt; HydroNode;
+<a href=#926 id=926 data-nosnippet>926</a>
+<a href=#927 id=927 data-nosnippet>927</a>    <span class="doccomment">/// Constructs the output live collection given an IR node containing the zip result.
+<a href=#928 id=928 data-nosnippet>928</a>    </span><span class="kw">fn </span>make(location: <span class="self">Self</span>::Location, ir_node: HydroNode) -&gt; <span class="self">Self</span>::Out;
 <a href=#929 id=929 data-nosnippet>929</a>}
 <a href=#930 id=930 data-nosnippet>930</a>
 <a href=#931 id=931 data-nosnippet>931</a><span class="attr">#[sealed::sealed]
-<a href=#932 id=932 data-nosnippet>932</a></span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, U, L, B: Boundedness&gt; ZipResult&lt;<span class="lifetime">'a</span>, Optional&lt;U, L, B&gt;&gt; <span class="kw">for </span>Singleton&lt;T, L, B&gt;
+<a href=#932 id=932 data-nosnippet>932</a></span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, U, L, B: Boundedness&gt; ZipResult&lt;<span class="lifetime">'a</span>, Singleton&lt;U, L, B&gt;&gt; <span class="kw">for </span>Singleton&lt;T, L, B&gt;
 <a href=#933 id=933 data-nosnippet>933</a><span class="kw">where
 <a href=#934 id=934 data-nosnippet>934</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
 <a href=#935 id=935 data-nosnippet>935</a>{
-<a href=#936 id=936 data-nosnippet>936</a>    <span class="kw">type </span>Out = Optional&lt;(T, U), L, B&gt;;
+<a href=#936 id=936 data-nosnippet>936</a>    <span class="kw">type </span>Out = Singleton&lt;(T, U), L, B&gt;;
 <a href=#937 id=937 data-nosnippet>937</a>    <span class="kw">type </span>ElementType = (T, U);
 <a href=#938 id=938 data-nosnippet>938</a>    <span class="kw">type </span>Location = L;
 <a href=#939 id=939 data-nosnippet>939</a>
-<a href=#940 id=940 data-nosnippet>940</a>    <span class="kw">fn </span>other_location(other: <span class="kw-2">&amp;</span>Optional&lt;U, L, B&gt;) -&gt; L {
+<a href=#940 id=940 data-nosnippet>940</a>    <span class="kw">fn </span>other_location(other: <span class="kw-2">&amp;</span>Singleton&lt;U, L, B&gt;) -&gt; L {
 <a href=#941 id=941 data-nosnippet>941</a>        other.location.clone()
 <a href=#942 id=942 data-nosnippet>942</a>    }
 <a href=#943 id=943 data-nosnippet>943</a>
-<a href=#944 id=944 data-nosnippet>944</a>    <span class="kw">fn </span>other_ir_node(other: Optional&lt;U, L, B&gt;) -&gt; HydroNode {
+<a href=#944 id=944 data-nosnippet>944</a>    <span class="kw">fn </span>other_ir_node(other: Singleton&lt;U, L, B&gt;) -&gt; HydroNode {
 <a href=#945 id=945 data-nosnippet>945</a>        other.ir_node.into_inner()
 <a href=#946 id=946 data-nosnippet>946</a>    }
 <a href=#947 id=947 data-nosnippet>947</a>
 <a href=#948 id=948 data-nosnippet>948</a>    <span class="kw">fn </span>make(location: L, ir_node: HydroNode) -&gt; <span class="self">Self</span>::Out {
-<a href=#949 id=949 data-nosnippet>949</a>        Optional::new(location, ir_node)
+<a href=#949 id=949 data-nosnippet>949</a>        Singleton::new(location, ir_node)
 <a href=#950 id=950 data-nosnippet>950</a>    }
 <a href=#951 id=951 data-nosnippet>951</a>}
 <a href=#952 id=952 data-nosnippet>952</a>
-<a href=#953 id=953 data-nosnippet>953</a><span class="attr">#[cfg(test)]
-<a href=#954 id=954 data-nosnippet>954</a></span><span class="kw">mod </span>tests {
-<a href=#955 id=955 data-nosnippet>955</a>    <span class="kw">use </span>futures::{SinkExt, StreamExt};
-<a href=#956 id=956 data-nosnippet>956</a>    <span class="kw">use </span>hydro_deploy::Deployment;
-<a href=#957 id=957 data-nosnippet>957</a>    <span class="kw">use </span>stageleft::q;
-<a href=#958 id=958 data-nosnippet>958</a>
-<a href=#959 id=959 data-nosnippet>959</a>    <span class="kw">use </span><span class="kw">crate</span>::compile::builder::FlowBuilder;
-<a href=#960 id=960 data-nosnippet>960</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
-<a href=#961 id=961 data-nosnippet>961</a>    <span class="kw">use </span><span class="kw">crate</span>::nondet::nondet;
-<a href=#962 id=962 data-nosnippet>962</a>
-<a href=#963 id=963 data-nosnippet>963</a>    <span class="attr">#[tokio::test]
-<a href=#964 id=964 data-nosnippet>964</a>    </span><span class="kw">async fn </span>tick_cycle_cardinality() {
-<a href=#965 id=965 data-nosnippet>965</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
-<a href=#966 id=966 data-nosnippet>966</a>
-<a href=#967 id=967 data-nosnippet>967</a>        <span class="kw">let </span>flow = FlowBuilder::new();
-<a href=#968 id=968 data-nosnippet>968</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#969 id=969 data-nosnippet>969</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
-<a href=#970 id=970 data-nosnippet>970</a>
-<a href=#971 id=971 data-nosnippet>971</a>        <span class="kw">let </span>(input_send, input) = node.source_external_bincode(<span class="kw-2">&amp;</span>external);
-<a href=#972 id=972 data-nosnippet>972</a>
-<a href=#973 id=973 data-nosnippet>973</a>        <span class="kw">let </span>node_tick = node.tick();
-<a href=#974 id=974 data-nosnippet>974</a>        <span class="kw">let </span>(complete_cycle, singleton) = node_tick.cycle_with_initial(node_tick.singleton(<span class="macro">q!</span>(<span class="number">0</span>)));
-<a href=#975 id=975 data-nosnippet>975</a>        <span class="kw">let </span>counts = singleton
-<a href=#976 id=976 data-nosnippet>976</a>            .clone()
-<a href=#977 id=977 data-nosnippet>977</a>            .into_stream()
-<a href=#978 id=978 data-nosnippet>978</a>            .count()
-<a href=#979 id=979 data-nosnippet>979</a>            .filter_if_some(input.batch(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** testing */</span>)).first())
-<a href=#980 id=980 data-nosnippet>980</a>            .all_ticks()
-<a href=#981 id=981 data-nosnippet>981</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
-<a href=#982 id=982 data-nosnippet>982</a>        complete_cycle.complete_next_tick(singleton);
-<a href=#983 id=983 data-nosnippet>983</a>
-<a href=#984 id=984 data-nosnippet>984</a>        <span class="kw">let </span>nodes = flow
-<a href=#985 id=985 data-nosnippet>985</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
-<a href=#986 id=986 data-nosnippet>986</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
-<a href=#987 id=987 data-nosnippet>987</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#953 id=953 data-nosnippet>953</a><span class="attr">#[sealed::sealed]
+<a href=#954 id=954 data-nosnippet>954</a></span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, U, L, B: Boundedness&gt; ZipResult&lt;<span class="lifetime">'a</span>, Optional&lt;U, L, B&gt;&gt; <span class="kw">for </span>Singleton&lt;T, L, B&gt;
+<a href=#955 id=955 data-nosnippet>955</a><span class="kw">where
+<a href=#956 id=956 data-nosnippet>956</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
+<a href=#957 id=957 data-nosnippet>957</a>{
+<a href=#958 id=958 data-nosnippet>958</a>    <span class="kw">type </span>Out = Optional&lt;(T, U), L, B&gt;;
+<a href=#959 id=959 data-nosnippet>959</a>    <span class="kw">type </span>ElementType = (T, U);
+<a href=#960 id=960 data-nosnippet>960</a>    <span class="kw">type </span>Location = L;
+<a href=#961 id=961 data-nosnippet>961</a>
+<a href=#962 id=962 data-nosnippet>962</a>    <span class="kw">fn </span>other_location(other: <span class="kw-2">&amp;</span>Optional&lt;U, L, B&gt;) -&gt; L {
+<a href=#963 id=963 data-nosnippet>963</a>        other.location.clone()
+<a href=#964 id=964 data-nosnippet>964</a>    }
+<a href=#965 id=965 data-nosnippet>965</a>
+<a href=#966 id=966 data-nosnippet>966</a>    <span class="kw">fn </span>other_ir_node(other: Optional&lt;U, L, B&gt;) -&gt; HydroNode {
+<a href=#967 id=967 data-nosnippet>967</a>        other.ir_node.into_inner()
+<a href=#968 id=968 data-nosnippet>968</a>    }
+<a href=#969 id=969 data-nosnippet>969</a>
+<a href=#970 id=970 data-nosnippet>970</a>    <span class="kw">fn </span>make(location: L, ir_node: HydroNode) -&gt; <span class="self">Self</span>::Out {
+<a href=#971 id=971 data-nosnippet>971</a>        Optional::new(location, ir_node)
+<a href=#972 id=972 data-nosnippet>972</a>    }
+<a href=#973 id=973 data-nosnippet>973</a>}
+<a href=#974 id=974 data-nosnippet>974</a>
+<a href=#975 id=975 data-nosnippet>975</a><span class="attr">#[cfg(test)]
+<a href=#976 id=976 data-nosnippet>976</a></span><span class="kw">mod </span>tests {
+<a href=#977 id=977 data-nosnippet>977</a>    <span class="kw">use </span>futures::{SinkExt, StreamExt};
+<a href=#978 id=978 data-nosnippet>978</a>    <span class="kw">use </span>hydro_deploy::Deployment;
+<a href=#979 id=979 data-nosnippet>979</a>    <span class="kw">use </span>stageleft::q;
+<a href=#980 id=980 data-nosnippet>980</a>
+<a href=#981 id=981 data-nosnippet>981</a>    <span class="kw">use </span><span class="kw">crate</span>::compile::builder::FlowBuilder;
+<a href=#982 id=982 data-nosnippet>982</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
+<a href=#983 id=983 data-nosnippet>983</a>    <span class="kw">use </span><span class="kw">crate</span>::nondet::nondet;
+<a href=#984 id=984 data-nosnippet>984</a>
+<a href=#985 id=985 data-nosnippet>985</a>    <span class="attr">#[tokio::test]
+<a href=#986 id=986 data-nosnippet>986</a>    </span><span class="kw">async fn </span>tick_cycle_cardinality() {
+<a href=#987 id=987 data-nosnippet>987</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#988 id=988 data-nosnippet>988</a>
-<a href=#989 id=989 data-nosnippet>989</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
-<a href=#990 id=990 data-nosnippet>990</a>
-<a href=#991 id=991 data-nosnippet>991</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_trigger = nodes.connect_sink_bincode(input_send).<span class="kw">await</span>;
-<a href=#992 id=992 data-nosnippet>992</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(counts).<span class="kw">await</span>;
-<a href=#993 id=993 data-nosnippet>993</a>
-<a href=#994 id=994 data-nosnippet>994</a>        deployment.start().<span class="kw">await</span>.unwrap();
-<a href=#995 id=995 data-nosnippet>995</a>
-<a href=#996 id=996 data-nosnippet>996</a>        tick_trigger.send(()).<span class="kw">await</span>.unwrap();
-<a href=#997 id=997 data-nosnippet>997</a>
-<a href=#998 id=998 data-nosnippet>998</a>        <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap(), <span class="number">1</span>);
-<a href=#999 id=999 data-nosnippet>999</a>
-<a href=#1000 id=1000 data-nosnippet>1000</a>        tick_trigger.send(()).<span class="kw">await</span>.unwrap();
-<a href=#1001 id=1001 data-nosnippet>1001</a>
-<a href=#1002 id=1002 data-nosnippet>1002</a>        <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap(), <span class="number">1</span>);
-<a href=#1003 id=1003 data-nosnippet>1003</a>    }
-<a href=#1004 id=1004 data-nosnippet>1004</a>}</code></pre></div></section></main></body></html>
+<a href=#989 id=989 data-nosnippet>989</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#990 id=990 data-nosnippet>990</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#991 id=991 data-nosnippet>991</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#992 id=992 data-nosnippet>992</a>
+<a href=#993 id=993 data-nosnippet>993</a>        <span class="kw">let </span>(input_send, input) = node.source_external_bincode(<span class="kw-2">&amp;</span>external);
+<a href=#994 id=994 data-nosnippet>994</a>
+<a href=#995 id=995 data-nosnippet>995</a>        <span class="kw">let </span>node_tick = node.tick();
+<a href=#996 id=996 data-nosnippet>996</a>        <span class="kw">let </span>(complete_cycle, singleton) = node_tick.cycle_with_initial(node_tick.singleton(<span class="macro">q!</span>(<span class="number">0</span>)));
+<a href=#997 id=997 data-nosnippet>997</a>        <span class="kw">let </span>counts = singleton
+<a href=#998 id=998 data-nosnippet>998</a>            .clone()
+<a href=#999 id=999 data-nosnippet>999</a>            .into_stream()
+<a href=#1000 id=1000 data-nosnippet>1000</a>            .count()
+<a href=#1001 id=1001 data-nosnippet>1001</a>            .filter_if_some(input.batch(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** testing */</span>)).first())
+<a href=#1002 id=1002 data-nosnippet>1002</a>            .all_ticks()
+<a href=#1003 id=1003 data-nosnippet>1003</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#1004 id=1004 data-nosnippet>1004</a>        complete_cycle.complete_next_tick(singleton);
+<a href=#1005 id=1005 data-nosnippet>1005</a>
+<a href=#1006 id=1006 data-nosnippet>1006</a>        <span class="kw">let </span>nodes = flow
+<a href=#1007 id=1007 data-nosnippet>1007</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
+<a href=#1008 id=1008 data-nosnippet>1008</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
+<a href=#1009 id=1009 data-nosnippet>1009</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#1010 id=1010 data-nosnippet>1010</a>
+<a href=#1011 id=1011 data-nosnippet>1011</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#1012 id=1012 data-nosnippet>1012</a>
+<a href=#1013 id=1013 data-nosnippet>1013</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_trigger = nodes.connect_sink_bincode(input_send).<span class="kw">await</span>;
+<a href=#1014 id=1014 data-nosnippet>1014</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(counts).<span class="kw">await</span>;
+<a href=#1015 id=1015 data-nosnippet>1015</a>
+<a href=#1016 id=1016 data-nosnippet>1016</a>        deployment.start().<span class="kw">await</span>.unwrap();
+<a href=#1017 id=1017 data-nosnippet>1017</a>
+<a href=#1018 id=1018 data-nosnippet>1018</a>        tick_trigger.send(()).<span class="kw">await</span>.unwrap();
+<a href=#1019 id=1019 data-nosnippet>1019</a>
+<a href=#1020 id=1020 data-nosnippet>1020</a>        <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap(), <span class="number">1</span>);
+<a href=#1021 id=1021 data-nosnippet>1021</a>
+<a href=#1022 id=1022 data-nosnippet>1022</a>        tick_trigger.send(()).<span class="kw">await</span>.unwrap();
+<a href=#1023 id=1023 data-nosnippet>1023</a>
+<a href=#1024 id=1024 data-nosnippet>1024</a>        <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap(), <span class="number">1</span>);
+<a href=#1025 id=1025 data-nosnippet>1025</a>    }
+<a href=#1026 id=1026 data-nosnippet>1026</a>}</code></pre></div></section></main></body></html>
