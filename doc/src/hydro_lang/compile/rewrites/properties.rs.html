@@ -108,14 +108,15 @@
 <a href=#108 id=108 data-nosnippet>108</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0</span>), counter_func)
 <a href=#109 id=109 data-nosnippet>109</a>            .entries()
 <a href=#110 id=110 data-nosnippet>110</a>            .all_ticks()
-<a href=#111 id=111 data-nosnippet>111</a>            .for_each(<span class="macro">q!</span>(|(string, count)| <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, string, count)));
-<a href=#112 id=112 data-nosnippet>112</a>
-<a href=#113 id=113 data-nosnippet>113</a>        <span class="kw">let </span>built = flow
-<a href=#114 id=114 data-nosnippet>114</a>            .optimize_with(|ir| properties_optimize(ir, <span class="kw-2">&amp;mut </span>database))
-<a href=#115 id=115 data-nosnippet>115</a>            .with_default_optimize::&lt;HydroDeploy&gt;();
-<a href=#116 id=116 data-nosnippet>116</a>
-<a href=#117 id=117 data-nosnippet>117</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(built.ir());
-<a href=#118 id=118 data-nosnippet>118</a>
-<a href=#119 id=119 data-nosnippet>119</a>        <span class="kw">let _ </span>= built.compile_no_network();
-<a href=#120 id=120 data-nosnippet>120</a>    }
-<a href=#121 id=121 data-nosnippet>121</a>}</code></pre></div></section></main></body></html>
+<a href=#111 id=111 data-nosnippet>111</a>            .assume_ordering(<span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#112 id=112 data-nosnippet>112</a>            .for_each(<span class="macro">q!</span>(|(string, count)| <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, string, count)));
+<a href=#113 id=113 data-nosnippet>113</a>
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>built = flow
+<a href=#115 id=115 data-nosnippet>115</a>            .optimize_with(|ir| properties_optimize(ir, <span class="kw-2">&amp;mut </span>database))
+<a href=#116 id=116 data-nosnippet>116</a>            .with_default_optimize::&lt;HydroDeploy&gt;();
+<a href=#117 id=117 data-nosnippet>117</a>
+<a href=#118 id=118 data-nosnippet>118</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(built.ir());
+<a href=#119 id=119 data-nosnippet>119</a>
+<a href=#120 id=120 data-nosnippet>120</a>        <span class="kw">let _ </span>= built.compile_no_network();
+<a href=#121 id=121 data-nosnippet>121</a>    }
+<a href=#122 id=122 data-nosnippet>122</a>}</code></pre></div></section></main></body></html>

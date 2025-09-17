@@ -71,14 +71,18 @@
 <a href=#71 id=71 data-nosnippet>71</a>///       /// non-deterministic timing will result in non-determistic samples printed
 <a href=#72 id=72 data-nosnippet>72</a>///       nondet_samples
 <a href=#73 id=73 data-nosnippet>73</a>///     ))
-<a href=#74 id=74 data-nosnippet>74</a>///     .for_each(q!(|v| println!("Sample: {:?}", v)))
-<a href=#75 id=75 data-nosnippet>75</a>/// }
-<a href=#76 id=76 data-nosnippet>76</a>/// ```
-<a href=#77 id=77 data-nosnippet>77</a></span><span class="macro">macro_rules!</span> __nondet__ {
-<a href=#78 id=78 data-nosnippet>78</a>    ($(<span class="attr">#[doc = <span class="macro-nonterminal">$doc</span>:expr]</span>)+$(<span class="macro-nonterminal">$forward</span>:ident),<span class="kw-2">*</span>) =&gt; {
-<a href=#79 id=79 data-nosnippet>79</a>        {
-<a href=#80 id=80 data-nosnippet>80</a>            $(<span class="kw">let _ </span>= <span class="macro-nonterminal">$forward</span>;)*
-<a href=#81 id=81 data-nosnippet>81</a>            <span class="macro-nonterminal">$crate::nondet::NonDet
-<a href=#82 id=82 data-nosnippet>82</a>        </span>}
-<a href=#83 id=83 data-nosnippet>83</a>    };
-<a href=#84 id=84 data-nosnippet>84</a>}</code></pre></div></section></main></body></html>
+<a href=#74 id=74 data-nosnippet>74</a>///     .assume_retries(nondet!(
+<a href=#75 id=75 data-nosnippet>75</a>///         /// non-deterministic duplicated logs are okay
+<a href=#76 id=76 data-nosnippet>76</a>///         nondet_samples
+<a href=#77 id=77 data-nosnippet>77</a>///     ))
+<a href=#78 id=78 data-nosnippet>78</a>///     .for_each(q!(|v| println!("Sample: {:?}", v)))
+<a href=#79 id=79 data-nosnippet>79</a>/// }
+<a href=#80 id=80 data-nosnippet>80</a>/// ```
+<a href=#81 id=81 data-nosnippet>81</a></span><span class="macro">macro_rules!</span> __nondet__ {
+<a href=#82 id=82 data-nosnippet>82</a>    ($(<span class="attr">#[doc = <span class="macro-nonterminal">$doc</span>:expr]</span>)+$(<span class="macro-nonterminal">$forward</span>:ident),<span class="kw-2">*</span>) =&gt; {
+<a href=#83 id=83 data-nosnippet>83</a>        {
+<a href=#84 id=84 data-nosnippet>84</a>            $(<span class="kw">let _ </span>= <span class="macro-nonterminal">$forward</span>;)*
+<a href=#85 id=85 data-nosnippet>85</a>            <span class="macro-nonterminal">$crate::nondet::NonDet
+<a href=#86 id=86 data-nosnippet>86</a>        </span>}
+<a href=#87 id=87 data-nosnippet>87</a>    };
+<a href=#88 id=88 data-nosnippet>88</a>}</code></pre></div></section></main></body></html>
