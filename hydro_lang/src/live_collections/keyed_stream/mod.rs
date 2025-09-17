@@ -14,6 +14,7 @@ use crate::compile::ir::HydroNode;
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::dynamic::LocationId;
 use crate::location::tick::NoAtomic;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
@@ -35,12 +36,19 @@ pub mod networking;
 ///   ([`TotalOrder`]) or not ([`NoOrder`])
 /// - `Retries`: tracks whether the elements within each group have deterministic cardinality
 ///   ([`ExactlyOnce`]) or may have non-deterministic retries ([`crate::live_collections::stream::AtLeastOnce`])
-pub struct KeyedStream<K, V, Loc, Bound: Boundedness, Order = TotalOrder, Retries = ExactlyOnce> {
-    pub(crate) underlying: Stream<(K, V), Loc, Bound, NoOrder, Retries>,
+pub struct KeyedStream<
+    K,
+    V,
+    Loc,
+    Bound: Boundedness,
+    Order: Ordering = TotalOrder,
+    Retry: Retries = ExactlyOnce,
+> {
+    pub(crate) underlying: Stream<(K, V), Loc, Bound, NoOrder, Retry>,
     pub(crate) _phantom_order: PhantomData<Order>,
 }
 
-impl<'a, K, V, L, B: Boundedness, R> From<KeyedStream<K, V, L, B, TotalOrder, R>>
+impl<'a, K, V, L, B: Boundedness, R: Retries> From<KeyedStream<K, V, L, B, TotalOrder, R>>
     for KeyedStream<K, V, L, B, NoOrder, R>
 where
     L: Location<'a>,
@@ -53,8 +61,8 @@ where
     }
 }
 
-impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order, Retries> Clone
-    for KeyedStream<K, V, Loc, Bound, Order, Retries>
+impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order: Ordering, R: Retries>
+    Clone for KeyedStream<K, V, Loc, Bound, Order, R>
 {
     fn clone(&self) -> Self {
         KeyedStream {
@@ -64,7 +72,7 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order, Retri
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, O, R> CycleCollection<'a, ForwardRef>
+impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> CycleCollection<'a, ForwardRef>
     for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
@@ -76,7 +84,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, O, R> ReceiverComplete<'a, ForwardRef>
+impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> ReceiverComplete<'a, ForwardRef>
     for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
@@ -86,7 +94,9 @@ where
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R> {
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<K, V, L, B, O, R>
+{
     /// Explicitly "casts" the keyed stream to a type with a different ordering
     /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.
@@ -95,7 +105,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O,
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_ordering<O2>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O2, R> {
+    pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O2, R> {
         KeyedStream {
             underlying: self.underlying,
             _phantom_order: PhantomData,
@@ -110,7 +120,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O,
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_retries<R2>(self, nondet: NonDet) -> KeyedStream<K, V, L, B, O, R2> {
+    pub fn assume_retries<R2: Retries>(self, nondet: NonDet) -> KeyedStream<K, V, L, B, O, R2> {
         KeyedStream {
             underlying: self.underlying.assume_retries::<R2>(nondet),
             _phantom_order: PhantomData,
@@ -478,7 +488,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O, R> KeyedStream<K, V, L, B, O,
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, Unbounded, O, R> {
+impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O: Ordering, R: Retries>
+    KeyedStream<K, V, L, Unbounded, O, R>
+{
     /// Produces a new keyed stream that "merges" the inputs by interleaving the elements
     /// of any overlapping groups. The result has [`NoOrder`] on each group because the
     /// order of interleaving is not guaranteed. If the keys across both inputs do not overlap,
@@ -502,12 +514,12 @@ impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O, R> KeyedStream<K, V, L, U
     /// # }
     /// # }));
     /// ```
-    pub fn interleave<O2, R2: MinRetries<R>>(
+    pub fn interleave<O2: Ordering, R2: Retries>(
         self,
         other: KeyedStream<K, V, L, Unbounded, O2, R2>,
-    ) -> KeyedStream<K, V, L, Unbounded, NoOrder, R::Min>
+    ) -> KeyedStream<K, V, L, Unbounded, NoOrder, <R as MinRetries<R2>>::Min>
     where
-        R: MinRetries<R2, Min = R2::Min>,
+        R: MinRetries<R2>,
     {
         self.entries().interleave(other.entries()).into_keyed()
     }
@@ -926,7 +938,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, O> KeyedStream<K, V, L, B, O, ExactlyOnce>
+impl<'a, K, V, L, B: Boundedness, O: Ordering> KeyedStream<K, V, L, B, O, ExactlyOnce>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -1039,7 +1051,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, R> KeyedStream<K, V, L, B, TotalOrder, R>
+impl<'a, K, V, L, B: Boundedness, R: Retries> KeyedStream<K, V, L, B, TotalOrder, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -1152,7 +1164,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R>
+impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -1294,7 +1306,10 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
-    pub fn filter_key_not_in<O2, R2>(self, other: Stream<K, L, Bounded, O2, R2>) -> Self {
+    pub fn filter_key_not_in<O2: Ordering, R2: Retries>(
+        self,
+        other: Stream<K, L, Bounded, O2, R2>,
+    ) -> Self {
         KeyedStream {
             underlying: self.entries().anti_join(other),
             _phantom_order: Default::default(),
@@ -1302,7 +1317,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R>
+impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
@@ -1329,7 +1344,7 @@ where
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, O, R> KeyedStream<K, V, Atomic<L>, B, O, R>
+impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, Atomic<L>, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
@@ -1347,7 +1362,7 @@ where
     }
 }
 
-impl<'a, K, V, L, O, R> KeyedStream<K, V, L, Bounded, O, R>
+impl<'a, K, V, L, O: Ordering, R: Retries> KeyedStream<K, V, L, Bounded, O, R>
 where
     L: Location<'a>,
 {
@@ -1377,10 +1392,10 @@ where
     /// # }
     /// # }));
     /// ```
-    pub fn chain<O2>(
+    pub fn chain<O2: Ordering>(
         self,
         other: KeyedStream<K, V, L, Bounded, O2, R>,
-    ) -> KeyedStream<K, V, L, Bounded, O::Min, R>
+    ) -> KeyedStream<K, V, L, Bounded, <O as MinOrder<O2>>::Min, R>
     where
         O: MinOrder<O2>,
     {
@@ -1391,7 +1406,7 @@ where
     }
 }
 
-impl<'a, K, V, L, O, R> KeyedStream<K, V, Tick<L>, Bounded, O, R>
+impl<'a, K, V, L, O: Ordering, R: Retries> KeyedStream<K, V, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
