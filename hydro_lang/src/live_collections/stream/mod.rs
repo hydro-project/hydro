@@ -2580,17 +2580,6 @@ where
             },
         )
     }
-
-    #[expect(missing_docs, reason = "TODO")]
-    pub fn delta(self) -> Stream<T, Tick<L>, Bounded, O, R> {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Delta {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            },
-        )
-    }
 }
 
 #[cfg(test)]
