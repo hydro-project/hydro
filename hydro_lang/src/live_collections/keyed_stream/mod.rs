@@ -23,9 +23,13 @@ use crate::nondet::{NonDet, nondet};
 pub mod networking;
 
 /// Streaming elements of type `V` grouped by a key of type `K`.
+/// 
+/// Keyed Streams capture streaming elements of type `V` grouped by a key of type `K`, where the
+/// order of keys is non-deterministic but the order *within* each group may be deterministic.
 ///
-/// Unlike regular streams, where the ordering applies across all elements, the ordering of keys is
-/// non-deterministic but the order *within* each group may be deterministic.
+/// Although keyed streams are conceptually grouped by keys, values are not immediately grouped
+/// into buckets when constructing a keyed stream. Instead, keyed streams defer grouping until an
+/// operator such as [`KeyedStream::fold`] is called, which requires `K: Hash + Eq`.
 ///
 /// Type Parameters:
 /// - `K`: the type of the key for each group
@@ -1307,7 +1311,14 @@ impl<'a, K, V, L, B: Boundedness, O, R> KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
 {
-    #[expect(missing_docs, reason = "TODO")]
+    /// Shifts this keyed stream into an atomic context, which guarantees that any downstream logic
+    /// will all be executed synchronously before any outputs are yielded (in [`KeyedStream::end_atomic`]).
+    ///
+    /// This is useful to enforce local consistency constraints, such as ensuring that a write is
+    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
+    /// argument that declares where the stream will be atomically processed. Batching a stream into
+    /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
+    /// [`Tick`] will introduce asynchrony.
     pub fn atomic(self, tick: &Tick<L>) -> KeyedStream<K, V, Atomic<L>, B, O, R> {
         KeyedStream {
             underlying: self.underlying.atomic(tick),
@@ -1336,13 +1347,23 @@ where
 {
     /// Returns a keyed stream corresponding to the latest batch of elements being atomically
     /// processed. These batches are guaranteed to be contiguous across ticks and preserve
-    /// the order of the input.
+    /// the order of the input. The output keyed stream will execute in the [`Tick`] that was
+    /// used to create the atomic section.
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
     pub fn batch(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
         KeyedStream {
             underlying: self.underlying.batch(nondet),
+            _phantom_order: Default::default(),
+        }
+    }
+
+    /// Yields the elements of this keyed stream back into a top-level, asynchronous execution context.
+    /// See [`KeyedStream::atomic`] for more details.
+    pub fn end_atomic(self) -> KeyedStream<K, V, L, B, O, R> {
+        KeyedStream {
+            underlying: self.underlying.end_atomic(),
             _phantom_order: Default::default(),
         }
     }
@@ -1396,8 +1417,24 @@ impl<'a, K, V, L, O, R> KeyedStream<K, V, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
 {
-    #[expect(missing_docs, reason = "TODO")]
+    /// Asynchronously yields this batch of keyed elements outside the tick as an unbounded keyed stream,
+    /// which will stream all the elements across _all_ tick iterations by concatenating the batches for
+    /// each key.
     pub fn all_ticks(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
+        KeyedStream {
+            underlying: self.underlying.all_ticks(),
+            _phantom_order: Default::default(),
+        }
+    }
+
+    /// Synchronously yields this batch of keyed elements outside the tick as an unbounded keyed stream,
+    /// which will stream all the elements across _all_ tick iterations by concatenating the batches for
+    /// each key.
+    ///
+    /// Unlike [`KeyedStream::all_ticks`], this preserves synchronous execution, as the output stream
+    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+    /// stream's [`Tick`] context.
+    pub fn all_ticks_atomic(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
         KeyedStream {
             underlying: self.underlying.all_ticks(),
             _phantom_order: Default::default(),
