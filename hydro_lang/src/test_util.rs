@@ -9,14 +9,14 @@ use serde::de::DeserializeOwned;
 
 use crate::compile::builder::FlowBuilder;
 use crate::live_collections::boundedness::Unbounded;
-use crate::live_collections::stream::Stream;
+use crate::live_collections::stream::{Ordering, Retries, Stream};
 use crate::location::Process;
 
 /// Sets up a test with multiple processes / clusters declared in the test logic (`thunk`). The test logic must return
 /// a single streaming output, which can then be read in `check` (an async closure) to perform assertions.
 ///
 /// Each declared process is deployed as a single local process, and each cluster is deployed as four local processes.
-pub async fn multi_location_test<'a, T, C, O, R>(
+pub async fn multi_location_test<'a, T, C, O: Ordering, R: Retries>(
     thunk: impl FnOnce(&FlowBuilder<'a>, &Process<'a, ()>) -> Stream<T, Process<'a>, Unbounded, O, R>,
     check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = T>>>) -> C,
 ) where
@@ -45,7 +45,7 @@ pub async fn multi_location_test<'a, T, C, O, R>(
 
 /// Sets up a test declared in `thunk` that executes on a single [`Process`], returning a streaming output
 /// that can be read in `check` (an async closure) to perform assertions.
-pub async fn stream_transform_test<'a, T, C, O, R>(
+pub async fn stream_transform_test<'a, T, C, O: Ordering, R: Retries>(
     thunk: impl FnOnce(&Process<'a>) -> Stream<T, Process<'a>, Unbounded, O, R>,
     check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = T>>>) -> C,
 ) where

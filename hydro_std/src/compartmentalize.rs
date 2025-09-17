@@ -1,5 +1,5 @@
 use hydro_lang::live_collections::boundedness::Boundedness;
-use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::live_collections::stream::{NoOrder, Ordering};
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::location::{Location, MemberId, NoTick};
 use hydro_lang::prelude::*;
@@ -17,7 +17,7 @@ pub trait PartitionStream<'a, T, C1, C2, Order> {
         T: Clone + Serialize + DeserializeOwned;
 }
 
-impl<'a, T, C1, C2, Order> PartitionStream<'a, T, C1, C2, Order>
+impl<'a, T, C1, C2, Order: Ordering> PartitionStream<'a, T, C1, C2, Order>
     for Stream<(MemberId<C2>, T), Cluster<'a, C1>, Unbounded, Order>
 {
     fn send_partitioned<F: Fn((MemberId<C2>, T)) -> (MemberId<C2>, T) + 'a>(
@@ -32,7 +32,7 @@ impl<'a, T, C1, C2, Order> PartitionStream<'a, T, C1, C2, Order>
     }
 }
 
-pub trait DecoupleClusterStream<'a, T, C1, B, Order> {
+pub trait DecoupleClusterStream<'a, T, C1, B, Order: Ordering> {
     fn decouple_cluster<C2: 'a>(
         self,
         other: &Cluster<'a, C2>,
@@ -41,7 +41,7 @@ pub trait DecoupleClusterStream<'a, T, C1, B, Order> {
         T: Clone + Serialize + DeserializeOwned;
 }
 
-impl<'a, T, C1, B: Boundedness, Order> DecoupleClusterStream<'a, T, C1, B, Order>
+impl<'a, T, C1, B: Boundedness, Order: Ordering> DecoupleClusterStream<'a, T, C1, B, Order>
     for Stream<T, Cluster<'a, C1>, B, Order>
 {
     fn decouple_cluster<C2: 'a>(
@@ -65,7 +65,7 @@ impl<'a, T, C1, B: Boundedness, Order> DecoupleClusterStream<'a, T, C1, B, Order
     }
 }
 
-pub trait DecoupleProcessStream<'a, T, L: Location<'a> + NoTick, B, Order> {
+pub trait DecoupleProcessStream<'a, T, L: Location<'a> + NoTick, B, Order: Ordering> {
     fn decouple_process<P2>(
         self,
         other: &Process<'a, P2>,
@@ -74,8 +74,8 @@ pub trait DecoupleProcessStream<'a, T, L: Location<'a> + NoTick, B, Order> {
         T: Clone + Serialize + DeserializeOwned;
 }
 
-impl<'a, T, L, B: Boundedness, Order> DecoupleProcessStream<'a, T, Process<'a, L>, B, Order>
-    for Stream<T, Process<'a, L>, B, Order>
+impl<'a, T, L, B: Boundedness, Order: Ordering>
+    DecoupleProcessStream<'a, T, Process<'a, L>, B, Order> for Stream<T, Process<'a, L>, B, Order>
 {
     fn decouple_process<P2>(
         self,
