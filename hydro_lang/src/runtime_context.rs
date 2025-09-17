@@ -1,11 +1,17 @@
+//! Interfaces to access DFIR runtime metadata from Hydro programs.
+
 use dfir_rs::scheduled::context::Context;
 use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
 
 use crate::location::Location;
 
+/// Exposes the DFIR [`Context`] inside quoted code.
 pub static RUNTIME_CONTEXT: RuntimeContext = RuntimeContext { _private: &() };
 
+/// A handle to DFIR [`Context`] which can be used inside quoted code.
+///
+/// When spliced, it turns into a reference to [`Context`].
 #[derive(Clone, Copy)]
 pub struct RuntimeContext<'a> {
     _private: &'a (),
