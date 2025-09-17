@@ -9,7 +9,7 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
-use super::singleton::{Singleton, ZipResult};
+use super::singleton::Singleton;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
 #[cfg(stageleft_runtime)]
@@ -188,7 +188,7 @@ where
     L: Location<'a>,
 {
     fn from(singleton: Singleton<T, L, B>) -> Self {
-        Optional::some(singleton)
+        Optional::new(singleton.location, singleton.ir_node.into_inner())
     }
 }
 
@@ -232,11 +232,6 @@ where
             ir_node: RefCell::new(ir_node),
             _phantom: PhantomData,
         }
-    }
-
-    #[expect(missing_docs, reason = "TODO")]
-    pub fn some(singleton: Singleton<T, L, B>) -> Self {
-        Optional::new(singleton.location, singleton.ir_node.into_inner())
     }
 
     /// Transforms the optional value by applying a function `f` to it,
@@ -505,40 +500,6 @@ where
     }
 
     #[expect(missing_docs, reason = "TODO")]
-    pub fn union(self, other: Optional<T, L, B>) -> Optional<T, L, B> {
-        check_matching_location(&self.location, &other.location);
-
-        if L::is_top_level() {
-            Optional::new(
-                self.location.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::Chain {
-                        first: Box::new(HydroNode::Unpersist {
-                            inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
-                        }),
-                        second: Box::new(HydroNode::Unpersist {
-                            inner: Box::new(other.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
-                        }),
-                        metadata: self.location.new_node_metadata::<T>(),
-                    }),
-                    metadata: self.location.new_node_metadata::<T>(),
-                },
-            )
-        } else {
-            Optional::new(
-                self.location.clone(),
-                HydroNode::Chain {
-                    first: Box::new(self.ir_node.into_inner()),
-                    second: Box::new(other.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<T>(),
-                },
-            )
-        }
-    }
-
-    #[expect(missing_docs, reason = "TODO")]
     pub fn zip<O>(self, other: impl Into<Optional<O, L, B>>) -> Optional<(T, O), L, B>
     where
         O: Clone,
@@ -577,14 +538,14 @@ where
     }
 
     #[expect(missing_docs, reason = "TODO")]
-    pub fn unwrap_or(self, other: Singleton<T, L, B>) -> Singleton<T, L, B> {
+    pub fn or(self, other: Optional<T, L, B>) -> Optional<T, L, B> {
         check_matching_location(&self.location, &other.location);
 
         if L::is_top_level() {
-            Singleton::new(
+            Optional::new(
                 self.location.clone(),
                 HydroNode::Persist {
-                    inner: Box::new(HydroNode::Chain {
+                    inner: Box::new(HydroNode::ChainFirst {
                         first: Box::new(HydroNode::Unpersist {
                             inner: Box::new(self.ir_node.into_inner()),
                             metadata: self.location.new_node_metadata::<T>(),
@@ -599,15 +560,21 @@ where
                 },
             )
         } else {
-            Singleton::new(
+            Optional::new(
                 self.location.clone(),
-                HydroNode::Chain {
+                HydroNode::ChainFirst {
                     first: Box::new(self.ir_node.into_inner()),
                     second: Box::new(other.ir_node.into_inner()),
                     metadata: self.location.new_node_metadata::<T>(),
                 },
             )
         }
+    }
+
+    #[expect(missing_docs, reason = "TODO")]
+    pub fn unwrap_or(self, other: Singleton<T, L, B>) -> Singleton<T, L, B> {
+        let res_option = self.or(other.into());
+        Singleton::new(res_option.location, res_option.ir_node.into_inner())
     }
 
     #[expect(missing_docs, reason = "TODO")]
@@ -656,24 +623,89 @@ impl<'a, T, L> Optional<T, L, Bounded>
 where
     L: Location<'a>,
 {
-    pub fn continue_if<U>(self, signal: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
+    /// Filters this optional, passing through the optional value if it is non-null **and** the
+    /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
+    ///
+    /// Useful for conditionally processing, such as only emitting an optional's value outside
+    /// a tick if some other condition is satisfied.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![456]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// batch_first_tick.chain(batch_second_tick).first()
+    ///   .filter_if_some(some_on_first_tick)
+    ///   .unwrap_or(tick.singleton(q!(789)))
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [789, 789]
+    /// # for w in vec![789, 789] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter_if_some<U>(self, signal: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
         self.zip(signal.map(q!(|_u| ()))).map(q!(|(d, _signal)| d))
     }
 
-    pub fn continue_unless<U>(self, other: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
-        self.continue_if(other.into_stream().count().filter(q!(|c| *c == 0)))
+    /// Filters this optional, passing through the optional value if it is non-null **and** the
+    /// argument (a [`Bounded`] [`Optional`]`) is _null_, otherwise the output is null.
+    ///
+    /// Useful for conditionally processing, such as only emitting an optional's value outside
+    /// a tick if some other condition is satisfied.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![456]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// batch_first_tick.chain(batch_second_tick).first()
+    ///   .filter_if_none(some_on_first_tick)
+    ///   .unwrap_or(tick.singleton(q!(789)))
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [789, 789]
+    /// # for w in vec![789, 456] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn filter_if_none<U>(self, other: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
+        self.filter_if_some(
+            other
+                .map(q!(|_| ()))
+                .into_singleton()
+                .filter(q!(|o| o.is_none())),
+        )
     }
 
-    pub fn then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded>
-    where
-        Singleton<U, L, Bounded>: ZipResult<
-                'a,
-                Optional<(), L, Bounded>,
-                Location = L,
-                Out = Optional<(U, ()), L, Bounded>,
-            >,
-    {
-        value.continue_if(self)
+    pub fn then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded> {
+        value.filter_if_some(self)
     }
 
     pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce> {
@@ -777,7 +809,7 @@ where
         let tick = self.location.tick();
 
         self.snapshot(&tick, nondet)
-            .continue_if(samples.batch(&tick, nondet).first())
+            .filter_if_some(samples.batch(&tick, nondet).first())
             .all_ticks()
             .weakest_retries()
     }
@@ -860,5 +892,49 @@ where
                 metadata: self.location.new_node_metadata::<T>(),
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::StreamExt;
+    use hydro_deploy::Deployment;
+    use stageleft::q;
+
+    use super::Optional;
+    use crate::compile::builder::FlowBuilder;
+    use crate::location::Location;
+
+    #[tokio::test]
+    async fn optional_or_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let node_tick = node.tick();
+        let tick_singleton = node_tick.singleton(q!(123));
+        let tick_optional_inhabited: Optional<_, _, _> = tick_singleton.into();
+        let counts = tick_optional_inhabited
+            .clone()
+            .or(tick_optional_inhabited)
+            .into_stream()
+            .count()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_out = nodes.connect_source_bincode(counts).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), 1);
     }
 }

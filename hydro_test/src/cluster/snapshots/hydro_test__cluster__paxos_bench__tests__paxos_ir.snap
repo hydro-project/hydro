@@ -45,7 +45,7 @@ expression: built.ir()
             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , u32) , u32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_raw (__hydro_lang_cluster_self_id_0) ; move | (received_max_ballot , ballot_num) | { if received_max_ballot > (Ballot { num : ballot_num , proposer_id : CLUSTER_SELF_ID__free , }) { received_max_ballot . num + 1 } else { ballot_num } } }),
             input: CrossSingleton {
                 left: Tee {
-                    inner: <tee 0>: Chain {
+                    inner: <tee 0>: ChainFirst {
                         first: Reduce {
                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
                             input: Persist {
@@ -180,7 +180,7 @@ expression: built.ir()
                     },
                 },
                 right: Tee {
-                    inner: <tee 1>: Chain {
+                    inner: <tee 1>: ChainFirst {
                         first: DeferTick {
                             input: CycleSource {
                                 ident: Ident {
@@ -210,80 +210,23 @@ expression: built.ir()
                                 ),
                             },
                         },
-                        second: Map {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , ()) , u32 > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
-                            input: CrossSingleton {
-                                left: Persist {
-                                    inner: Source {
-                                        source: Iter(
-                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; 0 } ; [e__free] },
-                                        ),
-                                        metadata: HydroIrMetadata {
-                                            location_kind: Cluster(
-                                                0,
-                                            ),
-                                            output_type: Some(
-                                                u32,
-                                            ),
-                                        },
-                                    },
-                                    metadata: HydroIrMetadata {
-                                        location_kind: Cluster(
-                                            0,
-                                        ),
-                                        output_type: Some(
-                                            u32,
-                                        ),
-                                    },
-                                },
-                                right: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                    input: Source {
-                                        source: Iter(
-                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; () } ; [e__free] },
-                                        ),
-                                        metadata: HydroIrMetadata {
-                                            location_kind: Tick(
-                                                1,
-                                                Cluster(
-                                                    0,
-                                                ),
-                                            ),
-                                            output_type: Some(
-                                                (),
-                                            ),
-                                        },
-                                    },
-                                    metadata: HydroIrMetadata {
-                                        location_kind: Tick(
-                                            1,
-                                            Cluster(
-                                                0,
-                                            ),
-                                        ),
-                                        output_type: Some(
-                                            (),
-                                        ),
-                                    },
-                                },
+                        second: Persist {
+                            inner: Source {
+                                source: Iter(
+                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; 0 } ; [e__free] },
+                                ),
                                 metadata: HydroIrMetadata {
-                                    location_kind: Tick(
-                                        1,
-                                        Cluster(
-                                            0,
-                                        ),
+                                    location_kind: Cluster(
+                                        0,
                                     ),
                                     output_type: Some(
-                                        (u32 , ()),
+                                        u32,
                                     ),
                                 },
                             },
                             metadata: HydroIrMetadata {
-                                location_kind: Tick(
-                                    1,
-                                    Cluster(
-                                        0,
-                                    ),
+                                location_kind: Cluster(
+                                    0,
                                 ),
                                 output_type: Some(
                                     u32,
@@ -1108,7 +1051,7 @@ expression: built.ir()
                                                                     },
                                                                 },
                                                                 right: Tee {
-                                                                    inner: <tee 9>: Chain {
+                                                                    inner: <tee 9>: ChainFirst {
                                                                         first: Reduce {
                                                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
                                                                             input: Persist {
@@ -2606,7 +2549,7 @@ expression: built.ir()
                                         },
                                     },
                                     right: Tee {
-                                        inner: <tee 19>: Chain {
+                                        inner: <tee 19>: ChainFirst {
                                             first: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < usize , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | max_slot | max_slot + 1 }),
                                                 input: Tee {
@@ -2773,7 +2716,7 @@ expression: built.ir()
                                                     ),
                                                 },
                                             },
-                                            second: Chain {
+                                            second: ChainFirst {
                                                 first: DeferTick {
                                                     input: CycleSource {
                                                         ident: Ident {
@@ -2803,80 +2746,23 @@ expression: built.ir()
                                                         ),
                                                     },
                                                 },
-                                                second: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , ()) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
-                                                    input: CrossSingleton {
-                                                        left: Persist {
-                                                            inner: Source {
-                                                                source: Iter(
-                                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; 0 } ; [e__free] },
-                                                                ),
-                                                                metadata: HydroIrMetadata {
-                                                                    location_kind: Cluster(
-                                                                        0,
-                                                                    ),
-                                                                    output_type: Some(
-                                                                        usize,
-                                                                    ),
-                                                                },
-                                                            },
-                                                            metadata: HydroIrMetadata {
-                                                                location_kind: Cluster(
-                                                                    0,
-                                                                ),
-                                                                output_type: Some(
-                                                                    usize,
-                                                                ),
-                                                            },
-                                                        },
-                                                        right: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                                            input: Source {
-                                                                source: Iter(
-                                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; () } ; [e__free] },
-                                                                ),
-                                                                metadata: HydroIrMetadata {
-                                                                    location_kind: Tick(
-                                                                        1,
-                                                                        Cluster(
-                                                                            0,
-                                                                        ),
-                                                                    ),
-                                                                    output_type: Some(
-                                                                        (),
-                                                                    ),
-                                                                },
-                                                            },
-                                                            metadata: HydroIrMetadata {
-                                                                location_kind: Tick(
-                                                                    1,
-                                                                    Cluster(
-                                                                        0,
-                                                                    ),
-                                                                ),
-                                                                output_type: Some(
-                                                                    (),
-                                                                ),
-                                                            },
-                                                        },
+                                                second: Persist {
+                                                    inner: Source {
+                                                        source: Iter(
+                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; 0 } ; [e__free] },
+                                                        ),
                                                         metadata: HydroIrMetadata {
-                                                            location_kind: Tick(
-                                                                1,
-                                                                Cluster(
-                                                                    0,
-                                                                ),
+                                                            location_kind: Cluster(
+                                                                0,
                                                             ),
                                                             output_type: Some(
-                                                                (usize , ()),
+                                                                usize,
                                                             ),
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
-                                                        location_kind: Tick(
-                                                            1,
-                                                            Cluster(
-                                                                0,
-                                                            ),
+                                                        location_kind: Cluster(
+                                                            0,
                                                         ),
                                                         output_type: Some(
                                                             usize,
@@ -3273,7 +3159,7 @@ expression: built.ir()
                                                                                                             },
                                                                                                         },
                                                                                                         right: Tee {
-                                                                                                            inner: <tee 29>: Chain {
+                                                                                                            inner: <tee 29>: ChainFirst {
                                                                                                                 first: Map {
                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                                                                                     input: Reduce {
@@ -4144,7 +4030,7 @@ expression: built.ir()
             sym: cycle_3,
         },
         input: CrossSingleton {
-            left: Chain {
+            left: ChainFirst {
                 first: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                     input: Tee {
@@ -4688,7 +4574,7 @@ expression: built.ir()
                                     },
                                 },
                                 right: Tee {
-                                    inner: <tee 36>: Chain {
+                                    inner: <tee 36>: ChainFirst {
                                         first: DeferTick {
                                             input: CycleSource {
                                                 ident: Ident {
@@ -4718,80 +4604,23 @@ expression: built.ir()
                                                 ),
                                             },
                                         },
-                                        second: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , ()) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
-                                            input: CrossSingleton {
-                                                left: Persist {
-                                                    inner: Source {
-                                                        source: Iter(
-                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; 0 } ; [e__free] },
-                                                        ),
-                                                        metadata: HydroIrMetadata {
-                                                            location_kind: Cluster(
-                                                                4,
-                                                            ),
-                                                            output_type: Some(
-                                                                usize,
-                                                            ),
-                                                        },
-                                                    },
-                                                    metadata: HydroIrMetadata {
-                                                        location_kind: Cluster(
-                                                            4,
-                                                        ),
-                                                        output_type: Some(
-                                                            usize,
-                                                        ),
-                                                    },
-                                                },
-                                                right: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                                    input: Source {
-                                                        source: Iter(
-                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; () } ; [e__free] },
-                                                        ),
-                                                        metadata: HydroIrMetadata {
-                                                            location_kind: Tick(
-                                                                13,
-                                                                Cluster(
-                                                                    4,
-                                                                ),
-                                                            ),
-                                                            output_type: Some(
-                                                                (),
-                                                            ),
-                                                        },
-                                                    },
-                                                    metadata: HydroIrMetadata {
-                                                        location_kind: Tick(
-                                                            13,
-                                                            Cluster(
-                                                                4,
-                                                            ),
-                                                        ),
-                                                        output_type: Some(
-                                                            (),
-                                                        ),
-                                                    },
-                                                },
+                                        second: Persist {
+                                            inner: Source {
+                                                source: Iter(
+                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; 0 } ; [e__free] },
+                                                ),
                                                 metadata: HydroIrMetadata {
-                                                    location_kind: Tick(
-                                                        13,
-                                                        Cluster(
-                                                            4,
-                                                        ),
+                                                    location_kind: Cluster(
+                                                        4,
                                                     ),
                                                     output_type: Some(
-                                                        (usize , ()),
+                                                        usize,
                                                     ),
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
-                                                location_kind: Tick(
-                                                    13,
-                                                    Cluster(
-                                                        4,
-                                                    ),
+                                                location_kind: Cluster(
+                                                    4,
                                                 ),
                                                 output_type: Some(
                                                     usize,
@@ -5046,7 +4875,7 @@ expression: built.ir()
             inner: <tee 38>: FilterMap {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , usize) , core :: option :: Option < usize > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; let checkpoint_frequency__free = 1000usize ; move | (max_checkpointed_seq , next_slot) | if max_checkpointed_seq . map (| m | next_slot - m >= checkpoint_frequency__free) . unwrap_or (true) { Some (next_slot) } else { None } }),
                 input: CrossSingleton {
-                    left: Chain {
+                    left: ChainFirst {
                         first: Map {
                             f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                             input: Reduce {

@@ -1524,7 +1524,7 @@ mod tests {
         let tick_triggered_input = node
             .source_iter(q!([(3, 103)]))
             .batch(&node_tick, nondet!(/** test */))
-            .continue_if(
+            .filter_if_some(
                 tick_trigger
                     .clone()
                     .batch(&node_tick, nondet!(/** test */))

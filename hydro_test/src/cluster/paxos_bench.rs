@@ -85,7 +85,7 @@ pub fn paxos_bench<'a>(
             // Find the smallest checkpoint seq that everyone agrees to
             a_checkpoint_largest_seqs
                 .entries()
-                .continue_if(a_checkpoints_quorum_reached)
+                .filter_if_some(a_checkpoints_quorum_reached)
                 .map(q!(|(_sender, seq)| seq))
                 .min()
                 .latest()

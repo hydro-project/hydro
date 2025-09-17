@@ -11,7 +11,7 @@ pub fn test_difference<'a>(
     let mut source = process
         .source_iter(q!(0..5))
         .batch(&tick, nondet!(/** test */))
-        .continue_if(
+        .filter_if_some(
             tick_trigger
                 .clone()
                 .batch(&tick, nondet!(/** test */))
@@ -24,7 +24,7 @@ pub fn test_difference<'a>(
     let mut source2 = process
         .source_iter(q!(3..6))
         .batch(&tick, nondet!(/** test */))
-        .continue_if(
+        .filter_if_some(
             tick_trigger
                 .clone()
                 .batch(&tick, nondet!(/** test */))
@@ -36,7 +36,7 @@ pub fn test_difference<'a>(
 
     source
         .filter_not_in(source2)
-        .continue_if(tick_trigger.batch(&tick, nondet!(/** test */)).first())
+        .filter_if_some(tick_trigger.batch(&tick, nondet!(/** test */)).first())
         .all_ticks()
 }
 
@@ -52,7 +52,7 @@ pub fn test_anti_join<'a>(
         .source_iter(q!(0..5))
         .map(q!(|v| (v, v)))
         .batch(&tick, nondet!(/** test */))
-        .continue_if(
+        .filter_if_some(
             tick_trigger
                 .clone()
                 .batch(&tick, nondet!(/** test */))
@@ -65,7 +65,7 @@ pub fn test_anti_join<'a>(
     let mut source2 = process
         .source_iter(q!(3..6))
         .batch(&tick, nondet!(/** test */))
-        .continue_if(
+        .filter_if_some(
             tick_trigger
                 .clone()
                 .batch(&tick, nondet!(/** test */))
@@ -77,7 +77,7 @@ pub fn test_anti_join<'a>(
 
     source
         .anti_join(source2)
-        .continue_if(tick_trigger.batch(&tick, nondet!(/** test */)).first())
+        .filter_if_some(tick_trigger.batch(&tick, nondet!(/** test */)).first())
         .all_ticks()
         .map(q!(|v| v.0))
 }
