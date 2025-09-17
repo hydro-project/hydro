@@ -934,6 +934,34 @@ impl HydroNode {
                 chain_id
             }
 
+            HydroNode::ChainFirst {
+                first,
+                second,
+                metadata,
+            } => {
+                let first_id = first.build_graph_structure(structure, seen_tees, config);
+                let second_id = second.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let chain_id = structure.add_node(
+                    NodeLabel::Static(extract_op_name(self.print_root())),
+                    HydroNodeType::Transform,
+                    location_id,
+                );
+                structure.add_edge(
+                    first_id,
+                    chain_id,
+                    HydroEdgeType::Stream,
+                    Some("first".to_string()),
+                );
+                structure.add_edge(
+                    second_id,
+                    chain_id,
+                    HydroEdgeType::Stream,
+                    Some("second".to_string()),
+                );
+                chain_id
+            }
+
             HydroNode::Counter {
                 tag: _,
                 prefix: _,

@@ -156,7 +156,8 @@ where
     let c_throughput_reset = c_stats_output_timer.map(q!(|_| (0, true))).defer_tick();
 
     let c_throughput = c_throughput_new_batch
-        .union(c_throughput_reset)
+        .into_stream()
+        .chain(c_throughput_reset.into_stream())
         .all_ticks()
         .fold(
             q!(|| (0, { RollingAverage::new() })),

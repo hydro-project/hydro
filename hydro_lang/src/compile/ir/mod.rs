@@ -1078,6 +1078,12 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
+    ChainFirst {
+        first: Box<HydroNode>,
+        second: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
     CrossProduct {
         left: Box<HydroNode>,
         right: Box<HydroNode>,
@@ -1305,6 +1311,11 @@ impl HydroNode {
                 transform(second.as_mut(), seen_tees);
             }
 
+            HydroNode::ChainFirst { first, second, .. } => {
+                transform(first.as_mut(), seen_tees);
+                transform(second.as_mut(), seen_tees);
+            }
+
             HydroNode::CrossSingleton { left, right, .. }
             | HydroNode::CrossProduct { left, right, .. }
             | HydroNode::Join { left, right, .. } => {
@@ -1392,6 +1403,15 @@ impl HydroNode {
                 second,
                 metadata,
             } => HydroNode::Chain {
+                first: Box::new(first.deep_clone(seen_tees)),
+                second: Box::new(second.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::ChainFirst {
+                first,
+                second,
+                metadata,
+            } => HydroNode::ChainFirst {
                 first: Box::new(first.deep_clone(seen_tees)),
                 second: Box::new(second.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
@@ -1811,6 +1831,42 @@ impl HydroNode {
                         builder.add_dfir(
                             parse_quote! {
                                 #chain_ident = chain();
+                                #first_ident -> [0]#chain_ident;
+                                #second_ident -> [1]#chain_ident;
+                            },
+                            None,
+                            Some(&next_stmt_id.to_string()),
+                        );
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                (chain_ident, first_location_id)
+            }
+
+            HydroNode::ChainFirst { first, second, .. } => {
+                let (first_ident, first_location_id) =
+                    first.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let (second_ident, second_location_id) =
+                    second.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let chain_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        assert_eq!(
+                            first_location_id, second_location_id,
+                            "chain inputs must be in the same location"
+                        );
+                        let builder = graph_builders.entry(first_location_id).or_default();
+                        builder.add_dfir(
+                            parse_quote! {
+                                #chain_ident = chain_first_n(1);
                                 #first_ident -> [0]#chain_ident;
                                 #second_ident -> [1]#chain_ident;
                             },
@@ -2671,6 +2727,7 @@ impl HydroNode {
             | HydroNode::Unpersist { .. }
             | HydroNode::Delta { .. }
             | HydroNode::Chain { .. }
+            | HydroNode::ChainFirst { .. }
             | HydroNode::CrossProduct { .. }
             | HydroNode::CrossSingleton { .. }
             | HydroNode::ResolveFutures { .. }
@@ -2737,6 +2794,7 @@ impl HydroNode {
             HydroNode::Unpersist { metadata, .. } => metadata,
             HydroNode::Delta { metadata, .. } => metadata,
             HydroNode::Chain { metadata, .. } => metadata,
+            HydroNode::ChainFirst { metadata, .. } => metadata,
             HydroNode::CrossProduct { metadata, .. } => metadata,
             HydroNode::CrossSingleton { metadata, .. } => metadata,
             HydroNode::Join { metadata, .. } => metadata,
@@ -2781,6 +2839,7 @@ impl HydroNode {
             HydroNode::Unpersist { metadata, .. } => metadata,
             HydroNode::Delta { metadata, .. } => metadata,
             HydroNode::Chain { metadata, .. } => metadata,
+            HydroNode::ChainFirst { metadata, .. } => metadata,
             HydroNode::CrossProduct { metadata, .. } => metadata,
             HydroNode::CrossSingleton { metadata, .. } => metadata,
             HydroNode::Join { metadata, .. } => metadata,
@@ -2826,6 +2885,9 @@ impl HydroNode {
                 vec![inner.metadata()]
             }
             HydroNode::Chain { first, second, .. } => {
+                vec![first.metadata(), second.metadata()]
+            }
+            HydroNode::ChainFirst { first, second, .. } => {
                 vec![first.metadata(), second.metadata()]
             }
             HydroNode::CrossProduct { left, right, .. }
@@ -2887,6 +2949,13 @@ impl HydroNode {
             HydroNode::Delta { .. } => "Delta()".to_string(),
             HydroNode::Chain { first, second, .. } => {
                 format!("Chain({}, {})", first.print_root(), second.print_root())
+            }
+            HydroNode::ChainFirst { first, second, .. } => {
+                format!(
+                    "ChainFirst({}, {})",
+                    first.print_root(),
+                    second.print_root()
+                )
             }
             HydroNode::CrossProduct { left, right, .. } => {
                 format!(
