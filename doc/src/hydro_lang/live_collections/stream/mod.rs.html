@@ -2580,101 +2580,90 @@
 <a href=#2580 id=2580 data-nosnippet>2580</a>            },
 <a href=#2581 id=2581 data-nosnippet>2581</a>        )
 <a href=#2582 id=2582 data-nosnippet>2582</a>    }
-<a href=#2583 id=2583 data-nosnippet>2583</a>
-<a href=#2584 id=2584 data-nosnippet>2584</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#2585 id=2585 data-nosnippet>2585</a>    </span><span class="kw">pub fn </span>delta(<span class="self">self</span>) -&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, O, R&gt; {
-<a href=#2586 id=2586 data-nosnippet>2586</a>        Stream::new(
-<a href=#2587 id=2587 data-nosnippet>2587</a>            <span class="self">self</span>.location.clone(),
-<a href=#2588 id=2588 data-nosnippet>2588</a>            HydroNode::Delta {
-<a href=#2589 id=2589 data-nosnippet>2589</a>                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-<a href=#2590 id=2590 data-nosnippet>2590</a>                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
-<a href=#2591 id=2591 data-nosnippet>2591</a>            },
-<a href=#2592 id=2592 data-nosnippet>2592</a>        )
-<a href=#2593 id=2593 data-nosnippet>2593</a>    }
-<a href=#2594 id=2594 data-nosnippet>2594</a>}
-<a href=#2595 id=2595 data-nosnippet>2595</a>
-<a href=#2596 id=2596 data-nosnippet>2596</a><span class="attr">#[cfg(test)]
-<a href=#2597 id=2597 data-nosnippet>2597</a></span><span class="kw">mod </span>tests {
-<a href=#2598 id=2598 data-nosnippet>2598</a>    <span class="kw">use </span>futures::StreamExt;
-<a href=#2599 id=2599 data-nosnippet>2599</a>    <span class="kw">use </span>hydro_deploy::Deployment;
-<a href=#2600 id=2600 data-nosnippet>2600</a>    <span class="kw">use </span>serde::{Deserialize, Serialize};
-<a href=#2601 id=2601 data-nosnippet>2601</a>    <span class="kw">use </span>stageleft::q;
-<a href=#2602 id=2602 data-nosnippet>2602</a>
-<a href=#2603 id=2603 data-nosnippet>2603</a>    <span class="kw">use </span><span class="kw">crate</span>::compile::builder::FlowBuilder;
-<a href=#2604 id=2604 data-nosnippet>2604</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
-<a href=#2605 id=2605 data-nosnippet>2605</a>
-<a href=#2606 id=2606 data-nosnippet>2606</a>    <span class="kw">mod </span>backtrace_chained_ops;
-<a href=#2607 id=2607 data-nosnippet>2607</a>
-<a href=#2608 id=2608 data-nosnippet>2608</a>    <span class="kw">struct </span>P1 {}
-<a href=#2609 id=2609 data-nosnippet>2609</a>    <span class="kw">struct </span>P2 {}
-<a href=#2610 id=2610 data-nosnippet>2610</a>
-<a href=#2611 id=2611 data-nosnippet>2611</a>    <span class="attr">#[derive(Serialize, Deserialize, Debug)]
-<a href=#2612 id=2612 data-nosnippet>2612</a>    </span><span class="kw">struct </span>SendOverNetwork {
-<a href=#2613 id=2613 data-nosnippet>2613</a>        n: u32,
-<a href=#2614 id=2614 data-nosnippet>2614</a>    }
-<a href=#2615 id=2615 data-nosnippet>2615</a>
-<a href=#2616 id=2616 data-nosnippet>2616</a>    <span class="attr">#[tokio::test]
-<a href=#2617 id=2617 data-nosnippet>2617</a>    </span><span class="kw">async fn </span>first_ten_distributed() {
-<a href=#2618 id=2618 data-nosnippet>2618</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
+<a href=#2583 id=2583 data-nosnippet>2583</a>}
+<a href=#2584 id=2584 data-nosnippet>2584</a>
+<a href=#2585 id=2585 data-nosnippet>2585</a><span class="attr">#[cfg(test)]
+<a href=#2586 id=2586 data-nosnippet>2586</a></span><span class="kw">mod </span>tests {
+<a href=#2587 id=2587 data-nosnippet>2587</a>    <span class="kw">use </span>futures::StreamExt;
+<a href=#2588 id=2588 data-nosnippet>2588</a>    <span class="kw">use </span>hydro_deploy::Deployment;
+<a href=#2589 id=2589 data-nosnippet>2589</a>    <span class="kw">use </span>serde::{Deserialize, Serialize};
+<a href=#2590 id=2590 data-nosnippet>2590</a>    <span class="kw">use </span>stageleft::q;
+<a href=#2591 id=2591 data-nosnippet>2591</a>
+<a href=#2592 id=2592 data-nosnippet>2592</a>    <span class="kw">use </span><span class="kw">crate</span>::compile::builder::FlowBuilder;
+<a href=#2593 id=2593 data-nosnippet>2593</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
+<a href=#2594 id=2594 data-nosnippet>2594</a>
+<a href=#2595 id=2595 data-nosnippet>2595</a>    <span class="kw">mod </span>backtrace_chained_ops;
+<a href=#2596 id=2596 data-nosnippet>2596</a>
+<a href=#2597 id=2597 data-nosnippet>2597</a>    <span class="kw">struct </span>P1 {}
+<a href=#2598 id=2598 data-nosnippet>2598</a>    <span class="kw">struct </span>P2 {}
+<a href=#2599 id=2599 data-nosnippet>2599</a>
+<a href=#2600 id=2600 data-nosnippet>2600</a>    <span class="attr">#[derive(Serialize, Deserialize, Debug)]
+<a href=#2601 id=2601 data-nosnippet>2601</a>    </span><span class="kw">struct </span>SendOverNetwork {
+<a href=#2602 id=2602 data-nosnippet>2602</a>        n: u32,
+<a href=#2603 id=2603 data-nosnippet>2603</a>    }
+<a href=#2604 id=2604 data-nosnippet>2604</a>
+<a href=#2605 id=2605 data-nosnippet>2605</a>    <span class="attr">#[tokio::test]
+<a href=#2606 id=2606 data-nosnippet>2606</a>    </span><span class="kw">async fn </span>first_ten_distributed() {
+<a href=#2607 id=2607 data-nosnippet>2607</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
+<a href=#2608 id=2608 data-nosnippet>2608</a>
+<a href=#2609 id=2609 data-nosnippet>2609</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2610 id=2610 data-nosnippet>2610</a>        <span class="kw">let </span>first_node = flow.process::&lt;P1&gt;();
+<a href=#2611 id=2611 data-nosnippet>2611</a>        <span class="kw">let </span>second_node = flow.process::&lt;P2&gt;();
+<a href=#2612 id=2612 data-nosnippet>2612</a>        <span class="kw">let </span>external = flow.external::&lt;P2&gt;();
+<a href=#2613 id=2613 data-nosnippet>2613</a>
+<a href=#2614 id=2614 data-nosnippet>2614</a>        <span class="kw">let </span>numbers = first_node.source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">10</span>));
+<a href=#2615 id=2615 data-nosnippet>2615</a>        <span class="kw">let </span>out_port = numbers
+<a href=#2616 id=2616 data-nosnippet>2616</a>            .map(<span class="macro">q!</span>(|n| SendOverNetwork { n }))
+<a href=#2617 id=2617 data-nosnippet>2617</a>            .send_bincode(<span class="kw-2">&amp;</span>second_node)
+<a href=#2618 id=2618 data-nosnippet>2618</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
 <a href=#2619 id=2619 data-nosnippet>2619</a>
-<a href=#2620 id=2620 data-nosnippet>2620</a>        <span class="kw">let </span>flow = FlowBuilder::new();
-<a href=#2621 id=2621 data-nosnippet>2621</a>        <span class="kw">let </span>first_node = flow.process::&lt;P1&gt;();
-<a href=#2622 id=2622 data-nosnippet>2622</a>        <span class="kw">let </span>second_node = flow.process::&lt;P2&gt;();
-<a href=#2623 id=2623 data-nosnippet>2623</a>        <span class="kw">let </span>external = flow.external::&lt;P2&gt;();
-<a href=#2624 id=2624 data-nosnippet>2624</a>
-<a href=#2625 id=2625 data-nosnippet>2625</a>        <span class="kw">let </span>numbers = first_node.source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">10</span>));
-<a href=#2626 id=2626 data-nosnippet>2626</a>        <span class="kw">let </span>out_port = numbers
-<a href=#2627 id=2627 data-nosnippet>2627</a>            .map(<span class="macro">q!</span>(|n| SendOverNetwork { n }))
-<a href=#2628 id=2628 data-nosnippet>2628</a>            .send_bincode(<span class="kw-2">&amp;</span>second_node)
-<a href=#2629 id=2629 data-nosnippet>2629</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
-<a href=#2630 id=2630 data-nosnippet>2630</a>
-<a href=#2631 id=2631 data-nosnippet>2631</a>        <span class="kw">let </span>nodes = flow
-<a href=#2632 id=2632 data-nosnippet>2632</a>            .with_process(<span class="kw-2">&amp;</span>first_node, deployment.Localhost())
-<a href=#2633 id=2633 data-nosnippet>2633</a>            .with_process(<span class="kw-2">&amp;</span>second_node, deployment.Localhost())
-<a href=#2634 id=2634 data-nosnippet>2634</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
-<a href=#2635 id=2635 data-nosnippet>2635</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#2620 id=2620 data-nosnippet>2620</a>        <span class="kw">let </span>nodes = flow
+<a href=#2621 id=2621 data-nosnippet>2621</a>            .with_process(<span class="kw-2">&amp;</span>first_node, deployment.Localhost())
+<a href=#2622 id=2622 data-nosnippet>2622</a>            .with_process(<span class="kw-2">&amp;</span>second_node, deployment.Localhost())
+<a href=#2623 id=2623 data-nosnippet>2623</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
+<a href=#2624 id=2624 data-nosnippet>2624</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#2625 id=2625 data-nosnippet>2625</a>
+<a href=#2626 id=2626 data-nosnippet>2626</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#2627 id=2627 data-nosnippet>2627</a>
+<a href=#2628 id=2628 data-nosnippet>2628</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(out_port).<span class="kw">await</span>;
+<a href=#2629 id=2629 data-nosnippet>2629</a>
+<a href=#2630 id=2630 data-nosnippet>2630</a>        deployment.start().<span class="kw">await</span>.unwrap();
+<a href=#2631 id=2631 data-nosnippet>2631</a>
+<a href=#2632 id=2632 data-nosnippet>2632</a>        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">10 </span>{
+<a href=#2633 id=2633 data-nosnippet>2633</a>            <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap().n, i);
+<a href=#2634 id=2634 data-nosnippet>2634</a>        }
+<a href=#2635 id=2635 data-nosnippet>2635</a>    }
 <a href=#2636 id=2636 data-nosnippet>2636</a>
-<a href=#2637 id=2637 data-nosnippet>2637</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
-<a href=#2638 id=2638 data-nosnippet>2638</a>
-<a href=#2639 id=2639 data-nosnippet>2639</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(out_port).<span class="kw">await</span>;
+<a href=#2637 id=2637 data-nosnippet>2637</a>    <span class="attr">#[tokio::test]
+<a href=#2638 id=2638 data-nosnippet>2638</a>    </span><span class="kw">async fn </span>first_cardinality() {
+<a href=#2639 id=2639 data-nosnippet>2639</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#2640 id=2640 data-nosnippet>2640</a>
-<a href=#2641 id=2641 data-nosnippet>2641</a>        deployment.start().<span class="kw">await</span>.unwrap();
-<a href=#2642 id=2642 data-nosnippet>2642</a>
-<a href=#2643 id=2643 data-nosnippet>2643</a>        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">10 </span>{
-<a href=#2644 id=2644 data-nosnippet>2644</a>            <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap().n, i);
-<a href=#2645 id=2645 data-nosnippet>2645</a>        }
-<a href=#2646 id=2646 data-nosnippet>2646</a>    }
-<a href=#2647 id=2647 data-nosnippet>2647</a>
-<a href=#2648 id=2648 data-nosnippet>2648</a>    <span class="attr">#[tokio::test]
-<a href=#2649 id=2649 data-nosnippet>2649</a>    </span><span class="kw">async fn </span>first_cardinality() {
-<a href=#2650 id=2650 data-nosnippet>2650</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
-<a href=#2651 id=2651 data-nosnippet>2651</a>
-<a href=#2652 id=2652 data-nosnippet>2652</a>        <span class="kw">let </span>flow = FlowBuilder::new();
-<a href=#2653 id=2653 data-nosnippet>2653</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2654 id=2654 data-nosnippet>2654</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#2641 id=2641 data-nosnippet>2641</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2642 id=2642 data-nosnippet>2642</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#2643 id=2643 data-nosnippet>2643</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#2644 id=2644 data-nosnippet>2644</a>
+<a href=#2645 id=2645 data-nosnippet>2645</a>        <span class="kw">let </span>node_tick = node.tick();
+<a href=#2646 id=2646 data-nosnippet>2646</a>        <span class="kw">let </span>count = node_tick
+<a href=#2647 id=2647 data-nosnippet>2647</a>            .singleton(<span class="macro">q!</span>([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]))
+<a href=#2648 id=2648 data-nosnippet>2648</a>            .into_stream()
+<a href=#2649 id=2649 data-nosnippet>2649</a>            .flatten_ordered()
+<a href=#2650 id=2650 data-nosnippet>2650</a>            .first()
+<a href=#2651 id=2651 data-nosnippet>2651</a>            .into_stream()
+<a href=#2652 id=2652 data-nosnippet>2652</a>            .count()
+<a href=#2653 id=2653 data-nosnippet>2653</a>            .all_ticks()
+<a href=#2654 id=2654 data-nosnippet>2654</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
 <a href=#2655 id=2655 data-nosnippet>2655</a>
-<a href=#2656 id=2656 data-nosnippet>2656</a>        <span class="kw">let </span>node_tick = node.tick();
-<a href=#2657 id=2657 data-nosnippet>2657</a>        <span class="kw">let </span>count = node_tick
-<a href=#2658 id=2658 data-nosnippet>2658</a>            .singleton(<span class="macro">q!</span>([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]))
-<a href=#2659 id=2659 data-nosnippet>2659</a>            .into_stream()
-<a href=#2660 id=2660 data-nosnippet>2660</a>            .flatten_ordered()
-<a href=#2661 id=2661 data-nosnippet>2661</a>            .first()
-<a href=#2662 id=2662 data-nosnippet>2662</a>            .into_stream()
-<a href=#2663 id=2663 data-nosnippet>2663</a>            .count()
-<a href=#2664 id=2664 data-nosnippet>2664</a>            .all_ticks()
-<a href=#2665 id=2665 data-nosnippet>2665</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#2656 id=2656 data-nosnippet>2656</a>        <span class="kw">let </span>nodes = flow
+<a href=#2657 id=2657 data-nosnippet>2657</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
+<a href=#2658 id=2658 data-nosnippet>2658</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
+<a href=#2659 id=2659 data-nosnippet>2659</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#2660 id=2660 data-nosnippet>2660</a>
+<a href=#2661 id=2661 data-nosnippet>2661</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#2662 id=2662 data-nosnippet>2662</a>
+<a href=#2663 id=2663 data-nosnippet>2663</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(count).<span class="kw">await</span>;
+<a href=#2664 id=2664 data-nosnippet>2664</a>
+<a href=#2665 id=2665 data-nosnippet>2665</a>        deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#2666 id=2666 data-nosnippet>2666</a>
-<a href=#2667 id=2667 data-nosnippet>2667</a>        <span class="kw">let </span>nodes = flow
-<a href=#2668 id=2668 data-nosnippet>2668</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
-<a href=#2669 id=2669 data-nosnippet>2669</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
-<a href=#2670 id=2670 data-nosnippet>2670</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
-<a href=#2671 id=2671 data-nosnippet>2671</a>
-<a href=#2672 id=2672 data-nosnippet>2672</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
-<a href=#2673 id=2673 data-nosnippet>2673</a>
-<a href=#2674 id=2674 data-nosnippet>2674</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(count).<span class="kw">await</span>;
-<a href=#2675 id=2675 data-nosnippet>2675</a>
-<a href=#2676 id=2676 data-nosnippet>2676</a>        deployment.start().<span class="kw">await</span>.unwrap();
-<a href=#2677 id=2677 data-nosnippet>2677</a>
-<a href=#2678 id=2678 data-nosnippet>2678</a>        <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap(), <span class="number">1</span>);
-<a href=#2679 id=2679 data-nosnippet>2679</a>    }
-<a href=#2680 id=2680 data-nosnippet>2680</a>}</code></pre></div></section></main></body></html>
+<a href=#2667 id=2667 data-nosnippet>2667</a>        <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap(), <span class="number">1</span>);
+<a href=#2668 id=2668 data-nosnippet>2668</a>    }
+<a href=#2669 id=2669 data-nosnippet>2669</a>}</code></pre></div></section></main></body></html>
