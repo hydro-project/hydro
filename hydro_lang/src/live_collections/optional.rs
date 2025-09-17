@@ -969,17 +969,6 @@ where
         )
     }
 
-    #[expect(missing_docs, reason = "TODO")]
-    pub fn delta(self) -> Optional<T, Tick<L>, Bounded> {
-        Optional::new(
-            self.location.clone(),
-            HydroNode::Delta {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            },
-        )
-    }
-
     /// Converts this optional into a [`Stream`] containing a single element, the value, if it is
     /// non-null. Otherwise, the stream is empty.
     ///

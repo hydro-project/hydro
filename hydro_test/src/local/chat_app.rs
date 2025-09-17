@@ -10,29 +10,20 @@ pub fn chat_app<'a>(
     // intentionally non-deterministic to not send messages to users that joined after the message was sent
     nondet_user_arrival_broadcast: NonDet,
 ) -> Stream<(u32, String), Process<'a>, Unbounded, NoOrder> {
-    let tick = process.tick();
-
-    let users = users_stream
-        .batch(&tick, nondet_user_arrival_broadcast)
-        .persist();
-
-    let messages = if replay_messages {
-        messages
-            .batch(&tick, nondet_user_arrival_broadcast)
-            .persist()
-    } else {
-        messages.batch(&tick, nondet_user_arrival_broadcast)
-    };
-
-    // do this after the persist to test pullup
     let messages = messages.map(q!(|s| s.to_uppercase()));
-
-    let mut joined = users.cross_product(messages);
     if replay_messages {
-        joined = joined.delta();
-    }
+        users_stream.cross_product(messages)
+    } else {
+        let tick = process.tick();
 
-    joined.all_ticks()
+        let users = users_stream
+            .batch(&tick, nondet_user_arrival_broadcast)
+            .persist();
+
+        let messages = messages.batch(&tick, nondet_user_arrival_broadcast);
+
+        users.cross_product(messages).all_ticks()
+    }
 }
 
 #[cfg(test)]
