@@ -756,28 +756,51 @@ impl<'a, T, L> Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
-    #[expect(missing_docs, reason = "TODO")]
+    /// Asynchronously yields the value of this singleton outside the tick as an unbounded stream,
+    /// which will stream the value computed in _each_ tick as a separate stream element.
+    ///
+    /// Unlike [`Singleton::latest`], the value computed in each tick is emitted separately,
+    /// producing one element in the output for each tick. This is useful for batched computations,
+    /// where the results from each tick must be combined together.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![1]))
+    /// #   .batch(&tick, nondet!(/** test */));
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![1, 2, 3]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick(); // appears on the second tick
+    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+    /// input_batch // first tick: [1], second tick: [1, 2, 3]
+    ///     .count()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [1, 3]
+    /// # for w in vec![1, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, TotalOrder, ExactlyOnce> {
-        Stream::new(
-            self.location.outer().clone(),
-            HydroNode::Persist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            },
-        )
+        self.into_stream().all_ticks()
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Synchronously yields the value of this singleton outside the tick as an unbounded stream,
+    /// which will stream the value computed in _each_ tick as a separate stream element.
+    ///
+    /// Unlike [`Singleton::all_ticks`], this preserves synchronous execution, as the output stream
+    /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
+    /// singleton's [`Tick`] context.
     pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded, TotalOrder, ExactlyOnce> {
-        Stream::new(
-            Atomic {
-                tick: self.location.clone(),
-            },
-            HydroNode::Persist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            },
-        )
+        self.into_stream().all_ticks_atomic()
     }
 
     /// Asynchronously yields this singleton outside the tick as an unbounded singleton, which will
@@ -793,20 +816,19 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let batch_first_tick = process
-    ///   .source_iter(q!(vec![1]))
-    ///   .batch(&tick, nondet!(/** test */));
-    /// let batch_second_tick = process
-    ///   .source_iter(q!(vec![1, 2, 3]))
-    ///   .batch(&tick, nondet!(/** test */))
-    ///   .defer_tick(); // appears on the second tick
-    ///
-    /// batch_first_tick.chain(batch_second_tick)
-    ///   .count()
-    ///   .latest()
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![1]))
+    /// #   .batch(&tick, nondet!(/** test */));
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![1, 2, 3]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick(); // appears on the second tick
+    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+    /// input_batch // first tick: [1], second tick: [1, 2, 3]
+    ///     .count()
+    ///     .latest()
     /// # .sample_eager(nondet!(/** test */))
     /// # }, |mut stream| async move {
     /// // asynchronously changes from 1 ~> 3
@@ -825,7 +847,7 @@ where
         )
     }
 
-    /// Asynchronously yields this singleton outside the tick as an unbounded singleton, which will
+    /// Synchronously yields this singleton outside the tick as an unbounded singleton, which will
     /// be updated with the latest value of the singleton inside the tick.
     ///
     /// Unlike [`Singleton::latest`], this preserves synchronous execution, as the output singleton
