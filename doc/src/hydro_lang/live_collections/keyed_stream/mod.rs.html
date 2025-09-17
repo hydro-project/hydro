@@ -1524,7 +1524,7 @@
 <a href=#1524 id=1524 data-nosnippet>1524</a>        <span class="kw">let </span>tick_triggered_input = node
 <a href=#1525 id=1525 data-nosnippet>1525</a>            .source_iter(<span class="macro">q!</span>([(<span class="number">3</span>, <span class="number">103</span>)]))
 <a href=#1526 id=1526 data-nosnippet>1526</a>            .batch(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#1527 id=1527 data-nosnippet>1527</a>            .continue_if(
+<a href=#1527 id=1527 data-nosnippet>1527</a>            .filter_if_some(
 <a href=#1528 id=1528 data-nosnippet>1528</a>                tick_trigger
 <a href=#1529 id=1529 data-nosnippet>1529</a>                    .clone()
 <a href=#1530 id=1530 data-nosnippet>1530</a>                    .batch(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))

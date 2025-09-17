@@ -189,7 +189,7 @@
 <a href=#189 id=189 data-nosnippet>189</a>
 <a href=#190 id=190 data-nosnippet>190</a>    <span class="kw">let </span>just_became_leader = p_is_leader
 <a href=#191 id=191 data-nosnippet>191</a>        .clone()
-<a href=#192 id=192 data-nosnippet>192</a>        .continue_unless(p_is_leader.clone().defer_tick());
+<a href=#192 id=192 data-nosnippet>192</a>        .filter_if_none(p_is_leader.clone().defer_tick());
 <a href=#193 id=193 data-nosnippet>193</a>
 <a href=#194 id=194 data-nosnippet>194</a>    <span class="kw">let </span>c_to_proposers = c_to_proposers(
 <a href=#195 id=195 data-nosnippet>195</a>        just_became_leader
@@ -429,10 +429,10 @@
 <a href=#429 id=429 data-nosnippet>429</a>            ),
 <a href=#430 id=430 data-nosnippet>430</a>        )
 <a href=#431 id=431 data-nosnippet>431</a>        .snapshot(proposer_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** absorbed into timeout */</span>))
-<a href=#432 id=432 data-nosnippet>432</a>        .continue_unless(p_is_leader);
+<a href=#432 id=432 data-nosnippet>432</a>        .filter_if_none(p_is_leader);
 <a href=#433 id=433 data-nosnippet>433</a>
 <a href=#434 id=434 data-nosnippet>434</a>    <span class="comment">// Add random delay depending on node ID so not everyone sends p1a at the same time
-<a href=#435 id=435 data-nosnippet>435</a>    </span><span class="kw">let </span>p_trigger_election = p_leader_expired.continue_if(
+<a href=#435 id=435 data-nosnippet>435</a>    </span><span class="kw">let </span>p_trigger_election = p_leader_expired.filter_if_some(
 <a href=#436 id=436 data-nosnippet>436</a>        proposers
 <a href=#437 id=437 data-nosnippet>437</a>            .source_interval_delayed(
 <a href=#438 id=438 data-nosnippet>438</a>                <span class="macro">q!</span>(Duration::from_secs(
@@ -546,7 +546,7 @@
 <a href=#546 id=546 data-nosnippet>546</a>    <span class="kw">let </span>p_is_leader = p_received_quorum_of_p1bs
 <a href=#547 id=547 data-nosnippet>547</a>        .clone()
 <a href=#548 id=548 data-nosnippet>548</a>        .map(<span class="macro">q!</span>(|<span class="kw">_</span>| ()))
-<a href=#549 id=549 data-nosnippet>549</a>        .continue_if(p_has_largest_ballot.clone());
+<a href=#549 id=549 data-nosnippet>549</a>        .filter_if_some(p_has_largest_ballot.clone());
 <a href=#550 id=550 data-nosnippet>550</a>
 <a href=#551 id=551 data-nosnippet>551</a>    (
 <a href=#552 id=552 data-nosnippet>552</a>        p_is_leader,
@@ -689,7 +689,7 @@
 <a href=#689 id=689 data-nosnippet>689</a>                    </span>nondet_commit
 <a href=#690 id=690 data-nosnippet>690</a>                ),
 <a href=#691 id=691 data-nosnippet>691</a>            )
-<a href=#692 id=692 data-nosnippet>692</a>            .continue_if(p_is_leader.clone()),
+<a href=#692 id=692 data-nosnippet>692</a>            .filter_if_some(p_is_leader.clone()),
 <a href=#693 id=693 data-nosnippet>693</a>    );
 <a href=#694 id=694 data-nosnippet>694</a>
 <a href=#695 id=695 data-nosnippet>695</a>    <span class="kw">let </span>payloads_to_send = indexed_payloads
@@ -699,7 +699,7 @@
 <a href=#699 id=699 data-nosnippet>699</a>            <span class="prelude-val">Some</span>(payload)
 <a href=#700 id=700 data-nosnippet>700</a>        )))
 <a href=#701 id=701 data-nosnippet>701</a>        .chain(p_log_to_recommit)
-<a href=#702 id=702 data-nosnippet>702</a>        .continue_if(p_is_leader)
+<a href=#702 id=702 data-nosnippet>702</a>        .filter_if_some(p_is_leader)
 <a href=#703 id=703 data-nosnippet>703</a>        .all_ticks_atomic();
 <a href=#704 id=704 data-nosnippet>704</a>
 <a href=#705 id=705 data-nosnippet>705</a>    <span class="kw">let </span>(a_log, a_to_proposers_p2b) = acceptor_p2(

@@ -89,7 +89,7 @@
 <a href=#89 id=89 data-nosnippet>89</a>                    <span class="kw">let </span>all_payloads = unsent_payloads.chain(payload_batch);
 <a href=#90 id=90 data-nosnippet>90</a>
 <a href=#91 id=91 data-nosnippet>91</a>                    unsent_payloads_complete.complete_next_tick(
-<a href=#92 id=92 data-nosnippet>92</a>                        all_payloads.clone().continue_unless(latest_leader.clone()),
+<a href=#92 id=92 data-nosnippet>92</a>                        all_payloads.clone().filter_if_none(latest_leader.clone()),
 <a href=#93 id=93 data-nosnippet>93</a>                    );
 <a href=#94 id=94 data-nosnippet>94</a>
 <a href=#95 id=95 data-nosnippet>95</a>                    all_payloads.cross_singleton(latest_leader).all_ticks()

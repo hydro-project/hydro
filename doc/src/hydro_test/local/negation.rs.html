@@ -11,7 +11,7 @@
 <a href=#11 id=11 data-nosnippet>11</a>    <span class="kw">let </span><span class="kw-2">mut </span>source = process
 <a href=#12 id=12 data-nosnippet>12</a>        .source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">5</span>))
 <a href=#13 id=13 data-nosnippet>13</a>        .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#14 id=14 data-nosnippet>14</a>        .continue_if(
+<a href=#14 id=14 data-nosnippet>14</a>        .filter_if_some(
 <a href=#15 id=15 data-nosnippet>15</a>            tick_trigger
 <a href=#16 id=16 data-nosnippet>16</a>                .clone()
 <a href=#17 id=17 data-nosnippet>17</a>                .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
@@ -24,7 +24,7 @@
 <a href=#24 id=24 data-nosnippet>24</a>    <span class="kw">let </span><span class="kw-2">mut </span>source2 = process
 <a href=#25 id=25 data-nosnippet>25</a>        .source_iter(<span class="macro">q!</span>(<span class="number">3</span>..<span class="number">6</span>))
 <a href=#26 id=26 data-nosnippet>26</a>        .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#27 id=27 data-nosnippet>27</a>        .continue_if(
+<a href=#27 id=27 data-nosnippet>27</a>        .filter_if_some(
 <a href=#28 id=28 data-nosnippet>28</a>            tick_trigger
 <a href=#29 id=29 data-nosnippet>29</a>                .clone()
 <a href=#30 id=30 data-nosnippet>30</a>                .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
@@ -36,7 +36,7 @@
 <a href=#36 id=36 data-nosnippet>36</a>
 <a href=#37 id=37 data-nosnippet>37</a>    source
 <a href=#38 id=38 data-nosnippet>38</a>        .filter_not_in(source2)
-<a href=#39 id=39 data-nosnippet>39</a>        .continue_if(tick_trigger.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)).first())
+<a href=#39 id=39 data-nosnippet>39</a>        .filter_if_some(tick_trigger.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)).first())
 <a href=#40 id=40 data-nosnippet>40</a>        .all_ticks()
 <a href=#41 id=41 data-nosnippet>41</a>}
 <a href=#42 id=42 data-nosnippet>42</a>
@@ -52,7 +52,7 @@
 <a href=#52 id=52 data-nosnippet>52</a>        .source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">5</span>))
 <a href=#53 id=53 data-nosnippet>53</a>        .map(<span class="macro">q!</span>(|v| (v, v)))
 <a href=#54 id=54 data-nosnippet>54</a>        .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#55 id=55 data-nosnippet>55</a>        .continue_if(
+<a href=#55 id=55 data-nosnippet>55</a>        .filter_if_some(
 <a href=#56 id=56 data-nosnippet>56</a>            tick_trigger
 <a href=#57 id=57 data-nosnippet>57</a>                .clone()
 <a href=#58 id=58 data-nosnippet>58</a>                .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
@@ -65,7 +65,7 @@
 <a href=#65 id=65 data-nosnippet>65</a>    <span class="kw">let </span><span class="kw-2">mut </span>source2 = process
 <a href=#66 id=66 data-nosnippet>66</a>        .source_iter(<span class="macro">q!</span>(<span class="number">3</span>..<span class="number">6</span>))
 <a href=#67 id=67 data-nosnippet>67</a>        .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#68 id=68 data-nosnippet>68</a>        .continue_if(
+<a href=#68 id=68 data-nosnippet>68</a>        .filter_if_some(
 <a href=#69 id=69 data-nosnippet>69</a>            tick_trigger
 <a href=#70 id=70 data-nosnippet>70</a>                .clone()
 <a href=#71 id=71 data-nosnippet>71</a>                .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
@@ -77,7 +77,7 @@
 <a href=#77 id=77 data-nosnippet>77</a>
 <a href=#78 id=78 data-nosnippet>78</a>    source
 <a href=#79 id=79 data-nosnippet>79</a>        .anti_join(source2)
-<a href=#80 id=80 data-nosnippet>80</a>        .continue_if(tick_trigger.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)).first())
+<a href=#80 id=80 data-nosnippet>80</a>        .filter_if_some(tick_trigger.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)).first())
 <a href=#81 id=81 data-nosnippet>81</a>        .all_ticks()
 <a href=#82 id=82 data-nosnippet>82</a>        .map(<span class="macro">q!</span>(|v| v.<span class="number">0</span>))
 <a href=#83 id=83 data-nosnippet>83</a>}

@@ -163,7 +163,7 @@
 <a href=#163 id=163 data-nosnippet>163</a>
 <a href=#164 id=164 data-nosnippet>164</a>    <span class="kw">let </span>just_became_leader = p_is_leader
 <a href=#165 id=165 data-nosnippet>165</a>        .clone()
-<a href=#166 id=166 data-nosnippet>166</a>        .continue_unless(p_is_leader.clone().defer_tick());
+<a href=#166 id=166 data-nosnippet>166</a>        .filter_if_none(p_is_leader.clone().defer_tick());
 <a href=#167 id=167 data-nosnippet>167</a>
 <a href=#168 id=168 data-nosnippet>168</a>    <span class="kw">let </span>c_to_proposers = c_to_proposers(
 <a href=#169 id=169 data-nosnippet>169</a>        just_became_leader
@@ -263,7 +263,7 @@
 <a href=#263 id=263 data-nosnippet>263</a>                    </span>nondet_commit_leader_change
 <a href=#264 id=264 data-nosnippet>264</a>                ),
 <a href=#265 id=265 data-nosnippet>265</a>            )
-<a href=#266 id=266 data-nosnippet>266</a>            .continue_if(p_is_leader.clone()),
+<a href=#266 id=266 data-nosnippet>266</a>            .filter_if_some(p_is_leader.clone()),
 <a href=#267 id=267 data-nosnippet>267</a>    );
 <a href=#268 id=268 data-nosnippet>268</a>
 <a href=#269 id=269 data-nosnippet>269</a>    <span class="kw">let </span>num_proxy_leaders = config.num_proxy_leaders;
