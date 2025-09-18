@@ -1455,7 +1455,44 @@ where
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Shifts the entries in `self` to the **next tick**, so that the returned keyed stream at
+    /// tick `T` always has the entries of `self` at tick `T - 1`.
+    ///
+    /// At tick `0`, the output keyed stream is empty, since there is no previous tick.
+    ///
+    /// This operator enables stateful iterative processing with ticks, by sending data from one
+    /// tick to the next. For example, you can use it to combine inputs across consecutive batches.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![(1, 2), (1, 3)]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .into_keyed();
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![(1, 4), (2, 5)]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick()
+    /// #   .into_keyed(); // appears on the second tick
+    /// let changes_across_ticks = // { 1: [2, 3] } (first tick), { 1: [4], 2: [5] } (second tick)
+    /// # batch_first_tick.chain(batch_second_tick);
+    /// changes_across_ticks.clone().defer_tick().chain( // from the previous tick
+    ///     changes_across_ticks // from the current tick
+    /// )
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2, 3] } (first tick), { 1: [2, 3, 4], 2: [5] } (second tick), { 1: [4], 2: [5] } (third tick)
+    /// # for w in vec![(1, 2), (1, 3), (1, 2), (1, 3), (1, 4), (2, 5), (1, 4), (2, 5)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn defer_tick(self) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
         KeyedStream {
             underlying: self.underlying.defer_tick(),
