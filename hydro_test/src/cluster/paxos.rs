@@ -194,7 +194,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
     let c_to_proposers = c_to_proposers(
         just_became_leader
             .clone()
-            .then(p_ballot.clone())
+            .if_some_then(p_ballot.clone())
             .all_ticks(),
     );
 
@@ -228,7 +228,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
 
     (
         // Only tell the clients once when leader election concludes
-        just_became_leader.then(p_ballot).all_ticks(),
+        just_became_leader.if_some_then(p_ballot).all_ticks(),
         p_to_replicas,
     )
 }
@@ -303,7 +303,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
     p_to_proposers_i_am_leader_complete_cycle.complete(p_to_proposers_i_am_leader);
 
     let p_to_acceptors_p1a = p_trigger_election
-        .then(p_ballot.clone())
+        .if_some_then(p_ballot.clone())
         .all_ticks()
         .inspect(q!(|_| println!("Proposer leader expired, sending P1a")))
         .broadcast_bincode(acceptors, nondet!(/** TODO */))
@@ -403,7 +403,7 @@ fn p_leader_heartbeat<'a>(
 
     let p_to_proposers_i_am_leader = p_is_leader
         .clone()
-        .then(p_ballot)
+        .if_some_then(p_ballot)
         .latest()
         .sample_every(
             q!(Duration::from_secs(i_am_leader_send_timeout)),
