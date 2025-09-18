@@ -6,7 +6,7 @@ use super::protocol::{WebSocketMessage, websocket_protocol};
 pub fn websocket_echo<'a, P>(
     in_stream: KeyedStream<u64, BytesMut, Process<'a, P>, Unbounded>,
 ) -> KeyedStream<u64, BytesMut, Process<'a, P>, Unbounded> {
-    websocket_protocol(in_stream, |messages| {
+    websocket_protocol(in_stream, |messages, _| {
         messages
             .filter_map(q!(|msg| {
                 match msg {
