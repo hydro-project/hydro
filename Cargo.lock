@@ -2144,6 +2144,7 @@ dependencies = [
 name = "hydro_test"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
  "bytes",
  "clap",
  "colored 3.0.0",
@@ -2161,6 +2162,7 @@ dependencies = [
  "rand 0.8.5",
  "regex",
  "serde",
+ "sha1",
  "stageleft",
  "stageleft_tool",
  "tokio",

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Echo Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .connecting { background-color: #fff3cd; color: #856404; }
+        #messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        input[type="text"] {
+            width: 70%;
+            padding: 8px;
+            margin: 5px;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .controls {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌊 Hydro WebSocket Echo Test Client</h1>
+    
+    <div class="container">
+        <h3>Connection</h3>
+        <div>
+            <label>WebSocket URL:</label>
+            <input type="text" id="wsUrl" value="ws://localhost:8080" placeholder="ws://localhost:8080">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+        </div>
+        <div id="status" class="status disconnected">Disconnected</div>
+    </div>
+
+    <div class="container">
+        <h3>Send Messages</h3>
+        <div class="controls">
+            <input type="text" id="messageInput" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Send Text</button>
+            <button onclick="sendBinary()">Send Binary</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h3>Messages</h3>
+        <div id="messages"></div>
+        <button onclick="clearMessages()">Clear Messages</button>
+    </div>
+
+    <script>
+        let ws = null;
+        let messageCount = 0;
+
+        function updateStatus(message, className) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${className}`;
+        }
+
+        function addMessage(message, type = 'info') {
+            const messages = document.getElementById('messages');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'sent' ? '→ SENT' : 
+                          type === 'received' ? '← RECV' : 
+                          type === 'error' ? '✗ ERROR' : 
+                          type === 'info' ? 'ℹ INFO' : '• ';
+            
+            messages.textContent += `[${timestamp}] ${prefix}: ${message}\n`;
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                addMessage('Already connected', 'info');
+                return;
+            }
+
+            updateStatus('Connecting...', 'connecting');
+            addMessage(`Connecting to ${url}`, 'info');
+
+            ws = new WebSocket(url);
+
+            ws.onopen = function(event) {
+                updateStatus('Connected', 'connected');
+                addMessage('WebSocket connection established', 'info');
+            };
+
+            ws.onmessage = function(event) {
+                messageCount++;
+                if (event.data instanceof Blob) {
+                    // Handle binary data
+                    event.data.text().then(text => {
+                        addMessage(`Binary message: ${text}`, 'received');
+                    });
+                } else {
+                    addMessage(event.data, 'received');
+                }
+            };
+
+            ws.onclose = function(event) {
+                updateStatus('Disconnected', 'disconnected');
+                addMessage(`Connection closed (code: ${event.code}, reason: ${event.reason})`, 'info');
+                ws = null;
+            };
+
+            ws.onerror = function(error) {
+                updateStatus('Error', 'disconnected');
+                addMessage(`WebSocket error: ${error}`, 'error');
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                addMessage('Disconnecting...', 'info');
+            } else {
+                addMessage('Not connected', 'info');
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) {
+                addMessage('Please enter a message', 'error');
+                return;
+            }
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addMessage('Not connected to WebSocket server', 'error');
+                return;
+            }
+
+            ws.send(message);
+            addMessage(message, 'sent');
+            input.value = '';
+        }
+
+        function sendBinary() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addMessage('Not connected to WebSocket server', 'error');
+                return;
+            }
+
+            // Send some binary data
+            const binaryData = new Uint8Array([72, 101, 108, 108, 111, 32, 66, 105, 110, 97, 114, 121]); // "Hello Binary"
+            ws.send(binaryData);
+            addMessage('Binary data: [72, 101, 108, 108, 111, 32, 66, 105, 110, 97, 114, 121] ("Hello Binary")', 'sent');
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').textContent = '';
+            messageCount = 0;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Auto-connect on page load
+        window.onload = function() {
+            addMessage('WebSocket Echo Test Client loaded', 'info');
+            addMessage('Click "Connect" to start testing the Hydro WebSocket server', 'info');
+        };
+    </script>
+</body>
+</html>
