@@ -168,7 +168,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
     let c_to_proposers = c_to_proposers(
         just_became_leader
             .clone()
-            .then(p_ballot.clone())
+            .if_some_then(p_ballot.clone())
             .all_ticks(),
     );
 
@@ -204,7 +204,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
 
     (
         // Only tell the clients once when leader election concludes
-        just_became_leader.then(p_ballot).all_ticks(),
+        just_became_leader.if_some_then(p_ballot).all_ticks(),
         p_to_replicas,
     )
 }
