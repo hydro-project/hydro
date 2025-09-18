@@ -9,8 +9,8 @@ use dfir_lang::parse::DfirCode;
 use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{
-    Attribute, Fields, GenericParam, ItemEnum, Type, Variant, WherePredicate, parse_macro_input,
-    parse_quote, parse_quote_spanned,
+    Attribute, Fields, GenericParam, ItemEnum, Variant, WherePredicate, parse_macro_input,
+    parse_quote,
 };
 
 /// Create a runnable graph instance using DFIR's custom syntax.

@@ -1,10 +1,8 @@
+use std::pin::Pin;
+use std::task::{Context, Poll, ready};
+
 use futures::sink::Sink;
 use pin_project_lite::pin_project;
-use std::{
-    marker::PhantomData,
-    pin::Pin,
-    task::{ready, Context, Poll},
-};
 
 use crate::util::demux_enum::DemuxEnumSink;
 
@@ -39,9 +37,9 @@ where
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.project();
         if let Some(item) = &this.item {
-            ready!(Item::poll_ready(item, &mut this.outputs, cx))?;
+            ready!(Item::poll_ready(item, this.outputs, cx))?;
             let item = this.item.take().unwrap();
-            Item::start_send(item, &mut this.outputs)?;
+            Item::start_send(item, this.outputs)?;
         }
         debug_assert!(this.item.is_none(), "Sink not ready.");
         Poll::Ready(Ok(()))

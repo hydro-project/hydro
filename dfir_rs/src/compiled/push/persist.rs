@@ -26,7 +26,7 @@ impl<'ctx, Si, Item> Persist<'ctx, Si, Item> {
         Item: Clone,
     {
         let mut this = self.project();
-        while let Some(item) = this.replay.next() {
+        for item in this.replay.by_ref() {
             ready!(this.sink.as_mut().poll_ready(cx))?;
             this.sink.as_mut().start_send(item.clone())?;
         }

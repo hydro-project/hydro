@@ -53,7 +53,7 @@ pub const INSPECT: OperatorConstraints = OperatorConstraints {
             }
         } else {
             let output = outputs
-                .get(0)
+                .first()
                 .map(quote::ToTokens::to_token_stream)
                 .unwrap_or_else(|| {
                     // If no output, use null sink (drain).

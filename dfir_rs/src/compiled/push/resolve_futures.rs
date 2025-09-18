@@ -41,7 +41,7 @@ impl<'ctx, Si, Queue> ResolveFutures<'ctx, Si, Queue> {
 
             if let Poll::Ready(Some(out)) = Stream::poll_next(
                 Pin::new(&mut **this.queue),
-                &mut Context::from_waker(&this.subgraph_waker),
+                &mut Context::from_waker(this.subgraph_waker),
             ) {
                 this.sink.as_mut().start_send(out)?;
             } else {
@@ -73,7 +73,7 @@ where
         // futures are ready.
         if let Poll::Ready(Some(out)) = Stream::poll_next(
             Pin::new(&mut **this.queue),
-            &mut Context::from_waker(&this.subgraph_waker),
+            &mut Context::from_waker(this.subgraph_waker),
         ) {
             this.sink.as_mut().start_send(out)?;
         }
