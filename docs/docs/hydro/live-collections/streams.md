@@ -3,7 +3,7 @@ sidebar_position: 2
 ---
 
 # Streams
-Streams are the most common type of live collection in Hydro; they can be used to model streaming data collections or a feed of API requests. A `Stream` represents a sequence of elements, with new elements being asynchronously appended to the end of the sequence. Streams can be transformed using APIs like `map` and `filter`, based on Rust [iterators](https://doc.rust-lang.org/beta/std/iter/trait.Iterator.html). You can view the full API documentation for Streams [here](pathname:///rustdoc/hydro_lang/stream/struct.Stream).
+Streams are the most common type of live collection in Hydro; they can be used to model streaming data collections or a feed of API requests. A `Stream` represents a sequence of elements, with new elements being asynchronously appended to the end of the sequence. Streams can be transformed using APIs like `map` and `filter`, based on Rust [iterators](https://doc.rust-lang.org/beta/std/iter/trait.Iterator.html). You can view the full API documentation for Streams [here](pathname:///rustdoc/hydro_lang/live_collections/struct.Stream).
 
 Streams have several type parameters:
 - `T`: the type of elements in the stream
@@ -54,7 +54,7 @@ let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send_bincode(&p2);
 ## Stream Ordering and Determinism
 When sending a stream over the network, there are certain situations in which the order of messages will not be deterministic for the receiver. For example, when sending streams from a cluster to a process, delays will cause messages from different cluster members to be interleaved in a non-deterministic order.
 
-To track this behavior, stream have an `Order` type parameter that indicates whether the elements in the stream will have a deterministic order ([`TotalOrder`](pathname:///rustdoc/hydro_lang/stream/struct.TotalOrder)) or not ([`NoOrder`](pathname:///rustdoc/hydro_lang/stream/struct.NoOrder)). When the type parameter is omitted, it defaults to `TotalOrder` for brevity.
+To track this behavior, stream have an `Order` type parameter that indicates whether the elements in the stream will have a deterministic order ([`TotalOrder`](pathname:///rustdoc/hydro_lang/live_collections/stream/enum.TotalOrder)) or not ([`NoOrder`](pathname:///rustdoc/hydro_lang/live_collections/stream/enum.NoOrder)). When the type parameter is omitted, it defaults to `TotalOrder` for brevity.
 
 If we send a stream from a cluster to a process and flatten the values across senders (with `.values()`), the return type will be a stream with `NoOrder`:
 
@@ -72,7 +72,7 @@ let on_p2: Stream<_, Process<_>, Unbounded, NoOrder> =
 
 The ordering of a stream determines which APIs are available on it. For example, `map` and `filter` are available on all streams, but `last` is only available on streams with `TotalOrder`. This ensures that even when the network introduces non-determinism, the program will not compile if it tries to use an API that requires a deterministic order.
 
-A particularly common API that faces this restriction is [`fold`](pathname:///rustdoc/hydro_lang/stream/struct.Stream#method.fold) (and [`reduce`](pathname:///rustdoc/hydro_lang/stream/struct.Stream#method.reduce)). These APIs require the stream to have a deterministic order, since the result may depend on the order of elements. For example, the following code will not compile because `fold` is not available on `NoOrder` streams (note that the error is a bit misleading due to the Rust compiler attempting to apply `Iterator` methods):
+A particularly common API that faces this restriction is [`fold`](pathname:///rustdoc/hydro_lang/live_collections/struct.Stream#method.fold) (and [`reduce`](pathname:///rustdoc/hydro_lang/live_collections/struct.Stream#method.reduce)). These APIs require the stream to have a deterministic order, since the result may depend on the order of elements. For example, the following code will not compile because `fold` is not available on `NoOrder` streams (note that the error is a bit misleading due to the Rust compiler attempting to apply `Iterator` methods):
 
 ```compile_fail
 # use hydro_lang::prelude::*;
@@ -98,7 +98,7 @@ Running an aggregation (`fold`, `reduce`) converts a `Stream` into a `Singleton`
 
 :::
 
-To perform an aggregation with an unordered stream, you must use [`fold_commutative`](pathname:///rustdoc/hydro_lang/stream/struct.Stream#method.fold_commutative), which requires the provided closure to be commutative (and therefore immune to non-deterministic ordering):
+To perform an aggregation with an unordered stream, you must use [`fold_commutative`](pathname:///rustdoc/hydro_lang/live_collections/struct.Stream#method.fold_commutative), which requires the provided closure to be commutative (and therefore immune to non-deterministic ordering):
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
