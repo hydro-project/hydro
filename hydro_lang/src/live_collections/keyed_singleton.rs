@@ -759,6 +759,19 @@ where
 }
 
 impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    pub fn with_identical_values<T2, O2: Ordering, R: Retries>(
+        self,
+        other: Stream<T2, Tick<L>, Bounded, O2, R>,
+    ) -> KeyedStream<K, T2, Tick<L>, Bounded, O2, R>
+    where
+        K: Clone,
+        T2: Clone,
+    {
+        self.keys().weaken_retries().cross_product_nested_loop(other).into_keyed().assume_ordering(
+            nondet!(/** keyed stream does not depend on ordering of keys, cross_product_nested_loop preserves order of values */)
+        )
+    }
+
     /// Asynchronously yields this keyed singleton outside the tick, which will
     /// be asynchronously updated with the latest set of entries inside the tick.
     ///
