@@ -125,40 +125,49 @@ pub const PARTITION: OperatorConstraints = OperatorConstraints {
             (numeric_idents, arg2_val)
         };
 
-        let err_str = LitStr::new(
-            &format!(
-                "Index `{{}}` returned by `{}(..)` closure is out-of-bounds.",
-                op_name
-            ),
-            op_span,
-        );
-        let ident_item = wc.make_ident("item");
-        let ident_index = wc.make_ident("index");
-        let ident_unknown = wc.make_ident("match_unknown");
+        // let err_str = LitStr::new(
+        //     &format!(
+        //         "Index `{{}}` returned by `{}(..)` closure is out-of-bounds.",
+        //         op_name
+        //     ),
+        //     op_span,
+        // );
+        // let ident_item = wc.make_ident("item");
+        // let ident_index = wc.make_ident("index");
+        // let ident_unknown = wc.make_ident("match_unknown");
 
         let sorted_outputs = output_sort_permutation.into_iter().map(|i| &outputs[i]);
 
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = {
-                #root::pusherator::demux::Demux::new(
-                    |#ident_item, #root::var_args!( #( #output_idents ),* )| {
-                        #[allow(unused_imports)]
-                        use #root::pusherator::Pusherator;
-
-                        let #ident_index = {
-                            #[allow(clippy::redundant_closure_call)]
-                            (#func)(&#ident_item, #arg2_val)
-                        };
-                        match #ident_index {
-                            #(
-                                #idx_ints => #output_idents.give(#ident_item),
-                            )*
-                            #ident_unknown => panic!(#err_str, #ident_unknown),
-                        };
-                    },
+            let #ident = #root::compiled::push::Map::new(
+                |__item| {
+                    #[allow(clippy::redundant_closure_call)]
+                    let __idx = (#func)(&__item, #arg2_val);
+                    (__item, __idx)
+                },
+                #root::compiled::push::Partition::new(
                     #root::var_expr!( #( #sorted_outputs ),* ),
-                )
-            };
+                ),
+            );
+            //     // #root::pusherator::demux::Demux::new(
+            //     //     |#ident_item, #root::var_args!( #( #output_idents ),* )| {
+            //     //         #[allow(unused_imports)]
+            //     //         use #root::pusherator::Pusherator;
+
+            //     //         let #ident_index = {
+            //     //             #[allow(clippy::redundant_closure_call)]
+            //     //             (#func)(&#ident_item, #arg2_val)
+            //     //         };
+            //     //         match #ident_index {
+            //     //             #(
+            //     //                 #idx_ints => #output_idents.give(#ident_item),
+            //     //             )*
+            //     //             #ident_unknown => panic!(#err_str, #ident_unknown),
+            //     //         };
+            //     //     },
+            //     //     #root::var_expr!( #( #sorted_outputs ),* ),
+            //     // )
+            // };
         };
 
         Ok(OperatorWriteOutput {
