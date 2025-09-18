@@ -35,7 +35,7 @@ where
     type Error = Item::Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut this = self.project();
+        let this = self.project();
         if let Some(item) = &this.item {
             ready!(Item::poll_ready(item, this.outputs, cx))?;
             let item = this.item.take().unwrap();

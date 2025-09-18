@@ -1279,7 +1279,7 @@ impl DfirGraph {
 
         quote! {
             {
-                #[allow(unused_qualifications)]
+                #[allow(unused_qualifications, clippy::await_holding_refcell_ref)]
                 {
                     #prefix
 

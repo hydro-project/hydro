@@ -24,7 +24,7 @@ pub(crate) async fn run_subordinate(outbound: UdpSink, inbound: UdpStream, opts:
         // set up channels
         outbound_chan = union() -> [0]server_addr_join -> tee();
         outbound_chan[0] -> dest_sink_serde(outbound);
-        inbound_chan = source_stream_serde(inbound) -> map(Result::unwrap) -> map(|(m, _a)| m) -> tee();
+        inbound_chan = source_stream_serde::<Msg>(inbound) -> map(Result::unwrap) -> map(|(m, _a)| m) -> tee();
         msgs = inbound_chan[0] -> demux_enum::<Msg>();
 
         msgs[AckP2] -> errs;
