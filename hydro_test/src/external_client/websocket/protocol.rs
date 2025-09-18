@@ -83,6 +83,7 @@ pub fn websocket_protocol<'a, P>(
     in_stream: KeyedStream<u64, BytesMut, Process<'a, P>, Unbounded, TotalOrder>,
     handle_messages: impl FnOnce(
         KeyedStream<u64, WebSocketMessage, Process<'a, P>, Unbounded>,
+        KeyedSingleton<u64, (), Process<'a, P>, Unbounded>,
     ) -> KeyedStream<u64, WebSocketMessage, Process<'a, P>, Unbounded>,
 ) -> KeyedStream<u64, BytesMut, Process<'a, P>, Unbounded, TotalOrder> {
     let parsed_messages = in_stream.flatten_ordered().generator(
@@ -134,6 +135,28 @@ pub fn websocket_protocol<'a, P>(
         }),
     );
 
+    let open_connections = parsed_messages
+        .clone()
+        .fold(
+            q!(|| false),
+            q!(|connected, msg| {
+                match msg {
+                    WebSocketRawMessage::HandshakeResponse(_) => {
+                        *connected = true;
+                    }
+                    WebSocketRawMessage::Frame(frame) => {
+                        if frame.opcode == OpCode::Close {
+                            *connected = false;
+                        }
+                    }
+                    WebSocketRawMessage::Error(_) => {
+                        *connected = false;
+                    }
+                }
+            }),
+        )
+        .filter_map(q!(|c| if c { Some(()) } else { None }));
+
     // Split into app messages (text/binary) and protocol messages
     let app_messages = parsed_messages.clone().filter_map(q!(|msg| {
         match msg {
@@ -171,7 +194,7 @@ pub fn websocket_protocol<'a, P>(
     }));
 
     // Handle echo logic using Hydro streams
-    let echo_responses = handle_messages(app_messages);
+    let echo_responses = handle_messages(app_messages, open_connections);
 
     let encoded_responses = echo_responses.map(q!(|m| match m {
         WebSocketMessage::Text(text) => {
