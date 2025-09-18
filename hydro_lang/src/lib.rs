@@ -88,6 +88,13 @@ fn init_rewrites() {
         vec!["tokio_util", "codec", "lines_codec"],
         vec!["tokio_util", "codec"],
     );
+
+    stageleft::add_private_reexport(
+        vec!["tokio_util", "codec", "bytes_codec"],
+        vec!["tokio_util", "codec"],
+    );
+
+    stageleft::add_private_reexport(vec!["bytes", "buf", "iter"], vec!["bytes", "buf"]);
 }
 
 #[cfg(test)]
