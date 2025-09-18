@@ -24,7 +24,7 @@ Just like Rust guarantees memory safety, Hydro includes guardrails to avoid non-
 
 :::info
 
-There are a [variety of APIs](pathname:///rustdoc/hydro_lang/stream/struct.Stream.html#impl-Stream%3CT,+L,+B%3E-2) for sending data to and receiving data from clusters. For example, we `broadcast_bincode` to send copies to all members (e.g. for replication), or use `send_bincode` if we have a custom partitioning algorithm.
+There are a [variety of APIs](pathname:///rustdoc/hydro_lang/live_collections/struct.Stream#impl-Stream<T,+Process<'a,+L>,+B,+O,+R>) for sending data to and receiving data from clusters. For example, we `broadcast_bincode` to send copies to all members (e.g. for replication), or use `send_bincode` if we have a custom partitioning algorithm.
 
 :::
 
