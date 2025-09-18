@@ -946,7 +946,43 @@ where
         )
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Shifts the state in `self` to the **next tick**, so that the returned optional at tick `T`
+    /// always has the state of `self` at tick `T - 1`.
+    ///
+    /// At tick `0`, the output optional is null, since there is no previous tick.
+    ///
+    /// This operator enables stateful iterative processing with ticks, by sending data from one
+    /// tick to the next. For example, you can use it to compare state across consecutive batches.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![1, 2]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![3, 4]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let current_tick_sum = batch_first_tick.chain(batch_second_tick)
+    ///   .reduce(q!(|state, v| *state += v));
+    ///
+    /// current_tick_sum.clone().into_singleton().zip(
+    ///   current_tick_sum.defer_tick().into_singleton() // state from previous tick
+    /// ).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [(Some(3), None) /* first tick */, (Some(7), Some(3)) /* second tick */]
+    /// # for w in vec![(Some(3), None), (Some(7), Some(3))] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn defer_tick(self) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
             self.location.clone(),
