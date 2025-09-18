@@ -560,7 +560,34 @@ where
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Passes through `self` when it has a value, otherwise passes through `other`.
+    ///
+    /// Like [`Option::or`], this is helpful for defining a fallback for an [`Optional`], when the
+    /// fallback itself is an [`Optional`]. If the fallback is a [`Singleton`], you can use
+    /// [`Optional::unwrap_or`] to ensure that the output is always non-null.
+    ///
+    /// If the inputs are [`Unbounded`], the output will be asynchronously updated as the contents
+    /// of the inputs change (including to/from null states).
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let some_first_tick = tick.optional_first_tick(q!(123));
+    /// let some_second_tick = tick.optional_first_tick(q!(456)).defer_tick();
+    /// some_first_tick.or(some_second_tick).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [123 /* first tick */, 456 /* second tick */]
+    /// # for w in vec![123, 456] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn or(self, other: Optional<T, L, B>) -> Optional<T, L, B> {
         check_matching_location(&self.location, &other.location);
 
@@ -594,13 +621,63 @@ where
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Gets the contents of `self` when it has a value, otherwise passes through `other`.
+    ///
+    /// Like [`Option::unwrap_or`], this is helpful for defining a fallback for an [`Optional`].
+    /// If the fallback is not always defined (an [`Optional`]), you can use [`Optional::or`].
+    ///
+    /// If the inputs are [`Unbounded`], the output will be asynchronously updated as the contents
+    /// of the inputs change (including to/from null states).
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the later ticks to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let some_first_tick = tick.optional_first_tick(q!(123));
+    /// some_first_tick
+    ///     .unwrap_or(tick.singleton(q!(456)))
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [123 /* first tick */, 456 /* second tick */, 456 /* third tick */, 456, ...]
+    /// # for w in vec![123, 456, 456, 456] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn unwrap_or(self, other: Singleton<T, L, B>) -> Singleton<T, L, B> {
         let res_option = self.or(other.into());
         Singleton::new(res_option.location, res_option.ir_node.into_inner())
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Converts this optional into a [`Singleton`] with a Rust [`Option`] as its contents.
+    ///
+    /// Useful for writing custom Rust code that needs to interact with both the null and non-null
+    /// states of the [`Optional`]. When possible, you should use the native APIs on [`Optional`]
+    /// so that Hydro can skip any computation on null values.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the later ticks to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let some_first_tick = tick.optional_first_tick(q!(123));
+    /// some_first_tick.into_singleton().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [Some(123) /* first tick */, None /* second tick */, None /* third tick */, None, ...]
+    /// # for w in vec![Some(123), None, None, None] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn into_singleton(self) -> Singleton<Option<T>, L, B>
     where
         T: Clone,
@@ -726,8 +803,33 @@ where
         )
     }
 
-    #[expect(missing_docs, reason = "TODO")]
-    pub fn then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded> {
+    /// If `self` is null, emits a null optional, but if it non-null, emits `value`.
+    ///
+    /// Useful for gating the release of a [`Singleton`] on a condition of the [`Optional`]
+    /// having a value, such as only releasing a piece of state if the node is the leader.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let some_on_first_tick = tick.optional_first_tick(q!(()));
+    /// some_on_first_tick
+    ///     .if_some_then(tick.singleton(q!(456)))
+    ///     .unwrap_or(tick.singleton(q!(123)))
+    /// # .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 456 (first tick) ~> 123 (second tick onwards)
+    /// # for w in vec![456, 123, 123] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn if_some_then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded> {
         value.filter_if_some(self)
     }
 }
