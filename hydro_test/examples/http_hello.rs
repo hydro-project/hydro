@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .bidi_external_many_bytes::<_, _, LinesCodec>(&external, NetworkHint::TcpPort(Some(4000)));
 
     output_ref.complete(
-        hydro_test::external_client::http_hello::http_hello_server(input).into_keyed_stream(),
+        hydro_test::external_client::http::http_hello::http_hello_server(input).into_keyed_stream(),
     );
 
     // Extract the IR BEFORE the builder is consumed by deployment methods
