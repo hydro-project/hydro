@@ -458,7 +458,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// process
     ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
     ///     .into_keyed()
-    ///     .inspect(q!(|v| println!("{}", v)))
+    ///     .inspect_with_key(q!(|(k, v)| println!("{}: {}", k, v)))
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// # for w in vec![(1, 2), (1, 3), (2, 4)] {
@@ -1309,6 +1309,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// ```
     pub fn filter_key_not_in<O2: Ordering, R2: Retries>(
         self,
         other: Stream<K, L, Bounded, O2, R2>,

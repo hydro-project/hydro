@@ -202,7 +202,33 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         self.entries().map(q!(|(k, _)| k))
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Given a bounded stream of keys `K`, returns a new keyed singleton containing only the
+    /// entries whose keys are not in the provided stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first()
+    /// #     .snapshot(&tick, nondet!(/** test */));
+    /// let keys_to_remove = process
+    ///     .source_iter(q!(vec![1]))
+    ///     .batch(&tick, nondet!(/** test */));
+    /// keyed_singleton.filter_key_not_in(keys_to_remove)
+    /// #   .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 2: 4 }
+    /// # for w in vec![(2, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn filter_key_not_in<O2: Ordering, R2: Retries>(
         self,
         other: Stream<K, L, Bounded, O2, R2>,
@@ -215,7 +241,30 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// An operator which allows you to "inspect" each value of a keyed singleton without
+    /// modifying it. The closure `f` is called on a reference to each value. This is
+    /// mainly useful for debugging, and should not be used to generate side-effects.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton
+    ///     .inspect(q!(|v| println!("{}", v)))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 2, 2: 4 }
+    /// # for w in vec![(1, 2), (2, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, V, L, B>
     where
         F: Fn(&V) + 'a,
@@ -229,7 +278,30 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// An operator which allows you to "inspect" each entry of a keyed singleton without
+    /// modifying it. The closure `f` is called on a reference to each key-value pair. This is
+    /// mainly useful for debugging, and should not be used to generate side-effects.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton
+    ///     .inspect_with_key(q!(|(k, v)| println!("{}: {}", k, v)))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 2, 2: 4 }
+    /// # for w in vec![(1, 2), (2, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn inspect_with_key<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> KeyedSingleton<K, V, L, B>
     where
         F: Fn(&(K, V)) + 'a,
@@ -239,7 +311,35 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Converts this keyed singleton into a [`KeyedStream`] with each group having a single
+    /// element, the value.
+    ///
+    /// This is the equivalent of [`Singleton::into_stream`] but keyed.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton
+    ///     .clone()
+    ///     .into_keyed_stream()
+    ///     .interleave(
+    ///         keyed_singleton.into_keyed_stream()
+    ///     )
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// /// // { 1: [2, 2], 2: [4, 4] }
+    /// # for w in vec![(1, 2), (2, 4), (1, 2), (2, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn into_keyed_stream(
         self,
     ) -> KeyedStream<K, V, L, B::UnderlyingBound, TotalOrder, ExactlyOnce> {
@@ -429,7 +529,31 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Gets the number of keys in the keyed singleton.
+    ///
+    /// The output singleton will be unbounded if the input is [`Unbounded`] or [`BoundedValue`],
+    /// since keys may be added / removed over time. When the set of keys changes, the count will
+    /// be asynchronously updated.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let keyed_singleton = // { 1: "a", 2: "b", 3: "c" }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, "a"), (2, "b"), (3, "c")]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// keyed_singleton.key_count()
+    /// # .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 3
+    /// # assert_eq!(stream.next().await.unwrap(), 3);
+    /// # }));
+    /// ```
     pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
         self.underlying.count()
     }
@@ -459,7 +583,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     ///     .source_iter(q!(vec![(1, 2), (2, 3)]))
     ///     .into_keyed()
     ///     .batch(&tick, nondet!(/** test */))
-    ///     .fold(q!(|| 0), q!(|acc, x| *acc = x));
+    ///     .first();
     /// let key = tick.singleton(q!(1));
     /// keyed_data.get(key).all_ticks()
     /// # }, |mut stream| async move {
@@ -490,7 +614,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     ///     .source_iter(q!(vec![(1, 10), (2, 20)]))
     ///     .into_keyed()
     ///     .batch(&tick, nondet!(/** test */))
-    ///     .fold(q!(|| 0), q!(|acc, x| *acc = x));
+    ///     .first();
     /// let other_data = process
     ///     .source_iter(q!(vec![(1, 100), (2, 200), (1, 101)]))
     ///     .into_keyed()
@@ -516,7 +640,41 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
             .into_keyed()
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// For each entry in `self`, looks up the entry in the `from` with a key that matches the
+    /// **value** of the entry in `self`. The output is a keyed singleton with tuple values
+    /// containing the value from `self` and an option of the value from `from`. If the key is not
+    /// present in `from`, the option will be [`None`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let requests = // { 1: 10, 2: 20 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 10), (2, 20)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// let other_data = // { 10: 100, 11: 101 }
+    /// # process
+    /// #     .source_iter(q!(vec![(10, 100), (11, 101)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// requests.get_from(other_data)
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: (10, Some(100)), 2: (20, None) }
+    /// # let mut results = vec![];
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (10, Some(100))), (2, (20, None))]);
+    /// # }));
+    /// ```
     pub fn get_from<V2: Clone>(
         self,
         from: KeyedSingleton<V, V2, Tick<L>, Bounded>,
