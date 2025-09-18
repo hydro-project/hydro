@@ -45,9 +45,9 @@ let keyed: KeyedStream<&str, &str, _, _, _> = data.into_keyed();
 The resulting keyed stream groups elements by their first tuple element (the key), while preserving the original ordering within each group.
 
 ## Ordering and Determinism
-Keyed streams are different from regular streams in that they capture a _partial ordering_ of key-value pairs. Within each group, values may have a deterministic ordering, but there is no ordering of values across different groups. Just like streams, keyed stream have an `Order` type parameter that indicates whether the elements in each group will have a deterministic order ([`TotalOrder`](pathname:///rustdoc/hydro_lang/stream/struct.TotalOrder)) or not ([`NoOrder`](pathname:///rustdoc/hydro_lang/stream/struct.NoOrder)). When the type parameter is omitted, it defaults to `TotalOrder` for brevity.
+Keyed streams are different from regular streams in that they capture a _partial ordering_ of key-value pairs. Within each group, values may have a deterministic ordering, but there is no ordering of values across different groups. Just like streams, keyed stream have an `Order` type parameter that indicates whether the elements in each group will have a deterministic order ([`TotalOrder`](pathname:///rustdoc/hydro_lang/live_collections/stream/enum.TotalOrder)) or not ([`NoOrder`](pathname:///rustdoc/hydro_lang/live_collections/stream/enum.NoOrder)). When the type parameter is omitted, it defaults to `TotalOrder` for brevity.
 
-Keyed streams support familiar transformation operations like `map` and `filter` ([full API](pathname:///rustdoc/hydro_lang/keyed_stream/struct.KeyedStream)) that operate on the values within each group, and thus preserve any ordering guarantees. Each key maintains its own independent processing pipeline - `user1` events are transformed and filtered separately from `user2` events:
+Keyed streams support familiar transformation operations like `map` and `filter` ([full API](pathname:///rustdoc/hydro_lang/live_collections/struct.KeyedStream)) that operate on the values within each group, and thus preserve any ordering guarantees. Each key maintains its own independent processing pipeline - `user1` events are transformed and filtered separately from `user2` events:
 
 ```rust
 # use hydro_lang::prelude::*;

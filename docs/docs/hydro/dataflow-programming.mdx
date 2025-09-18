@@ -10,9 +10,9 @@ Programs in Hydro describe how to **transform** streams and other collections of
 If you are familiar with Spark, Flink or Pandas, you will find Hydro syntax familiar. However, note well that the semantics for asynchronous streams in Hydro differ significantly from bulk analytics systems like those above. In particular, Hydro uses the type system to distinguish between bounded streams (originating from finite data collections) and unbounded streams (originated from asynchronous input). Moreover, Hydro is designed to handle asynchronous streams of small, independent events very efficiently.
 
 The core of the Hydro API are the following types and their methods:
-- [Stream](https://hydro.run/rustdoc/hydro_lang/stream/struct.Stream)
-- [Singleton](https://hydro.run/rustdoc/hydro_lang/singleton/struct.Singleton)
-- [Optional](https://hydro.run/rustdoc/hydro_lang/optional/struct.Optional)
+- [Stream](pathname:///rustdoc/hydro_lang/live_collections/struct.Stream)
+- [Singleton](pathname:///rustdoc/hydro_lang/live_collections/struct.Singleton)
+- [Optional](pathname:///rustdoc/hydro_lang/live_collections/struct.Optional)
 
-<!-- TODO(shadaj): link to collections section -->
-<!-- TODO(shadaj): show example of mermaid graph -->
+{/* TODO(shadaj): link to collections section */}
+{/* TODO(shadaj): show example of mermaid graph */}
