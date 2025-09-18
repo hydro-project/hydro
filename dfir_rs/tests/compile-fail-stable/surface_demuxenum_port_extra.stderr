@@ -7,27 +7,18 @@ error[E0599]: no variant named `Ellipse` found for enum `Shape`
 21 |         my_demux[Ellipse] -> for_each(std::mem::drop);
    |                  ^^^^^^^ variant not found in `Shape`
 
-error[E0308]: mismatched types
+error[E0277]: the trait bound `Shape: DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)>` is not satisfied
   --> tests/compile-fail-stable/surface_demuxenum_port_extra.rs:17:15
    |
 17 |         ]) -> demux_enum::<Shape>();
-   |               ^^^^^^^^^^
-   |               |
-   |               expected a tuple with 3 elements, found one with 4 elements
-   |               arguments to this function are incorrect
-18 |         my_demux[Rectangle] -> for_each(std::mem::drop);
-   |                                -------- one of the found opaque types
-19 |         my_demux[Circle] -> for_each(std::mem::drop);
-   |                             -------- one of the found opaque types
-20 |         my_demux[Square] -> for_each(std::mem::drop);
-   |                             -------- one of the found opaque types
-21 |         my_demux[Ellipse] -> for_each(std::mem::drop);
-   |                              -------- one of the found opaque types
+   |               ^^^^^^^^^^ unsatisfied trait bound
    |
-   = note: expected mutable reference `&mut (_, _, _)`
-              found mutable reference `&mut (impl Pusherator<Item = _>, impl Pusherator<Item = _>, impl Pusherator<Item = _>, impl Pusherator<Item = _>)`
-note: method defined here
-  --> src/util/demux_enum.rs
+   = note: ensure there is exactly one output for each enum variant.
+   = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
+   = help: the trait `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)>` is not implemented for `Shape`
+           but trait `DemuxEnumSink<(Pin<&mut _>, Pin<&mut _>, Pin<&mut _>)>` is implemented for it
+note: required by a bound in `main::{closure#1}::{closure#0}::op_2v1__demux_enum__loc_nopath_17_14_17_24`
+  --> tests/compile-fail-stable/surface_demuxenum_port_extra.rs:17:15
    |
-   |     fn demux_enum(self, outputs: &mut Outputs);
-   |        ^^^^^^^^^^
+17 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^ required by this bound in `op_2v1__demux_enum__loc_nopath_17_14_17_24`

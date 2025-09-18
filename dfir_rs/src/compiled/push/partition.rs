@@ -1,10 +1,8 @@
 //! Variadics for [`Sink`].
 
-use std::{
-    marker::PhantomData,
-    pin::Pin,
-    task::{Context, Poll, ready},
-};
+use std::marker::PhantomData;
+use std::pin::Pin;
+use std::task::{Context, Poll, ready};
 
 use futures::sink::Sink;
 use pin_project_lite::pin_project;

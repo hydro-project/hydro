@@ -10,14 +10,24 @@ pin_project! {
     pub struct Persist<'ctx, Si, Item> {
         #[pin]
         sink: Si,
-        replay: std::slice::Iter<'ctx, Item>,
+        vec: &'ctx mut Vec<Item>,
+        replay_idx: usize,
     }
 }
 
 impl<'ctx, Si, Item> Persist<'ctx, Si, Item> {
     /// Create with the given replay and following sink.
-    pub fn new(replay: std::slice::Iter<'ctx, Item>, sink: Si) -> Self {
-        Self { sink, replay }
+    pub fn new(vec: &'ctx mut Vec<Item>, replay_idx: usize, sink: Si) -> Self
+    where
+        Self: Sink<Item>,
+    {
+        debug_assert!(replay_idx <= vec.len());
+
+        Self {
+            sink,
+            vec,
+            replay_idx,
+        }
     }
 
     fn empty_replay(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>>
@@ -26,10 +36,12 @@ impl<'ctx, Si, Item> Persist<'ctx, Si, Item> {
         Item: Clone,
     {
         let mut this = self.project();
-        for item in this.replay.by_ref() {
+        while let Some(item) = this.vec.get(*this.replay_idx) {
             ready!(this.sink.as_mut().poll_ready(cx))?;
             this.sink.as_mut().start_send(item.clone())?;
+            *this.replay_idx += 1;
         }
+        debug_assert_eq!(this.vec.len(), *this.replay_idx);
         Poll::Ready(Ok(()))
     }
 }
@@ -46,7 +58,14 @@ where
         self.project().sink.poll_ready(cx)
     }
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
-        self.project().sink.start_send(item)
+        let this = self.project();
+        debug_assert_eq!(this.vec.len(), *this.replay_idx);
+
+        // Persist
+        this.vec.push(item.clone());
+        *this.replay_idx += 1;
+
+        this.sink.start_send(item)
     }
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         ready!(self.as_mut().empty_replay(cx))?; // TODO(mingwei): needed?
