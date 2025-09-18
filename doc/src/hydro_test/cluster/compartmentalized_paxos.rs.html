@@ -168,7 +168,7 @@
 <a href=#168 id=168 data-nosnippet>168</a>    <span class="kw">let </span>c_to_proposers = c_to_proposers(
 <a href=#169 id=169 data-nosnippet>169</a>        just_became_leader
 <a href=#170 id=170 data-nosnippet>170</a>            .clone()
-<a href=#171 id=171 data-nosnippet>171</a>            .then(p_ballot.clone())
+<a href=#171 id=171 data-nosnippet>171</a>            .if_some_then(p_ballot.clone())
 <a href=#172 id=172 data-nosnippet>172</a>            .all_ticks(),
 <a href=#173 id=173 data-nosnippet>173</a>    );
 <a href=#174 id=174 data-nosnippet>174</a>
@@ -204,7 +204,7 @@
 <a href=#204 id=204 data-nosnippet>204</a>
 <a href=#205 id=205 data-nosnippet>205</a>    (
 <a href=#206 id=206 data-nosnippet>206</a>        <span class="comment">// Only tell the clients once when leader election concludes
-<a href=#207 id=207 data-nosnippet>207</a>        </span>just_became_leader.then(p_ballot).all_ticks(),
+<a href=#207 id=207 data-nosnippet>207</a>        </span>just_became_leader.if_some_then(p_ballot).all_ticks(),
 <a href=#208 id=208 data-nosnippet>208</a>        p_to_replicas,
 <a href=#209 id=209 data-nosnippet>209</a>    )
 <a href=#210 id=210 data-nosnippet>210</a>}
