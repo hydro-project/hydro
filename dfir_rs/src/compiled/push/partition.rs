@@ -107,6 +107,7 @@ fn pin_project_pair<A, B>(pair: Pin<&mut (A, B)>) -> (Pin<&mut A>, Pin<&mut B>) 
 
 pin_project! {
     /// Sink which receives items paired with indices, and pushes to the corresponding output sink in a variadic of sinks.
+    #[must_use = "sinks do nothing unless polled"]
     pub struct Partition<Sinks, Item, Error> {
         #[pin]
         sinks: Sinks,
