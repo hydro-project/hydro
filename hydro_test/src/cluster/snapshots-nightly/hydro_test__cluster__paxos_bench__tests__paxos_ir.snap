@@ -45,7 +45,7 @@ expression: built.ir()
             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , u32) , u32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_raw (__hydro_lang_cluster_self_id_0) ; move | (received_max_ballot , ballot_num) | { if received_max_ballot > (Ballot { num : ballot_num , proposer_id : CLUSTER_SELF_ID__free , }) { received_max_ballot . num + 1 } else { ballot_num } } }),
             input: CrossSingleton {
                 left: Tee {
-                    inner: <tee 0>: Chain {
+                    inner: <tee 0>: ChainFirst {
                         first: Reduce {
                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
                             input: Persist {
@@ -180,7 +180,7 @@ expression: built.ir()
                     },
                 },
                 right: Tee {
-                    inner: <tee 1>: Chain {
+                    inner: <tee 1>: ChainFirst {
                         first: DeferTick {
                             input: CycleSource {
                                 ident: Ident {
@@ -210,80 +210,23 @@ expression: built.ir()
                                 ),
                             },
                         },
-                        second: Map {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , ()) , u32 > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
-                            input: CrossSingleton {
-                                left: Persist {
-                                    inner: Source {
-                                        source: Iter(
-                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; 0 } ; [e__free] },
-                                        ),
-                                        metadata: HydroIrMetadata {
-                                            location_kind: Cluster(
-                                                0,
-                                            ),
-                                            output_type: Some(
-                                                u32,
-                                            ),
-                                        },
-                                    },
-                                    metadata: HydroIrMetadata {
-                                        location_kind: Cluster(
-                                            0,
-                                        ),
-                                        output_type: Some(
-                                            u32,
-                                        ),
-                                    },
-                                },
-                                right: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                    input: Source {
-                                        source: Iter(
-                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; () } ; [e__free] },
-                                        ),
-                                        metadata: HydroIrMetadata {
-                                            location_kind: Tick(
-                                                1,
-                                                Cluster(
-                                                    0,
-                                                ),
-                                            ),
-                                            output_type: Some(
-                                                (),
-                                            ),
-                                        },
-                                    },
-                                    metadata: HydroIrMetadata {
-                                        location_kind: Tick(
-                                            1,
-                                            Cluster(
-                                                0,
-                                            ),
-                                        ),
-                                        output_type: Some(
-                                            (),
-                                        ),
-                                    },
-                                },
+                        second: Persist {
+                            inner: Source {
+                                source: Iter(
+                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; 0 } ; [e__free] },
+                                ),
                                 metadata: HydroIrMetadata {
-                                    location_kind: Tick(
-                                        1,
-                                        Cluster(
-                                            0,
-                                        ),
+                                    location_kind: Cluster(
+                                        0,
                                     ),
                                     output_type: Some(
-                                        (u32 , ()),
+                                        u32,
                                     ),
                                 },
                             },
                             metadata: HydroIrMetadata {
-                                location_kind: Tick(
-                                    1,
-                                    Cluster(
-                                        0,
-                                    ),
+                                location_kind: Cluster(
+                                    0,
                                 ),
                                 output_type: Some(
                                     u32,
@@ -875,14 +818,40 @@ expression: built.ir()
                                                                                                                     },
                                                                                                                 },
                                                                                                                 right: Map {
-                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
+                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
                                                                                                                     input: Filter {
-                                                                                                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < usize , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | c | * c == 0 }),
-                                                                                                                        input: Fold {
-                                                                                                                            init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | 0usize }),
-                                                                                                                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | count , _ | * count += 1 }),
-                                                                                                                            input: Tee {
-                                                                                                                                inner: <tee 4>,
+                                                                                                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_none () }),
+                                                                                                                        input: ChainFirst {
+                                                                                                                            first: Map {
+                                                                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                                                                                                                input: Map {
+                                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                                                                                                    input: Tee {
+                                                                                                                                        inner: <tee 4>,
+                                                                                                                                        metadata: HydroIrMetadata {
+                                                                                                                                            location_kind: Tick(
+                                                                                                                                                1,
+                                                                                                                                                Cluster(
+                                                                                                                                                    0,
+                                                                                                                                                ),
+                                                                                                                                            ),
+                                                                                                                                            output_type: Some(
+                                                                                                                                                (),
+                                                                                                                                            ),
+                                                                                                                                        },
+                                                                                                                                    },
+                                                                                                                                    metadata: HydroIrMetadata {
+                                                                                                                                        location_kind: Tick(
+                                                                                                                                            1,
+                                                                                                                                            Cluster(
+                                                                                                                                                0,
+                                                                                                                                            ),
+                                                                                                                                        ),
+                                                                                                                                        output_type: Some(
+                                                                                                                                            (),
+                                                                                                                                        ),
+                                                                                                                                    },
+                                                                                                                                },
                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                     location_kind: Tick(
                                                                                                                                         1,
@@ -891,7 +860,33 @@ expression: built.ir()
                                                                                                                                         ),
                                                                                                                                     ),
                                                                                                                                     output_type: Some(
-                                                                                                                                        (),
+                                                                                                                                        core :: option :: Option < () >,
+                                                                                                                                    ),
+                                                                                                                                },
+                                                                                                                            },
+                                                                                                                            second: Persist {
+                                                                                                                                inner: Source {
+                                                                                                                                    source: Iter(
+                                                                                                                                        [:: std :: option :: Option :: None],
+                                                                                                                                    ),
+                                                                                                                                    metadata: HydroIrMetadata {
+                                                                                                                                        location_kind: Cluster(
+                                                                                                                                            0,
+                                                                                                                                        ),
+                                                                                                                                        output_type: Some(
+                                                                                                                                            core :: option :: Option < () >,
+                                                                                                                                        ),
+                                                                                                                                    },
+                                                                                                                                },
+                                                                                                                                metadata: HydroIrMetadata {
+                                                                                                                                    location_kind: Tick(
+                                                                                                                                        1,
+                                                                                                                                        Cluster(
+                                                                                                                                            0,
+                                                                                                                                        ),
+                                                                                                                                    ),
+                                                                                                                                    output_type: Some(
+                                                                                                                                        core :: option :: Option < () >,
                                                                                                                                     ),
                                                                                                                                 },
                                                                                                                             },
@@ -903,7 +898,7 @@ expression: built.ir()
                                                                                                                                     ),
                                                                                                                                 ),
                                                                                                                                 output_type: Some(
-                                                                                                                                    usize,
+                                                                                                                                    core :: option :: Option < () >,
                                                                                                                                 ),
                                                                                                                             },
                                                                                                                         },
@@ -915,7 +910,7 @@ expression: built.ir()
                                                                                                                                 ),
                                                                                                                             ),
                                                                                                                             output_type: Some(
-                                                                                                                                usize,
+                                                                                                                                core :: option :: Option < () >,
                                                                                                                             ),
                                                                                                                         },
                                                                                                                     },
@@ -1108,7 +1103,7 @@ expression: built.ir()
                                                                     },
                                                                 },
                                                                 right: Tee {
-                                                                    inner: <tee 9>: Chain {
+                                                                    inner: <tee 9>: ChainFirst {
                                                                         first: Reduce {
                                                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
                                                                             input: Persist {
@@ -2020,51 +2015,71 @@ expression: built.ir()
                     },
                 },
                 right: Map {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _u | () }),
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _u | () }),
                     input: Filter {
-                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < usize , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | c | * c == 0 }),
-                        input: Fold {
-                            init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | 0usize }),
-                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | count , _ | * count += 1 }),
-                            input: Tee {
-                                inner: <tee 15>: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | ballot | ballot . proposer_id }),
-                                    input: Reduce {
-                                        f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
-                                        input: Persist {
-                                            inner: Inspect {
-                                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_with_client :: * ; | ballot | println ! ("Client notified that leader was elected: {:?}" , ballot) }),
-                                                input: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                                                    input: Network {
-                                                        serialize_fn: Some(
-                                                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
-                                                        ),
-                                                        instantiate_fn: <network instantiate>,
-                                                        deserialize_fn: Some(
-                                                            | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < hydro_test :: __staged :: cluster :: paxos :: Ballot > (& b) . unwrap ()) },
-                                                        ),
-                                                        input: CrossProduct {
-                                                            left: Map {
-                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                                input: FilterMap {
-                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
-                                                                    input: FoldKeyed {
-                                                                        init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | | false }),
-                                                                        acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
-                                                                        input: Persist {
-                                                                            inner: Map {
-                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
-                                                                                input: Source {
-                                                                                    source: Iter(
-                                                                                        { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_memberids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: location :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client >] > (__hydro_lang_cluster_ids_2) } ; underlying_memberids__free },
-                                                                                    ),
+                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | o | o . is_none () }),
+                        input: ChainFirst {
+                            first: Map {
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                input: Map {
+                                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ | () }),
+                                    input: Tee {
+                                        inner: <tee 15>: Map {
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | ballot | ballot . proposer_id }),
+                                            input: Reduce {
+                                                f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
+                                                input: Persist {
+                                                    inner: Inspect {
+                                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_with_client :: * ; | ballot | println ! ("Client notified that leader was elected: {:?}" , ballot) }),
+                                                        input: Map {
+                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
+                                                            input: Network {
+                                                                serialize_fn: Some(
+                                                                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                                ),
+                                                                instantiate_fn: <network instantiate>,
+                                                                deserialize_fn: Some(
+                                                                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < hydro_test :: __staged :: cluster :: paxos :: Ballot > (& b) . unwrap ()) },
+                                                                ),
+                                                                input: CrossProduct {
+                                                                    left: Map {
+                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
+                                                                        input: FilterMap {
+                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| v | (k , v)) } }),
+                                                                            input: FoldKeyed {
+                                                                                init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | | false }),
+                                                                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
+                                                                                input: Persist {
+                                                                                    inner: Map {
+                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | id | (* id , MembershipEvent :: Joined) }),
+                                                                                        input: Source {
+                                                                                            source: Iter(
+                                                                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let underlying_memberids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: location :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client >] > (__hydro_lang_cluster_ids_2) } ; underlying_memberids__free },
+                                                                                            ),
+                                                                                            metadata: HydroIrMetadata {
+                                                                                                location_kind: Cluster(
+                                                                                                    0,
+                                                                                                ),
+                                                                                                output_type: Some(
+                                                                                                    & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client >,
+                                                                                                ),
+                                                                                            },
+                                                                                        },
+                                                                                        metadata: HydroIrMetadata {
+                                                                                            location_kind: Cluster(
+                                                                                                0,
+                                                                                            ),
+                                                                                            output_type: Some(
+                                                                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
+                                                                                            ),
+                                                                                        },
+                                                                                    },
                                                                                     metadata: HydroIrMetadata {
                                                                                         location_kind: Cluster(
                                                                                             0,
                                                                                         ),
                                                                                         output_type: Some(
-                                                                                            & hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client >,
+                                                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
                                                                                         ),
                                                                                     },
                                                                                 },
@@ -2073,7 +2088,7 @@ expression: built.ir()
                                                                                         0,
                                                                                     ),
                                                                                     output_type: Some(
-                                                                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
+                                                                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , bool),
                                                                                     ),
                                                                                 },
                                                                             },
@@ -2082,87 +2097,145 @@ expression: built.ir()
                                                                                     0,
                                                                                 ),
                                                                                 output_type: Some(
-                                                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
+                                                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ()),
                                                                                 ),
                                                                             },
                                                                         },
                                                                         metadata: HydroIrMetadata {
-                                                                            location_kind: Cluster(
-                                                                                0,
-                                                                            ),
-                                                                            output_type: Some(
-                                                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , bool),
-                                                                            ),
-                                                                        },
-                                                                    },
-                                                                    metadata: HydroIrMetadata {
-                                                                        location_kind: Cluster(
-                                                                            0,
-                                                                        ),
-                                                                        output_type: Some(
-                                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ()),
-                                                                        ),
-                                                                    },
-                                                                },
-                                                                metadata: HydroIrMetadata {
-                                                                    location_kind: Tick(
-                                                                        9,
-                                                                        Cluster(
-                                                                            0,
-                                                                        ),
-                                                                    ),
-                                                                    output_type: Some(
-                                                                        hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client >,
-                                                                    ),
-                                                                },
-                                                            },
-                                                            right: Map {
-                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , ()) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
-                                                                input: CrossSingleton {
-                                                                    left: Tee {
-                                                                        inner: <tee 3>,
-                                                                        metadata: HydroIrMetadata {
                                                                             location_kind: Tick(
-                                                                                1,
+                                                                                9,
                                                                                 Cluster(
                                                                                     0,
                                                                                 ),
                                                                             ),
                                                                             output_type: Some(
-                                                                                hydro_test :: __staged :: cluster :: paxos :: Ballot,
+                                                                                hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client >,
                                                                             ),
                                                                         },
                                                                     },
                                                                     right: Map {
-                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                                                        input: Tee {
-                                                                            inner: <tee 16>: Map {
-                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (() , ()) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _signal) | d }),
-                                                                                input: CrossSingleton {
-                                                                                    left: Tee {
-                                                                                        inner: <tee 11>,
-                                                                                        metadata: HydroIrMetadata {
-                                                                                            location_kind: Tick(
-                                                                                                1,
-                                                                                                Cluster(
-                                                                                                    0,
-                                                                                                ),
-                                                                                            ),
-                                                                                            output_type: Some(
-                                                                                                (),
-                                                                                            ),
-                                                                                        },
-                                                                                    },
-                                                                                    right: Map {
-                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
-                                                                                        input: Filter {
-                                                                                            f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < usize , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | c | * c == 0 }),
-                                                                                            input: Fold {
-                                                                                                init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | 0usize }),
-                                                                                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | count , _ | * count += 1 }),
-                                                                                                input: DeferTick {
-                                                                                                    input: Tee {
-                                                                                                        inner: <tee 11>,
+                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , ()) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
+                                                                        input: CrossSingleton {
+                                                                            left: Tee {
+                                                                                inner: <tee 3>,
+                                                                                metadata: HydroIrMetadata {
+                                                                                    location_kind: Tick(
+                                                                                        1,
+                                                                                        Cluster(
+                                                                                            0,
+                                                                                        ),
+                                                                                    ),
+                                                                                    output_type: Some(
+                                                                                        hydro_test :: __staged :: cluster :: paxos :: Ballot,
+                                                                                    ),
+                                                                                },
+                                                                            },
+                                                                            right: Map {
+                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
+                                                                                input: Tee {
+                                                                                    inner: <tee 16>: Map {
+                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (() , ()) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _signal) | d }),
+                                                                                        input: CrossSingleton {
+                                                                                            left: Tee {
+                                                                                                inner: <tee 11>,
+                                                                                                metadata: HydroIrMetadata {
+                                                                                                    location_kind: Tick(
+                                                                                                        1,
+                                                                                                        Cluster(
+                                                                                                            0,
+                                                                                                        ),
+                                                                                                    ),
+                                                                                                    output_type: Some(
+                                                                                                        (),
+                                                                                                    ),
+                                                                                                },
+                                                                                            },
+                                                                                            right: Map {
+                                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
+                                                                                                input: Filter {
+                                                                                                    f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_none () }),
+                                                                                                    input: ChainFirst {
+                                                                                                        first: Map {
+                                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                                                                                            input: Map {
+                                                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                                                                                input: DeferTick {
+                                                                                                                    input: Tee {
+                                                                                                                        inner: <tee 11>,
+                                                                                                                        metadata: HydroIrMetadata {
+                                                                                                                            location_kind: Tick(
+                                                                                                                                1,
+                                                                                                                                Cluster(
+                                                                                                                                    0,
+                                                                                                                                ),
+                                                                                                                            ),
+                                                                                                                            output_type: Some(
+                                                                                                                                (),
+                                                                                                                            ),
+                                                                                                                        },
+                                                                                                                    },
+                                                                                                                    metadata: HydroIrMetadata {
+                                                                                                                        location_kind: Tick(
+                                                                                                                            1,
+                                                                                                                            Cluster(
+                                                                                                                                0,
+                                                                                                                            ),
+                                                                                                                        ),
+                                                                                                                        output_type: Some(
+                                                                                                                            (),
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                },
+                                                                                                                metadata: HydroIrMetadata {
+                                                                                                                    location_kind: Tick(
+                                                                                                                        1,
+                                                                                                                        Cluster(
+                                                                                                                            0,
+                                                                                                                        ),
+                                                                                                                    ),
+                                                                                                                    output_type: Some(
+                                                                                                                        (),
+                                                                                                                    ),
+                                                                                                                },
+                                                                                                            },
+                                                                                                            metadata: HydroIrMetadata {
+                                                                                                                location_kind: Tick(
+                                                                                                                    1,
+                                                                                                                    Cluster(
+                                                                                                                        0,
+                                                                                                                    ),
+                                                                                                                ),
+                                                                                                                output_type: Some(
+                                                                                                                    core :: option :: Option < () >,
+                                                                                                                ),
+                                                                                                            },
+                                                                                                        },
+                                                                                                        second: Persist {
+                                                                                                            inner: Source {
+                                                                                                                source: Iter(
+                                                                                                                    [:: std :: option :: Option :: None],
+                                                                                                                ),
+                                                                                                                metadata: HydroIrMetadata {
+                                                                                                                    location_kind: Cluster(
+                                                                                                                        0,
+                                                                                                                    ),
+                                                                                                                    output_type: Some(
+                                                                                                                        core :: option :: Option < () >,
+                                                                                                                    ),
+                                                                                                                },
+                                                                                                            },
+                                                                                                            metadata: HydroIrMetadata {
+                                                                                                                location_kind: Tick(
+                                                                                                                    1,
+                                                                                                                    Cluster(
+                                                                                                                        0,
+                                                                                                                    ),
+                                                                                                                ),
+                                                                                                                output_type: Some(
+                                                                                                                    core :: option :: Option < () >,
+                                                                                                                ),
+                                                                                                            },
+                                                                                                        },
                                                                                                         metadata: HydroIrMetadata {
                                                                                                             location_kind: Tick(
                                                                                                                 1,
@@ -2171,7 +2244,7 @@ expression: built.ir()
                                                                                                                 ),
                                                                                                             ),
                                                                                                             output_type: Some(
-                                                                                                                (),
+                                                                                                                core :: option :: Option < () >,
                                                                                                             ),
                                                                                                         },
                                                                                                     },
@@ -2183,7 +2256,7 @@ expression: built.ir()
                                                                                                             ),
                                                                                                         ),
                                                                                                         output_type: Some(
-                                                                                                            (),
+                                                                                                            core :: option :: Option < () >,
                                                                                                         ),
                                                                                                     },
                                                                                                 },
@@ -2195,7 +2268,7 @@ expression: built.ir()
                                                                                                         ),
                                                                                                     ),
                                                                                                     output_type: Some(
-                                                                                                        usize,
+                                                                                                        (),
                                                                                                     ),
                                                                                                 },
                                                                                             },
@@ -2207,7 +2280,7 @@ expression: built.ir()
                                                                                                     ),
                                                                                                 ),
                                                                                                 output_type: Some(
-                                                                                                    usize,
+                                                                                                    (() , ()),
                                                                                                 ),
                                                                                             },
                                                                                         },
@@ -2231,7 +2304,7 @@ expression: built.ir()
                                                                                             ),
                                                                                         ),
                                                                                         output_type: Some(
-                                                                                            (() , ()),
+                                                                                            (),
                                                                                         ),
                                                                                     },
                                                                                 },
@@ -2255,7 +2328,7 @@ expression: built.ir()
                                                                                     ),
                                                                                 ),
                                                                                 output_type: Some(
-                                                                                    (),
+                                                                                    (hydro_test :: __staged :: cluster :: paxos :: Ballot , ()),
                                                                                 ),
                                                                             },
                                                                         },
@@ -2267,43 +2340,37 @@ expression: built.ir()
                                                                                 ),
                                                                             ),
                                                                             output_type: Some(
-                                                                                (),
+                                                                                hydro_test :: __staged :: cluster :: paxos :: Ballot,
                                                                             ),
                                                                         },
                                                                     },
                                                                     metadata: HydroIrMetadata {
                                                                         location_kind: Tick(
-                                                                            1,
+                                                                            9,
                                                                             Cluster(
                                                                                 0,
                                                                             ),
                                                                         ),
                                                                         output_type: Some(
-                                                                            (hydro_test :: __staged :: cluster :: paxos :: Ballot , ()),
+                                                                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: cluster :: paxos :: Ballot),
                                                                         ),
                                                                     },
                                                                 },
                                                                 metadata: HydroIrMetadata {
-                                                                    location_kind: Tick(
-                                                                        1,
-                                                                        Cluster(
-                                                                            0,
-                                                                        ),
+                                                                    location_kind: Cluster(
+                                                                        2,
                                                                     ),
                                                                     output_type: Some(
-                                                                        hydro_test :: __staged :: cluster :: paxos :: Ballot,
+                                                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot),
                                                                     ),
                                                                 },
                                                             },
                                                             metadata: HydroIrMetadata {
-                                                                location_kind: Tick(
-                                                                    9,
-                                                                    Cluster(
-                                                                        0,
-                                                                    ),
+                                                                location_kind: Cluster(
+                                                                    2,
                                                                 ),
                                                                 output_type: Some(
-                                                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: cluster :: paxos :: Ballot),
+                                                                    hydro_test :: __staged :: cluster :: paxos :: Ballot,
                                                                 ),
                                                             },
                                                         },
@@ -2312,7 +2379,7 @@ expression: built.ir()
                                                                 2,
                                                             ),
                                                             output_type: Some(
-                                                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot),
+                                                                hydro_test :: __staged :: cluster :: paxos :: Ballot,
                                                             ),
                                                         },
                                                     },
@@ -2339,25 +2406,31 @@ expression: built.ir()
                                                     2,
                                                 ),
                                                 output_type: Some(
-                                                    hydro_test :: __staged :: cluster :: paxos :: Ballot,
+                                                    hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer >,
                                                 ),
                                             },
                                         },
                                         metadata: HydroIrMetadata {
-                                            location_kind: Cluster(
-                                                2,
+                                            location_kind: Tick(
+                                                10,
+                                                Cluster(
+                                                    2,
+                                                ),
                                             ),
                                             output_type: Some(
-                                                hydro_test :: __staged :: cluster :: paxos :: Ballot,
+                                                hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer >,
                                             ),
                                         },
                                     },
                                     metadata: HydroIrMetadata {
-                                        location_kind: Cluster(
-                                            2,
+                                        location_kind: Tick(
+                                            10,
+                                            Cluster(
+                                                2,
+                                            ),
                                         ),
                                         output_type: Some(
-                                            hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer >,
+                                            (),
                                         ),
                                     },
                                 },
@@ -2369,7 +2442,33 @@ expression: built.ir()
                                         ),
                                     ),
                                     output_type: Some(
-                                        hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer >,
+                                        core :: option :: Option < () >,
+                                    ),
+                                },
+                            },
+                            second: Persist {
+                                inner: Source {
+                                    source: Iter(
+                                        [:: std :: option :: Option :: None],
+                                    ),
+                                    metadata: HydroIrMetadata {
+                                        location_kind: Cluster(
+                                            2,
+                                        ),
+                                        output_type: Some(
+                                            core :: option :: Option < () >,
+                                        ),
+                                    },
+                                },
+                                metadata: HydroIrMetadata {
+                                    location_kind: Tick(
+                                        10,
+                                        Cluster(
+                                            2,
+                                        ),
+                                    ),
+                                    output_type: Some(
+                                        core :: option :: Option < () >,
                                     ),
                                 },
                             },
@@ -2381,7 +2480,7 @@ expression: built.ir()
                                     ),
                                 ),
                                 output_type: Some(
-                                    usize,
+                                    core :: option :: Option < () >,
                                 ),
                             },
                         },
@@ -2393,7 +2492,7 @@ expression: built.ir()
                                 ),
                             ),
                             output_type: Some(
-                                usize,
+                                core :: option :: Option < () >,
                             ),
                         },
                     },
@@ -2606,7 +2705,7 @@ expression: built.ir()
                                         },
                                     },
                                     right: Tee {
-                                        inner: <tee 19>: Chain {
+                                        inner: <tee 19>: ChainFirst {
                                             first: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < usize , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | max_slot | max_slot + 1 }),
                                                 input: Tee {
@@ -2773,7 +2872,7 @@ expression: built.ir()
                                                     ),
                                                 },
                                             },
-                                            second: Chain {
+                                            second: ChainFirst {
                                                 first: DeferTick {
                                                     input: CycleSource {
                                                         ident: Ident {
@@ -2803,80 +2902,23 @@ expression: built.ir()
                                                         ),
                                                     },
                                                 },
-                                                second: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , ()) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
-                                                    input: CrossSingleton {
-                                                        left: Persist {
-                                                            inner: Source {
-                                                                source: Iter(
-                                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; 0 } ; [e__free] },
-                                                                ),
-                                                                metadata: HydroIrMetadata {
-                                                                    location_kind: Cluster(
-                                                                        0,
-                                                                    ),
-                                                                    output_type: Some(
-                                                                        usize,
-                                                                    ),
-                                                                },
-                                                            },
-                                                            metadata: HydroIrMetadata {
-                                                                location_kind: Cluster(
-                                                                    0,
-                                                                ),
-                                                                output_type: Some(
-                                                                    usize,
-                                                                ),
-                                                            },
-                                                        },
-                                                        right: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                                            input: Source {
-                                                                source: Iter(
-                                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; () } ; [e__free] },
-                                                                ),
-                                                                metadata: HydroIrMetadata {
-                                                                    location_kind: Tick(
-                                                                        1,
-                                                                        Cluster(
-                                                                            0,
-                                                                        ),
-                                                                    ),
-                                                                    output_type: Some(
-                                                                        (),
-                                                                    ),
-                                                                },
-                                                            },
-                                                            metadata: HydroIrMetadata {
-                                                                location_kind: Tick(
-                                                                    1,
-                                                                    Cluster(
-                                                                        0,
-                                                                    ),
-                                                                ),
-                                                                output_type: Some(
-                                                                    (),
-                                                                ),
-                                                            },
-                                                        },
+                                                second: Persist {
+                                                    inner: Source {
+                                                        source: Iter(
+                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; 0 } ; [e__free] },
+                                                        ),
                                                         metadata: HydroIrMetadata {
-                                                            location_kind: Tick(
-                                                                1,
-                                                                Cluster(
-                                                                    0,
-                                                                ),
+                                                            location_kind: Cluster(
+                                                                0,
                                                             ),
                                                             output_type: Some(
-                                                                (usize , ()),
+                                                                usize,
                                                             ),
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
-                                                        location_kind: Tick(
-                                                            1,
-                                                            Cluster(
-                                                                0,
-                                                            ),
+                                                        location_kind: Cluster(
+                                                            0,
                                                         ),
                                                         output_type: Some(
                                                             usize,
@@ -3273,7 +3315,7 @@ expression: built.ir()
                                                                                                             },
                                                                                                         },
                                                                                                         right: Tee {
-                                                                                                            inner: <tee 29>: Chain {
+                                                                                                            inner: <tee 29>: ChainFirst {
                                                                                                                 first: Map {
                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                                                                                     input: Reduce {
@@ -4144,7 +4186,7 @@ expression: built.ir()
             sym: cycle_3,
         },
         input: CrossSingleton {
-            left: Chain {
+            left: ChainFirst {
                 first: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                     input: Tee {
@@ -4688,7 +4730,7 @@ expression: built.ir()
                                     },
                                 },
                                 right: Tee {
-                                    inner: <tee 36>: Chain {
+                                    inner: <tee 36>: ChainFirst {
                                         first: DeferTick {
                                             input: CycleSource {
                                                 ident: Ident {
@@ -4718,80 +4760,23 @@ expression: built.ir()
                                                 ),
                                             },
                                         },
-                                        second: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , ()) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
-                                            input: CrossSingleton {
-                                                left: Persist {
-                                                    inner: Source {
-                                                        source: Iter(
-                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; 0 } ; [e__free] },
-                                                        ),
-                                                        metadata: HydroIrMetadata {
-                                                            location_kind: Cluster(
-                                                                4,
-                                                            ),
-                                                            output_type: Some(
-                                                                usize,
-                                                            ),
-                                                        },
-                                                    },
-                                                    metadata: HydroIrMetadata {
-                                                        location_kind: Cluster(
-                                                            4,
-                                                        ),
-                                                        output_type: Some(
-                                                            usize,
-                                                        ),
-                                                    },
-                                                },
-                                                right: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                                    input: Source {
-                                                        source: Iter(
-                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; () } ; [e__free] },
-                                                        ),
-                                                        metadata: HydroIrMetadata {
-                                                            location_kind: Tick(
-                                                                13,
-                                                                Cluster(
-                                                                    4,
-                                                                ),
-                                                            ),
-                                                            output_type: Some(
-                                                                (),
-                                                            ),
-                                                        },
-                                                    },
-                                                    metadata: HydroIrMetadata {
-                                                        location_kind: Tick(
-                                                            13,
-                                                            Cluster(
-                                                                4,
-                                                            ),
-                                                        ),
-                                                        output_type: Some(
-                                                            (),
-                                                        ),
-                                                    },
-                                                },
+                                        second: Persist {
+                                            inner: Source {
+                                                source: Iter(
+                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; 0 } ; [e__free] },
+                                                ),
                                                 metadata: HydroIrMetadata {
-                                                    location_kind: Tick(
-                                                        13,
-                                                        Cluster(
-                                                            4,
-                                                        ),
+                                                    location_kind: Cluster(
+                                                        4,
                                                     ),
                                                     output_type: Some(
-                                                        (usize , ()),
+                                                        usize,
                                                     ),
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
-                                                location_kind: Tick(
-                                                    13,
-                                                    Cluster(
-                                                        4,
-                                                    ),
+                                                location_kind: Cluster(
+                                                    4,
                                                 ),
                                                 output_type: Some(
                                                     usize,
@@ -5046,7 +5031,7 @@ expression: built.ir()
             inner: <tee 38>: FilterMap {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , usize) , core :: option :: Option < usize > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; let checkpoint_frequency__free = 1000usize ; move | (max_checkpointed_seq , next_slot) | if max_checkpointed_seq . map (| m | next_slot - m >= checkpoint_frequency__free) . unwrap_or (true) { Some (next_slot) } else { None } }),
                 input: CrossSingleton {
-                    left: Chain {
+                    left: ChainFirst {
                         first: Map {
                             f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                             input: Reduce {
@@ -6159,22 +6144,48 @@ expression: built.ir()
                                                                                             },
                                                                                         },
                                                                                         right: Map {
-                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
+                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
                                                                                             input: Filter {
-                                                                                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < usize , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | c | * c == 0 }),
-                                                                                                input: Fold {
-                                                                                                    init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | 0usize }),
-                                                                                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | count , _ | * count += 1 }),
-                                                                                                    input: Tee {
-                                                                                                        inner: <tee 51>: Reduce {
-                                                                                                            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
-                                                                                                            input: Source {
-                                                                                                                source: Stream(
-                                                                                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_secs (1) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                                                                                                                ),
+                                                                                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | o | o . is_none () }),
+                                                                                                input: ChainFirst {
+                                                                                                    first: Map {
+                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                                                                                        input: Map {
+                                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _ | () }),
+                                                                                                            input: Tee {
+                                                                                                                inner: <tee 51>: Reduce {
+                                                                                                                    f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
+                                                                                                                    input: Source {
+                                                                                                                        source: Stream(
+                                                                                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_secs (1) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                                                                                        ),
+                                                                                                                        metadata: HydroIrMetadata {
+                                                                                                                            location_kind: Cluster(
+                                                                                                                                2,
+                                                                                                                            ),
+                                                                                                                            output_type: Some(
+                                                                                                                                hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                                                            ),
+                                                                                                                        },
+                                                                                                                    },
+                                                                                                                    metadata: HydroIrMetadata {
+                                                                                                                        location_kind: Tick(
+                                                                                                                            0,
+                                                                                                                            Cluster(
+                                                                                                                                2,
+                                                                                                                            ),
+                                                                                                                        ),
+                                                                                                                        output_type: Some(
+                                                                                                                            hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                },
                                                                                                                 metadata: HydroIrMetadata {
-                                                                                                                    location_kind: Cluster(
-                                                                                                                        2,
+                                                                                                                    location_kind: Tick(
+                                                                                                                        0,
+                                                                                                                        Cluster(
+                                                                                                                            2,
+                                                                                                                        ),
                                                                                                                     ),
                                                                                                                     output_type: Some(
                                                                                                                         hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
@@ -6189,7 +6200,7 @@ expression: built.ir()
                                                                                                                     ),
                                                                                                                 ),
                                                                                                                 output_type: Some(
-                                                                                                                    hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                                                    (),
                                                                                                                 ),
                                                                                                             },
                                                                                                         },
@@ -6201,7 +6212,33 @@ expression: built.ir()
                                                                                                                 ),
                                                                                                             ),
                                                                                                             output_type: Some(
-                                                                                                                hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                                                core :: option :: Option < () >,
+                                                                                                            ),
+                                                                                                        },
+                                                                                                    },
+                                                                                                    second: Persist {
+                                                                                                        inner: Source {
+                                                                                                            source: Iter(
+                                                                                                                [:: std :: option :: Option :: None],
+                                                                                                            ),
+                                                                                                            metadata: HydroIrMetadata {
+                                                                                                                location_kind: Cluster(
+                                                                                                                    2,
+                                                                                                                ),
+                                                                                                                output_type: Some(
+                                                                                                                    core :: option :: Option < () >,
+                                                                                                                ),
+                                                                                                            },
+                                                                                                        },
+                                                                                                        metadata: HydroIrMetadata {
+                                                                                                            location_kind: Tick(
+                                                                                                                0,
+                                                                                                                Cluster(
+                                                                                                                    2,
+                                                                                                                ),
+                                                                                                            ),
+                                                                                                            output_type: Some(
+                                                                                                                core :: option :: Option < () >,
                                                                                                             ),
                                                                                                         },
                                                                                                     },
@@ -6213,7 +6250,7 @@ expression: built.ir()
                                                                                                             ),
                                                                                                         ),
                                                                                                         output_type: Some(
-                                                                                                            usize,
+                                                                                                            core :: option :: Option < () >,
                                                                                                         ),
                                                                                                     },
                                                                                                 },
@@ -6225,7 +6262,7 @@ expression: built.ir()
                                                                                                         ),
                                                                                                     ),
                                                                                                     output_type: Some(
-                                                                                                        usize,
+                                                                                                        core :: option :: Option < () >,
                                                                                                     ),
                                                                                                 },
                                                                                             },
@@ -6722,14 +6759,40 @@ expression: built.ir()
                     },
                 },
                 right: Map {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _u | () }),
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _u | () }),
                     input: Filter {
-                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < usize , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | c | * c == 0 }),
-                        input: Fold {
-                            init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | 0usize }),
-                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | count , _ | * count += 1 }),
-                            input: Tee {
-                                inner: <tee 48>,
+                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | o | o . is_none () }),
+                        input: ChainFirst {
+                            first: Map {
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                input: Map {
+                                    f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ | () }),
+                                    input: Tee {
+                                        inner: <tee 48>,
+                                        metadata: HydroIrMetadata {
+                                            location_kind: Tick(
+                                                17,
+                                                Process(
+                                                    3,
+                                                ),
+                                            ),
+                                            output_type: Some(
+                                                usize,
+                                            ),
+                                        },
+                                    },
+                                    metadata: HydroIrMetadata {
+                                        location_kind: Tick(
+                                            17,
+                                            Process(
+                                                3,
+                                            ),
+                                        ),
+                                        output_type: Some(
+                                            (),
+                                        ),
+                                    },
+                                },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
                                         17,
@@ -6738,7 +6801,33 @@ expression: built.ir()
                                         ),
                                     ),
                                     output_type: Some(
-                                        usize,
+                                        core :: option :: Option < () >,
+                                    ),
+                                },
+                            },
+                            second: Persist {
+                                inner: Source {
+                                    source: Iter(
+                                        [:: std :: option :: Option :: None],
+                                    ),
+                                    metadata: HydroIrMetadata {
+                                        location_kind: Process(
+                                            3,
+                                        ),
+                                        output_type: Some(
+                                            core :: option :: Option < () >,
+                                        ),
+                                    },
+                                },
+                                metadata: HydroIrMetadata {
+                                    location_kind: Tick(
+                                        17,
+                                        Process(
+                                            3,
+                                        ),
+                                    ),
+                                    output_type: Some(
+                                        core :: option :: Option < () >,
                                     ),
                                 },
                             },
@@ -6750,7 +6839,7 @@ expression: built.ir()
                                     ),
                                 ),
                                 output_type: Some(
-                                    usize,
+                                    core :: option :: Option < () >,
                                 ),
                             },
                         },
@@ -6762,7 +6851,7 @@ expression: built.ir()
                                 ),
                             ),
                             output_type: Some(
-                                usize,
+                                core :: option :: Option < () >,
                             ),
                         },
                     },
@@ -7114,14 +7203,40 @@ expression: built.ir()
                     },
                 },
                 right: Map {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _u | () }),
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _u | () }),
                     input: Filter {
-                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < usize , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | c | * c == 0 }),
-                        input: Fold {
-                            init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | 0usize }),
-                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | count , _ | * count += 1 }),
-                            input: Tee {
-                                inner: <tee 48>,
+                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | o | o . is_none () }),
+                        input: ChainFirst {
+                            first: Map {
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                input: Map {
+                                    f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ | () }),
+                                    input: Tee {
+                                        inner: <tee 48>,
+                                        metadata: HydroIrMetadata {
+                                            location_kind: Tick(
+                                                17,
+                                                Process(
+                                                    3,
+                                                ),
+                                            ),
+                                            output_type: Some(
+                                                usize,
+                                            ),
+                                        },
+                                    },
+                                    metadata: HydroIrMetadata {
+                                        location_kind: Tick(
+                                            17,
+                                            Process(
+                                                3,
+                                            ),
+                                        ),
+                                        output_type: Some(
+                                            (),
+                                        ),
+                                    },
+                                },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
                                         17,
@@ -7130,7 +7245,33 @@ expression: built.ir()
                                         ),
                                     ),
                                     output_type: Some(
-                                        usize,
+                                        core :: option :: Option < () >,
+                                    ),
+                                },
+                            },
+                            second: Persist {
+                                inner: Source {
+                                    source: Iter(
+                                        [:: std :: option :: Option :: None],
+                                    ),
+                                    metadata: HydroIrMetadata {
+                                        location_kind: Process(
+                                            3,
+                                        ),
+                                        output_type: Some(
+                                            core :: option :: Option < () >,
+                                        ),
+                                    },
+                                },
+                                metadata: HydroIrMetadata {
+                                    location_kind: Tick(
+                                        17,
+                                        Process(
+                                            3,
+                                        ),
+                                    ),
+                                    output_type: Some(
+                                        core :: option :: Option < () >,
                                     ),
                                 },
                             },
@@ -7142,7 +7283,7 @@ expression: built.ir()
                                     ),
                                 ),
                                 output_type: Some(
-                                    usize,
+                                    core :: option :: Option < () >,
                                 ),
                             },
                         },
@@ -7154,7 +7295,7 @@ expression: built.ir()
                                 ),
                             ),
                             output_type: Some(
-                                usize,
+                                core :: option :: Option < () >,
                             ),
                         },
                     },

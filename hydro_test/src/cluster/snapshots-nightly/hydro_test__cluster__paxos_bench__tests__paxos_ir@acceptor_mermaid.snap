@@ -18,7 +18,7 @@ linkStyle default stroke:#aaa
 8v1["<div style=text-align:center>(8v1)</div> <code><br>reduce::&lt;<br>    'static,<br>&gt;({<br>    |curr, new| {<br>        if new &gt; *curr {<br>            *curr = new;<br>        }<br>    }<br>})</code>"]:::otherClass
 9v1["<div style=text-align:center>(9v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        Ballot {<br>            num: 0,<br>            proposer_id: MemberId::from_raw(0),<br>        }<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
 10v1["<div style=text-align:center>(10v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
-11v1["<div style=text-align:center>(11v1)</div> <code><br>chain()</code>"]:::otherClass
+11v1["<div style=text-align:center>(11v1)</div> <code><br>chain_first_n(1)</code>"]:::otherClass
 12v1["<div style=text-align:center>(12v1)</div> <code><br>tee()</code>"]:::otherClass
 13v1["<div style=text-align:center>(13v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 14v1["<div style=text-align:center>(14v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
@@ -37,7 +37,7 @@ linkStyle default stroke:#aaa
 27v1["<div style=text-align:center>(27v1)</div> <code><br>map({<br>    |v| Some(v)<br>})</code>"]:::otherClass
 28v1["<div style=text-align:center>(28v1)</div> <code><br>source_iter([::std::option::Option::None])</code>"]:::otherClass
 29v1["<div style=text-align:center>(29v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
-30v1["<div style=text-align:center>(30v1)</div> <code><br>chain()</code>"]:::otherClass
+30v1["<div style=text-align:center>(30v1)</div> <code><br>chain_first_n(1)</code>"]:::otherClass
 31v1["<div style=text-align:center>(31v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 32v1["<div style=text-align:center>(32v1)</div> <code><br>filter_map({<br>    |(p2a, max_ballot)| {<br>        if p2a.ballot &gt;= max_ballot {<br>            Some((<br>                p2a.slot,<br>                LogValue {<br>                    ballot: p2a.ballot,<br>                    value: p2a.value,<br>                },<br>            ))<br>        } else {<br>            None<br>        }<br>    }<br>})</code>"]:::otherClass
 33v1["<div style=text-align:center>(33v1)</div> <code><br>chain()</code>"]:::otherClass
@@ -118,74 +118,74 @@ linkStyle default stroke:#aaa
 25v1
 35v1
 34v1
-subgraph var_reduce_keyed_watermark_chain_304 ["var <tt>reduce_keyed_watermark_chain_304</tt>"]
-    style var_reduce_keyed_watermark_chain_304 fill:transparent
+subgraph var_reduce_keyed_watermark_chain_308 ["var <tt>reduce_keyed_watermark_chain_308</tt>"]
+    style var_reduce_keyed_watermark_chain_308 fill:transparent
     33v1
 end
 subgraph var_stream_2 ["var <tt>stream_2</tt>"]
     style var_stream_2 fill:transparent
     1v1
 end
-subgraph var_stream_257 ["var <tt>stream_257</tt>"]
-    style var_stream_257 fill:transparent
+subgraph var_stream_261 ["var <tt>stream_261</tt>"]
+    style var_stream_261 fill:transparent
     18v1
     19v1
 end
-subgraph var_stream_258 ["var <tt>stream_258</tt>"]
-    style var_stream_258 fill:transparent
-    20v1
-end
-subgraph var_stream_259 ["var <tt>stream_259</tt>"]
-    style var_stream_259 fill:transparent
-    21v1
-end
-subgraph var_stream_261 ["var <tt>stream_261</tt>"]
-    style var_stream_261 fill:transparent
-    22v1
-end
 subgraph var_stream_262 ["var <tt>stream_262</tt>"]
     style var_stream_262 fill:transparent
+    20v1
+end
+subgraph var_stream_263 ["var <tt>stream_263</tt>"]
+    style var_stream_263 fill:transparent
+    21v1
+end
+subgraph var_stream_265 ["var <tt>stream_265</tt>"]
+    style var_stream_265 fill:transparent
+    22v1
+end
+subgraph var_stream_266 ["var <tt>stream_266</tt>"]
+    style var_stream_266 fill:transparent
     23v1
-end
-subgraph var_stream_294 ["var <tt>stream_294</tt>"]
-    style var_stream_294 fill:transparent
-    26v1
-end
-subgraph var_stream_295 ["var <tt>stream_295</tt>"]
-    style var_stream_295 fill:transparent
-    27v1
-end
-subgraph var_stream_296 ["var <tt>stream_296</tt>"]
-    style var_stream_296 fill:transparent
-    28v1
-end
-subgraph var_stream_297 ["var <tt>stream_297</tt>"]
-    style var_stream_297 fill:transparent
-    29v1
 end
 subgraph var_stream_298 ["var <tt>stream_298</tt>"]
     style var_stream_298 fill:transparent
-    30v1
+    26v1
+end
+subgraph var_stream_299 ["var <tt>stream_299</tt>"]
+    style var_stream_299 fill:transparent
+    27v1
+end
+subgraph var_stream_300 ["var <tt>stream_300</tt>"]
+    style var_stream_300 fill:transparent
+    28v1
 end
 subgraph var_stream_301 ["var <tt>stream_301</tt>"]
     style var_stream_301 fill:transparent
-    31v1
+    29v1
 end
 subgraph var_stream_302 ["var <tt>stream_302</tt>"]
     style var_stream_302 fill:transparent
-    32v1
-end
-subgraph var_stream_304 ["var <tt>stream_304</tt>"]
-    style var_stream_304 fill:transparent
-    36v1
-    37v1
+    30v1
 end
 subgraph var_stream_305 ["var <tt>stream_305</tt>"]
     style var_stream_305 fill:transparent
-    38v1
+    31v1
 end
 subgraph var_stream_306 ["var <tt>stream_306</tt>"]
     style var_stream_306 fill:transparent
+    32v1
+end
+subgraph var_stream_308 ["var <tt>stream_308</tt>"]
+    style var_stream_308 fill:transparent
+    36v1
+    37v1
+end
+subgraph var_stream_309 ["var <tt>stream_309</tt>"]
+    style var_stream_309 fill:transparent
+    38v1
+end
+subgraph var_stream_310 ["var <tt>stream_310</tt>"]
+    style var_stream_310 fill:transparent
     39v1
 end
 subgraph var_stream_372 ["var <tt>stream_372</tt>"]
