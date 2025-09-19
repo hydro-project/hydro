@@ -67,10 +67,13 @@ where
 
         this.queue.extend(std::iter::once(item));
         // We MUST poll the queue stream to ensure that the futures begin.
-        // Note we run these futures using `this.subgraph_waker` so that they do not yield ("block")
-        // current subgraph execution.
-        // We would use `cx` if we want the subgraph execution to yield ("block") until all queued
-        // futures are ready.
+        // We use `this.subgraph_waker` to poll the queue stream, which means the futures are driven
+        // by the subgraph's own waker. This allows the subgraph execution to continue without waiting
+        // for the queued futures to complete; the subgraph does not block ("yield") on their readiness.
+        // If we instead used `cx.waker()`, the subgraph execution would yield ("block") until all queued
+        // futures are ready, effectively pausing subgraph progress until completion of those futures.
+        // Choose the waker based on whether you want subgraph execution to proceed independently of
+        // the queued futures, or to wait for them to complete before continuing.
         if let Poll::Ready(Some(out)) = Stream::poll_next(
             Pin::new(&mut **this.queue),
             &mut Context::from_waker(this.subgraph_waker),
