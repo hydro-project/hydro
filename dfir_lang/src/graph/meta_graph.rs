@@ -1135,30 +1135,55 @@ impl DfirGraph {
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
-                                            pub fn #work_fn<Item, Input>(input: Input) -> impl #root::futures::sink::Sink<Item, Error = #root::Never>
+                                            pub fn #work_fn<Item, Si>(sink: Si) -> impl #root::futures::sink::Sink<Item, Error = #root::Never>
                                             where
-                                                Input: #root::futures::sink::Sink<Item, Error = #root::Never>
+                                                Si: #root::futures::sink::Sink<Item, Error = #root::Never>
                                             {
-                                                // TODO(mingwei): RE-ADD THE TYPE ERASURE WRAPPER
+                                                #root::pin_project_lite::pin_project! {
+                                                    #[repr(transparent)]
+                                                    struct Push<Si> {
+                                                        #[pin]
+                                                        sink: Si,
+                                                    }
+                                                }
+                                                impl<Item, Si> #root::futures::sink::Sink<Item> for Push<Si>
+                                                where
+                                                    Si: #root::futures::sink::Sink<Item>,
+                                                {
+                                                    type Error = Si::Error;
 
-                                                // #[repr(transparent)]
-                                                // struct Push<Item, Input: #root::futures::sink::Sink<Item>> {
-                                                //     inner: Input
-                                                // }
+                                                    fn poll_ready(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        cx: &mut ::std::task::Context<'_>,
+                                                    ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                                                        self.project().sink.poll_ready(cx)
+                                                    }
 
-                                                // impl<Item, Input: #root::pusherator::Pusherator<Item = Item>> #root::pusherator::Pusherator for Push<Item, Input> {
-                                                //     type Item = Item;
+                                                    fn start_send(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        item: Item,
+                                                    ) -> ::std::result::Result<(), Self::Error> {
+                                                        self.project().sink.start_send(item)
+                                                    }
 
-                                                //     #[inline(always)]
-                                                //     fn give(&mut self, item: Self::Item) {
-                                                //         self.inner.give(item)
-                                                //     }
-                                                // }
+                                                    fn poll_flush(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        cx: &mut ::std::task::Context<'_>,
+                                                    ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                                                        self.project().sink.poll_flush(cx)
+                                                    }
 
-                                                // Push {
-                                                //     inner: input
-                                                // }
-                                                input
+                                                    fn poll_close(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        cx: &mut ::std::task::Context<'_>,
+                                                    ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                                                        self.project().sink.poll_close(cx)
+                                                    }
+                                                }
+
+                                                Push {
+                                                    sink
+                                                }
                                             }
                                             #work_fn( #ident )
                                         };
@@ -1210,13 +1235,12 @@ impl DfirGraph {
                                 Pull: ::std::iter::Iterator<Item = Item>,
                                 Push: #root::futures::sink::Sink<Item, Error = #root::Never>,
                             {
+                                // NOTE(mingwei): `Sink` error type is `Never` so `.await.unwrap()` should be fine.
                                 let mut push = ::std::pin::pin!(push);
                                 for item in pull {
-                                    // TODO(mingwei): handle unwrap.
-                                    #root::futures::sink::SinkExt::feed(&mut push, item).await.unwrap_or_else(|_| panic!("FEED FAILED!"));
+                                    #root::futures::sink::SinkExt::feed(&mut push, item).await.unwrap();
                                 }
-                                // TODO(mingwei): handle unwrap.
-                                #root::futures::sink::SinkExt::flush(&mut push).await.unwrap_or_else(|_| panic!("FLUSH FAILED!"));
+                                #root::futures::sink::SinkExt::flush(&mut push).await.unwrap();
                             }
                             (#pivot_fn_ident)(#pull_ident, #push_ident).await;
                         });

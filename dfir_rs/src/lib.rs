@@ -26,8 +26,8 @@ pub mod util;
 pub use dfir_lang as lang;
 pub use variadics::{self, var_args, var_expr, var_type};
 pub use {
-    bincode, bytes, futures, itertools, lattices, pusherator, rustc_hash, serde, serde_json, tokio,
-    tokio_stream, tokio_util, tracing, web_time,
+    bincode, bytes, futures, itertools, lattices, pin_project_lite, pusherator, rustc_hash, serde,
+    serde_json, tokio, tokio_stream, tokio_util, tracing, web_time,
 };
 
 /// `#[macro_use]` automagically brings the declarative macro export to the crate-level.
