@@ -45,7 +45,7 @@ fn test_manual_impl() {
         val.demux_enum(&mut nexts);
     }
     assert_eq!(
-        &["1 5", "2 (5, 6)", "3 (6,)",],
+        &["1 5", "2 (5, 6)", "3 (6,)"],
         &*collect_ready::<Vec<_>, _>(out_recv)
     )
 }
