@@ -63,7 +63,6 @@ pub const DEST_SINK_SERDE: OperatorConstraints = OperatorConstraints {
                 |(payload, addr)| (#root::util::serialize_to_bytes(payload), addr),
                 #ident,
             );
-            let #ident = #root::compiled::push::Debugging::new(::std::format!("{}:{}", ::std::file!(), ::std::line!()), #ident);
         };
 
         Ok(OperatorWriteOutput {

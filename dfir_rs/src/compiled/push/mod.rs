@@ -1,7 +1,5 @@
 //! Push-based operator helpers, i.e. [`futures::sink::Sink`] helpers.
 
-mod debugging;
-mod demux_enum;
 mod filter;
 mod filter_map;
 mod flat_map;
@@ -13,8 +11,6 @@ mod partition;
 mod persist;
 mod resolve_futures;
 mod unzip;
-pub use debugging::Debugging;
-pub use demux_enum::DemuxEnum;
 pub use filter::Filter;
 pub use filter_map::FilterMap;
 pub use flat_map::FlatMap;
@@ -26,3 +22,10 @@ pub use partition::{Partition, SinkVariadic};
 pub use persist::Persist;
 pub use resolve_futures::ResolveFutures;
 pub use unzip::Unzip;
+
+#[cfg(feature = "dfir_macro")]
+#[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]
+mod demux_enum;
+#[cfg(feature = "dfir_macro")]
+#[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]
+pub use demux_enum::DemuxEnum;

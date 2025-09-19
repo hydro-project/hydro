@@ -26,15 +26,11 @@ impl<Outputs, Item> DemuxEnum<Outputs, Item> {
             item: None,
         }
     }
-}
 
-impl<Outputs, Item> Sink<Item> for DemuxEnum<Outputs, Item>
-where
-    Item: DemuxEnumSink<Outputs>,
-{
-    type Error = Item::Error;
-
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready_impl(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Item::Error>>
+    where
+        Item: DemuxEnumSink<Outputs>,
+    {
         let this = self.project();
         if let Some(item) = &this.item {
             ready!(Item::poll_ready(item, this.outputs, cx))?;
@@ -44,6 +40,17 @@ where
         debug_assert!(this.item.is_none(), "Sink not ready.");
         Poll::Ready(Ok(()))
     }
+}
+
+impl<Outputs, Item> Sink<Item> for DemuxEnum<Outputs, Item>
+where
+    Item: DemuxEnumSink<Outputs>,
+{
+    type Error = Item::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_ready_impl(cx)
+    }
 
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
         let this = self.project();
@@ -52,11 +59,13 @@ where
         Ok(())
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_ready_impl(cx))?;
         Item::poll_flush(self.project().outputs, cx)
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_ready_impl(cx))?;
         Item::poll_close(self.project().outputs, cx)
     }
 }
