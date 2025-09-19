@@ -759,6 +759,54 @@ where
 }
 
 impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    /// Creates a [`KeyedStream`] with the same set of keys as `self`, but with the `other` stream
+    /// used as the values for *each* key.
+    ///
+    /// This is helpful when "broadcasting" a set of values so that all the keys have the same
+    /// values. For example, it can be used to send the same set of elements to several cluster
+    /// members, if the membership information is available as a [`KeyedSingleton`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let keyed_singleton = // { 1: (), 2: () }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, ()), (2, ())]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// let stream = // [ "a", "b" ]
+    /// # process
+    /// #     .source_iter(q!(vec!["a".to_string(), "b".to_string()]))
+    /// #     .batch(&tick, nondet!(/** test */));
+    /// keyed_singleton.flat_map_identical(stream)
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: ["a", "b" ], 2: ["a", "b"] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, "a".to_string()), (1, "b".to_string()), (2, "a".to_string()), (2, "b".to_string())]);
+    /// # }));
+    /// ```
+    pub fn flat_map_identical<T2, O2: Ordering, R: Retries>(
+        self,
+        other: Stream<T2, Tick<L>, Bounded, O2, R>,
+    ) -> KeyedStream<K, T2, Tick<L>, Bounded, O2, R>
+    where
+        K: Clone,
+        T2: Clone,
+    {
+        self.keys().weaken_retries().cross_product_nested_loop(other).into_keyed().assume_ordering(
+            nondet!(/** keyed stream does not depend on ordering of keys, cross_product_nested_loop preserves order of values */)
+        )
+    }
+
     /// Asynchronously yields this keyed singleton outside the tick, which will
     /// be asynchronously updated with the latest set of entries inside the tick.
     ///
