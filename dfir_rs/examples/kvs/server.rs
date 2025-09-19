@@ -37,12 +37,8 @@ pub(crate) async fn run_server(opts: Opts) {
 
         /* DIFFERENCE HERE: SEE README.md */
         // Join PUTs and GETs by key, persisting the PUTs.
-        puts -> map(|(key, value, _addr)| (key, value))
-            -> inspect(|x| println!("{}: {:?}", line!(), x))
-            -> [0]lookup;
-        gets
-            -> inspect(|x| println!("{}: {:?}", line!(), x))
-            -> [1]lookup;
+        puts -> map(|(key, value, _addr)| (key, value)) -> [0]lookup;
+        gets -> [1]lookup;
         lookup = join::<'static, 'tick>();
 
         // Send GET responses back to the client address.
