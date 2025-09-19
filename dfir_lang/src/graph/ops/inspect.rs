@@ -51,16 +51,12 @@ pub const INSPECT: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 let #ident = #input.inspect(#func);
             }
+        } else if outputs.is_empty() {
+            quote_spanned! {op_span=>
+                let #ident = #root::compiled::push::Inspect::new(#func, #root::futures::sink::drain());
+            }
         } else {
-            let output = outputs
-                .first()
-                .map(quote::ToTokens::to_token_stream)
-                .unwrap_or_else(|| {
-                    // If no output, use null sink (drain).
-                    quote_spanned! {op_span=>
-                        #root::futures::sink::drain()
-                    }
-                });
+            let output = &outputs[0];
             quote_spanned! {op_span=>
                 let #ident = #root::compiled::push::Inspect::new(#func, #output);
             }

@@ -124,7 +124,6 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = {
-                    #[allow(clippy::ptr_arg)] // Clippy wants `&[Item]` instead of `&Vec<Item>`, but the purpose of this method is to constrain types.
                     fn constrain_types<'ctx, Push, Item>(vec: &'ctx mut Vec<Item>, output: Push, is_new_tick: bool) -> impl 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>
                     where
                         Push: 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>,
