@@ -1,5 +1,6 @@
+use bytes::BytesMut;
 use clap::Parser;
-use dfir_rs::tokio_util::codec::LinesCodec;
+use dfir_rs::tokio_util::codec::{BytesCodec, LinesCodec};
 use hydro_deploy::Deployment;
 use hydro_deploy::custom_service::ServerPort;
 use hydro_lang::deploy::TrybuildHost;
@@ -21,12 +22,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let process = flow.process::<()>();
     let external = flow.external::<()>();
 
-    let (port, input, _membership, output_ref) = process
-        .bidi_external_many_bytes::<_, _, LinesCodec>(&external, NetworkHint::TcpPort(Some(4001)));
+    let (http_port, http_input, _http_membership, http_output_ref) = process
+        .bidi_external_many_bytes::<_, _, LinesCodec>(&external, NetworkHint::TcpPort(Some(4000)));
 
-    output_ref.complete(
-        hydro_test::external_client::http::http_counter::http_counter_server(input, &process),
+    http_output_ref.complete(
+        hydro_test::external_client::http::http_static::http_serve_static(
+            http_input,
+            include_str!("./websocket_test_client.html"),
+        )
+        .into_keyed_stream(),
     );
+
+    let (port, input, _membership, output_ref) = process
+        .bidi_external_many_bytes::<_, BytesMut, BytesCodec>(
+            &external,
+            NetworkHint::TcpPort(Some(8080)),
+        );
+
+    output_ref
+        .complete(hydro_test::external_client::websocket::chat::websocket_chat(&process, input));
 
     // Extract the IR BEFORE the builder is consumed by deployment methods
     let built = flow.finalize();
@@ -43,6 +57,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     deployment.deploy().await.unwrap();
 
+    let http_raw_port = nodes.raw_port(http_port);
+    let http_server_port = http_raw_port.server_port().await;
+
     let raw_port = nodes.raw_port(port);
     let server_port = raw_port.server_port().await;
 
@@ -53,7 +70,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         panic!("Expected a TCP port");
     };
-    println!("HTTP counter server listening on: http://{:?}", port);
+    println!("WebSocket echo server listening on: ws://{}", port);
+
+    let http_port = if let ServerPort::TcpPort(p) = http_server_port {
+        p
+    } else {
+        panic!("Expected a TCP port");
+    };
+    println!("Browser Demo at: http://{}", http_port);
 
     tokio::signal::ctrl_c().await.unwrap();
     Ok(())

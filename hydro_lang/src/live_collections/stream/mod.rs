@@ -1567,10 +1567,7 @@ where
                     inner: Box::new(HydroNode::Scan {
                         init,
                         acc: f,
-                        input: Box::new(HydroNode::Unpersist {
-                            inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<U>(),
-                        }),
+                        input: Box::new(self.ir_node.into_inner()),
                         metadata: self.location.new_node_metadata::<U>(),
                     }),
                     metadata: self.location.new_node_metadata::<U>(),
@@ -2616,7 +2613,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use futures::StreamExt;
+    use futures::{SinkExt, StreamExt};
     use hydro_deploy::Deployment;
     use serde::{Deserialize, Serialize};
     use stageleft::q;
@@ -2697,5 +2694,43 @@ mod tests {
         deployment.start().await.unwrap();
 
         assert_eq!(external_out.next().await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn unbounded_scan_remembers_state() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input
+            .scan(
+                q!(|| 0),
+                q!(|acc, v| {
+                    *acc += v;
+                    Some(*acc)
+                }),
+            )
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect_sink_bincode(input_port).await;
+        let mut external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 1);
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 3);
     }
 }
