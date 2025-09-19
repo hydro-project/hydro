@@ -68,11 +68,13 @@ where
         this.sink.start_send(item)
     }
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().empty_replay(cx))?; // TODO(mingwei): needed?
+        // Ensure all replayed items are sent before flushing the underlying sink.
+        ready!(self.as_mut().empty_replay(cx))?;
         self.project().sink.poll_flush(cx)
     }
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().empty_replay(cx))?; // TODO(mingwei): needed?
+        // Ensure all replayed items are sent before closing the underlying sink.
+        ready!(self.as_mut().empty_replay(cx))?;
         self.project().sink.poll_close(cx)
     }
 }
