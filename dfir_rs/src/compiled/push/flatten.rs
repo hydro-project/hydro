@@ -64,7 +64,10 @@ where
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
         let this = self.project();
 
-        assert!(this.iter_next.is_none(), "Sink not ready.");
+        assert!(
+            this.iter_next.is_none(),
+            "Sink not ready: `poll_ready` must be called and return `Ready` before `start_send` is called."
+        );
         let mut iter = item.into_iter();
         *this.iter_next = iter.next().map(|next| (iter, next));
         Ok(())

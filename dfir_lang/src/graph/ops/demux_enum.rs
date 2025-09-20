@@ -157,7 +157,7 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
                         ::std::pin::pin!( #sorted_outputs ),
                     )*
                 );
-                let #ident = #root::compiled::push::DemuxEnum::new(#outputs_ident);
+                let #ident = #root::compiled::push::DemuxEnum::<_, #enum_type>::new(#outputs_ident);
             }
         };
 

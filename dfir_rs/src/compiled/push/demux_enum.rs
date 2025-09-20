@@ -37,7 +37,10 @@ impl<Outputs, Item> DemuxEnum<Outputs, Item> {
             let item = this.item.take().unwrap();
             Item::start_send(item, this.outputs)?;
         }
-        debug_assert!(this.item.is_none(), "Sink not ready.");
+        debug_assert!(
+            this.item.is_none(),
+            "Sink not ready: `poll_ready` must be called and return `Ready` before `start_send` is called."
+        );
         Poll::Ready(Ok(()))
     }
 }
@@ -54,7 +57,10 @@ where
 
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
         let this = self.project();
-        debug_assert!(this.item.is_none(), "Sink not ready.");
+        debug_assert!(
+            this.item.is_none(),
+            "Sink not ready: `poll_ready` must be called and return `Ready` before `start_send` is called."
+        );
         *this.item = Some(item);
         Ok(())
     }

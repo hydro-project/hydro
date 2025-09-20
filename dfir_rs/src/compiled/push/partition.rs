@@ -59,17 +59,21 @@ where
 
     fn poll_flush_all(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>> {
         let (sink, rest) = pin_project_pair(self);
-        // NOTE(mingwei): this may double-flush prefixes of the variadic list.
-        ready!(sink.poll_flush(cx))?;
-        ready!(rest.poll_flush_all(cx))?;
+        // Flush all sinks simultaneously.
+        let ready_sink = sink.poll_flush(cx)?;
+        let ready_rest = rest.poll_flush_all(cx)?;
+        ready!(ready_sink);
+        ready!(ready_rest);
         Poll::Ready(Ok(()))
     }
 
     fn poll_close_all(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>> {
         let (sink, rest) = pin_project_pair(self);
-        // NOTE(mingwei): this may double-close prefixes of the variadic list.
-        ready!(sink.poll_close(cx))?;
-        ready!(rest.poll_close_all(cx))?;
+        // Close all sinks simultaneously.
+        let ready_sink = sink.poll_close(cx)?;
+        let ready_rest = rest.poll_close_all(cx)?;
+        ready!(ready_sink);
+        ready!(ready_rest);
         Poll::Ready(Ok(()))
     }
 }
@@ -98,7 +102,7 @@ impl<Item, Error> SinkVariadic<Item, Error> for () {
 }
 
 fn pin_project_pair<A, B>(pair: Pin<&mut (A, B)>) -> (Pin<&mut A>, Pin<&mut B>) {
-    // SAFETY: `pair` is pinned, so its fields are also pinned.
+    // SAFETY: `pair` is pinned, so its owned fields are also pinned.
     unsafe {
         let (a, b) = pair.get_unchecked_mut();
         (Pin::new_unchecked(a), Pin::new_unchecked(b))
@@ -154,7 +158,10 @@ where
 
     fn start_send(self: Pin<&mut Self>, item: (Item, usize)) -> Result<(), Self::Error> {
         let this = self.project();
-        debug_assert!(this.next.is_none(), "Sink not ready.");
+        debug_assert!(
+            this.next.is_none(),
+            "Sink not ready: `poll_ready` must be called and return `Ready` before `start_send` is called."
+        );
         *this.next = Some(item);
         Ok(())
     }

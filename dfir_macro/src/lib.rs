@@ -410,9 +410,12 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
                 ( #( #variant_localvars_sink, )* ): &mut #variant_generics_pinned_sink_all,
                 __cx: &mut ::std::task::Context<'_>,
             ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                // Flush all sinks simultaneously.
                 #(
-                    // TODO(mingwei): This will re-flush the earlier items. Is this OK?
-                    ::std::task::ready!(#variant_localvars_sink.as_mut().poll_flush(__cx))?;
+                    let #variant_localvars_sink = #variant_localvars_sink.as_mut().poll_flush(__cx)?;
+                )*
+                #(
+                    ::std::task::ready!(#variant_localvars_sink);
                 )*
                 ::std::task::Poll::Ready(::std::result::Result::Ok(()))
             }
@@ -421,9 +424,12 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
                 ( #( #variant_localvars_sink, )* ): &mut #variant_generics_pinned_sink_all,
                 __cx: &mut ::std::task::Context<'_>,
             ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                // Close all sinks simultaneously.
                 #(
-                    // TODO(mingwei): This will re-close the earlier items. Is this OK?
-                    ::std::task::ready!(#variant_localvars_sink.as_mut().poll_close(__cx))?;
+                    let #variant_localvars_sink = #variant_localvars_sink.as_mut().poll_close(__cx)?;
+                )*
+                #(
+                    ::std::task::ready!(#variant_localvars_sink);
                 )*
                 ::std::task::Poll::Ready(::std::result::Result::Ok(()))
             }
