@@ -41,7 +41,7 @@ pub struct Atomic<Loc> {
 
 impl<L: DynLocation> DynLocation for Atomic<L> {
     fn id(&self) -> LocationId {
-        self.tick.id()
+        self.tick.l.id()
     }
 
     fn flow_state(&self) -> &FlowState {
@@ -50,6 +50,10 @@ impl<L: DynLocation> DynLocation for Atomic<L> {
 
     fn is_top_level() -> bool {
         L::is_top_level()
+    }
+
+    fn is_atomic() -> bool {
+        true
     }
 }
 
@@ -88,6 +92,10 @@ impl<L: DynLocation> DynLocation for Tick<L> {
     }
 
     fn is_top_level() -> bool {
+        false
+    }
+
+    fn is_atomic() -> bool {
         false
     }
 }
@@ -147,8 +155,11 @@ where
 
         Optional::new(
             self.clone(),
-            HydroNode::Source {
-                source: HydroSource::Iter(e.into()),
+            HydroNode::Batch {
+                inner: Box::new(HydroNode::Source {
+                    source: HydroSource::Iter(e.into()),
+                    metadata: self.outer().new_node_metadata::<T>(),
+                }),
                 metadata: self.new_node_metadata::<T>(),
             },
         )
