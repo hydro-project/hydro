@@ -1,8 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 /// > Arguments: A single closure `FnMut(&Item)`.
@@ -46,19 +45,20 @@ pub const INSPECT: OperatorConstraints = OperatorConstraints {
                    ..
                },
                _| {
+        let func = &arguments[0];
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #input.inspect(#arguments);
+                let #ident = #input.inspect(#func);
             }
         } else if outputs.is_empty() {
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::inspect::Inspect::new(#arguments, #root::pusherator::null::Null::new());
+                let #ident = #root::compiled::push::Inspect::new(#func, #root::futures::sink::drain());
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::inspect::Inspect::new(#arguments, #output);
+                let #ident = #root::compiled::push::Inspect::new(#func, #output);
             }
         };
         Ok(OperatorWriteOutput {

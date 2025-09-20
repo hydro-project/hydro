@@ -55,11 +55,21 @@ help: if there were a trait named `Example` with associated type `Square` implem
 15 |         my_demux[<Shape as Example>::Square] -> for_each(std::mem::drop);
    |                  ++++++++++++++++++++
 
-error[E0277]: the trait bound `Shape: DemuxEnum<_>` is not satisfied
+error[E0277]: the trait bound `Shape: DemuxEnumSink<_>` is not satisfied
   --> tests/compile-fail-stable/surface_demuxenum_notenum.rs:12:15
    |
 12 |         ]) -> demux_enum::<Shape>();
-   |               ^^^^^^^^^^ the trait `DemuxEnum<_>` is not implemented for `Shape`
+   |               ^^^^^^^^^^ the trait `DemuxEnumSink<_>` is not implemented for `Shape`
    |
    = note: ensure there is exactly one output for each enum variant.
    = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
+   = help: the trait `dfir_rs::futures::Sink<Item>` is implemented for `dfir_rs::compiled::push::DemuxEnum<Outputs, Item>`
+   = note: required for `dfir_rs::compiled::push::DemuxEnum<_, Shape>` to implement `dfir_rs::futures::Sink<Shape>`
+note: required by a bound in `dfir_rs::compiled::push::DemuxEnum::<Outputs, Item>::new`
+  --> src/compiled/push/demux_enum.rs
+   |
+   |     pub fn new(outputs: Outputs) -> Self
+   |            --- required by a bound in this associated function
+   |     where
+   |         Self: Sink<Item>,
+   |               ^^^^^^^^^^ required by this bound in `DemuxEnum::<Outputs, Item>::new`

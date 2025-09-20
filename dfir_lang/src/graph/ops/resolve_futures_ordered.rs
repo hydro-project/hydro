@@ -25,7 +25,11 @@ pub const RESOLVE_FUTURES_ORDERED: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    write_fn: move |wc, _| resolve_futures_writer(Ident::new("FuturesOrdered", wc.op_span),
-    Ident::new("push_back", wc.op_span), 
-    wc)
+    write_fn: move |wc, _| {
+        resolve_futures_writer(
+            Ident::new("FuturesOrdered", wc.op_span),
+            Ident::new("push_back", wc.op_span),
+            wc
+        )
+    }
 };

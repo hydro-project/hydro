@@ -26,11 +26,10 @@ fn map_filter() {
         "source",
         var_expr!(),
         var_expr!(source),
-        move |_ctx, var_args!(), var_args!(send)| {
+        async move |_ctx, var_args!(), var_args!(send)| {
             for x in data {
                 send.give(Some(x));
             }
-            std::future::ready(())
         },
     );
 
@@ -38,11 +37,10 @@ fn map_filter() {
         "map",
         var_expr!(map_in),
         var_expr!(map_out),
-        |_ctx, var_args!(recv), var_args!(send)| {
+        async |_ctx, var_args!(recv), var_args!(send)| {
             for x in recv.take_inner() {
                 send.give(Some(3 * x + 1));
             }
-            std::future::ready(())
         },
     );
 
@@ -50,13 +48,12 @@ fn map_filter() {
         "filter",
         var_expr!(filter_in),
         var_expr!(filter_out),
-        |_ctx, var_args!(recv), var_args!(send)| {
+        async |_ctx, var_args!(recv), var_args!(send)| {
             for x in recv.take_inner() {
                 if x % 2 == 0 {
                     send.give(Some(x));
                 }
             }
-            std::future::ready(())
         },
     );
 
@@ -66,11 +63,10 @@ fn map_filter() {
         "sink",
         var_expr!(sink),
         var_expr!(),
-        move |_ctx, var_args!(recv), var_args!()| {
+        async move |_ctx, var_args!(recv), var_args!()| {
             for x in recv.take_inner() {
                 (*inner_outputs).borrow_mut().push(x);
             }
-            std::future::ready(())
         },
     );
 
@@ -112,9 +108,8 @@ fn test_basic_n_m() {
         "source",
         vec![],
         vec![source_send],
-        move |_ctx, _recv: &[&RecvCtx<VecHandoff<usize>>], send| {
+        async move |_ctx, _recv: &[&RecvCtx<VecHandoff<usize>>], send| {
             send[0].give(Some(5));
-            std::future::ready(())
         },
     );
 
@@ -125,12 +120,11 @@ fn test_basic_n_m() {
         "sink",
         vec![sink_recv],
         vec![],
-        move |_ctx, recv, _send: &[&SendCtx<VecHandoff<usize>>]| {
+        async move |_ctx, recv, _send: &[&SendCtx<VecHandoff<usize>>]| {
             for v in recv[0].take_inner() {
                 let old_val = val_ref.replace(Some(v));
                 assert!(old_val.is_none()); // Only run once.
             }
-            std::future::ready(())
         },
     );
 

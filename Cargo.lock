@@ -1295,6 +1295,7 @@ dependencies = [
  "itertools 0.13.0",
  "lattices",
  "multiplatform_test",
+ "pin-project-lite",
  "pusherator",
  "rand 0.8.5",
  "rand_distr",

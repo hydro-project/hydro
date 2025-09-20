@@ -36,6 +36,7 @@ futures = "0.3.0"
 hydro_deploy_integration = { optional = true, path = "../hydro_deploy/hydro_deploy_integration", version = "^0.14.0" }
 itertools = "0.13.0"
 lattices = { path = "../lattices", version = "^0.6.1", features = [ "serde" ] }
+pin-project-lite = "0.2"
 pusherator = { path = "../pusherator", version = "^0.0.12" }
 ref-cast = "1.0.0"
 rustc-hash = "1.1.0"

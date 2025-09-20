@@ -165,7 +165,7 @@ pub const SCAN: OperatorConstraints = OperatorConstraints {
             }
         } else {
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::filter_map::FilterMap::new(|#iterator_item_ident| {
+                let #ident = #root::compiled::push::FilterMap::new(|#iterator_item_ident| {
                     #filter_map_body
                 });
             }
