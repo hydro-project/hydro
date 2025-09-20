@@ -1114,7 +1114,7 @@ pub(super) struct SubgraphData<'a> {
     /// Within loop blocks, corresponds to the topological sort of the DAG created when `next_loop()/next_tick()` are removed.
     pub(super) stratum: usize,
     /// The actual execution code of the subgraph.
-    subgraph: Box<dyn 'a + Subgraph<'a>>,
+    subgraph: Box<dyn 'a + Subgraph>,
 
     #[expect(dead_code, reason = "may be useful in the future")]
     preds: Vec<HandoffId>,
@@ -1145,7 +1145,7 @@ impl<'a> SubgraphData<'a> {
     pub(crate) fn new(
         name: Cow<'static, str>,
         stratum: usize,
-        subgraph: impl 'a + Subgraph<'a>,
+        subgraph: impl 'a + Subgraph,
         preds: Vec<HandoffId>,
         succs: Vec<HandoffId>,
         is_scheduled: bool,

@@ -4,7 +4,7 @@ use super::graph::HandoffData;
 use crate::util::slot_vec::SlotVec;
 
 /// Represents a compiled subgraph. Used internally by [Dataflow] to erase the input/output [Handoff] types.
-pub(crate) trait Subgraph<'a> {
+pub(crate) trait Subgraph {
     fn run<'ctx>(
         &'ctx mut self,
         context: &'ctx mut Context,
@@ -12,9 +12,9 @@ pub(crate) trait Subgraph<'a> {
     ) -> Box<dyn 'ctx + Future<Output = ()>>;
 }
 
-impl<'a, Func> Subgraph<'a> for Func
+impl<Func> Subgraph for Func
 where
-    Func: 'a + AsyncFnMut(&mut Context, &mut SlotVec<HandoffTag, HandoffData>),
+    Func: AsyncFnMut(&mut Context, &mut SlotVec<HandoffTag, HandoffData>),
 {
     fn run<'ctx>(
         &'ctx mut self,
