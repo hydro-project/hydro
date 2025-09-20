@@ -70,11 +70,23 @@ where
     let client_tick = clients.tick();
 
     // Set up an initial set of payloads on the first tick
-    let start_this_tick = client_tick.optional_first_tick(q!(()));
+    let (new_virtual_client_complete_cycle, new_virtual_client) =
+        client_tick.cycle_with_initial(client_tick.singleton(q!(0u32)));
+    new_virtual_client_complete_cycle.complete_next_tick(
+        new_virtual_client
+            .clone()
+            .map(q!(|virtual_id| virtual_id + 1)),
+    );
 
-    let c_new_payloads_on_start = start_this_tick.clone().flat_map_ordered(q!(move |_| (0
-        ..num_clients_per_node as u32)
-        .map(move |virtual_id| { (virtual_id, None) })));
+    let bounded_virtual_client = new_virtual_client
+        .filter(q!(
+            move |virtual_id| *virtual_id < num_clients_per_node as u32
+        ))
+        .into_stream();
+
+    let c_new_payloads_on_start = bounded_virtual_client
+        .clone()
+        .map(q!(|virtual_id| (virtual_id, None)));
 
     let (c_to_proposers_complete_cycle, c_to_proposers) =
         clients.forward_ref::<Stream<_, _, _, TotalOrder>>();
@@ -105,15 +117,12 @@ where
 
     // Track statistics
     let (c_timers_complete_cycle, c_timers) =
-        client_tick.cycle::<Stream<(usize, Instant), _, _, NoOrder>>();
-    let c_new_timers_when_leader_elected = start_this_tick
-        .map(q!(|_| Instant::now()))
-        .flat_map_ordered(q!(
-            move |now| (0..num_clients_per_node).map(move |virtual_id| (virtual_id, now))
-        ));
+        client_tick.cycle::<Stream<(u32, Instant), _, _, NoOrder>>();
+    let c_new_timers_when_leader_elected =
+        bounded_virtual_client.map(q!(|virtual_id| (virtual_id, Instant::now())));
     let c_updated_timers = c_received_quorum_payloads
         .clone()
-        .map(q!(|(key, _payload)| (key as usize, Instant::now())));
+        .map(q!(|(key, _payload)| (key, Instant::now())));
     let c_new_timers = c_timers
         .clone() // Update c_timers in tick+1 so we can record differences during this tick (to track latency)
         .chain(c_new_timers_when_leader_elected)
