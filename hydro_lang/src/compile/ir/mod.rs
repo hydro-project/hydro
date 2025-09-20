@@ -2402,7 +2402,7 @@ impl HydroNode {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         let builder = graph_builders.entry(input_location_id).or_default();
-                        let lifetime = if *is_static {
+                        let lifetime = if *is_static || input.metadata().location_kind.is_root() {
                             quote!('static)
                         } else {
                             quote!('tick)
