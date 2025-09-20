@@ -1062,7 +1062,23 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
-    Unpersist {
+    BeginAtomic {
+        inner: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
+    EndAtomic {
+        inner: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
+    Batch {
+        inner: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
+    YieldConcat {
+        atomic: bool,
         inner: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -1301,7 +1317,10 @@ impl HydroNode {
             }
 
             HydroNode::Persist { inner, .. }
-            | HydroNode::Unpersist { inner, .. }
+            | HydroNode::BeginAtomic { inner, .. }
+            | HydroNode::EndAtomic { inner, .. }
+            | HydroNode::Batch { inner, .. }
+            | HydroNode::YieldConcat { inner, .. }
             | HydroNode::Delta { inner, .. } => {
                 transform(inner.as_mut(), seen_tees);
             }
@@ -1390,7 +1409,24 @@ impl HydroNode {
                 inner: Box::new(inner.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
-            HydroNode::Unpersist { inner, metadata } => HydroNode::Unpersist {
+            HydroNode::YieldConcat {
+                atomic,
+                inner,
+                metadata,
+            } => HydroNode::YieldConcat {
+                atomic: *atomic,
+                inner: Box::new(inner.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::BeginAtomic { inner, metadata } => HydroNode::BeginAtomic {
+                inner: Box::new(inner.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::EndAtomic { inner, metadata } => HydroNode::EndAtomic {
+                inner: Box::new(inner.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::Batch { inner, metadata } => HydroNode::Batch {
                 inner: Box::new(inner.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -1654,10 +1690,68 @@ impl HydroNode {
                 (persist_ident, location)
             }
 
-            HydroNode::Unpersist { .. } => {
-                panic!(
-                    "Unpersist is a marker node and should have been optimized away. This is likely a compiler bug."
-                )
+            HydroNode::Batch { inner, .. } => {
+                let (inner_ident, location) =
+                    inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let batch_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        let builder = graph_builders.entry(location).or_default();
+                        builder.add_dfir(
+                            parse_quote! {
+                                #batch_ident = #inner_ident;
+                            },
+                            None,
+                            None,
+                        );
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                (batch_ident, location)
+            }
+
+            HydroNode::YieldConcat { inner, .. } => {
+                let (inner_ident, location) =
+                    inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let yield_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        let builder = graph_builders.entry(location).or_default();
+                        builder.add_dfir(
+                            parse_quote! {
+                                #yield_ident = #inner_ident;
+                            },
+                            None,
+                            None,
+                        );
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                (yield_ident, location)
+            }
+
+            HydroNode::BeginAtomic { inner, .. } => {
+                inner.emit_core(builders_or_callback, built_tees, next_stmt_id)
+            }
+
+            HydroNode::EndAtomic { inner, .. } => {
+                inner.emit_core(builders_or_callback, built_tees, next_stmt_id)
             }
 
             HydroNode::Delta { inner, .. } => {
@@ -1701,6 +1795,7 @@ impl HydroNode {
 
                     let source_stmt = match source {
                         HydroSource::Stream(expr) => {
+                            debug_assert!(metadata.location_kind.is_root());
                             parse_quote! {
                                 #source_ident = source_stream(#expr);
                             }
@@ -1711,12 +1806,21 @@ impl HydroNode {
                         }
 
                         HydroSource::Iter(expr) => {
-                            parse_quote! {
-                                #source_ident = source_iter(#expr);
+                            // TODO(shadaj): if output is inside a tick we should persist so it is there on _each_ tick
+                            if metadata.location_kind.is_root() {
+                                parse_quote! {
+                                    #source_ident = source_iter(#expr);
+                                }
+                            } else {
+                                // TODO(shadaj): a more natural semantics would be to to re-evaluate the expression on each tick
+                                parse_quote! {
+                                    #source_ident = source_iter(#expr) -> persist::<'static>();
+                                }
                             }
                         }
 
                         HydroSource::Spin() => {
+                            debug_assert!(metadata.location_kind.is_root());
                             parse_quote! {
                                 #source_ident = spin();
                             }
@@ -1934,8 +2038,13 @@ impl HydroNode {
                     unreachable!()
                 };
 
+                let is_root = left.metadata().location_kind.is_root()
+                    && right.metadata().location_kind.is_root();
                 let (left_inner, left_lifetime) =
                     if let HydroNode::Persist { inner: left, .. } = left.as_mut() {
+                        debug_assert!(!left.metadata().location_kind.is_root());
+                        (left, quote!('static))
+                    } else if left.metadata().location_kind.is_root() {
                         (left, quote!('static))
                     } else {
                         (left, quote!('tick))
@@ -1943,6 +2052,9 @@ impl HydroNode {
 
                 let (right_inner, right_lifetime) =
                     if let HydroNode::Persist { inner: right, .. } = right.as_mut() {
+                        debug_assert!(!right.metadata().location_kind.is_root());
+                        (right, quote!('static))
+                    } else if right.metadata().location_kind.is_root() {
                         (right, quote!('static))
                     } else {
                         (right, quote!('tick))
@@ -1965,11 +2077,22 @@ impl HydroNode {
 
                         let builder = graph_builders.entry(left_location_id).or_default();
                         builder.add_dfir(
-                            parse_quote! {
-                                #stream_ident = #operator::<#left_lifetime, #right_lifetime>();
-                                #left_ident -> [0]#stream_ident;
-                                #right_ident -> [1]#stream_ident;
-                            },
+                            if is_root {
+                                // if both inputs are root, the output is expected to have streamy semantics, so we need
+                                // a multiset_delta() to negate the replay behavior
+                                parse_quote! {
+                                    #stream_ident = #operator::<#left_lifetime, #right_lifetime>() -> multiset_delta();
+                                    #left_ident -> [0]#stream_ident;
+                                    #right_ident -> [1]#stream_ident;
+                                }
+                            } else {
+                                parse_quote! {
+                                    #stream_ident = #operator::<#left_lifetime, #right_lifetime>();
+                                    #left_ident -> [0]#stream_ident;
+                                    #right_ident -> [1]#stream_ident;
+                                }
+                            }
+                            ,
                             None,
                             Some(&next_stmt_id.to_string()),
                         );
@@ -1999,6 +2122,9 @@ impl HydroNode {
 
                 let (neg, neg_lifetime) =
                     if let HydroNode::Persist { inner: neg, .. } = neg.as_mut() {
+                        debug_assert!(!neg.metadata().location_kind.is_root());
+                        (neg, quote!('static))
+                    } else if neg.metadata().location_kind.is_root() {
                         (neg, quote!('static))
                     } else {
                         (neg, quote!('tick))
@@ -2379,6 +2505,9 @@ impl HydroNode {
 
                 let (input, lifetime) =
                     if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
+                        debug_assert!(!input.metadata().location_kind.is_root());
+                        (input, quote!('static))
+                    } else if input.metadata().location_kind.is_root() {
                         (input, quote!('static))
                     } else {
                         (input, quote!('tick))
@@ -2419,6 +2548,9 @@ impl HydroNode {
             } => {
                 let (input, lifetime) =
                     if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
+                        debug_assert!(!input.metadata().location_kind.is_root());
+                        (input, quote!('static))
+                    } else if input.metadata().location_kind.is_root() {
                         (input, quote!('static))
                     } else {
                         (input, quote!('tick))
@@ -2521,6 +2653,9 @@ impl HydroNode {
 
                 let (input, lifetime) =
                     if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
+                        debug_assert!(!input.metadata().location_kind.is_root());
+                        (input, quote!('static))
+                    } else if input.metadata().location_kind.is_root() {
                         (input, quote!('static))
                     } else {
                         (input, quote!('tick))
@@ -2724,7 +2859,10 @@ impl HydroNode {
             HydroNode::CycleSource { .. }
             | HydroNode::Tee { .. }
             | HydroNode::Persist { .. }
-            | HydroNode::Unpersist { .. }
+            | HydroNode::YieldConcat { .. }
+            | HydroNode::BeginAtomic { .. }
+            | HydroNode::EndAtomic { .. }
+            | HydroNode::Batch { .. }
             | HydroNode::Delta { .. }
             | HydroNode::Chain { .. }
             | HydroNode::ChainFirst { .. }
@@ -2791,7 +2929,10 @@ impl HydroNode {
             HydroNode::CycleSource { metadata, .. } => metadata,
             HydroNode::Tee { metadata, .. } => metadata,
             HydroNode::Persist { metadata, .. } => metadata,
-            HydroNode::Unpersist { metadata, .. } => metadata,
+            HydroNode::YieldConcat { metadata, .. } => metadata,
+            HydroNode::BeginAtomic { metadata, .. } => metadata,
+            HydroNode::EndAtomic { metadata, .. } => metadata,
+            HydroNode::Batch { metadata, .. } => metadata,
             HydroNode::Delta { metadata, .. } => metadata,
             HydroNode::Chain { metadata, .. } => metadata,
             HydroNode::ChainFirst { metadata, .. } => metadata,
@@ -2836,7 +2977,10 @@ impl HydroNode {
             HydroNode::CycleSource { metadata, .. } => metadata,
             HydroNode::Tee { metadata, .. } => metadata,
             HydroNode::Persist { metadata, .. } => metadata,
-            HydroNode::Unpersist { metadata, .. } => metadata,
+            HydroNode::YieldConcat { metadata, .. } => metadata,
+            HydroNode::BeginAtomic { metadata, .. } => metadata,
+            HydroNode::EndAtomic { metadata, .. } => metadata,
+            HydroNode::Batch { metadata, .. } => metadata,
             HydroNode::Delta { metadata, .. } => metadata,
             HydroNode::Chain { metadata, .. } => metadata,
             HydroNode::ChainFirst { metadata, .. } => metadata,
@@ -2880,7 +3024,10 @@ impl HydroNode {
                 vec![]
             }
             HydroNode::Persist { inner, .. }
-            | HydroNode::Unpersist { inner, .. }
+            | HydroNode::YieldConcat { inner, .. }
+            | HydroNode::BeginAtomic { inner, .. }
+            | HydroNode::EndAtomic { inner, .. }
+            | HydroNode::Batch { inner, .. }
             | HydroNode::Delta { inner, .. } => {
                 vec![inner.metadata()]
             }
@@ -2945,7 +3092,10 @@ impl HydroNode {
             HydroNode::CycleSource { ident, .. } => format!("CycleSource({})", ident),
             HydroNode::Tee { inner, .. } => format!("Tee({})", inner.0.borrow().print_root()),
             HydroNode::Persist { .. } => "Persist()".to_string(),
-            HydroNode::Unpersist { .. } => "Unpersist()".to_string(),
+            HydroNode::YieldConcat { .. } => "YieldConcat()".to_string(),
+            HydroNode::BeginAtomic { .. } => "BeginAtomic()".to_string(),
+            HydroNode::EndAtomic { .. } => "EndAtomic()".to_string(),
+            HydroNode::Batch { .. } => "Batch()".to_string(),
             HydroNode::Delta { .. } => "Delta()".to_string(),
             HydroNode::Chain { first, second, .. } => {
                 format!("Chain({}, {})", first.print_root(), second.print_root())

@@ -61,6 +61,7 @@ pub(crate) trait DynLocation: Clone {
 
     fn flow_state(&self) -> &FlowState;
     fn is_top_level() -> bool;
+    fn is_atomic() -> bool;
 
     fn new_node_metadata<T>(&self) -> HydroIrMetadata {
         use stageleft::quote_type;

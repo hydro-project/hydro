@@ -219,7 +219,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
         ),
     );
 
-    a_log_complete_cycle.complete(a_log.snapshot(nondet!(
+    a_log_complete_cycle.complete(a_log.snapshot_atomic(nondet!(
         /// We will always write payloads to the log before acknowledging them to the proposers,
         /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
         /// election will include the committed value.
@@ -531,7 +531,7 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
                 logs.push(log);
             }),
         )
-        .snapshot(nondet!(/** see above */))
+        .snapshot_atomic(nondet!(/** see above */))
         .entries()
         .max_by_key(q!(|t| t.0))
         .zip(p_ballot.clone())
@@ -727,7 +727,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     let p_to_replicas = join_responses(
         proposer_tick,
         quorums.map(q!(|k| (k, ()))),
-        payloads_to_send.batch(nondet!(
+        payloads_to_send.batch_atomic(nondet!(
             /// The metadata will always be generated before we get a quorum
             /// because `payloads_to_send` is used to send the payloads to acceptors.
         )),
@@ -836,7 +836,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             }),
         );
     let a_log_snapshot = a_log
-        .snapshot(nondet!(
+        .snapshot_atomic(nondet!(
             /// We need to know the current state of the log for p1b
             /// TODO(shadaj): this isn't a justification for correctness
         ))
