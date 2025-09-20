@@ -17,7 +17,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::time::Duration;
 
-use bytes::{Bytes, BytesMut};
+use bytes::BytesMut;
 use futures::stream::Stream as FuturesStream;
 use proc_macro2::Span;
 use serde::de::DeserializeOwned;
@@ -92,6 +92,19 @@ pub trait Location<'a>: dynamic::DynLocation {
 
     fn root(&self) -> Self::Root;
 
+    fn try_tick(&self) -> Option<Tick<Self>> {
+        if Self::is_top_level() {
+            let next_id = self.flow_state().borrow_mut().next_clock_id;
+            self.flow_state().borrow_mut().next_clock_id += 1;
+            Some(Tick {
+                id: next_id,
+                l: self.clone(),
+            })
+        } else {
+            None
+        }
+    }
+
     fn id(&self) -> LocationId {
         dynamic::DynLocation::id(self)
     }
@@ -114,11 +127,8 @@ pub trait Location<'a>: dynamic::DynLocation {
     {
         Stream::new(
             self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::Source {
-                    source: HydroSource::Spin(),
-                    metadata: self.new_node_metadata::<()>(),
-                }),
+            HydroNode::Source {
+                source: HydroSource::Spin(),
                 metadata: self.new_node_metadata::<()>(),
             },
         )
@@ -136,11 +146,8 @@ pub trait Location<'a>: dynamic::DynLocation {
 
         Stream::new(
             self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::Source {
-                    source: HydroSource::Stream(e.into()),
-                    metadata: self.new_node_metadata::<T>(),
-                }),
+            HydroNode::Source {
+                source: HydroSource::Stream(e.into()),
                 metadata: self.new_node_metadata::<T>(),
             },
         )
@@ -160,11 +167,8 @@ pub trait Location<'a>: dynamic::DynLocation {
 
         Stream::new(
             self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::Source {
-                    source: HydroSource::Iter(e.into()),
-                    metadata: self.new_node_metadata::<T>(),
-                }),
+            HydroNode::Source {
+                source: HydroSource::Iter(e.into()),
                 metadata: self.new_node_metadata::<T>(),
             },
         )
@@ -212,17 +216,14 @@ pub trait Location<'a>: dynamic::DynLocation {
             },
             Stream::new(
                 self.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::ExternalInput {
-                        from_external_id: from.id,
-                        from_key: next_external_port_id,
-                        from_many: false,
-                        codec_type: quote_type::<LengthDelimitedCodec>().into(),
-                        port_hint: NetworkHint::Auto,
-                        instantiate_fn: DebugInstantiate::Building,
-                        deserialize_fn: None,
-                        metadata: self.new_node_metadata::<std::io::Result<BytesMut>>(),
-                    }),
+                HydroNode::ExternalInput {
+                    from_external_id: from.id,
+                    from_key: next_external_port_id,
+                    from_many: false,
+                    codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                    port_hint: NetworkHint::Auto,
+                    instantiate_fn: DebugInstantiate::Building,
+                    deserialize_fn: None,
                     metadata: self.new_node_metadata::<std::io::Result<BytesMut>>(),
                 },
             ),
@@ -255,22 +256,17 @@ pub trait Location<'a>: dynamic::DynLocation {
             },
             Stream::new(
                 self.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::ExternalInput {
-                        from_external_id: from.id,
-                        from_key: next_external_port_id,
-                        from_many: false,
-                        codec_type: quote_type::<LengthDelimitedCodec>().into(),
-                        port_hint: NetworkHint::Auto,
-                        instantiate_fn: DebugInstantiate::Building,
-                        deserialize_fn: Some(
-                            crate::live_collections::stream::networking::deserialize_bincode::<T>(
-                                None,
-                            )
+                HydroNode::ExternalInput {
+                    from_external_id: from.id,
+                    from_key: next_external_port_id,
+                    from_many: false,
+                    codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                    port_hint: NetworkHint::Auto,
+                    instantiate_fn: DebugInstantiate::Building,
+                    deserialize_fn: Some(
+                        crate::live_collections::stream::networking::deserialize_bincode::<T>(None)
                             .into(),
-                        ),
-                        metadata: self.new_node_metadata::<T>(),
-                    }),
+                    ),
                     metadata: self.new_node_metadata::<T>(),
                 },
             ),
@@ -308,10 +304,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             to_many: true,
             serialize_fn: None,
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(HydroNode::Unpersist {
-                inner: Box::new(to_sink.entries().ir_node.into_inner()),
-                metadata: self.new_node_metadata::<(u64, T)>(),
-            }),
+            input: Box::new(to_sink.entries().ir_node.into_inner()),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
@@ -323,18 +316,14 @@ pub trait Location<'a>: dynamic::DynLocation {
             ExactlyOnce,
         > = Stream::new(
             self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::ExternalInput {
-                    from_external_id: from.id,
-                    from_key: next_external_port_id,
-                    from_many: true,
-                    codec_type: quote_type::<Codec>().into(),
-                    port_hint,
-                    instantiate_fn: DebugInstantiate::Building,
-                    deserialize_fn: None,
-                    metadata: self
-                        .new_node_metadata::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(),
-                }),
+            HydroNode::ExternalInput {
+                from_external_id: from.id,
+                from_key: next_external_port_id,
+                from_many: true,
+                codec_type: quote_type::<Codec>().into(),
+                port_hint,
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: None,
                 metadata: self
                     .new_node_metadata::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(),
             },
@@ -351,11 +340,8 @@ pub trait Location<'a>: dynamic::DynLocation {
         let raw_membership_stream: Stream<(u64, bool), Self, Unbounded, TotalOrder, ExactlyOnce> =
             Stream::new(
                 self.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::Source {
-                        source: HydroSource::Stream(membership_stream_expr.into()),
-                        metadata: self.new_node_metadata::<(u64, bool)>(),
-                    }),
+                HydroNode::Source {
+                    source: HydroSource::Stream(membership_stream_expr.into()),
                     metadata: self.new_node_metadata::<(u64, bool)>(),
                 },
             );
@@ -427,10 +413,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             to_many: true,
             serialize_fn: Some(ser_fn.into()),
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(HydroNode::Unpersist {
-                inner: Box::new(to_sink.entries().ir_node.into_inner()),
-                metadata: self.new_node_metadata::<(u64, Bytes)>(),
-            }),
+            input: Box::new(to_sink.entries().ir_node.into_inner()),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
@@ -445,17 +428,14 @@ pub trait Location<'a>: dynamic::DynLocation {
 
         let raw_stream: Stream<(u64, InT), Self, Unbounded, NoOrder, ExactlyOnce> = Stream::new(
             self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::ExternalInput {
-                    from_external_id: from.id,
-                    from_key: next_external_port_id,
-                    from_many: true,
-                    codec_type: quote_type::<LengthDelimitedCodec>().into(),
-                    port_hint: NetworkHint::Auto,
-                    instantiate_fn: DebugInstantiate::Building,
-                    deserialize_fn: Some(deser_fn.into()),
-                    metadata: self.new_node_metadata::<(u64, InT)>(),
-                }),
+            HydroNode::ExternalInput {
+                from_external_id: from.id,
+                from_key: next_external_port_id,
+                from_many: true,
+                codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                port_hint: NetworkHint::Auto,
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: Some(deser_fn.into()),
                 metadata: self.new_node_metadata::<(u64, InT)>(),
             },
         );
@@ -471,11 +451,8 @@ pub trait Location<'a>: dynamic::DynLocation {
         let raw_membership_stream: Stream<(u64, bool), Self, Unbounded, NoOrder, ExactlyOnce> =
             Stream::new(
                 self.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::Source {
-                        source: HydroSource::Stream(membership_stream_expr.into()),
-                        metadata: self.new_node_metadata::<(u64, bool)>(),
-                    }),
+                HydroNode::Source {
+                    source: HydroSource::Stream(membership_stream_expr.into()),
                     metadata: self.new_node_metadata::<(u64, bool)>(),
                 },
             );
@@ -508,7 +485,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, Self>) -> Singleton<T, Self, Unbounded>
     where
         T: Clone,
-        Self: Sized + NoTick,
+        Self: Sized,
     {
         // TODO(shadaj): we mark this as unbounded because we do not yet have a representation
         // for bounded top-level singletons, and this is the only way to generate one
@@ -516,22 +493,26 @@ pub trait Location<'a>: dynamic::DynLocation {
         let e_arr = q!([e]);
         let e = e_arr.splice_untyped_ctx(self);
 
-        // we do a double persist here because if the singleton shows up on every tick,
-        // we first persist the source so that we store that value and then persist again
-        // so that it grows every tick
-        Singleton::new(
-            self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::Persist {
+        if Self::is_top_level() {
+            Singleton::new(
+                self.clone(),
+                HydroNode::Persist {
                     inner: Box::new(HydroNode::Source {
                         source: HydroSource::Iter(e.into()),
                         metadata: self.new_node_metadata::<T>(),
                     }),
                     metadata: self.new_node_metadata::<T>(),
-                }),
-                metadata: self.new_node_metadata::<T>(),
-            },
-        )
+                },
+            )
+        } else {
+            Singleton::new(
+                self.clone(),
+                HydroNode::Source {
+                    source: HydroSource::Iter(e.into()),
+                    metadata: self.new_node_metadata::<T>(),
+                },
+            )
+        }
     }
 
     /// Generates a stream with values emitted at a fixed interval, with

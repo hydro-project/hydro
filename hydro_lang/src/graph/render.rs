@@ -901,8 +901,21 @@ impl HydroNode {
             }
 
             // Handle remaining node types
-            HydroNode::Unpersist { inner, .. } => {
+            HydroNode::Batch { inner, .. } => {
                 // Unpersist is typically optimized away, just pass through
+                inner.build_graph_structure(structure, seen_tees, config)
+            }
+
+            HydroNode::YieldConcat { inner, .. } => {
+                // Unpersist is typically optimized away, just pass through
+                inner.build_graph_structure(structure, seen_tees, config)
+            }
+
+            HydroNode::BeginAtomic { inner, .. } => {
+                inner.build_graph_structure(structure, seen_tees, config)
+            }
+
+            HydroNode::EndAtomic { inner, .. } => {
                 inner.build_graph_structure(structure, seen_tees, config)
             }
 

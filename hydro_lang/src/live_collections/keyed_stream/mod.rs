@@ -1506,7 +1506,10 @@ where
         tick: &Tick<L>,
         nondet: NonDet,
     ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
-        self.atomic(tick).batch(nondet)
+        KeyedStream {
+            underlying: self.underlying.batch(tick, nondet),
+            _phantom_order: Default::default(),
+        }
     }
 }
 
@@ -1521,9 +1524,9 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+    pub fn batch_atomic(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
         KeyedStream {
-            underlying: self.underlying.batch(nondet),
+            underlying: self.underlying.batch_atomic(nondet),
             _phantom_order: Default::default(),
         }
     }

@@ -46,6 +46,10 @@ impl<'a, P> super::dynamic::DynLocation for Process<'a, P> {
     fn is_top_level() -> bool {
         true
     }
+
+    fn is_atomic() -> bool {
+        false
+    }
 }
 
 impl<'a, P> Location<'a> for Process<'a, P> {

@@ -52,6 +52,10 @@ impl<'a, C> super::dynamic::DynLocation for Cluster<'a, C> {
     fn is_top_level() -> bool {
         true
     }
+
+    fn is_atomic() -> bool {
+        false
+    }
 }
 
 impl<'a, C> Location<'a> for Cluster<'a, C> {
