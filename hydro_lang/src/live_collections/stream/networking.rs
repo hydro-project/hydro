@@ -18,7 +18,7 @@ use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
 use crate::location::tick::NoAtomic;
 use crate::location::{Cluster, External, Location, MemberId, MembershipEvent, NoTick, Process};
-use crate::nondet::{NonDet, nondet};
+use crate::nondet::NonDet;
 use crate::staging_util::get_this_crate;
 
 // same as the one in `hydro_std`, but internal use only
@@ -185,15 +185,10 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     {
         let ids = track_membership(self.location.source_cluster_members(other));
         let join_tick = self.location.tick();
-        let current_members = ids.snapshot(&join_tick, nondet_membership).keys();
+        let current_members = ids.snapshot(&join_tick, nondet_membership);
 
-        current_members
-            .weaker_retries()
-            .assume_ordering::<TotalOrder>(
-                nondet!(/** we send to each member independently, order does not matter */),
-            )
-            .cross_product_nested_loop(self.batch(&join_tick, nondet_membership))
-            .weaken_ordering::<O>()
+        self.batch(&join_tick, nondet_membership)
+            .repeat_with_keys(current_members)
             .all_ticks()
             .demux_bincode(other)
     }
@@ -511,14 +506,10 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     {
         let ids = track_membership(self.location.source_cluster_members(other));
         let join_tick = self.location.tick();
-        let current_members = ids.snapshot(&join_tick, nondet_membership).keys();
+        let current_members = ids.snapshot(&join_tick, nondet_membership);
 
-        current_members
-            .weaker_retries()
-            .assume_ordering::<TotalOrder>(
-                nondet!(/** we send to each member independently, order does not matter */),
-            )
-            .cross_product_nested_loop(self.batch(&join_tick, nondet_membership))
+        self.batch(&join_tick, nondet_membership)
+            .repeat_with_keys(current_members)
             .all_ticks()
             .demux_bincode(other)
     }
