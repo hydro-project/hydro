@@ -35,14 +35,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install rust channel and set it as default
-        run: |
-          rustup toolchain add nightly && \
-          rustup default nightly
+      - name: Install nightly Rust channel
+        run: rustup toolchain add nightly
 
       - env:
           RUSTDOCFLAGS: --cfg docsrs -Dwarnings
-        run: cargo doc --no-deps --all-features
+        run: cargo +nightly doc --no-deps --all-features
 
       - name: Move design docs to output
         shell: bash
