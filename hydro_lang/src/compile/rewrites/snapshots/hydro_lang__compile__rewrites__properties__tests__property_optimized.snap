@@ -5,39 +5,62 @@ expression: built.ir()
 [
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: properties :: tests :: * ; | (string , count) | println ! ("{}: {}" , string , count) }),
-        input: FoldKeyed {
-            init: stageleft :: runtime_support :: fn0_type_hint :: < i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: properties :: tests :: * ; | | 0 }),
-            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , () , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: properties :: tests :: * ; | count : & mut i32 , _ | * count += 1 }),
-            input: Map {
-                f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: properties :: tests :: * ; | string : String | (string , ()) }),
-                input: Source {
-                    source: Iter(
-                        { use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: properties :: tests :: * ; vec ! [] },
-                    ),
+        input: YieldConcat {
+            inner: FoldKeyed {
+                init: stageleft :: runtime_support :: fn0_type_hint :: < i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: properties :: tests :: * ; | | 0 }),
+                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , () , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: properties :: tests :: * ; | count : & mut i32 , _ | * count += 1 }),
+                input: Batch {
+                    inner: Map {
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: properties :: tests :: * ; | string : String | (string , ()) }),
+                        input: Source {
+                            source: Iter(
+                                { use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: rewrites :: properties :: tests :: * ; vec ! [] },
+                            ),
+                            metadata: HydroIrMetadata {
+                                location_kind: Process(
+                                    0,
+                                ),
+                                output_type: Some(
+                                    std :: string :: String,
+                                ),
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_kind: Process(
+                                0,
+                            ),
+                            output_type: Some(
+                                (std :: string :: String , ()),
+                            ),
+                        },
+                    },
                     metadata: HydroIrMetadata {
-                        location_kind: Process(
+                        location_kind: Tick(
                             0,
+                            Process(
+                                0,
+                            ),
                         ),
                         output_type: Some(
-                            std :: string :: String,
+                            (std :: string :: String , ()),
                         ),
                     },
                 },
                 metadata: HydroIrMetadata {
-                    location_kind: Process(
+                    location_kind: Tick(
                         0,
+                        Process(
+                            0,
+                        ),
                     ),
                     output_type: Some(
-                        (std :: string :: String , ()),
+                        (std :: string :: String , i32),
                     ),
                 },
             },
             metadata: HydroIrMetadata {
-                location_kind: Tick(
+                location_kind: Process(
                     0,
-                    Process(
-                        0,
-                    ),
                 ),
                 output_type: Some(
                     (std :: string :: String , i32),

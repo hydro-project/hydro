@@ -241,10 +241,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             to_many: false,
             serialize_fn: serialize_pipeline.map(|e| e.into()),
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(HydroNode::Unpersist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            }),
+            input: Box::new(self.ir_node.into_inner()),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
