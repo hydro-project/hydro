@@ -75,7 +75,7 @@ cargo clippy $TARGETS --all-targets $FEATURES -- -D warnings
 [ "$TEST_ALL" = false ] || cargo check --all-targets --no-default-features
 
 # `--all-targets` is everything except `--doc`: https://github.com/rust-lang/cargo/issues/6669.
-INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test $TARGETS --all-targets --no-fail-fast $FEATURES
+INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo nextest run $TARGETS --all-targets --no-fail-fast $FEATURES
 cargo test $TARGETS --doc
 
 # Test website_playground wasm build.

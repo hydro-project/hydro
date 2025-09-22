@@ -1,7 +1,7 @@
 error[E0599]: no variant named `Ellipse` found for enum `Shape`
   --> tests/compile-fail-stable/surface_demuxenum_port_extra.rs:21:18
    |
- 6 |     enum Shape {
+6  |     enum Shape {
    |     ---------- variant `Ellipse` not found here
 ...
 21 |         my_demux[Ellipse] -> for_each(std::mem::drop);
