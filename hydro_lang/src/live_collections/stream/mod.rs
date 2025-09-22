@@ -12,6 +12,7 @@ use syn::parse_quote;
 use tokio::time::Instant;
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
+use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
@@ -1567,10 +1568,7 @@ where
                     inner: Box::new(HydroNode::Scan {
                         init,
                         acc: f,
-                        input: Box::new(HydroNode::Unpersist {
-                            inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<U>(),
-                        }),
+                        input: Box::new(self.ir_node.into_inner()),
                         metadata: self.location.new_node_metadata::<U>(),
                     }),
                     metadata: self.location.new_node_metadata::<U>(),
@@ -1784,6 +1782,54 @@ where
                 right: Box::new(other.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata::<(T, T2)>(),
             },
+        )
+    }
+
+    /// Creates a [`KeyedStream`] with the same set of keys as `keys`, but with the elements in
+    /// `self` used as the values for *each* key.
+    ///
+    /// This is helpful when "broadcasting" a set of values so that all the keys have the same
+    /// values. For example, it can be used to send the same set of elements to several cluster
+    /// members, if the membership information is available as a [`KeyedSingleton`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let keyed_singleton = // { 1: (), 2: () }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, ()), (2, ())]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// let stream = // [ "a", "b" ]
+    /// # process
+    /// #     .source_iter(q!(vec!["a".to_string(), "b".to_string()]))
+    /// #     .batch(&tick, nondet!(/** test */));
+    /// stream.repeat_with_keys(keyed_singleton)
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: ["a", "b" ], 2: ["a", "b"] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, "a".to_string()), (1, "b".to_string()), (2, "a".to_string()), (2, "b".to_string())]);
+    /// # }));
+    /// ```
+    pub fn repeat_with_keys<K, V2>(
+        self,
+        keys: KeyedSingleton<K, V2, L, Bounded>,
+    ) -> KeyedStream<K, T, L, Bounded, O, R>
+    where
+        K: Clone,
+        T: Clone,
+    {
+        keys.keys().weaken_retries().cross_product_nested_loop(self).into_keyed().assume_ordering(
+            nondet!(/** keyed stream does not depend on ordering of keys, cross_product_nested_loop preserves order of values */)
         )
     }
 }
@@ -2616,7 +2662,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use futures::StreamExt;
+    use futures::{SinkExt, StreamExt};
     use hydro_deploy::Deployment;
     use serde::{Deserialize, Serialize};
     use stageleft::q;
@@ -2697,5 +2743,43 @@ mod tests {
         deployment.start().await.unwrap();
 
         assert_eq!(external_out.next().await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn unbounded_scan_remembers_state() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input
+            .scan(
+                q!(|| 0),
+                q!(|acc, v| {
+                    *acc += v;
+                    Some(*acc)
+                }),
+            )
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect_sink_bincode(input_port).await;
+        let mut external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 1);
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 3);
     }
 }
