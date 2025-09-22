@@ -16,13 +16,12 @@ use crate::live_collections::stream::Retries;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
-use crate::location::tick::NoAtomic;
 use crate::location::{Cluster, External, Location, MemberId, MembershipEvent, NoTick, Process};
 use crate::nondet::NonDet;
 use crate::staging_util::get_this_crate;
 
 // same as the one in `hydro_std`, but internal use only
-fn track_membership<'a, C, L: Location<'a> + NoTick + NoAtomic>(
+fn track_membership<'a, C, L: Location<'a> + NoTick>(
     membership: KeyedStream<MemberId<C>, MembershipEvent, L, Unbounded>,
 ) -> KeyedSingleton<MemberId<C>, (), L, Unbounded> {
     membership
@@ -241,10 +240,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             to_many: false,
             serialize_fn: serialize_pipeline.map(|e| e.into()),
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(HydroNode::Unpersist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            }),
+            input: Box::new(self.ir_node.into_inner()),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
