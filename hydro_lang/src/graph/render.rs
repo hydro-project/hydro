@@ -9,6 +9,7 @@ pub use super::graphviz::{HydroDot, escape_dot};
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
 pub use super::reactflow::HydroReactFlow;
 use crate::compile::ir::{DebugExpr, HydroNode, HydroRoot, HydroSource};
+use crate::location::dynamic::LocationId;
 
 /// Label for a graph node - can be either a static string or contain expressions.
 #[derive(Debug, Clone)]
@@ -272,18 +273,11 @@ pub fn extract_short_label(full_label: &str) -> String {
 }
 
 /// Helper function to extract location ID and type from metadata.
-fn extract_location_id(
-    metadata: &crate::compile::ir::HydroIrMetadata,
-) -> (Option<usize>, Option<String>) {
-    use crate::location::dynamic::LocationId;
-    match &metadata.location_kind {
+fn extract_location_id(location_id: &LocationId) -> (Option<usize>, Option<String>) {
+    match location_id.root() {
         LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
         LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
-        LocationId::Tick(_, inner) => match inner.as_ref() {
-            LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
-            LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
-            _ => (None, None),
-        },
+        _ => panic!("unexpected location type"),
     }
 }
 
@@ -292,7 +286,7 @@ fn setup_location(
     structure: &mut HydroGraphStructure,
     metadata: &crate::compile::ir::HydroIrMetadata,
 ) -> Option<usize> {
-    let (location_id, location_type) = extract_location_id(metadata);
+    let (location_id, location_type) = extract_location_id(&metadata.location_kind);
     if let (Some(loc_id), Some(loc_type)) = (location_id, location_type) {
         structure.add_location(loc_id, loc_type);
     }
@@ -608,8 +602,7 @@ impl HydroNode {
             }
 
             // Transform operations with Stream edges - grouped by node/edge type
-            HydroNode::Delta { inner, metadata }
-            | HydroNode::DeferTick {
+            HydroNode::DeferTick {
                 input: inner,
                 metadata,
             }
@@ -901,8 +894,21 @@ impl HydroNode {
             }
 
             // Handle remaining node types
-            HydroNode::Unpersist { inner, .. } => {
+            HydroNode::Batch { inner, .. } => {
                 // Unpersist is typically optimized away, just pass through
+                inner.build_graph_structure(structure, seen_tees, config)
+            }
+
+            HydroNode::YieldConcat { inner, .. } => {
+                // Unpersist is typically optimized away, just pass through
+                inner.build_graph_structure(structure, seen_tees, config)
+            }
+
+            HydroNode::BeginAtomic { inner, .. } => {
+                inner.build_graph_structure(structure, seen_tees, config)
+            }
+
+            HydroNode::EndAtomic { inner, .. } => {
                 inner.build_graph_structure(structure, seen_tees, config)
             }
 
