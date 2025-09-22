@@ -16,7 +16,6 @@ use crate::forward_handle::ForwardRef;
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::dynamic::LocationId;
-use crate::location::tick::NoAtomic;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
@@ -646,7 +645,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick + NoAtomic, O: Ordering, R: Retries>
+impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
     KeyedStream<K, V, L, Unbounded, O, R>
 {
     /// Produces a new keyed stream that "merges" the inputs by interleaving the elements
@@ -1478,7 +1477,7 @@ where
 
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
 where
-    L: Location<'a> + NoTick + NoAtomic,
+    L: Location<'a> + NoTick,
 {
     /// Shifts this keyed stream into an atomic context, which guarantees that any downstream logic
     /// will all be executed synchronously before any outputs are yielded (in [`KeyedStream::end_atomic`]).
@@ -1506,13 +1505,16 @@ where
         tick: &Tick<L>,
         nondet: NonDet,
     ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
-        self.atomic(tick).batch(nondet)
+        KeyedStream {
+            underlying: self.underlying.batch(tick, nondet),
+            _phantom_order: Default::default(),
+        }
     }
 }
 
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, Atomic<L>, B, O, R>
 where
-    L: Location<'a> + NoTick + NoAtomic,
+    L: Location<'a> + NoTick,
 {
     /// Returns a keyed stream corresponding to the latest batch of elements being atomically
     /// processed. These batches are guaranteed to be contiguous across ticks and preserve
@@ -1521,9 +1523,9 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+    pub fn batch_atomic(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
         KeyedStream {
-            underlying: self.underlying.batch(nondet),
+            underlying: self.underlying.batch_atomic(nondet),
             _phantom_order: Default::default(),
         }
     }
