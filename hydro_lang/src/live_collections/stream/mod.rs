@@ -12,6 +12,7 @@ use syn::parse_quote;
 use tokio::time::Instant;
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
+use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
