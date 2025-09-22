@@ -207,8 +207,7 @@ impl<'a> BuiltFlow<'a> {
     }
 
     pub fn with_default_optimize<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
-        self.optimize_with(super::rewrites::persist_pullup::persist_pullup)
-            .into_deploy()
+        self.into_deploy()
     }
 
     pub fn into_deploy<D: Deploy<'a>>(mut self) -> DeployFlow<'a, D> {

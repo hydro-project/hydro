@@ -89,7 +89,9 @@ pub fn http_counter_server<'a, P>(
 
     let lookup_result = get_stream
         .batch(&increment_lookup_tick, nondet!(/** batch get requests */))
-        .get_from(counters.snapshot(nondet!(/** intentional non-determinism for get timing */)));
+        .get_from(
+            counters.snapshot_atomic(nondet!(/** intentional non-determinism for get timing */)),
+        );
     let get_responses = lookup_result
         .clone()
         .map(q!(|(key, maybe_count)| {
