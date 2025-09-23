@@ -307,3 +307,56 @@ pub fn test_scan_complex_accumulator() {
 
     df.run_available_sync(); // Should return quickly and not hang
 }
+
+#[multiplatform_test]
+pub fn test_scan_push() {
+    // Test scan compiled as a push operator
+    let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
+    let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
+
+    let mut df = dfir_rs::dfir_syntax! {
+        teed = source_stream(items_recv) -> tee();
+        teed -> for_each(|_| {}); // Dummy consumer to force push
+        teed
+            -> scan::<'tick>(|| 0, |acc: &mut u32, x: u32| {
+                *acc += x;
+                Some(*acc)
+            })
+            -> for_each(|v| result_send.send(v).unwrap());
+    };
+    assert_graphvis_snapshots!(df);
+
+    assert_eq!(
+        (TickInstant::new(0), 0),
+        (df.current_tick(), df.current_stratum())
+    );
+
+    // First tick with values 1, 2
+    items_send.send(1).unwrap();
+    items_send.send(2).unwrap();
+    df.run_tick_sync();
+
+    assert_eq!(
+        (TickInstant::new(1), 0),
+        (df.current_tick(), df.current_stratum())
+    );
+
+    // Should receive running sums: 1, 3
+    assert_eq!(&[1, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
+
+    // Second tick with values 3, 4
+    items_send.send(3).unwrap();
+    items_send.send(4).unwrap();
+    df.run_tick_sync();
+
+    assert_eq!(
+        (TickInstant::new(2), 0),
+        (df.current_tick(), df.current_stratum())
+    );
+
+    // With 'tick' persistence, accumulator resets each tick
+    // So we should get: 3, 7 (not 6, 10)
+    assert_eq!(&[3, 7], &*collect_ready::<Vec<_>, _>(&mut result_recv));
+
+    df.run_available_sync(); // Should return quickly and not hang
+}
