@@ -384,15 +384,18 @@ fn into_singleton_inside_tick<'a, K, V, L: Location<'a>>(
     me: KeyedSingleton<K, V, L, Bounded>,
 ) -> Singleton<HashMap<K, V>, L, Bounded>
 where
-    K: Eq + Hash {
-    me.underlying.assume_ordering(nondet!(
-        /// Because this is a keyed singleton, there is only one value per key.
-    )).fold(
-        q!(|| HashMap::new()),
-        q!(|map, (k, v)| {
-            map.insert(k, v);
-        }),
-    )
+    K: Eq + Hash,
+{
+    me.underlying
+        .assume_ordering(nondet!(
+            /// Because this is a keyed singleton, there is only one value per key.
+        ))
+        .fold(
+            q!(|| HashMap::new()),
+            q!(|map, (k, v)| {
+                map.insert(k, v);
+            }),
+        )
 }
 
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
@@ -627,10 +630,10 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     }
 
     /// Converts this keyed singleton into a [`Singleton`] containing a `HashMap` from keys to values.
-    /// 
+    ///
     /// As the values for each key are updated asynchronously, the `HashMap` will be updated
     /// asynchronously as well.
-    /// 
+    ///
     /// # Example
     /// ```rust
     /// # use hydro_lang::prelude::*;
@@ -649,9 +652,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # assert_eq!(stream.next().await.unwrap(), vec![(1, "a".to_string()), (2, "b".to_string()), (3, "c".to_string())].into_iter().collect());
     /// # }));
     /// ```
-    pub fn into_singleton(
-        self
-    ) -> Singleton<HashMap<K, V>, L, B::UnderlyingBound>
+    pub fn into_singleton(self) -> Singleton<HashMap<K, V>, L, B::UnderlyingBound>
     where
         K: Eq + Hash,
     {
@@ -663,14 +664,16 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                     underlying: self.underlying,
                 };
 
-                me.entries().assume_ordering(nondet!(
-                    /// Because this is a keyed singleton, there is only one value per key.
-                )).fold(
-                    q!(|| HashMap::new()),
-                    q!(|map, (k, v)| {
-                        map.insert(k, v);
-                    }),
-                )
+                me.entries()
+                    .assume_ordering(nondet!(
+                        /// Because this is a keyed singleton, there is only one value per key.
+                    ))
+                    .fold(
+                        q!(|| HashMap::new()),
+                        q!(|map, (k, v)| {
+                            map.insert(k, v);
+                        }),
+                    )
             } else {
                 let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
                     underlying: self.underlying,
@@ -683,14 +686,16 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 Singleton::new(out.location, out.ir_node.into_inner())
             }
         } else {
-            self.underlying.assume_ordering(nondet!(
-                /// Because this is a keyed singleton, there is only one value per key.
-            )).fold(
-                q!(|| HashMap::new()),
-                q!(|map, (k, v)| {
-                    map.insert(k, v);
-                }),
-            )
+            self.underlying
+                .assume_ordering(nondet!(
+                    /// Because this is a keyed singleton, there is only one value per key.
+                ))
+                .fold(
+                    q!(|| HashMap::new()),
+                    q!(|map, (k, v)| {
+                        map.insert(k, v);
+                    }),
+                )
         }
     }
 
@@ -1171,10 +1176,16 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), HashMap::new());
 
         external_in.send((1, 1)).await.unwrap();
-        assert_eq!(external_out.next().await.unwrap(), vec![(1, 1)].into_iter().collect());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 1)].into_iter().collect()
+        );
 
         external_in.send((2, 2)).await.unwrap();
-        assert_eq!(external_out.next().await.unwrap(), vec![(1, 1), (2, 2)].into_iter().collect());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 1), (2, 2)].into_iter().collect()
+        );
     }
 
     #[tokio::test]
@@ -1208,18 +1219,33 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), HashMap::new());
 
         external_in.send((1, 1)).await.unwrap();
-        assert_eq!(external_out.next().await.unwrap(), vec![(1, 1)].into_iter().collect());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 1)].into_iter().collect()
+        );
 
         external_in.send((1, 2)).await.unwrap();
-        assert_eq!(external_out.next().await.unwrap(), vec![(1, 2)].into_iter().collect());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 2)].into_iter().collect()
+        );
 
         external_in.send((2, 2)).await.unwrap();
-        assert_eq!(external_out.next().await.unwrap(), vec![(1, 2), (2, 1)].into_iter().collect());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 2), (2, 1)].into_iter().collect()
+        );
 
         external_in.send((1, 1)).await.unwrap();
-        assert_eq!(external_out.next().await.unwrap(), vec![(1, 3), (2, 1)].into_iter().collect());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 3), (2, 1)].into_iter().collect()
+        );
 
         external_in.send((3, 1)).await.unwrap();
-        assert_eq!(external_out.next().await.unwrap(), vec![(1, 3), (2, 1), (3, 1)].into_iter().collect());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 3), (2, 1), (3, 1)].into_iter().collect()
+        );
     }
 }
