@@ -16,7 +16,7 @@ use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, Receive
 use crate::forward_handle::{ForwardRef, TickCycle};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
-use crate::location::tick::{Atomic, DeferTick, NoAtomic};
+use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::{NonDet, nondet};
 
@@ -47,15 +47,6 @@ where
 {
     fn from(singleton: Singleton<T, L, Bounded>) -> Self {
         Singleton::new(singleton.location, singleton.ir_node.into_inner())
-    }
-}
-
-impl<'a, T, L> DeferTick for Singleton<T, Tick<L>, Bounded>
-where
-    L: Location<'a>,
-{
-    fn defer_tick(self) -> Self {
-        Singleton::defer_tick(self)
     }
 }
 
@@ -891,17 +882,6 @@ where
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.into_inner()),
                 metadata: out_location.new_node_metadata::<T>(),
-            },
-        )
-    }
-
-    #[expect(missing_docs, reason = "TODO")]
-    pub fn defer_tick(self) -> Singleton<T, Tick<L>, Bounded> {
-        Singleton::new(
-            self.location.clone(),
-            HydroNode::DeferTick {
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
             },
         )
     }
