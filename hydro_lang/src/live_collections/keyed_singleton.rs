@@ -1,5 +1,6 @@
 //! Definitions for the [`KeyedSingleton`] live collection.
 
+use std::collections::HashMap;
 use std::hash::Hash;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
@@ -378,6 +379,25 @@ fn key_count_inside_tick<'a, K, V, L: Location<'a>>(
     me.underlying.count()
 }
 
+#[cfg(stageleft_runtime)]
+fn into_singleton_inside_tick<'a, K, V, L: Location<'a>>(
+    me: KeyedSingleton<K, V, L, Bounded>,
+) -> Singleton<HashMap<K, V>, L, Bounded>
+where
+    K: Eq + Hash,
+{
+    me.underlying
+        .assume_ordering(nondet!(
+            /// Because this is a keyed singleton, there is only one value per key.
+        ))
+        .fold(
+            q!(|| HashMap::new()),
+            q!(|map, (k, v)| {
+                map.insert(k, v);
+            }),
+        )
+}
+
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
     /// Transforms each value by invoking `f` on each element, with keys staying the same
     /// after transformation. If you need access to the key, see [`KeyedStream::map_with_key`].
@@ -606,6 +626,76 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             }
         } else {
             self.underlying.count()
+        }
+    }
+
+    /// Converts this keyed singleton into a [`Singleton`] containing a `HashMap` from keys to values.
+    ///
+    /// As the values for each key are updated asynchronously, the `HashMap` will be updated
+    /// asynchronously as well.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: "a", 2: "b", 3: "c" }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, "a".to_string()), (2, "b".to_string()), (3, "c".to_string())]))
+    /// #     .into_keyed()
+    /// #     .batch(&process.tick(), nondet!(/** test */))
+    /// #     .first();
+    /// keyed_singleton.into_singleton()
+    /// # .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: "a", 2: "b", 3: "c" }
+    /// # assert_eq!(stream.next().await.unwrap(), vec![(1, "a".to_string()), (2, "b".to_string()), (3, "c".to_string())].into_iter().collect());
+    /// # }));
+    /// ```
+    pub fn into_singleton(self) -> Singleton<HashMap<K, V>, L, B::UnderlyingBound>
+    where
+        K: Eq + Hash,
+    {
+        if L::is_top_level()
+            && let Some(tick) = self.underlying.location.try_tick()
+        {
+            if B::ValueBound::is_bounded() {
+                let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
+                    underlying: self.underlying,
+                };
+
+                me.entries()
+                    .assume_ordering(nondet!(
+                        /// Because this is a keyed singleton, there is only one value per key.
+                    ))
+                    .fold(
+                        q!(|| HashMap::new()),
+                        q!(|map, (k, v)| {
+                            map.insert(k, v);
+                        }),
+                    )
+            } else {
+                let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
+                    underlying: self.underlying,
+                };
+
+                let out = into_singleton_inside_tick(
+                    me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+                )
+                .latest();
+                Singleton::new(out.location, out.ir_node.into_inner())
+            }
+        } else {
+            self.underlying
+                .assume_ordering(nondet!(
+                    /// Because this is a keyed singleton, there is only one value per key.
+                ))
+                .fold(
+                    q!(|| HashMap::new()),
+                    q!(|map, (k, v)| {
+                        map.insert(k, v);
+                    }),
+                )
         }
     }
 
@@ -962,6 +1052,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use futures::{SinkExt, StreamExt};
     use hydro_deploy::Deployment;
     use stageleft::q;
@@ -1051,5 +1143,109 @@ mod tests {
 
         external_in.send((3, 1)).await.unwrap();
         assert_eq!(external_out.next().await.unwrap(), 3);
+    }
+
+    #[tokio::test]
+    async fn into_singleton_bounded_value() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input
+            .into_keyed()
+            .first()
+            .into_singleton()
+            .sample_eager(nondet!(/** test */))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect_sink_bincode(input_port).await;
+        let mut external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), HashMap::new());
+
+        external_in.send((1, 1)).await.unwrap();
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 1)].into_iter().collect()
+        );
+
+        external_in.send((2, 2)).await.unwrap();
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 1), (2, 2)].into_iter().collect()
+        );
+    }
+
+    #[tokio::test]
+    async fn into_singleton_unbounded_value() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input
+            .into_keyed()
+            .fold(q!(|| 0), q!(|acc, _| *acc += 1))
+            .into_singleton()
+            .sample_eager(nondet!(/** test */))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect_sink_bincode(input_port).await;
+        let mut external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), HashMap::new());
+
+        external_in.send((1, 1)).await.unwrap();
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 1)].into_iter().collect()
+        );
+
+        external_in.send((1, 2)).await.unwrap();
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 2)].into_iter().collect()
+        );
+
+        external_in.send((2, 2)).await.unwrap();
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 2), (2, 1)].into_iter().collect()
+        );
+
+        external_in.send((1, 1)).await.unwrap();
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 3), (2, 1)].into_iter().collect()
+        );
+
+        external_in.send((3, 1)).await.unwrap();
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            vec![(1, 3), (2, 1), (3, 1)].into_iter().collect()
+        );
     }
 }
