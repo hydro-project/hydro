@@ -839,7 +839,44 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
         }
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Shifts the state in `self` to the **next tick**, so that the returned keyed singleton at
+    /// tick `T` always has the entries of `self` at tick `T - 1`.
+    ///
+    /// At tick `0`, the output has no entries, since there is no previous tick.
+    ///
+    /// This operator enables stateful iterative processing with ticks, by sending data from one
+    /// tick to the next. For example, you can use it to compare state across consecutive batches.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![(1, 2), (2, 3)]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .into_keyed();
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![(2, 4), (3, 5)]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .into_keyed()
+    /// #   .defer_tick(); // appears on the second tick
+    /// let input_batch = // first tick: { 1: 2, 2: 3 }, second tick: { 2: 4, 3: 5 }
+    /// # batch_first_tick.chain(batch_second_tick).first();
+    /// input_batch.clone().filter_key_not_in(
+    ///     input_batch.defer_tick().keys() // keys present in the previous tick
+    /// )
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: 2, 2: 3 } (first tick), { 3: 5 } (second tick)
+    /// # for w in vec![(1, 2), (2, 3), (3, 5)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn defer_tick(self) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
         KeyedSingleton {
             underlying: self.underlying.defer_tick(),
