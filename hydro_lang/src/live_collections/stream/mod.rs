@@ -8,7 +8,6 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
-use syn::parse_quote;
 use tokio::time::Instant;
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
@@ -24,6 +23,7 @@ use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
+use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
 pub mod networking;
@@ -1079,25 +1079,15 @@ where
         K: Ord,
         F: Fn(&T) -> K + 'a,
     {
-        let f = key.splice_fn1_borrow_ctx(&self.location);
-
-        let wrapped: syn::Expr = parse_quote!({
-            let key_fn = #f;
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| key.splice_fn1_borrow_ctx(ctx));
+        self.reduce_commutative_idempotent(q!({
+            let key_fn = f;
             move |curr, new| {
                 if key_fn(&new) > key_fn(&*curr) {
                     *curr = new;
                 }
             }
-        });
-
-        Optional::new(
-            self.location.clone(),
-            HydroNode::Reduce {
-                f: wrapped.into(),
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            },
-        )
+        }))
     }
 
     /// Computes the minimum element in the stream as an [`Optional`], which
