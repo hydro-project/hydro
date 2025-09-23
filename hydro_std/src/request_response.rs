@@ -1,10 +1,10 @@
 use std::hash::Hash;
 
 use hydro_lang::live_collections::stream::NoOrder;
-use hydro_lang::location::{Atomic, Location, NoTick};
+use hydro_lang::location::{Location, NoTick};
 use hydro_lang::prelude::*;
 
-type JoinResponses<K, M, V, L> = Stream<(K, (M, V)), Atomic<L>, Unbounded, NoOrder>;
+type JoinResponses<K, M, V, L> = Stream<(K, (M, V)), L, Unbounded, NoOrder>;
 
 /// Given an incoming stream of request-response responses, joins with metadata generated
 /// at request time that is stored in-memory.
@@ -14,7 +14,7 @@ type JoinResponses<K, M, V, L> = Stream<(K, (M, V)), Atomic<L>, Unbounded, NoOrd
 /// key, same for the metadata stream.
 pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<'a> + NoTick>(
     tick: &Tick<L>,
-    responses: Stream<(K, V), Atomic<L>, Unbounded, NoOrder>,
+    responses: Stream<(K, V), L, Unbounded, NoOrder>,
     metadata: Stream<(K, M), Tick<L>, Bounded, NoOrder>,
 ) -> JoinResponses<K, M, V, L> {
     let (remaining_to_join_complete_cycle, remaining_to_join) =
@@ -22,7 +22,7 @@ pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<
 
     let remaining_and_new: Stream<(K, M), Tick<L>, Bounded, _> = remaining_to_join.chain(metadata);
 
-    let responses = responses.batch_atomic(nondet!(
+    let responses = responses.batch(tick, nondet!(
         /// Because we persist the metadata, delays resulting from
         /// batching boundaries do not affect the output contents.
     ));
@@ -38,5 +38,5 @@ pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<
     remaining_to_join_complete_cycle
         .complete_next_tick(remaining_and_new.anti_join(responses.map(q!(|(key, _)| key))));
 
-    joined_this_tick.all_ticks_atomic()
+    joined_this_tick.all_ticks()
 }

@@ -103,12 +103,11 @@ pub fn paxos_bench<'a>(
 
         // we only mark a transaction as committed when all replicas have applied it
         collect_quorum::<_, _, _, ()>(
-            c_received_payloads.atomic(&clients.tick()),
+            c_received_payloads,
             f + 1,
             num_replicas,
         )
         .0
-        .end_atomic()
     };
 
     let bench_results = bench_client(
