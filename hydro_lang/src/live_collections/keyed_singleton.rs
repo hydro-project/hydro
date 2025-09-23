@@ -2,7 +2,7 @@
 
 use std::hash::Hash;
 
-use stageleft::{IntoQuotedMut, QuotedWithContext, q};
+use stageleft::{IntoQuotedMut, q};
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::keyed_stream::KeyedStream;
@@ -15,7 +15,6 @@ use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::dynamic::LocationId;
 use crate::location::{Atomic, Location, NoTick, Tick};
-use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
 /// A marker trait indicating which components of a [`KeyedSingleton`] may change.
@@ -91,7 +90,7 @@ impl KeyedSingletonBound for UnreachableBound {
 ///     - [`Unbounded`] (asynchronous with entries added / removed / changed over time)
 ///     - [`BoundedValue`] (asynchronous with immutable values for each key and no removals)
 pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
-    pub(crate) underlying: Stream<(K, V), Loc, Bound::UnderlyingBound, NoOrder, ExactlyOnce>,
+    pub(crate) underlying: KeyedStream<K, V, Loc, Bound::UnderlyingBound, TotalOrder, ExactlyOnce>,
 }
 
 impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clone
@@ -113,7 +112,7 @@ where
 
     fn create_source(ident: syn::Ident, location: L) -> Self {
         KeyedSingleton {
-            underlying: Stream::create_source(ident, location),
+            underlying: KeyedStream::create_source(ident, location),
         }
     }
 }
@@ -159,7 +158,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }));
     /// ```
     pub fn entries(self) -> Stream<(K, V), L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
-        self.underlying
+        self.underlying.entries()
     }
 
     /// Flattens the keyed singleton into an unordered stream of just the values.
@@ -190,7 +189,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }));
     /// ```
     pub fn values(self) -> Stream<V, L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
-        self.entries().map(q!(|(_, v)| v))
+        self.underlying.values()
     }
 
     /// Flattens the keyed singleton into an unordered stream of just the keys.
@@ -259,7 +258,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         K: Hash + Eq,
     {
         KeyedSingleton {
-            underlying: self.entries().anti_join(other),
+            underlying: self.underlying.filter_key_not_in(other),
         }
     }
 
@@ -291,12 +290,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     where
         F: Fn(&V) + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
         KeyedSingleton {
-            underlying: self.underlying.inspect(q!({
-                let orig = f;
-                move |(_k, v)| orig(v)
-            })),
+            underlying: self.underlying.inspect(f),
         }
     }
 
@@ -329,7 +324,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         F: Fn(&(K, V)) + 'a,
     {
         KeyedSingleton {
-            underlying: self.underlying.inspect(f),
+            underlying: self.underlying.inspect_with_key(f),
         }
     }
 
@@ -366,8 +361,6 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         self,
     ) -> KeyedStream<K, V, L, B::UnderlyingBound, TotalOrder, ExactlyOnce> {
         self.underlying
-            .into_keyed()
-            .assume_ordering(nondet!(/** only one element per key */))
     }
 }
 
@@ -375,7 +368,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
 fn key_count_inside_tick<'a, K, V, L: Location<'a>>(
     me: KeyedSingleton<K, V, L, Bounded>,
 ) -> Singleton<usize, L, Bounded> {
-    me.underlying.count()
+    me.underlying.entries().count()
 }
 
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
@@ -411,12 +404,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     where
         F: Fn(V) -> U + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
         KeyedSingleton {
-            underlying: self.underlying.map(q!({
-                let orig = f;
-                move |(k, v)| (k, orig(v))
-            })),
+            underlying: self.underlying.map(f),
         }
     }
 
@@ -456,15 +445,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         F: Fn((K, V)) -> U + 'a,
         K: Clone,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
         KeyedSingleton {
-            underlying: self.underlying.map(q!({
-                let orig = f;
-                move |(k, v)| {
-                    let out = orig((k.clone(), v));
-                    (k, out)
-                }
-            })),
+            underlying: self.underlying.map_with_key(f),
         }
     }
 
@@ -504,12 +486,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     where
         F: Fn(&V) -> bool + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
         KeyedSingleton {
-            underlying: self.underlying.filter(q!({
-                let orig = f;
-                move |(_k, v)| orig(v)
-            })),
+            underlying: self.underlying.filter(f),
         }
     }
 
@@ -549,12 +527,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     where
         F: Fn(V) -> Option<U> + 'a,
     {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
         KeyedSingleton {
-            underlying: self.underlying.filter_map(q!({
-                let orig = f;
-                move |(k, v)| orig(v).map(|v| (k, v))
-            })),
+            underlying: self.underlying.filter_map(f),
         }
     }
 
@@ -585,7 +559,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// ```
     pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
         if L::is_top_level()
-            && let Some(tick) = self.underlying.location.try_tick()
+            && let Some(tick) = self.underlying.underlying.location.try_tick()
         {
             if B::ValueBound::is_bounded() {
                 let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
@@ -605,19 +579,16 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 Singleton::new(out.location, out.ir_node.into_inner())
             }
         } else {
-            self.underlying.count()
+            self.underlying.entries().count()
         }
     }
 
     /// An operator which allows you to "name" a `HydroNode`.
     /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
     pub fn ir_node_named(self, name: &str) -> KeyedSingleton<K, V, L, B> {
-        {
-            let mut node = self.underlying.ir_node.borrow_mut();
-            let metadata = node.metadata_mut();
-            metadata.tag = Some(name.to_string());
+        KeyedSingleton {
+            underlying: self.underlying.ir_node_named(name),
         }
-        self
     }
 }
 
@@ -742,7 +713,14 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
             underlying: lookup_result
                 .entries()
                 .map(q!(|(v, (v2, k))| (k, (v, Some(v2)))))
-                .chain(missing_values.entries().map(q!(|(v, k)| (k, (v, None))))),
+                .into_keyed()
+                .chain(
+                    missing_values
+                        .entries()
+                        .map(q!(|(v, k)| (k, (v, None))))
+                        .into_keyed(),
+                )
+                .assume_ordering(nondet!(/** only one value per key */)),
         }
     }
 }
