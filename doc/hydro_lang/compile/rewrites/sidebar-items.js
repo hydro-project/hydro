@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["persist_pullup","properties"]};
+window.SIDEBAR_ITEMS = {"mod":["properties"]};

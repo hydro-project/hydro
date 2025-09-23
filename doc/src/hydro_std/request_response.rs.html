@@ -22,7 +22,7 @@
 <a href=#22 id=22 data-nosnippet>22</a>
 <a href=#23 id=23 data-nosnippet>23</a>    <span class="kw">let </span>remaining_and_new: Stream&lt;(K, M), Tick&lt;L&gt;, Bounded, <span class="kw">_</span>&gt; = remaining_to_join.chain(metadata);
 <a href=#24 id=24 data-nosnippet>24</a>
-<a href=#25 id=25 data-nosnippet>25</a>    <span class="kw">let </span>responses = responses.batch(<span class="macro">nondet!</span>(
+<a href=#25 id=25 data-nosnippet>25</a>    <span class="kw">let </span>responses = responses.batch_atomic(<span class="macro">nondet!</span>(
 <a href=#26 id=26 data-nosnippet>26</a>        <span class="doccomment">/// Because we persist the metadata, delays resulting from
 <a href=#27 id=27 data-nosnippet>27</a>        /// batching boundaries do not affect the output contents.
 <a href=#28 id=28 data-nosnippet>28</a>    </span>));

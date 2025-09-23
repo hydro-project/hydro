@@ -219,7 +219,7 @@
 <a href=#219 id=219 data-nosnippet>219</a>        ),
 <a href=#220 id=220 data-nosnippet>220</a>    );
 <a href=#221 id=221 data-nosnippet>221</a>
-<a href=#222 id=222 data-nosnippet>222</a>    a_log_complete_cycle.complete(a_log.snapshot(<span class="macro">nondet!</span>(
+<a href=#222 id=222 data-nosnippet>222</a>    a_log_complete_cycle.complete(a_log.snapshot_atomic(<span class="macro">nondet!</span>(
 <a href=#223 id=223 data-nosnippet>223</a>        <span class="doccomment">/// We will always write payloads to the log before acknowledging them to the proposers,
 <a href=#224 id=224 data-nosnippet>224</a>        /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
 <a href=#225 id=225 data-nosnippet>225</a>        /// election will include the committed value.
@@ -531,7 +531,7 @@
 <a href=#531 id=531 data-nosnippet>531</a>                logs.push(log);
 <a href=#532 id=532 data-nosnippet>532</a>            }),
 <a href=#533 id=533 data-nosnippet>533</a>        )
-<a href=#534 id=534 data-nosnippet>534</a>        .snapshot(<span class="macro">nondet!</span>(<span class="doccomment">/** see above */</span>))
+<a href=#534 id=534 data-nosnippet>534</a>        .snapshot_atomic(<span class="macro">nondet!</span>(<span class="doccomment">/** see above */</span>))
 <a href=#535 id=535 data-nosnippet>535</a>        .entries()
 <a href=#536 id=536 data-nosnippet>536</a>        .max_by_key(<span class="macro">q!</span>(|t| t.<span class="number">0</span>))
 <a href=#537 id=537 data-nosnippet>537</a>        .zip(p_ballot.clone())
@@ -727,7 +727,7 @@
 <a href=#727 id=727 data-nosnippet>727</a>    <span class="kw">let </span>p_to_replicas = join_responses(
 <a href=#728 id=728 data-nosnippet>728</a>        proposer_tick,
 <a href=#729 id=729 data-nosnippet>729</a>        quorums.map(<span class="macro">q!</span>(|k| (k, ()))),
-<a href=#730 id=730 data-nosnippet>730</a>        payloads_to_send.batch(<span class="macro">nondet!</span>(
+<a href=#730 id=730 data-nosnippet>730</a>        payloads_to_send.batch_atomic(<span class="macro">nondet!</span>(
 <a href=#731 id=731 data-nosnippet>731</a>            <span class="doccomment">/// The metadata will always be generated before we get a quorum
 <a href=#732 id=732 data-nosnippet>732</a>            /// because `payloads_to_send` is used to send the payloads to acceptors.
 <a href=#733 id=733 data-nosnippet>733</a>        </span>)),
@@ -836,7 +836,7 @@
 <a href=#836 id=836 data-nosnippet>836</a>            }),
 <a href=#837 id=837 data-nosnippet>837</a>        );
 <a href=#838 id=838 data-nosnippet>838</a>    <span class="kw">let </span>a_log_snapshot = a_log
-<a href=#839 id=839 data-nosnippet>839</a>        .snapshot(<span class="macro">nondet!</span>(
+<a href=#839 id=839 data-nosnippet>839</a>        .snapshot_atomic(<span class="macro">nondet!</span>(
 <a href=#840 id=840 data-nosnippet>840</a>            <span class="doccomment">/// We need to know the current state of the log for p1b
 <a href=#841 id=841 data-nosnippet>841</a>            /// TODO(shadaj): this isn't a justification for correctness
 <a href=#842 id=842 data-nosnippet>842</a>        </span>))

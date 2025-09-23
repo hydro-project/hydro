@@ -23,7 +23,7 @@
 <a href=#23 id=23 data-nosnippet>23</a>    <span class="kw">let </span>tick = responses.atomic_source();
 <a href=#24 id=24 data-nosnippet>24</a>    <span class="kw">let </span>(not_all_complete_cycle, not_all) = tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, Order&gt;&gt;();
 <a href=#25 id=25 data-nosnippet>25</a>
-<a href=#26 id=26 data-nosnippet>26</a>    <span class="kw">let </span>current_responses = not_all.chain(responses.clone().batch(<span class="macro">nondet!</span>(
+<a href=#26 id=26 data-nosnippet>26</a>    <span class="kw">let </span>current_responses = not_all.chain(responses.clone().batch_atomic(<span class="macro">nondet!</span>(
 <a href=#27 id=27 data-nosnippet>27</a>        <span class="doccomment">/// We always persist values that have not reached quorum, so even
 <a href=#28 id=28 data-nosnippet>28</a>        /// with arbitrary batching we always produce deterministic quorum results.
 <a href=#29 id=29 data-nosnippet>29</a>    </span>)));
@@ -105,7 +105,7 @@
 <a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">let </span>tick = responses.atomic_source();
 <a href=#106 id=106 data-nosnippet>106</a>    <span class="kw">let </span>(not_all_complete_cycle, not_all) = tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, Order&gt;&gt;();
 <a href=#107 id=107 data-nosnippet>107</a>
-<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">let </span>current_responses = not_all.chain(responses.clone().batch(<span class="macro">nondet!</span>(
+<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">let </span>current_responses = not_all.chain(responses.clone().batch_atomic(<span class="macro">nondet!</span>(
 <a href=#109 id=109 data-nosnippet>109</a>        <span class="doccomment">/// We always persist values that have not reached quorum, so even
 <a href=#110 id=110 data-nosnippet>110</a>        /// with arbitrary batching we always produce deterministic quorum results.
 <a href=#111 id=111 data-nosnippet>111</a>    </span>)));
