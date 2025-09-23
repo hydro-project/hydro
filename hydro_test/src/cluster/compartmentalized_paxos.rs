@@ -279,7 +279,8 @@ fn sequence_payload<'a, P: PaxosPayload>(
         ))))
         .all_ticks()
         .demux_bincode(proxy_leaders)
-        .values();
+        .values()
+        .atomic(proxy_leader_tick);
 
     // Send to a specific acceptor row
     let num_acceptor_rows = config.acceptor_grid_rows;
@@ -304,6 +305,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
             }
             p2as
         }))
+        .end_atomic()
         .demux_bincode(acceptors)
         .values();
 
@@ -318,28 +320,28 @@ fn sequence_payload<'a, P: PaxosPayload>(
     // TODO: This is a liveness problem if any node in the thrifty quorum fails
     // Need special operator for per-value timeout detection
     let (quorums, fails) = collect_quorum(
-        a_to_proxy_leaders_p2b.atomic(proxy_leader_tick),
+        a_to_proxy_leaders_p2b,
         config.acceptor_grid_cols,
         config.acceptor_grid_cols,
     );
 
     let pl_to_replicas = join_responses(
-        proxy_leader_tick,
         quorums.map(q!(|k| (k, ()))),
-        p_to_proxy_leaders_p2a.batch(proxy_leader_tick, nondet!(/** TODO */)),
+        p_to_proxy_leaders_p2a.batch_atomic(nondet!(
+            /// The metadata will always be generated before we get a quorum
+            /// because our batch of `p_to_proxy_leaders_p2a` is at least after
+            /// what we sent to the acceptors.
+        )),
     );
 
     let pl_failed_p2b_to_proposer = fails
         .map(q!(|(_, ballot)| (ballot.proposer_id, ballot)))
         .inspect(q!(|(_, ballot)| println!("Failed P2b: {:?}", ballot)))
-        .end_atomic()
         .demux_bincode(proposers)
         .values();
 
     (
-        pl_to_replicas
-            .map(q!(|((slot, _ballot), (value, _))| (slot, value)))
-            .end_atomic(),
+        pl_to_replicas.map(q!(|((slot, _ballot), (value, _))| (slot, value))),
         a_log,
         pl_failed_p2b_to_proposer,
     )

@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 use hydro_lang::live_collections::stream::{NoOrder, Ordering};
-use hydro_lang::location::{Atomic, Location, NoTick};
+use hydro_lang::location::{Location, NoTick};
 use hydro_lang::prelude::*;
 
 #[expect(clippy::type_complexity, reason = "stream types with ordering")]
@@ -13,20 +13,23 @@ pub fn collect_quorum_with_response<
     V: Clone,
     E: Clone,
 >(
-    responses: Stream<(K, Result<V, E>), Atomic<L>, Unbounded, Order>,
+    responses: Stream<(K, Result<V, E>), L, Unbounded, Order>,
     min: usize,
     max: usize,
 ) -> (
-    Stream<(K, V), Atomic<L>, Unbounded, Order>,
-    Stream<(K, E), Atomic<L>, Unbounded, Order>,
+    Stream<(K, V), L, Unbounded, Order>,
+    Stream<(K, E), L, Unbounded, Order>,
 ) {
-    let tick = responses.atomic_source();
+    let tick = responses.location().tick();
     let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
 
-    let current_responses = not_all.chain(responses.clone().batch_atomic(nondet!(
-        /// We always persist values that have not reached quorum, so even
-        /// with arbitrary batching we always produce deterministic quorum results.
-    )));
+    let current_responses = not_all.chain(responses.clone().batch(
+        &tick,
+        nondet!(
+            /// We always persist values that have not reached quorum, so even
+            /// with arbitrary batching we always produce deterministic quorum results.
+        ),
+    ));
 
     let count_per_key = current_responses.clone().into_keyed().fold_commutative(
         q!(move || (0, 0)),
@@ -56,7 +59,7 @@ pub fn collect_quorum_with_response<
         current_responses.anti_join(not_reached_min_count)
     } else {
         let (min_but_not_max_complete_cycle, min_but_not_max) =
-            tick.cycle::<Stream<K, Tick<L>, Bounded, NoOrder>>();
+            tick.cycle::<Stream<K, _, Bounded, NoOrder>>();
 
         let received_from_all = count_per_key
             .filter(q!(move |(success, error)| (success + error) >= max))
@@ -79,7 +82,7 @@ pub fn collect_quorum_with_response<
                 Ok(v) => Some((key, v)),
                 Err(_) => None,
             }))
-            .all_ticks_atomic(),
+            .all_ticks(),
         responses.filter_map(q!(move |(key, res)| match res {
             Ok(_) => None,
             Err(e) => Some((key, e)),
@@ -95,20 +98,23 @@ pub fn collect_quorum<
     K: Clone + Eq + Hash,
     E: Clone,
 >(
-    responses: Stream<(K, Result<(), E>), Atomic<L>, Unbounded, Order>,
+    responses: Stream<(K, Result<(), E>), L, Unbounded, Order>,
     min: usize,
     max: usize,
 ) -> (
-    Stream<K, Atomic<L>, Unbounded, NoOrder>,
-    Stream<(K, E), Atomic<L>, Unbounded, Order>,
+    Stream<K, L, Unbounded, NoOrder>,
+    Stream<(K, E), L, Unbounded, Order>,
 ) {
-    let tick = responses.atomic_source();
+    let tick = responses.location().tick();
     let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
 
-    let current_responses = not_all.chain(responses.clone().batch_atomic(nondet!(
-        /// We always persist values that have not reached quorum, so even
-        /// with arbitrary batching we always produce deterministic quorum results.
-    )));
+    let current_responses = not_all.chain(responses.clone().batch(
+        &tick,
+        nondet!(
+            /// We always persist values that have not reached quorum, so even
+            /// with arbitrary batching we always produce deterministic quorum results.
+        ),
+    ));
 
     let count_per_key = current_responses.clone().into_keyed().fold_commutative(
         q!(move || (0, 0)),
@@ -158,7 +164,7 @@ pub fn collect_quorum<
     };
 
     (
-        just_reached_quorum.all_ticks_atomic(),
+        just_reached_quorum.all_ticks(),
         responses.filter_map(q!(move |(key, res)| match res {
             Ok(_) => None,
             Err(e) => Some((key, e)),

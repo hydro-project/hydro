@@ -514,26 +514,35 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
     Stream<(Option<usize>, P), Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder>,
 ) {
-    let (quorums, fails) = collect_quorum_with_response(
-        a_to_proposers_p1b.atomic(proposer_tick),
-        quorum_size,
-        num_quorum_participants,
-    );
+    let (quorums, fails) =
+        collect_quorum_with_response(a_to_proposers_p1b, quorum_size, num_quorum_participants);
 
     let p_received_quorum_of_p1bs = quorums
         .into_keyed()
         .assume_ordering::<TotalOrder>(nondet!(
             /// We use `flatten_unordered` later
         ))
-        .fold(
+        .fold_early_stop(
             q!(|| vec![]),
-            q!(|logs, log| {
+            q!(move |logs, log| {
                 logs.push(log);
+                logs.len() >= quorum_size
             }),
         )
-        .snapshot_atomic(nondet!(/** see above */))
         .entries()
         .max_by_key(q!(|t| t.0))
+        .snapshot(
+            proposer_tick,
+            nondet!(
+                /// If the max_by_key result is stale in this snapshot, we might be delayed in
+                /// realizing that we are the leader. This does not result in any safety issues.
+                /// In the meantime, ballots that acceptors rejected might be fed back into the max
+                /// ballot calculation, and change `p_ballot`. By using an async snapshot, we might
+                /// miss a chance to become the leader for a short period of time (until the rejected
+                /// ballots are processed). This is fine, if there is a higher ballot somewhere out
+                /// there, we should not be the leader anyways.
+            ),
+        )
         .zip(p_ballot.clone())
         .filter_map(q!(
             move |((quorum_ballot, quorum_accepted), my_ballot)| if quorum_ballot == my_ballot {
@@ -552,7 +561,7 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
         p_is_leader,
         // we used an unordered accumulator, so flattened has no order
         p_received_quorum_of_p1bs.flatten_unordered(),
-        fails.end_atomic().map(q!(|(_, ballot)| ballot)),
+        fails.map(q!(|(_, ballot)| ballot)),
     )
 }
 
@@ -721,24 +730,21 @@ fn sequence_payload<'a, P: PaxosPayload>(
     );
 
     // TOOD: only persist if we are the leader
-    let (quorums, fails) =
-        collect_quorum(a_to_proposers_p2b.atomic(proposer_tick), f + 1, 2 * f + 1);
+    let (quorums, fails) = collect_quorum(a_to_proposers_p2b, f + 1, 2 * f + 1);
 
     let p_to_replicas = join_responses(
-        proposer_tick,
         quorums.map(q!(|k| (k, ()))),
         payloads_to_send.batch_atomic(nondet!(
             /// The metadata will always be generated before we get a quorum
-            /// because `payloads_to_send` is used to send the payloads to acceptors.
+            /// because our batch of `payloads_to_send` is at least after
+            /// what we sent to the acceptors.
         )),
     );
 
     (
-        p_to_replicas
-            .end_atomic()
-            .map(q!(|((slot, _ballot), (value, _))| (slot, value))),
+        p_to_replicas.map(q!(|((slot, _ballot), (value, _))| (slot, value))),
         a_log,
-        fails.end_atomic().map(q!(|(_, ballot)| ballot)),
+        fails.map(q!(|(_, ballot)| ballot)),
     )
 }
 
