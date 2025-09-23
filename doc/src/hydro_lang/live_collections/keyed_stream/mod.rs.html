@@ -1612,122 +1612,159 @@
 <a href=#1612 id=1612 data-nosnippet>1612</a>        }
 <a href=#1613 id=1613 data-nosnippet>1613</a>    }
 <a href=#1614 id=1614 data-nosnippet>1614</a>
-<a href=#1615 id=1615 data-nosnippet>1615</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#1616 id=1616 data-nosnippet>1616</a>    </span><span class="kw">pub fn </span>defer_tick(<span class="self">self</span>) -&gt; KeyedStream&lt;K, V, Tick&lt;L&gt;, Bounded, O, R&gt; {
-<a href=#1617 id=1617 data-nosnippet>1617</a>        KeyedStream {
-<a href=#1618 id=1618 data-nosnippet>1618</a>            underlying: <span class="self">self</span>.underlying.defer_tick(),
-<a href=#1619 id=1619 data-nosnippet>1619</a>            _phantom_order: Default::default(),
-<a href=#1620 id=1620 data-nosnippet>1620</a>        }
-<a href=#1621 id=1621 data-nosnippet>1621</a>    }
-<a href=#1622 id=1622 data-nosnippet>1622</a>}
-<a href=#1623 id=1623 data-nosnippet>1623</a>
-<a href=#1624 id=1624 data-nosnippet>1624</a><span class="attr">#[cfg(test)]
-<a href=#1625 id=1625 data-nosnippet>1625</a></span><span class="kw">mod </span>tests {
-<a href=#1626 id=1626 data-nosnippet>1626</a>    <span class="kw">use </span>futures::{SinkExt, StreamExt};
-<a href=#1627 id=1627 data-nosnippet>1627</a>    <span class="kw">use </span>hydro_deploy::Deployment;
-<a href=#1628 id=1628 data-nosnippet>1628</a>    <span class="kw">use </span>stageleft::q;
-<a href=#1629 id=1629 data-nosnippet>1629</a>
-<a href=#1630 id=1630 data-nosnippet>1630</a>    <span class="kw">use </span><span class="kw">crate</span>::compile::builder::FlowBuilder;
-<a href=#1631 id=1631 data-nosnippet>1631</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
-<a href=#1632 id=1632 data-nosnippet>1632</a>    <span class="kw">use </span><span class="kw">crate</span>::nondet::nondet;
-<a href=#1633 id=1633 data-nosnippet>1633</a>
-<a href=#1634 id=1634 data-nosnippet>1634</a>    <span class="attr">#[tokio::test]
-<a href=#1635 id=1635 data-nosnippet>1635</a>    </span><span class="kw">async fn </span>reduce_watermark_filter() {
-<a href=#1636 id=1636 data-nosnippet>1636</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
-<a href=#1637 id=1637 data-nosnippet>1637</a>
-<a href=#1638 id=1638 data-nosnippet>1638</a>        <span class="kw">let </span>flow = FlowBuilder::new();
-<a href=#1639 id=1639 data-nosnippet>1639</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1640 id=1640 data-nosnippet>1640</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
-<a href=#1641 id=1641 data-nosnippet>1641</a>
-<a href=#1642 id=1642 data-nosnippet>1642</a>        <span class="kw">let </span>node_tick = node.tick();
-<a href=#1643 id=1643 data-nosnippet>1643</a>        <span class="kw">let </span>watermark = node_tick.singleton(<span class="macro">q!</span>(<span class="number">1</span>));
-<a href=#1644 id=1644 data-nosnippet>1644</a>
-<a href=#1645 id=1645 data-nosnippet>1645</a>        <span class="kw">let </span>sum = node
-<a href=#1646 id=1646 data-nosnippet>1646</a>            .source_iter(<span class="macro">q!</span>([(<span class="number">0</span>, <span class="number">100</span>), (<span class="number">1</span>, <span class="number">101</span>), (<span class="number">2</span>, <span class="number">102</span>), (<span class="number">2</span>, <span class="number">102</span>)]))
-<a href=#1647 id=1647 data-nosnippet>1647</a>            .into_keyed()
-<a href=#1648 id=1648 data-nosnippet>1648</a>            .reduce_watermark(
-<a href=#1649 id=1649 data-nosnippet>1649</a>                watermark,
-<a href=#1650 id=1650 data-nosnippet>1650</a>                <span class="macro">q!</span>(|acc, v| {
-<a href=#1651 id=1651 data-nosnippet>1651</a>                    <span class="kw-2">*</span>acc += v;
-<a href=#1652 id=1652 data-nosnippet>1652</a>                }),
-<a href=#1653 id=1653 data-nosnippet>1653</a>            )
-<a href=#1654 id=1654 data-nosnippet>1654</a>            .snapshot(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#1655 id=1655 data-nosnippet>1655</a>            .entries()
-<a href=#1656 id=1656 data-nosnippet>1656</a>            .all_ticks()
-<a href=#1657 id=1657 data-nosnippet>1657</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
-<a href=#1658 id=1658 data-nosnippet>1658</a>
-<a href=#1659 id=1659 data-nosnippet>1659</a>        <span class="kw">let </span>nodes = flow
-<a href=#1660 id=1660 data-nosnippet>1660</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
-<a href=#1661 id=1661 data-nosnippet>1661</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
-<a href=#1662 id=1662 data-nosnippet>1662</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
-<a href=#1663 id=1663 data-nosnippet>1663</a>
-<a href=#1664 id=1664 data-nosnippet>1664</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
-<a href=#1665 id=1665 data-nosnippet>1665</a>
-<a href=#1666 id=1666 data-nosnippet>1666</a>        <span class="kw">let </span><span class="kw-2">mut </span>out = nodes.connect_source_bincode(sum).<span class="kw">await</span>;
-<a href=#1667 id=1667 data-nosnippet>1667</a>
-<a href=#1668 id=1668 data-nosnippet>1668</a>        deployment.start().<span class="kw">await</span>.unwrap();
-<a href=#1669 id=1669 data-nosnippet>1669</a>
-<a href=#1670 id=1670 data-nosnippet>1670</a>        <span class="macro">assert_eq!</span>(out.next().<span class="kw">await</span>.unwrap(), (<span class="number">2</span>, <span class="number">204</span>));
-<a href=#1671 id=1671 data-nosnippet>1671</a>    }
-<a href=#1672 id=1672 data-nosnippet>1672</a>
-<a href=#1673 id=1673 data-nosnippet>1673</a>    <span class="attr">#[tokio::test]
-<a href=#1674 id=1674 data-nosnippet>1674</a>    </span><span class="kw">async fn </span>reduce_watermark_garbage_collect() {
-<a href=#1675 id=1675 data-nosnippet>1675</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
-<a href=#1676 id=1676 data-nosnippet>1676</a>
-<a href=#1677 id=1677 data-nosnippet>1677</a>        <span class="kw">let </span>flow = FlowBuilder::new();
-<a href=#1678 id=1678 data-nosnippet>1678</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1679 id=1679 data-nosnippet>1679</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
-<a href=#1680 id=1680 data-nosnippet>1680</a>        <span class="kw">let </span>(tick_send, tick_trigger) = node.source_external_bincode(<span class="kw-2">&amp;</span>external);
+<a href=#1615 id=1615 data-nosnippet>1615</a>    <span class="doccomment">/// Shifts the entries in `self` to the **next tick**, so that the returned keyed stream at
+<a href=#1616 id=1616 data-nosnippet>1616</a>    /// tick `T` always has the entries of `self` at tick `T - 1`.
+<a href=#1617 id=1617 data-nosnippet>1617</a>    ///
+<a href=#1618 id=1618 data-nosnippet>1618</a>    /// At tick `0`, the output keyed stream is empty, since there is no previous tick.
+<a href=#1619 id=1619 data-nosnippet>1619</a>    ///
+<a href=#1620 id=1620 data-nosnippet>1620</a>    /// This operator enables stateful iterative processing with ticks, by sending data from one
+<a href=#1621 id=1621 data-nosnippet>1621</a>    /// tick to the next. For example, you can use it to combine inputs across consecutive batches.
+<a href=#1622 id=1622 data-nosnippet>1622</a>    ///
+<a href=#1623 id=1623 data-nosnippet>1623</a>    /// # Example
+<a href=#1624 id=1624 data-nosnippet>1624</a>    /// ```rust
+<a href=#1625 id=1625 data-nosnippet>1625</a>    /// # use hydro_lang::prelude::*;
+<a href=#1626 id=1626 data-nosnippet>1626</a>    /// # use futures::StreamExt;
+<a href=#1627 id=1627 data-nosnippet>1627</a>    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+<a href=#1628 id=1628 data-nosnippet>1628</a>    /// let tick = process.tick();
+<a href=#1629 id=1629 data-nosnippet>1629</a>    /// # // ticks are lazy by default, forces the second tick to run
+<a href=#1630 id=1630 data-nosnippet>1630</a>    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+<a href=#1631 id=1631 data-nosnippet>1631</a>    /// # let batch_first_tick = process
+<a href=#1632 id=1632 data-nosnippet>1632</a>    /// #   .source_iter(q!(vec![(1, 2), (1, 3)]))
+<a href=#1633 id=1633 data-nosnippet>1633</a>    /// #   .batch(&amp;tick, nondet!(/** test */))
+<a href=#1634 id=1634 data-nosnippet>1634</a>    /// #   .into_keyed();
+<a href=#1635 id=1635 data-nosnippet>1635</a>    /// # let batch_second_tick = process
+<a href=#1636 id=1636 data-nosnippet>1636</a>    /// #   .source_iter(q!(vec![(1, 4), (2, 5)]))
+<a href=#1637 id=1637 data-nosnippet>1637</a>    /// #   .batch(&amp;tick, nondet!(/** test */))
+<a href=#1638 id=1638 data-nosnippet>1638</a>    /// #   .defer_tick()
+<a href=#1639 id=1639 data-nosnippet>1639</a>    /// #   .into_keyed(); // appears on the second tick
+<a href=#1640 id=1640 data-nosnippet>1640</a>    /// let changes_across_ticks = // { 1: [2, 3] } (first tick), { 1: [4], 2: [5] } (second tick)
+<a href=#1641 id=1641 data-nosnippet>1641</a>    /// # batch_first_tick.chain(batch_second_tick);
+<a href=#1642 id=1642 data-nosnippet>1642</a>    /// changes_across_ticks.clone().defer_tick().chain( // from the previous tick
+<a href=#1643 id=1643 data-nosnippet>1643</a>    ///     changes_across_ticks // from the current tick
+<a href=#1644 id=1644 data-nosnippet>1644</a>    /// )
+<a href=#1645 id=1645 data-nosnippet>1645</a>    /// # .entries().all_ticks()
+<a href=#1646 id=1646 data-nosnippet>1646</a>    /// # }, |mut stream| async move {
+<a href=#1647 id=1647 data-nosnippet>1647</a>    /// // { 1: [2, 3] } (first tick), { 1: [2, 3, 4], 2: [5] } (second tick), { 1: [4], 2: [5] } (third tick)
+<a href=#1648 id=1648 data-nosnippet>1648</a>    /// # for w in vec![(1, 2), (1, 3), (1, 2), (1, 3), (1, 4), (2, 5), (1, 4), (2, 5)] {
+<a href=#1649 id=1649 data-nosnippet>1649</a>    /// #     assert_eq!(stream.next().await.unwrap(), w);
+<a href=#1650 id=1650 data-nosnippet>1650</a>    /// # }
+<a href=#1651 id=1651 data-nosnippet>1651</a>    /// # }));
+<a href=#1652 id=1652 data-nosnippet>1652</a>    /// ```
+<a href=#1653 id=1653 data-nosnippet>1653</a>    </span><span class="kw">pub fn </span>defer_tick(<span class="self">self</span>) -&gt; KeyedStream&lt;K, V, Tick&lt;L&gt;, Bounded, O, R&gt; {
+<a href=#1654 id=1654 data-nosnippet>1654</a>        KeyedStream {
+<a href=#1655 id=1655 data-nosnippet>1655</a>            underlying: <span class="self">self</span>.underlying.defer_tick(),
+<a href=#1656 id=1656 data-nosnippet>1656</a>            _phantom_order: Default::default(),
+<a href=#1657 id=1657 data-nosnippet>1657</a>        }
+<a href=#1658 id=1658 data-nosnippet>1658</a>    }
+<a href=#1659 id=1659 data-nosnippet>1659</a>}
+<a href=#1660 id=1660 data-nosnippet>1660</a>
+<a href=#1661 id=1661 data-nosnippet>1661</a><span class="attr">#[cfg(test)]
+<a href=#1662 id=1662 data-nosnippet>1662</a></span><span class="kw">mod </span>tests {
+<a href=#1663 id=1663 data-nosnippet>1663</a>    <span class="kw">use </span>futures::{SinkExt, StreamExt};
+<a href=#1664 id=1664 data-nosnippet>1664</a>    <span class="kw">use </span>hydro_deploy::Deployment;
+<a href=#1665 id=1665 data-nosnippet>1665</a>    <span class="kw">use </span>stageleft::q;
+<a href=#1666 id=1666 data-nosnippet>1666</a>
+<a href=#1667 id=1667 data-nosnippet>1667</a>    <span class="kw">use </span><span class="kw">crate</span>::compile::builder::FlowBuilder;
+<a href=#1668 id=1668 data-nosnippet>1668</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
+<a href=#1669 id=1669 data-nosnippet>1669</a>    <span class="kw">use </span><span class="kw">crate</span>::nondet::nondet;
+<a href=#1670 id=1670 data-nosnippet>1670</a>
+<a href=#1671 id=1671 data-nosnippet>1671</a>    <span class="attr">#[tokio::test]
+<a href=#1672 id=1672 data-nosnippet>1672</a>    </span><span class="kw">async fn </span>reduce_watermark_filter() {
+<a href=#1673 id=1673 data-nosnippet>1673</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
+<a href=#1674 id=1674 data-nosnippet>1674</a>
+<a href=#1675 id=1675 data-nosnippet>1675</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1676 id=1676 data-nosnippet>1676</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1677 id=1677 data-nosnippet>1677</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#1678 id=1678 data-nosnippet>1678</a>
+<a href=#1679 id=1679 data-nosnippet>1679</a>        <span class="kw">let </span>node_tick = node.tick();
+<a href=#1680 id=1680 data-nosnippet>1680</a>        <span class="kw">let </span>watermark = node_tick.singleton(<span class="macro">q!</span>(<span class="number">1</span>));
 <a href=#1681 id=1681 data-nosnippet>1681</a>
-<a href=#1682 id=1682 data-nosnippet>1682</a>        <span class="kw">let </span>node_tick = node.tick();
-<a href=#1683 id=1683 data-nosnippet>1683</a>        <span class="kw">let </span>(watermark_complete_cycle, watermark) =
-<a href=#1684 id=1684 data-nosnippet>1684</a>            node_tick.cycle_with_initial(node_tick.singleton(<span class="macro">q!</span>(<span class="number">1</span>)));
-<a href=#1685 id=1685 data-nosnippet>1685</a>        <span class="kw">let </span>next_watermark = watermark.clone().map(<span class="macro">q!</span>(|v| v + <span class="number">1</span>));
-<a href=#1686 id=1686 data-nosnippet>1686</a>        watermark_complete_cycle.complete_next_tick(next_watermark);
-<a href=#1687 id=1687 data-nosnippet>1687</a>
-<a href=#1688 id=1688 data-nosnippet>1688</a>        <span class="kw">let </span>tick_triggered_input = node
-<a href=#1689 id=1689 data-nosnippet>1689</a>            .source_iter(<span class="macro">q!</span>([(<span class="number">3</span>, <span class="number">103</span>)]))
-<a href=#1690 id=1690 data-nosnippet>1690</a>            .batch(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#1691 id=1691 data-nosnippet>1691</a>            .filter_if_some(
-<a href=#1692 id=1692 data-nosnippet>1692</a>                tick_trigger
-<a href=#1693 id=1693 data-nosnippet>1693</a>                    .clone()
-<a href=#1694 id=1694 data-nosnippet>1694</a>                    .batch(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#1695 id=1695 data-nosnippet>1695</a>                    .first(),
-<a href=#1696 id=1696 data-nosnippet>1696</a>            )
-<a href=#1697 id=1697 data-nosnippet>1697</a>            .all_ticks();
-<a href=#1698 id=1698 data-nosnippet>1698</a>
-<a href=#1699 id=1699 data-nosnippet>1699</a>        <span class="kw">let </span>sum = node
-<a href=#1700 id=1700 data-nosnippet>1700</a>            .source_iter(<span class="macro">q!</span>([(<span class="number">0</span>, <span class="number">100</span>), (<span class="number">1</span>, <span class="number">101</span>), (<span class="number">2</span>, <span class="number">102</span>), (<span class="number">2</span>, <span class="number">102</span>)]))
-<a href=#1701 id=1701 data-nosnippet>1701</a>            .interleave(tick_triggered_input)
-<a href=#1702 id=1702 data-nosnippet>1702</a>            .into_keyed()
-<a href=#1703 id=1703 data-nosnippet>1703</a>            .reduce_watermark_commutative(
-<a href=#1704 id=1704 data-nosnippet>1704</a>                watermark,
-<a href=#1705 id=1705 data-nosnippet>1705</a>                <span class="macro">q!</span>(|acc, v| {
-<a href=#1706 id=1706 data-nosnippet>1706</a>                    <span class="kw-2">*</span>acc += v;
-<a href=#1707 id=1707 data-nosnippet>1707</a>                }),
-<a href=#1708 id=1708 data-nosnippet>1708</a>            )
-<a href=#1709 id=1709 data-nosnippet>1709</a>            .snapshot(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#1710 id=1710 data-nosnippet>1710</a>            .entries()
-<a href=#1711 id=1711 data-nosnippet>1711</a>            .all_ticks()
-<a href=#1712 id=1712 data-nosnippet>1712</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#1682 id=1682 data-nosnippet>1682</a>        <span class="kw">let </span>sum = node
+<a href=#1683 id=1683 data-nosnippet>1683</a>            .source_iter(<span class="macro">q!</span>([(<span class="number">0</span>, <span class="number">100</span>), (<span class="number">1</span>, <span class="number">101</span>), (<span class="number">2</span>, <span class="number">102</span>), (<span class="number">2</span>, <span class="number">102</span>)]))
+<a href=#1684 id=1684 data-nosnippet>1684</a>            .into_keyed()
+<a href=#1685 id=1685 data-nosnippet>1685</a>            .reduce_watermark(
+<a href=#1686 id=1686 data-nosnippet>1686</a>                watermark,
+<a href=#1687 id=1687 data-nosnippet>1687</a>                <span class="macro">q!</span>(|acc, v| {
+<a href=#1688 id=1688 data-nosnippet>1688</a>                    <span class="kw-2">*</span>acc += v;
+<a href=#1689 id=1689 data-nosnippet>1689</a>                }),
+<a href=#1690 id=1690 data-nosnippet>1690</a>            )
+<a href=#1691 id=1691 data-nosnippet>1691</a>            .snapshot(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#1692 id=1692 data-nosnippet>1692</a>            .entries()
+<a href=#1693 id=1693 data-nosnippet>1693</a>            .all_ticks()
+<a href=#1694 id=1694 data-nosnippet>1694</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#1695 id=1695 data-nosnippet>1695</a>
+<a href=#1696 id=1696 data-nosnippet>1696</a>        <span class="kw">let </span>nodes = flow
+<a href=#1697 id=1697 data-nosnippet>1697</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
+<a href=#1698 id=1698 data-nosnippet>1698</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
+<a href=#1699 id=1699 data-nosnippet>1699</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#1700 id=1700 data-nosnippet>1700</a>
+<a href=#1701 id=1701 data-nosnippet>1701</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#1702 id=1702 data-nosnippet>1702</a>
+<a href=#1703 id=1703 data-nosnippet>1703</a>        <span class="kw">let </span><span class="kw-2">mut </span>out = nodes.connect_source_bincode(sum).<span class="kw">await</span>;
+<a href=#1704 id=1704 data-nosnippet>1704</a>
+<a href=#1705 id=1705 data-nosnippet>1705</a>        deployment.start().<span class="kw">await</span>.unwrap();
+<a href=#1706 id=1706 data-nosnippet>1706</a>
+<a href=#1707 id=1707 data-nosnippet>1707</a>        <span class="macro">assert_eq!</span>(out.next().<span class="kw">await</span>.unwrap(), (<span class="number">2</span>, <span class="number">204</span>));
+<a href=#1708 id=1708 data-nosnippet>1708</a>    }
+<a href=#1709 id=1709 data-nosnippet>1709</a>
+<a href=#1710 id=1710 data-nosnippet>1710</a>    <span class="attr">#[tokio::test]
+<a href=#1711 id=1711 data-nosnippet>1711</a>    </span><span class="kw">async fn </span>reduce_watermark_garbage_collect() {
+<a href=#1712 id=1712 data-nosnippet>1712</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#1713 id=1713 data-nosnippet>1713</a>
-<a href=#1714 id=1714 data-nosnippet>1714</a>        <span class="kw">let </span>nodes = flow
-<a href=#1715 id=1715 data-nosnippet>1715</a>            .with_default_optimize()
-<a href=#1716 id=1716 data-nosnippet>1716</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
-<a href=#1717 id=1717 data-nosnippet>1717</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
-<a href=#1718 id=1718 data-nosnippet>1718</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
-<a href=#1719 id=1719 data-nosnippet>1719</a>
-<a href=#1720 id=1720 data-nosnippet>1720</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
-<a href=#1721 id=1721 data-nosnippet>1721</a>
-<a href=#1722 id=1722 data-nosnippet>1722</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect_sink_bincode(tick_send).<span class="kw">await</span>;
-<a href=#1723 id=1723 data-nosnippet>1723</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect_source_bincode(sum).<span class="kw">await</span>;
+<a href=#1714 id=1714 data-nosnippet>1714</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1715 id=1715 data-nosnippet>1715</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#1716 id=1716 data-nosnippet>1716</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#1717 id=1717 data-nosnippet>1717</a>        <span class="kw">let </span>(tick_send, tick_trigger) = node.source_external_bincode(<span class="kw-2">&amp;</span>external);
+<a href=#1718 id=1718 data-nosnippet>1718</a>
+<a href=#1719 id=1719 data-nosnippet>1719</a>        <span class="kw">let </span>node_tick = node.tick();
+<a href=#1720 id=1720 data-nosnippet>1720</a>        <span class="kw">let </span>(watermark_complete_cycle, watermark) =
+<a href=#1721 id=1721 data-nosnippet>1721</a>            node_tick.cycle_with_initial(node_tick.singleton(<span class="macro">q!</span>(<span class="number">1</span>)));
+<a href=#1722 id=1722 data-nosnippet>1722</a>        <span class="kw">let </span>next_watermark = watermark.clone().map(<span class="macro">q!</span>(|v| v + <span class="number">1</span>));
+<a href=#1723 id=1723 data-nosnippet>1723</a>        watermark_complete_cycle.complete_next_tick(next_watermark);
 <a href=#1724 id=1724 data-nosnippet>1724</a>
-<a href=#1725 id=1725 data-nosnippet>1725</a>        deployment.start().<span class="kw">await</span>.unwrap();
-<a href=#1726 id=1726 data-nosnippet>1726</a>
-<a href=#1727 id=1727 data-nosnippet>1727</a>        <span class="macro">assert_eq!</span>(out_recv.next().<span class="kw">await</span>.unwrap(), (<span class="number">2</span>, <span class="number">204</span>));
-<a href=#1728 id=1728 data-nosnippet>1728</a>
-<a href=#1729 id=1729 data-nosnippet>1729</a>        tick_send.send(()).<span class="kw">await</span>.unwrap();
-<a href=#1730 id=1730 data-nosnippet>1730</a>
-<a href=#1731 id=1731 data-nosnippet>1731</a>        <span class="macro">assert_eq!</span>(out_recv.next().<span class="kw">await</span>.unwrap(), (<span class="number">3</span>, <span class="number">103</span>));
-<a href=#1732 id=1732 data-nosnippet>1732</a>    }
-<a href=#1733 id=1733 data-nosnippet>1733</a>}</code></pre></div></section></main></body></html>
+<a href=#1725 id=1725 data-nosnippet>1725</a>        <span class="kw">let </span>tick_triggered_input = node
+<a href=#1726 id=1726 data-nosnippet>1726</a>            .source_iter(<span class="macro">q!</span>([(<span class="number">3</span>, <span class="number">103</span>)]))
+<a href=#1727 id=1727 data-nosnippet>1727</a>            .batch(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#1728 id=1728 data-nosnippet>1728</a>            .filter_if_some(
+<a href=#1729 id=1729 data-nosnippet>1729</a>                tick_trigger
+<a href=#1730 id=1730 data-nosnippet>1730</a>                    .clone()
+<a href=#1731 id=1731 data-nosnippet>1731</a>                    .batch(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#1732 id=1732 data-nosnippet>1732</a>                    .first(),
+<a href=#1733 id=1733 data-nosnippet>1733</a>            )
+<a href=#1734 id=1734 data-nosnippet>1734</a>            .all_ticks();
+<a href=#1735 id=1735 data-nosnippet>1735</a>
+<a href=#1736 id=1736 data-nosnippet>1736</a>        <span class="kw">let </span>sum = node
+<a href=#1737 id=1737 data-nosnippet>1737</a>            .source_iter(<span class="macro">q!</span>([(<span class="number">0</span>, <span class="number">100</span>), (<span class="number">1</span>, <span class="number">101</span>), (<span class="number">2</span>, <span class="number">102</span>), (<span class="number">2</span>, <span class="number">102</span>)]))
+<a href=#1738 id=1738 data-nosnippet>1738</a>            .interleave(tick_triggered_input)
+<a href=#1739 id=1739 data-nosnippet>1739</a>            .into_keyed()
+<a href=#1740 id=1740 data-nosnippet>1740</a>            .reduce_watermark_commutative(
+<a href=#1741 id=1741 data-nosnippet>1741</a>                watermark,
+<a href=#1742 id=1742 data-nosnippet>1742</a>                <span class="macro">q!</span>(|acc, v| {
+<a href=#1743 id=1743 data-nosnippet>1743</a>                    <span class="kw-2">*</span>acc += v;
+<a href=#1744 id=1744 data-nosnippet>1744</a>                }),
+<a href=#1745 id=1745 data-nosnippet>1745</a>            )
+<a href=#1746 id=1746 data-nosnippet>1746</a>            .snapshot(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#1747 id=1747 data-nosnippet>1747</a>            .entries()
+<a href=#1748 id=1748 data-nosnippet>1748</a>            .all_ticks()
+<a href=#1749 id=1749 data-nosnippet>1749</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#1750 id=1750 data-nosnippet>1750</a>
+<a href=#1751 id=1751 data-nosnippet>1751</a>        <span class="kw">let </span>nodes = flow
+<a href=#1752 id=1752 data-nosnippet>1752</a>            .with_default_optimize()
+<a href=#1753 id=1753 data-nosnippet>1753</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
+<a href=#1754 id=1754 data-nosnippet>1754</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
+<a href=#1755 id=1755 data-nosnippet>1755</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#1756 id=1756 data-nosnippet>1756</a>
+<a href=#1757 id=1757 data-nosnippet>1757</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#1758 id=1758 data-nosnippet>1758</a>
+<a href=#1759 id=1759 data-nosnippet>1759</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect_sink_bincode(tick_send).<span class="kw">await</span>;
+<a href=#1760 id=1760 data-nosnippet>1760</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect_source_bincode(sum).<span class="kw">await</span>;
+<a href=#1761 id=1761 data-nosnippet>1761</a>
+<a href=#1762 id=1762 data-nosnippet>1762</a>        deployment.start().<span class="kw">await</span>.unwrap();
+<a href=#1763 id=1763 data-nosnippet>1763</a>
+<a href=#1764 id=1764 data-nosnippet>1764</a>        <span class="macro">assert_eq!</span>(out_recv.next().<span class="kw">await</span>.unwrap(), (<span class="number">2</span>, <span class="number">204</span>));
+<a href=#1765 id=1765 data-nosnippet>1765</a>
+<a href=#1766 id=1766 data-nosnippet>1766</a>        tick_send.send(()).<span class="kw">await</span>.unwrap();
+<a href=#1767 id=1767 data-nosnippet>1767</a>
+<a href=#1768 id=1768 data-nosnippet>1768</a>        <span class="macro">assert_eq!</span>(out_recv.next().<span class="kw">await</span>.unwrap(), (<span class="number">3</span>, <span class="number">103</span>));
+<a href=#1769 id=1769 data-nosnippet>1769</a>    }
+<a href=#1770 id=1770 data-nosnippet>1770</a>}</code></pre></div></section></main></body></html>
