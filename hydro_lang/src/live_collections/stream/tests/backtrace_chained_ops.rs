@@ -19,16 +19,8 @@ fn backtrace_chained_ops() {
     let source_meta = if let HydroRoot::ForEach { input, .. } = &finalized.ir()[0] {
         use crate::compile::ir::HydroNode;
 
-        if let HydroNode::Unpersist { inner, .. } = input.as_ref() {
-            if let HydroNode::Persist { inner, .. } = inner.as_ref() {
-                if let HydroNode::Source { metadata, .. } = inner.as_ref() {
-                    &metadata.op
-                } else {
-                    panic!()
-                }
-            } else {
-                panic!()
-            }
+        if let HydroNode::Source { metadata, .. } = input.as_ref() {
+            &metadata.op
         } else {
             panic!()
         }

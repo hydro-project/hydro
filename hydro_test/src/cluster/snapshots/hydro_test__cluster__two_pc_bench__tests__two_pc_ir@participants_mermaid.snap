@@ -26,13 +26,13 @@ linkStyle default stroke:#aaa
 4v1
 7v1
 8v1
-subgraph var_stream_10 ["var <tt>stream_10</tt>"]
-    style var_stream_10 fill:transparent
+subgraph var_stream_13 ["var <tt>stream_13</tt>"]
+    style var_stream_13 fill:transparent
     1v1
     2v1
 end
-subgraph var_stream_32 ["var <tt>stream_32</tt>"]
-    style var_stream_32 fill:transparent
+subgraph var_stream_40 ["var <tt>stream_40</tt>"]
+    style var_stream_40 fill:transparent
     5v1
     6v1
 end

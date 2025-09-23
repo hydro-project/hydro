@@ -14,7 +14,6 @@ use crate::forward_handle::ForwardRef;
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::dynamic::LocationId;
-use crate::location::tick::NoAtomic;
 use crate::location::{Atomic, Location, NoTick, Tick};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
@@ -30,16 +29,26 @@ pub trait KeyedSingletonBound {
     type UnderlyingBound: Boundedness;
     /// The [`Boundedness`] of each entry's value; [`Bounded`] means it is immutable.
     type ValueBound: Boundedness;
+
+    /// The type of the keyed singleton if the value for each key is immutable.
+    type WithBoundedValue: KeyedSingletonBound<UnderlyingBound = Self::UnderlyingBound, ValueBound = Bounded>;
+
+    /// The type of the keyed singleton if the value for each key may change asynchronously.
+    type WithUnboundedValue: KeyedSingletonBound<UnderlyingBound = Self::UnderlyingBound, ValueBound = Unbounded>;
 }
 
 impl KeyedSingletonBound for Unbounded {
     type UnderlyingBound = Unbounded;
     type ValueBound = Unbounded;
+    type WithBoundedValue = BoundedValue;
+    type WithUnboundedValue = Unbounded;
 }
 
 impl KeyedSingletonBound for Bounded {
     type UnderlyingBound = Bounded;
     type ValueBound = Bounded;
+    type WithBoundedValue = Bounded;
+    type WithUnboundedValue = UnreachableBound;
 }
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
@@ -50,6 +59,19 @@ pub struct BoundedValue;
 impl KeyedSingletonBound for BoundedValue {
     type UnderlyingBound = Unbounded;
     type ValueBound = Bounded;
+    type WithBoundedValue = BoundedValue;
+    type WithUnboundedValue = Unbounded;
+}
+
+#[doc(hidden)]
+pub struct UnreachableBound;
+
+impl KeyedSingletonBound for UnreachableBound {
+    type UnderlyingBound = Bounded;
+    type ValueBound = Unbounded;
+
+    type WithBoundedValue = Bounded;
+    type WithUnboundedValue = UnreachableBound;
 }
 
 /// Mapping from keys of type `K` to values of type `V`.
@@ -216,7 +238,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
     /// #     .into_keyed()
     /// #     .first()
-    /// #     .snapshot(&tick, nondet!(/** test */));
+    /// #     .batch(&tick, nondet!(/** test */));
     /// let keys_to_remove = process
     ///     .source_iter(q!(vec![1]))
     ///     .batch(&tick, nondet!(/** test */));
@@ -347,6 +369,13 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
             .into_keyed()
             .assume_ordering(nondet!(/** only one element per key */))
     }
+}
+
+#[cfg(stageleft_runtime)]
+fn key_count_inside_tick<'a, K, V, L: Location<'a>>(
+    me: KeyedSingleton<K, V, L, Bounded>,
+) -> Singleton<usize, L, Bounded> {
+    me.underlying.count()
 }
 
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
@@ -555,7 +584,29 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # }));
     /// ```
     pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
-        self.underlying.count()
+        if L::is_top_level()
+            && let Some(tick) = self.underlying.location.try_tick()
+        {
+            if B::ValueBound::is_bounded() {
+                let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
+                    underlying: self.underlying,
+                };
+
+                me.entries().count()
+            } else {
+                let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
+                    underlying: self.underlying,
+                };
+
+                let out = key_count_inside_tick(
+                    me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+                )
+                .latest();
+                Singleton::new(out.location, out.ir_node.into_inner())
+            }
+        } else {
+            self.underlying.count()
+        }
     }
 
     /// An operator which allows you to "name" a `HydroNode`.
@@ -698,7 +749,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
 
 impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B>
 where
-    L: Location<'a> + NoTick + NoAtomic,
+    L: Location<'a>,
 {
     /// Shifts this keyed singleton into an atomic context, which guarantees that any downstream logic
     /// will all be executed synchronously before any outputs are yielded (in [`KeyedSingleton::end_atomic`]).
@@ -713,42 +764,12 @@ where
             underlying: self.underlying.atomic(tick),
         }
     }
-
-    /// Returns a keyed singleton with a snapshot of each key-value entry at a non-deterministic
-    /// point in time.
-    ///
-    /// # Non-Determinism
-    /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
-    /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
-    pub fn snapshot(
-        self,
-        tick: &Tick<L>,
-        nondet: NonDet,
-    ) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
-        self.atomic(tick).snapshot(nondet)
-    }
 }
 
 impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, Atomic<L>, B>
 where
-    L: Location<'a> + NoTick + NoAtomic,
+    L: Location<'a> + NoTick,
 {
-    /// Returns a keyed singleton with a snapshot of each key-value entry, consistent with the
-    /// state of the keyed singleton being atomically processed.
-    ///
-    /// # Non-Determinism
-    /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
-    /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
-    pub fn snapshot(self, _nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
-        KeyedSingleton {
-            underlying: Stream::new(
-                self.underlying.location.tick,
-                // no need to unpersist due to top-level replay
-                self.underlying.ir_node.into_inner(),
-            ),
-        }
-    }
-
     /// Yields the elements of this keyed singleton back into a top-level, asynchronous execution context.
     /// See [`KeyedSingleton::atomic`] for more details.
     pub fn end_atomic(self) -> KeyedSingleton<K, V, L, B> {
@@ -802,11 +823,7 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     /// ```
     pub fn latest(self) -> KeyedSingleton<K, V, L, Unbounded> {
         KeyedSingleton {
-            underlying: Stream::new(
-                self.underlying.location.outer().clone(),
-                // no need to persist due to top-level replay
-                self.underlying.ir_node.into_inner(),
-            ),
+            underlying: self.underlying.all_ticks(),
         }
     }
 
@@ -818,13 +835,7 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     /// with the input keyed singleton's [`Tick`] context.
     pub fn latest_atomic(self) -> KeyedSingleton<K, V, Atomic<L>, Unbounded> {
         KeyedSingleton {
-            underlying: Stream::new(
-                Atomic {
-                    tick: self.underlying.location,
-                },
-                // no need to persist due to top-level replay
-                self.underlying.ir_node.into_inner(),
-            ),
+            underlying: self.underlying.all_ticks_atomic(),
         }
     }
 
@@ -836,9 +847,47 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     }
 }
 
+impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Unbounded>> KeyedSingleton<K, V, L, B>
+where
+    L: Location<'a>,
+{
+    /// Returns a keyed singleton with a snapshot of each key-value entry at a non-deterministic
+    /// point in time.
+    ///
+    /// # Non-Determinism
+    /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
+    /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
+    pub fn snapshot(
+        self,
+        tick: &Tick<L>,
+        nondet: NonDet,
+    ) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+        KeyedSingleton {
+            underlying: self.underlying.batch(tick, nondet),
+        }
+    }
+}
+
+impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Unbounded>> KeyedSingleton<K, V, Atomic<L>, B>
+where
+    L: Location<'a> + NoTick,
+{
+    /// Returns a keyed singleton with a snapshot of each key-value entry, consistent with the
+    /// state of the keyed singleton being atomically processed.
+    ///
+    /// # Non-Determinism
+    /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
+    /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
+    pub fn snapshot_atomic(self, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+        KeyedSingleton {
+            underlying: self.underlying.batch_atomic(nondet),
+        }
+    }
+}
+
 impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Bounded>> KeyedSingleton<K, V, L, B>
 where
-    L: Location<'a> + NoTick + NoAtomic,
+    L: Location<'a> + NoTick,
 {
     /// Returns a keyed singleton with entries consisting of _new_ key-value pairs that have
     /// arrived since the previous batch was released.
@@ -850,13 +899,13 @@ where
     /// Because this picks a batch of asynchronously added entries, each output keyed singleton
     /// has a non-deterministic set of key-value pairs.
     pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
-        self.atomic(tick).batch(nondet)
+        self.atomic(tick).batch_atomic(nondet)
     }
 }
 
 impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Bounded>> KeyedSingleton<K, V, Atomic<L>, B>
 where
-    L: Location<'a> + NoTick + NoAtomic,
+    L: Location<'a> + NoTick,
 {
     /// Returns a keyed singleton with entries consisting of _new_ key-value pairs that are being
     /// atomically processed.
@@ -867,9 +916,103 @@ where
     /// # Non-Determinism
     /// Because this picks a batch of asynchronously added entries, each output keyed singleton
     /// has a non-deterministic set of key-value pairs.
-    pub fn batch(self, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    pub fn batch_atomic(self, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
         KeyedSingleton {
-            underlying: self.underlying.batch(nondet),
+            underlying: self.underlying.batch_atomic(nondet),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::{SinkExt, StreamExt};
+    use hydro_deploy::Deployment;
+    use stageleft::q;
+
+    use crate::compile::builder::FlowBuilder;
+    use crate::location::Location;
+    use crate::nondet::nondet;
+
+    #[tokio::test]
+    async fn key_count_bounded_value() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input
+            .into_keyed()
+            .first()
+            .key_count()
+            .sample_eager(nondet!(/** test */))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect_sink_bincode(input_port).await;
+        let mut external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), 0);
+
+        external_in.send((1, 1)).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 1);
+
+        external_in.send((2, 2)).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 2);
+    }
+
+    #[tokio::test]
+    async fn key_count_unbounded_value() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input
+            .into_keyed()
+            .fold(q!(|| 0), q!(|acc, _| *acc += 1))
+            .key_count()
+            .sample_eager(nondet!(/** test */))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect_sink_bincode(input_port).await;
+        let mut external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), 0);
+
+        external_in.send((1, 1)).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 1);
+
+        external_in.send((1, 2)).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 1);
+
+        external_in.send((2, 2)).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 2);
+
+        external_in.send((1, 1)).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 2);
+
+        external_in.send((3, 1)).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 3);
     }
 }

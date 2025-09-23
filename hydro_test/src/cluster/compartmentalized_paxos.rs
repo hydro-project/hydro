@@ -195,7 +195,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
         ),
     );
 
-    a_log_complete_cycle.complete(a_log.snapshot(nondet!(
+    a_log_complete_cycle.complete(a_log.snapshot_atomic(nondet!(
         /// We will always write payloads to the log before acknowledging them to the proposers,
         /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
         /// election will include the committed value.

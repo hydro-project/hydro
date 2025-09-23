@@ -22,7 +22,7 @@ pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<
 
     let remaining_and_new: Stream<(K, M), Tick<L>, Bounded, _> = remaining_to_join.chain(metadata);
 
-    let responses = responses.batch(nondet!(
+    let responses = responses.batch_atomic(nondet!(
         /// Because we persist the metadata, delays resulting from
         /// batching boundaries do not affect the output contents.
     ));

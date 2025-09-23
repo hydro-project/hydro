@@ -23,7 +23,7 @@ pub fn collect_quorum_with_response<
     let tick = responses.atomic_source();
     let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
 
-    let current_responses = not_all.chain(responses.clone().batch(nondet!(
+    let current_responses = not_all.chain(responses.clone().batch_atomic(nondet!(
         /// We always persist values that have not reached quorum, so even
         /// with arbitrary batching we always produce deterministic quorum results.
     )));
@@ -105,7 +105,7 @@ pub fn collect_quorum<
     let tick = responses.atomic_source();
     let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
 
-    let current_responses = not_all.chain(responses.clone().batch(nondet!(
+    let current_responses = not_all.chain(responses.clone().batch_atomic(nondet!(
         /// We always persist values that have not reached quorum, so even
         /// with arbitrary batching we always produce deterministic quorum results.
     )));
