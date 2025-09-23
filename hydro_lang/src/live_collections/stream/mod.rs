@@ -338,6 +338,11 @@ where
         }
     }
 
+    /// Returns the [`Location`] where this stream is being materialized.
+    pub fn location(&self) -> &L {
+        &self.location
+    }
+
     /// Produces a stream based on invoking `f` on each element.
     /// If you do not want to modify the stream and instead only want to view
     /// each item use [`Stream::inspect`] instead.
@@ -2265,11 +2270,6 @@ where
                 metadata: self.location.tick.l.new_node_metadata::<T>(),
             },
         )
-    }
-
-    /// Gets the [`Tick`] inside which this stream is synchronously processed. See [`Stream::atomic`].
-    pub fn atomic_source(&self) -> Tick<L> {
-        self.location.tick.clone()
     }
 }
 
