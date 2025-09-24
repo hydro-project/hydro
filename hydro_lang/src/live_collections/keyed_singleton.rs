@@ -13,7 +13,9 @@ use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
 use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
+use crate::compile::ir::{
+    HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, CollectionKind, TeeNode,
+};
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
@@ -41,6 +43,9 @@ pub trait KeyedSingletonBound {
 
     /// The type of the keyed singleton if the value for each key may change asynchronously.
     type WithUnboundedValue: KeyedSingletonBound<UnderlyingBound = Self::UnderlyingBound, ValueBound = Unbounded>;
+
+    /// Returns the [`KeyedSingletonBoundKind`] corresponding to this type.
+    fn bound_kind() -> KeyedSingletonBoundKind;
 }
 
 impl KeyedSingletonBound for Unbounded {
@@ -48,6 +53,10 @@ impl KeyedSingletonBound for Unbounded {
     type ValueBound = Unbounded;
     type WithBoundedValue = BoundedValue;
     type WithUnboundedValue = Unbounded;
+
+    fn bound_kind() -> KeyedSingletonBoundKind {
+        KeyedSingletonBoundKind::Unbounded
+    }
 }
 
 impl KeyedSingletonBound for Bounded {
@@ -55,6 +64,10 @@ impl KeyedSingletonBound for Bounded {
     type ValueBound = Bounded;
     type WithBoundedValue = Bounded;
     type WithUnboundedValue = UnreachableBound;
+
+    fn bound_kind() -> KeyedSingletonBoundKind {
+        KeyedSingletonBoundKind::Bounded
+    }
 }
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
@@ -67,6 +80,10 @@ impl KeyedSingletonBound for BoundedValue {
     type ValueBound = Bounded;
     type WithBoundedValue = BoundedValue;
     type WithUnboundedValue = Unbounded;
+
+    fn bound_kind() -> KeyedSingletonBoundKind {
+        KeyedSingletonBoundKind::BoundedValue
+    }
 }
 
 #[doc(hidden)]
@@ -78,6 +95,10 @@ impl KeyedSingletonBound for UnreachableBound {
 
     type WithBoundedValue = Bounded;
     type WithUnboundedValue = UnreachableBound;
+
+    fn bound_kind() -> KeyedSingletonBoundKind {
+        unreachable!("UnreachableBound cannot be instantiated")
+    }
 }
 
 /// Mapping from keys of type `K` to values of type `V`.
@@ -111,7 +132,7 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clon
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
                 inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
-                metadata: self.location.new_node_metadata::<(K, V)>(),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
             };
         }
 
@@ -143,7 +164,7 @@ where
             location: location.clone(),
             ir_node: RefCell::new(HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<(K, V)>(),
+                metadata: location.new_node_metadata(Self::collection_kind()),
             }),
             _phantom: PhantomData,
         }
@@ -175,7 +196,9 @@ where
 
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        debug_assert_eq!(&Location::id(&location), &ir_node.metadata().location_kind);
+        debug_assert_eq!(ir_node.metadata().location_kind, Location::id(&location));
+        debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
+
         KeyedSingleton {
             location,
             ir_node: RefCell::new(ir_node),
@@ -186,6 +209,309 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// Returns the [`Location`] where this keyed singleton is being materialized.
     pub fn location(&self) -> &L {
         &self.location
+    }
+}
+
+#[cfg(stageleft_runtime)]
+fn key_count_inside_tick<'a, K, V, L: Location<'a>>(
+    me: KeyedSingleton<K, V, L, Bounded>,
+) -> Singleton<usize, L, Bounded> {
+    me.entries().count()
+}
+
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
+    pub(crate) fn collection_kind() -> CollectionKind {
+        CollectionKind::KeyedSingleton {
+            bound: B::bound_kind(),
+            key_type: stageleft::quote_type::<K>().into(),
+            value_type: stageleft::quote_type::<V>().into(),
+        }
+    }
+
+    /// Transforms each value by invoking `f` on each element, with keys staying the same
+    /// after transformation. If you need access to the key, see [`KeyedSingleton::map_with_key`].
+    ///
+    /// If you do not want to modify the stream and instead only want to view
+    /// each item use [`KeyedSingleton::inspect`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.map(q!(|v| v + 1))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 3, 2: 5 }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (2, 5)]);
+    /// # }));
+    /// ```
+    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, U, L, B>
+    where
+        F: Fn(V) -> U + 'a,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let map_f = q!({
+            let orig = f;
+            move |(k, v)| (k, orig(v))
+        })
+        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
+        .into();
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f: map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, U, L, B>::collection_kind()),
+            },
+        )
+    }
+
+    /// Transforms each value by invoking `f` on each key-value pair, with keys staying the same
+    /// after transformation. Unlike [`KeyedSingleton::map`], this gives access to both the key and value.
+    ///
+    /// The closure `f` receives a tuple `(K, V)` containing both the key and value, and returns
+    /// the new value `U`. The key remains unchanged in the output.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.map_with_key(q!(|(k, v)| k + v))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 3, 2: 6 }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (2, 6)]);
+    /// # }));
+    /// ```
+    pub fn map_with_key<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedSingleton<K, U, L, B>
+    where
+        F: Fn((K, V)) -> U + 'a,
+        K: Clone,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let map_f = q!({
+            let orig = f;
+            move |(k, v)| {
+                let out = orig((Clone::clone(&k), v));
+                (k, out)
+            }
+        })
+        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
+        .into();
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f: map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, U, L, B>::collection_kind()),
+            },
+        )
+    }
+
+    /// Creates a keyed singleton containing only the key-value pairs where the value satisfies a predicate `f`.
+    ///
+    /// The closure `f` receives a reference `&V` to each value and returns a boolean. If the predicate
+    /// returns `true`, the key-value pair is included in the output. If it returns `false`, the pair
+    /// is filtered out.
+    ///
+    /// The closure `f` receives a reference `&V` rather than an owned value `V` because filtering does
+    /// not modify or take ownership of the values. If you need to modify the values while filtering
+    /// use [`KeyedSingleton::filter_map`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: 2, 2: 4, 3: 1 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4), (3, 1)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.filter(q!(|&v| v > 1))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 2, 2: 4 }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (2, 4)]);
+    /// # }));
+    /// ```
+    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, V, L, B>
+    where
+        F: Fn(&V) -> bool + 'a,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let filter_f = q!({
+            let orig = f;
+            move |t: &(_, _)| orig(&t.1)
+        })
+        .splice_fn1_borrow_ctx::<(K, V), bool>(&self.location)
+        .into();
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Filter {
+                f: filter_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
+            },
+        )
+    }
+
+    /// An operator that both filters and maps values. It yields only the key-value pairs where
+    /// the supplied closure `f` returns `Some(value)`.
+    ///
+    /// The closure `f` receives each value `V` and returns `Option<U>`. If the closure returns
+    /// `Some(new_value)`, the key-value pair `(key, new_value)` is included in the output.
+    /// If it returns `None`, the key-value pair is filtered out.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let keyed_singleton = // { 1: "42", 2: "hello", 3: "100" }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, "42"), (2, "hello"), (3, "100")]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.filter_map(q!(|s| s.parse::<i32>().ok()))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: 42, 3: 100 }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 42), (3, 100)]);
+    /// # }));
+    /// ```
+    pub fn filter_map<F, U>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedSingleton<K, U, L, B>
+    where
+        F: Fn(V) -> Option<U> + 'a,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let filter_map_f = q!({
+            let orig = f;
+            move |(k, v)| orig(v).map(|o| (k, o))
+        })
+        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&self.location)
+        .into();
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::FilterMap {
+                f: filter_map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, U, L, B>::collection_kind()),
+            },
+        )
+    }
+
+    /// Gets the number of keys in the keyed singleton.
+    ///
+    /// The output singleton will be unbounded if the input is [`Unbounded`] or [`BoundedValue`],
+    /// since keys may be added / removed over time. When the set of keys changes, the count will
+    /// be asynchronously updated.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let keyed_singleton = // { 1: "a", 2: "b", 3: "c" }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, "a"), (2, "b"), (3, "c")]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// keyed_singleton.key_count()
+    /// # .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 3
+    /// # assert_eq!(stream.next().await.unwrap(), 3);
+    /// # }));
+    /// ```
+    pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
+        if B::ValueBound::is_bounded() {
+            let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
+                location: self.location,
+                ir_node: self.ir_node,
+                _phantom: PhantomData,
+            };
+
+            me.entries().count()
+        } else if L::is_top_level()
+            && let Some(tick) = self.location.try_tick()
+        {
+            let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
+                location: self.location,
+                ir_node: self.ir_node,
+                _phantom: PhantomData,
+            };
+
+            let out =
+                key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
+                    .latest();
+            Singleton::new(out.location, out.ir_node.into_inner())
+        } else {
+            panic!("Unbounded KeyedSingleton inside a tick");
+        }
+    }
+
+    /// An operator which allows you to "name" a `HydroNode`.
+    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
+    pub fn ir_node_named(self, name: &str) -> KeyedSingleton<K, V, L, B> {
+        {
+            let mut node = self.ir_node.borrow_mut();
+            let metadata = node.metadata_mut();
+            metadata.tag = Some(name.to_string());
+        }
+        self
     }
 }
 
@@ -220,7 +546,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }));
     /// ```
     pub fn entries(self) -> Stream<(K, V), L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
-        Stream::new(self.location, self.ir_node.into_inner())
+        self.into_keyed_stream().entries()
     }
 
     /// Flattens the keyed singleton into an unordered stream of just the values.
@@ -260,7 +586,13 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
             HydroNode::Map {
                 f: map_f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<V>(),
+                metadata: self.location.new_node_metadata(Stream::<
+                    V,
+                    L,
+                    B::UnderlyingBound,
+                    NoOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         )
     }
@@ -337,7 +669,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
             HydroNode::AntiJoin {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V)>(),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -366,7 +698,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }
     /// # }));
     /// ```
-    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, V, L, B>
+    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> Self
     where
         F: Fn(&V) + 'a,
     {
@@ -383,7 +715,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
             HydroNode::Inspect {
                 f: inspect_f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V)>(),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -412,7 +744,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }
     /// # }));
     /// ```
-    pub fn inspect_with_key<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> KeyedSingleton<K, V, L, B>
+    pub fn inspect_with_key<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
     where
         F: Fn(&(K, V)) + 'a,
     {
@@ -423,7 +755,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
             HydroNode::Inspect {
                 f: inspect_f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V)>(),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -460,294 +792,20 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     pub fn into_keyed_stream(
         self,
     ) -> KeyedStream<K, V, L, B::UnderlyingBound, TotalOrder, ExactlyOnce> {
-        KeyedStream::new(self.location, self.ir_node.into_inner())
-    }
-}
-
-#[cfg(stageleft_runtime)]
-fn key_count_inside_tick<'a, K, V, L: Location<'a>>(
-    me: KeyedSingleton<K, V, L, Bounded>,
-) -> Singleton<usize, L, Bounded> {
-    me.entries().count()
-}
-
-impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
-    /// Transforms each value by invoking `f` on each element, with keys staying the same
-    /// after transformation. If you need access to the key, see [`KeyedSingleton::map_with_key`].
-    ///
-    /// If you do not want to modify the stream and instead only want to view
-    /// each item use [`KeyedSingleton::inspect`] instead.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let keyed_singleton = // { 1: 2, 2: 4 }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
-    /// #     .into_keyed()
-    /// #     .first();
-    /// keyed_singleton.map(q!(|v| v + 1))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: 3, 2: 5 }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 3), (2, 5)]);
-    /// # }));
-    /// ```
-    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, U, L, B>
-    where
-        F: Fn(V) -> U + 'a,
-    {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        let map_f = q!({
-            let orig = f;
-            move |(k, v)| (k, orig(v))
-        })
-        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
-        .into();
-
-        KeyedSingleton::new(
+        KeyedStream::new(
             self.location.clone(),
-            HydroNode::Map {
-                f: map_f,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, U)>(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(KeyedStream::<
+                    K,
+                    V,
+                    L,
+                    B::UnderlyingBound,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         )
-    }
-
-    /// Transforms each value by invoking `f` on each key-value pair, with keys staying the same
-    /// after transformation. Unlike [`KeyedSingleton::map`], this gives access to both the key and value.
-    ///
-    /// The closure `f` receives a tuple `(K, V)` containing both the key and value, and returns
-    /// the new value `U`. The key remains unchanged in the output.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let keyed_singleton = // { 1: 2, 2: 4 }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
-    /// #     .into_keyed()
-    /// #     .first();
-    /// keyed_singleton.map_with_key(q!(|(k, v)| k + v))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: 3, 2: 6 }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 3), (2, 6)]);
-    /// # }));
-    /// ```
-    pub fn map_with_key<U, F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
-    ) -> KeyedSingleton<K, U, L, B>
-    where
-        F: Fn((K, V)) -> U + 'a,
-        K: Clone,
-    {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        let map_f = q!({
-            let orig = f;
-            move |(k, v)| {
-                let out = orig((Clone::clone(&k), v));
-                (k, out)
-            }
-        })
-        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
-        .into();
-
-        KeyedSingleton::new(
-            self.location.clone(),
-            HydroNode::Map {
-                f: map_f,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, U)>(),
-            },
-        )
-    }
-
-    /// Creates a keyed singleton containing only the key-value pairs where the value satisfies a predicate `f`.
-    ///
-    /// The closure `f` receives a reference `&V` to each value and returns a boolean. If the predicate
-    /// returns `true`, the key-value pair is included in the output. If it returns `false`, the pair
-    /// is filtered out.
-    ///
-    /// The closure `f` receives a reference `&V` rather than an owned value `V` because filtering does
-    /// not modify or take ownership of the values. If you need to modify the values while filtering
-    /// use [`KeyedSingleton::filter_map`] instead.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let keyed_singleton = // { 1: 2, 2: 4, 3: 1 }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, 2), (2, 4), (3, 1)]))
-    /// #     .into_keyed()
-    /// #     .first();
-    /// keyed_singleton.filter(q!(|&v| v > 1))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: 2, 2: 4 }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 2), (2, 4)]);
-    /// # }));
-    /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, V, L, B>
-    where
-        F: Fn(&V) -> bool + 'a,
-    {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
-        let filter_f = q!({
-            let orig = f;
-            move |t: &(_, _)| orig(&t.1)
-        })
-        .splice_fn1_borrow_ctx::<(K, V), bool>(&self.location)
-        .into();
-
-        KeyedSingleton::new(
-            self.location.clone(),
-            HydroNode::Filter {
-                f: filter_f,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V)>(),
-            },
-        )
-    }
-
-    /// An operator that both filters and maps values. It yields only the key-value pairs where
-    /// the supplied closure `f` returns `Some(value)`.
-    ///
-    /// The closure `f` receives each value `V` and returns `Option<U>`. If the closure returns
-    /// `Some(new_value)`, the key-value pair `(key, new_value)` is included in the output.
-    /// If it returns `None`, the key-value pair is filtered out.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let keyed_singleton = // { 1: "42", 2: "hello", 3: "100" }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, "42"), (2, "hello"), (3, "100")]))
-    /// #     .into_keyed()
-    /// #     .first();
-    /// keyed_singleton.filter_map(q!(|s| s.parse::<i32>().ok()))
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: 42, 3: 100 }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 42), (3, 100)]);
-    /// # }));
-    /// ```
-    pub fn filter_map<F, U>(
-        self,
-        f: impl IntoQuotedMut<'a, F, L> + Copy,
-    ) -> KeyedSingleton<K, U, L, B>
-    where
-        F: Fn(V) -> Option<U> + 'a,
-    {
-        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        let filter_map_f = q!({
-            let orig = f;
-            move |(k, v)| orig(v).map(|o| (k, o))
-        })
-        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&self.location)
-        .into();
-
-        KeyedSingleton::new(
-            self.location.clone(),
-            HydroNode::FilterMap {
-                f: filter_map_f,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, U)>(),
-            },
-        )
-    }
-
-    /// Gets the number of keys in the keyed singleton.
-    ///
-    /// The output singleton will be unbounded if the input is [`Unbounded`] or [`BoundedValue`],
-    /// since keys may be added / removed over time. When the set of keys changes, the count will
-    /// be asynchronously updated.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
-    /// let keyed_singleton = // { 1: "a", 2: "b", 3: "c" }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, "a"), (2, "b"), (3, "c")]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
-    /// #     .first();
-    /// keyed_singleton.key_count()
-    /// # .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // 3
-    /// # assert_eq!(stream.next().await.unwrap(), 3);
-    /// # }));
-    /// ```
-    pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
-        if B::ValueBound::is_bounded() {
-            let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
-                location: self.location,
-                ir_node: self.ir_node,
-                _phantom: PhantomData,
-            };
-
-            me.entries().count()
-        } else if L::is_top_level()
-            && let Some(tick) = self.location.try_tick()
-        {
-            let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
-                location: self.location,
-                ir_node: self.ir_node,
-                _phantom: PhantomData,
-            };
-
-            let out =
-                key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
-                    .latest();
-            Singleton::new(out.location, out.ir_node.into_inner())
-        } else {
-            panic!("Unbounded KeyedSingleton inside a tick");
-        }
-    }
-
-    /// An operator which allows you to "name" a `HydroNode`.
-    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
-    pub fn ir_node_named(self, name: &str) -> KeyedSingleton<K, V, L, B> {
-        {
-            let mut node = self.ir_node.borrow_mut();
-            let metadata = node.metadata_mut();
-            metadata.tag = Some(name.to_string());
-        }
-        self
     }
 }
 
@@ -877,11 +935,21 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
                     .entries()
                     .map(q!(|(v, k)| (k, (v, None))))
                     .into_keyed(),
-            )
-            .assume_ordering::<TotalOrder>(nondet!(/** only one value per key */));
+            );
 
-        // TODO(shadaj): requires cast
-        KeyedSingleton::new(result_stream.location, result_stream.ir_node.into_inner())
+        KeyedSingleton::new(
+            result_stream.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(result_stream.ir_node.into_inner()),
+                metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    (V, Option<V2>),
+                    Tick<L>,
+                    Bounded,
+                >::collection_kind(
+                )),
+            },
+        )
     }
 }
 
@@ -903,7 +971,8 @@ where
             out_location.clone(),
             HydroNode::BeginAtomic {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: out_location.new_node_metadata::<(K, V)>(),
+                metadata: out_location
+                    .new_node_metadata(KeyedSingleton::<K, V, Atomic<L>, B>::collection_kind()),
             },
         )
     }
@@ -920,7 +989,11 @@ where
             self.location.tick.l.clone(),
             HydroNode::EndAtomic {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.tick.l.new_node_metadata::<(K, V)>(),
+                metadata: self
+                    .location
+                    .tick
+                    .l
+                    .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
             },
         )
     }
@@ -973,7 +1046,12 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
             self.location.outer().clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.outer().new_node_metadata::<(K, V)>(),
+                metadata: self.location.outer().new_node_metadata(KeyedSingleton::<
+                    K,
+                    V,
+                    L,
+                    Unbounded,
+                >::collection_kind()),
             },
         )
     }
@@ -993,7 +1071,12 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
             out_location.clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: out_location.new_node_metadata::<(K, V)>(),
+                metadata: out_location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    V,
+                    Atomic<L>,
+                    Unbounded,
+                >::collection_kind()),
             },
         )
     }
@@ -1041,7 +1124,9 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
             self.location.clone(),
             HydroNode::DeferTick {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V)>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
             },
         )
     }
@@ -1067,7 +1152,8 @@ where
             tick.clone(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: tick.new_node_metadata::<(K, V)>(),
+                metadata: tick
+                    .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
             },
         )
     }
@@ -1088,7 +1174,12 @@ where
             self.location.clone().tick,
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.tick.new_node_metadata::<(K, V)>(),
+                metadata: self.location.tick.new_node_metadata(KeyedSingleton::<
+                    K,
+                    V,
+                    Tick<L>,
+                    Bounded,
+                >::collection_kind()),
             },
         )
     }
@@ -1131,7 +1222,12 @@ where
             self.location.clone().tick,
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.tick.new_node_metadata::<(K, V)>(),
+                metadata: self.location.tick.new_node_metadata(KeyedSingleton::<
+                    K,
+                    V,
+                    Tick<L>,
+                    Bounded,
+                >::collection_kind()),
             },
         )
     }
