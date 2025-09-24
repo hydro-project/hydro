@@ -11,11 +11,12 @@ use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
 use super::stream::{ExactlyOnce, MinOrder, MinRetries, NoOrder, Stream, TotalOrder};
 use crate::compile::ir::HydroNode;
-use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::dynamic::LocationId;
+use crate::location::tick::DeferTick;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
@@ -65,14 +66,37 @@ where
     }
 }
 
-impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order: Ordering, R: Retries>
-    Clone for KeyedStream<K, V, Loc, Bound, Order, R>
+impl<'a, K, V, L, O: Ordering, R: Retries> DeferTick for KeyedStream<K, V, Tick<L>, Bounded, O, R>
+where
+    L: Location<'a>,
 {
-    fn clone(&self) -> Self {
+    fn defer_tick(self) -> Self {
+        KeyedStream::defer_tick(self)
+    }
+}
+
+impl<'a, K, V, L, O: Ordering, R: Retries> CycleCollection<'a, TickCycle>
+    for KeyedStream<K, V, Tick<L>, Bounded, O, R>
+where
+    L: Location<'a>,
+{
+    type Location = Tick<L>;
+
+    fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
         KeyedStream {
-            underlying: self.underlying.clone(),
-            _phantom_order: PhantomData,
+            underlying: Stream::create_source(ident, location),
+            _phantom_order: Default::default(),
         }
+    }
+}
+
+impl<'a, K, V, L, O: Ordering, R: Retries> ReceiverComplete<'a, TickCycle>
+    for KeyedStream<K, V, Tick<L>, Bounded, O, R>
+where
+    L: Location<'a>,
+{
+    fn complete(self, ident: syn::Ident, expected_location: LocationId) {
+        self.underlying.complete(ident, expected_location);
     }
 }
 
@@ -84,7 +108,10 @@ where
     type Location = L;
 
     fn create_source(ident: syn::Ident, location: L) -> Self {
-        Stream::create_source(ident, location).into_keyed()
+        KeyedStream {
+            underlying: Stream::create_source(ident, location),
+            _phantom_order: Default::default(),
+        }
     }
 }
 
@@ -98,9 +125,25 @@ where
     }
 }
 
+impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order: Ordering, R: Retries>
+    Clone for KeyedStream<K, V, Loc, Bound, Order, R>
+{
+    fn clone(&self) -> Self {
+        KeyedStream {
+            underlying: self.underlying.clone(),
+            _phantom_order: PhantomData,
+        }
+    }
+}
+
 impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     KeyedStream<K, V, L, B, O, R>
 {
+    /// Returns the [`Location`] where the keyed stream is materialized.
+    pub fn location(&self) -> &L {
+        self.underlying.location()
+    }
+
     /// Explicitly "casts" the keyed stream to a type with a different ordering
     /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.
