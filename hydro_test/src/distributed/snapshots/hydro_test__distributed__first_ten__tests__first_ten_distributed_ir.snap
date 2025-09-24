@@ -19,9 +19,12 @@ expression: builder.finalize().ir()
                 location_kind: Process(
                     1,
                 ),
-                output_type: Some(
-                    std :: string :: String,
-                ),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: std :: string :: String,
+                },
             },
         },
         op_metadata: HydroIrOpMetadata,
@@ -46,27 +49,36 @@ expression: builder.finalize().ir()
                         location_kind: Process(
                             1,
                         ),
-                        output_type: Some(
-                            u32,
-                        ),
+                        collection_kind: Stream {
+                            bound: Unbounded,
+                            order: TotalOrder,
+                            retry: ExactlyOnce,
+                            element_type: u32,
+                        },
                     },
                 },
                 metadata: HydroIrMetadata {
                     location_kind: Process(
                         1,
                     ),
-                    output_type: Some(
-                        hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
-                    ),
+                    collection_kind: Stream {
+                        bound: Unbounded,
+                        order: TotalOrder,
+                        retry: ExactlyOnce,
+                        element_type: hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
+                    },
                 },
             },
             metadata: HydroIrMetadata {
                 location_kind: Process(
                     2,
                 ),
-                output_type: Some(
-                    hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
-                ),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
+                },
             },
         },
         op_metadata: HydroIrOpMetadata,
