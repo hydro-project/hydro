@@ -529,8 +529,7 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
                 logs.len() >= quorum_size
             }),
         )
-        .entries()
-        .max_by_key(q!(|t| t.0))
+        .get_max_key()
         .snapshot(
             proposer_tick,
             nondet!(
