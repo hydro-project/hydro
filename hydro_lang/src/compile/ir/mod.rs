@@ -221,7 +221,7 @@ impl<'ast> Visit<'ast> for ClosureFinder {
 /// Debug displays the type's tokens.
 ///
 /// Boxes `syn::Type` which is ~320 bytes.
-#[derive(Clone, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct DebugType(pub Box<syn::Type>);
 
 impl From<syn::Type> for DebugType {
@@ -966,10 +966,65 @@ impl Hash for TeeNode {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum BoundKind {
+    Unbounded,
+    Bounded,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum StreamOrder {
+    NoOrder,
+    TotalOrder,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum StreamRetry {
+    AtLeastOnce,
+    ExactlyOnce,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum KeyedSingletonBoundKind {
+    Unbounded,
+    BoundedValue,
+    Bounded,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum CollectionKind {
+    Stream {
+        bound: BoundKind,
+        order: StreamOrder,
+        retry: StreamRetry,
+        element_type: DebugType,
+    },
+    Singleton {
+        bound: BoundKind,
+        element_type: DebugType,
+    },
+    Optional {
+        bound: BoundKind,
+        element_type: DebugType,
+    },
+    KeyedStream {
+        bound: BoundKind,
+        value_order: StreamOrder,
+        value_retry: StreamRetry,
+        key_type: DebugType,
+        value_type: DebugType,
+    },
+    KeyedSingleton {
+        bound: KeyedSingletonBoundKind,
+        key_type: DebugType,
+        value_type: DebugType,
+    },
+}
+
 #[derive(Clone)]
 pub struct HydroIrMetadata {
     pub location_kind: LocationId,
-    pub output_type: Option<DebugType>,
+    pub collection_kind: CollectionKind,
     pub cardinality: Option<usize>,
     pub tag: Option<String>,
     pub op: HydroIrOpMetadata,
@@ -992,7 +1047,7 @@ impl Debug for HydroIrMetadata {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("HydroIrMetadata")
             .field("location_kind", &self.location_kind)
-            .field("output_type", &self.output_type)
+            .field("collection_kind", &self.collection_kind)
             .finish()
     }
 }
@@ -1041,6 +1096,11 @@ impl Hash for HydroIrOpMetadata {
 #[derive(Debug, Hash)]
 pub enum HydroNode {
     Placeholder,
+
+    Cast {
+        inner: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
 
     Source {
         source: HydroSource,
@@ -1309,7 +1369,8 @@ impl HydroNode {
                 }
             }
 
-            HydroNode::Persist { inner, .. }
+            HydroNode::Cast { inner, .. }
+            | HydroNode::Persist { inner, .. }
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
             | HydroNode::Batch { inner, .. }
@@ -1372,6 +1433,10 @@ impl HydroNode {
     pub fn deep_clone(&self, seen_tees: &mut SeenTees) -> HydroNode {
         match self {
             HydroNode::Placeholder => HydroNode::Placeholder,
+            HydroNode::Cast { inner, metadata } => HydroNode::Cast {
+                inner: Box::new(inner.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
             HydroNode::Source { source, metadata } => HydroNode::Source {
                 source: source.clone(),
                 metadata: metadata.clone(),
@@ -1638,6 +1703,10 @@ impl HydroNode {
         match self {
             HydroNode::Placeholder => {
                 panic!()
+            }
+
+            HydroNode::Cast { inner, .. } => {
+                inner.emit_core(builders_or_callback, built_tees, next_stmt_id)
             }
 
             HydroNode::Persist { inner, .. } => {
@@ -2799,6 +2868,7 @@ impl HydroNode {
             HydroNode::Placeholder => {
                 panic!()
             }
+            HydroNode::Cast { .. } => {}
             HydroNode::Source { source, .. } => match source {
                 HydroSource::Stream(expr) | HydroSource::Iter(expr) => transform(expr),
                 HydroSource::ExternalNetwork() | HydroSource::Spin() => {}
@@ -2871,6 +2941,7 @@ impl HydroNode {
             HydroNode::Placeholder => {
                 panic!()
             }
+            HydroNode::Cast { metadata, .. } => metadata,
             HydroNode::Source { metadata, .. } => metadata,
             HydroNode::CycleSource { metadata, .. } => metadata,
             HydroNode::Tee { metadata, .. } => metadata,
@@ -2918,6 +2989,7 @@ impl HydroNode {
             HydroNode::Placeholder => {
                 panic!()
             }
+            HydroNode::Cast { metadata, .. } => metadata,
             HydroNode::Source { metadata, .. } => metadata,
             HydroNode::CycleSource { metadata, .. } => metadata,
             HydroNode::Tee { metadata, .. } => metadata,
@@ -2967,7 +3039,8 @@ impl HydroNode {
             | HydroNode::Tee { .. } => {
                 vec![]
             }
-            HydroNode::Persist { inner, .. }
+            HydroNode::Cast { inner, .. }
+            | HydroNode::Persist { inner, .. }
             | HydroNode::YieldConcat { inner, .. }
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
@@ -3031,6 +3104,7 @@ impl HydroNode {
             HydroNode::Placeholder => {
                 panic!()
             }
+            HydroNode::Cast { .. } => format!("Cast()"),
             HydroNode::Source { source, .. } => format!("Source({:?})", source),
             HydroNode::CycleSource { ident, .. } => format!("CycleSource({})", ident),
             HydroNode::Tee { inner, .. } => format!("Tee({})", inner.0.borrow().print_root()),
@@ -3216,7 +3290,7 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        assert_eq!(size_of::<HydroNode>(), 248);
+        assert_eq!(size_of::<HydroNode>(), 264);
     }
 
     #[test]
