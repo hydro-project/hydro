@@ -23,7 +23,7 @@ Iterations
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="87" y1="418" x2="932" y2="418"/>
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="87" y1="364" x2="932" y2="364"/>
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="87" y1="310" x2="932" y2="310"/>
-<line opacity="0.2" stroke="#000000" stroke-width="1" x1="87" y1="256" x2="932" y2="256"/>
+<line opacity="0.2" stroke="#000000" stroke-width="1" x1="87" y1="255" x2="932" y2="255"/>
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="87" y1="201" x2="932" y2="201"/>
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="87" y1="147" x2="932" y2="147"/>
 <line opacity="0.2" stroke="#000000" stroke-width="1" x1="87" y1="93" x2="932" y2="93"/>
@@ -44,10 +44,10 @@ Iterations
 60.0
 </text>
 <polyline fill="none" opacity="1" stroke="#000000" stroke-width="1" points="81,310 86,310 "/>
-<text x="77" y="256" dy="0.5ex" text-anchor="end" font-family="sans-serif" font-size="9.67741935483871" opacity="1" fill="#000000">
+<text x="77" y="255" dy="0.5ex" text-anchor="end" font-family="sans-serif" font-size="9.67741935483871" opacity="1" fill="#000000">
 80.0
 </text>
-<polyline fill="none" opacity="1" stroke="#000000" stroke-width="1" points="81,256 86,256 "/>
+<polyline fill="none" opacity="1" stroke="#000000" stroke-width="1" points="81,255 86,255 "/>
 <text x="77" y="201" dy="0.5ex" text-anchor="end" font-family="sans-serif" font-size="9.67741935483871" opacity="1" fill="#000000">
 100.0
 </text>
@@ -107,8 +107,8 @@ Iterations
 <polyline fill="none" opacity="1" stroke="#000000" stroke-width="1" points="932,473 932,478 "/>
 <polyline fill="none" opacity="1" stroke="#E31A1C" stroke-width="1" points="87,472 932,53 "/>
 <polygon opacity="0.25" fill="#E31A1C" points="87,472 932,54 932,53 "/>
-<polyline fill="none" opacity="1" stroke="#1F78B4" stroke-width="1" points="87,472 932,54 "/>
-<polygon opacity="0.25" fill="#1F78B4" points="87,472 932,54 932,54 "/>
+<polyline fill="none" opacity="1" stroke="#1F78B4" stroke-width="1" points="87,472 932,55 "/>
+<polygon opacity="0.25" fill="#1F78B4" points="87,472 932,55 932,54 "/>
 <text x="132" y="68" dy="0.76em" text-anchor="start" font-family="sans-serif" font-size="9.67741935483871" opacity="1" fill="#000000">
 Base Sample
 </text>
