@@ -891,22 +891,20 @@ where
     {
         let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
-        let out_without_bound_cast = self
-            .generator(
-                q!(move || Some(init())),
-                q!(move |key_state, v| {
-                    if let Some(key_state_value) = key_state.as_mut() {
-                        if f(key_state_value, v) {
-                            Generate::Return(key_state.take().unwrap())
-                        } else {
-                            Generate::Continue
-                        }
+        let out_without_bound_cast = self.generator(
+            q!(move || Some(init())),
+            q!(move |key_state, v| {
+                if let Some(key_state_value) = key_state.as_mut() {
+                    if f(key_state_value, v) {
+                        Generate::Return(key_state.take().unwrap())
                     } else {
-                        unreachable!()
+                        Generate::Continue
                     }
-                }),
-            )
-            .underlying;
+                } else {
+                    unreachable!()
+                }
+            }),
+        );
 
         KeyedSingleton {
             underlying: out_without_bound_cast,
@@ -994,7 +992,7 @@ where
         };
 
         KeyedSingleton {
-            underlying: Stream::new(self.underlying.location, out_ir),
+            underlying: Stream::new(self.underlying.location, out_ir).into_keyed(),
         }
     }
 
@@ -1037,7 +1035,7 @@ where
         };
 
         KeyedSingleton {
-            underlying: Stream::new(self.underlying.location, out_ir),
+            underlying: Stream::new(self.underlying.location, out_ir).into_keyed(),
         }
     }
 
@@ -1081,17 +1079,16 @@ where
             .splice_fn2_borrow_mut_ctx(&self.underlying.location)
             .into();
 
-        let out_ir = Stream::new(
-            self.underlying.location.clone(),
-            HydroNode::ReduceKeyedWatermark {
-                f,
-                input: Box::new(self.underlying.ir_node.into_inner()),
-                watermark: Box::new(other.ir_node.into_inner()),
-                metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
-            },
-        );
+        let out_ir = HydroNode::ReduceKeyedWatermark {
+            f,
+            input: Box::new(self.underlying.ir_node.into_inner()),
+            watermark: Box::new(other.ir_node.into_inner()),
+            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+        };
 
-        KeyedSingleton { underlying: out_ir }
+        KeyedSingleton {
+            underlying: Stream::new(self.underlying.location.clone(), out_ir).into_keyed(),
+        }
     }
 }
 
@@ -1477,7 +1474,7 @@ where
 
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     /// Shifts this keyed stream into an atomic context, which guarantees that any downstream logic
     /// will all be executed synchronously before any outputs are yielded (in [`KeyedStream::end_atomic`]).
@@ -1605,9 +1602,9 @@ where
     /// Unlike [`KeyedStream::all_ticks`], this preserves synchronous execution, as the output stream
     /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
     /// stream's [`Tick`] context.
-    pub fn all_ticks_atomic(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
+    pub fn all_ticks_atomic(self) -> KeyedStream<K, V, Atomic<L>, Unbounded, O, R> {
         KeyedStream {
-            underlying: self.underlying.all_ticks(),
+            underlying: self.underlying.all_ticks_atomic(),
             _phantom_order: Default::default(),
         }
     }
