@@ -7,7 +7,10 @@
 use serde::{Deserialize, Serialize};
 
 #[cfg(stageleft_runtime)]
-use crate::compile::{builder::FlowState, ir::HydroIrMetadata};
+use crate::compile::{
+    builder::FlowState,
+    ir::{CollectionKind, HydroIrMetadata},
+};
 
 #[expect(missing_docs, reason = "TODO")]
 #[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
@@ -80,15 +83,13 @@ pub(crate) trait DynLocation: Clone {
     fn flow_state(&self) -> &FlowState;
     fn is_top_level() -> bool;
 
-    fn new_node_metadata<T>(&self) -> HydroIrMetadata {
-        use stageleft::quote_type;
-
+    fn new_node_metadata(&self, collection_kind: CollectionKind) -> HydroIrMetadata {
         use crate::compile::ir::HydroIrOpMetadata;
         use crate::compile::ir::backtrace::Backtrace;
 
         HydroIrMetadata {
             location_kind: self.id(),
-            output_type: Some(quote_type::<T>().into()),
+            collection_kind,
             cardinality: None,
             tag: None,
             op: HydroIrOpMetadata {
