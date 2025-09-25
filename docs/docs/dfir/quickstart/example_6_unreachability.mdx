@@ -11,7 +11,7 @@ import { getLines, extractOutput, extractMermaid } from '../../../src/util';
 > * Extending a program with additional downstream logic.
 > * DFIR's ([`difference`](../syntax/surface_ops_gen.md#difference)) operator
 > * A first exposure to the concepts of _strata_ and _ticks_
-> * An example of how a [cyclic dataflow](../concepts/cyclic_flows) in one stratum executes to completion before starting the next stratum.
+> * An example of how a [cyclic dataflow](../concepts/cyclic_flows.mdx) in one stratum executes to completion before starting the next stratum.
 
 Our next example builds on the previous by finding vertices that are _not_ reachable. To do this, we need to capture the set `all_vertices`, and use a [difference](../syntax/surface_ops_gen.md#difference) operator to form the difference between that set of vertices and `reachable_vertices`.
 
@@ -77,15 +77,15 @@ output of the first stratum, and delineates the separation of execution between 
 
 If you look carefully, you'll see two subgraphs labeled with `stratum 0`. The reason that stratum 0 was broken into subgraphs has nothing to do with
 correctness, but rather the way that DFIR graphs are compiled and scheduled (as
-discussed in the section on [In-Out Trees](../architecture/in-out_trees). We need not concern ourselves with this detail other than to look carefully at the `stratum` labels on the grey boxes in our Mermaid diagrams.
+discussed in the section on [In-Out Trees](../architecture/in-out_trees.md). We need not concern ourselves with this detail other than to look carefully at the `stratum` labels on the grey boxes in our Mermaid diagrams.
 
 All the subgraphs labeled `stratum 0` are run first to completion,
 and then all the subgraphs labeled `stratum 1` are run. This captures the requirements of the `difference` operator: it has to wait for its full negative input before it can start producing output. Note
 how the `difference` operator has two inputs (labeled `pos` and `neg`), and only the `neg` input shows up as blocking (with the bold edge ending in a ball).
 
-In this Mermaid graph, note that stratum 0 has a recursive loop back through `my_join`, and `tee`s off output to the `difference` operator in stratum 1 via the handoff and the blocking `neg` input. This means that DFIR will first run the loop of stratum 0 repeatedly until all the transitive reached vertices are passed to the handoff (a [fixpoint](../concepts/cyclic_flows)), before moving on to compute the unreached vertices via stratum 1.
+In this Mermaid graph, note that stratum 0 has a recursive loop back through `my_join`, and `tee`s off output to the `difference` operator in stratum 1 via the handoff and the blocking `neg` input. This means that DFIR will first run the loop of stratum 0 repeatedly until all the transitive reached vertices are passed to the handoff (a [fixpoint](../concepts/cyclic_flows.mdx)), before moving on to compute the unreached vertices via stratum 1.
 
-After all strata are run, DFIR returns to stratum 0; this begins the next _tick_. This doesn't really matter for this example, but it is important for long-running DFIR services that accept input from the outside world. More on this topic in the chapter on [time](../concepts/life_and_times).
+After all strata are run, DFIR returns to stratum 0; this begins the next _tick_. This doesn't really matter for this example, but it is important for long-running DFIR services that accept input from the outside world. More on this topic in the chapter on [time](../concepts/life_and_times.md).
 
 
 
