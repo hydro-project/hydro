@@ -269,7 +269,6 @@ where
             .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -310,7 +309,6 @@ where
             .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -2978,5 +2976,39 @@ mod tests {
 
         external_in.send(2).await.unwrap();
         assert_eq!(external_out.next().await.unwrap(), (1, 2));
+    }
+
+    #[tokio::test]
+    async fn unbounded_unique_remembers_state() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input.unique().send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect_sink_bincode(input_port).await;
+        let mut external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 1);
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 2);
+
+        external_in.send(1).await.unwrap();
+        external_in.send(3).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 3);
     }
 }
