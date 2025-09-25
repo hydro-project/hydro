@@ -81,6 +81,8 @@ jobs:
         # Not supported by nextest: https://github.com/nextest-rs/nextest/issues/16
         run: cargo test --no-fail-fast --features hydro_lang/deploy --doc
 
+      - run: rm -rf target/hydro_trybuild # trybuild creates a lot of files, and they are not needed after tests
+        shell: bash
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo check --all-targets
       - run: cargo check --all-targets --no-default-features

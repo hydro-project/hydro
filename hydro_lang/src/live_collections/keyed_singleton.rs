@@ -580,7 +580,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// ```
     pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
         if L::is_top_level()
-            && let Some(tick) = self.underlying.underlying.location.try_tick()
+            && let Some(tick) = self.underlying.location.try_tick()
         {
             if B::ValueBound::is_bounded() {
                 let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
@@ -632,7 +632,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         K: Eq + Hash,
     {
         if L::is_top_level()
-            && let Some(tick) = self.underlying.underlying.location.try_tick()
+            && let Some(tick) = self.underlying.location.try_tick()
         {
             if B::ValueBound::is_bounded() {
                 let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {

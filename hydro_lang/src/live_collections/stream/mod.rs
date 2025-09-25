@@ -1872,10 +1872,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// ```
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
-        KeyedStream {
-            underlying: self.weakest_ordering(),
-            _phantom_order: Default::default(),
-        }
+        KeyedStream::new(self.location, self.ir_node.into_inner())
     }
 }
 

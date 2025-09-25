@@ -1,8 +1,11 @@
 //! Definitions for the [`KeyedStream`] live collection.
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
+use std::ops::Deref;
+use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
@@ -10,12 +13,13 @@ use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
 use super::stream::{ExactlyOnce, MinOrder, MinRetries, NoOrder, Stream, TotalOrder};
-use crate::compile::ir::HydroNode;
+use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::stream::{Ordering, Retries};
-use crate::location::dynamic::LocationId;
+#[cfg(stageleft_runtime)]
+use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::DeferTick;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
@@ -49,8 +53,10 @@ pub struct KeyedStream<
     Order: Ordering = TotalOrder,
     Retry: Retries = ExactlyOnce,
 > {
-    pub(crate) underlying: Stream<(K, V), Loc, Bound, NoOrder, Retry>,
-    pub(crate) _phantom_order: PhantomData<Order>,
+    pub(crate) location: Loc,
+    pub(crate) ir_node: RefCell<HydroNode>,
+
+    _phantom: PhantomData<(K, V, Loc, Bound, Order, Retry)>,
 }
 
 impl<'a, K, V, L, B: Boundedness, R: Retries> From<KeyedStream<K, V, L, B, TotalOrder, R>>
@@ -60,8 +66,9 @@ where
 {
     fn from(stream: KeyedStream<K, V, L, B, TotalOrder, R>) -> KeyedStream<K, V, L, B, NoOrder, R> {
         KeyedStream {
-            underlying: stream.underlying,
-            _phantom_order: Default::default(),
+            location: stream.location,
+            ir_node: stream.ir_node,
+            _phantom: PhantomData,
         }
     }
 }
@@ -84,8 +91,12 @@ where
 
     fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
         KeyedStream {
-            underlying: Stream::create_source(ident, location),
-            _phantom_order: Default::default(),
+            location: location.clone(),
+            ir_node: RefCell::new(HydroNode::CycleSource {
+                ident,
+                metadata: location.new_node_metadata::<(K, V)>(),
+            }),
+            _phantom: PhantomData,
         }
     }
 }
@@ -96,7 +107,21 @@ where
     L: Location<'a>,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
-        self.underlying.complete(ident, expected_location);
+        assert_eq!(
+            Location::id(&self.location),
+            expected_location,
+            "locations do not match"
+        );
+
+        self.location
+            .flow_state()
+            .borrow_mut()
+            .push_root(HydroRoot::CycleSink {
+                ident,
+                input: Box::new(self.ir_node.into_inner()),
+                out_location: Location::id(&self.location),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
     }
 }
 
@@ -109,8 +134,12 @@ where
 
     fn create_source(ident: syn::Ident, location: L) -> Self {
         KeyedStream {
-            underlying: Stream::create_source(ident, location),
-            _phantom_order: Default::default(),
+            location: location.clone(),
+            ir_node: RefCell::new(HydroNode::CycleSource {
+                ident,
+                metadata: location.new_node_metadata::<(K, V)>(),
+            }),
+            _phantom: PhantomData,
         }
     }
 }
@@ -121,7 +150,20 @@ where
     L: Location<'a> + NoTick,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
-        self.underlying.complete(ident, expected_location);
+        assert_eq!(
+            Location::id(&self.location),
+            expected_location,
+            "locations do not match"
+        );
+        self.location
+            .flow_state()
+            .borrow_mut()
+            .push_root(HydroRoot::CycleSink {
+                ident,
+                input: Box::new(self.ir_node.into_inner()),
+                out_location: Location::id(&self.location),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
     }
 }
 
@@ -129,9 +171,26 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order: Order
     Clone for KeyedStream<K, V, Loc, Bound, Order, R>
 {
     fn clone(&self) -> Self {
-        KeyedStream {
-            underlying: self.underlying.clone(),
-            _phantom_order: PhantomData,
+        if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
+            let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
+            *self.ir_node.borrow_mut() = HydroNode::Tee {
+                inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            };
+        }
+
+        if let HydroNode::Tee { inner, metadata } = self.ir_node.borrow().deref() {
+            KeyedStream {
+                location: self.location.clone(),
+                ir_node: HydroNode::Tee {
+                    inner: TeeNode(inner.0.clone()),
+                    metadata: metadata.clone(),
+                }
+                .into(),
+                _phantom: PhantomData,
+            }
+        } else {
+            unreachable!()
         }
     }
 }
@@ -139,9 +198,18 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order: Order
 impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     KeyedStream<K, V, L, B, O, R>
 {
-    /// Returns the [`Location`] where the keyed stream is materialized.
+    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
+        debug_assert_eq!(&Location::id(&location), &ir_node.metadata().location_kind);
+        KeyedStream {
+            location,
+            ir_node: RefCell::new(ir_node),
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Returns the [`Location`] where this keyed stream is being materialized.
     pub fn location(&self) -> &L {
-        self.underlying.location()
+        &self.location
     }
 
     /// Explicitly "casts" the keyed stream to a type with a different ordering
@@ -153,10 +221,14 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O2, R> {
-        KeyedStream {
-            underlying: self.underlying,
-            _phantom_order: PhantomData,
-        }
+        KeyedStream::new(self.location, self.ir_node.into_inner())
+    }
+
+    /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
+    /// which is always safe because that is the weakest possible guarantee.
+    pub fn weakest_ordering(self) -> KeyedStream<K, V, L, B, NoOrder, R> {
+        let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
+        self.assume_ordering::<NoOrder>(nondet)
     }
 
     /// Explicitly "casts" the keyed stream to a type with a different retries
@@ -167,11 +239,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_retries<R2: Retries>(self, nondet: NonDet) -> KeyedStream<K, V, L, B, O, R2> {
-        KeyedStream {
-            underlying: self.underlying.assume_retries::<R2>(nondet),
-            _phantom_order: PhantomData,
-        }
+    pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O, R2> {
+        KeyedStream::new(self.location, self.ir_node.into_inner())
     }
 
     /// Flattens the keyed stream into an unordered stream of key-value pairs.
@@ -193,7 +262,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// ```
     pub fn entries(self) -> Stream<(K, V), L, B, NoOrder, R> {
-        self.underlying
+        Stream::new(self.location, self.ir_node.into_inner())
     }
 
     /// Flattens the keyed stream into an unordered stream of only the values.
@@ -215,7 +284,18 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// ```
     pub fn values(self) -> Stream<V, L, B, NoOrder, R> {
-        self.underlying.map(q!(|(_, v)| v))
+        let map_f = q!(|(_, v)| v)
+            .splice_fn1_ctx::<(K, V), V>(&self.location)
+            .into();
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f: map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<V>(),
+            },
+        )
     }
 
     /// Transforms each value by invoking `f` on each element, with keys staying the same
@@ -246,13 +326,21 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         F: Fn(V) -> U + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        KeyedStream {
-            underlying: self.underlying.map(q!({
-                let orig = f;
-                move |(k, v)| (k, orig(v))
-            })),
-            _phantom_order: Default::default(),
-        }
+        let map_f = q!({
+            let orig = f;
+            move |(k, v)| (k, orig(v))
+        })
+        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f: map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, U)>(),
+            },
+        )
     }
 
     /// Transforms each value by invoking `f` on each key-value pair. The resulting values are **not**
@@ -287,16 +375,24 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         K: Clone,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        KeyedStream {
-            underlying: self.underlying.map(q!({
-                let orig = f;
-                move |(k, v)| {
-                    let out = orig((k.clone(), v));
-                    (k, out)
-                }
-            })),
-            _phantom_order: Default::default(),
-        }
+        let map_f = q!({
+            let orig = f;
+            move |(k, v)| {
+                let out = orig((Clone::clone(&k), v));
+                (k, out)
+            }
+        })
+        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f: map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, U)>(),
+            },
+        )
     }
 
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
@@ -328,13 +424,21 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         F: Fn(&V) -> bool + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
-        KeyedStream {
-            underlying: self.underlying.filter(q!({
-                let orig = f;
-                move |(_k, v)| orig(v)
-            })),
-            _phantom_order: Default::default(),
-        }
+        let filter_f = q!({
+            let orig = f;
+            move |t: &(_, _)| orig(&t.1)
+        })
+        .splice_fn1_borrow_ctx::<(K, V), bool>(&self.location)
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Filter {
+                f: filter_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
@@ -368,10 +472,18 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     where
         F: Fn(&(K, V)) -> bool + 'a,
     {
-        KeyedStream {
-            underlying: self.underlying.filter(f),
-            _phantom_order: Default::default(),
-        }
+        let filter_f = f
+            .splice_fn1_borrow_ctx::<(K, V), bool>(&self.location)
+            .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Filter {
+                f: filter_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// An operator that both filters and maps each value, with keys staying the same.
@@ -403,13 +515,21 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         F: Fn(V) -> Option<U> + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        KeyedStream {
-            underlying: self.underlying.filter_map(q!({
-                let orig = f;
-                move |(k, v)| orig(v).map(|o| (k, o))
-            })),
-            _phantom_order: Default::default(),
-        }
+        let filter_map_f = q!({
+            let orig = f;
+            move |(k, v)| orig(v).map(|o| (k, o))
+        })
+        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&self.location)
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::FilterMap {
+                f: filter_map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, U)>(),
+            },
+        )
     }
 
     /// An operator that both filters and maps each key-value pair. The resulting values are **not**
@@ -442,16 +562,24 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         K: Clone,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        KeyedStream {
-            underlying: self.underlying.filter_map(q!({
-                let orig = f;
-                move |(k, v)| {
-                    let out = orig((k.clone(), v));
-                    out.map(|o| (k, o))
-                }
-            })),
-            _phantom_order: Default::default(),
-        }
+        let filter_map_f = q!({
+            let orig = f;
+            move |(k, v)| {
+                let out = orig((Clone::clone(&k), v));
+                out.map(|o| (k, o))
+            }
+        })
+        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&self.location)
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::FilterMap {
+                f: filter_map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, U)>(),
+            },
+        )
     }
 
     /// For each value `v` in each group, transform `v` using `f` and then treat the
@@ -489,13 +617,21 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         K: Clone,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        KeyedStream {
-            underlying: self.underlying.flat_map_ordered(q!({
-                let orig = f;
-                move |(k, v)| orig(v).into_iter().map(move |u| (k.clone(), u))
-            })),
-            _phantom_order: Default::default(),
-        }
+        let flat_map_f = q!({
+            let orig = f;
+            move |(k, v)| orig(v).into_iter().map(move |u| (Clone::clone(&k), u))
+        })
+        .splice_fn1_ctx::<(K, V), _>(&self.location)
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::FlatMap {
+                f: flat_map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, U)>(),
+            },
+        )
     }
 
     /// Like [`KeyedStream::flat_map_ordered`], but allows the implementation of [`Iterator`]
@@ -534,13 +670,21 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         K: Clone,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
-        KeyedStream {
-            underlying: self.underlying.flat_map_unordered(q!({
-                let orig = f;
-                move |(k, v)| orig(v).into_iter().map(move |u| (k.clone(), u))
-            })),
-            _phantom_order: Default::default(),
-        }
+        let flat_map_f = q!({
+            let orig = f;
+            move |(k, v)| orig(v).into_iter().map(move |u| (Clone::clone(&k), u))
+        })
+        .splice_fn1_ctx::<(K, V), _>(&self.location)
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::FlatMap {
+                f: flat_map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, U)>(),
+            },
+        )
     }
 
     /// For each value `v` in each group, treat `v` as an [`Iterator`] and produce its items one by one
@@ -634,13 +778,21 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         F: Fn(&V) + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
-        KeyedStream {
-            underlying: self.underlying.inspect(q!({
-                let orig = f;
-                move |(_k, v)| orig(v)
-            })),
-            _phantom_order: Default::default(),
-        }
+        let inspect_f = q!({
+            let orig = f;
+            move |t: &(_, _)| orig(&t.1)
+        })
+        .splice_fn1_borrow_ctx::<(K, V), ()>(&self.location)
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Inspect {
+                f: inspect_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
@@ -670,17 +822,23 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     where
         F: Fn(&(K, V)) + 'a,
     {
-        KeyedStream {
-            underlying: self.underlying.inspect(f),
-            _phantom_order: Default::default(),
-        }
+        let inspect_f = f.splice_fn1_borrow_ctx::<(K, V), ()>(&self.location).into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Inspect {
+                f: inspect_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// An operator which allows you to "name" a `HydroNode`.
     /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
     pub fn ir_node_named(self, name: &str) -> KeyedStream<K, V, L, B, O, R> {
         {
-            let mut node = self.underlying.ir_node.borrow_mut();
+            let mut node = self.ir_node.borrow_mut();
             let metadata = node.metadata_mut();
             metadata.tag = Some(name.to_string());
         }
@@ -721,7 +879,17 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
     where
         R: MinRetries<R2>,
     {
-        self.entries().interleave(other.entries()).into_keyed()
+        let tick = self.location.tick();
+        // Because the outputs are unordered, we can interleave batches from both streams.
+        let nondet_batch_interleaving = nondet!(/** output stream is NoOrder, can interleave */);
+        self.batch(&tick, nondet_batch_interleaving)
+            .weakest_ordering()
+            .chain(
+                other
+                    .batch(&tick, nondet_batch_interleaving)
+                    .weakest_ordering(),
+            )
+            .all_ticks()
     }
 }
 
@@ -857,39 +1025,49 @@ where
     {
         let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
-        let underlying_scanned = self
-            .underlying
-            .assume_ordering(nondet!(
-                /** we do not rely on the order of keys */
-            ))
-            .scan(
-                q!(|| HashMap::new()),
-                q!(move |acc, (k, v)| {
-                    let existing_state = acc.entry(k.clone()).or_insert_with(|| Some(init()));
-                    if let Some(existing_state_value) = existing_state {
-                        match f(existing_state_value, v) {
-                            Generate::Yield(out) => Some(Some((k, out))),
-                            Generate::Return(out) => {
-                                let _ = existing_state.take(); // TODO(shadaj): garbage collect with termination markers
-                                Some(Some((k, out)))
-                            }
-                            Generate::Break => {
-                                let _ = existing_state.take(); // TODO(shadaj): garbage collect with termination markers
-                                Some(None)
-                            }
-                            Generate::Continue => Some(None),
-                        }
-                    } else {
+
+        let scan_init = q!(|| HashMap::new())
+            .splice_fn0_ctx::<HashMap<K, Option<A>>>(&self.location)
+            .into();
+        let scan_f = q!(move |acc: &mut HashMap<_, _>, (k, v)| {
+            let existing_state = acc.entry(Clone::clone(&k)).or_insert_with(|| Some(init()));
+            if let Some(existing_state_value) = existing_state {
+                match f(existing_state_value, v) {
+                    Generate::Yield(out) => Some(Some((k, out))),
+                    Generate::Return(out) => {
+                        let _ = existing_state.take(); // TODO(shadaj): garbage collect with termination markers
+                        Some(Some((k, out)))
+                    }
+                    Generate::Break => {
+                        let _ = existing_state.take(); // TODO(shadaj): garbage collect with termination markers
                         Some(None)
                     }
-                }),
-            )
-            .flatten_ordered();
+                    Generate::Continue => Some(None),
+                }
+            } else {
+                Some(None)
+            }
+        })
+        .splice_fn2_borrow_mut_ctx::<HashMap<K, Option<A>>, (K, V), _>(&self.location)
+        .into();
 
-        KeyedStream {
-            underlying: underlying_scanned.into(),
-            _phantom_order: Default::default(),
-        }
+        let scan_node = HydroNode::Scan {
+            init: scan_init,
+            acc: scan_f,
+            input: Box::new(self.ir_node.into_inner()),
+            metadata: self.location.new_node_metadata::<Option<(K, U)>>(),
+        };
+
+        let flatten_f = q!(|d| d)
+            .splice_fn1_ctx::<Option<(K, U)>, _>(&self.location)
+            .into();
+        let flatten_node = HydroNode::FlatMap {
+            f: flatten_f,
+            input: Box::new(scan_node),
+            metadata: self.location.new_node_metadata::<(K, U)>(),
+        };
+
+        KeyedStream::new(self.location.clone(), flatten_node)
     }
 
     /// A variant of [`Stream::fold`], intended for keyed streams. The aggregation is executed
@@ -1022,20 +1200,18 @@ where
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded> {
-        let init = init.splice_fn0_ctx(&self.underlying.location).into();
-        let comb = comb
-            .splice_fn2_borrow_mut_ctx(&self.underlying.location)
-            .into();
+        let init = init.splice_fn0_ctx(&self.location).into();
+        let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
         let out_ir = HydroNode::FoldKeyed {
             init,
             acc: comb,
-            input: Box::new(self.underlying.ir_node.into_inner()),
-            metadata: self.underlying.location.new_node_metadata::<(K, A)>(),
+            input: Box::new(self.ir_node.into_inner()),
+            metadata: self.location.new_node_metadata::<(K, A)>(),
         };
 
         KeyedSingleton {
-            underlying: Stream::new(self.underlying.location, out_ir).into_keyed(),
+            underlying: KeyedStream::new(self.location, out_ir),
         }
     }
 
@@ -1067,18 +1243,16 @@ where
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded> {
-        let f = comb
-            .splice_fn2_borrow_mut_ctx(&self.underlying.location)
-            .into();
+        let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
         let out_ir = HydroNode::ReduceKeyed {
             f,
-            input: Box::new(self.underlying.ir_node.into_inner()),
-            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+            input: Box::new(self.ir_node.into_inner()),
+            metadata: self.location.new_node_metadata::<(K, V)>(),
         };
 
         KeyedSingleton {
-            underlying: Stream::new(self.underlying.location, out_ir).into_keyed(),
+            underlying: KeyedStream::new(self.location, out_ir),
         }
     }
 
@@ -1117,20 +1291,18 @@ where
         F: Fn(&mut V, V) + 'a,
     {
         let other: Optional<O, Tick<L::Root>, Bounded> = other.into();
-        check_matching_location(&self.underlying.location.root(), other.location.outer());
-        let f = comb
-            .splice_fn2_borrow_mut_ctx(&self.underlying.location)
-            .into();
+        check_matching_location(&self.location.root(), other.location.outer());
+        let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
         let out_ir = HydroNode::ReduceKeyedWatermark {
             f,
-            input: Box::new(self.underlying.ir_node.into_inner()),
+            input: Box::new(self.ir_node.into_inner()),
             watermark: Box::new(other.ir_node.into_inner()),
-            metadata: self.underlying.location.new_node_metadata::<(K, V)>(),
+            metadata: self.location.new_node_metadata::<(K, V)>(),
         };
 
         KeyedSingleton {
-            underlying: Stream::new(self.underlying.location.clone(), out_ir).into_keyed(),
+            underlying: KeyedStream::new(self.location.clone(), out_ir),
         }
     }
 }
@@ -1508,10 +1680,16 @@ where
         self,
         other: Stream<K, L, Bounded, O2, R2>,
     ) -> Self {
-        KeyedStream {
-            underlying: self.entries().anti_join(other),
-            _phantom_order: Default::default(),
-        }
+        check_matching_location(&self.location, &other.location);
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::AntiJoin {
+                pos: Box::new(self.ir_node.into_inner()),
+                neg: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
@@ -1528,10 +1706,14 @@ where
     /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
     /// [`Tick`] will introduce asynchrony.
     pub fn atomic(self, tick: &Tick<L>) -> KeyedStream<K, V, Atomic<L>, B, O, R> {
-        KeyedStream {
-            underlying: self.underlying.atomic(tick),
-            _phantom_order: Default::default(),
-        }
+        let out_location = Atomic { tick: tick.clone() };
+        KeyedStream::new(
+            out_location.clone(),
+            HydroNode::BeginAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: out_location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// Given a tick, returns a keyed stream corresponding to a batch of elements segmented by
@@ -1545,10 +1727,15 @@ where
         tick: &Tick<L>,
         nondet: NonDet,
     ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
-        KeyedStream {
-            underlying: self.underlying.batch(tick, nondet),
-            _phantom_order: Default::default(),
-        }
+        let _ = nondet;
+        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        KeyedStream::new(
+            tick.clone(),
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: tick.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
@@ -1564,19 +1751,26 @@ where
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
     pub fn batch_atomic(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
-        KeyedStream {
-            underlying: self.underlying.batch_atomic(nondet),
-            _phantom_order: Default::default(),
-        }
+        let _ = nondet;
+        KeyedStream::new(
+            self.location.clone().tick,
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.tick.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// Yields the elements of this keyed stream back into a top-level, asynchronous execution context.
     /// See [`KeyedStream::atomic`] for more details.
     pub fn end_atomic(self) -> KeyedStream<K, V, L, B, O, R> {
-        KeyedStream {
-            underlying: self.underlying.end_atomic(),
-            _phantom_order: Default::default(),
-        }
+        KeyedStream::new(
+            self.location.tick.l.clone(),
+            HydroNode::EndAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.tick.l.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
@@ -1610,17 +1804,24 @@ where
     /// # }
     /// # }));
     /// ```
-    pub fn chain<O2: Ordering>(
+    pub fn chain<O2: Ordering, R2: Retries>(
         self,
-        other: KeyedStream<K, V, L, Bounded, O2, R>,
-    ) -> KeyedStream<K, V, L, Bounded, <O as MinOrder<O2>>::Min, R>
+        other: KeyedStream<K, V, L, Bounded, O2, R2>,
+    ) -> KeyedStream<K, V, L, Bounded, <O as MinOrder<O2>>::Min, <R as MinRetries<R2>>::Min>
     where
         O: MinOrder<O2>,
+        R: MinRetries<R2>,
     {
-        KeyedStream {
-            underlying: self.underlying.chain(other.underlying),
-            _phantom_order: Default::default(),
-        }
+        check_matching_location(&self.location, &other.location);
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Chain {
+                first: Box::new(self.ir_node.into_inner()),
+                second: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
@@ -1632,10 +1833,13 @@ where
     /// which will stream all the elements across _all_ tick iterations by concatenating the batches for
     /// each key.
     pub fn all_ticks(self) -> KeyedStream<K, V, L, Unbounded, O, R> {
-        KeyedStream {
-            underlying: self.underlying.all_ticks(),
-            _phantom_order: Default::default(),
-        }
+        KeyedStream::new(
+            self.location.outer().clone(),
+            HydroNode::YieldConcat {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.outer().new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// Synchronously yields this batch of keyed elements outside the tick as an unbounded keyed stream,
@@ -1646,10 +1850,17 @@ where
     /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
     /// stream's [`Tick`] context.
     pub fn all_ticks_atomic(self) -> KeyedStream<K, V, Atomic<L>, Unbounded, O, R> {
-        KeyedStream {
-            underlying: self.underlying.all_ticks_atomic(),
-            _phantom_order: Default::default(),
-        }
+        let out_location = Atomic {
+            tick: self.location.clone(),
+        };
+
+        KeyedStream::new(
+            out_location.clone(),
+            HydroNode::YieldConcat {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: out_location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// Shifts the entries in `self` to the **next tick**, so that the returned keyed stream at
@@ -1691,10 +1902,13 @@ where
     /// # }));
     /// ```
     pub fn defer_tick(self) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
-        KeyedStream {
-            underlying: self.underlying.defer_tick(),
-            _phantom_order: Default::default(),
-        }
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::DeferTick {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
