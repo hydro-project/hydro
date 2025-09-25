@@ -429,6 +429,52 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         )
     }
 
+    /// Gets the key-value tuple with the largest key among all entries in this [`KeyedSingleton`].
+    ///
+    /// Because this method requires values to be bounded, the output [`Optional`] will only be
+    /// asynchronously updated if a new key is added that is higher than the previous max key.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let keyed_singleton = // { 1: 123, 2: 456, 0: 789 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 123), (2, 456), (0, 789)]))
+    /// #     .into_keyed()
+    /// #     .first();
+    /// keyed_singleton.get_max_key()
+    /// # .sample_eager(nondet!(/** test */))
+    /// # }, |mut stream| async move {
+    /// // (2, 456)
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 456));
+    /// # }));
+    /// ```
+    pub fn get_max_key(self) -> Optional<(K, V), L, B::UnderlyingBound>
+    where
+        K: Ord,
+    {
+        self.entries()
+            .assume_ordering(nondet!(
+                /// There is only one element associated with each key, and the keys are totallly
+                /// ordered so we will produce a deterministic value. We can't call
+                /// `reduce_commutative_idempotent` because the closure technically isn't commutative
+                /// in the case where both passed entries have the same key but different values.
+                ///
+                /// In the future, we may want to have an `assume!(...)` statement in the UDF that
+                /// the two inputs do not have the same key.
+            ))
+            .reduce_idempotent(q!({
+                move |curr, new| {
+                    if new.0 > curr.0 {
+                        *curr = new;
+                    }
+                }
+            }))
+    }
+
     /// Converts this keyed singleton into a [`KeyedStream`] with each group having a single
     /// element, the value.
     ///
