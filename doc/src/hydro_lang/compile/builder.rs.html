@@ -68,7 +68,7 @@
 <a href=#68 id=68 data-nosnippet>68</a>
 <a href=#69 id=69 data-nosnippet>69</a><span class="kw">impl </span>Drop <span class="kw">for </span>FlowBuilder&lt;<span class="lifetime">'_</span>&gt; {
 <a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">if </span>!<span class="self">self</span>.finalized {
+<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">if </span>!<span class="self">self</span>.finalized &amp;&amp; !std::thread::panicking() {
 <a href=#72 id=72 data-nosnippet>72</a>            <span class="macro">panic!</span>(
 <a href=#73 id=73 data-nosnippet>73</a>                <span class="string">"Dropped FlowBuilder without finalizing, you may have forgotten to call `with_default_optimize`, `optimize_with`, or `finalize`."
 <a href=#74 id=74 data-nosnippet>74</a>            </span>);

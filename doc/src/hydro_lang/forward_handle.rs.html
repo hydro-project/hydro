@@ -72,7 +72,7 @@
 <a href=#72 id=72 data-nosnippet>72</a>
 <a href=#73 id=73 data-nosnippet>73</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, C: ReceiverComplete&lt;<span class="lifetime">'a</span>, ForwardRef&gt;&gt; Drop <span class="kw">for </span>ForwardHandle&lt;<span class="lifetime">'a</span>, C&gt; {
 <a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#75 id=75 data-nosnippet>75</a>        <span class="kw">if </span>!<span class="self">self</span>.completed {
+<a href=#75 id=75 data-nosnippet>75</a>        <span class="kw">if </span>!<span class="self">self</span>.completed &amp;&amp; !std::thread::panicking() {
 <a href=#76 id=76 data-nosnippet>76</a>            <span class="macro">panic!</span>(<span class="string">"ForwardHandle dropped without being completed"</span>);
 <a href=#77 id=77 data-nosnippet>77</a>        }
 <a href=#78 id=78 data-nosnippet>78</a>    }
@@ -112,7 +112,7 @@
 <a href=#112 id=112 data-nosnippet>112</a>
 <a href=#113 id=113 data-nosnippet>113</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, C: ReceiverComplete&lt;<span class="lifetime">'a</span>, TickCycle&gt;&gt; Drop <span class="kw">for </span>TickCycleHandle&lt;<span class="lifetime">'a</span>, C&gt; {
 <a href=#114 id=114 data-nosnippet>114</a>    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#115 id=115 data-nosnippet>115</a>        <span class="kw">if </span>!<span class="self">self</span>.completed {
+<a href=#115 id=115 data-nosnippet>115</a>        <span class="kw">if </span>!<span class="self">self</span>.completed &amp;&amp; !std::thread::panicking() {
 <a href=#116 id=116 data-nosnippet>116</a>            <span class="macro">panic!</span>(<span class="string">"TickCycleHandle dropped without being completed"</span>);
 <a href=#117 id=117 data-nosnippet>117</a>        }
 <a href=#118 id=118 data-nosnippet>118</a>    }
