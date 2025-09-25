@@ -39,7 +39,7 @@ use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many,
 };
-use crate::nondet::{NonDet, nondet};
+use crate::nondet::NonDet;
 use crate::staging_util::get_this_crate;
 
 pub mod dynamic;
@@ -129,7 +129,13 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.clone(),
             HydroNode::Source {
                 source: HydroSource::Spin(),
-                metadata: self.new_node_metadata::<()>(),
+                metadata: self.new_node_metadata(Stream::<
+                    (),
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         )
     }
@@ -148,7 +154,13 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.clone(),
             HydroNode::Source {
                 source: HydroSource::Stream(e.into()),
-                metadata: self.new_node_metadata::<T>(),
+                metadata: self.new_node_metadata(Stream::<
+                    T,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         )
     }
@@ -169,7 +181,13 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.clone(),
             HydroNode::Source {
                 source: HydroSource::Iter(e.into()),
-                metadata: self.new_node_metadata::<T>(),
+                metadata: self.new_node_metadata(Stream::<
+                    T,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         )
     }
@@ -224,7 +242,13 @@ pub trait Location<'a>: dynamic::DynLocation {
                     port_hint: NetworkHint::Auto,
                     instantiate_fn: DebugInstantiate::Building,
                     deserialize_fn: None,
-                    metadata: self.new_node_metadata::<std::io::Result<BytesMut>>(),
+                    metadata: self.new_node_metadata(Stream::<
+                        std::io::Result<BytesMut>,
+                        Self,
+                        Unbounded,
+                        TotalOrder,
+                        ExactlyOnce,
+                    >::collection_kind()),
                 },
             ),
         )
@@ -267,7 +291,13 @@ pub trait Location<'a>: dynamic::DynLocation {
                         crate::live_collections::stream::networking::deserialize_bincode::<T>(None)
                             .into(),
                     ),
-                    metadata: self.new_node_metadata::<T>(),
+                    metadata: self.new_node_metadata(Stream::<
+                        T,
+                        Self,
+                        Unbounded,
+                        TotalOrder,
+                        ExactlyOnce,
+                    >::collection_kind()),
                 },
             ),
         )
@@ -312,7 +342,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             Result<(u64, <Codec as Decoder>::Item), <Codec as Decoder>::Error>,
             Self,
             Unbounded,
-            NoOrder,
+            TotalOrder,
             ExactlyOnce,
         > = Stream::new(
             self.clone(),
@@ -324,8 +354,13 @@ pub trait Location<'a>: dynamic::DynLocation {
                 port_hint,
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: None,
-                metadata: self
-                    .new_node_metadata::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(),
+                metadata: self.new_node_metadata(Stream::<
+                    std::io::Result<(u64, <Codec as Decoder>::Item)>,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         );
 
@@ -337,14 +372,27 @@ pub trait Location<'a>: dynamic::DynLocation {
             Span::call_site(),
         );
         let membership_stream_expr: syn::Expr = parse_quote!(#membership_stream_ident);
-        let raw_membership_stream: Stream<(u64, bool), Self, Unbounded, TotalOrder, ExactlyOnce> =
-            Stream::new(
-                self.clone(),
-                HydroNode::Source {
-                    source: HydroSource::Stream(membership_stream_expr.into()),
-                    metadata: self.new_node_metadata::<(u64, bool)>(),
-                },
-            );
+        let raw_membership_stream: KeyedStream<
+            u64,
+            bool,
+            Self,
+            Unbounded,
+            TotalOrder,
+            ExactlyOnce,
+        > = KeyedStream::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Stream(membership_stream_expr.into()),
+                metadata: self.new_node_metadata(KeyedStream::<
+                    u64,
+                    bool,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        );
 
         (
             ExternalBytesPort {
@@ -354,22 +402,14 @@ pub trait Location<'a>: dynamic::DynLocation {
             },
             raw_stream
                 .flatten_ordered() // TODO(shadaj): this silently drops framing errors, decide on right defaults
-                .into_keyed()
-                .assume_ordering::<TotalOrder>(
-                    nondet!(/** order of messages is deterministic within each key due to TCP */)
-                ),
-            raw_membership_stream
-                .into_keyed()
-                .assume_ordering::<TotalOrder>(
-                    nondet!(/** membership events are ordered within each key */),
-                )
-                .map(q!(|join| {
-                    if join {
-                        MembershipEvent::Joined
-                    } else {
-                        MembershipEvent::Left
-                    }
-                })),
+                .into_keyed(),
+            raw_membership_stream.map(q!(|join| {
+                if join {
+                    MembershipEvent::Joined
+                } else {
+                    MembershipEvent::Left
+                }
+            })),
             fwd_ref,
         )
     }
@@ -426,19 +466,27 @@ pub trait Location<'a>: dynamic::DynLocation {
             }
         };
 
-        let raw_stream: Stream<(u64, InT), Self, Unbounded, NoOrder, ExactlyOnce> = Stream::new(
-            self.clone(),
-            HydroNode::ExternalInput {
-                from_external_id: from.id,
-                from_key: next_external_port_id,
-                from_many: true,
-                codec_type: quote_type::<LengthDelimitedCodec>().into(),
-                port_hint: NetworkHint::Auto,
-                instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: Some(deser_fn.into()),
-                metadata: self.new_node_metadata::<(u64, InT)>(),
-            },
-        );
+        let raw_stream: KeyedStream<u64, InT, Self, Unbounded, TotalOrder, ExactlyOnce> =
+            KeyedStream::new(
+                self.clone(),
+                HydroNode::ExternalInput {
+                    from_external_id: from.id,
+                    from_key: next_external_port_id,
+                    from_many: true,
+                    codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                    port_hint: NetworkHint::Auto,
+                    instantiate_fn: DebugInstantiate::Building,
+                    deserialize_fn: Some(deser_fn.into()),
+                    metadata: self.new_node_metadata(KeyedStream::<
+                        u64,
+                        InT,
+                        Self,
+                        Unbounded,
+                        TotalOrder,
+                        ExactlyOnce,
+                    >::collection_kind()),
+                },
+            );
 
         let membership_stream_ident = syn::Ident::new(
             &format!(
@@ -448,14 +496,27 @@ pub trait Location<'a>: dynamic::DynLocation {
             Span::call_site(),
         );
         let membership_stream_expr: syn::Expr = parse_quote!(#membership_stream_ident);
-        let raw_membership_stream: Stream<(u64, bool), Self, Unbounded, NoOrder, ExactlyOnce> =
-            Stream::new(
-                self.clone(),
-                HydroNode::Source {
-                    source: HydroSource::Stream(membership_stream_expr.into()),
-                    metadata: self.new_node_metadata::<(u64, bool)>(),
-                },
-            );
+        let raw_membership_stream: KeyedStream<
+            u64,
+            bool,
+            Self,
+            Unbounded,
+            TotalOrder,
+            ExactlyOnce,
+        > = KeyedStream::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Stream(membership_stream_expr.into()),
+                metadata: self.new_node_metadata(KeyedStream::<
+                    u64,
+                    bool,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        );
 
         (
             ExternalBincodeBidi {
@@ -463,21 +524,14 @@ pub trait Location<'a>: dynamic::DynLocation {
                 port_id: next_external_port_id,
                 _phantom: PhantomData,
             },
-            raw_stream.into_keyed().assume_ordering::<TotalOrder>(
-                nondet!(/** order of messages is deterministic within each key due to TCP */),
-            ),
-            raw_membership_stream
-                .into_keyed()
-                .assume_ordering::<TotalOrder>(
-                    nondet!(/** membership events are ordered within each key */),
-                )
-                .map(q!(|join| {
-                    if join {
-                        MembershipEvent::Joined
-                    } else {
-                        MembershipEvent::Left
-                    }
-                })),
+            raw_stream,
+            raw_membership_stream.map(q!(|join| {
+                if join {
+                    MembershipEvent::Joined
+                } else {
+                    MembershipEvent::Left
+                }
+            })),
             fwd_ref,
         )
     }
@@ -514,9 +568,17 @@ pub trait Location<'a>: dynamic::DynLocation {
                 HydroNode::Persist {
                     inner: Box::new(HydroNode::Source {
                         source: HydroSource::Iter(e.into()),
-                        metadata: self.new_node_metadata::<T>(),
+                        metadata: self.new_node_metadata(Stream::<
+                            T,
+                            Self,
+                            Unbounded,
+                            TotalOrder,
+                            ExactlyOnce,
+                        >::collection_kind(
+                        )),
                     }),
-                    metadata: self.new_node_metadata::<T>(),
+                    metadata: self
+                        .new_node_metadata(Singleton::<T, Self, Unbounded>::collection_kind()),
                 },
             )
         } else {
@@ -524,7 +586,8 @@ pub trait Location<'a>: dynamic::DynLocation {
                 self.clone(),
                 HydroNode::Source {
                     source: HydroSource::Iter(e.into()),
-                    metadata: self.new_node_metadata::<T>(),
+                    metadata: self
+                        .new_node_metadata(Singleton::<T, Self, Unbounded>::collection_kind()),
                 },
             )
         }

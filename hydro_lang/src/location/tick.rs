@@ -12,7 +12,7 @@ use crate::compile::ir::{HydroNode, HydroSource};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
 use crate::forward_handle::{ForwardHandle, ForwardRef, TickCycle, TickCycleHandle};
-use crate::live_collections::boundedness::Bounded;
+use crate::live_collections::boundedness::{Bounded, Unbounded};
 use crate::live_collections::optional::Optional;
 use crate::live_collections::singleton::Singleton;
 use crate::live_collections::stream::{ExactlyOnce, Stream, TotalOrder};
@@ -173,9 +173,11 @@ where
             HydroNode::Batch {
                 inner: Box::new(HydroNode::Source {
                     source: HydroSource::Iter(e.into()),
-                    metadata: self.outer().new_node_metadata::<T>(),
+                    metadata: self
+                        .outer()
+                        .new_node_metadata(Optional::<T, L, Unbounded>::collection_kind()),
                 }),
-                metadata: self.new_node_metadata::<T>(),
+                metadata: self.new_node_metadata(Optional::<T, Self, Bounded>::collection_kind()),
             },
         )
     }
