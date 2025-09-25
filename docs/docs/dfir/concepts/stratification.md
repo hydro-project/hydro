@@ -40,7 +40,7 @@ end
 
 At compile time, the DFIR spec is *stratified*: partitioned into subflows, where each subflow is assigned a stratum number. Subsequently at runtime, each tick executes the strata one-by-one in ascending order of stratum number. In the example above, the `source_stream` operator is in stratum 0, and the `sort` and `for_each` operators are in stratum 1. The runtime executes the `source_stream` operator first, buffering output in the Handoff. The `sort` operator will not receive any data until the `source_stream` operator has finished executing. When stratum 0 is complete, the subflow in stratum 1 is scheduled and executes the `sort` and `for_each` operators to complete the tick.
 
-Let's look back at the [`difference`](../syntax/surface_ops_gen.md#difference) operator as used in the [Graph Unreachability example](../quickstart/example_6_unreachability).
+Let's look back at the [`difference`](../syntax/surface_ops_gen.md#difference) operator as used in the [Graph Unreachability example](../quickstart/example_6_unreachability.mdx).
 ```mermaid
 flowchart TD
 classDef pullClass fill:#02f,color:#fff,stroke:#000
@@ -82,7 +82,7 @@ flowchart LR
 The concept of stratification is taken directly from stratified negation in the [Datalog](https://en.wikipedia.org/wiki/Datalog) language. DFIR identifies a stratum boundary at any blocking input to an operator, where classical Datalog only stratifies its negation operator.
 
 The DFIR compiler performs stratification via static analysis of the DFIR spec. The analysis is based on the following rules:
-- A Handoff is interposed in front of any blocking input to an operator (as documented in the [operator definitions](../syntax/surface_ops_gen)).
+- A Handoff is interposed in front of any blocking input to an operator (as documented in the [operator definitions](../syntax/surface_ops_gen.md)).
 - The flow is partitioned at the Handoffs into subflows called "strata".
 - The resulting graph of strata and Handoffs is tested to ensure that it's acyclic. (Cycles through blocking operators are forbidden as they not have well-defined behavior—note that the blocking operators in a cycle would deadlock waiting for each other.)
 

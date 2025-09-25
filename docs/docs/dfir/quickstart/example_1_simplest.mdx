@@ -55,7 +55,7 @@ Although this is a trivial program, it's useful to go through it line by line.
 <CodeBlock language="rust">{getLines(exampleCode, 'use')}</CodeBlock>
 
 This import gives you the macro you need from DFIR to write code in DFIR's
-[_surface syntax_](../syntax).
+[_surface syntax_](../syntax/index.mdx).
 
 Next, inside the main method we specify a flow by calling the
 `dfir_syntax!` macro. We assign the resulting `Dfir` instance to
@@ -64,10 +64,10 @@ a mutable variable `flow`––mutable because we will be changing its status wh
 
 DFIR surface syntax defines a "flow" consisting of *operators* connected via `->` arrows.
 This simplest example uses a simple two-step linear flow.
-It starts with a [`source_iter`](../syntax/surface_ops_gen#source_iter) operator that takes the Rust
+It starts with a [`source_iter`](../syntax/surface_ops_gen.md#source_iter) operator that takes the Rust
 iterator `0..10` and iterates it to emit the
 numbers 0 through 9. That operator then passes those numbers along the `->` arrow downstream to a
-[`for_each`](../syntax/surface_ops_gen#for_each) operator that invokes its closure argument to print each
+[`for_each`](../syntax/surface_ops_gen.md#for_each) operator that invokes its closure argument to print each
 item passed in.
 
 The DFIR surface syntax is merely a *specification*; it does not actually do anything
@@ -82,8 +82,7 @@ more work will *ever* be available. In future examples we will use external inpu
 network ingress, in which case more work might appear at any time.
 
 In server applications that use network ingress for inputs, new work can appear at any time. In these application
-we may need a different method than `run_available()`, e.g. the [`run_async()`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html#method.run_async) method, check [the networking
-examples](./example_7_networking) for more.
+we may need a different method than `run_available()`, e.g. the [`run_async()`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html#method.run_async) method, check [the networking examples](./example_7_networking.mdx) for more.
 
 ### A Note on Project Structure
 The template project is intended to be a starting point for your own DFIR project, and you can add files and directories as you see fit. The only requirement is that the `src/main.rs` file exists and contains a `main()` function.
