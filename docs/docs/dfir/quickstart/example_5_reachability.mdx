@@ -11,7 +11,7 @@ import { getLines, extractOutput, extractMermaid } from '../../../src/util';
 > * Implementing a recursive algorithm (graph reachability) via cyclic dataflow
 > * Operators to union data from multiple inputs ([`union`](../syntax/surface_ops_gen.md#union)), and send data to multiple outputs ([`tee`](../syntax/surface_ops_gen.md#tee))
 > * Indexing multi-output operators by appending a bracket expression
-> * A first example of a [cyclic dataflow](../concepts/cyclic_flows).
+> * A first example of a [cyclic dataflow](../concepts/cyclic_flows.mdx).
 
 To expand from graph neighbors to graph reachability, we want to find vertices that are connected not just to `origin`,
 but also to vertices reachable *transitively* from `origin`. Said differently, a vertex is reachable from `origin` if it is
@@ -90,7 +90,7 @@ the structure of the full flow:
 
 This is similar to the flow for graph neighbors, but has a few more operators that make it look
 more complex. In particular, it includes the `union` and `tee` operators, and a cycle-forming back-edge.
-There is also an auto-generated `handoff` operator that enforces the rule that a push producer and a pull consumer must be separated by a `handoff` (see the [Architecture section](../architecture/handoffs)).
+There is also an auto-generated `handoff` operator that enforces the rule that a push producer and a pull consumer must be separated by a `handoff` (see the [Architecture section](../architecture/handoffs.md)).
 
 # Cyclic Dataflow
 Many dataflow and workflow systems are restricted to acyclic graphs (DAGs), but DFIR supports cycles, as we see in this example.
