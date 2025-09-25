@@ -72,7 +72,7 @@ pub struct ForwardHandle<'a, C: ReceiverComplete<'a, ForwardRef>> {
 
 impl<'a, C: ReceiverComplete<'a, ForwardRef>> Drop for ForwardHandle<'a, C> {
     fn drop(&mut self) {
-        if !self.completed {
+        if !self.completed && !std::thread::panicking() {
             panic!("ForwardHandle dropped without being completed");
         }
     }
@@ -112,7 +112,7 @@ pub struct TickCycleHandle<'a, C: ReceiverComplete<'a, TickCycle>> {
 
 impl<'a, C: ReceiverComplete<'a, TickCycle>> Drop for TickCycleHandle<'a, C> {
     fn drop(&mut self) {
-        if !self.completed {
+        if !self.completed && !std::thread::panicking() {
             panic!("TickCycleHandle dropped without being completed");
         }
     }

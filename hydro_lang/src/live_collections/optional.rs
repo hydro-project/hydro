@@ -11,7 +11,9 @@ use syn::parse_quote;
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::singleton::Singleton;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode};
+use crate::compile::ir::{
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode,
+};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
@@ -61,7 +63,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -100,7 +102,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -139,7 +141,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -181,7 +183,15 @@ where
     L: Location<'a>,
 {
     fn from(singleton: Singleton<T, L, B>) -> Self {
-        Optional::new(singleton.location, singleton.ir_node.into_inner())
+        Optional::new(
+            singleton.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(singleton.ir_node.into_inner()),
+                metadata: singleton
+                    .location
+                    .new_node_metadata(Self::collection_kind()),
+            },
+        )
     }
 }
 
@@ -197,7 +207,9 @@ fn zip_inside_tick<'a, T, O, L: Location<'a>, B: Boundedness>(
         HydroNode::CrossSingleton {
             left: Box::new(me.ir_node.into_inner()),
             right: Box::new(other.ir_node.into_inner()),
-            metadata: me.location.new_node_metadata::<(T, O)>(),
+            metadata: me
+                .location
+                .new_node_metadata(Optional::<(T, O), L, B>::collection_kind()),
         },
     )
 }
@@ -214,7 +226,9 @@ fn or_inside_tick<'a, T, L: Location<'a>, B: Boundedness>(
         HydroNode::ChainFirst {
             first: Box::new(me.ir_node.into_inner()),
             second: Box::new(other.ir_node.into_inner()),
-            metadata: me.location.new_node_metadata::<T>(),
+            metadata: me
+                .location
+                .new_node_metadata(Optional::<T, L, B>::collection_kind()),
         },
     )
 }
@@ -229,7 +243,7 @@ where
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
                 inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
             };
         }
 
@@ -254,11 +268,19 @@ where
     L: Location<'a>,
 {
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        debug_assert_eq!(Location::id(&location), ir_node.metadata().location_kind);
+        debug_assert_eq!(ir_node.metadata().location_kind, Location::id(&location));
+        debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
         Optional {
             location,
             ir_node: RefCell::new(ir_node),
             _phantom: PhantomData,
+        }
+    }
+
+    pub(crate) fn collection_kind() -> CollectionKind {
+        CollectionKind::Optional {
+            bound: B::bound_kind(),
+            element_type: stageleft::quote_type::<T>().into(),
         }
     }
 
@@ -290,7 +312,9 @@ where
             HydroNode::Map {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Optional::<U, L, B>::collection_kind()),
             },
         )
     }
@@ -335,7 +359,9 @@ where
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self.location.new_node_metadata(
+                    Stream::<U, L, B, TotalOrder, ExactlyOnce>::collection_kind(),
+                ),
             },
         )
     }
@@ -381,7 +407,9 @@ where
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<U, L, B, NoOrder, ExactlyOnce>::collection_kind()),
             },
         )
     }
@@ -485,7 +513,7 @@ where
             HydroNode::Filter {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -522,7 +550,9 @@ where
             HydroNode::FilterMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Optional::<U, L, B>::collection_kind()),
             },
         )
     }
@@ -620,7 +650,7 @@ where
                 HydroNode::ChainFirst {
                     first: Box::new(self.ir_node.into_inner()),
                     second: Box::new(other.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<T>(),
+                    metadata: self.location.new_node_metadata(Self::collection_kind()),
                 },
             )
         }
@@ -656,7 +686,15 @@ where
     /// ```
     pub fn unwrap_or(self, other: Singleton<T, L, B>) -> Singleton<T, L, B> {
         let res_option = self.or(other.into());
-        Singleton::new(res_option.location, res_option.ir_node.into_inner())
+        Singleton::new(
+            res_option.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(res_option.ir_node.into_inner()),
+                metadata: res_option
+                    .location
+                    .new_node_metadata(Singleton::<T, L, B>::collection_kind()),
+            },
+        )
     }
 
     /// Converts this optional into a [`Singleton`] with a Rust [`Option`] as its contents.
@@ -690,7 +728,9 @@ where
         let none: syn::Expr = parse_quote!([::std::option::Option::None]);
         let core_ir = HydroNode::Source {
             source: HydroSource::Iter(none.into()),
-            metadata: self.location.new_node_metadata::<Option<T>>(),
+            metadata: self
+                .location
+                .new_node_metadata(Singleton::<Option<T>, L, B>::collection_kind()),
         };
 
         let none_singleton = if L::is_top_level() {
@@ -698,7 +738,9 @@ where
                 self.location.clone(),
                 HydroNode::Persist {
                     inner: Box::new(core_ir),
-                    metadata: self.location.new_node_metadata::<Option<T>>(),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Singleton::<Option<T>, L, B>::collection_kind()),
                 },
             )
         } else {
@@ -855,7 +897,9 @@ where
             self.location.clone().tick,
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),
             },
         )
     }
@@ -867,7 +911,11 @@ where
             self.location.tick.l.clone(),
             HydroNode::EndAtomic {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.tick.l.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .tick
+                    .l
+                    .new_node_metadata(Optional::<T, L, B>::collection_kind()),
             },
         )
     }
@@ -894,7 +942,8 @@ where
             out_location.clone(),
             HydroNode::BeginAtomic {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: out_location.new_node_metadata::<T>(),
+                metadata: out_location
+                    .new_node_metadata(Optional::<T, Atomic<L>, B>::collection_kind()),
             },
         )
     }
@@ -913,7 +962,8 @@ where
             tick.clone(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: tick.new_node_metadata::<T>(),
+                metadata: tick
+                    .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),
             },
         )
     }
@@ -1053,7 +1103,10 @@ where
             self.location.outer().clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.outer().new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .outer()
+                    .new_node_metadata(Optional::<T, L, Unbounded>::collection_kind()),
             },
         )
     }
@@ -1073,7 +1126,8 @@ where
             out_location.clone(),
             HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: out_location.new_node_metadata::<T>(),
+                metadata: out_location
+                    .new_node_metadata(Optional::<T, Atomic<L>, Unbounded>::collection_kind()),
             },
         )
     }
@@ -1120,7 +1174,7 @@ where
             self.location.clone(),
             HydroNode::DeferTick {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -1167,7 +1221,19 @@ where
     /// # }));
     /// ```
     pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
-        Stream::new(self.location, self.ir_node.into_inner())
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    Tick<L>,
+                    Bounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
     }
 }
 

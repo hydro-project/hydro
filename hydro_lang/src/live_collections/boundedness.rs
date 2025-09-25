@@ -4,6 +4,7 @@
 use sealed::sealed;
 
 use super::keyed_singleton::{BoundedValue, KeyedSingletonBound};
+use crate::compile::ir::BoundKind;
 
 /// A marker trait indicating whether a stream’s length is bounded (finite) or unbounded (potentially infinite).
 ///
@@ -12,6 +13,15 @@ use super::keyed_singleton::{BoundedValue, KeyedSingletonBound};
 pub trait Boundedness: KeyedBoundFoldLike {
     /// Returns `true` if the bound is [`Bounded`], `false` if it is [`Unbounded`].
     fn is_bounded() -> bool;
+
+    /// Returns the [`BoundKind`] corresponding to this type.
+    fn bound_kind() -> BoundKind {
+        if Self::is_bounded() {
+            BoundKind::Bounded
+        } else {
+            BoundKind::Unbounded
+        }
+    }
 }
 
 /// Marks the stream as being unbounded, which means that it is not
