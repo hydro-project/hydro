@@ -8,7 +8,6 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
-use syn::parse_quote;
 use tokio::time::Instant;
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
@@ -1054,50 +1053,6 @@ where
                 *curr = new;
             }
         }))
-    }
-
-    /// Computes the maximum element in the stream as an [`Optional`], where the
-    /// maximum is determined according to the `key` function. The [`Optional`] will
-    /// be empty until the first element in the input arrives.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch.max_by_key(q!(|x| -x)).all_ticks()
-    /// # }, |mut stream| async move {
-    /// // 1
-    /// # assert_eq!(stream.next().await.unwrap(), 1);
-    /// # }));
-    /// ```
-    pub fn max_by_key<K, F>(self, key: impl IntoQuotedMut<'a, F, L> + Copy) -> Optional<T, L, B>
-    where
-        K: Ord,
-        F: Fn(&T) -> K + 'a,
-    {
-        let f = key.splice_fn1_borrow_ctx(&self.location);
-
-        let wrapped: syn::Expr = parse_quote!({
-            let key_fn = #f;
-            move |curr, new| {
-                if key_fn(&new) > key_fn(&*curr) {
-                    *curr = new;
-                }
-            }
-        });
-
-        Optional::new(
-            self.location.clone(),
-            HydroNode::Reduce {
-                f: wrapped.into(),
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            },
-        )
     }
 
     /// Computes the minimum element in the stream as an [`Optional`], which
