@@ -7,12 +7,4 @@ Hydro uses a dataflow programming model, which will be familiar if you have used
 
 Programs in Hydro describe how to **transform** streams and other collections of data using operators such as `map` (transforming elements one by one), `fold` (aggregating elements into a single value), or `join` (combining elements from multiple streams on matching keys).
 
-If you are familiar with Spark, Flink or Pandas, you will find Hydro syntax familiar. However, note well that the semantics for asynchronous streams in Hydro differ significantly from bulk analytics systems like those above. In particular, Hydro uses the type system to distinguish between bounded streams (originating from finite data collections) and unbounded streams (originated from asynchronous input). Moreover, Hydro is designed to handle asynchronous streams of small, independent events very efficiently.
-
-The core of the Hydro API are the following types and their methods:
-- [Stream](pathname:///rustdoc/hydro_lang/live_collections/struct.Stream)
-- [Singleton](pathname:///rustdoc/hydro_lang/live_collections/struct.Singleton)
-- [Optional](pathname:///rustdoc/hydro_lang/live_collections/struct.Optional)
-
-{/* TODO(shadaj): link to collections section */}
-{/* TODO(shadaj): show example of mermaid graph */}
+If you are familiar with Spark, Flink or Pandas, you will find Hydro syntax familiar. However, note well that the semantics for asynchronous streams in Hydro differ from bulk analytics systems like those above. In particular, Hydro uses the type system to distinguish between bounded streams (originating from finite data collections) and unbounded streams (originated from asynchronous input). Moreover, Hydro is designed to handle asynchronous streams of small, independent events very efficiently. The core of the Hydro API involves manipulating such [live collections](./live-collections/index.md), which efficiently and precisely capture asynchronous requests and various forms of concurrency.
