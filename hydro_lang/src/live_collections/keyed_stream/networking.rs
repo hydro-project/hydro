@@ -68,7 +68,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.underlying.ir_node.into_inner()),
+                input: Box::new(self.ir_node.into_inner()),
                 metadata: other.new_node_metadata::<T>(),
             },
         )
@@ -140,7 +140,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.underlying.ir_node.into_inner()),
+                input: Box::new(self.ir_node.into_inner()),
                 metadata: other.new_node_metadata::<(MemberId<L>, T)>(),
             },
         );
