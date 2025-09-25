@@ -55,11 +55,8 @@ pub fn paxos_bench<'a>(
         // Get the latest checkpoint sequence per replica
         let checkpoint_tick = acceptors.tick();
         let a_checkpoint = {
-            // TODO(shadaj): once we can reduce keyed over unbounded streams, this should be safe
             let a_checkpoint_largest_seqs = replica_checkpoint
                 .broadcast_bincode(&acceptors, nondet!(/** TODO */))
-                .entries()
-                .into_keyed()
                 .reduce_commutative(q!(|curr_seq, seq| {
                     if seq > *curr_seq {
                         *curr_seq = seq;
