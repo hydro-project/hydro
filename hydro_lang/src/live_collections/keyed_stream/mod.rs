@@ -1127,9 +1127,11 @@ where
             }),
         );
 
-        KeyedSingleton {
-            underlying: out_without_bound_cast,
-        }
+        // TODO(shadaj): requires cast
+        KeyedSingleton::new(
+            out_without_bound_cast.location,
+            out_without_bound_cast.ir_node.into_inner(),
+        )
     }
 
     /// Gets the first element inside each group of values as a [`KeyedSingleton`] that preserves
@@ -1203,16 +1205,15 @@ where
         let init = init.splice_fn0_ctx(&self.location).into();
         let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
-        let out_ir = HydroNode::FoldKeyed {
-            init,
-            acc: comb,
-            input: Box::new(self.ir_node.into_inner()),
-            metadata: self.location.new_node_metadata::<(K, A)>(),
-        };
-
-        KeyedSingleton {
-            underlying: KeyedStream::new(self.location, out_ir),
-        }
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::FoldKeyed {
+                init,
+                acc: comb,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, A)>(),
+            },
+        )
     }
 
     /// Like [`Stream::reduce`], aggregates the values in each group via the `comb` closure.
@@ -1245,15 +1246,14 @@ where
     ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded> {
         let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
-        let out_ir = HydroNode::ReduceKeyed {
-            f,
-            input: Box::new(self.ir_node.into_inner()),
-            metadata: self.location.new_node_metadata::<(K, V)>(),
-        };
-
-        KeyedSingleton {
-            underlying: KeyedStream::new(self.location, out_ir),
-        }
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::ReduceKeyed {
+                f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// A special case of [`KeyedStream::reduce`] where tuples with keys less than the watermark are automatically deleted.
@@ -1294,16 +1294,15 @@ where
         check_matching_location(&self.location.root(), other.location.outer());
         let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
-        let out_ir = HydroNode::ReduceKeyedWatermark {
-            f,
-            input: Box::new(self.ir_node.into_inner()),
-            watermark: Box::new(other.ir_node.into_inner()),
-            metadata: self.location.new_node_metadata::<(K, V)>(),
-        };
-
-        KeyedSingleton {
-            underlying: KeyedStream::new(self.location.clone(), out_ir),
-        }
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::ReduceKeyedWatermark {
+                f,
+                input: Box::new(self.ir_node.into_inner()),
+                watermark: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 

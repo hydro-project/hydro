@@ -1,21 +1,28 @@
 //! Definitions for the [`KeyedSingleton`] live collection.
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::marker::PhantomData;
+use std::ops::Deref;
+use std::rc::Rc;
 
-use stageleft::{IntoQuotedMut, q};
+use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
 use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
+use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::live_collections::stream::{Ordering, Retries};
-use crate::location::dynamic::LocationId;
-use crate::location::{Atomic, Location, NoTick, Tick};
+#[cfg(stageleft_runtime)]
+use crate::location::dynamic::{DynLocation, LocationId};
+use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
+use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 
 /// A marker trait indicating which components of a [`KeyedSingleton`] may change.
@@ -91,15 +98,36 @@ impl KeyedSingletonBound for UnreachableBound {
 ///     - [`Unbounded`] (asynchronous with entries added / removed / changed over time)
 ///     - [`BoundedValue`] (asynchronous with immutable values for each key and no removals)
 pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
-    pub(crate) underlying: KeyedStream<K, V, Loc, Bound::UnderlyingBound, TotalOrder, ExactlyOnce>,
+    pub(crate) location: Loc,
+    pub(crate) ir_node: RefCell<HydroNode>,
+
+    _phantom: PhantomData<(K, V, Loc, Bound)>,
 }
 
 impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clone
     for KeyedSingleton<K, V, Loc, Bound>
 {
     fn clone(&self) -> Self {
-        KeyedSingleton {
-            underlying: self.underlying.clone(),
+        if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
+            let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
+            *self.ir_node.borrow_mut() = HydroNode::Tee {
+                inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            };
+        }
+
+        if let HydroNode::Tee { inner, metadata } = self.ir_node.borrow().deref() {
+            KeyedSingleton {
+                location: self.location.clone(),
+                ir_node: HydroNode::Tee {
+                    inner: TeeNode(inner.0.clone()),
+                    metadata: metadata.clone(),
+                }
+                .into(),
+                _phantom: PhantomData,
+            }
+        } else {
+            unreachable!()
         }
     }
 }
@@ -113,7 +141,12 @@ where
 
     fn create_source(ident: syn::Ident, location: L) -> Self {
         KeyedSingleton {
-            underlying: KeyedStream::create_source(ident, location),
+            location: location.clone(),
+            ir_node: RefCell::new(HydroNode::CycleSource {
+                ident,
+                metadata: location.new_node_metadata::<(K, V)>(),
+            }),
+            _phantom: PhantomData,
         }
     }
 }
@@ -124,7 +157,36 @@ where
     L: Location<'a> + NoTick,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
-        self.underlying.complete(ident, expected_location);
+        assert_eq!(
+            Location::id(&self.location),
+            expected_location,
+            "locations do not match"
+        );
+        self.location
+            .flow_state()
+            .borrow_mut()
+            .push_root(HydroRoot::CycleSink {
+                ident,
+                input: Box::new(self.ir_node.into_inner()),
+                out_location: Location::id(&self.location),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
+    }
+}
+
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
+    pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
+        debug_assert_eq!(&Location::id(&location), &ir_node.metadata().location_kind);
+        KeyedSingleton {
+            location,
+            ir_node: RefCell::new(ir_node),
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Returns the [`Location`] where this keyed singleton is being materialized.
+    pub fn location(&self) -> &L {
+        &self.location
     }
 }
 
@@ -159,7 +221,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }));
     /// ```
     pub fn entries(self) -> Stream<(K, V), L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
-        self.underlying.entries()
+        Stream::new(self.location, self.ir_node.into_inner())
     }
 
     /// Flattens the keyed singleton into an unordered stream of just the values.
@@ -190,7 +252,18 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # }));
     /// ```
     pub fn values(self) -> Stream<V, L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
-        self.underlying.values()
+        let map_f = q!(|(_, v)| v)
+            .splice_fn1_ctx::<(K, V), V>(&self.location)
+            .into();
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f: map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<V>(),
+            },
+        )
     }
 
     /// Flattens the keyed singleton into an unordered stream of just the keys.
@@ -258,9 +331,16 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     where
         K: Hash + Eq,
     {
-        KeyedSingleton {
-            underlying: self.underlying.filter_key_not_in(other),
-        }
+        check_matching_location(&self.location, &other.location);
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::AntiJoin {
+                pos: Box::new(self.ir_node.into_inner()),
+                neg: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// An operator which allows you to "inspect" each value of a keyed singleton without
@@ -291,9 +371,22 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     where
         F: Fn(&V) + 'a,
     {
-        KeyedSingleton {
-            underlying: self.underlying.inspect(f),
-        }
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let inspect_f = q!({
+            let orig = f;
+            move |t: &(_, _)| orig(&t.1)
+        })
+        .splice_fn1_borrow_ctx::<(K, V), ()>(&self.location)
+        .into();
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Inspect {
+                f: inspect_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// An operator which allows you to "inspect" each entry of a keyed singleton without
@@ -324,9 +417,16 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     where
         F: Fn(&(K, V)) + 'a,
     {
-        KeyedSingleton {
-            underlying: self.underlying.inspect_with_key(f),
-        }
+        let inspect_f = f.splice_fn1_borrow_ctx::<(K, V), ()>(&self.location).into();
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Inspect {
+                f: inspect_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// Converts this keyed singleton into a [`KeyedStream`] with each group having a single
@@ -361,7 +461,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     pub fn into_keyed_stream(
         self,
     ) -> KeyedStream<K, V, L, B::UnderlyingBound, TotalOrder, ExactlyOnce> {
-        self.underlying
+        KeyedStream::new(self.location, self.ir_node.into_inner())
     }
 }
 
@@ -369,7 +469,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
 fn key_count_inside_tick<'a, K, V, L: Location<'a>>(
     me: KeyedSingleton<K, V, L, Bounded>,
 ) -> Singleton<usize, L, Bounded> {
-    me.underlying.entries().count()
+    me.entries().count()
 }
 
 #[cfg(stageleft_runtime)]
@@ -379,8 +479,7 @@ fn into_singleton_inside_tick<'a, K, V, L: Location<'a>>(
 where
     K: Eq + Hash,
 {
-    me.underlying
-        .entries()
+    me.entries()
         .assume_ordering(nondet!(
             /// Because this is a keyed singleton, there is only one value per key.
         ))
@@ -394,10 +493,10 @@ where
 
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
     /// Transforms each value by invoking `f` on each element, with keys staying the same
-    /// after transformation. If you need access to the key, see [`KeyedStream::map_with_key`].
+    /// after transformation. If you need access to the key, see [`KeyedSingleton::map_with_key`].
     ///
     /// If you do not want to modify the stream and instead only want to view
-    /// each item use [`KeyedStream::inspect`] instead.
+    /// each item use [`KeyedSingleton::inspect`] instead.
     ///
     /// # Example
     /// ```rust
@@ -425,9 +524,22 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     where
         F: Fn(V) -> U + 'a,
     {
-        KeyedSingleton {
-            underlying: self.underlying.map(f),
-        }
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let map_f = q!({
+            let orig = f;
+            move |(k, v)| (k, orig(v))
+        })
+        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
+        .into();
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f: map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, U)>(),
+            },
+        )
     }
 
     /// Transforms each value by invoking `f` on each key-value pair, with keys staying the same
@@ -466,9 +578,25 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         F: Fn((K, V)) -> U + 'a,
         K: Clone,
     {
-        KeyedSingleton {
-            underlying: self.underlying.map_with_key(f),
-        }
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let map_f = q!({
+            let orig = f;
+            move |(k, v)| {
+                let out = orig((Clone::clone(&k), v));
+                (k, out)
+            }
+        })
+        .splice_fn1_ctx::<(K, V), (K, U)>(&self.location)
+        .into();
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f: map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, U)>(),
+            },
+        )
     }
 
     /// Creates a keyed singleton containing only the key-value pairs where the value satisfies a predicate `f`.
@@ -507,9 +635,22 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     where
         F: Fn(&V) -> bool + 'a,
     {
-        KeyedSingleton {
-            underlying: self.underlying.filter(f),
-        }
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let filter_f = q!({
+            let orig = f;
+            move |t: &(_, _)| orig(&t.1)
+        })
+        .splice_fn1_borrow_ctx::<(K, V), bool>(&self.location)
+        .into();
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Filter {
+                f: filter_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// An operator that both filters and maps values. It yields only the key-value pairs where
@@ -548,9 +689,22 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     where
         F: Fn(V) -> Option<U> + 'a,
     {
-        KeyedSingleton {
-            underlying: self.underlying.filter_map(f),
-        }
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_ctx(ctx));
+        let filter_map_f = q!({
+            let orig = f;
+            move |(k, v)| orig(v).map(|o| (k, o))
+        })
+        .splice_fn1_ctx::<(K, V), Option<(K, U)>>(&self.location)
+        .into();
+
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::FilterMap {
+                f: filter_map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, U)>(),
+            },
+        )
     }
 
     /// Gets the number of keys in the keyed singleton.
@@ -579,28 +733,29 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # }));
     /// ```
     pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
-        if L::is_top_level()
-            && let Some(tick) = self.underlying.location.try_tick()
+        if B::ValueBound::is_bounded() {
+            let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
+                location: self.location,
+                ir_node: self.ir_node,
+                _phantom: PhantomData,
+            };
+
+            me.entries().count()
+        } else if L::is_top_level()
+            && let Some(tick) = self.location.try_tick()
         {
-            if B::ValueBound::is_bounded() {
-                let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
-                    underlying: self.underlying,
-                };
+            let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
+                location: self.location,
+                ir_node: self.ir_node,
+                _phantom: PhantomData,
+            };
 
-                me.entries().count()
-            } else {
-                let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
-                    underlying: self.underlying,
-                };
-
-                let out = key_count_inside_tick(
-                    me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
-                )
-                .latest();
-                Singleton::new(out.location, out.ir_node.into_inner())
-            }
+            let out =
+                key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
+                    .latest();
+            Singleton::new(out.location, out.ir_node.into_inner())
         } else {
-            self.underlying.entries().count()
+            panic!("Unbounded KeyedSingleton inside a tick");
         }
     }
 
@@ -631,38 +786,14 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     where
         K: Eq + Hash,
     {
-        if L::is_top_level()
-            && let Some(tick) = self.underlying.location.try_tick()
-        {
-            if B::ValueBound::is_bounded() {
-                let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
-                    underlying: self.underlying,
-                };
+        if B::ValueBound::is_bounded() {
+            let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
+                location: self.location,
+                ir_node: self.ir_node,
+                _phantom: PhantomData,
+            };
 
-                me.entries()
-                    .assume_ordering(nondet!(
-                        /// Because this is a keyed singleton, there is only one value per key.
-                    ))
-                    .fold(
-                        q!(|| HashMap::new()),
-                        q!(|map, (k, v)| {
-                            map.insert(k, v);
-                        }),
-                    )
-            } else {
-                let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
-                    underlying: self.underlying,
-                };
-
-                let out = into_singleton_inside_tick(
-                    me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
-                )
-                .latest();
-                Singleton::new(out.location, out.ir_node.into_inner())
-            }
-        } else {
-            self.underlying
-                .entries()
+            me.entries()
                 .assume_ordering(nondet!(
                     /// Because this is a keyed singleton, there is only one value per key.
                 ))
@@ -672,15 +803,34 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                         map.insert(k, v);
                     }),
                 )
+        } else if L::is_top_level()
+            && let Some(tick) = self.location.try_tick()
+        {
+            let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
+                location: self.location,
+                ir_node: self.ir_node,
+                _phantom: PhantomData,
+            };
+
+            let out = into_singleton_inside_tick(
+                me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+            )
+            .latest();
+            Singleton::new(out.location, out.ir_node.into_inner())
+        } else {
+            panic!("Unbounded KeyedSingleton inside a tick");
         }
     }
 
     /// An operator which allows you to "name" a `HydroNode`.
     /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
     pub fn ir_node_named(self, name: &str) -> KeyedSingleton<K, V, L, B> {
-        KeyedSingleton {
-            underlying: self.underlying.ir_node_named(name),
+        {
+            let mut node = self.ir_node.borrow_mut();
+            let metadata = node.metadata_mut();
+            metadata.tag = Some(name.to_string());
         }
+        self
     }
 }
 
@@ -801,19 +951,20 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
         let lookup_result = from.get_many_if_present(to_lookup.clone());
         let missing_values =
             to_lookup.filter_key_not_in(lookup_result.clone().entries().map(q!(|t| t.0)));
-        KeyedSingleton {
-            underlying: lookup_result
-                .entries()
-                .map(q!(|(v, (v2, k))| (k, (v, Some(v2)))))
-                .into_keyed()
-                .chain(
-                    missing_values
-                        .entries()
-                        .map(q!(|(v, k)| (k, (v, None))))
-                        .into_keyed(),
-                )
-                .assume_ordering(nondet!(/** only one value per key */)),
-        }
+        let result_stream = lookup_result
+            .entries()
+            .map(q!(|(v, (v2, k))| (k, (v, Some(v2)))))
+            .into_keyed()
+            .chain(
+                missing_values
+                    .entries()
+                    .map(q!(|(v, k)| (k, (v, None))))
+                    .into_keyed(),
+            )
+            .assume_ordering::<TotalOrder>(nondet!(/** only one value per key */));
+
+        // TODO(shadaj): requires cast
+        KeyedSingleton::new(result_stream.location, result_stream.ir_node.into_inner())
     }
 }
 
@@ -830,9 +981,14 @@ where
     /// keyed singleton into the _same_ [`Tick`] will preserve the synchronous execution, while
     /// batching into a different [`Tick`] will introduce asynchrony.
     pub fn atomic(self, tick: &Tick<L>) -> KeyedSingleton<K, V, Atomic<L>, B> {
-        KeyedSingleton {
-            underlying: self.underlying.atomic(tick),
-        }
+        let out_location = Atomic { tick: tick.clone() };
+        KeyedSingleton::new(
+            out_location.clone(),
+            HydroNode::BeginAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: out_location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
@@ -843,9 +999,13 @@ where
     /// Yields the elements of this keyed singleton back into a top-level, asynchronous execution context.
     /// See [`KeyedSingleton::atomic`] for more details.
     pub fn end_atomic(self) -> KeyedSingleton<K, V, L, B> {
-        KeyedSingleton {
-            underlying: self.underlying.end_atomic(),
-        }
+        KeyedSingleton::new(
+            self.location.tick.l.clone(),
+            HydroNode::EndAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.tick.l.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
@@ -892,9 +1052,13 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     /// # }));
     /// ```
     pub fn latest(self) -> KeyedSingleton<K, V, L, Unbounded> {
-        KeyedSingleton {
-            underlying: self.underlying.all_ticks(),
-        }
+        KeyedSingleton::new(
+            self.location.outer().clone(),
+            HydroNode::YieldConcat {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.outer().new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// Synchronously yields this keyed singleton outside the tick as an unbounded keyed singleton,
@@ -904,9 +1068,17 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     /// keyed singleton is emitted in an [`Atomic`] context that will process elements synchronously
     /// with the input keyed singleton's [`Tick`] context.
     pub fn latest_atomic(self) -> KeyedSingleton<K, V, Atomic<L>, Unbounded> {
-        KeyedSingleton {
-            underlying: self.underlying.all_ticks_atomic(),
-        }
+        let out_location = Atomic {
+            tick: self.location.clone(),
+        };
+
+        KeyedSingleton::new(
+            out_location.clone(),
+            HydroNode::YieldConcat {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: out_location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 
     /// Shifts the state in `self` to the **next tick**, so that the returned keyed singleton at
@@ -948,9 +1120,13 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     /// # }));
     /// ```
     pub fn defer_tick(self) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
-        KeyedSingleton {
-            underlying: self.underlying.defer_tick(),
-        }
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::DeferTick {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
@@ -967,11 +1143,16 @@ where
     pub fn snapshot(
         self,
         tick: &Tick<L>,
-        nondet: NonDet,
+        _nondet: NonDet,
     ) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
-        KeyedSingleton {
-            underlying: self.underlying.batch(tick, nondet),
-        }
+        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        KeyedSingleton::new(
+            tick.clone(),
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: tick.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
@@ -985,10 +1166,14 @@ where
     /// # Non-Determinism
     /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
     /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
-    pub fn snapshot_atomic(self, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
-        KeyedSingleton {
-            underlying: self.underlying.batch_atomic(nondet),
-        }
+    pub fn snapshot_atomic(self, _nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+        KeyedSingleton::new(
+            self.location.clone().tick,
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.tick.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
@@ -1024,9 +1209,14 @@ where
     /// Because this picks a batch of asynchronously added entries, each output keyed singleton
     /// has a non-deterministic set of key-value pairs.
     pub fn batch_atomic(self, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
-        KeyedSingleton {
-            underlying: self.underlying.batch_atomic(nondet),
-        }
+        let _ = nondet;
+        KeyedSingleton::new(
+            self.location.clone().tick,
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.tick.new_node_metadata::<(K, V)>(),
+            },
+        )
     }
 }
 
