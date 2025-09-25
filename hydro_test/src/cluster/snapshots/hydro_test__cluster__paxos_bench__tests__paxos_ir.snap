@@ -556,12 +556,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            1,
-            Cluster(
-                0,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -1150,9 +1144,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Cluster(
-            0,
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -2646,12 +2637,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            10,
-            Cluster(
-                0,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -2708,12 +2693,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            10,
-            Cluster(
-                0,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -3299,12 +3278,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            1,
-            Cluster(
-                0,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -3353,9 +3326,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Cluster(
-            0,
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -4276,12 +4246,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            12,
-            Cluster(
-                2,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -5141,12 +5105,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            1,
-            Cluster(
-                0,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -6703,12 +6661,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            14,
-            Cluster(
-                0,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -6765,12 +6717,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            14,
-            Cluster(
-                0,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -7039,12 +6985,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            1,
-            Cluster(
-                0,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -7473,12 +7413,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            2,
-            Cluster(
-                1,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -7527,9 +7461,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Cluster(
-            0,
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -8288,12 +8219,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            16,
-            Cluster(
-                4,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -8459,12 +8384,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            16,
-            Cluster(
-                4,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -8695,12 +8614,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            16,
-            Cluster(
-                4,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -9279,9 +9192,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Cluster(
-            1,
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -9685,12 +9595,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            19,
-            Cluster(
-                2,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -9891,9 +9795,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Cluster(
-            2,
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
@@ -10163,12 +10064,6 @@ expression: built.ir()
                 },
             },
         },
-        out_location: Tick(
-            0,
-            Cluster(
-                2,
-            ),
-        ),
         op_metadata: HydroIrOpMetadata,
     },
     ForEach {
