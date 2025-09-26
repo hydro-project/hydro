@@ -4478,6 +4478,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
+name = "sinktools"
+version = "0.0.1"
+dependencies = [
+ "either",
+ "futures-util",
+ "pin-project-lite",
+ "sealed 0.6.0",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "variadics",
+]
+
+[[package]]
 name = "siphasher"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5412,7 +5426,7 @@ version = "0.0.9"
 dependencies = [
  "hashbrown 0.14.5",
  "hydro_build_utils",
- "sealed 0.5.0",
+ "sealed 0.6.0",
  "trybuild",
 ]
 

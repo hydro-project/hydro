@@ -10,12 +10,22 @@
 #![doc = include_str!("../var_type.md")]
 //! ## [`var_args!`]
 #![doc = include_str!("../var_args.md")]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
 
 /// module of collection types for variadics
+#[cfg_attr(docsrs, cfg(feature = "std"))]
+#[cfg(feature = "std")]
 pub mod variadic_collections;
-use std::any::Any;
+#[cfg_attr(docsrs, cfg(feature = "std"))]
+#[cfg(feature = "std")]
+mod vec_variadic;
+use core::any::Any;
 
 use sealed::sealed;
+#[cfg_attr(docsrs, cfg(feature = "std"))]
+#[cfg(feature = "std")]
+pub use vec_variadic::VecVariadic;
 
 #[doc = include_str!("../var_expr.md")]
 #[macro_export]
@@ -64,7 +74,7 @@ macro_rules! var_args {
 ///
 /// variadic_trait! {
 ///     /// A variadic list of `Debug` items.
-///     pub variadic<Item> DebugList where Item: std::fmt::Debug {}
+///     pub variadic<Item> DebugList where Item: core::fmt::Debug {}
 /// }
 ///
 /// let x = &var_expr!(1, "hello", 5.6);
@@ -189,8 +199,12 @@ pub trait VariadicExt: Variadic {
     fn into_option(self) -> Self::IntoOption;
 
     /// type for all elements of the variadic being wrapped in `Vec`
+    #[cfg_attr(docsrs, cfg(feature = "std"))]
+    #[cfg(feature = "std")]
     type IntoVec: VecVariadic<UnVec = Self> + Default;
     /// wrap all elements of the variadic in a `Vec`
+    #[cfg_attr(docsrs, cfg(feature = "std"))]
+    #[cfg(feature = "std")]
     fn into_singleton_vec(self) -> Self::IntoVec;
 }
 
@@ -222,8 +236,8 @@ where
         let (item, rest) = this;
         let out = Rest::reverse_ref(rest).extend((item, ()));
         // TODO(mingwei): check if use of unsafe is necessary
-        let out2 = unsafe { std::mem::transmute_copy(&out) };
-        std::mem::forget(out);
+        let out2 = unsafe { core::mem::transmute_copy(&out) };
+        core::mem::forget(out);
         out2
     }
 
@@ -246,7 +260,7 @@ where
     }
 
     type IterAnyRef<'a>
-        = std::iter::Chain<std::iter::Once<&'a dyn Any>, Rest::IterAnyRef<'a>>
+        = core::iter::Chain<core::iter::Once<&'a dyn Any>, Rest::IterAnyRef<'a>>
     where
         Self: 'static;
     fn iter_any_ref(&self) -> Self::IterAnyRef<'_>
@@ -255,11 +269,11 @@ where
     {
         let var_args!(item, ...rest) = self;
         let item: &dyn Any = item;
-        std::iter::once(item).chain(rest.iter_any_ref())
+        core::iter::once(item).chain(rest.iter_any_ref())
     }
 
     type IterAnyMut<'a>
-        = std::iter::Chain<std::iter::Once<&'a mut dyn Any>, Rest::IterAnyMut<'a>>
+        = core::iter::Chain<core::iter::Once<&'a mut dyn Any>, Rest::IterAnyMut<'a>>
     where
         Self: 'static;
     fn iter_any_mut(&mut self) -> Self::IterAnyMut<'_>
@@ -268,7 +282,7 @@ where
     {
         let var_args!(item, ...rest) = self;
         let item: &mut dyn Any = item;
-        std::iter::once(item).chain(rest.iter_any_mut())
+        core::iter::once(item).chain(rest.iter_any_mut())
     }
 
     type IntoOption = (Option<Item>, Rest::IntoOption);
@@ -277,7 +291,11 @@ where
         var_expr!(Some(item), ...rest.into_option())
     }
 
+    #[cfg_attr(docsrs, cfg(feature = "std"))]
+    #[cfg(feature = "std")]
     type IntoVec = (Vec<Item>, Rest::IntoVec);
+    #[cfg_attr(docsrs, cfg(feature = "std"))]
+    #[cfg(feature = "std")]
     fn into_singleton_vec(self) -> Self::IntoVec {
         let var_args!(item, ...rest) = self;
         var_expr!(vec!(item), ...rest.into_singleton_vec())
@@ -310,31 +328,35 @@ impl VariadicExt for () {
     fn as_mut_var(&mut self) -> Self::AsMutVar<'_> {}
 
     type IterAnyRef<'a>
-        = std::iter::Empty<&'a dyn Any>
+        = core::iter::Empty<&'a dyn Any>
     where
         Self: 'static;
     fn iter_any_ref(&self) -> Self::IterAnyRef<'_>
     where
         Self: 'static,
     {
-        std::iter::empty()
+        core::iter::empty()
     }
 
     type IterAnyMut<'a>
-        = std::iter::Empty<&'a mut dyn Any>
+        = core::iter::Empty<&'a mut dyn Any>
     where
         Self: 'static;
     fn iter_any_mut(&mut self) -> Self::IterAnyMut<'_>
     where
         Self: 'static,
     {
-        std::iter::empty()
+        core::iter::empty()
     }
 
     type IntoOption = ();
     fn into_option(self) -> Self::IntoOption {}
 
+    #[cfg_attr(docsrs, cfg(feature = "std"))]
+    #[cfg(feature = "std")]
     type IntoVec = ();
+    #[cfg_attr(docsrs, cfg(feature = "std"))]
+    #[cfg(feature = "std")]
     fn into_singleton_vec(self) -> Self::IntoVec {}
 }
 
@@ -610,9 +632,9 @@ impl<T> HomogenousVariadic<T> for () {
         None
     }
 
-    type IntoIter = std::iter::Empty<T>;
+    type IntoIter = core::iter::Empty<T>;
     fn into_iter(self) -> Self::IntoIter {
-        std::iter::empty()
+        core::iter::empty()
     }
 }
 #[sealed]
@@ -633,10 +655,10 @@ where
         }
     }
 
-    type IntoIter = std::iter::Chain<std::iter::Once<T>, Rest::IntoIter>;
+    type IntoIter = core::iter::Chain<core::iter::Once<T>, Rest::IntoIter>;
     fn into_iter(self) -> Self::IntoIter {
         let (item, rest) = self;
-        std::iter::once(item).chain(rest.into_iter())
+        core::iter::once(item).chain(rest.into_iter())
     }
 }
 
@@ -750,117 +772,9 @@ where
         let (rsuffix, rprefix) = <This::Reverse as Split<Suffix::Reverse>>::split_ref(rev);
         let out = (rprefix.reverse(), rsuffix.reverse());
         // TODO!!!!
-        let out2 = unsafe { std::mem::transmute_copy(&out) };
-        std::mem::forget(out);
+        let out2 = unsafe { core::mem::transmute_copy(&out) };
+        core::mem::forget(out);
         out2
-    }
-}
-
-/// trait for Variadic of vecs, as formed by `VariadicExt::into_vec()`
-#[sealed]
-pub trait VecVariadic: VariadicExt {
-    /// Individual variadic items without the Vec wrapper
-    type UnVec: VariadicExt<IntoVec = Self>;
-
-    /// zip across all the vecs in this VariadicVec
-    fn zip_vecs(&self) -> impl Iterator<Item = <Self::UnVec as VariadicExt>::AsRefVar<'_>>;
-
-    /// append an unvec'ed Variadic into this VariadicVec
-    fn push(&mut self, item: Self::UnVec);
-
-    /// get the unvec'ed Variadic at position `index`
-    fn get(&mut self, index: usize) -> Option<<Self::UnVec as VariadicExt>::AsRefVar<'_>>;
-
-    /// result type from into_zip
-    type IntoZip: Iterator<Item = Self::UnVec>;
-    /// Turns into an iterator of items `UnVec` -- i.e. iterate through rows (not columns!).
-    fn into_zip(self) -> Self::IntoZip;
-
-    /// result type from drain
-    type Drain<'a>: Iterator<Item = Self::UnVec>
-    where
-        Self: 'a;
-    /// Turns into a Drain of items `UnVec` -- i.e. iterate through rows (not columns!).
-    fn drain<R>(&mut self, range: R) -> Self::Drain<'_>
-    where
-        R: std::ops::RangeBounds<usize> + Clone;
-}
-
-#[sealed]
-impl<Item, Rest> VecVariadic for (Vec<Item>, Rest)
-where
-    Rest: VecVariadic,
-{
-    type UnVec = var_type!(Item, ...Rest::UnVec);
-
-    fn zip_vecs(&self) -> impl Iterator<Item = <Self::UnVec as VariadicExt>::AsRefVar<'_>> {
-        let (this, rest) = self;
-        std::iter::zip(this.iter(), rest.zip_vecs())
-    }
-
-    fn push(&mut self, row: Self::UnVec) {
-        let (this_vec, rest_vecs) = self;
-        let (this_col, rest_cols) = row;
-        this_vec.push(this_col);
-        rest_vecs.push(rest_cols);
-    }
-
-    fn get(&mut self, index: usize) -> Option<<Self::UnVec as VariadicExt>::AsRefVar<'_>> {
-        let (this_vec, rest_vecs) = self;
-        if let Some(rest) = VecVariadic::get(rest_vecs, index) {
-            this_vec.get(index).map(|item| var_expr!(item, ...rest))
-        } else {
-            None
-        }
-    }
-
-    type IntoZip = std::iter::Zip<std::vec::IntoIter<Item>, Rest::IntoZip>;
-    fn into_zip(self) -> Self::IntoZip {
-        let (this, rest) = self;
-        std::iter::zip(this, rest.into_zip())
-    }
-
-    type Drain<'a>
-        = std::iter::Zip<std::vec::Drain<'a, Item>, Rest::Drain<'a>>
-    where
-        Self: 'a;
-    fn drain<R>(&mut self, range: R) -> Self::Drain<'_>
-    where
-        R: std::ops::RangeBounds<usize> + Clone,
-    {
-        let (this, rest) = self;
-        std::iter::zip(this.drain(range.clone()), rest.drain(range))
-    }
-}
-
-#[sealed]
-impl VecVariadic for var_type!() {
-    type UnVec = var_type!();
-
-    fn zip_vecs(&self) -> impl Iterator<Item = <Self::UnVec as VariadicExt>::AsRefVar<'_>> {
-        std::iter::repeat(var_expr!())
-    }
-
-    fn push(&mut self, _item: Self::UnVec) {}
-
-    fn get(&mut self, _index: usize) -> Option<<Self::UnVec as VariadicExt>::AsRefVar<'_>> {
-        Some(())
-    }
-
-    type IntoZip = std::iter::Repeat<var_type!()>;
-    fn into_zip(self) -> Self::IntoZip {
-        std::iter::repeat(var_expr!())
-    }
-
-    type Drain<'a>
-        = std::iter::Repeat<var_type!()>
-    where
-        Self: 'a;
-    fn drain<R>(&mut self, _range: R) -> Self::Drain<'_>
-    where
-        R: std::ops::RangeBounds<usize>,
-    {
-        std::iter::repeat(var_expr!())
     }
 }
 
@@ -887,7 +801,7 @@ mod test {
     // commented out because neither #[allow(dead_code)] nor #[expect(dead_code)] made clippy happy
     // variadic_trait! {
     //     /// Variaidic list of futures.
-    //     pub variadic<F> FuturesList where F: std::future::Future {
+    //     pub variadic<F> FuturesList where F: core::future::Future {
     //     }
     // }
 
