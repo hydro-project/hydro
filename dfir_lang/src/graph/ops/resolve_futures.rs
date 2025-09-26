@@ -70,7 +70,7 @@ pub fn resolve_futures_writer(
                         .borrow_mut()
                 };
 
-                #work_fn(|| {
+                (#work_fn)(|| {
                     #input
                         .for_each(|fut| {
                             let mut fut = ::std::boxed::Box::pin(fut);
@@ -95,32 +95,11 @@ pub fn resolve_futures_writer(
         let output = &outputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                let mut out = #output;
-                let mut state = unsafe {
+                let queue = unsafe {
                     // SAFETY: handle from `#df_ident.add_state(..)`.
                     #context.state_ref_unchecked(#futures_ident).borrow_mut()
                 };
-
-                #work_fn(|| {
-                    while let #root::futures::task::Poll::Ready(Some(val)) =
-                        #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *state), &mut ::std::task::Context::from_waker(&#context.waker()))
-                    {
-                        #root::pusherator::Pusherator::give(&mut out, val)
-                    }
-                });
-
-                let consumer = #root::pusherator::for_each::ForEach::new(|fut| {
-                    #work_fn(|| {
-                        let fut = ::std::boxed::Box::pin(fut);
-                        unsafe {
-                            // SAFETY: handle from `#df_ident.add_state(..)`.
-                            #context.state_ref_unchecked(#futures_ident).borrow_mut()
-                        }.#push_fn(fut);
-                    });
-                    #context.schedule_subgraph(#context.current_subgraph(), true);
-                });
-
-                consumer
+                #root::compiled::push::ResolveFutures::new(queue, #context.waker(), #output)
             };
         }
     };

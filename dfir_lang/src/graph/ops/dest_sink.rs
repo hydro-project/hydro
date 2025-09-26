@@ -98,59 +98,32 @@ pub const DEST_SINK: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   df_ident,
                    op_span,
                    ident,
                    is_pull,
                    arguments,
-                   work_fn,
                    ..
                },
                _| {
         assert!(!is_pull);
 
         let sink_arg = &arguments[0];
-
-        let send_ident = wc.make_ident("item_send");
-        let recv_ident = wc.make_ident("item_recv");
-
+        let sink_ident = wc.make_ident("sink");
         let write_prologue = quote_spanned! {op_span=>
-            let (#send_ident, #recv_ident) = #root::tokio::sync::mpsc::unbounded_channel();
-            {
-                /// Function is needed so `Item` is so no ambiguity for what `Item` is used
-                /// when calling `.flush()`.
-                #[allow(non_snake_case)]
-                async fn #work_fn<Sink, Item>(
-                    mut recv: #root::tokio::sync::mpsc::UnboundedReceiver<Item>,
-                    mut sink: Sink,
-                ) where
-                    Sink: ::std::marker::Unpin + #root::futures::Sink<Item>,
+            let mut #sink_ident = #sink_arg;
+        };
+        let write_iterator = quote_spanned! {op_span=>
+            let #ident = {
+                fn sink_guard<Sink, Item>(sink: Sink) -> impl #root::futures::sink::Sink<Item, Error = #root::Never>
+                where
+                    Sink: #root::futures::sink::Sink<Item>,
                     Sink::Error: ::std::fmt::Debug,
                 {
-                    use #root::futures::SinkExt;
-                    while let Some(item) = recv.recv().await {
-                        sink.feed(item)
-                            .await
-                            .expect("Error processing async sink item");
-                        while let Ok(item) = recv.try_recv() {
-                            sink.feed(item)
-                                .await
-                                .expect("Error processing async sink item");
-                        }
-                        sink.flush().await.expect("Failed to flush sink");
-                    }
+                    <Sink as #root::futures::sink::SinkExt<Item>>::sink_map_err(sink, |e| panic!("{:?}", e))
+                    // #root::futures::sink::SinkCompat::new(sink)
                 }
-                #df_ident
-                    .request_task(#work_fn(#recv_ident, #sink_arg));
-            }
-        };
-
-        let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::pusherator::for_each::ForEach::new(|item| {
-                if let Err(err) = #send_ident.send(item) {
-                    panic!("Failed to send async write item for processing: {}", err);
-                }
-            });
+                sink_guard(&mut #sink_ident)
+            };
         };
 
         Ok(OperatorWriteOutput {
