@@ -1,0 +1,30 @@
+[package]
+name = "sinktools"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["std", "variadics"]
+std = ["futures-util/std", "variadics?/std"]
+variadics = ["dep:variadics"]
+
+[dependencies]
+futures-util = { version = "0.3", default-features = false, features = [
+    "sink",
+] }
+pin-project-lite = "0.2"
+sealed = "0.6"
+variadics = { optional = true, path = "../variadics", default-features = false, version = "^0.0.9" }
+
+[dev-dependencies]
+tokio = { version = "1.29.0", default-features = false, features = ["macros", "rt"] }
+tokio-stream = { version = "0.1.3", default-features = false }
+tokio-util = { version = "0.7.5", default-features = false }
