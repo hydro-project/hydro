@@ -64,6 +64,12 @@ pub mod location;
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod deploy;
 
+#[cfg(any(feature = "sim",))]
+#[cfg_attr(docsrs, doc(cfg(feature = "sim")))]
+#[expect(missing_docs, reason = "TODO")]
+#[cfg(stageleft_runtime)]
+pub mod sim;
+
 pub mod forward_handle;
 
 pub mod compile;

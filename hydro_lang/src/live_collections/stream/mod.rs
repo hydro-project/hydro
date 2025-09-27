@@ -2752,6 +2752,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use bytes::Bytes;
     use futures::{SinkExt, StreamExt};
     use hydro_deploy::Deployment;
     use serde::{Deserialize, Serialize};
@@ -3010,5 +3011,34 @@ mod tests {
         external_in.send(1).await.unwrap();
         external_in.send(3).await.unwrap();
         assert_eq!(external_out.next().await.unwrap(), 3);
+    }
+
+    #[test]
+    fn very_basic_sim() {
+        // run as RUSTFLAGS="-Clink-arg=-export_dynamic" BOLERO_LIBFUZZER_ARGS="." CARGO_CFG_FUZZING_LIBFUZZER=1 BOLERO_FUZZER="libfuzzer" RUST_BACKTRACE=1 cargo test -p hydro_lang --features sim -- live_collections::stream::tests::very_basic_sim --nocapture
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode(&external);
+
+        input.unique().for_each(q!(|x: Bytes| {
+            if x.len() > 0 && x[0] == 42 {
+                if x.len() > 1 && x[1] == 43 {
+                    if x.len() > 2 && x[2] == 44 {
+                        panic!("boom");
+                    }
+                }
+            }
+        }));
+
+        flow.sim().compiled().with_instantiator(|instantiator| {
+            bolero::check!().for_each(move |input| {
+                let mut instance = instantiator();
+                let in_send = instance.connect_sink_bincode(&port);
+                in_send.send(Bytes::from(input.to_vec())).unwrap();
+                instance.dfir().run_available_sync();
+            });
+        });
     }
 }

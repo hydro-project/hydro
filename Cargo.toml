@@ -45,6 +45,9 @@ debug = 2
 lto = "off"
 strip = "none"
 
+[profile.fuzz]
+inherits = "dev"
+
 [profile.dev.package.website_playground]
 debug-assertions = false
 

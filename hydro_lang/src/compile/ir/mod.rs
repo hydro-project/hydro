@@ -307,12 +307,245 @@ pub enum HydroSource {
 }
 
 #[cfg(feature = "build")]
+pub trait DfirBuilder {
+    fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder;
+
+    fn batch(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        _in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+    );
+    fn yield_from_tick(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+    );
+
+    #[expect(clippy::too_many_arguments, reason = "TODO")]
+    fn create_network(
+        &mut self,
+        from: &LocationId,
+        to: &LocationId,
+        input_ident: syn::Ident,
+        out_ident: &syn::Ident,
+        serialize: &Option<DebugExpr>,
+        sink: syn::Expr,
+        source: syn::Expr,
+        deserialize: &Option<DebugExpr>,
+        tag_id: usize,
+    );
+
+    fn create_external_source(
+        &mut self,
+        on: &LocationId,
+        source_expr: syn::Expr,
+        out_ident: &syn::Ident,
+        deserialize: &Option<DebugExpr>,
+        tag_id: usize,
+    );
+}
+
+#[cfg(feature = "build")]
+impl DfirBuilder for BTreeMap<usize, FlatGraphBuilder> {
+    fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
+        self.entry(location.root().raw_id()).or_default()
+    }
+
+    fn batch(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        _in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+    ) {
+        let builder = self.get_dfir_mut(in_location.root());
+        builder.add_dfir(
+            parse_quote! {
+                #out_ident = #in_ident;
+            },
+            None,
+            None,
+        );
+    }
+
+    fn yield_from_tick(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        _in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+    ) {
+        let builder = self.get_dfir_mut(in_location.root());
+        builder.add_dfir(
+            parse_quote! {
+                #out_ident = #in_ident;
+            },
+            None,
+            None,
+        );
+    }
+
+    fn create_network(
+        &mut self,
+        from: &LocationId,
+        to: &LocationId,
+        input_ident: syn::Ident,
+        out_ident: &syn::Ident,
+        serialize: &Option<DebugExpr>,
+        sink: syn::Expr,
+        source: syn::Expr,
+        deserialize: &Option<DebugExpr>,
+        tag_id: usize,
+    ) {
+        let sender_builder = self.get_dfir_mut(from);
+        if let Some(serialize_pipeline) = serialize {
+            sender_builder.add_dfir(
+                parse_quote! {
+                    #input_ident -> map(#serialize_pipeline) -> dest_sink(#sink);
+                },
+                None,
+                // operator tag separates send and receive, which otherwise have the same next_stmt_id
+                Some(&format!("send{}", tag_id)),
+            );
+        } else {
+            sender_builder.add_dfir(
+                parse_quote! {
+                    #input_ident -> dest_sink(#sink);
+                },
+                None,
+                Some(&format!("send{}", tag_id)),
+            );
+        }
+
+        let receiver_builder = self.get_dfir_mut(to);
+        if let Some(deserialize_pipeline) = deserialize {
+            receiver_builder.add_dfir(
+                parse_quote! {
+                    #out_ident = source_stream(#source) -> map(#deserialize_pipeline);
+                },
+                None,
+                Some(&format!("recv{}", tag_id)),
+            );
+        } else {
+            receiver_builder.add_dfir(
+                parse_quote! {
+                    #out_ident = source_stream(#source);
+                },
+                None,
+                Some(&format!("recv{}", tag_id)),
+            );
+        }
+    }
+
+    fn create_external_source(
+        &mut self,
+        on: &LocationId,
+        source_expr: syn::Expr,
+        out_ident: &syn::Ident,
+        deserialize: &Option<DebugExpr>,
+        tag_id: usize,
+    ) {
+        let receiver_builder = self.get_dfir_mut(on);
+        if let Some(deserialize_pipeline) = deserialize {
+            receiver_builder.add_dfir(
+                parse_quote! {
+                    #out_ident = source_stream(#source_expr) -> map(#deserialize_pipeline);
+                },
+                None,
+                Some(&format!("recv{}", tag_id)),
+            );
+        } else {
+            receiver_builder.add_dfir(
+                parse_quote! {
+                    #out_ident = source_stream(#source_expr);
+                },
+                None,
+                Some(&format!("recv{}", tag_id)),
+            );
+        }
+    }
+}
+
+#[cfg(feature = "build")]
+pub struct SimBuilder {
+    pub async_level: FlatGraphBuilder,
+}
+
+#[cfg(feature = "build")]
+impl DfirBuilder for SimBuilder {
+    fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
+        match location {
+            LocationId::Process(_) => &mut self.async_level,
+            LocationId::Cluster(_) => panic!("SimBuilder does not support clusters"),
+            LocationId::Atomic(_) => panic!("SimBuilder does not support atomic locations"),
+            LocationId::Tick(_, _) => panic!("SimBuilder does not support tick locations"),
+        }
+    }
+
+    fn batch(
+        &mut self,
+        _in_ident: syn::Ident,
+        _in_location: &LocationId,
+        _in_kind: &CollectionKind,
+        _out_ident: &syn::Ident,
+    ) {
+        todo!()
+    }
+
+    fn yield_from_tick(
+        &mut self,
+        _in_ident: syn::Ident,
+        _in_location: &LocationId,
+        _in_kind: &CollectionKind,
+        _out_ident: &syn::Ident,
+    ) {
+        todo!()
+    }
+
+    fn create_network(
+        &mut self,
+        _from: &LocationId,
+        _to: &LocationId,
+        _input_ident: syn::Ident,
+        _out_ident: &syn::Ident,
+        _serialize: &Option<DebugExpr>,
+        _sink: syn::Expr,
+        _source: syn::Expr,
+        _deserialize: &Option<DebugExpr>,
+        _tag_id: usize,
+    ) {
+        todo!()
+    }
+
+    fn create_external_source(
+        &mut self,
+        _on: &LocationId,
+        source_expr: syn::Expr,
+        out_ident: &syn::Ident,
+        _deserialize: &Option<DebugExpr>,
+        tag_id: usize,
+    ) {
+        self.async_level.add_dfir(
+            parse_quote! {
+                #out_ident = source_stream(#source_expr);
+            },
+            None,
+            Some(&format!("recv{}", tag_id)),
+        );
+    }
+}
+
+#[cfg(feature = "build")]
 pub enum BuildersOrCallback<'a, L, N>
 where
     L: FnMut(&mut HydroRoot, &mut usize),
     N: FnMut(&mut HydroNode, &mut usize),
 {
-    Builders(&'a mut BTreeMap<usize, FlatGraphBuilder>),
+    Builders(&'a mut dyn DfirBuilder),
     Callback(L, N),
 }
 
@@ -643,7 +876,7 @@ impl HydroRoot {
     #[cfg(feature = "build")]
     pub fn emit(
         &mut self,
-        graph_builders: &mut BTreeMap<usize, FlatGraphBuilder>,
+        graph_builders: &mut dyn DfirBuilder,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, syn::Ident>,
         next_stmt_id: &mut usize,
     ) {
@@ -674,8 +907,7 @@ impl HydroRoot {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         graph_builders
-                            .entry(input.metadata().location_kind.root().raw_id())
-                            .or_default()
+                            .get_dfir_mut(&input.metadata().location_kind)
                             .add_dfir(
                                 parse_quote! {
                                     #input_ident -> for_each(#f);
@@ -713,9 +945,8 @@ impl HydroRoot {
                             }
                         };
 
-                        let sender_builder = graph_builders
-                            .entry(input.metadata().location_kind.root().raw_id())
-                            .or_default();
+                        let sender_builder =
+                            graph_builders.get_dfir_mut(&input.metadata().location_kind);
                         if let Some(serialize_fn) = serialize_fn {
                             sender_builder.add_dfir(
                                 parse_quote! {
@@ -749,8 +980,7 @@ impl HydroRoot {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         graph_builders
-                            .entry(input.metadata().location_kind.root().raw_id())
-                            .or_default()
+                            .get_dfir_mut(&input.metadata().location_kind)
                             .add_dfir(
                                 parse_quote! {
                                     #input_ident -> dest_sink(#sink);
@@ -773,8 +1003,7 @@ impl HydroRoot {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         graph_builders
-                            .entry(input.metadata().location_kind.root().raw_id())
-                            .or_default()
+                            .get_dfir_mut(&input.metadata().location_kind)
                             .add_dfir(
                                 parse_quote! {
                                     #ident = #input_ident;
@@ -1708,7 +1937,7 @@ impl HydroNode {
         built_tees: &mut HashMap<*const RefCell<HydroNode>, syn::Ident>,
         next_stmt_id: &mut usize,
     ) -> syn::Ident {
-        let out_location = self.metadata().location_kind.root().raw_id();
+        let out_location = self.metadata().location_kind.clone();
         match self {
             HydroNode::Placeholder => {
                 panic!()
@@ -1730,7 +1959,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #persist_ident = #inner_ident -> persist::<'static>();
@@ -1757,13 +1986,11 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
-                        builder.add_dfir(
-                            parse_quote! {
-                                #batch_ident = #inner_ident;
-                            },
-                            None,
-                            None,
+                        graph_builders.batch(
+                            inner_ident,
+                            &inner.metadata().location_kind,
+                            &inner.metadata().collection_kind,
+                            &batch_ident,
                         );
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {
@@ -1784,13 +2011,11 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
-                        builder.add_dfir(
-                            parse_quote! {
-                                #yield_ident = #inner_ident;
-                            },
-                            None,
-                            None,
+                        graph_builders.yield_from_tick(
+                            inner_ident,
+                            &inner.metadata().location_kind,
+                            &inner.metadata().collection_kind,
+                            &yield_ident,
                         );
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {
@@ -1855,7 +2080,7 @@ impl HydroNode {
 
                     match builders_or_callback {
                         BuildersOrCallback::Builders(graph_builders) => {
-                            let builder = graph_builders.entry(out_location).or_default();
+                            let builder = graph_builders.get_dfir_mut(&out_location);
                             builder.add_dfir(source_stmt, None, Some(&next_stmt_id.to_string()));
                         }
                         BuildersOrCallback::Callback(_, node_callback) => {
@@ -1914,7 +2139,7 @@ impl HydroNode {
 
                     match builders_or_callback {
                         BuildersOrCallback::Builders(graph_builders) => {
-                            let builder = graph_builders.entry(out_location).or_default();
+                            let builder = graph_builders.get_dfir_mut(&out_location);
                             builder.add_dfir(
                                 parse_quote! {
                                     #tee_ident = #inner_ident -> tee();
@@ -1947,7 +2172,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #chain_ident = chain();
@@ -1977,7 +2202,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #chain_ident = chain_first_n(1);
@@ -2007,7 +2232,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #cross_ident = cross_singleton();
@@ -2073,7 +2298,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             if is_top_level {
                                 // if both inputs are root, the output is expected to have streamy semantics, so we need
@@ -2136,7 +2361,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #stream_ident = #operator::<'tick, #neg_lifetime>();
@@ -2165,7 +2390,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #futures_ident = #input_ident -> resolve_futures();
@@ -2192,7 +2417,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #futures_ident = #input_ident -> resolve_futures_ordered();
@@ -2219,7 +2444,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #map_ident = #input_ident -> map(#f);
@@ -2246,7 +2471,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #flat_map_ident = #input_ident -> flat_map(#f);
@@ -2273,7 +2498,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #filter_ident = #input_ident -> filter(#f);
@@ -2300,7 +2525,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #filter_map_ident = #input_ident -> filter_map(#f);
@@ -2327,7 +2552,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #sort_ident = #input_ident -> sort();
@@ -2354,7 +2579,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #defer_tick_ident = #input_ident -> defer_tick_lazy();
@@ -2381,7 +2606,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         let lifetime = if input.metadata().location_kind.is_top_level() {
                             quote!('static)
                         } else {
@@ -2413,7 +2638,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #inspect_ident = #input_ident -> inspect(#f);
@@ -2440,7 +2665,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         let lifetime = if input.metadata().location_kind.is_top_level() {
                             quote!('static)
                         } else {
@@ -2504,7 +2729,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #fold_ident = #input_ident -> #operator::<#lifetime>(#init, #acc);
@@ -2554,7 +2779,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         // 1. Don't allow any values to be added to the map if the key <=the watermark
                         // 2. If the entry didn't exist in the BTreeMap, add it. Otherwise, call f.
                         //    If the watermark changed, delete all BTreeMap entries with a key < the watermark.
@@ -2645,7 +2870,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #reduce_ident = #input_ident -> #operator::<#lifetime>(#f);
@@ -2689,42 +2914,17 @@ impl HydroNode {
                             }
                         };
 
-                        let sender_builder = graph_builders
-                            .entry(input.metadata().location_kind.root().raw_id())
-                            .or_default();
-                        if let Some(serialize_pipeline) = serialize_pipeline {
-                            sender_builder.add_dfir(
-                                parse_quote! {
-                                    #input_ident -> map(#serialize_pipeline) -> dest_sink(#sink_expr);
-                                },
-                                None,
-                                // operator tag separates send and receive, which otherwise have the same next_stmt_id
-                                Some(&format!("send{}", next_stmt_id)),
-                            );
-                        } else {
-                            sender_builder.add_dfir(
-                                parse_quote! {
-                                    #input_ident -> dest_sink(#sink_expr);
-                                },
-                                None,
-                                Some(&format!("send{}", next_stmt_id)),
-                            );
-                        }
-
-                        let receiver_builder = graph_builders.entry(out_location).or_default();
-                        if let Some(deserialize_pipeline) = deserialize_pipeline {
-                            receiver_builder.add_dfir(parse_quote! {
-                                #receiver_stream_ident = source_stream(#source_expr) -> map(#deserialize_pipeline);
-                            }, None, Some(&format!("recv{}", next_stmt_id)));
-                        } else {
-                            receiver_builder.add_dfir(
-                                parse_quote! {
-                                    #receiver_stream_ident = source_stream(#source_expr);
-                                },
-                                None,
-                                Some(&format!("recv{}", next_stmt_id)),
-                            );
-                        }
+                        graph_builders.create_network(
+                            &input.metadata().location_kind,
+                            &out_location,
+                            input_ident,
+                            &receiver_stream_ident,
+                            serialize_pipeline,
+                            sink_expr,
+                            source_expr,
+                            deserialize_pipeline,
+                            *next_stmt_id,
+                        );
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
@@ -2739,11 +2939,8 @@ impl HydroNode {
             HydroNode::ExternalInput {
                 instantiate_fn,
                 deserialize_fn: deserialize_pipeline,
-                metadata,
                 ..
             } => {
-                let to_id = metadata.location_kind.root().raw_id();
-
                 let receiver_stream_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
@@ -2760,20 +2957,13 @@ impl HydroNode {
                             }
                         };
 
-                        let receiver_builder = graph_builders.entry(to_id).or_default();
-                        if let Some(deserialize_pipeline) = deserialize_pipeline {
-                            receiver_builder.add_dfir(parse_quote! {
-                                #receiver_stream_ident = source_stream(#source_expr) -> map(#deserialize_pipeline);
-                            }, None, Some(&format!("recv{}", next_stmt_id)));
-                        } else {
-                            receiver_builder.add_dfir(
-                                parse_quote! {
-                                    #receiver_stream_ident = source_stream(#source_expr);
-                                },
-                                None,
-                                Some(&format!("recv{}", next_stmt_id)),
-                            );
-                        }
+                        graph_builders.create_external_source(
+                            &out_location,
+                            source_expr,
+                            &receiver_stream_ident,
+                            deserialize_pipeline,
+                            *next_stmt_id,
+                        );
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
@@ -2799,7 +2989,7 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.entry(out_location).or_default();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
                         builder.add_dfir(
                             parse_quote! {
                                 #counter_ident = #input_ident -> _counter(#tag, #duration, #prefix);
