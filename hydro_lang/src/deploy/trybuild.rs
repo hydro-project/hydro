@@ -15,9 +15,10 @@ use super::trybuild_rewriters::UseTestModeStaged;
 
 pub const HYDRO_RUNTIME_FEATURES: &[&str] = &["deploy_integration", "runtime_measure"];
 
-static IS_TEST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+pub(crate) static IS_TEST: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
 
-static CONCURRENT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+pub(crate) static CONCURRENT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Enables "test mode" for Hydro, which makes it possible to compile Hydro programs written
 /// inside a `#[cfg(test)]` module. This should be enabled in a global [`ctor`] hook.
@@ -332,7 +333,7 @@ pub fn create_trybuild()
     ))
 }
 
-fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::Error> {
+pub(crate) fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::Error> {
     let mut file = File::options()
         .read(true)
         .write(true)

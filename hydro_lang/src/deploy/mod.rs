@@ -9,7 +9,7 @@ pub(crate) mod trybuild;
 
 #[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
-mod trybuild_rewriters;
+pub(crate) mod trybuild_rewriters;
 
 #[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
