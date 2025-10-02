@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["sinktools",[["impl&lt;Pull, Push&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html\" title=\"trait core::future::future::Future\">Future</a> for <a class=\"struct\" href=\"sinktools/send_iter/struct.SendIter.html\" title=\"struct sinktools::send_iter::SendIter\">SendIter</a>&lt;Pull, Push&gt;<div class=\"where\">where\n    Pull: <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html\" title=\"trait core::iter::traits::iterator::Iterator\">Iterator</a>,\n    Push: <a class=\"trait\" href=\"sinktools/trait.Sink.html\" title=\"trait sinktools::Sink\">Sink</a>&lt;Pull::<a class=\"associatedtype\" href=\"https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html#associatedtype.Item\" title=\"type core::iter::traits::iterator::Iterator::Item\">Item</a>&gt;,</div>"],["impl&lt;Pull, Push&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html\" title=\"trait core::future::future::Future\">Future</a> for <a class=\"struct\" href=\"sinktools/send_stream/struct.SendStream.html\" title=\"struct sinktools::send_stream::SendStream\">SendStream</a>&lt;Pull, Push&gt;<div class=\"where\">where\n    Pull: Stream,\n    Push: <a class=\"trait\" href=\"sinktools/trait.Sink.html\" title=\"trait sinktools::Sink\">Sink</a>&lt;Pull::Item&gt;,</div>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[1417]}
