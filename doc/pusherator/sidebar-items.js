@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["demux","filter","filter_map","flatten","for_each","inspect","map","null","partition","pivot","switch","tee","unzip"],"struct":["InputBuild"],"trait":["IteratorToPusherator","Pusherator","PusheratorBuild"]};
