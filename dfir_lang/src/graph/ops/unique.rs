@@ -105,7 +105,7 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
             }
         } else {
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::filter::Filter::new(#filter_fn, #output);
+                let #ident = #root::sinktools::filter(#filter_fn, #output);
             }
         };
 

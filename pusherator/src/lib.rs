@@ -1,3 +1,5 @@
+//! [`Pusherator`], the _push_ equivalent of _pull_ [`Iterator]`s.
+//!
 //! Pusherator generics and argument order conventions:
 //! - `Next` (being the next owned pusherator) should come first in generic
 //!   arguments.

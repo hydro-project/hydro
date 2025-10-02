@@ -895,14 +895,14 @@ impl DfirGraph {
                     .collect();
 
                 let recv_port_code = recv_ports.iter().map(|ident| {
-                    quote! {
+                    quote_spanned! {ident.span()=>
                         let mut #ident = #ident.borrow_mut_swap();
                         let #ident = #ident.drain(..);
                     }
                 });
                 let send_port_code = send_ports.iter().map(|ident| {
-                    quote! {
-                        let #ident = #root::pusherator::for_each::ForEach::new(|v| {
+                    quote_spanned! {ident.span()=>
+                        let #ident = #root::sinktools::for_each(|v| {
                             #ident.give(Some(v));
                         });
                     }
@@ -1041,7 +1041,7 @@ impl DfirGraph {
                                 )
                             };
 
-                            let fn_ident = format_ident!(
+                            let work_fn = format_ident!(
                                 "{}__{}__{}",
                                 ident,
                                 op_name,
@@ -1058,7 +1058,7 @@ impl DfirGraph {
                                 loop_id,
                                 op_span,
                                 op_tag: self.operator_tag.get(node_id).cloned(),
-                                work_fn: &fn_ident,
+                                work_fn: &work_fn,
                                 ident: &ident,
                                 is_pull,
                                 inputs: &inputs,
@@ -1089,7 +1089,7 @@ impl DfirGraph {
                             op_prologue_code.push(syn::parse_quote! {
                                 #[allow(non_snake_case)]
                                 #[inline(always)]
-                                fn #fn_ident<T>(thunk: impl FnOnce() -> T) -> T {
+                                fn #work_fn<T>(thunk: impl FnOnce() -> T) -> T {
                                     thunk()
                                 }
                             });
@@ -1103,7 +1103,7 @@ impl DfirGraph {
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
-                                            pub fn #fn_ident<Item, Input: ::std::iter::Iterator<Item = Item>>(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
+                                            pub fn #work_fn<Item, Input: ::std::iter::Iterator<Item = Item>>(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
                                                 #[repr(transparent)]
                                                 struct Pull<Item, Input: ::std::iter::Iterator<Item = Item>> {
                                                     inner: Input
@@ -1127,7 +1127,7 @@ impl DfirGraph {
                                                     inner: input
                                                 }
                                             }
-                                            #fn_ident( #ident )
+                                            #work_fn( #ident )
                                         };
                                     }
                                 } else {
@@ -1135,26 +1135,57 @@ impl DfirGraph {
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
-                                            pub fn #fn_ident<Item, Input: #root::pusherator::Pusherator<Item = Item>>(input: Input) -> impl #root::pusherator::Pusherator<Item = Item> {
-                                                #[repr(transparent)]
-                                                struct Push<Item, Input: #root::pusherator::Pusherator<Item = Item>> {
-                                                    inner: Input
+                                            pub fn #work_fn<Item, Si>(si: Si) -> impl #root::futures::sink::Sink<Item, Error = #root::Never>
+                                            where
+                                                Si: #root::futures::sink::Sink<Item, Error = #root::Never>
+                                            {
+                                                #root::pin_project_lite::pin_project! {
+                                                    #[repr(transparent)]
+                                                    struct Push<Si> {
+                                                        #[pin]
+                                                        si: Si,
+                                                    }
                                                 }
+                                                impl<Item, Si> #root::futures::sink::Sink<Item> for Push<Si>
+                                                where
+                                                    Si: #root::futures::sink::Sink<Item>,
+                                                {
+                                                    type Error = Si::Error;
 
-                                                impl<Item, Input: #root::pusherator::Pusherator<Item = Item>> #root::pusherator::Pusherator for Push<Item, Input> {
-                                                    type Item = Item;
+                                                    fn poll_ready(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        cx: &mut ::std::task::Context<'_>,
+                                                    ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                                                        self.project().si.poll_ready(cx)
+                                                    }
 
-                                                    #[inline(always)]
-                                                    fn give(&mut self, item: Self::Item) {
-                                                        self.inner.give(item)
+                                                    fn start_send(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        item: Item,
+                                                    ) -> ::std::result::Result<(), Self::Error> {
+                                                        self.project().si.start_send(item)
+                                                    }
+
+                                                    fn poll_flush(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        cx: &mut ::std::task::Context<'_>,
+                                                    ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                                                        self.project().si.poll_flush(cx)
+                                                    }
+
+                                                    fn poll_close(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        cx: &mut ::std::task::Context<'_>,
+                                                    ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
+                                                        self.project().si.poll_close(cx)
                                                     }
                                                 }
 
                                                 Push {
-                                                    inner: input
+                                                    si
                                                 }
                                             }
-                                            #fn_ident( #ident )
+                                            #work_fn( #ident )
                                         };
                                     }
                                 };
@@ -1197,12 +1228,18 @@ impl DfirGraph {
                             .unwrap_or_else(|| push_ident.span());
                         let pivot_fn_ident =
                             Ident::new(&format!("pivot_run_sg_{:?}", subgraph_id.0), pivot_span);
+                        let root = change_spans(root.clone(), pivot_span);
                         subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
                             #[inline(always)]
-                            fn #pivot_fn_ident<Pull: ::std::iter::Iterator<Item = Item>, Push: #root::pusherator::Pusherator<Item = Item>, Item>(pull: Pull, push: Push) {
-                                #root::pusherator::pivot::Pivot::new(pull, push).run();
+                            fn #pivot_fn_ident<Pull, Push, Item>(pull: Pull, push: Push)
+                                -> impl ::std::future::Future<Output = ::std::result::Result<(), #root::Never>>
+                            where
+                                Pull: ::std::iter::Iterator<Item = Item>,
+                                Push: #root::futures::sink::Sink<Item, Error = #root::Never>,
+                            {
+                                #root::sinktools::send_iter(pull, push)
                             }
-                            (#pivot_fn_ident)(#pull_ident, #push_ident);
+                            (#pivot_fn_ident)(#pull_ident, #push_ident).await.unwrap(/* Never */);
                         });
                     }
                 };
@@ -1229,12 +1266,11 @@ impl DfirGraph {
                         var_expr!( #( #send_ports ),* ),
                         #laziness,
                         #loop_id_opt,
-                        move |#context, var_args!( #( #recv_ports ),* ), var_args!( #( #send_ports ),* )| {
+                        async move |#context, var_args!( #( #recv_ports ),* ), var_args!( #( #send_ports ),* )| {
                             #( #recv_port_code )*
                             #( #send_port_code )*
                             #( #subgraph_op_iter_code )*
                             #( #subgraph_op_iter_after_code )*
-                            ::std::future::ready(())
                         },
                     );
                 });
@@ -1264,7 +1300,7 @@ impl DfirGraph {
 
         quote! {
             {
-                #[allow(unused_qualifications)]
+                #[allow(unused_qualifications, clippy::await_holding_refcell_ref)]
                 {
                     #prefix
 

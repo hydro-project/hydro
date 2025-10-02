@@ -2,7 +2,6 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use proc_macro2::Span;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::parse_quote;
 
@@ -437,6 +436,7 @@ fn find_subgraph_strata(
         let dst_sg = partitioned_graph.node_subgraph(dst).unwrap();
         let src_stratum = partitioned_graph.subgraph_stratum(src_sg);
         let dst_stratum = partitioned_graph.subgraph_stratum(dst_sg);
+        let dst_span = partitioned_graph.node(dst).span();
         match delay_type {
             DelayType::Tick | DelayType::TickLazy => {
                 let is_lazy = matches!(delay_type, DelayType::TickLazy);
@@ -456,8 +456,9 @@ fn find_subgraph_strata(
                     );
                     // Intermediate: A (src) -> H -> ID -> B (dst)
                     let hoff = GraphNode::Handoff {
-                        src_span: Span::call_site(), // TODO(mingwei): Proper spanning?
-                        dst_span: Span::call_site(),
+                        // Span to the node that has the input stratum barrier.
+                        src_span: dst_span,
+                        dst_span,
                     };
                     let (_hoff_node_id, _hoff_edge_id) =
                         partitioned_graph.insert_intermediate_node(new_edge_id, hoff);

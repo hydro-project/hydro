@@ -94,7 +94,7 @@ fn benchmark_iter_collect(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_compiled(c: &mut Criterion) {
-    use dfir_rs::pusherator::{InputBuild, Pusherator, PusheratorBuild};
+    use pusherator::{InputBuild, Pusherator, PusheratorBuild};
 
     c.bench_function("arithmetic/dfir_rs/compiled", |b| {
         b.iter(|| {
@@ -131,7 +131,7 @@ fn benchmark_hydroflow_compiled(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_compiled_no_cheating(c: &mut Criterion) {
-    use dfir_rs::pusherator::{InputBuild, Pusherator, PusheratorBuild};
+    use pusherator::{InputBuild, Pusherator, PusheratorBuild};
 
     c.bench_function("arithmetic/dfir_rs/compiled_no_cheating", |b| {
         b.iter(|| {
