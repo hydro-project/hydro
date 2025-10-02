@@ -1166,14 +1166,6 @@ impl DfirGraph {
                                                         self.project().si.start_send(item)
                                                     }
 
-                                                    // fn poll_send(
-                                                    //     self: ::std::pin::Pin<&mut Self>,
-                                                    //     cx: &mut ::std::task::Context<'_>,
-                                                    //     item: Option<Item>,
-                                                    // ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
-                                                    //     self.project().si.poll_send(cx, item)
-                                                    // }
-
                                                     fn poll_flush(
                                                         self: ::std::pin::Pin<&mut Self>,
                                                         cx: &mut ::std::task::Context<'_>,

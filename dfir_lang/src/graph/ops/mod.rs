@@ -215,9 +215,9 @@ pub fn null_write_iterator_fn(
     if is_pull {
         quote_spanned! {op_span=>
             #(
-                #inputs.for_each(std::mem::drop);
+                #inputs.for_each(::std::mem::drop);
             )*
-            let #ident = std::iter::empty::<#iter_type>();
+            let #ident = ::std::iter::empty::<#iter_type>();
         }
     } else {
         quote_spanned! {op_span=>

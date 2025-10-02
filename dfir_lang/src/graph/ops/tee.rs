@@ -52,7 +52,7 @@ pub const TEE: OperatorConstraints = OperatorConstraints {
                     quote_spanned! {op_span=> #root::futures::sink::SinkExt::fanout(#a, #b) },
                 )
                 .unwrap_or_else(
-                    || quote_spanned! {op_span=> #root::sinktools::for_each::ForEach::new(::std::mem::drop) },
+                    || quote_spanned! {op_span=> #root::sinktools::for_each(::std::mem::drop) },
                 );
             quote_spanned! {op_span=>
                 let #ident = #tees;
