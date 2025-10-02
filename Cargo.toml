@@ -18,6 +18,7 @@ members = [
     "lattices",
     "multiplatform_test",
     "pusherator",
+    "sinktools",
     "variadics_macro",
     "variadics",
     "website_playground",
@@ -38,6 +39,7 @@ strip = true      # Strip symbols from the binary
 # performance.
 opt-level = 3
 lto = "fat"
+codegen-units = 1
 
 [profile.profile]
 inherits = "release"

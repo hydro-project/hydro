@@ -136,7 +136,7 @@ impl<'a> Dfir<'a> {
         Default::default()
     }
 
-    /// Assign the meta graph via JSON string. Used internally by the [`dfir_syntax`] and other macros.
+    /// Assign the meta graph via JSON string. Used internally by the [`crate::dfir_syntax`] and other macros.
     #[doc(hidden)]
     pub fn __assign_meta_graph(&mut self, _meta_graph_json: &str) {
         #[cfg(feature = "meta")]
