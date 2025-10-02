@@ -59,7 +59,7 @@
 <a href=#59 id=59 data-nosnippet>59</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#60 id=60 data-nosnippet>60</a>            <span class="macro">::std::debug_assert!</span>(#root::tokio::runtime::Handle::try_current().is_ok(), #missing_runtime_msg);
 <a href=#61 id=61 data-nosnippet>61</a>            #write_iterator
-<a href=#62 id=62 data-nosnippet>62</a>            <span class="kw">let </span>#ident = #root::pusherator::map::Map::new(
+<a href=#62 id=62 data-nosnippet>62</a>            <span class="kw">let </span>#ident = #root::sinktools::map(
 <a href=#63 id=63 data-nosnippet>63</a>                |(payload, addr)| (#root::util::serialize_to_bytes(payload), addr),
 <a href=#64 id=64 data-nosnippet>64</a>                #ident,
 <a href=#65 id=65 data-nosnippet>65</a>            );

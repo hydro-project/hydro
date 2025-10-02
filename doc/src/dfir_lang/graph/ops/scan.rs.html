@@ -167,7 +167,7 @@
 <a href=#167 id=167 data-nosnippet>167</a>        } <span class="kw">else </span>{
 <a href=#168 id=168 data-nosnippet>168</a>            <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
 <a href=#169 id=169 data-nosnippet>169</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#170 id=170 data-nosnippet>170</a>                <span class="kw">let </span>#ident = #root::pusherator::filter_map::FilterMap::new(|#iterator_item_ident| {
+<a href=#170 id=170 data-nosnippet>170</a>                <span class="kw">let </span>#ident = #root::sinktools::filter_map(|#iterator_item_ident| {
 <a href=#171 id=171 data-nosnippet>171</a>                    #filter_map_body
 <a href=#172 id=172 data-nosnippet>172</a>                }, #output);
 <a href=#173 id=173 data-nosnippet>173</a>            }

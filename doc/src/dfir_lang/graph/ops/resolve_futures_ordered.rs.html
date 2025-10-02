@@ -25,7 +25,11 @@
 <a href=#25 id=25 data-nosnippet>25</a>    ports_inn: <span class="prelude-val">None</span>,
 <a href=#26 id=26 data-nosnippet>26</a>    ports_out: <span class="prelude-val">None</span>,
 <a href=#27 id=27 data-nosnippet>27</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
-<a href=#28 id=28 data-nosnippet>28</a>    write_fn: <span class="kw">move </span>|wc, <span class="kw">_</span>| resolve_futures_writer(Ident::new(<span class="string">"FuturesOrdered"</span>, wc.op_span),
-<a href=#29 id=29 data-nosnippet>29</a>    Ident::new(<span class="string">"push_back"</span>, wc.op_span), 
-<a href=#30 id=30 data-nosnippet>30</a>    wc)
-<a href=#31 id=31 data-nosnippet>31</a>};</code></pre></div></section></main></body></html>
+<a href=#28 id=28 data-nosnippet>28</a>    write_fn: <span class="kw">move </span>|wc, <span class="kw">_</span>| {
+<a href=#29 id=29 data-nosnippet>29</a>        resolve_futures_writer(
+<a href=#30 id=30 data-nosnippet>30</a>            Ident::new(<span class="string">"FuturesOrdered"</span>, wc.op_span),
+<a href=#31 id=31 data-nosnippet>31</a>            Ident::new(<span class="string">"push_back"</span>, wc.op_span),
+<a href=#32 id=32 data-nosnippet>32</a>            wc
+<a href=#33 id=33 data-nosnippet>33</a>        )
+<a href=#34 id=34 data-nosnippet>34</a>    }
+<a href=#35 id=35 data-nosnippet>35</a>};</code></pre></div></section></main></body></html>

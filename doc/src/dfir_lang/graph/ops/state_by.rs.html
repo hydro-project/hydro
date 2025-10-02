@@ -154,14 +154,14 @@
 <a href=#154 id=154 data-nosnippet>154</a>                        mapfn: MappingFn,
 <a href=#155 id=155 data-nosnippet>155</a>                        state_handle: #root::scheduled::state::StateHandle&lt;::std::cell::RefCell&lt;Lat&gt;&gt;,
 <a href=#156 id=156 data-nosnippet>156</a>                        context: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>#root::scheduled::context::Context,
-<a href=#157 id=157 data-nosnippet>157</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::pusherator::Pusherator&lt;Item = Item&gt;
+<a href=#157 id=157 data-nosnippet>157</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::futures::sink::Sink&lt;Item, Error = Push::Error&gt;
 <a href=#158 id=158 data-nosnippet>158</a>                    <span class="kw">where
 <a href=#159 id=159 data-nosnippet>159</a>                        </span>Item: <span class="lifetime">'a </span>+ ::std::clone::Clone,
 <a href=#160 id=160 data-nosnippet>160</a>                        MappingFn: <span class="lifetime">'a </span>+ Fn(Item) -&gt; MappedItem,
-<a href=#161 id=161 data-nosnippet>161</a>                        Push: <span class="lifetime">'a </span>+ #root::pusherator::Pusherator&lt;Item = Item&gt;,
+<a href=#161 id=161 data-nosnippet>161</a>                        Push: <span class="lifetime">'a </span>+ #root::futures::sink::Sink&lt;Item&gt;,
 <a href=#162 id=162 data-nosnippet>162</a>                        Lat: <span class="lifetime">'static </span>+ #root::lattices::Merge&lt;MappedItem&gt;,
 <a href=#163 id=163 data-nosnippet>163</a>                    {
-<a href=#164 id=164 data-nosnippet>164</a>                        #root::pusherator::filter::Filter::new(<span class="kw">move </span>|item| {
+<a href=#164 id=164 data-nosnippet>164</a>                        #root::sinktools::filter(<span class="kw">move </span>|item| {
 <a href=#165 id=165 data-nosnippet>165</a>                            <span class="kw">let </span>state = <span class="kw">unsafe </span>{
 <a href=#166 id=166 data-nosnippet>166</a>                                <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
 <a href=#167 id=167 data-nosnippet>167</a>                                </span>context.state_ref_unchecked(state_handle)
@@ -180,14 +180,14 @@
 <a href=#180 id=180 data-nosnippet>180</a>                        state_handle: #root::scheduled::state::StateHandle&lt;::std::cell::RefCell&lt;Lat&gt;&gt;,
 <a href=#181 id=181 data-nosnippet>181</a>                        mapfn: MappingFn,
 <a href=#182 id=182 data-nosnippet>182</a>                        context: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>#root::scheduled::context::Context,
-<a href=#183 id=183 data-nosnippet>183</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::pusherator::Pusherator&lt;Item = Item&gt;
+<a href=#183 id=183 data-nosnippet>183</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::futures::sink::Sink&lt;Item, Error = #root::Never&gt;
 <a href=#184 id=184 data-nosnippet>184</a>                    <span class="kw">where
 <a href=#185 id=185 data-nosnippet>185</a>                        </span>Item: <span class="lifetime">'a</span>,
 <a href=#186 id=186 data-nosnippet>186</a>                        MappedItem: <span class="lifetime">'a</span>,
 <a href=#187 id=187 data-nosnippet>187</a>                        MappingFn: <span class="lifetime">'a </span>+ Fn(Item) -&gt; MappedItem,
 <a href=#188 id=188 data-nosnippet>188</a>                        Lat: <span class="lifetime">'static </span>+ #root::lattices::Merge&lt;MappedItem&gt;,
 <a href=#189 id=189 data-nosnippet>189</a>                    {
-<a href=#190 id=190 data-nosnippet>190</a>                        #root::pusherator::for_each::ForEach::new(<span class="kw">move </span>|item| {
+<a href=#190 id=190 data-nosnippet>190</a>                        #root::sinktools::for_each::ForEach::new(<span class="kw">move </span>|item| {
 <a href=#191 id=191 data-nosnippet>191</a>                            <span class="kw">let </span>state = <span class="kw">unsafe </span>{
 <a href=#192 id=192 data-nosnippet>192</a>                                <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
 <a href=#193 id=193 data-nosnippet>193</a>                                </span>context.state_ref_unchecked(state_handle)

@@ -175,7 +175,7 @@
 <a href=#175 id=175 data-nosnippet>175</a>        <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
 <a href=#176 id=176 data-nosnippet>176</a>        <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#177 id=177 data-nosnippet>177</a>            <span class="kw">let </span>#ident = {
-<a href=#178 id=178 data-nosnippet>178</a>                <span class="kw">fn </span>check_output&lt;Push: #root::pusherator::Pusherator&lt;Item = Item&gt;, Item&gt;(push: Push) -&gt; <span class="kw">impl </span>#root::pusherator::Pusherator&lt;Item = Item&gt; { push }
+<a href=#178 id=178 data-nosnippet>178</a>                <span class="kw">fn </span>check_output&lt;Push: #root::futures::sink::Sink&lt;Item&gt;, Item&gt;(push: Push) -&gt; <span class="kw">impl </span>#root::futures::sink::Sink&lt;Item&gt; { push }
 <a href=#179 id=179 data-nosnippet>179</a>                check_output::&lt;<span class="kw">_</span>, #generic_type&gt;(#output)
 <a href=#180 id=180 data-nosnippet>180</a>            };
 <a href=#181 id=181 data-nosnippet>181</a>        }
@@ -215,15 +215,15 @@
 <a href=#215 id=215 data-nosnippet>215</a>    <span class="kw">if </span>is_pull {
 <a href=#216 id=216 data-nosnippet>216</a>        <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#217 id=217 data-nosnippet>217</a>            #(
-<a href=#218 id=218 data-nosnippet>218</a>                #inputs.for_each(std::mem::drop);
+<a href=#218 id=218 data-nosnippet>218</a>                #inputs.for_each(::std::mem::drop);
 <a href=#219 id=219 data-nosnippet>219</a>            )*
-<a href=#220 id=220 data-nosnippet>220</a>            <span class="kw">let </span>#ident = std::iter::empty::&lt;#iter_type&gt;();
+<a href=#220 id=220 data-nosnippet>220</a>            <span class="kw">let </span>#ident = ::std::iter::empty::&lt;#iter_type&gt;();
 <a href=#221 id=221 data-nosnippet>221</a>        }
 <a href=#222 id=222 data-nosnippet>222</a>    } <span class="kw">else </span>{
 <a href=#223 id=223 data-nosnippet>223</a>        <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#224 id=224 data-nosnippet>224</a>            <span class="attr">#[allow(clippy::let_unit_value)]
 <a href=#225 id=225 data-nosnippet>225</a>            </span><span class="kw">let _ </span>= (#(#outputs),<span class="kw-2">*</span>);
-<a href=#226 id=226 data-nosnippet>226</a>            <span class="kw">let </span>#ident = #root::pusherator::null::Null::&lt;#iter_type&gt;::new();
+<a href=#226 id=226 data-nosnippet>226</a>            <span class="kw">let </span>#ident = #root::sinktools::for_each::ForEach::new::&lt;#iter_type&gt;(::std::mem::drop::&lt;#iter_type&gt;);
 <a href=#227 id=227 data-nosnippet>227</a>        }
 <a href=#228 id=228 data-nosnippet>228</a>    }
 <a href=#229 id=229 data-nosnippet>229</a>}

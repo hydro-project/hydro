@@ -7,7 +7,7 @@
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>dfir_lang::graph::{FlatGraphBuilder, build_hfcode, partition_graph};
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>dfir_lang::parse::DfirCode;
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>proc_macro2::{Ident, Literal, Span};
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>quote::{format_ident, quote};
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>quote::{format_ident, quote, quote_spanned};
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>syn::{
 <a href=#12 id=12 data-nosnippet>12</a>    Attribute, Fields, GenericParam, ItemEnum, Variant, WherePredicate, parse_macro_input,
 <a href=#13 id=13 data-nosnippet>13</a>    parse_quote,
@@ -195,7 +195,7 @@
 <a href=#195 id=195 data-nosnippet>195</a>}
 <a href=#196 id=196 data-nosnippet>196</a>
 <a href=#197 id=197 data-nosnippet>197</a><span class="attr">#[proc_macro_derive(DemuxEnum)]
-<a href=#198 id=198 data-nosnippet>198</a></span><span class="kw">pub fn </span>derive_answer_fn(item: proc_macro::TokenStream) -&gt; proc_macro::TokenStream {
+<a href=#198 id=198 data-nosnippet>198</a></span><span class="kw">pub fn </span>derive_demux_enum(item: proc_macro::TokenStream) -&gt; proc_macro::TokenStream {
 <a href=#199 id=199 data-nosnippet>199</a>    <span class="kw">let </span>root = root();
 <a href=#200 id=200 data-nosnippet>200</a>
 <a href=#201 id=201 data-nosnippet>201</a>    <span class="kw">let </span>ItemEnum {
@@ -209,127 +209,183 @@
 <a href=#209 id=209 data-nosnippet>209</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>variants = variants.into_iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 <a href=#210 id=210 data-nosnippet>210</a>    variants.sort_by(|a, b| a.ident.cmp(<span class="kw-2">&amp;</span>b.ident));
 <a href=#211 id=211 data-nosnippet>211</a>
-<a href=#212 id=212 data-nosnippet>212</a>    <span class="kw">let </span>variant_pusherator_generics = variants
-<a href=#213 id=213 data-nosnippet>213</a>        .iter()
-<a href=#214 id=214 data-nosnippet>214</a>        .map(|variant| <span class="macro">format_ident!</span>(<span class="string">"__Pusherator{}"</span>, variant.ident))
-<a href=#215 id=215 data-nosnippet>215</a>        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#216 id=216 data-nosnippet>216</a>    <span class="kw">let </span>variant_pusherator_localvars = variants
-<a href=#217 id=217 data-nosnippet>217</a>        .iter()
-<a href=#218 id=218 data-nosnippet>218</a>        .map(|variant| {
-<a href=#219 id=219 data-nosnippet>219</a>            <span class="macro">format_ident!</span>(
-<a href=#220 id=220 data-nosnippet>220</a>                <span class="string">"__pusherator_{}"</span>,
-<a href=#221 id=221 data-nosnippet>221</a>                variant.ident.to_string().to_lowercase(),
-<a href=#222 id=222 data-nosnippet>222</a>                span = variant.ident.span()
-<a href=#223 id=223 data-nosnippet>223</a>            )
-<a href=#224 id=224 data-nosnippet>224</a>        })
-<a href=#225 id=225 data-nosnippet>225</a>        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#226 id=226 data-nosnippet>226</a>    <span class="kw">let </span>variant_output_types = variants
-<a href=#227 id=227 data-nosnippet>227</a>        .iter()
-<a href=#228 id=228 data-nosnippet>228</a>        .map(|variant| <span class="kw">match </span><span class="kw-2">&amp;</span>variant.fields {
-<a href=#229 id=229 data-nosnippet>229</a>            Fields::Named(fields) =&gt; {
-<a href=#230 id=230 data-nosnippet>230</a>                <span class="kw">let </span>field_types = fields.named.iter().map(|field| <span class="kw-2">&amp;</span>field.ty);
-<a href=#231 id=231 data-nosnippet>231</a>                <span class="macro">quote!</span> {
-<a href=#232 id=232 data-nosnippet>232</a>                    ( #( #field_types, )* )
-<a href=#233 id=233 data-nosnippet>233</a>                }
-<a href=#234 id=234 data-nosnippet>234</a>            }
-<a href=#235 id=235 data-nosnippet>235</a>            Fields::Unnamed(fields) =&gt; {
-<a href=#236 id=236 data-nosnippet>236</a>                <span class="kw">let </span>field_types = fields.unnamed.iter().map(|field| <span class="kw-2">&amp;</span>field.ty);
-<a href=#237 id=237 data-nosnippet>237</a>                <span class="macro">quote!</span> {
-<a href=#238 id=238 data-nosnippet>238</a>                    ( #( #field_types, )* )
-<a href=#239 id=239 data-nosnippet>239</a>                }
-<a href=#240 id=240 data-nosnippet>240</a>            }
-<a href=#241 id=241 data-nosnippet>241</a>            Fields::Unit =&gt; <span class="macro">quote!</span>(()),
-<a href=#242 id=242 data-nosnippet>242</a>        })
-<a href=#243 id=243 data-nosnippet>243</a>        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#244 id=244 data-nosnippet>244</a>
-<a href=#245 id=245 data-nosnippet>245</a>    <span class="kw">let </span><span class="kw-2">mut </span>full_generics = generics.clone();
-<a href=#246 id=246 data-nosnippet>246</a>    full_generics.params.extend(
-<a href=#247 id=247 data-nosnippet>247</a>        variant_pusherator_generics
-<a href=#248 id=248 data-nosnippet>248</a>            .iter()
-<a href=#249 id=249 data-nosnippet>249</a>            .map::&lt;GenericParam, <span class="kw">_</span>&gt;(|ident| <span class="macro">parse_quote!</span>(#ident)),
-<a href=#250 id=250 data-nosnippet>250</a>    );
-<a href=#251 id=251 data-nosnippet>251</a>    full_generics.make_where_clause().predicates.extend(
-<a href=#252 id=252 data-nosnippet>252</a>        variant_pusherator_generics
-<a href=#253 id=253 data-nosnippet>253</a>            .iter()
-<a href=#254 id=254 data-nosnippet>254</a>            .zip(variant_output_types.iter())
-<a href=#255 id=255 data-nosnippet>255</a>            .map::&lt;WherePredicate, <span class="kw">_</span>&gt;(|(pusherator_generic, output_type)| {
-<a href=#256 id=256 data-nosnippet>256</a>                <span class="macro">parse_quote!</span> {
-<a href=#257 id=257 data-nosnippet>257</a>                    #pusherator_generic: #root::pusherator::Pusherator&lt;Item = #output_type&gt;
-<a href=#258 id=258 data-nosnippet>258</a>                }
-<a href=#259 id=259 data-nosnippet>259</a>            }),
+<a href=#212 id=212 data-nosnippet>212</a>    <span class="comment">// Return type for each variant.
+<a href=#213 id=213 data-nosnippet>213</a>    </span><span class="kw">let </span>variant_output_types = variants
+<a href=#214 id=214 data-nosnippet>214</a>        .iter()
+<a href=#215 id=215 data-nosnippet>215</a>        .map(|variant| <span class="kw">match </span><span class="kw-2">&amp;</span>variant.fields {
+<a href=#216 id=216 data-nosnippet>216</a>            Fields::Named(fields) =&gt; {
+<a href=#217 id=217 data-nosnippet>217</a>                <span class="kw">let </span>field_types = fields.named.iter().map(|field| <span class="kw-2">&amp;</span>field.ty);
+<a href=#218 id=218 data-nosnippet>218</a>                <span class="macro">quote!</span> {
+<a href=#219 id=219 data-nosnippet>219</a>                    ( #( #field_types, )* )
+<a href=#220 id=220 data-nosnippet>220</a>                }
+<a href=#221 id=221 data-nosnippet>221</a>            }
+<a href=#222 id=222 data-nosnippet>222</a>            Fields::Unnamed(fields) =&gt; {
+<a href=#223 id=223 data-nosnippet>223</a>                <span class="kw">let </span>field_types = fields.unnamed.iter().map(|field| <span class="kw-2">&amp;</span>field.ty);
+<a href=#224 id=224 data-nosnippet>224</a>                <span class="macro">quote!</span> {
+<a href=#225 id=225 data-nosnippet>225</a>                    ( #( #field_types, )* )
+<a href=#226 id=226 data-nosnippet>226</a>                }
+<a href=#227 id=227 data-nosnippet>227</a>            }
+<a href=#228 id=228 data-nosnippet>228</a>            Fields::Unit =&gt; <span class="macro">quote!</span>(()),
+<a href=#229 id=229 data-nosnippet>229</a>        })
+<a href=#230 id=230 data-nosnippet>230</a>        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#231 id=231 data-nosnippet>231</a>
+<a href=#232 id=232 data-nosnippet>232</a>    <span class="kw">let </span>variant_generics_sink = variants
+<a href=#233 id=233 data-nosnippet>233</a>        .iter()
+<a href=#234 id=234 data-nosnippet>234</a>        .map(|variant| <span class="macro">format_ident!</span>(<span class="string">"__Sink{}"</span>, variant.ident))
+<a href=#235 id=235 data-nosnippet>235</a>        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#236 id=236 data-nosnippet>236</a>    <span class="kw">let </span>variant_generics_pinned_sink = variant_generics_sink.iter().map(|ident| {
+<a href=#237 id=237 data-nosnippet>237</a>        <span class="macro">quote_spanned!</span> {ident.span()=&gt;
+<a href=#238 id=238 data-nosnippet>238</a>            ::std::pin::Pin::&lt;<span class="kw-2">&amp;mut </span>#ident&gt;
+<a href=#239 id=239 data-nosnippet>239</a>        }
+<a href=#240 id=240 data-nosnippet>240</a>    });
+<a href=#241 id=241 data-nosnippet>241</a>    <span class="kw">let </span>variant_generics_pinned_sink_all = <span class="macro">quote!</span> {
+<a href=#242 id=242 data-nosnippet>242</a>        ( #( #variant_generics_pinned_sink, )* )
+<a href=#243 id=243 data-nosnippet>243</a>    };
+<a href=#244 id=244 data-nosnippet>244</a>    <span class="kw">let </span>variant_localvars_sink = variants
+<a href=#245 id=245 data-nosnippet>245</a>        .iter()
+<a href=#246 id=246 data-nosnippet>246</a>        .map(|variant| {
+<a href=#247 id=247 data-nosnippet>247</a>            <span class="macro">format_ident!</span>(
+<a href=#248 id=248 data-nosnippet>248</a>                <span class="string">"__sink_{}"</span>,
+<a href=#249 id=249 data-nosnippet>249</a>                variant.ident.to_string().to_lowercase(),
+<a href=#250 id=250 data-nosnippet>250</a>                span = variant.ident.span()
+<a href=#251 id=251 data-nosnippet>251</a>            )
+<a href=#252 id=252 data-nosnippet>252</a>        })
+<a href=#253 id=253 data-nosnippet>253</a>        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#254 id=254 data-nosnippet>254</a>
+<a href=#255 id=255 data-nosnippet>255</a>    <span class="kw">let </span><span class="kw-2">mut </span>full_generics_sink = generics.clone();
+<a href=#256 id=256 data-nosnippet>256</a>    full_generics_sink.params.extend(
+<a href=#257 id=257 data-nosnippet>257</a>        variant_generics_sink
+<a href=#258 id=258 data-nosnippet>258</a>            .iter()
+<a href=#259 id=259 data-nosnippet>259</a>            .map::&lt;GenericParam, <span class="kw">_</span>&gt;(|ident| <span class="macro">parse_quote!</span>(#ident)),
 <a href=#260 id=260 data-nosnippet>260</a>    );
-<a href=#261 id=261 data-nosnippet>261</a>
-<a href=#262 id=262 data-nosnippet>262</a>    <span class="kw">let </span>(impl_generics_item, ty_generics, where_clause_item) = generics.split_for_impl();
-<a href=#263 id=263 data-nosnippet>263</a>    <span class="kw">let </span>(impl_generics, _ty_generics, where_clause) = full_generics.split_for_impl();
-<a href=#264 id=264 data-nosnippet>264</a>
-<a href=#265 id=265 data-nosnippet>265</a>    <span class="kw">let </span>variant_pats = variants
-<a href=#266 id=266 data-nosnippet>266</a>        .iter()
-<a href=#267 id=267 data-nosnippet>267</a>        .zip(variant_pusherator_localvars.iter())
-<a href=#268 id=268 data-nosnippet>268</a>        .map(|(variant, pushvar)| {
-<a href=#269 id=269 data-nosnippet>269</a>            <span class="kw">let </span>Variant { ident, fields, .. } = variant;
-<a href=#270 id=270 data-nosnippet>270</a>            <span class="kw">let </span>(fields_pat, push_item) = field_pattern_item(fields);
-<a href=#271 id=271 data-nosnippet>271</a>            <span class="macro">quote!</span> {
-<a href=#272 id=272 data-nosnippet>272</a>                <span class="self">Self</span>::#ident #fields_pat =&gt; #pushvar.give(#push_item)
-<a href=#273 id=273 data-nosnippet>273</a>            }
-<a href=#274 id=274 data-nosnippet>274</a>        });
-<a href=#275 id=275 data-nosnippet>275</a>
-<a href=#276 id=276 data-nosnippet>276</a>    <span class="kw">let </span>single_impl = (<span class="number">1 </span>== variants.len()).then(|| {
-<a href=#277 id=277 data-nosnippet>277</a>        <span class="kw">let </span>Variant { ident, fields, .. } = variants.first().unwrap();
-<a href=#278 id=278 data-nosnippet>278</a>        <span class="kw">let </span>(fields_pat, push_item) = field_pattern_item(fields);
-<a href=#279 id=279 data-nosnippet>279</a>        <span class="kw">let </span>out_type = variant_output_types.first().unwrap();
-<a href=#280 id=280 data-nosnippet>280</a>        <span class="macro">quote!</span> {
-<a href=#281 id=281 data-nosnippet>281</a>            <span class="kw">impl </span>#impl_generics_item #root::util::demux_enum::SingleVariant
-<a href=#282 id=282 data-nosnippet>282</a>                <span class="kw">for </span>#item_ident #ty_generics #where_clause_item
-<a href=#283 id=283 data-nosnippet>283</a>            {
-<a href=#284 id=284 data-nosnippet>284</a>                <span class="kw">type </span>Output = #out_type;
-<a href=#285 id=285 data-nosnippet>285</a>                <span class="kw">fn </span>single_variant(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Output {
-<a href=#286 id=286 data-nosnippet>286</a>                    <span class="kw">match </span><span class="self">self </span>{
-<a href=#287 id=287 data-nosnippet>287</a>                        <span class="self">Self</span>::#ident #fields_pat =&gt; #push_item,
-<a href=#288 id=288 data-nosnippet>288</a>                    }
-<a href=#289 id=289 data-nosnippet>289</a>                }
-<a href=#290 id=290 data-nosnippet>290</a>            }
-<a href=#291 id=291 data-nosnippet>291</a>        }
-<a href=#292 id=292 data-nosnippet>292</a>    });
-<a href=#293 id=293 data-nosnippet>293</a>
-<a href=#294 id=294 data-nosnippet>294</a>    <span class="macro">quote!</span> {
-<a href=#295 id=295 data-nosnippet>295</a>        <span class="kw">impl </span>#impl_generics #root::util::demux_enum::DemuxEnum&lt;( #( #variant_pusherator_generics, )* )&gt;
-<a href=#296 id=296 data-nosnippet>296</a>            <span class="kw">for </span>#item_ident #ty_generics #where_clause
-<a href=#297 id=297 data-nosnippet>297</a>        {
-<a href=#298 id=298 data-nosnippet>298</a>            <span class="kw">fn </span>demux_enum(
-<a href=#299 id=299 data-nosnippet>299</a>                <span class="self">self</span>,
-<a href=#300 id=300 data-nosnippet>300</a>                ( #( #variant_pusherator_localvars, )* ):
-<a href=#301 id=301 data-nosnippet>301</a>                    <span class="kw-2">&amp;mut </span>( #( #variant_pusherator_generics, )* )
-<a href=#302 id=302 data-nosnippet>302</a>            ) {
-<a href=#303 id=303 data-nosnippet>303</a>                <span class="kw">match </span><span class="self">self </span>{
-<a href=#304 id=304 data-nosnippet>304</a>                    #( #variant_pats, )*
-<a href=#305 id=305 data-nosnippet>305</a>                }
-<a href=#306 id=306 data-nosnippet>306</a>            }
-<a href=#307 id=307 data-nosnippet>307</a>        }
-<a href=#308 id=308 data-nosnippet>308</a>
-<a href=#309 id=309 data-nosnippet>309</a>        <span class="kw">impl </span>#impl_generics_item #root::util::demux_enum::DemuxEnumBase
-<a href=#310 id=310 data-nosnippet>310</a>            <span class="kw">for </span>#item_ident #ty_generics #where_clause_item {}
-<a href=#311 id=311 data-nosnippet>311</a>
-<a href=#312 id=312 data-nosnippet>312</a>        #single_impl
-<a href=#313 id=313 data-nosnippet>313</a>    }
-<a href=#314 id=314 data-nosnippet>314</a>    .into()
-<a href=#315 id=315 data-nosnippet>315</a>}
-<a href=#316 id=316 data-nosnippet>316</a>
-<a href=#317 id=317 data-nosnippet>317</a><span class="doccomment">/// (fields pattern, push item expr)
-<a href=#318 id=318 data-nosnippet>318</a></span><span class="kw">fn </span>field_pattern_item(fields: <span class="kw-2">&amp;</span>Fields) -&gt; (proc_macro2::TokenStream, proc_macro2::TokenStream) {
-<a href=#319 id=319 data-nosnippet>319</a>    <span class="kw">let </span>idents = fields
-<a href=#320 id=320 data-nosnippet>320</a>        .iter()
-<a href=#321 id=321 data-nosnippet>321</a>        .enumerate()
-<a href=#322 id=322 data-nosnippet>322</a>        .map(|(i, field)| {
-<a href=#323 id=323 data-nosnippet>323</a>            field
-<a href=#324 id=324 data-nosnippet>324</a>                .ident
-<a href=#325 id=325 data-nosnippet>325</a>                .clone()
-<a href=#326 id=326 data-nosnippet>326</a>                .unwrap_or_else(|| <span class="macro">format_ident!</span>(<span class="string">"_{}"</span>, i))
-<a href=#327 id=327 data-nosnippet>327</a>        })
-<a href=#328 id=328 data-nosnippet>328</a>        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#329 id=329 data-nosnippet>329</a>    <span class="kw">let </span>(fields_pat, push_item) = <span class="kw">match </span>fields {
-<a href=#330 id=330 data-nosnippet>330</a>        Fields::Named(<span class="kw">_</span>) =&gt; (<span class="macro">quote!</span>( { #( #idents, )* } ), <span class="macro">quote!</span>( ( #( #idents, )* ) )),
-<a href=#331 id=331 data-nosnippet>331</a>        Fields::Unnamed(<span class="kw">_</span>) =&gt; (<span class="macro">quote!</span>( ( #( #idents ),* ) ), <span class="macro">quote!</span>( ( #( #idents, )* ) )),
-<a href=#332 id=332 data-nosnippet>332</a>        Fields::Unit =&gt; (<span class="macro">quote!</span>(), <span class="macro">quote!</span>(())),
-<a href=#333 id=333 data-nosnippet>333</a>    };
-<a href=#334 id=334 data-nosnippet>334</a>    (fields_pat, push_item)
-<a href=#335 id=335 data-nosnippet>335</a>}</code></pre></div></section></main></body></html>
+<a href=#261 id=261 data-nosnippet>261</a>    full_generics_sink.make_where_clause().predicates.extend(
+<a href=#262 id=262 data-nosnippet>262</a>        variant_generics_sink
+<a href=#263 id=263 data-nosnippet>263</a>            .iter()
+<a href=#264 id=264 data-nosnippet>264</a>            .zip(variant_output_types.iter())
+<a href=#265 id=265 data-nosnippet>265</a>            .map::&lt;WherePredicate, <span class="kw">_</span>&gt;(|(sink_generic, output_type)| {
+<a href=#266 id=266 data-nosnippet>266</a>                <span class="macro">parse_quote!</span> {
+<a href=#267 id=267 data-nosnippet>267</a>                    <span class="comment">// TODO(mingwei): generic error types?
+<a href=#268 id=268 data-nosnippet>268</a>                    </span>#sink_generic: #root::futures::sink::Sink&lt;#output_type, Error = #root::Never&gt;
+<a href=#269 id=269 data-nosnippet>269</a>                }
+<a href=#270 id=270 data-nosnippet>270</a>            }),
+<a href=#271 id=271 data-nosnippet>271</a>    );
+<a href=#272 id=272 data-nosnippet>272</a>
+<a href=#273 id=273 data-nosnippet>273</a>    <span class="kw">let </span>variant_pats_sink_start_send =
+<a href=#274 id=274 data-nosnippet>274</a>        variants
+<a href=#275 id=275 data-nosnippet>275</a>            .iter()
+<a href=#276 id=276 data-nosnippet>276</a>            .zip(variant_localvars_sink.iter())
+<a href=#277 id=277 data-nosnippet>277</a>            .map(|(variant, sinkvar)| {
+<a href=#278 id=278 data-nosnippet>278</a>                <span class="kw">let </span>Variant { ident, fields, .. } = variant;
+<a href=#279 id=279 data-nosnippet>279</a>                <span class="kw">let </span>(fields_pat, push_item) = field_pattern_item(fields);
+<a href=#280 id=280 data-nosnippet>280</a>                <span class="macro">quote!</span> {
+<a href=#281 id=281 data-nosnippet>281</a>                    <span class="self">Self</span>::#ident #fields_pat =&gt; #sinkvar.as_mut().start_send(#push_item)
+<a href=#282 id=282 data-nosnippet>282</a>                }
+<a href=#283 id=283 data-nosnippet>283</a>            });
+<a href=#284 id=284 data-nosnippet>284</a>
+<a href=#285 id=285 data-nosnippet>285</a>    <span class="kw">let </span>(impl_generics_item, ty_generics, where_clause_item) = generics.split_for_impl();
+<a href=#286 id=286 data-nosnippet>286</a>    <span class="kw">let </span>(impl_generics_sink, _ty_generics_sink, where_clause_sink) =
+<a href=#287 id=287 data-nosnippet>287</a>        full_generics_sink.split_for_impl();
+<a href=#288 id=288 data-nosnippet>288</a>
+<a href=#289 id=289 data-nosnippet>289</a>    <span class="kw">let </span>single_impl = (<span class="number">1 </span>== variants.len()).then(|| {
+<a href=#290 id=290 data-nosnippet>290</a>        <span class="kw">let </span>Variant { ident, fields, .. } = variants.first().unwrap();
+<a href=#291 id=291 data-nosnippet>291</a>        <span class="kw">let </span>(fields_pat, push_item) = field_pattern_item(fields);
+<a href=#292 id=292 data-nosnippet>292</a>        <span class="kw">let </span>out_type = variant_output_types.first().unwrap();
+<a href=#293 id=293 data-nosnippet>293</a>        <span class="macro">quote!</span> {
+<a href=#294 id=294 data-nosnippet>294</a>            <span class="kw">impl </span>#impl_generics_item #root::util::demux_enum::SingleVariant
+<a href=#295 id=295 data-nosnippet>295</a>                <span class="kw">for </span>#item_ident #ty_generics #where_clause_item
+<a href=#296 id=296 data-nosnippet>296</a>            {
+<a href=#297 id=297 data-nosnippet>297</a>                <span class="kw">type </span>Output = #out_type;
+<a href=#298 id=298 data-nosnippet>298</a>                <span class="kw">fn </span>single_variant(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Output {
+<a href=#299 id=299 data-nosnippet>299</a>                    <span class="kw">match </span><span class="self">self </span>{
+<a href=#300 id=300 data-nosnippet>300</a>                        <span class="self">Self</span>::#ident #fields_pat =&gt; #push_item,
+<a href=#301 id=301 data-nosnippet>301</a>                    }
+<a href=#302 id=302 data-nosnippet>302</a>                }
+<a href=#303 id=303 data-nosnippet>303</a>            }
+<a href=#304 id=304 data-nosnippet>304</a>        }
+<a href=#305 id=305 data-nosnippet>305</a>    });
+<a href=#306 id=306 data-nosnippet>306</a>
+<a href=#307 id=307 data-nosnippet>307</a>    <span class="macro">quote!</span> {
+<a href=#308 id=308 data-nosnippet>308</a>        <span class="kw">impl </span>#impl_generics_sink #root::util::demux_enum::DemuxEnumSink&lt;#variant_generics_pinned_sink_all&gt;
+<a href=#309 id=309 data-nosnippet>309</a>            <span class="kw">for </span>#item_ident #ty_generics #where_clause_sink
+<a href=#310 id=310 data-nosnippet>310</a>        {
+<a href=#311 id=311 data-nosnippet>311</a>            <span class="kw">type </span>Error = #root::Never;
+<a href=#312 id=312 data-nosnippet>312</a>
+<a href=#313 id=313 data-nosnippet>313</a>            <span class="kw">fn </span>poll_ready(
+<a href=#314 id=314 data-nosnippet>314</a>                ( #( #variant_localvars_sink, )* ): <span class="kw-2">&amp;mut </span>#variant_generics_pinned_sink_all,
+<a href=#315 id=315 data-nosnippet>315</a>                __cx: <span class="kw-2">&amp;mut </span>::std::task::Context&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#316 id=316 data-nosnippet>316</a>            ) -&gt; ::std::task::Poll&lt;::std::result::Result&lt;(), <span class="self">Self</span>::Error&gt;&gt; {
+<a href=#317 id=317 data-nosnippet>317</a>                <span class="comment">// Ready all sinks simultaneously.
+<a href=#318 id=318 data-nosnippet>318</a>                </span>#(
+<a href=#319 id=319 data-nosnippet>319</a>                    <span class="kw">let </span>#variant_localvars_sink = #variant_localvars_sink.as_mut().poll_ready(__cx)<span class="question-mark">?</span>;
+<a href=#320 id=320 data-nosnippet>320</a>                )*
+<a href=#321 id=321 data-nosnippet>321</a>                #(
+<a href=#322 id=322 data-nosnippet>322</a>                    <span class="macro">::std::task::ready!</span>(#variant_localvars_sink);
+<a href=#323 id=323 data-nosnippet>323</a>                )*
+<a href=#324 id=324 data-nosnippet>324</a>                ::std::task::Poll::Ready(::std::result::Result::Ok(()))
+<a href=#325 id=325 data-nosnippet>325</a>            }
+<a href=#326 id=326 data-nosnippet>326</a>
+<a href=#327 id=327 data-nosnippet>327</a>            <span class="kw">fn </span>start_send(
+<a href=#328 id=328 data-nosnippet>328</a>                <span class="self">self</span>,
+<a href=#329 id=329 data-nosnippet>329</a>                ( #( #variant_localvars_sink, )* ): <span class="kw-2">&amp;mut </span>#variant_generics_pinned_sink_all,
+<a href=#330 id=330 data-nosnippet>330</a>            ) -&gt; ::std::result::Result&lt;(), <span class="self">Self</span>::Error&gt; {
+<a href=#331 id=331 data-nosnippet>331</a>                <span class="kw">match </span><span class="self">self </span>{
+<a href=#332 id=332 data-nosnippet>332</a>                    #( #variant_pats_sink_start_send, )*
+<a href=#333 id=333 data-nosnippet>333</a>                }
+<a href=#334 id=334 data-nosnippet>334</a>            }
+<a href=#335 id=335 data-nosnippet>335</a>
+<a href=#336 id=336 data-nosnippet>336</a>            <span class="kw">fn </span>poll_flush(
+<a href=#337 id=337 data-nosnippet>337</a>                ( #( #variant_localvars_sink, )* ): <span class="kw-2">&amp;mut </span>#variant_generics_pinned_sink_all,
+<a href=#338 id=338 data-nosnippet>338</a>                __cx: <span class="kw-2">&amp;mut </span>::std::task::Context&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#339 id=339 data-nosnippet>339</a>            ) -&gt; ::std::task::Poll&lt;::std::result::Result&lt;(), <span class="self">Self</span>::Error&gt;&gt; {
+<a href=#340 id=340 data-nosnippet>340</a>                <span class="comment">// Flush all sinks simultaneously.
+<a href=#341 id=341 data-nosnippet>341</a>                </span>#(
+<a href=#342 id=342 data-nosnippet>342</a>                    <span class="kw">let </span>#variant_localvars_sink = #variant_localvars_sink.as_mut().poll_flush(__cx)<span class="question-mark">?</span>;
+<a href=#343 id=343 data-nosnippet>343</a>                )*
+<a href=#344 id=344 data-nosnippet>344</a>                #(
+<a href=#345 id=345 data-nosnippet>345</a>                    <span class="macro">::std::task::ready!</span>(#variant_localvars_sink);
+<a href=#346 id=346 data-nosnippet>346</a>                )*
+<a href=#347 id=347 data-nosnippet>347</a>                ::std::task::Poll::Ready(::std::result::Result::Ok(()))
+<a href=#348 id=348 data-nosnippet>348</a>            }
+<a href=#349 id=349 data-nosnippet>349</a>
+<a href=#350 id=350 data-nosnippet>350</a>            <span class="kw">fn </span>poll_close(
+<a href=#351 id=351 data-nosnippet>351</a>                ( #( #variant_localvars_sink, )* ): <span class="kw-2">&amp;mut </span>#variant_generics_pinned_sink_all,
+<a href=#352 id=352 data-nosnippet>352</a>                __cx: <span class="kw-2">&amp;mut </span>::std::task::Context&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#353 id=353 data-nosnippet>353</a>            ) -&gt; ::std::task::Poll&lt;::std::result::Result&lt;(), <span class="self">Self</span>::Error&gt;&gt; {
+<a href=#354 id=354 data-nosnippet>354</a>                <span class="comment">// Close all sinks simultaneously.
+<a href=#355 id=355 data-nosnippet>355</a>                </span>#(
+<a href=#356 id=356 data-nosnippet>356</a>                    <span class="kw">let </span>#variant_localvars_sink = #variant_localvars_sink.as_mut().poll_close(__cx)<span class="question-mark">?</span>;
+<a href=#357 id=357 data-nosnippet>357</a>                )*
+<a href=#358 id=358 data-nosnippet>358</a>                #(
+<a href=#359 id=359 data-nosnippet>359</a>                    <span class="macro">::std::task::ready!</span>(#variant_localvars_sink);
+<a href=#360 id=360 data-nosnippet>360</a>                )*
+<a href=#361 id=361 data-nosnippet>361</a>                ::std::task::Poll::Ready(::std::result::Result::Ok(()))
+<a href=#362 id=362 data-nosnippet>362</a>            }
+<a href=#363 id=363 data-nosnippet>363</a>        }
+<a href=#364 id=364 data-nosnippet>364</a>
+<a href=#365 id=365 data-nosnippet>365</a>        <span class="kw">impl </span>#impl_generics_item #root::util::demux_enum::DemuxEnumBase
+<a href=#366 id=366 data-nosnippet>366</a>            <span class="kw">for </span>#item_ident #ty_generics #where_clause_item {}
+<a href=#367 id=367 data-nosnippet>367</a>
+<a href=#368 id=368 data-nosnippet>368</a>        #single_impl
+<a href=#369 id=369 data-nosnippet>369</a>    }
+<a href=#370 id=370 data-nosnippet>370</a>    .into()
+<a href=#371 id=371 data-nosnippet>371</a>}
+<a href=#372 id=372 data-nosnippet>372</a>
+<a href=#373 id=373 data-nosnippet>373</a><span class="doccomment">/// (fields pattern, push item expr)
+<a href=#374 id=374 data-nosnippet>374</a></span><span class="kw">fn </span>field_pattern_item(fields: <span class="kw-2">&amp;</span>Fields) -&gt; (proc_macro2::TokenStream, proc_macro2::TokenStream) {
+<a href=#375 id=375 data-nosnippet>375</a>    <span class="kw">let </span>idents = fields
+<a href=#376 id=376 data-nosnippet>376</a>        .iter()
+<a href=#377 id=377 data-nosnippet>377</a>        .enumerate()
+<a href=#378 id=378 data-nosnippet>378</a>        .map(|(i, field)| {
+<a href=#379 id=379 data-nosnippet>379</a>            field
+<a href=#380 id=380 data-nosnippet>380</a>                .ident
+<a href=#381 id=381 data-nosnippet>381</a>                .clone()
+<a href=#382 id=382 data-nosnippet>382</a>                .unwrap_or_else(|| <span class="macro">format_ident!</span>(<span class="string">"_{}"</span>, i))
+<a href=#383 id=383 data-nosnippet>383</a>        })
+<a href=#384 id=384 data-nosnippet>384</a>        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#385 id=385 data-nosnippet>385</a>    <span class="kw">let </span>(fields_pat, push_item) = <span class="kw">match </span>fields {
+<a href=#386 id=386 data-nosnippet>386</a>        Fields::Named(<span class="kw">_</span>) =&gt; (<span class="macro">quote!</span>( { #( #idents, )* } ), <span class="macro">quote!</span>( ( #( #idents, )* ) )),
+<a href=#387 id=387 data-nosnippet>387</a>        Fields::Unnamed(<span class="kw">_</span>) =&gt; (<span class="macro">quote!</span>( ( #( #idents ),* ) ), <span class="macro">quote!</span>( ( #( #idents, )* ) )),
+<a href=#388 id=388 data-nosnippet>388</a>        Fields::Unit =&gt; (<span class="macro">quote!</span>(), <span class="macro">quote!</span>(())),
+<a href=#389 id=389 data-nosnippet>389</a>    };
+<a href=#390 id=390 data-nosnippet>390</a>    (fields_pat, push_item)
+<a href=#391 id=391 data-nosnippet>391</a>}</code></pre></div></section></main></body></html>
