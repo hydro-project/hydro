@@ -1,6 +1,7 @@
 //! Comprehensive unit tests for all sink adaptors using direct constructors.
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use sinktools::sink::SinkExt;
@@ -368,4 +369,38 @@ async fn test_send_iter_empty() {
     send_iter_future.await.unwrap();
 
     assert_eq!(&[] as &[i32], &**collected.borrow());
+}
+
+#[tokio::test]
+async fn test_demux_map_basic() {
+    let (sink1, collected1) = create_collecting_sink();
+    let (sink2, collected2) = create_collecting_sink();
+    let (sink3, collected3) = create_collecting_sink();
+
+    let sinks = [("a", sink1), ("b", sink2), ("c", sink3)];
+    let mut demux_sink = demux_map(sinks);
+
+    // Send items to different sinks based on keys
+    demux_sink.send(("a", 10)).await.unwrap();
+    demux_sink.send(("b", 20)).await.unwrap();
+    demux_sink.send(("c", 30)).await.unwrap();
+    demux_sink.send(("a", 11)).await.unwrap();
+    demux_sink.send(("b", 21)).await.unwrap();
+    drop(demux_sink);
+
+    assert_eq!(&[10, 11], &**collected1.borrow());
+    assert_eq!(&[20, 21], &**collected2.borrow());
+    assert_eq!(&[30], &**collected3.borrow());
+}
+
+#[tokio::test]
+#[should_panic(expected = "`DemuxMap` missing key")]
+async fn test_demux_map_missing_key() {
+    let (sink, _) = create_collecting_sink();
+
+    let sinks = [("existing", sink)];
+    let mut demux_sink = demux_map(sinks);
+
+    // This should panic because "missing" key doesn't exist
+    demux_sink.send(("missing", 42)).await.unwrap();
 }

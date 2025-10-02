@@ -1,6 +1,7 @@
 //! Comprehensive unit tests for all sink adaptors using forward [`SinkBuild`] pattern.
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use futures_util::sink::SinkExt;
@@ -273,4 +274,75 @@ async fn test_forward_vs_direct_equivalence() {
         &**backward_collected.borrow()
     );
     assert_eq!(&[7, 13, 19], &**forward_collected.borrow()); // 2->6->7, 4->12->13, 6->18->19
+}
+
+#[cfg(feature = "variadics")]
+#[tokio::test]
+async fn test_forward_demux_var() {
+    let (sink1, collected1) = create_collecting_sink();
+    let (sink2, collected2) = create_collecting_sink();
+    let (sink3, collected3) = create_collecting_sink();
+
+    let sinks = (sink1, (sink2, (sink3, ())));
+    let mut final_sink = SinkBuilder::<(usize, i32)>::new().demux_var(sinks);
+
+    // Send indexed items to different sinks
+    final_sink.send((0, 10)).await.unwrap(); // Goes to sink1
+    final_sink.send((1, 20)).await.unwrap(); // Goes to sink2
+    final_sink.send((2, 30)).await.unwrap(); // Goes to sink3
+    final_sink.send((0, 11)).await.unwrap(); // Goes to sink1
+    final_sink.send((1, 21)).await.unwrap(); // Goes to sink2
+    drop(final_sink);
+
+    assert_eq!(&[10, 11], &**collected1.borrow());
+    assert_eq!(&[20, 21], &**collected2.borrow());
+    assert_eq!(&[30], &**collected3.borrow());
+}
+
+#[cfg(feature = "variadics")]
+#[tokio::test]
+#[should_panic(expected = "index out of bounds")]
+async fn test_forward_demux_var_out_of_bounds() {
+    let (sink1, _) = create_collecting_sink();
+    let (sink2, _) = create_collecting_sink();
+
+    let sinks = (sink1, (sink2, ()));
+    let mut final_sink = SinkBuilder::<(usize, i32)>::new().demux_var(sinks);
+
+    // This should panic - index 2 is out of bounds for 2 sinks
+    final_sink.send((2, 10)).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_forward_demux_map_basic() {
+    let (sink1, collected1) = create_collecting_sink();
+    let (sink2, collected2) = create_collecting_sink();
+    let (sink3, collected3) = create_collecting_sink();
+
+    let sinks = [("a", sink1), ("b", sink2), ("c", sink3)];
+    let mut final_sink = SinkBuilder::<(&str, i32)>::new().demux_map(sinks);
+
+    // Send items to different sinks based on keys
+    final_sink.send(("a", 10)).await.unwrap();
+    final_sink.send(("b", 20)).await.unwrap();
+    final_sink.send(("c", 30)).await.unwrap();
+    final_sink.send(("a", 11)).await.unwrap();
+    final_sink.send(("b", 21)).await.unwrap();
+    drop(final_sink);
+
+    assert_eq!(&[10, 11], &**collected1.borrow());
+    assert_eq!(&[20, 21], &**collected2.borrow());
+    assert_eq!(&[30], &**collected3.borrow());
+}
+
+#[tokio::test]
+#[should_panic(expected = "`DemuxMap` missing key")]
+async fn test_forward_demux_map_missing_key() {
+    let (sink, _) = create_collecting_sink();
+
+    let sinks = [("existing", sink)];
+    let mut final_sink = SinkBuilder::<(&str, i32)>::new().demux_map(sinks);
+
+    // This should panic because "missing" key doesn't exist
+    final_sink.send(("missing", 42)).await.unwrap();
 }
