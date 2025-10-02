@@ -11,6 +11,9 @@ use super::ir::{HydroRoot, emit};
 #[cfg(feature = "viz")]
 use crate::graph::api::GraphApi;
 use crate::location::{Cluster, External, Process};
+#[cfg(feature = "sim")]
+#[cfg(stageleft_runtime)]
+use crate::sim::{flow::SimFlow, graph::SimNode};
 use crate::staging_util::Invariant;
 
 pub struct BuiltFlow<'a> {
@@ -208,6 +211,55 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn with_default_optimize<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
         self.into_deploy()
+    }
+
+    #[cfg(feature = "sim")]
+    /// Creates a simulation for this builder, which can be used to run deterministic simulations
+    /// of the Hydro program.
+    pub fn sim(mut self) -> SimFlow<'a> {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        use crate::sim::graph::SimExternal;
+
+        let external_ports = Rc::new(RefCell::new((vec![], 0)));
+        let processes = self
+            .process_id_name
+            .iter()
+            .map(|id| (id.0, SimNode {}))
+            .collect();
+
+        let clusters = self
+            .cluster_id_name
+            .iter()
+            .map(|id| (id.0, SimNode {}))
+            .collect();
+
+        let externals = self
+            .external_id_name
+            .iter()
+            .map(|id| {
+                (
+                    id.0,
+                    SimExternal {
+                        external_ports: external_ports.clone(),
+                        registered: RefCell::new(HashMap::new()),
+                    },
+                )
+            })
+            .collect();
+
+        SimFlow {
+            ir: std::mem::take(&mut self.ir),
+            external_ports,
+            processes,
+            clusters,
+            externals,
+            _process_id_name: std::mem::take(&mut self.process_id_name),
+            _external_id_name: std::mem::take(&mut self.external_id_name),
+            _cluster_id_name: std::mem::take(&mut self.cluster_id_name),
+            _phantom: PhantomData,
+        }
     }
 
     pub fn into_deploy<D: Deploy<'a>>(mut self) -> DeployFlow<'a, D> {

@@ -1,0 +1,234 @@
+use std::collections::BTreeMap;
+
+use dfir_lang::graph::FlatGraphBuilder;
+use proc_macro2::Span;
+use syn::parse_quote;
+
+use crate::compile::ir::{CollectionKind, DebugExpr, DfirBuilder, StreamOrder, StreamRetry};
+use crate::location::dynamic::LocationId;
+
+/// A builder for DFIR graphs used in simulations.
+///
+/// Instead of emitting one DFIR graph per location, we emit one big DFIR graph in `async_level`,
+/// which contains all asynchronously executed top-level operators in the Hydro program. Because
+/// "top-level" operators guarantee "eventual determinism" (per Flo), we do not need to simulate
+/// every possible interleaving of message arrivals and processing. Instead, we only need to
+/// simulate sources of non-determinism at the points in the program where a user intentionally
+/// observes them (such as batch or assume_ordering).
+///
+/// Because each tick relies on a set of decisions being made to select their inputs (batch,
+/// snapshot), we emit each tick's code into a separate DFIR graph. Each non-deterministic input
+/// to a tick has a corresponding "hook" that the simulation runtime can use to control the
+/// non-deterministic decision made at that boundary. This hook interacts with the DFIR program
+/// by accumulating inputs from the async level into a buffer, and then the hook can send selected
+/// elements from that buffer into the tick's DFIR graph with a separate handoff channel.
+pub struct SimBuilder {
+    pub extra_stmts: Vec<syn::Stmt>,
+    pub async_level: FlatGraphBuilder,
+    pub tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
+    pub next_hoff_id: usize,
+}
+
+impl DfirBuilder for SimBuilder {
+    fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
+        match location {
+            LocationId::Process(_) => &mut self.async_level,
+            LocationId::Cluster(_) => panic!("SimBuilder does not support clusters"),
+            LocationId::Atomic(_) => panic!("SimBuilder does not support atomic locations"),
+            LocationId::Tick(_, _) => self.tick_dfirs.entry(location.clone()).or_default(),
+        }
+    }
+
+    fn batch(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        out_location: &LocationId,
+    ) {
+        match in_kind {
+            CollectionKind::Stream {
+                order: StreamOrder::TotalOrder,
+                retry: StreamRetry::ExactlyOnce,
+                ..
+            } => {
+                debug_assert!(in_location.is_top_level());
+
+                let hoff_id = self.next_hoff_id;
+                self.next_hoff_id += 1;
+
+                let out_location_ser = serde_json::to_string(out_location).unwrap();
+                let buffered_ident =
+                    syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                let hoff_send_ident =
+                    syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                let hoff_recv_ident =
+                    syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                self.extra_stmts.push(syn::parse_quote! {
+                    let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                });
+                self.extra_stmts.push(syn::parse_quote! {
+                    let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                });
+                self.extra_stmts.push(syn::parse_quote! {
+                    __hydro_hooks.entry(#out_location_ser).or_default().push(Box::new(hydro_lang::sim::runtime::StreamHook {
+                        input: #buffered_ident.clone(),
+                        to_release: None,
+                        output: #hoff_send_ident,
+                    }));
+                });
+
+                self.async_level.add_dfir(
+                    parse_quote! {
+                        #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                    },
+                    None,
+                    None,
+                );
+
+                self.get_dfir_mut(out_location).add_dfir(
+                    parse_quote! {
+                        #out_ident = source_stream(#hoff_recv_ident);
+                    },
+                    None,
+                    None,
+                );
+            }
+            _ => todo!(),
+        }
+    }
+
+    fn yield_from_tick(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+    ) {
+        match in_kind {
+            CollectionKind::Stream { .. } => {
+                if let LocationId::Tick(_, outer) = in_location {
+                    debug_assert!(outer.is_top_level());
+
+                    let hoff_id = self.next_hoff_id;
+                    self.next_hoff_id += 1;
+
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.extra_stmts.push(syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                    });
+
+                    self.get_dfir_mut(in_location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #hoff_send_ident.send(v).unwrap());
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.async_level.add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                } else {
+                    panic!()
+                }
+            }
+            _ => todo!(),
+        }
+    }
+
+    fn observe_nondet(
+        &mut self,
+        _location: &LocationId,
+        _in_ident: syn::Ident,
+        _in_kind: &CollectionKind,
+        _out_ident: &syn::Ident,
+        _out_kind: &CollectionKind,
+    ) {
+        todo!()
+    }
+
+    fn create_network(
+        &mut self,
+        _from: &LocationId,
+        _to: &LocationId,
+        _input_ident: syn::Ident,
+        _out_ident: &syn::Ident,
+        _serialize: &Option<DebugExpr>,
+        _sink: syn::Expr,
+        _source: syn::Expr,
+        _deserialize: &Option<DebugExpr>,
+        _tag_id: usize,
+    ) {
+        todo!()
+    }
+
+    fn create_external_source(
+        &mut self,
+        _on: &LocationId,
+        source_expr: syn::Expr,
+        out_ident: &syn::Ident,
+        deserialize: &Option<DebugExpr>,
+        tag_id: usize,
+    ) {
+        if let Some(deserialize_pipeline) = deserialize {
+            self.async_level.add_dfir(
+                parse_quote! {
+                    #out_ident = source_stream(#source_expr) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                },
+                None,
+                Some(&format!("recv{}", tag_id)),
+            );
+        } else {
+            self.async_level.add_dfir(
+                parse_quote! {
+                    #out_ident = source_stream(#source_expr);
+                },
+                None,
+                Some(&format!("recv{}", tag_id)),
+            );
+        }
+    }
+
+    fn create_external_output(
+        &mut self,
+        _on: &LocationId,
+        sink_expr: syn::Expr,
+        input_ident: &syn::Ident,
+        serialize: &Option<DebugExpr>,
+        tag_id: usize,
+    ) {
+        let grabbed_ident = syn::Ident::new(&format!("__sink_{tag_id}"), Span::call_site());
+        self.extra_stmts.push(syn::parse_quote! {
+            let #grabbed_ident = #sink_expr;
+        });
+
+        if let Some(serialize_pipeline) = serialize {
+            self.async_level.add_dfir(
+                parse_quote! {
+                    #input_ident -> map(#serialize_pipeline) -> for_each(|v| #grabbed_ident.send(v).unwrap());
+                },
+                None,
+                Some(&format!("send{}", tag_id)),
+            );
+        } else {
+            self.async_level.add_dfir(
+                parse_quote! {
+                    #input_ident -> for_each(|v| #grabbed_ident.send(v).unwrap());
+                },
+                None,
+                Some(&format!("send{}", tag_id)),
+            );
+        }
+    }
+}

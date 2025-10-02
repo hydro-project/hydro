@@ -206,7 +206,7 @@ pub trait Node {
     );
 }
 
-type DynSourceSink<Out, In, InErr> = (
+pub type DynSourceSink<Out, In, InErr> = (
     Pin<Box<dyn Stream<Item = Out>>>,
     Pin<Box<dyn Sink<In, Error = InErr>>>,
 );
