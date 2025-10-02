@@ -1,7 +1,6 @@
 //! Comprehensive unit tests for all sink adaptors using direct constructors.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use sinktools::sink::SinkExt;
