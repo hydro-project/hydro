@@ -895,13 +895,13 @@ impl DfirGraph {
                     .collect();
 
                 let recv_port_code = recv_ports.iter().map(|ident| {
-                    quote! {
+                    quote_spanned! {ident.span()=>
                         let mut #ident = #ident.borrow_mut_swap();
                         let #ident = #ident.drain(..);
                     }
                 });
                 let send_port_code = send_ports.iter().map(|ident| {
-                    quote! {
+                    quote_spanned! {ident.span()=>
                         let #ident = #root::sinktools::for_each(|v| {
                             #ident.give(Some(v));
                         });
@@ -1228,6 +1228,7 @@ impl DfirGraph {
                             .unwrap_or_else(|| push_ident.span());
                         let pivot_fn_ident =
                             Ident::new(&format!("pivot_run_sg_{:?}", subgraph_id.0), pivot_span);
+                        let root = change_spans(root.clone(), pivot_span);
                         subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
                             #[inline(always)]
                             fn #pivot_fn_ident<Pull, Push, Item>(pull: Pull, push: Push)

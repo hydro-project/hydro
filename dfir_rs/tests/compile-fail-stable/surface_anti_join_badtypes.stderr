@@ -1,26 +1,17 @@
 error[E0631]: type mismatch in closure arguments
  --> tests/compile-fail-stable/surface_anti_join_badtypes.rs:5:13
   |
-4 |       let mut df = dfir_syntax! {
-  |  __________________-
-5 | |         j = anti_join() -> for_each(std::mem::drop);
-  | |             ^^^^^^^^^ expected due to this
-6 | |         source_iter(0..10) -> map(|x| (x, x)) -> [pos]j;
-7 | |         source_iter(0..10) -> map(|_| "string") -> [neg]j;
-8 | |     };
-  | |_____- found signature defined here
+5 |         j = anti_join() -> for_each(std::mem::drop);
+  |             ^^^^^^^^^
+  |             |
+  |             expected due to this
+  |             found signature defined here
   |
   = note: expected closure signature `fn(&str) -> _`
              found closure signature `fn({integer}) -> _`
-  = note: required for `dfir_rs::sinktools::for_each::ForEach<{closure@$DIR/tests/compile-fail-stable/surface_anti_join_badtypes.rs:4:18: 8:6}>` to implement `dfir_rs::futures::Sink<&str>`
+  = note: required for `dfir_rs::sinktools::for_each::ForEach<{closure@$DIR/tests/compile-fail-stable/surface_anti_join_badtypes.rs:5:13: 5:22}>` to implement `dfir_rs::futures::Sink<&str>`
 note: required by a bound in `pivot_run_sg_2v1`
- --> tests/compile-fail-stable/surface_anti_join_badtypes.rs:4:18
+ --> tests/compile-fail-stable/surface_anti_join_badtypes.rs:5:13
   |
-4 |       let mut df = dfir_syntax! {
-  |  __________________^
-5 | |         j = anti_join() -> for_each(std::mem::drop);
-6 | |         source_iter(0..10) -> map(|x| (x, x)) -> [pos]j;
-7 | |         source_iter(0..10) -> map(|_| "string") -> [neg]j;
-8 | |     };
-  | |_____^ required by this bound in `pivot_run_sg_2v1`
-  = note: this error originates in the macro `dfir_syntax` (in Nightly builds, run with -Z macro-backtrace for more info)
+5 |         j = anti_join() -> for_each(std::mem::drop);
+  |             ^^^^^^^^^ required by this bound in `pivot_run_sg_2v1`

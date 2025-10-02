@@ -78,15 +78,7 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<std::option::Option<(
              `DemuxVar<Sinks, Error>` implements `dfir_rs::futures::Sink<(usize, Item)>`
            and $N others
 note: required by a bound in `pivot_run_sg_1v1`
-  --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:12:18
+  --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:17:15
    |
-12 |       let mut df = dfir_syntax! {
-   |  __________________^
-13 | |         my_demux = source_iter([
-14 | |             Shape::Rectangle { w: 10.0, h: 8.0 },
-15 | |             Shape::Square(9.0),
-...  |
-20 | |         my_demux[Square] -> for_each(std::mem::drop);
-21 | |     };
-   | |_____^ required by this bound in `pivot_run_sg_1v1`
-   = note: this error originates in the macro `dfir_syntax` (in Nightly builds, run with -Z macro-backtrace for more info)
+17 |         ]) -> demux_enum::<Option<()>>();
+   |               ^^^^^^^^^^ required by this bound in `pivot_run_sg_1v1`
