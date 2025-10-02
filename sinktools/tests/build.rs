@@ -1,7 +1,6 @@
 //! Comprehensive unit tests for all sink adaptors using forward [`SinkBuild`] pattern.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use futures_util::sink::SinkExt;
