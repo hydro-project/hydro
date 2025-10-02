@@ -219,9 +219,8 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
 fn benchmark_hydroflow(c: &mut Criterion) {
     use dfir_rs::scheduled::graph::Dfir;
     use dfir_rs::scheduled::handoff::VecHandoff;
+    use dfir_rs::sinktools::{SinkBuild, ToSinkBuild, for_each};
     use dfir_rs::{var_args, var_expr};
-    use pusherator::for_each::ForEach;
-    use pusherator::{IteratorToPusherator, PusheratorBuild};
 
     let edges = &*EDGES;
     let reachable = &*REACHABLE;
@@ -247,6 +246,10 @@ fn benchmark_hydroflow(c: &mut Criterion) {
 
             let seen_handle = df.add_state::<RefCell<HashSet<usize>>>(Default::default());
 
+            #[expect(
+                clippy::await_holding_refcell_ref,
+                reason = "only one borrower of `seen_handle` RefCell."
+            )]
             df.add_subgraph(
                 "main",
                 var_expr!(origins_in, possible_reach_in),
@@ -271,16 +274,16 @@ fn benchmark_hydroflow(c: &mut Criterion) {
                         .chain(possible_reach)
                         .filter(|v| seen_state.insert(*v));
 
-                    let pivot = pull
-                        .pull_to_push()
-                        .tee(ForEach::new(|v| {
+                    let pivot = pull.iter_to_sink_build().fanout(
+                        for_each(|v| {
                             did_reach_send.give(Some(v));
-                        }))
-                        .for_each(|v| {
+                        }),
+                        for_each(|v| {
                             output.give(Some(v));
-                        });
+                        }),
+                    );
 
-                    pivot.run();
+                    pivot.await.unwrap();
                 },
             );
 

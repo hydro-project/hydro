@@ -467,10 +467,10 @@ dependencies = [
  "differential-dataflow-master",
  "futures",
  "nameof",
- "pusherator",
  "rand 0.8.5",
  "rand_distr",
  "seq-macro",
+ "sinktools",
  "static_assertions",
  "timely-master",
  "tokio",
@@ -3607,18 +3607,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.106",
-]
-
-[[package]]
-name = "pusherator"
-version = "0.0.12"
-dependencies = [
- "either",
- "sealed",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "variadics",
 ]
 
 [[package]]

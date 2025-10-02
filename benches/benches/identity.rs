@@ -112,11 +112,16 @@ fn benchmark_timely(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_compiled(c: &mut Criterion) {
-    use pusherator::{InputBuild, Pusherator, PusheratorBuild};
+    use dfir_rs::sinktools::{SinkBuild, SinkBuilder, ToSinkBuild};
 
     c.bench_function("identity/dfir_rs/compiled", |b| {
-        b.iter(|| {
-            let mut pusherator = InputBuild::<usize>::new()
+        b.to_async(
+            tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap(),
+        )
+        .iter(|| async {
+            let sink = SinkBuilder::<usize>::new()
                 .map(black_box)
                 .map(black_box)
                 .map(black_box)
@@ -141,9 +146,11 @@ fn benchmark_hydroflow_compiled(c: &mut Criterion) {
                     black_box(x);
                 });
 
-            for i in 0..NUM_INTS {
-                pusherator.give(i);
-            }
+            (0..NUM_INTS)
+                .iter_to_sink_build()
+                .send_to(sink)
+                .await
+                .unwrap();
         });
     });
 }

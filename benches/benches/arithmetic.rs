@@ -94,11 +94,16 @@ fn benchmark_iter_collect(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_compiled(c: &mut Criterion) {
-    use pusherator::{InputBuild, Pusherator, PusheratorBuild};
+    use dfir_rs::sinktools::{SinkBuild, SinkBuilder, ToSinkBuild};
 
     c.bench_function("arithmetic/dfir_rs/compiled", |b| {
-        b.iter(|| {
-            let mut pusherator = InputBuild::<usize>::new()
+        b.to_async(
+            tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap(),
+        )
+        .iter(|| async {
+            let sink = SinkBuilder::<usize>::new()
                 .map(|x| x + 1)
                 .map(|x| x + 1)
                 .map(|x| x + 1)
@@ -123,19 +128,26 @@ fn benchmark_hydroflow_compiled(c: &mut Criterion) {
                     black_box(x);
                 });
 
-            for i in 0..NUM_INTS {
-                pusherator.give(i);
-            }
+            (0..NUM_INTS)
+                .iter_to_sink_build()
+                .send_to(sink)
+                .await
+                .unwrap();
         });
     });
 }
 
 fn benchmark_hydroflow_compiled_no_cheating(c: &mut Criterion) {
-    use pusherator::{InputBuild, Pusherator, PusheratorBuild};
+    use dfir_rs::sinktools::{SinkBuild, SinkBuilder, ToSinkBuild};
 
     c.bench_function("arithmetic/dfir_rs/compiled_no_cheating", |b| {
-        b.iter(|| {
-            let mut pusherator = InputBuild::<usize>::new()
+        b.to_async(
+            tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap(),
+        )
+        .iter(|| async {
+            let sink = SinkBuilder::<usize>::new()
                 .map(|x| black_box(x + 1))
                 .map(|x| black_box(x + 1))
                 .map(|x| black_box(x + 1))
@@ -160,9 +172,11 @@ fn benchmark_hydroflow_compiled_no_cheating(c: &mut Criterion) {
                     black_box(x);
                 });
 
-            for i in black_box(0..NUM_INTS) {
-                pusherator.give(i);
-            }
+            black_box(0..NUM_INTS)
+                .iter_to_sink_build()
+                .send_to(sink)
+                .await
+                .unwrap();
         });
     });
 }
