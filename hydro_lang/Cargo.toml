@@ -33,6 +33,16 @@ deploy = [
     "dep:stageleft_tool",
     "dep:nameof",
 ]
+sim = [
+    "deploy",
+    "dep:bolero",
+    "dep:cargo_metadata",
+    "dep:tempfile",
+    "dep:libloading",
+    "dep:dfir_rs",
+    "dfir_rs/meta", # affects layout of DFIR, thus the ABI
+    "dep:serde_json",
+]
 deploy_integration = ["dep:hydro_deploy_integration"]
 build = ["dep:dfir_lang", "dep:backtrace", "dep:ctor"]
 runtime_measure = ["dep:chrono", "dep:procfs"]
@@ -46,7 +56,10 @@ all-features = true
 backtrace = { version = "0.3", optional = true }
 bytes = { version = "1.1.0", features = ["serde"] }
 bincode = "1.3.1"
+bolero = { package = "bolero-hydro", version = "0.13.4", features = ["arbitrary"], optional = true }
 clap = { version = "4.0", features = ["derive"], optional = true }
+cargo_metadata = { version = "0.18.0", optional = true }
+libloading = { version = "0.8", optional = true }
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0", optional = true }
 hydro_deploy_integration = { path = "../hydro_deploy/hydro_deploy_integration", version = "^0.14.0", optional = true }
 dfir_rs = { path = "../dfir_rs", version = "^0.14.0", default-features = false, optional = true }
@@ -69,6 +82,7 @@ syn = { version = "2.0.46", features = [
     "visit-mut",
     "visit",
 ] }
+tempfile = { version = "3", optional = true }
 tokio = "1.29.0"
 tokio-util = { version = "0.7.5", features = [ "codec" ] }
 tokio-stream = { version = "0.1.3", default-features = false, features = [
@@ -104,3 +118,4 @@ ctor = "0.2"
 hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
 tokio-test = "0.4.4"
 trybuild = "1"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }

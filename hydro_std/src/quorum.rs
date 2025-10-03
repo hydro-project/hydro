@@ -171,3 +171,41 @@ pub fn collect_quorum<
         })),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use futures::StreamExt;
+    use hydro_lang::prelude::*;
+
+    use super::collect_quorum_with_response;
+
+    #[test]
+    fn collect_quorum_with_response_preserves_order() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode(&external);
+        let out_port = collect_quorum_with_response(input, 3, 3)
+            .0
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect_sink_bincode(&port);
+            let out_recv = compiled.connect_source_bincode(&out_port);
+            compiled.launch();
+
+            in_send((1, Ok::<(), ()>(()))).unwrap();
+            in_send((1, Ok(()))).unwrap();
+            in_send((1, Ok(()))).unwrap();
+            in_send((2, Ok(()))).unwrap();
+            in_send((2, Ok(()))).unwrap();
+            in_send((2, Ok(()))).unwrap();
+
+            assert_eq!(
+                out_recv.collect::<Vec<_>>().await,
+                vec![(1, ()), (1, ()), (1, ()), (2, ()), (2, ()), (2, ())]
+            )
+        });
+    }
+}

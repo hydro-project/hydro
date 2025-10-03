@@ -13,7 +13,7 @@ use crate::compile::{
 };
 
 #[expect(missing_docs, reason = "TODO")]
-#[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum LocationId {
     Process(usize),
     Cluster(usize),
