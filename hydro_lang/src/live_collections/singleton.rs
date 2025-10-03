@@ -219,7 +219,7 @@ where
             left: Box::new(me.ir_node.into_inner()),
             right: Box::new(Singleton::<T, Tick<L>, B>::other_ir_node(other)),
             metadata: me.location.new_node_metadata(CollectionKind::Singleton {
-                bound: B::bound_kind(),
+                bound: B::BOUND_KIND,
                 element_type: stageleft::quote_type::<
                     <Singleton<T, Tick<L>, B> as ZipResult<'a, O>>::ElementType,
                 >()
@@ -245,7 +245,7 @@ where
 
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::Singleton {
-            bound: B::bound_kind(),
+            bound: B::BOUND_KIND,
             element_type: stageleft::quote_type::<T>().into(),
         }
     }
@@ -569,7 +569,7 @@ where
                     left: Box::new(self.ir_node.into_inner()),
                     right: Box::new(Self::other_ir_node(other)),
                     metadata: self.location.new_node_metadata(CollectionKind::Optional {
-                        bound: B::bound_kind(),
+                        bound: B::BOUND_KIND,
                         element_type: stageleft::quote_type::<
                             <Self as ZipResult<'a, O>>::ElementType,
                         >()

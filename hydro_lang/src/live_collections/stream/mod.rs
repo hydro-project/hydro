@@ -34,8 +34,8 @@ pub mod networking;
 pub trait Ordering:
     MinOrder<Self, Min = Self> + MinOrder<TotalOrder, Min = Self> + MinOrder<NoOrder, Min = NoOrder>
 {
-    /// Returns the [`StreamOrder`] corresponding to this type.
-    fn ordering_kind() -> StreamOrder;
+    /// The [`StreamOrder`] corresponding to this type.
+    const ORDERING_KIND: StreamOrder;
 }
 
 /// Marks the stream as being totally ordered, which means that there are
@@ -45,9 +45,7 @@ pub enum TotalOrder {}
 
 #[sealed::sealed]
 impl Ordering for TotalOrder {
-    fn ordering_kind() -> StreamOrder {
-        StreamOrder::TotalOrder
-    }
+    const ORDERING_KIND: StreamOrder = StreamOrder::TotalOrder;
 }
 
 /// Marks the stream as having no order, which means that the order of
@@ -59,9 +57,7 @@ pub enum NoOrder {}
 
 #[sealed::sealed]
 impl Ordering for NoOrder {
-    fn ordering_kind() -> StreamOrder {
-        StreamOrder::NoOrder
-    }
+    const ORDERING_KIND: StreamOrder = StreamOrder::NoOrder;
 }
 
 /// Helper trait for determining the weakest of two orderings.
@@ -98,8 +94,8 @@ pub trait Retries:
     + MinRetries<ExactlyOnce, Min = Self>
     + MinRetries<AtLeastOnce, Min = AtLeastOnce>
 {
-    /// Returns the [`StreamRetry`] corresponding to this type.
-    fn retries_kind() -> StreamRetry;
+    /// The [`StreamRetry`] corresponding to this type.
+    const RETRIES_KIND: StreamRetry;
 }
 
 /// Marks the stream as having deterministic message cardinality, with no
@@ -108,9 +104,7 @@ pub enum ExactlyOnce {}
 
 #[sealed::sealed]
 impl Retries for ExactlyOnce {
-    fn retries_kind() -> StreamRetry {
-        StreamRetry::ExactlyOnce
-    }
+    const RETRIES_KIND: StreamRetry = StreamRetry::ExactlyOnce;
 }
 
 /// Marks the stream as having non-deterministic message cardinality, which
@@ -119,9 +113,7 @@ pub enum AtLeastOnce {}
 
 #[sealed::sealed]
 impl Retries for AtLeastOnce {
-    fn retries_kind() -> StreamRetry {
-        StreamRetry::AtLeastOnce
-    }
+    const RETRIES_KIND: StreamRetry = StreamRetry::AtLeastOnce;
 }
 
 /// Helper trait for determining the weakest of two retry guarantees.
@@ -366,9 +358,9 @@ where
 
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::Stream {
-            bound: B::bound_kind(),
-            order: O::ordering_kind(),
-            retry: R::retries_kind(),
+            bound: B::BOUND_KIND,
+            order: O::ORDERING_KIND,
+            retry: R::RETRIES_KIND,
             element_type: stageleft::quote_type::<T>().into(),
         }
     }
@@ -908,9 +900,9 @@ where
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
-        if O::ordering_kind() == O2::ordering_kind() {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
             Stream::new(self.location, self.ir_node.into_inner())
-        } else if O2::ordering_kind() == StreamOrder::NoOrder {
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
             // We can always weaken the ordering guarantee
             Stream::new(
                 self.location.clone(),
@@ -957,9 +949,9 @@ where
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
-        if R::retries_kind() == R2::retries_kind() {
+        if R::RETRIES_KIND == R2::RETRIES_KIND {
             Stream::new(self.location, self.ir_node.into_inner())
-        } else if R2::retries_kind() == StreamRetry::AtLeastOnce {
+        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
             // We can always weaken the retries guarantee
             Stream::new(
                 self.location.clone(),
