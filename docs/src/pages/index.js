@@ -76,11 +76,11 @@ export default function Home() {
             </p>
             <p>Hydro automatically flags situations where messages may be out-of-order, or duplicated, and guides you to appropriately handle them. These are surfaced through the Rust type system, visible to your editor, language server, and agents.</p>
             <div className={styles["inDevPanel"]}>
-              <b>In Development (<a href={"https://github.com/hydro-project/hydro/issues/1876"}>#1876</a>)</b>
+              <b>In Preview (<a href={"https://github.com/hydro-project/hydro/pull/2158"}>#2158</a>)</b>
               <p style={{
                 fontSize: "0.9em",
                 marginBottom: 0,
-              }}>Hydro will soon offer built-in <b>deterministic simulation testing</b>, allowing you to locally simulate various distributed scenarios, including network partitions, message delays, and failures.</p>
+              }}>Hydro offers built-in <b>deterministic simulation testing</b>, which lets you simulate distributed programs on your laptop and use cutting-edge fuzzers to quickly find complex edge-cases.</p>
             </div>
           </div>
 
