@@ -219,7 +219,7 @@
 <a href=#219 id=219 data-nosnippet>219</a>            left: Box::new(me.ir_node.into_inner()),
 <a href=#220 id=220 data-nosnippet>220</a>            right: Box::new(Singleton::&lt;T, Tick&lt;L&gt;, B&gt;::other_ir_node(other)),
 <a href=#221 id=221 data-nosnippet>221</a>            metadata: me.location.new_node_metadata(CollectionKind::Singleton {
-<a href=#222 id=222 data-nosnippet>222</a>                bound: B::bound_kind(),
+<a href=#222 id=222 data-nosnippet>222</a>                bound: B::BOUND_KIND,
 <a href=#223 id=223 data-nosnippet>223</a>                element_type: stageleft::quote_type::&lt;
 <a href=#224 id=224 data-nosnippet>224</a>                    &lt;Singleton&lt;T, Tick&lt;L&gt;, B&gt; <span class="kw">as </span>ZipResult&lt;<span class="lifetime">'a</span>, O&gt;&gt;::ElementType,
 <a href=#225 id=225 data-nosnippet>225</a>                &gt;()
@@ -245,7 +245,7 @@
 <a href=#245 id=245 data-nosnippet>245</a>
 <a href=#246 id=246 data-nosnippet>246</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>collection_kind() -&gt; CollectionKind {
 <a href=#247 id=247 data-nosnippet>247</a>        CollectionKind::Singleton {
-<a href=#248 id=248 data-nosnippet>248</a>            bound: B::bound_kind(),
+<a href=#248 id=248 data-nosnippet>248</a>            bound: B::BOUND_KIND,
 <a href=#249 id=249 data-nosnippet>249</a>            element_type: stageleft::quote_type::&lt;T&gt;().into(),
 <a href=#250 id=250 data-nosnippet>250</a>        }
 <a href=#251 id=251 data-nosnippet>251</a>    }
@@ -569,7 +569,7 @@
 <a href=#569 id=569 data-nosnippet>569</a>                    left: Box::new(<span class="self">self</span>.ir_node.into_inner()),
 <a href=#570 id=570 data-nosnippet>570</a>                    right: Box::new(<span class="self">Self</span>::other_ir_node(other)),
 <a href=#571 id=571 data-nosnippet>571</a>                    metadata: <span class="self">self</span>.location.new_node_metadata(CollectionKind::Optional {
-<a href=#572 id=572 data-nosnippet>572</a>                        bound: B::bound_kind(),
+<a href=#572 id=572 data-nosnippet>572</a>                        bound: B::BOUND_KIND,
 <a href=#573 id=573 data-nosnippet>573</a>                        element_type: stageleft::quote_type::&lt;
 <a href=#574 id=574 data-nosnippet>574</a>                            &lt;<span class="self">Self </span><span class="kw">as </span>ZipResult&lt;<span class="lifetime">'a</span>, O&gt;&gt;::ElementType,
 <a href=#575 id=575 data-nosnippet>575</a>                        &gt;()

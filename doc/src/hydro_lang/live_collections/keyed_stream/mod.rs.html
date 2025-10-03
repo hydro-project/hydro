@@ -215,9 +215,9 @@
 <a href=#215 id=215 data-nosnippet>215</a>    <span class="doccomment">/// Returns the [`CollectionKind`] corresponding to this type.
 <a href=#216 id=216 data-nosnippet>216</a>    </span><span class="kw">pub fn </span>collection_kind() -&gt; CollectionKind {
 <a href=#217 id=217 data-nosnippet>217</a>        CollectionKind::KeyedStream {
-<a href=#218 id=218 data-nosnippet>218</a>            bound: B::bound_kind(),
-<a href=#219 id=219 data-nosnippet>219</a>            value_order: O::ordering_kind(),
-<a href=#220 id=220 data-nosnippet>220</a>            value_retry: R::retries_kind(),
+<a href=#218 id=218 data-nosnippet>218</a>            bound: B::BOUND_KIND,
+<a href=#219 id=219 data-nosnippet>219</a>            value_order: O::ORDERING_KIND,
+<a href=#220 id=220 data-nosnippet>220</a>            value_retry: R::RETRIES_KIND,
 <a href=#221 id=221 data-nosnippet>221</a>            key_type: stageleft::quote_type::&lt;K&gt;().into(),
 <a href=#222 id=222 data-nosnippet>222</a>            value_type: stageleft::quote_type::&lt;V&gt;().into(),
 <a href=#223 id=223 data-nosnippet>223</a>        }
@@ -237,9 +237,9 @@
 <a href=#237 id=237 data-nosnippet>237</a>    /// provided ordering guarantee will propagate into the guarantees
 <a href=#238 id=238 data-nosnippet>238</a>    /// for the rest of the program.
 <a href=#239 id=239 data-nosnippet>239</a>    </span><span class="kw">pub fn </span>assume_ordering&lt;O2: Ordering&gt;(<span class="self">self</span>, _nondet: NonDet) -&gt; KeyedStream&lt;K, V, L, B, O2, R&gt; {
-<a href=#240 id=240 data-nosnippet>240</a>        <span class="kw">if </span>O::ordering_kind() == O2::ordering_kind() {
+<a href=#240 id=240 data-nosnippet>240</a>        <span class="kw">if </span>O::ORDERING_KIND == O2::ORDERING_KIND {
 <a href=#241 id=241 data-nosnippet>241</a>            KeyedStream::new(<span class="self">self</span>.location, <span class="self">self</span>.ir_node.into_inner())
-<a href=#242 id=242 data-nosnippet>242</a>        } <span class="kw">else if </span>O2::ordering_kind() == StreamOrder::NoOrder {
+<a href=#242 id=242 data-nosnippet>242</a>        } <span class="kw">else if </span>O2::ORDERING_KIND == StreamOrder::NoOrder {
 <a href=#243 id=243 data-nosnippet>243</a>            <span class="comment">// We can always weaken the ordering guarantee
 <a href=#244 id=244 data-nosnippet>244</a>            </span>KeyedStream::new(
 <a href=#245 id=245 data-nosnippet>245</a>                <span class="self">self</span>.location.clone(),
@@ -279,9 +279,9 @@
 <a href=#279 id=279 data-nosnippet>279</a>    /// provided retries guarantee will propagate into the guarantees
 <a href=#280 id=280 data-nosnippet>280</a>    /// for the rest of the program.
 <a href=#281 id=281 data-nosnippet>281</a>    </span><span class="kw">pub fn </span>assume_retries&lt;R2: Retries&gt;(<span class="self">self</span>, _nondet: NonDet) -&gt; KeyedStream&lt;K, V, L, B, O, R2&gt; {
-<a href=#282 id=282 data-nosnippet>282</a>        <span class="kw">if </span>R::retries_kind() == R2::retries_kind() {
+<a href=#282 id=282 data-nosnippet>282</a>        <span class="kw">if </span>R::RETRIES_KIND == R2::RETRIES_KIND {
 <a href=#283 id=283 data-nosnippet>283</a>            KeyedStream::new(<span class="self">self</span>.location, <span class="self">self</span>.ir_node.into_inner())
-<a href=#284 id=284 data-nosnippet>284</a>        } <span class="kw">else if </span>R2::retries_kind() == StreamRetry::AtLeastOnce {
+<a href=#284 id=284 data-nosnippet>284</a>        } <span class="kw">else if </span>R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
 <a href=#285 id=285 data-nosnippet>285</a>            <span class="comment">// We can always weaken the retries guarantee
 <a href=#286 id=286 data-nosnippet>286</a>            </span>KeyedStream::new(
 <a href=#287 id=287 data-nosnippet>287</a>                <span class="self">self</span>.location.clone(),

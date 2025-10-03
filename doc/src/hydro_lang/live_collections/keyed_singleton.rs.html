@@ -496,7 +496,7 @@
 <a href=#496 id=496 data-nosnippet>496</a>    /// # }));
 <a href=#497 id=497 data-nosnippet>497</a>    /// ```
 <a href=#498 id=498 data-nosnippet>498</a>    </span><span class="kw">pub fn </span>key_count(<span class="self">self</span>) -&gt; Singleton&lt;usize, L, B::UnderlyingBound&gt; {
-<a href=#499 id=499 data-nosnippet>499</a>        <span class="kw">if </span>B::ValueBound::is_bounded() {
+<a href=#499 id=499 data-nosnippet>499</a>        <span class="kw">if </span>B::ValueBound::BOUNDED {
 <a href=#500 id=500 data-nosnippet>500</a>            <span class="kw">let </span>me: KeyedSingleton&lt;K, V, L, B::WithBoundedValue&gt; = KeyedSingleton {
 <a href=#501 id=501 data-nosnippet>501</a>                location: <span class="self">self</span>.location,
 <a href=#502 id=502 data-nosnippet>502</a>                ir_node: <span class="self">self</span>.ir_node,
@@ -549,7 +549,7 @@
 <a href=#549 id=549 data-nosnippet>549</a>    <span class="kw">where
 <a href=#550 id=550 data-nosnippet>550</a>        </span>K: Eq + Hash,
 <a href=#551 id=551 data-nosnippet>551</a>    {
-<a href=#552 id=552 data-nosnippet>552</a>        <span class="kw">if </span>B::ValueBound::is_bounded() {
+<a href=#552 id=552 data-nosnippet>552</a>        <span class="kw">if </span>B::ValueBound::BOUNDED {
 <a href=#553 id=553 data-nosnippet>553</a>            <span class="kw">let </span>me: KeyedSingleton&lt;K, V, L, B::WithBoundedValue&gt; = KeyedSingleton {
 <a href=#554 id=554 data-nosnippet>554</a>                location: <span class="self">self</span>.location,
 <a href=#555 id=555 data-nosnippet>555</a>                ir_node: <span class="self">self</span>.ir_node,
