@@ -18,6 +18,8 @@ stageleft::stageleft_no_entry_crate!();
 #[cfg_attr(docsrs, doc(cfg(feature = "runtime_support")))]
 #[doc(hidden)]
 pub mod runtime_support {
+    #[cfg(feature = "sim")]
+    pub use colored;
     pub use {bincode, dfir_rs, stageleft, tokio};
     pub mod resource_measurement;
 }

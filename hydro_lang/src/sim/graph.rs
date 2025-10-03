@@ -564,6 +564,7 @@ fn compile_sim_graph_trybuild(
 
         #[unsafe(no_mangle)]
         unsafe extern "Rust" fn __hydro_runtime(
+            should_color: bool,
             __hydro_external_out: ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
             __hydro_external_in: ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>
         ) -> (
@@ -571,6 +572,7 @@ fn compile_sim_graph_trybuild(
             Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
         ) {
+            hydro_lang::runtime_support::colored::control::set_override(should_color);
             __hydro_runtime_core(__hydro_external_out, __hydro_external_in)
         }
     };
