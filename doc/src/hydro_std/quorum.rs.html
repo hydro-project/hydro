@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_std/src/quorum.rs`."><title>quorum.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-e56847b5.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydro_std" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0-nightly (4da69dfff 2025-10-01)" data-channel="nightly" data-search-js="search-e256b49e.js" data-stringdex-js="stringdex-828709d0.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_std/</div>quorum.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::hash::Hash;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_std/src/quorum.rs`."><title>quorum.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-e56847b5.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydro_std" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0-nightly (5c7ae0c7e 2025-10-02)" data-channel="nightly" data-search-js="search-e256b49e.js" data-stringdex-js="stringdex-828709d0.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_std/</div>quorum.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::hash::Hash;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::live_collections::stream::{NoOrder, Ordering};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>hydro_lang::location::{Location, NoTick};
@@ -170,4 +170,42 @@
 <a href=#170 id=170 data-nosnippet>170</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Some</span>((key, e)),
 <a href=#171 id=171 data-nosnippet>171</a>        })),
 <a href=#172 id=172 data-nosnippet>172</a>    )
-<a href=#173 id=173 data-nosnippet>173</a>}</code></pre></div></section></main></body></html>
+<a href=#173 id=173 data-nosnippet>173</a>}
+<a href=#174 id=174 data-nosnippet>174</a>
+<a href=#175 id=175 data-nosnippet>175</a><span class="attr">#[cfg(test)]
+<a href=#176 id=176 data-nosnippet>176</a></span><span class="kw">mod </span>tests {
+<a href=#177 id=177 data-nosnippet>177</a>    <span class="kw">use </span>futures::StreamExt;
+<a href=#178 id=178 data-nosnippet>178</a>    <span class="kw">use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#179 id=179 data-nosnippet>179</a>
+<a href=#180 id=180 data-nosnippet>180</a>    <span class="kw">use </span><span class="kw">super</span>::collect_quorum_with_response;
+<a href=#181 id=181 data-nosnippet>181</a>
+<a href=#182 id=182 data-nosnippet>182</a>    <span class="attr">#[test]
+<a href=#183 id=183 data-nosnippet>183</a>    </span><span class="kw">fn </span>collect_quorum_with_response_preserves_order() {
+<a href=#184 id=184 data-nosnippet>184</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#185 id=185 data-nosnippet>185</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#187 id=187 data-nosnippet>187</a>
+<a href=#188 id=188 data-nosnippet>188</a>        <span class="kw">let </span>(port, input) = node.source_external_bincode(<span class="kw-2">&amp;</span>external);
+<a href=#189 id=189 data-nosnippet>189</a>        <span class="kw">let </span>out_port = collect_quorum_with_response(input, <span class="number">3</span>, <span class="number">3</span>)
+<a href=#190 id=190 data-nosnippet>190</a>            .<span class="number">0
+<a href=#191 id=191 data-nosnippet>191</a>            </span>.send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#192 id=192 data-nosnippet>192</a>
+<a href=#193 id=193 data-nosnippet>193</a>        flow.sim().exhaustive(<span class="kw">async </span>|<span class="kw-2">mut </span>compiled| {
+<a href=#194 id=194 data-nosnippet>194</a>            <span class="kw">let </span>in_send = compiled.connect_sink_bincode(<span class="kw-2">&amp;</span>port);
+<a href=#195 id=195 data-nosnippet>195</a>            <span class="kw">let </span>out_recv = compiled.connect_source_bincode(<span class="kw-2">&amp;</span>out_port);
+<a href=#196 id=196 data-nosnippet>196</a>            compiled.launch();
+<a href=#197 id=197 data-nosnippet>197</a>
+<a href=#198 id=198 data-nosnippet>198</a>            in_send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(()))).unwrap();
+<a href=#199 id=199 data-nosnippet>199</a>            in_send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#200 id=200 data-nosnippet>200</a>            in_send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#201 id=201 data-nosnippet>201</a>            in_send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#202 id=202 data-nosnippet>202</a>            in_send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#203 id=203 data-nosnippet>203</a>            in_send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#204 id=204 data-nosnippet>204</a>
+<a href=#205 id=205 data-nosnippet>205</a>            <span class="macro">assert_eq!</span>(
+<a href=#206 id=206 data-nosnippet>206</a>                out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>,
+<a href=#207 id=207 data-nosnippet>207</a>                <span class="macro">vec!</span>[(<span class="number">1</span>, ()), (<span class="number">1</span>, ()), (<span class="number">1</span>, ()), (<span class="number">2</span>, ()), (<span class="number">2</span>, ()), (<span class="number">2</span>, ())]
+<a href=#208 id=208 data-nosnippet>208</a>            )
+<a href=#209 id=209 data-nosnippet>209</a>        });
+<a href=#210 id=210 data-nosnippet>210</a>    }
+<a href=#211 id=211 data-nosnippet>211</a>}</code></pre></div></section></main></body></html>

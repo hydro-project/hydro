@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["ClusterSpec","Deploy","ExternalSpec","IntoProcessSpec","Node","ProcessSpec","RegisterPort"]};
+window.SIDEBAR_ITEMS = {"trait":["ClusterSpec","Deploy","ExternalSpec","IntoProcessSpec","Node","ProcessSpec","RegisterPort"],"type":["DynSourceSink"]};

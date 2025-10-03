@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["__nondet__"],"mod":["compile","deploy","forward_handle","graph","live_collections","location","nondet","prelude","runtime_context","test_util"]};
+window.SIDEBAR_ITEMS = {"macro":["__nondet__"],"mod":["compile","deploy","forward_handle","graph","live_collections","location","nondet","prelude","runtime_context","sim","test_util"]};
