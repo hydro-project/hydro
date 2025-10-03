@@ -1,5 +1,5 @@
 #![doc = include_str!("../README.md")]
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_docs)]
 
@@ -35,6 +35,13 @@ use send_iter::SendIter;
 use send_stream::SendStream;
 use try_for_each::TryForEach;
 use unzip::Unzip;
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub mod demux_map;
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub use demux_map::demux_map;
 
 #[cfg(feature = "variadics")]
 #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
@@ -154,6 +161,37 @@ pub trait SinkBuild {
         Si0::Error: From<Si1::Error>,
     {
         self.send_to(Unzip::new(sink0, sink1))
+    }
+
+    /// Sends each item into one sink depending on the key, where the sinks are in a [`HashMap`](std::collections::HashMap).
+    ///
+    /// This requires sinks `Si` to be `Unpin`. If your sinks are not `Unpin`, first wrap them in `Box::pin` to make them `Unpin`.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    fn demux_map<Key, ItemVal, Si>(
+        self,
+        sinks: impl Into<std::collections::HashMap<Key, Si>>,
+    ) -> Self::Output<demux_map::DemuxMap<Key, Si>>
+    where
+        Self: Sized + SinkBuild<Item = (Key, ItemVal)>,
+        Key: Eq + core::hash::Hash + core::fmt::Debug + Unpin,
+        Si: Sink<ItemVal> + Unpin,
+    {
+        self.send_to(demux_map(sinks))
+    }
+
+    /// Sends each item into one sink depending on the index, where the sinks are a variadic.
+    #[cfg(feature = "variadics")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
+    fn demux_var<Sinks, ItemVal, Error>(
+        self,
+        sinks: Sinks,
+    ) -> Self::Output<demux_var::DemuxVar<Sinks, Error>>
+    where
+        Self: Sized + SinkBuild<Item = (usize, ItemVal)>,
+        Sinks: SinkVariadic<ItemVal, Error>,
+    {
+        self.send_to(demux_var(sinks))
     }
 }
 

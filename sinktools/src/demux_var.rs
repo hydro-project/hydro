@@ -1,4 +1,4 @@
-//! Variadics for [`Sink`].
+//! [`DemuxVar`] and [`variadics`] for [`Sink`].
 
 use core::marker::PhantomData;
 use core::pin::Pin;
@@ -90,7 +90,7 @@ fn pin_project_pair<A, B>(pair: Pin<&mut (A, B)>) -> (Pin<&mut A>, Pin<&mut B>) 
 }
 
 pin_project! {
-    /// Sink which receives items paired with indices, and pushes to the corresponding output sink in a variadic of sinks.
+    /// Sink which receives indices paired with items `(usize, Item)`, and pushes to the corresponding output sink in a variadic of sinks.
     #[must_use = "sinks do nothing unless polled"]
     pub struct DemuxVar<Sinks, Error> {
         #[pin]
@@ -126,7 +126,7 @@ where
     forward_sink!(poll_ready, poll_flush, poll_close);
 }
 
-/// Creates a `DemuxVar` variadic that sends each item to one of many outputs, depending on the index.
+/// Creates a `DemuxVar` sink that sends each item to one of many outputs, depending on the index.
 pub fn demux_var<Sinks, Item, Error>(sinks: Sinks) -> DemuxVar<Sinks, Error>
 where
     Sinks: SinkVariadic<Item, Error>,

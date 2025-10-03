@@ -2196,6 +2196,7 @@ dependencies = [
  "futures",
  "pin-project-lite",
  "serde",
+ "sinktools",
  "tempfile",
  "tokio",
  "tokio-stream",
