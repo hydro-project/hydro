@@ -286,21 +286,7 @@ impl<'a> CompiledSimInstance<'a> {
     /// Launches the simulation, which will asynchronously simulate the Hydro program. This should
     /// be invoked after connecting all inputs and outputs, but before receiving any messages.
     pub fn launch(self) {
-        if !self.remaining_ports.is_empty() {
-            panic!(
-                "Cannot launch DFIR because some of the inputs / outputs have not been connected."
-            )
-        }
-
-        let (async_dfir, ticks, hooks) = unsafe {
-            (self.func)(
-                colored::control::SHOULD_COLORIZE.should_colorize(),
-                self.output_ports,
-                self.input_ports,
-            )
-        };
-
-        let mut logger = if self.log
+        let logger = if self.log
             || std::env::var("HYDRO_SIM_LOG")
                 .map(|v| v == "1")
                 .unwrap_or(false)
@@ -310,24 +296,17 @@ impl<'a> CompiledSimInstance<'a> {
             None
         };
 
-        tokio::task::spawn_local(async move {
-            let mut launched = LaunchedSim {
-                async_dfir,
-                possibly_ready_ticks: vec![],
-                not_ready_ticks: ticks.into_iter().collect(),
-                hooks,
-                log_writer: logger.as_mut().map(|l| l as &mut dyn std::io::Write),
-            };
-
-            launched.scheduler().await;
-        });
+        tokio::task::spawn_local(self.schedule_with_logger(logger));
     }
 
     /// Returns a future that schedules simulation with the given logger for reporting the
     /// simulation trace.
     ///
     /// See [`Self::launch`] for more details.
-    pub async fn schedule_with_logger(self, logger: Option<&mut impl std::io::Write>) {
+    pub fn schedule_with_logger<W: std::io::Write>(
+        self,
+        log_writer: Option<W>,
+    ) -> impl use<W> + Future<Output = ()> {
         if !self.remaining_ports.is_empty() {
             panic!(
                 "Cannot launch DFIR because some of the inputs / outputs have not been connected."
@@ -346,10 +325,10 @@ impl<'a> CompiledSimInstance<'a> {
             possibly_ready_ticks: vec![],
             not_ready_ticks: ticks.into_iter().collect(),
             hooks,
-            log_writer: logger.map(|l| l as &mut dyn std::io::Write),
+            log_writer,
         };
 
-        launched.scheduler().await;
+        async move { launched.scheduler().await }
     }
 }
 
@@ -367,15 +346,15 @@ impl<W: std::io::Write> std::fmt::Write for FmtWriter<W> {
 
 /// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
 /// about scheduling ticks and choices for non-deterministic operators like batch.
-struct LaunchedSim<'a> {
+struct LaunchedSim<W: std::io::Write> {
     async_dfir: Dfir<'static>,
     possibly_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
     not_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
     hooks: HashMap<&'static str, Vec<Box<dyn SimHook>>>,
-    log_writer: Option<&'a mut dyn std::io::Write>,
+    log_writer: Option<W>,
 }
 
-impl LaunchedSim<'_> {
+impl<W: std::io::Write> LaunchedSim<W> {
     async fn scheduler(&mut self) {
         loop {
             tokio::task::yield_now().await;
