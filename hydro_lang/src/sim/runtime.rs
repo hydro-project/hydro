@@ -16,7 +16,7 @@ pub trait SimHook {
         driver: &mut Borrowed<'a>,
         force_nontrivial: bool,
     ) -> bool;
-    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>);
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write);
 }
 
 struct TruncatedVecDebug<'a, T>(&'a Vec<T>, usize, fn(&T) -> Option<String>);
@@ -75,36 +75,34 @@ impl<T> SimHook for StreamHook<T> {
         count > 0
     }
 
-    fn release_decision(&mut self, log_writer: Option<&mut dyn std::fmt::Write>) {
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
         if let Some(to_release) = self.to_release.take() {
-            if let Some(log_writer) = log_writer {
-                let (batch_location, line, caret_indent) = self.batch_location;
-                let note_str = if to_release.is_empty() {
-                    "^ releasing no items".to_string()
-                } else {
-                    format!(
-                        "^ releasing items: {:?}",
-                        TruncatedVecDebug(&to_release, 8, self.format_item_debug)
-                    )
-                };
+            let (batch_location, line, caret_indent) = self.batch_location;
+            let note_str = if to_release.is_empty() {
+                "^ releasing no items".to_string()
+            } else {
+                format!(
+                    "^ releasing items: {:?}",
+                    TruncatedVecDebug(&to_release, 8, self.format_item_debug)
+                )
+            };
 
-                let _ = writeln!(
-                    log_writer,
-                    "{} {}",
-                    "-->".color(colored::Color::Blue),
-                    batch_location
-                );
+            let _ = writeln!(
+                log_writer,
+                "{} {}",
+                "-->".color(colored::Color::Blue),
+                batch_location
+            );
 
-                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
 
-                let _ = writeln!(
-                    log_writer,
-                    " {}{}{}",
-                    "|".color(colored::Color::Blue),
-                    caret_indent,
-                    note_str.color(colored::Color::Green)
-                );
-            }
+            let _ = writeln!(
+                log_writer,
+                " {}{}{}",
+                "|".color(colored::Color::Blue),
+                caret_indent,
+                note_str.color(colored::Color::Green)
+            );
 
             for item in to_release {
                 self.output.send(item).unwrap();

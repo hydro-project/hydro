@@ -286,17 +286,11 @@ impl<'a> CompiledSimInstance<'a> {
     /// Launches the simulation, which will asynchronously simulate the Hydro program. This should
     /// be invoked after connecting all inputs and outputs, but before receiving any messages.
     pub fn launch(self) {
-        let logger = if self.log
-            || std::env::var("HYDRO_SIM_LOG")
-                .map(|v| v == "1")
-                .unwrap_or(false)
-        {
-            Some(std::io::stderr())
+        if self.log || std::env::var("HYDRO_SIM_LOG").is_ok_and(|v| v == "1") {
+            tokio::task::spawn_local(self.schedule_with_logger(std::io::stderr()));
         } else {
-            None
+            tokio::task::spawn_local(self.schedule_with_logger(std::io::empty()));
         };
-
-        tokio::task::spawn_local(self.schedule_with_logger(logger));
     }
 
     /// Returns a future that schedules simulation with the given logger for reporting the
@@ -305,7 +299,7 @@ impl<'a> CompiledSimInstance<'a> {
     /// See [`Self::launch`] for more details.
     pub fn schedule_with_logger<W: std::io::Write>(
         self,
-        log_writer: Option<W>,
+        log_writer: W,
     ) -> impl use<W> + Future<Output = ()> {
         if !self.remaining_ports.is_empty() {
             panic!(
@@ -351,7 +345,7 @@ struct LaunchedSim<W: std::io::Write> {
     possibly_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
     not_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
     hooks: HashMap<&'static str, Vec<Box<dyn SimHook>>>,
-    log_writer: Option<W>,
+    log_writer: W,
 }
 
 impl<W: std::io::Write> LaunchedSim<W> {
@@ -382,25 +376,22 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     let mut removed: (&'static str, Dfir<'static>) =
                         self.possibly_ready_ticks.remove(next_tick);
 
-                    if let Some(log_writer) = self.log_writer.as_mut() {
-                        let _ = writeln!(
-                            log_writer,
-                            "\n{}",
-                            "Running Tick".color(colored::Color::Magenta).bold()
-                        );
-                    }
+                    let _ = writeln!(
+                        self.log_writer,
+                        "\n{}",
+                        "Running Tick".color(colored::Color::Magenta).bold()
+                    );
 
-                    let mut fmt_writer = self.log_writer.as_mut().map(FmtWriter);
+                    let mut fmt_writer = FmtWriter(&mut self.log_writer);
                     let mut asterisk_indenter = |_line_no, write: &mut dyn std::fmt::Write| {
                         write.write_str(&"*".color(colored::Color::Magenta).bold())?;
                         write.write_str(" ")
                     };
 
-                    let mut tick_decision_writer = fmt_writer.as_mut().map(|w| {
-                        indenter::indented(w).with_format(indenter::Format::Custom {
+                    let mut tick_decision_writer =
+                        indenter::indented(&mut fmt_writer).with_format(indenter::Format::Custom {
                             inserter: &mut asterisk_indenter,
-                        })
-                    });
+                        });
 
                     let hooks = self.hooks.get_mut(removed.0).unwrap();
                     let mut remaining_decision_count = hooks.len();
@@ -424,11 +415,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                                 remaining_decision_count -= 1;
                             }
 
-                            if let Some(log_mut) = tick_decision_writer.as_mut() {
-                                hook.release_decision(Some(log_mut));
-                            } else {
-                                hook.release_decision(None);
-                            }
+                            hook.release_decision(&mut tick_decision_writer);
                         });
                     });
 

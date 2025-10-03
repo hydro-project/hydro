@@ -225,7 +225,7 @@ fn trace_for_fuzzed_batching() {
             let in_send = compiled.connect_sink_bincode(&port);
             let mut out_recv = compiled.connect_source_bincode(&out_port);
 
-            let schedule = compiled.schedule_with_logger(Some(&mut log_out));
+            let schedule = compiled.schedule_with_logger(&mut log_out);
             let rest = async move {
                 for _ in 0..1000 {
                     in_send(456).unwrap(); // the fuzzer should put these some batches
