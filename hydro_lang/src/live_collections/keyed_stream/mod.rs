@@ -215,9 +215,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// Returns the [`CollectionKind`] corresponding to this type.
     pub fn collection_kind() -> CollectionKind {
         CollectionKind::KeyedStream {
-            bound: B::bound_kind(),
-            value_order: O::ordering_kind(),
-            value_retry: R::retries_kind(),
+            bound: B::BOUND_KIND,
+            value_order: O::ORDERING_KIND,
+            value_retry: R::RETRIES_KIND,
             key_type: stageleft::quote_type::<K>().into(),
             value_type: stageleft::quote_type::<V>().into(),
         }
@@ -237,9 +237,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O2, R> {
-        if O::ordering_kind() == O2::ordering_kind() {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
             KeyedStream::new(self.location, self.ir_node.into_inner())
-        } else if O2::ordering_kind() == StreamOrder::NoOrder {
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
             // We can always weaken the ordering guarantee
             KeyedStream::new(
                 self.location.clone(),
@@ -279,9 +279,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O, R2> {
-        if R::retries_kind() == R2::retries_kind() {
+        if R::RETRIES_KIND == R2::RETRIES_KIND {
             KeyedStream::new(self.location, self.ir_node.into_inner())
-        } else if R2::retries_kind() == StreamRetry::AtLeastOnce {
+        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
             // We can always weaken the retries guarantee
             KeyedStream::new(
                 self.location.clone(),

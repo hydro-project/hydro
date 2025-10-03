@@ -276,7 +276,7 @@ where
 
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::Optional {
-            bound: B::bound_kind(),
+            bound: B::BOUND_KIND,
             element_type: stageleft::quote_type::<T>().into(),
         }
     }

@@ -496,7 +496,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # }));
     /// ```
     pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
-        if B::ValueBound::is_bounded() {
+        if B::ValueBound::BOUNDED {
             let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
                 location: self.location,
                 ir_node: self.ir_node,
@@ -549,7 +549,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     where
         K: Eq + Hash,
     {
-        if B::ValueBound::is_bounded() {
+        if B::ValueBound::BOUNDED {
             let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
                 location: self.location,
                 ir_node: self.ir_node,
