@@ -17,9 +17,9 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<(u32,), Error = Infal
 note: required for `Shape` to implement `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<(f64,), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(f64, f64), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(u32,), Error = Infallible>>)>`
   --> tests/compile-fail-stable/surface_demuxenum_wrongfields_2.rs:5:14
    |
-5  |     #[derive(DemuxEnum)]
+ 5 |     #[derive(DemuxEnum)]
    |              ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
-6  |     enum Shape {
+ 6 |     enum Shape {
    |          ^^^^^
 note: required by a bound in `demux_enum_guard`
   --> tests/compile-fail-stable/surface_demuxenum_wrongfields_2.rs:17:15
@@ -47,9 +47,9 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<(u32,), Error = Infal
 note: required for `Shape` to implement `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<(f64,), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(f64, f64), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(u32,), Error = Infallible>>)>`
   --> tests/compile-fail-stable/surface_demuxenum_wrongfields_2.rs:5:14
    |
-5  |     #[derive(DemuxEnum)]
+ 5 |     #[derive(DemuxEnum)]
    |              ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
-6  |     enum Shape {
+ 6 |     enum Shape {
    |          ^^^^^
 note: required by a bound in `demux_enum_guard`
   --> tests/compile-fail-stable/surface_demuxenum_wrongfields_2.rs:17:15
