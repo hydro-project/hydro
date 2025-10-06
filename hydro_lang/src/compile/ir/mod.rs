@@ -323,6 +323,7 @@ pub trait DfirBuilder {
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         out_location: &LocationId,
+        op_meta: &HydroIrOpMetadata,
     );
     fn yield_from_tick(
         &mut self,
@@ -387,6 +388,7 @@ impl DfirBuilder for BTreeMap<usize, FlatGraphBuilder> {
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         _out_location: &LocationId,
+        _op_meta: &HydroIrOpMetadata,
     ) {
         let builder = self.get_dfir_mut(in_location.root());
         builder.add_dfir(
@@ -1993,7 +1995,9 @@ impl HydroNode {
                 persist_ident
             }
 
-            HydroNode::Batch { inner, .. } => {
+            HydroNode::Batch {
+                inner, metadata, ..
+            } => {
                 let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
                 let batch_ident =
@@ -2007,6 +2011,7 @@ impl HydroNode {
                             &inner.metadata().collection_kind,
                             &batch_ident,
                             &out_location,
+                            &metadata.op,
                         );
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {

@@ -5,6 +5,7 @@ use std::panic::RefUnwindSafe;
 use std::path::Path;
 
 use bytes::Bytes;
+use colored::Colorize;
 use dfir_rs::scheduled::graph::Dfir;
 use futures::{Stream, StreamExt};
 use libloading::Library;
@@ -35,6 +36,7 @@ impl<'a, T: RefUnwindSafe + Fn() -> CompiledSimInstance<'a>> Instantiator<'a> fo
 type SimLoaded<'a> = libloading::Symbol<
     'a,
     unsafe extern "Rust" fn(
+        bool,
         HashMap<usize, UnboundedSender<Bytes>>,
         HashMap<usize, UnboundedReceiverStream<Bytes>>,
     ) -> (
@@ -47,13 +49,15 @@ type SimLoaded<'a> = libloading::Symbol<
 impl CompiledSim {
     /// Executes the given closure with a single instance of the compiled simulation.
     pub fn with_instance<T>(&self, thunk: impl FnOnce(CompiledSimInstance) -> T) -> T {
-        self.with_instantiator(|instantiator| thunk(instantiator()))
+        self.with_instantiator(|instantiator| thunk(instantiator()), true)
     }
 
     /// Executes the given closure with an [`Instantiator`], which can be called to create
     /// independent instances of the simulation. This is useful for fuzzing, where we need to
     /// re-execute the simulation several times with different decisions.
-    pub fn with_instantiator<T>(&self, thunk: impl FnOnce(&dyn Instantiator) -> T) -> T {
+    ///
+    /// The `log` parameter controls whether to log tick executions and stream releases.
+    pub fn with_instantiator<T>(&self, thunk: impl FnOnce(&dyn Instantiator) -> T, log: bool) -> T {
         let func: SimLoaded = unsafe { self.lib.get(b"__hydro_runtime").unwrap() };
         thunk(
             &(|| CompiledSimInstance {
@@ -61,6 +65,7 @@ impl CompiledSim {
                 remaining_ports: self.external_ports.iter().cloned().collect(),
                 input_ports: HashMap::new(),
                 output_ports: HashMap::new(),
+                log,
             }),
         )
     }
@@ -114,37 +119,19 @@ impl CompiledSim {
                 std::env::set_var("BOLERO_LIBFUZZER_ARGS", libfuzzer_args);
             }
 
-            self.with_instantiator(|instantiator| {
-                bolero::test(bolero::TargetLocation {
-                    package_name: "",
-                    manifest_dir: "",
-                    module_path: "",
-                    file: "",
-                    line: 0,
-                    item_path: "<unknown>::__bolero_item_path__",
-                    test_name: None,
-                })
-                .run(move || {
-                    let instance = instantiator();
-                    tokio::runtime::Builder::new_current_thread()
-                        .build()
-                        .unwrap()
-                        .block_on(async {
-                            let local_set = tokio::task::LocalSet::new();
-                            local_set.run_until(thunk(instance)).await
-                        })
-                })
-            });
-        } else if let Ok(existing_bytes) = std::fs::read(&caller_fuzz_repro_path) {
-            self.with_instance(|instance| {
-                bolero::bolero_engine::any::scope::with(
-                    Box::new(bolero::bolero_engine::driver::object::Object(
-                        bolero::bolero_engine::driver::bytes::Driver::new(
-                            existing_bytes,
-                            &Default::default(),
-                        ),
-                    )),
-                    || {
+            self.with_instantiator(
+                |instantiator| {
+                    bolero::test(bolero::TargetLocation {
+                        package_name: "",
+                        manifest_dir: "",
+                        module_path: "",
+                        file: "",
+                        line: 0,
+                        item_path: "<unknown>::__bolero_item_path__",
+                        test_name: None,
+                    })
+                    .run(move || {
+                        let instance = instantiator();
                         tokio::runtime::Builder::new_current_thread()
                             .build()
                             .unwrap()
@@ -152,27 +139,59 @@ impl CompiledSim {
                                 let local_set = tokio::task::LocalSet::new();
                                 local_set.run_until(thunk(instance)).await
                             })
-                    },
-                )
-            });
+                    })
+                },
+                false,
+            );
+        } else if let Ok(existing_bytes) = std::fs::read(&caller_fuzz_repro_path) {
+            self.fuzz_repro(existing_bytes, thunk);
         } else {
             eprintln!(
                 "Running a fuzz test without `cargo sim` and no reproducer found at {}, defaulting to 8192 iterations with random inputs.",
                 caller_fuzz_repro_path.display()
             );
-            self.with_instantiator(|instantiator| {
-                bolero::test(bolero::TargetLocation {
-                    package_name: "",
-                    manifest_dir: "",
-                    module_path: "",
-                    file: ".",
-                    line: 0,
-                    item_path: "<unknown>::__bolero_item_path__",
-                    test_name: None,
-                })
-                .with_iterations(8192)
-                .run(move || {
-                    let instance = instantiator();
+            self.with_instantiator(
+                |instantiator| {
+                    bolero::test(bolero::TargetLocation {
+                        package_name: "",
+                        manifest_dir: "",
+                        module_path: "",
+                        file: ".",
+                        line: 0,
+                        item_path: "<unknown>::__bolero_item_path__",
+                        test_name: None,
+                    })
+                    .with_iterations(8192)
+                    .run(move || {
+                        let instance = instantiator();
+                        tokio::runtime::Builder::new_current_thread()
+                            .build()
+                            .unwrap()
+                            .block_on(async {
+                                let local_set = tokio::task::LocalSet::new();
+                                local_set.run_until(thunk(instance)).await
+                            })
+                    })
+                },
+                false,
+            );
+        }
+    }
+
+    /// Executes the given closure with a single instance of the compiled simulation, using the
+    /// provided bytes as the source of fuzzing decisions. This can be used to manually reproduce a
+    /// failure found during fuzzing.
+    pub fn fuzz_repro<'a>(
+        &'a self,
+        bytes: Vec<u8>,
+        thunk: impl AsyncFnOnce(CompiledSimInstance) + RefUnwindSafe,
+    ) {
+        self.with_instance(|instance| {
+            bolero::bolero_engine::any::scope::with(
+                Box::new(bolero::bolero_engine::driver::object::Object(
+                    bolero::bolero_engine::driver::bytes::Driver::new(bytes, &Default::default()),
+                )),
+                || {
                     tokio::runtime::Builder::new_current_thread()
                         .build()
                         .unwrap()
@@ -180,9 +199,9 @@ impl CompiledSim {
                             let local_set = tokio::task::LocalSet::new();
                             local_set.run_until(thunk(instance)).await
                         })
-                })
-            });
-        }
+                },
+            )
+        });
     }
 
     /// Exhaustively searches all possible executions of the simulation. The provided
@@ -201,28 +220,31 @@ impl CompiledSim {
             std::process::abort();
         }
 
-        self.with_instantiator(|instantiator| {
-            bolero::test(bolero::TargetLocation {
-                package_name: "",
-                manifest_dir: "",
-                module_path: "",
-                file: "",
-                line: 0,
-                item_path: "<unknown>::__bolero_item_path__",
-                test_name: None,
-            })
-            .exhaustive()
-            .run(move || {
-                let instance = instantiator();
-                tokio::runtime::Builder::new_current_thread()
-                    .build()
-                    .unwrap()
-                    .block_on(async {
-                        let local_set = tokio::task::LocalSet::new();
-                        local_set.run_until(thunk(instance)).await;
-                    })
-            })
-        });
+        self.with_instantiator(
+            |instantiator| {
+                bolero::test(bolero::TargetLocation {
+                    package_name: "",
+                    manifest_dir: "",
+                    module_path: "",
+                    file: "",
+                    line: 0,
+                    item_path: "<unknown>::__bolero_item_path__",
+                    test_name: None,
+                })
+                .exhaustive()
+                .run(move || {
+                    let instance = instantiator();
+                    tokio::runtime::Builder::new_current_thread()
+                        .build()
+                        .unwrap()
+                        .block_on(async {
+                            let local_set = tokio::task::LocalSet::new();
+                            local_set.run_until(thunk(instance)).await;
+                        })
+                })
+            },
+            false,
+        );
     }
 }
 
@@ -233,6 +255,7 @@ pub struct CompiledSimInstance<'a> {
     remaining_ports: HashSet<usize>,
     output_ports: HashMap<usize, UnboundedSender<Bytes>>,
     input_ports: HashMap<usize, UnboundedReceiverStream<Bytes>>,
+    log: bool,
 }
 
 impl<'a> CompiledSimInstance<'a> {
@@ -263,37 +286,69 @@ impl<'a> CompiledSimInstance<'a> {
     /// Launches the simulation, which will asynchronously simulate the Hydro program. This should
     /// be invoked after connecting all inputs and outputs, but before receiving any messages.
     pub fn launch(self) {
+        if self.log || std::env::var("HYDRO_SIM_LOG").is_ok_and(|v| v == "1") {
+            tokio::task::spawn_local(self.schedule_with_logger(std::io::stderr()));
+        } else {
+            tokio::task::spawn_local(self.schedule_with_logger(std::io::empty()));
+        };
+    }
+
+    /// Returns a future that schedules simulation with the given logger for reporting the
+    /// simulation trace.
+    ///
+    /// See [`Self::launch`] for more details.
+    pub fn schedule_with_logger<W: std::io::Write>(
+        self,
+        log_writer: W,
+    ) -> impl use<W> + Future<Output = ()> {
         if !self.remaining_ports.is_empty() {
             panic!(
                 "Cannot launch DFIR because some of the inputs / outputs have not been connected."
             )
         }
 
-        let (async_dfir, ticks, hooks) =
-            unsafe { (self.func)(self.output_ports, self.input_ports) };
+        let (async_dfir, ticks, hooks) = unsafe {
+            (self.func)(
+                colored::control::SHOULD_COLORIZE.should_colorize(),
+                self.output_ports,
+                self.input_ports,
+            )
+        };
         let mut launched = LaunchedSim {
             async_dfir,
             possibly_ready_ticks: vec![],
             not_ready_ticks: ticks.into_iter().collect(),
             hooks,
+            log_writer,
         };
 
-        tokio::task::spawn_local(async move {
-            launched.scheduler().await;
-        });
+        async move { launched.scheduler().await }
+    }
+}
+
+// via https://www.reddit.com/r/rust/comments/t69sld/is_there_a_way_to_allow_either_stdfmtwrite_or/
+struct FmtWriter<W: std::io::Write>(W);
+impl<W: std::io::Write> std::fmt::Write for FmtWriter<W> {
+    fn write_str(&mut self, s: &str) -> Result<(), std::fmt::Error> {
+        self.0.write_all(s.as_bytes()).map_err(|_| std::fmt::Error)
+    }
+
+    fn write_fmt(&mut self, args: std::fmt::Arguments<'_>) -> Result<(), std::fmt::Error> {
+        self.0.write_fmt(args).map_err(|_| std::fmt::Error)
     }
 }
 
 /// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
 /// about scheduling ticks and choices for non-deterministic operators like batch.
-struct LaunchedSim {
+struct LaunchedSim<W: std::io::Write> {
     async_dfir: Dfir<'static>,
     possibly_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
     not_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
     hooks: HashMap<&'static str, Vec<Box<dyn SimHook>>>,
+    log_writer: W,
 }
 
-impl LaunchedSim {
+impl<W: std::io::Write> LaunchedSim<W> {
     async fn scheduler(&mut self) {
         loop {
             tokio::task::yield_now().await;
@@ -321,6 +376,23 @@ impl LaunchedSim {
                     let mut removed: (&'static str, Dfir<'static>) =
                         self.possibly_ready_ticks.remove(next_tick);
 
+                    let _ = writeln!(
+                        self.log_writer,
+                        "\n{}",
+                        "Running Tick".color(colored::Color::Magenta).bold()
+                    );
+
+                    let mut fmt_writer = FmtWriter(&mut self.log_writer);
+                    let mut asterisk_indenter = |_line_no, write: &mut dyn std::fmt::Write| {
+                        write.write_str(&"*".color(colored::Color::Magenta).bold())?;
+                        write.write_str(" ")
+                    };
+
+                    let mut tick_decision_writer =
+                        indenter::indented(&mut fmt_writer).with_format(indenter::Format::Custom {
+                            inserter: &mut asterisk_indenter,
+                        });
+
                     let hooks = self.hooks.get_mut(removed.0).unwrap();
                     let mut remaining_decision_count = hooks.len();
                     let mut made_nontrivial_decision = false;
@@ -343,7 +415,7 @@ impl LaunchedSim {
                                 remaining_decision_count -= 1;
                             }
 
-                            hook.release_decision();
+                            hook.release_decision(&mut tick_decision_writer);
                         });
                     });
 

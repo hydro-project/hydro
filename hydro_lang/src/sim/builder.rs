@@ -4,7 +4,9 @@ use dfir_lang::graph::FlatGraphBuilder;
 use proc_macro2::Span;
 use syn::parse_quote;
 
-use crate::compile::ir::{CollectionKind, DebugExpr, DfirBuilder, StreamOrder, StreamRetry};
+use crate::compile::ir::{
+    CollectionKind, DebugExpr, DfirBuilder, HydroIrOpMetadata, StreamOrder, StreamRetry,
+};
 use crate::location::dynamic::LocationId;
 
 /// A builder for DFIR graphs used in simulations.
@@ -46,7 +48,54 @@ impl DfirBuilder for SimBuilder {
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         out_location: &LocationId,
+        op_meta: &HydroIrOpMetadata,
     ) {
+        let (batch_location, line, caret) = op_meta
+            .backtrace
+            .elements()
+            .first()
+            .map(|e| {
+                if let Some(filename) = &e.filename
+                    && let Some(lineno) = e.lineno
+                    && let Some(colno) = e.colno
+                {
+                    let line = std::fs::read_to_string(filename)
+                        .ok()
+                        .and_then(|s| {
+                            s.lines()
+                                .nth(lineno.saturating_sub(1).try_into().unwrap())
+                                .map(|s| s.to_string())
+                        })
+                        .unwrap_or_default();
+
+                    let relative_path = (|| {
+                        std::path::Path::new(filename)
+                            .strip_prefix(std::env::current_dir().ok()?)
+                            .ok()
+                    })();
+
+                    let filename_display = relative_path
+                        .map(|p| p.display().to_string())
+                        .unwrap_or_else(|| filename.clone());
+
+                    (
+                        format!("{}:{}:{}", filename_display, lineno, colno),
+                        line,
+                        format!("{:>1$}", "", (colno - 1).try_into().unwrap()),
+                    )
+                } else {
+                    (
+                        "unknown location".to_string(),
+                        "".to_string(),
+                        "".to_string(),
+                    )
+                }
+            })
+            .unwrap_or((
+                "unknown location".to_string(),
+                "".to_string(),
+                "".to_string(),
+            ));
         match in_kind {
             CollectionKind::Stream {
                 order: StreamOrder::TotalOrder,
@@ -77,6 +126,23 @@ impl DfirBuilder for SimBuilder {
                         input: #buffered_ident.clone(),
                         to_release: None,
                         output: #hoff_send_ident,
+                        batch_location: (#batch_location, #line, #caret),
+                        format_item_debug: {
+                            trait NotDebug {
+                                fn format_debug(&self) -> Option<String> {
+                                    None
+                                }
+                            }
+
+                            impl<T> NotDebug for T {}
+                            struct IsDebug<T>(std::marker::PhantomData<T>);
+                            impl<T: std::fmt::Debug> IsDebug<T> {
+                                fn format_debug(v: &T) -> Option<String> {
+                                    Some(format!("{:?}", v))
+                                }
+                            }
+                            IsDebug::format_debug
+                        }
                     }));
                 });
 
