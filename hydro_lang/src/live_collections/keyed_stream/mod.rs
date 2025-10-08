@@ -2064,6 +2064,7 @@ mod tests {
     use stageleft::q;
 
     use crate::compile::builder::FlowBuilder;
+    use crate::live_collections::stream::ExactlyOnce;
     use crate::location::Location;
     use crate::nondet::nondet;
 
@@ -2113,7 +2114,8 @@ mod tests {
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
-        let (tick_send, tick_trigger) = node.source_external_bincode(&external);
+        let (tick_send, tick_trigger) =
+            node.source_external_bincode::<_, _, _, ExactlyOnce>(&external);
 
         let node_tick = node.tick();
         let (watermark_complete_cycle, watermark) =

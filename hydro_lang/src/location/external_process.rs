@@ -26,16 +26,20 @@ impl Clone for ExternalBytesPort<Many> {
     }
 }
 
-pub struct ExternalBincodeSink<Type, Many = NotMany>
-where
+pub struct ExternalBincodeSink<
+    Type,
+    Many = NotMany,
+    O: Ordering = TotalOrder,
+    R: Retries = ExactlyOnce,
+> where
     Type: Serialize,
 {
     pub(crate) process_id: usize,
     pub(crate) port_id: usize,
-    pub(crate) _phantom: PhantomData<(Type, Many)>,
+    pub(crate) _phantom: PhantomData<(Type, Many, O, R)>,
 }
 
-impl<T: Serialize> Clone for ExternalBincodeSink<T, Many> {
+impl<T: Serialize, O: Ordering, R: Retries> Clone for ExternalBincodeSink<T, Many, O, R> {
     fn clone(&self) -> Self {
         Self {
             process_id: self.process_id,

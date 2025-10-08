@@ -94,8 +94,7 @@ fn test() {
     let tick = node.tick();
 
     let (input_port, input_payloads) = node.source_external_bincode(&external);
-    let (sequenced, complete_next_slot) =
-        sequence_payloads_old(&tick, input_payloads.weaken_ordering());
+    let (sequenced, complete_next_slot) = sequence_payloads_old(&tick, input_payloads);
 
     // original behavior from the KV replica (unrelated to the bug)
     complete_next_slot.complete_next_tick(
@@ -114,21 +113,23 @@ fn test() {
         let out_recv = compiled.connect(&out_port);
         compiled.launch();
 
-        in_send.send(SequencedKv { seq: 0 }).unwrap();
-        in_send.send(SequencedKv { seq: 1 }).unwrap();
-        in_send.send(SequencedKv { seq: 2 }).unwrap();
-        in_send.send(SequencedKv { seq: 3 }).unwrap();
-
-        let all_out = out_recv.collect::<Vec<_>>().await;
-        assert_eq!(
-            all_out,
-            vec![
+        in_send
+            .send_many_unordered([
                 SequencedKv { seq: 0 },
                 SequencedKv { seq: 1 },
                 SequencedKv { seq: 2 },
                 SequencedKv { seq: 3 },
-            ]
-        );
+            ])
+            .unwrap();
+
+        out_recv
+            .assert_yields_only([
+                SequencedKv { seq: 0 },
+                SequencedKv { seq: 1 },
+                SequencedKv { seq: 2 },
+                SequencedKv { seq: 3 },
+            ])
+            .await;
     });
 }
 
@@ -140,8 +141,7 @@ fn trace_snapshot() {
     let tick = node.tick();
 
     let (input_port, input_payloads) = node.source_external_bincode(&external);
-    let (sequenced, complete_next_slot) =
-        sequence_payloads_old(&tick, input_payloads.weaken_ordering());
+    let (sequenced, complete_next_slot) = sequence_payloads_old(&tick, input_payloads);
 
     // original behavior from the KV replica (unrelated to the bug)
     complete_next_slot.complete_next_tick(
@@ -171,10 +171,14 @@ fn trace_snapshot() {
 
             let schedule = compiled.schedule_with_logger(&mut log_out);
             let rest = async move {
-                in_send.send(SequencedKv { seq: 0 }).unwrap();
-                in_send.send(SequencedKv { seq: 1 }).unwrap();
-                in_send.send(SequencedKv { seq: 2 }).unwrap();
-                in_send.send(SequencedKv { seq: 3 }).unwrap();
+                in_send
+                    .send_many_unordered([
+                        SequencedKv { seq: 0 },
+                        SequencedKv { seq: 1 },
+                        SequencedKv { seq: 2 },
+                        SequencedKv { seq: 3 },
+                    ])
+                    .unwrap();
 
                 let _all_out = out_recv.collect::<Vec<_>>().await;
             };

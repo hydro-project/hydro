@@ -1063,6 +1063,7 @@ mod tests {
     use stageleft::q;
 
     use crate::compile::builder::FlowBuilder;
+    use crate::live_collections::stream::ExactlyOnce;
     use crate::location::Location;
     use crate::nondet::nondet;
 
@@ -1074,7 +1075,7 @@ mod tests {
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (input_send, input) = node.source_external_bincode(&external);
+        let (input_send, input) = node.source_external_bincode::<_, _, _, ExactlyOnce>(&external);
 
         let node_tick = node.tick();
         let (complete_cycle, singleton) = node_tick.cycle_with_initial(node_tick.singleton(q!(0)));
