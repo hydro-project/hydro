@@ -7,7 +7,6 @@
 use std::borrow::Cow;
 use std::path::PathBuf;
 
-use inferno::collapse::dtrace::Options as DtraceOptions;
 use inferno::collapse::perf::Options as PerfOptions;
 
 type FlamegraphOptions = inferno::flamegraph::Options<'static>;
@@ -34,7 +33,6 @@ pub struct TracingOptions {
     // pub perf_script_outfile: Option<PathBuf>,
     /// If set, what the write the folded output to.
     pub fold_outfile: Option<PathBuf>,
-    pub fold_dtrace_options: Option<DtraceOptions>,
     pub fold_perf_options: Option<PerfOptions>,
     /// If set, what to write the output flamegraph SVG file to.
     pub flamegraph_outfile: Option<PathBuf>,
