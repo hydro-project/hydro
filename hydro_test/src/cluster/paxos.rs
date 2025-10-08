@@ -748,11 +748,11 @@ fn sequence_payload<'a, P: PaxosPayload>(
 }
 
 // Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
-pub fn index_payloads<'a, P: PaxosPayload>(
-    proposer_tick: &Tick<Cluster<'a, Proposer>>,
-    p_max_slot: Optional<usize, Tick<Cluster<'a, Proposer>>, Bounded>,
-    c_to_proposers: Stream<P, Tick<Cluster<'a, Proposer>>, Bounded>,
-) -> Stream<(usize, P), Tick<Cluster<'a, Proposer>>, Bounded> {
+pub fn index_payloads<'a, L: Location<'a>, P: PaxosPayload>(
+    proposer_tick: &Tick<L>,
+    p_max_slot: Optional<usize, Tick<L>, Bounded>,
+    c_to_proposers: Stream<P, Tick<L>, Bounded>,
+) -> Stream<(usize, P), Tick<L>, Bounded> {
     let (p_next_slot_complete_cycle, p_next_slot) =
         proposer_tick.cycle_with_initial::<Singleton<usize, _, _>>(proposer_tick.singleton(q!(0)));
     let p_next_slot_after_reconciling_p1bs = p_max_slot.map(q!(|max_slot| max_slot + 1));
@@ -877,4 +877,89 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             .latest_atomic(),
         a_to_proposers_p2b,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::StreamExt;
+    use hydro_lang::prelude::*;
+
+    use super::index_payloads;
+
+    #[test]
+    fn proposer_indexes_payloads() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+        let tick = node.tick();
+
+        let (input_port, input_payloads) = node.source_external_bincode(&external);
+        let indexed = index_payloads(
+            &tick,
+            tick.none(),
+            input_payloads.batch(&tick, nondet!(/** test */)),
+        );
+
+        let out_port = indexed.all_ticks().send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect_sink_bincode(&input_port);
+            let out_recv = compiled.connect_source_bincode(&out_port);
+            compiled.launch();
+
+            in_send(1).unwrap();
+            in_send(2).unwrap();
+            in_send(3).unwrap();
+            in_send(4).unwrap();
+
+            let all_out = out_recv.collect::<Vec<_>>().await;
+            assert_eq!(all_out, vec![(0, 1), (1, 2), (2, 3), (3, 4),]);
+        });
+    }
+
+    #[test]
+    fn proposer_indexes_payloads_jumps_on_new_max() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+        let tick = node.tick();
+
+        let (input_port, input_payloads) = node.source_external_bincode(&external);
+        let release_new_base = node
+            .source_iter(q!([123]))
+            .batch(&tick, nondet!(/** test */))
+            .first();
+        let indexed = index_payloads(
+            &tick,
+            release_new_base,
+            input_payloads.batch(&tick, nondet!(/** test */)),
+        );
+
+        let out_port = indexed.all_ticks().send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect_sink_bincode(&input_port);
+            let mut out_recv = compiled.connect_source_bincode(&out_port);
+            compiled.launch();
+
+            in_send(1).unwrap();
+            in_send(2).unwrap();
+            in_send(3).unwrap();
+            in_send(4).unwrap();
+
+            let mut next_expected = 0;
+            for i in 1..=4 {
+                let (next_slot, v) = out_recv.next().await.unwrap();
+                assert_eq!(v, i);
+
+                if next_expected < 123 {
+                    assert!(next_slot == next_expected || next_slot == 124);
+                } else {
+                    assert!(next_slot == next_expected);
+                }
+
+                next_expected = next_slot + 1;
+            }
+        });
+    }
 }

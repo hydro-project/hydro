@@ -133,7 +133,6 @@ where
     ) -> Singleton<T, Self, Bounded>
     where
         T: Clone,
-        L: NoTick,
     {
         let e_arr = q!([e]);
         let e = e_arr.splice_untyped_ctx(self);
@@ -145,6 +144,37 @@ where
                 metadata: self.new_node_metadata(Singleton::<T, Self, Bounded>::collection_kind()),
             },
         )
+    }
+
+    /// Creates an [`Optional`] which has a null value on every tick.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let optional = tick.none::<i32>();
+    /// optional.unwrap_or(tick.singleton(q!(123)))
+    /// # .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 123
+    /// # assert_eq!(stream.next().await.unwrap(), 123);
+    /// # }));
+    /// ```
+    pub fn none<T>(&self) -> Optional<T, Self, Bounded> {
+        let e = q!([]);
+        let e = QuotedWithContext::<'a, [(); 0], Self>::splice_typed_ctx(e, self);
+
+        let unit_optional: Optional<(), Self, Bounded> = Optional::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Iter(e.into()),
+                metadata: self.new_node_metadata(Optional::<(), Self, Bounded>::collection_kind()),
+            },
+        );
+
+        unit_optional.map(q!(|_| unreachable!())) // always empty
     }
 
     /// Creates an [`Optional`] which will have the provided static value on the first tick, and be
@@ -244,7 +274,6 @@ where
     pub fn cycle_with_initial<S>(&self, initial: S) -> (TickCycleHandle<'a, S>, S)
     where
         S: CycleCollectionWithInitial<'a, TickCycle, Location = Self>,
-        L: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
