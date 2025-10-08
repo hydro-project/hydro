@@ -33,11 +33,13 @@ use crate::forward_handle::{CycleCollection, ForwardHandle};
 use crate::live_collections::boundedness::Unbounded;
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
-use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
+use crate::live_collections::stream::{
+    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
+};
 use crate::location::cluster::ClusterIds;
 use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
-    ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many,
+    ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many, NotMany,
 };
 use crate::nondet::NonDet;
 use crate::staging_util::get_this_crate;
@@ -254,12 +256,13 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
-    fn source_external_bincode<L, T>(
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    fn source_external_bincode<L, T, O: Ordering, R: Retries>(
         &self,
         from: &External<L>,
     ) -> (
-        ExternalBincodeSink<T>,
-        Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>,
+        ExternalBincodeSink<T, NotMany, O, R>,
+        Stream<T, Self, Unbounded, O, R>,
     )
     where
         Self: Sized + NoTick,
@@ -291,13 +294,8 @@ pub trait Location<'a>: dynamic::DynLocation {
                         crate::live_collections::stream::networking::deserialize_bincode::<T>(None)
                             .into(),
                     ),
-                    metadata: self.new_node_metadata(Stream::<
-                        T,
-                        Self,
-                        Unbounded,
-                        TotalOrder,
-                        ExactlyOnce,
-                    >::collection_kind()),
+                    metadata: self
+                        .new_node_metadata(Stream::<T, Self, Unbounded, O, R>::collection_kind()),
                 },
             ),
         )
@@ -669,6 +667,7 @@ mod tests {
     use tokio_util::codec::LengthDelimitedCodec;
 
     use crate::compile::builder::FlowBuilder;
+    use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
     use crate::location::{Location, NetworkHint};
     use crate::nondet::nondet;
 
@@ -680,7 +679,8 @@ mod tests {
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (in_port, input) = node.source_external_bincode(&external);
+        let (in_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
         let singleton = node.singleton(q!(123));
         let tick = node.tick();
         let out = input
@@ -722,7 +722,8 @@ mod tests {
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (in_port, input) = node.source_external_bincode(&external);
+        let (in_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
         let tick = node.tick();
         let singleton = tick.singleton(q!(123));
         let out = input

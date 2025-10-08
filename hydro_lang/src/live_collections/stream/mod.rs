@@ -2750,6 +2750,7 @@ mod tests {
     use stageleft::q;
 
     use crate::compile::builder::FlowBuilder;
+    use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
     use crate::location::Location;
     use crate::nondet::nondet;
 
@@ -2869,7 +2870,8 @@ mod tests {
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (input_port, input) = node.source_external_bincode(&external);
+        let (input_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
         let tick = node.tick();
 
         let out = input
@@ -2978,7 +2980,8 @@ mod tests {
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (input_port, input) = node.source_external_bincode(&external);
+        let (input_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
         let out = input.unique().send_bincode_external(&external);
 
         let nodes = flow

@@ -1,6 +1,6 @@
 //! Interfaces for compiled Hydro simulators and concrete simulation instances.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 use std::path::Path;
@@ -20,7 +20,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use super::runtime::SimHook;
 use crate::compile::deploy::ConnectableAsync;
-use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
+use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
 
 /// A handle to a compiled Hydro simulation, which can be instantiated and run.
@@ -277,10 +277,10 @@ impl<'a> CompiledSimInstance<'a> {
     #[deprecated(note = "Use `connect` instead")]
     /// Like the corresponding method on [`crate::compile::deploy::DeployResult`], connects to the
     /// given input port, and returns a closure that can be used to send messages to it.
-    pub fn connect_sink_bincode<T: Serialize + 'static>(
+    pub fn connect_sink_bincode<T: Serialize + 'static, M, O: Ordering, R: Retries>(
         &mut self,
-        port: &ExternalBincodeSink<T>,
-    ) -> SimSender<T> {
+        port: &ExternalBincodeSink<T, M, O, R>,
+    ) -> SimSender<T, O, R> {
         self.connect(port)
     }
 
@@ -358,6 +358,18 @@ pub struct SimReceiver<'a, T, O: Ordering, R: Retries>(
     PhantomData<(O, R)>,
 );
 
+impl<'a, T, O: Ordering, R: Retries> SimReceiver<'a, T, O, R> {
+    /// Asserts that the stream has ended and no more messages can possibly arrive.
+    pub async fn assert_no_more(mut self)
+    where
+        T: std::fmt::Debug,
+    {
+        if let Some(next) = self.0.next().await {
+            panic!("Stream yielded unexpected message: {:?}", next);
+        }
+    }
+}
+
 impl<'a, T> SimReceiver<'a, T, TotalOrder, ExactlyOnce> {
     /// Receives the next message from the external bincode stream. This will wait until a message
     /// is available, or return `None` if no more messages can possibly arrive.
@@ -369,6 +381,66 @@ impl<'a, T> SimReceiver<'a, T, TotalOrder, ExactlyOnce> {
     /// will wait until no more messages can possibly arrive.
     pub async fn collect<C: Default + Extend<T>>(self) -> C {
         self.0.collect().await
+    }
+
+    /// Asserts that the stream yields exactly the expected sequence of messages, in order.
+    /// This does not check that the stream ends, use [`Self::assert_yields_only`] for that.
+    pub async fn assert_yields(&mut self, expected: impl IntoIterator<Item = T>)
+    where
+        T: std::fmt::Debug + PartialEq,
+    {
+        let mut expected: VecDeque<T> = expected.into_iter().collect();
+
+        while !expected.is_empty() {
+            if let Some(next) = self.next().await {
+                assert_eq!(next, expected.pop_front().unwrap());
+            } else {
+                panic!("Stream ended early, still expected: {:?}", expected);
+            }
+        }
+    }
+
+    /// Asserts that the stream yields only the expected sequence of messages, in order,
+    /// and then ends.
+    pub async fn assert_yields_only(mut self, expected: impl IntoIterator<Item = T>)
+    where
+        T: std::fmt::Debug + PartialEq,
+    {
+        self.assert_yields(expected).await;
+        self.assert_no_more().await;
+    }
+}
+
+impl<'a, T> SimReceiver<'a, T, NoOrder, ExactlyOnce> {
+    /// Asserts that the stream yields exactly the expected sequence of messages, in some order.
+    /// This does not check that the stream ends, use [`Self::assert_yields_only_unordered`] for that.
+    pub async fn assert_yields_unordered(&mut self, expected: impl IntoIterator<Item = T>)
+    where
+        T: std::fmt::Debug + PartialEq,
+    {
+        let mut expected: Vec<T> = expected.into_iter().collect();
+
+        while !expected.is_empty() {
+            if let Some(next) = self.0.next().await {
+                let prev_length = expected.len();
+                expected.retain(|e| e != &next);
+                if expected.len() == prev_length {
+                    panic!("Stream yielded unexpected message: {:?}", next);
+                }
+            } else {
+                panic!("Stream ended early, still expected: {:?}", expected);
+            }
+        }
+    }
+
+    /// Asserts that the stream yields only the expected sequence of messages, in some order,
+    /// and then ends.
+    pub async fn assert_yields_only_unordered(mut self, expected: impl IntoIterator<Item = T>)
+    where
+        T: std::fmt::Debug + PartialEq,
+    {
+        self.assert_yields_unordered(expected).await;
+        self.assert_no_more().await;
     }
 }
 
@@ -390,27 +462,57 @@ impl<'a, T: DeserializeOwned + 'static, O: Ordering, R: Retries>
 }
 
 /// A sender to an external bincode sink in a simulation.
-pub struct SimSender<T>(Box<dyn Fn(T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>>>);
-impl<T> SimSender<T> {
+pub struct SimSender<T, O: Ordering, R: Retries>(
+    Box<dyn Fn(T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>>>,
+    PhantomData<(O, R)>,
+);
+impl<T> SimSender<T, TotalOrder, ExactlyOnce> {
     /// Sends a message to the external bincode sink. The message will be asynchronously processed
     /// as part of the simulation.
     pub fn send(&self, t: T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>> {
         (self.0)(t)
     }
+
+    /// Sends several messages to the external bincode sink. The messages will be asynchronously
+    /// processed as part of the simulation.
+    pub fn send_many<I: IntoIterator<Item = T>>(
+        &self,
+        iter: I,
+    ) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>> {
+        for t in iter {
+            (self.0)(t)?;
+        }
+        Ok(())
+    }
 }
 
-impl<'a, T: Serialize + 'static> ConnectableAsync<&mut CompiledSimInstance<'a>>
-    for &ExternalBincodeSink<T>
+impl<T> SimSender<T, NoOrder, ExactlyOnce> {
+    /// Sends several messages to the external bincode sink. The messages will be asynchronously
+    /// processed as part of the simulation, in non-determinstic order.
+    pub fn send_many_unordered<I: IntoIterator<Item = T>>(
+        &self,
+        iter: I,
+    ) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>> {
+        for t in iter {
+            (self.0)(t)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a, T: Serialize + 'static, M, O: Ordering, R: Retries>
+    ConnectableAsync<&mut CompiledSimInstance<'a>> for &ExternalBincodeSink<T, M, O, R>
 {
-    type Output = SimSender<T>;
+    type Output = SimSender<T, O, R>;
 
     async fn connect(self, ctx: &mut CompiledSimInstance<'a>) -> Self::Output {
         assert!(ctx.remaining_ports.remove(&self.port_id));
         let (sink, source) = dfir_rs::util::unbounded_channel::<Bytes>();
         ctx.input_ports.insert(self.port_id, source);
-        SimSender(Box::new(move |t| {
-            sink.send(bincode::serialize(&t).unwrap().into())
-        }))
+        SimSender(
+            Box::new(move |t| sink.send(bincode::serialize(&t).unwrap().into())),
+            PhantomData,
+        )
     }
 }
 

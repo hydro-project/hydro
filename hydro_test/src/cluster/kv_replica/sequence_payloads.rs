@@ -73,8 +73,7 @@ mod tests {
         let tick = node.tick();
 
         let (input_port, input_payloads) = node.source_external_bincode(&external);
-        let (sequenced, complete_next_slot) =
-            sequence_payloads(&tick, input_payloads.weaken_ordering());
+        let (sequenced, complete_next_slot) = sequence_payloads(&tick, input_payloads);
 
         complete_next_slot.complete_next_tick(sequenced.clone()
             .persist() // Optimization: all_ticks() + fold() = fold<static>, where the state of the previous fold is saved and persisted values are deleted.
@@ -89,21 +88,23 @@ mod tests {
             let out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send.send(SequencedKv { seq: 0, kv: None }).unwrap();
-            in_send.send(SequencedKv { seq: 1, kv: None }).unwrap();
-            in_send.send(SequencedKv { seq: 2, kv: None }).unwrap();
-            in_send.send(SequencedKv { seq: 3, kv: None }).unwrap();
-
-            let all_out = out_recv.collect::<Vec<_>>().await;
-            assert_eq!(
-                all_out,
-                vec![
+            in_send
+                .send_many_unordered([
                     SequencedKv { seq: 0, kv: None },
                     SequencedKv { seq: 1, kv: None },
                     SequencedKv { seq: 2, kv: None },
                     SequencedKv { seq: 3, kv: None },
-                ]
-            );
+                ])
+                .unwrap();
+
+            out_recv
+                .assert_yields_only([
+                    SequencedKv { seq: 0, kv: None },
+                    SequencedKv { seq: 1, kv: None },
+                    SequencedKv { seq: 2, kv: None },
+                    SequencedKv { seq: 3, kv: None },
+                ])
+                .await;
         });
     }
 }

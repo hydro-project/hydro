@@ -911,8 +911,9 @@ mod tests {
             in_send.send(3).unwrap();
             in_send.send(4).unwrap();
 
-            let all_out = out_recv.collect::<Vec<_>>().await;
-            assert_eq!(all_out, vec![(0, 1), (1, 2), (2, 3), (3, 4),]);
+            out_recv
+                .assert_yields_only([(0, 1), (1, 2), (2, 3), (3, 4)])
+                .await;
         });
     }
 

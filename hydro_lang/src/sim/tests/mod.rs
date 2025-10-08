@@ -1,6 +1,7 @@
 use bytes::Bytes;
 use stageleft::q;
 
+use crate::live_collections::stream::TotalOrder;
 use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
 use crate::location::{External, Location, Process};
 use crate::nondet::nondet;
@@ -41,7 +42,7 @@ fn sim_crash_in_output_with_filter() {
     let external = flow.external::<()>();
     let node = flow.process::<()>();
 
-    let (port, input) = node.source_external_bincode::<_, Bytes>(&external);
+    let (port, input) = node.source_external_bincode::<_, Bytes, _, _>(&external);
 
     let out_port = input
         .filter(q!(|x| x.len() > 1 && x[0] == 42 && x[1] == 43))
@@ -70,7 +71,7 @@ fn sim_batch_nondet_size() {
     let external = flow.external::<()>();
     let node = flow.process::<()>();
 
-    let (port, input) = node.source_external_bincode(&external);
+    let (port, input) = node.source_external_bincode::<_, _, TotalOrder, _>(&external);
 
     let tick = node.tick();
     let out_port = input
