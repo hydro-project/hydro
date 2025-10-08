@@ -16,6 +16,8 @@ use crate::{
 
 pub mod launched_binary;
 pub use launched_binary::*;
+
+#[cfg(any(target_os = "macos", target_family = "windows"))]
 mod samply;
 
 #[derive(Debug)]
@@ -143,7 +145,7 @@ impl LaunchedHost for LaunchedLocalhost {
         tracing: Option<TracingOptions>,
     ) -> Result<Box<dyn LaunchedBinary>> {
         let (maybe_perf_outfile, mut command) = if let Some(tracing) = tracing.as_ref() {
-            if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+            if cfg!(any(target_os = "macos", target_family = "windows")) {
                 // samply
                 ProgressTracker::println(
                     format!("[{id} tracing] Profiling binary with `samply`.",),
@@ -183,7 +185,7 @@ impl LaunchedHost for LaunchedLocalhost {
                 (Some(perf_outfile), command)
             } else {
                 bail!(
-                    "Unknown OS for perf/dtrace tracing: {}",
+                    "Unknown OS for samply/perf tracing: {}",
                     std::env::consts::OS
                 );
             }
