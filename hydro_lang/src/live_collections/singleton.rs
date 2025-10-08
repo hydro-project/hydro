@@ -1094,8 +1094,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut tick_trigger = nodes.connect_sink_bincode(input_send).await;
-        let mut external_out = nodes.connect_source_bincode(counts).await;
+        let mut tick_trigger = nodes.connect(input_send).await;
+        let mut external_out = nodes.connect(counts).await;
 
         deployment.start().await.unwrap();
 

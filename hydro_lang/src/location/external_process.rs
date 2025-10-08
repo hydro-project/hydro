@@ -4,6 +4,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::compile::builder::FlowState;
+use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
 use crate::staging_util::Invariant;
 
 pub enum NotMany {}
@@ -60,7 +61,7 @@ impl<InT, OutT> Clone for ExternalBincodeBidi<InT, OutT, Many> {
     }
 }
 
-pub struct ExternalBincodeStream<Type>
+pub struct ExternalBincodeStream<Type, O: Ordering = TotalOrder, R: Retries = ExactlyOnce>
 where
     Type: DeserializeOwned,
 {
@@ -74,7 +75,7 @@ where
         expect(unused, reason = "unused without feature")
     )]
     pub(crate) port_id: usize,
-    pub(crate) _phantom: PhantomData<Type>,
+    pub(crate) _phantom: PhantomData<(Type, O, R)>,
 }
 
 pub struct External<'a, Tag> {

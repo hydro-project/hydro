@@ -60,7 +60,6 @@ pub fn sequence_payloads<'a, K: KvKey, V: KvValue, L: Location<'a> + NoTick>(
 
 #[cfg(test)]
 mod tests {
-    use futures::StreamExt;
     use hydro_lang::prelude::*;
 
     use super::super::SequencedKv;
@@ -86,14 +85,14 @@ mod tests {
         let out_port = sequenced.all_ticks().send_bincode_external(&external);
 
         flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect_sink_bincode(&input_port);
-            let out_recv = compiled.connect_source_bincode(&out_port);
+            let in_send = compiled.connect(&input_port);
+            let out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send(SequencedKv { seq: 0, kv: None }).unwrap();
-            in_send(SequencedKv { seq: 1, kv: None }).unwrap();
-            in_send(SequencedKv { seq: 2, kv: None }).unwrap();
-            in_send(SequencedKv { seq: 3, kv: None }).unwrap();
+            in_send.send(SequencedKv { seq: 0, kv: None }).unwrap();
+            in_send.send(SequencedKv { seq: 1, kv: None }).unwrap();
+            in_send.send(SequencedKv { seq: 2, kv: None }).unwrap();
+            in_send.send(SequencedKv { seq: 3, kv: None }).unwrap();
 
             let all_out = out_recv.collect::<Vec<_>>().await;
             assert_eq!(

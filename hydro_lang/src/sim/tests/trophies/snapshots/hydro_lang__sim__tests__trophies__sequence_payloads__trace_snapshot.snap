@@ -3,21 +3,21 @@ source: hydro_lang/src/sim/tests/trophies/sequence_payloads.rs
 expression: log_str
 ---
 Running Tick
-* --> src/sim/tests/trophies/sequence_payloads.rs:41:10
+* --> src/sim/tests/trophies/sequence_payloads.rs:40:10
 *  |        .batch(replica_tick, nondet!(
 *  |         ^ releasing unordered items: [SequencedKv { seq: 1 }]
 
 Running Tick
-* --> src/sim/tests/trophies/sequence_payloads.rs:41:10
+* --> src/sim/tests/trophies/sequence_payloads.rs:40:10
 *  |        .batch(replica_tick, nondet!(
 *  |         ^ releasing unordered items: [SequencedKv { seq: 0 }]
 
 Running Tick
-* --> src/sim/tests/trophies/sequence_payloads.rs:41:10
+* --> src/sim/tests/trophies/sequence_payloads.rs:40:10
 *  |        .batch(replica_tick, nondet!(
 *  |         ^ releasing unordered items: [SequencedKv { seq: 2 }]
 
 Running Tick
-* --> src/sim/tests/trophies/sequence_payloads.rs:41:10
+* --> src/sim/tests/trophies/sequence_payloads.rs:40:10
 *  |        .batch(replica_tick, nondet!(
 *  |         ^ releasing unordered items: [SequencedKv { seq: 3 }]

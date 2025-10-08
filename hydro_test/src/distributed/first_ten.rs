@@ -63,7 +63,7 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_port = nodes.connect_sink_bincode(external_port).await;
+        let mut external_port = nodes.connect(external_port).await;
 
         let mut first_node_stdout = nodes.get_process(&p1).stdout().await;
         let mut second_node_stdout = nodes.get_process(&p2).stdout().await;

@@ -1400,8 +1400,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in = nodes.connect_sink_bincode(input_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -1437,8 +1437,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in = nodes.connect_sink_bincode(input_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -1483,8 +1483,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in = nodes.connect_sink_bincode(input_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -1526,8 +1526,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in = nodes.connect_sink_bincode(input_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 

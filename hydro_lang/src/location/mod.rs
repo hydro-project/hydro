@@ -702,8 +702,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in = nodes.connect_sink_bincode(in_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in = nodes.connect(in_port).await;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -739,8 +739,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in = nodes.connect_sink_bincode(in_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in = nodes.connect(in_port).await;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -771,8 +771,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in = nodes.connect_sink_bytes(in_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in = nodes.connect(in_port).await.1;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -803,7 +803,7 @@ mod tests {
 
         let (_, mut external_in_1) = nodes.connect_bincode(in_port.clone()).await;
         let (_, mut external_in_2) = nodes.connect_bincode(in_port).await;
-        let external_out = nodes.connect_source_bincode(out).await;
+        let external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -839,7 +839,7 @@ mod tests {
         // intentionally skipped to test stream waking logic
         let (_, mut _external_in_1) = nodes.connect_bincode(in_port.clone()).await;
         let (_, mut external_in_2) = nodes.connect_bincode(in_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -868,9 +868,9 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in_1 = nodes.connect_sink_bytes(in_port.clone()).await;
-        let mut external_in_2 = nodes.connect_sink_bytes(in_port).await;
-        let external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in_1 = nodes.connect(in_port.clone()).await.1;
+        let mut external_in_2 = nodes.connect(in_port).await.1;
+        let external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -908,8 +908,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let (mut external_out_1, mut external_in_1) = nodes.connect_bytes(port.clone()).await;
-        let (mut external_out_2, mut external_in_2) = nodes.connect_bytes(port).await;
+        let (mut external_out_1, mut external_in_1) = nodes.connect(port.clone()).await;
+        let (mut external_out_2, mut external_in_2) = nodes.connect(port).await;
 
         deployment.start().await.unwrap();
 
