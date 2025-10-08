@@ -7,6 +7,8 @@ use crate::location::{External, Location, Process};
 use crate::nondet::nondet;
 use crate::prelude::FlowBuilder;
 
+mod trophies;
+
 #[test]
 #[should_panic]
 fn sim_crash_in_output() {

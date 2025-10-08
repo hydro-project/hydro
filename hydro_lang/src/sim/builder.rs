@@ -50,6 +50,10 @@ impl DfirBuilder for SimBuilder {
         out_location: &LocationId,
         op_meta: &HydroIrOpMetadata,
     ) {
+        if let LocationId::Atomic(_) = in_location {
+            todo!("Simulator does not yet support `batch_atomic`");
+        }
+
         let (batch_location, line, caret) = op_meta
             .backtrace
             .elements()
@@ -96,13 +100,23 @@ impl DfirBuilder for SimBuilder {
                 "".to_string(),
                 "".to_string(),
             ));
+
         match in_kind {
             CollectionKind::Stream {
-                order: StreamOrder::TotalOrder,
+                order,
                 retry: StreamRetry::ExactlyOnce,
                 ..
             } => {
                 debug_assert!(in_location.is_top_level());
+
+                let order_ty: syn::Type = match order {
+                    StreamOrder::TotalOrder => {
+                        parse_quote! { hydro_lang::live_collections::stream::TotalOrder }
+                    }
+                    StreamOrder::NoOrder => {
+                        parse_quote! { hydro_lang::live_collections::stream::NoOrder }
+                    }
+                };
 
                 let hoff_id = self.next_hoff_id;
                 self.next_hoff_id += 1;
@@ -122,7 +136,7 @@ impl DfirBuilder for SimBuilder {
                     let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
                 });
                 self.extra_stmts.push(syn::parse_quote! {
-                    __hydro_hooks.entry(#out_location_ser).or_default().push(Box::new(hydro_lang::sim::runtime::StreamHook {
+                    __hydro_hooks.entry(#out_location_ser).or_default().push(Box::new(hydro_lang::sim::runtime::StreamHook::<_, #order_ty> {
                         input: #buffered_ident.clone(),
                         to_release: None,
                         output: #hoff_send_ident,
@@ -142,7 +156,8 @@ impl DfirBuilder for SimBuilder {
                                 }
                             }
                             IsDebug::format_debug
-                        }
+                        },
+                        _order: std::marker::PhantomData,
                     }));
                 });
 
@@ -162,7 +177,10 @@ impl DfirBuilder for SimBuilder {
                     None,
                 );
             }
-            _ => todo!(),
+            _ => {
+                eprintln!("{:?}", op_meta.backtrace.elements());
+                todo!("batch not implemented for kind {:?}", in_kind)
+            }
         }
     }
 
