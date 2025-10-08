@@ -911,54 +911,55 @@
 <a href=#911 id=911 data-nosnippet>911</a>            in_send.send(<span class="number">3</span>).unwrap();
 <a href=#912 id=912 data-nosnippet>912</a>            in_send.send(<span class="number">4</span>).unwrap();
 <a href=#913 id=913 data-nosnippet>913</a>
-<a href=#914 id=914 data-nosnippet>914</a>            <span class="kw">let </span>all_out = out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#915 id=915 data-nosnippet>915</a>            <span class="macro">assert_eq!</span>(all_out, <span class="macro">vec!</span>[(<span class="number">0</span>, <span class="number">1</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>), (<span class="number">3</span>, <span class="number">4</span>),]);
-<a href=#916 id=916 data-nosnippet>916</a>        });
-<a href=#917 id=917 data-nosnippet>917</a>    }
-<a href=#918 id=918 data-nosnippet>918</a>
-<a href=#919 id=919 data-nosnippet>919</a>    <span class="attr">#[test]
-<a href=#920 id=920 data-nosnippet>920</a>    </span><span class="kw">fn </span>proposer_indexes_payloads_jumps_on_new_max() {
-<a href=#921 id=921 data-nosnippet>921</a>        <span class="kw">let </span>flow = FlowBuilder::new();
-<a href=#922 id=922 data-nosnippet>922</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
-<a href=#923 id=923 data-nosnippet>923</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#924 id=924 data-nosnippet>924</a>        <span class="kw">let </span>tick = node.tick();
-<a href=#925 id=925 data-nosnippet>925</a>
-<a href=#926 id=926 data-nosnippet>926</a>        <span class="kw">let </span>(input_port, input_payloads) = node.source_external_bincode(<span class="kw-2">&amp;</span>external);
-<a href=#927 id=927 data-nosnippet>927</a>        <span class="kw">let </span>release_new_base = node
-<a href=#928 id=928 data-nosnippet>928</a>            .source_iter(<span class="macro">q!</span>([<span class="number">123</span>]))
-<a href=#929 id=929 data-nosnippet>929</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#930 id=930 data-nosnippet>930</a>            .first();
-<a href=#931 id=931 data-nosnippet>931</a>        <span class="kw">let </span>indexed = index_payloads(
-<a href=#932 id=932 data-nosnippet>932</a>            <span class="kw-2">&amp;</span>tick,
-<a href=#933 id=933 data-nosnippet>933</a>            release_new_base,
-<a href=#934 id=934 data-nosnippet>934</a>            input_payloads.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)),
-<a href=#935 id=935 data-nosnippet>935</a>        );
-<a href=#936 id=936 data-nosnippet>936</a>
-<a href=#937 id=937 data-nosnippet>937</a>        <span class="kw">let </span>out_port = indexed.all_ticks().send_bincode_external(<span class="kw-2">&amp;</span>external);
-<a href=#938 id=938 data-nosnippet>938</a>
-<a href=#939 id=939 data-nosnippet>939</a>        flow.sim().exhaustive(<span class="kw">async </span>|<span class="kw-2">mut </span>compiled| {
-<a href=#940 id=940 data-nosnippet>940</a>            <span class="kw">let </span>in_send = compiled.connect(<span class="kw-2">&amp;</span>input_port);
-<a href=#941 id=941 data-nosnippet>941</a>            <span class="kw">let </span><span class="kw-2">mut </span>out_recv = compiled.connect(<span class="kw-2">&amp;</span>out_port);
-<a href=#942 id=942 data-nosnippet>942</a>            compiled.launch();
-<a href=#943 id=943 data-nosnippet>943</a>
-<a href=#944 id=944 data-nosnippet>944</a>            in_send.send(<span class="number">1</span>).unwrap();
-<a href=#945 id=945 data-nosnippet>945</a>            in_send.send(<span class="number">2</span>).unwrap();
-<a href=#946 id=946 data-nosnippet>946</a>            in_send.send(<span class="number">3</span>).unwrap();
-<a href=#947 id=947 data-nosnippet>947</a>            in_send.send(<span class="number">4</span>).unwrap();
-<a href=#948 id=948 data-nosnippet>948</a>
-<a href=#949 id=949 data-nosnippet>949</a>            <span class="kw">let </span><span class="kw-2">mut </span>next_expected = <span class="number">0</span>;
-<a href=#950 id=950 data-nosnippet>950</a>            <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=<span class="number">4 </span>{
-<a href=#951 id=951 data-nosnippet>951</a>                <span class="kw">let </span>(next_slot, v) = out_recv.next().<span class="kw">await</span>.unwrap();
-<a href=#952 id=952 data-nosnippet>952</a>                <span class="macro">assert_eq!</span>(v, i);
-<a href=#953 id=953 data-nosnippet>953</a>
-<a href=#954 id=954 data-nosnippet>954</a>                <span class="kw">if </span>next_expected &lt; <span class="number">123 </span>{
-<a href=#955 id=955 data-nosnippet>955</a>                    <span class="macro">assert!</span>(next_slot == next_expected || next_slot == <span class="number">124</span>);
-<a href=#956 id=956 data-nosnippet>956</a>                } <span class="kw">else </span>{
-<a href=#957 id=957 data-nosnippet>957</a>                    <span class="macro">assert!</span>(next_slot == next_expected);
-<a href=#958 id=958 data-nosnippet>958</a>                }
-<a href=#959 id=959 data-nosnippet>959</a>
-<a href=#960 id=960 data-nosnippet>960</a>                next_expected = next_slot + <span class="number">1</span>;
-<a href=#961 id=961 data-nosnippet>961</a>            }
-<a href=#962 id=962 data-nosnippet>962</a>        });
-<a href=#963 id=963 data-nosnippet>963</a>    }
-<a href=#964 id=964 data-nosnippet>964</a>}</code></pre></div></section></main></body></html>
+<a href=#914 id=914 data-nosnippet>914</a>            out_recv
+<a href=#915 id=915 data-nosnippet>915</a>                .assert_yields_only([(<span class="number">0</span>, <span class="number">1</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>), (<span class="number">3</span>, <span class="number">4</span>)])
+<a href=#916 id=916 data-nosnippet>916</a>                .<span class="kw">await</span>;
+<a href=#917 id=917 data-nosnippet>917</a>        });
+<a href=#918 id=918 data-nosnippet>918</a>    }
+<a href=#919 id=919 data-nosnippet>919</a>
+<a href=#920 id=920 data-nosnippet>920</a>    <span class="attr">#[test]
+<a href=#921 id=921 data-nosnippet>921</a>    </span><span class="kw">fn </span>proposer_indexes_payloads_jumps_on_new_max() {
+<a href=#922 id=922 data-nosnippet>922</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#923 id=923 data-nosnippet>923</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#924 id=924 data-nosnippet>924</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#925 id=925 data-nosnippet>925</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#926 id=926 data-nosnippet>926</a>
+<a href=#927 id=927 data-nosnippet>927</a>        <span class="kw">let </span>(input_port, input_payloads) = node.source_external_bincode(<span class="kw-2">&amp;</span>external);
+<a href=#928 id=928 data-nosnippet>928</a>        <span class="kw">let </span>release_new_base = node
+<a href=#929 id=929 data-nosnippet>929</a>            .source_iter(<span class="macro">q!</span>([<span class="number">123</span>]))
+<a href=#930 id=930 data-nosnippet>930</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#931 id=931 data-nosnippet>931</a>            .first();
+<a href=#932 id=932 data-nosnippet>932</a>        <span class="kw">let </span>indexed = index_payloads(
+<a href=#933 id=933 data-nosnippet>933</a>            <span class="kw-2">&amp;</span>tick,
+<a href=#934 id=934 data-nosnippet>934</a>            release_new_base,
+<a href=#935 id=935 data-nosnippet>935</a>            input_payloads.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)),
+<a href=#936 id=936 data-nosnippet>936</a>        );
+<a href=#937 id=937 data-nosnippet>937</a>
+<a href=#938 id=938 data-nosnippet>938</a>        <span class="kw">let </span>out_port = indexed.all_ticks().send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#939 id=939 data-nosnippet>939</a>
+<a href=#940 id=940 data-nosnippet>940</a>        flow.sim().exhaustive(<span class="kw">async </span>|<span class="kw-2">mut </span>compiled| {
+<a href=#941 id=941 data-nosnippet>941</a>            <span class="kw">let </span>in_send = compiled.connect(<span class="kw-2">&amp;</span>input_port);
+<a href=#942 id=942 data-nosnippet>942</a>            <span class="kw">let </span><span class="kw-2">mut </span>out_recv = compiled.connect(<span class="kw-2">&amp;</span>out_port);
+<a href=#943 id=943 data-nosnippet>943</a>            compiled.launch();
+<a href=#944 id=944 data-nosnippet>944</a>
+<a href=#945 id=945 data-nosnippet>945</a>            in_send.send(<span class="number">1</span>).unwrap();
+<a href=#946 id=946 data-nosnippet>946</a>            in_send.send(<span class="number">2</span>).unwrap();
+<a href=#947 id=947 data-nosnippet>947</a>            in_send.send(<span class="number">3</span>).unwrap();
+<a href=#948 id=948 data-nosnippet>948</a>            in_send.send(<span class="number">4</span>).unwrap();
+<a href=#949 id=949 data-nosnippet>949</a>
+<a href=#950 id=950 data-nosnippet>950</a>            <span class="kw">let </span><span class="kw-2">mut </span>next_expected = <span class="number">0</span>;
+<a href=#951 id=951 data-nosnippet>951</a>            <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=<span class="number">4 </span>{
+<a href=#952 id=952 data-nosnippet>952</a>                <span class="kw">let </span>(next_slot, v) = out_recv.next().<span class="kw">await</span>.unwrap();
+<a href=#953 id=953 data-nosnippet>953</a>                <span class="macro">assert_eq!</span>(v, i);
+<a href=#954 id=954 data-nosnippet>954</a>
+<a href=#955 id=955 data-nosnippet>955</a>                <span class="kw">if </span>next_expected &lt; <span class="number">123 </span>{
+<a href=#956 id=956 data-nosnippet>956</a>                    <span class="macro">assert!</span>(next_slot == next_expected || next_slot == <span class="number">124</span>);
+<a href=#957 id=957 data-nosnippet>957</a>                } <span class="kw">else </span>{
+<a href=#958 id=958 data-nosnippet>958</a>                    <span class="macro">assert!</span>(next_slot == next_expected);
+<a href=#959 id=959 data-nosnippet>959</a>                }
+<a href=#960 id=960 data-nosnippet>960</a>
+<a href=#961 id=961 data-nosnippet>961</a>                next_expected = next_slot + <span class="number">1</span>;
+<a href=#962 id=962 data-nosnippet>962</a>            }
+<a href=#963 id=963 data-nosnippet>963</a>        });
+<a href=#964 id=964 data-nosnippet>964</a>    }
+<a href=#965 id=965 data-nosnippet>965</a>}</code></pre></div></section></main></body></html>
