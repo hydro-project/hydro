@@ -127,14 +127,23 @@ where
         out.batch(self, nondet!(/** at runtime, `spin` produces a single value per tick, so each batch is guaranteed to be the same size. */))
     }
 
-    pub fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, L>) -> Singleton<T, Self, Bounded>
+    pub fn singleton<T>(
+        &self,
+        e: impl QuotedWithContext<'a, T, Tick<L>>,
+    ) -> Singleton<T, Self, Bounded>
     where
         T: Clone,
         L: NoTick,
     {
-        self.outer().singleton(e).snapshot(
-            self,
-            nondet!(/** a top-level singleton produces the same value each tick */),
+        let e_arr = q!([e]);
+        let e = e_arr.splice_untyped_ctx(self);
+
+        Singleton::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Iter(e.into()),
+                metadata: self.new_node_metadata(Singleton::<T, Self, Bounded>::collection_kind()),
+            },
         )
     }
 

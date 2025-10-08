@@ -3,10 +3,12 @@ use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use bolero::ValueGenerator;
 use bolero::generator::bolero_generator::driver::object::Borrowed;
+use bolero::{ValueGenerator, produce};
 use colored::Colorize;
 use tokio::sync::mpsc::UnboundedSender;
+
+use crate::live_collections::stream::{NoOrder, Ordering, TotalOrder};
 
 pub trait SimHook {
     fn current_decision(&self) -> Option<bool>;
@@ -19,40 +21,45 @@ pub trait SimHook {
     fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write);
 }
 
+struct ManualDebug<'a, T>(&'a T, fn(&T) -> Option<String>);
+impl<'a, T> Debug for ManualDebug<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(v, debug_fn) = self;
+        if let Some(s) = debug_fn(v) {
+            write!(f, "{}", s)
+        } else {
+            write!(f, "?")
+        }
+    }
+}
+
 struct TruncatedVecDebug<'a, T>(&'a Vec<T>, usize, fn(&T) -> Option<String>);
 impl<'a, T> Debug for TruncatedVecDebug<'a, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(vec, max, elem_debug) = self;
         if vec.len() > *max {
             f.debug_list()
-                .entries(
-                    vec[..*max]
-                        .iter()
-                        .map(|v| elem_debug(v).unwrap_or("?".to_string())),
-                )
+                .entries(vec[..*max].iter().map(|v| ManualDebug(v, *elem_debug)))
                 .finish_non_exhaustive()?;
             write!(f, " ({} total)", vec.len())
         } else {
             f.debug_list()
-                .entries(
-                    vec[..]
-                        .iter()
-                        .map(|v| elem_debug(v).unwrap_or("?".to_string())),
-                )
+                .entries(vec[..].iter().map(|v| ManualDebug(v, *elem_debug)))
                 .finish()
         }
     }
 }
 
-pub struct StreamHook<T> {
+pub struct StreamHook<T, Order: Ordering> {
     pub input: Rc<RefCell<VecDeque<T>>>,
     pub to_release: Option<Vec<T>>,
     pub output: UnboundedSender<T>,
     pub batch_location: (&'static str, &'static str, &'static str),
     pub format_item_debug: fn(&T) -> Option<String>,
+    pub _order: std::marker::PhantomData<Order>,
 }
 
-impl<T> SimHook for StreamHook<T> {
+impl<T> SimHook for StreamHook<T, TotalOrder> {
     fn current_decision(&self) -> Option<bool> {
         self.to_release.as_ref().map(|v| !v.is_empty())
     }
@@ -83,6 +90,76 @@ impl<T> SimHook for StreamHook<T> {
             } else {
                 format!(
                     "^ releasing items: {:?}",
+                    TruncatedVecDebug(&to_release, 8, self.format_item_debug)
+                )
+            };
+
+            let _ = writeln!(
+                log_writer,
+                "{} {}",
+                "-->".color(colored::Color::Blue),
+                batch_location
+            );
+
+            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+            let _ = writeln!(
+                log_writer,
+                " {}{}{}",
+                "|".color(colored::Color::Blue),
+                caret_indent,
+                note_str.color(colored::Color::Green)
+            );
+
+            for item in to_release {
+                self.output.send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
+impl<T> SimHook for StreamHook<T, NoOrder> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        let mut out = vec![];
+        while !current_input.is_empty() {
+            let must_release = force_nontrivial && out.is_empty();
+            if !must_release && produce().generate(driver).unwrap() {
+                break;
+            }
+
+            let idx = (0..current_input.len()).generate(driver).unwrap();
+            let item = current_input.remove(idx).unwrap();
+            out.push(item);
+        }
+
+        let was_nontrivial = !out.is_empty();
+        self.to_release = Some(out);
+        was_nontrivial
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            let (batch_location, line, caret_indent) = self.batch_location;
+            let note_str = if to_release.is_empty() {
+                "^ releasing no items".to_string()
+            } else {
+                format!(
+                    "^ releasing unordered items: {:?}",
                     TruncatedVecDebug(&to_release, 8, self.format_item_debug)
                 )
             };

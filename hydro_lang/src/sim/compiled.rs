@@ -59,6 +59,7 @@ impl CompiledSim {
     /// The `log` parameter controls whether to log tick executions and stream releases.
     pub fn with_instantiator<T>(&self, thunk: impl FnOnce(&dyn Instantiator) -> T, log: bool) -> T {
         let func: SimLoaded = unsafe { self.lib.get(b"__hydro_runtime").unwrap() };
+        let log = log || std::env::var("HYDRO_SIM_LOG").is_ok_and(|v| v == "1");
         thunk(
             &(|| CompiledSimInstance {
                 func: func.clone(),
@@ -234,6 +235,15 @@ impl CompiledSim {
                 .exhaustive()
                 .run(move || {
                     let instance = instantiator();
+                    if instance.log {
+                        eprintln!(
+                            "{}",
+                            "\n==== New Exhaustive Instance ===="
+                                .color(colored::Color::Cyan)
+                                .bold()
+                        );
+                    }
+
                     tokio::runtime::Builder::new_current_thread()
                         .build()
                         .unwrap()
@@ -286,7 +296,7 @@ impl<'a> CompiledSimInstance<'a> {
     /// Launches the simulation, which will asynchronously simulate the Hydro program. This should
     /// be invoked after connecting all inputs and outputs, but before receiving any messages.
     pub fn launch(self) {
-        if self.log || std::env::var("HYDRO_SIM_LOG").is_ok_and(|v| v == "1") {
+        if self.log {
             tokio::task::spawn_local(self.schedule_with_logger(std::io::stderr()));
         } else {
             tokio::task::spawn_local(self.schedule_with_logger(std::io::empty()));
@@ -397,15 +407,21 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     let mut remaining_decision_count = hooks.len();
                     let mut made_nontrivial_decision = false;
 
-                    // first, scan manual decisions
-                    hooks.iter_mut().for_each(|hook| {
-                        if let Some(is_nontrivial) = hook.current_decision() {
-                            made_nontrivial_decision |= is_nontrivial;
-                            remaining_decision_count -= 1;
-                        }
-                    });
-
                     bolero_generator::any::scope::borrow_with(|driver| {
+                        // first, scan manual decisions
+                        hooks.iter_mut().for_each(|hook| {
+                            if let Some(is_nontrivial) = hook.current_decision() {
+                                made_nontrivial_decision |= is_nontrivial;
+                                remaining_decision_count -= 1;
+                            } else if !hook.can_make_nontrivial_decision() {
+                                // if no nontrivial decision is possible, make a trivial one
+                                // (we need to do this in the first pass to force nontrivial decisions
+                                // on the remaining hooks)
+                                hook.autonomous_decision(driver, false);
+                                remaining_decision_count -= 1;
+                            }
+                        });
+
                         hooks.iter_mut().for_each(|hook| {
                             if hook.current_decision().is_none() {
                                 made_nontrivial_decision |= hook.autonomous_decision(
