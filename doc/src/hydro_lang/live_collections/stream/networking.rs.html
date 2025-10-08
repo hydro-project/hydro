@@ -217,7 +217,7 @@
 <a href=#217 id=217 data-nosnippet>217</a>    ///
 <a href=#218 id=218 data-nosnippet>218</a>    /// deployment.deploy().await.unwrap();
 <a href=#219 id=219 data-nosnippet>219</a>    /// // establish the TCP connection
-<a href=#220 id=220 data-nosnippet>220</a>    /// let mut external_recv_stream = nodes.connect_source_bincode(external_handle).await;
+<a href=#220 id=220 data-nosnippet>220</a>    /// let mut external_recv_stream = nodes.connect(external_handle).await;
 <a href=#221 id=221 data-nosnippet>221</a>    /// deployment.start().await.unwrap();
 <a href=#222 id=222 data-nosnippet>222</a>    ///
 <a href=#223 id=223 data-nosnippet>223</a>    /// for w in 1..=3 {
@@ -225,7 +225,7 @@
 <a href=#225 id=225 data-nosnippet>225</a>    /// }
 <a href=#226 id=226 data-nosnippet>226</a>    /// # });
 <a href=#227 id=227 data-nosnippet>227</a>    /// ```
-<a href=#228 id=228 data-nosnippet>228</a>    </span><span class="kw">pub fn </span>send_bincode_external&lt;L2&gt;(<span class="self">self</span>, other: <span class="kw-2">&amp;</span>External&lt;L2&gt;) -&gt; ExternalBincodeStream&lt;T&gt;
+<a href=#228 id=228 data-nosnippet>228</a>    </span><span class="kw">pub fn </span>send_bincode_external&lt;L2&gt;(<span class="self">self</span>, other: <span class="kw-2">&amp;</span>External&lt;L2&gt;) -&gt; ExternalBincodeStream&lt;T, O, R&gt;
 <a href=#229 id=229 data-nosnippet>229</a>    <span class="kw">where
 <a href=#230 id=230 data-nosnippet>230</a>        </span>T: Serialize + DeserializeOwned,
 <a href=#231 id=231 data-nosnippet>231</a>    {

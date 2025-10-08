@@ -702,8 +702,8 @@
 <a href=#702 id=702 data-nosnippet>702</a>
 <a href=#703 id=703 data-nosnippet>703</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#704 id=704 data-nosnippet>704</a>
-<a href=#705 id=705 data-nosnippet>705</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_in = nodes.connect_sink_bincode(in_port).<span class="kw">await</span>;
-<a href=#706 id=706 data-nosnippet>706</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(out).<span class="kw">await</span>;
+<a href=#705 id=705 data-nosnippet>705</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_in = nodes.connect(in_port).<span class="kw">await</span>;
+<a href=#706 id=706 data-nosnippet>706</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect(out).<span class="kw">await</span>;
 <a href=#707 id=707 data-nosnippet>707</a>
 <a href=#708 id=708 data-nosnippet>708</a>        deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#709 id=709 data-nosnippet>709</a>
@@ -739,8 +739,8 @@
 <a href=#739 id=739 data-nosnippet>739</a>
 <a href=#740 id=740 data-nosnippet>740</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#741 id=741 data-nosnippet>741</a>
-<a href=#742 id=742 data-nosnippet>742</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_in = nodes.connect_sink_bincode(in_port).<span class="kw">await</span>;
-<a href=#743 id=743 data-nosnippet>743</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(out).<span class="kw">await</span>;
+<a href=#742 id=742 data-nosnippet>742</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_in = nodes.connect(in_port).<span class="kw">await</span>;
+<a href=#743 id=743 data-nosnippet>743</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect(out).<span class="kw">await</span>;
 <a href=#744 id=744 data-nosnippet>744</a>
 <a href=#745 id=745 data-nosnippet>745</a>        deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#746 id=746 data-nosnippet>746</a>
@@ -771,8 +771,8 @@
 <a href=#771 id=771 data-nosnippet>771</a>
 <a href=#772 id=772 data-nosnippet>772</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#773 id=773 data-nosnippet>773</a>
-<a href=#774 id=774 data-nosnippet>774</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_in = nodes.connect_sink_bytes(in_port).<span class="kw">await</span>;
-<a href=#775 id=775 data-nosnippet>775</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(out).<span class="kw">await</span>;
+<a href=#774 id=774 data-nosnippet>774</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_in = nodes.connect(in_port).<span class="kw">await</span>.<span class="number">1</span>;
+<a href=#775 id=775 data-nosnippet>775</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect(out).<span class="kw">await</span>;
 <a href=#776 id=776 data-nosnippet>776</a>
 <a href=#777 id=777 data-nosnippet>777</a>        deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#778 id=778 data-nosnippet>778</a>
@@ -803,7 +803,7 @@
 <a href=#803 id=803 data-nosnippet>803</a>
 <a href=#804 id=804 data-nosnippet>804</a>        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw-2">mut </span>external_in_1) = nodes.connect_bincode(in_port.clone()).<span class="kw">await</span>;
 <a href=#805 id=805 data-nosnippet>805</a>        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw-2">mut </span>external_in_2) = nodes.connect_bincode(in_port).<span class="kw">await</span>;
-<a href=#806 id=806 data-nosnippet>806</a>        <span class="kw">let </span>external_out = nodes.connect_source_bincode(out).<span class="kw">await</span>;
+<a href=#806 id=806 data-nosnippet>806</a>        <span class="kw">let </span>external_out = nodes.connect(out).<span class="kw">await</span>;
 <a href=#807 id=807 data-nosnippet>807</a>
 <a href=#808 id=808 data-nosnippet>808</a>        deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#809 id=809 data-nosnippet>809</a>
@@ -839,7 +839,7 @@
 <a href=#839 id=839 data-nosnippet>839</a>        <span class="comment">// intentionally skipped to test stream waking logic
 <a href=#840 id=840 data-nosnippet>840</a>        </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw-2">mut </span>_external_in_1) = nodes.connect_bincode(in_port.clone()).<span class="kw">await</span>;
 <a href=#841 id=841 data-nosnippet>841</a>        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw-2">mut </span>external_in_2) = nodes.connect_bincode(in_port).<span class="kw">await</span>;
-<a href=#842 id=842 data-nosnippet>842</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(out).<span class="kw">await</span>;
+<a href=#842 id=842 data-nosnippet>842</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect(out).<span class="kw">await</span>;
 <a href=#843 id=843 data-nosnippet>843</a>
 <a href=#844 id=844 data-nosnippet>844</a>        deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#845 id=845 data-nosnippet>845</a>
@@ -868,9 +868,9 @@
 <a href=#868 id=868 data-nosnippet>868</a>
 <a href=#869 id=869 data-nosnippet>869</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#870 id=870 data-nosnippet>870</a>
-<a href=#871 id=871 data-nosnippet>871</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_in_1 = nodes.connect_sink_bytes(in_port.clone()).<span class="kw">await</span>;
-<a href=#872 id=872 data-nosnippet>872</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_in_2 = nodes.connect_sink_bytes(in_port).<span class="kw">await</span>;
-<a href=#873 id=873 data-nosnippet>873</a>        <span class="kw">let </span>external_out = nodes.connect_source_bincode(out).<span class="kw">await</span>;
+<a href=#871 id=871 data-nosnippet>871</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_in_1 = nodes.connect(in_port.clone()).<span class="kw">await</span>.<span class="number">1</span>;
+<a href=#872 id=872 data-nosnippet>872</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_in_2 = nodes.connect(in_port).<span class="kw">await</span>.<span class="number">1</span>;
+<a href=#873 id=873 data-nosnippet>873</a>        <span class="kw">let </span>external_out = nodes.connect(out).<span class="kw">await</span>;
 <a href=#874 id=874 data-nosnippet>874</a>
 <a href=#875 id=875 data-nosnippet>875</a>        deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#876 id=876 data-nosnippet>876</a>
@@ -908,8 +908,8 @@
 <a href=#908 id=908 data-nosnippet>908</a>
 <a href=#909 id=909 data-nosnippet>909</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#910 id=910 data-nosnippet>910</a>
-<a href=#911 id=911 data-nosnippet>911</a>        <span class="kw">let </span>(<span class="kw-2">mut </span>external_out_1, <span class="kw-2">mut </span>external_in_1) = nodes.connect_bytes(port.clone()).<span class="kw">await</span>;
-<a href=#912 id=912 data-nosnippet>912</a>        <span class="kw">let </span>(<span class="kw-2">mut </span>external_out_2, <span class="kw-2">mut </span>external_in_2) = nodes.connect_bytes(port).<span class="kw">await</span>;
+<a href=#911 id=911 data-nosnippet>911</a>        <span class="kw">let </span>(<span class="kw-2">mut </span>external_out_1, <span class="kw-2">mut </span>external_in_1) = nodes.connect(port.clone()).<span class="kw">await</span>;
+<a href=#912 id=912 data-nosnippet>912</a>        <span class="kw">let </span>(<span class="kw-2">mut </span>external_out_2, <span class="kw-2">mut </span>external_in_2) = nodes.connect(port).<span class="kw">await</span>;
 <a href=#913 id=913 data-nosnippet>913</a>
 <a href=#914 id=914 data-nosnippet>914</a>        deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#915 id=915 data-nosnippet>915</a>

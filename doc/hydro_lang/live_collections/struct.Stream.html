@@ -60,7 +60,7 @@ membership changes, we will broadcast each element to different members.</p>
 // - MemberId::&lt;()&gt;(3): [123]</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.send_bincode_external" class="method"><a class="src rightside" href="../../src/hydro_lang/live_collections/stream/networking.rs.html#228-254">Source</a><h4 class="code-header">pub fn <a href="#method.send_bincode_external" class="fn">send_bincode_external</a>&lt;L2&gt;(
     self,
     other: &amp;<a class="struct" href="../location/external_process/struct.External.html" title="struct hydro_lang::location::external_process::External">External</a>&lt;'_, L2&gt;,
-) -&gt; <a class="struct" href="../location/external_process/struct.ExternalBincodeStream.html" title="struct hydro_lang::location::external_process::ExternalBincodeStream">ExternalBincodeStream</a>&lt;T&gt;<div class="where">where
+) -&gt; <a class="struct" href="../location/external_process/struct.ExternalBincodeStream.html" title="struct hydro_lang::location::external_process::ExternalBincodeStream">ExternalBincodeStream</a>&lt;T, O, R&gt;<div class="where">where
     T: <a class="trait" href="https://docs.rs/serde_core/1.0.227/serde_core/ser/trait.Serialize.html" title="trait serde_core::ser::Serialize">Serialize</a> + <a class="trait" href="https://docs.rs/serde_core/1.0.227/serde_core/de/trait.DeserializeOwned.html" title="trait serde_core::de::DeserializeOwned">DeserializeOwned</a>,</div></h4></section></summary><div class="docblock"><p>Sends the elements of this stream to an external (non-Hydro) process, using <a href="https://docs.rs/bincode/1.3.3/bincode/index.html" title="mod bincode"><code>bincode</code></a>
 serialization. The external process can receive these elements by establishing a TCP
 connection and decoding using [<code>tokio_util::codec::LengthDelimitedCodec</code>].</p>
@@ -79,7 +79,7 @@ connection and decoding using [<code>tokio_util::codec::LengthDelimitedCodec</co
 
 deployment.deploy().<span class="kw">await</span>.unwrap();
 <span class="comment">// establish the TCP connection
-</span><span class="kw">let </span><span class="kw-2">mut </span>external_recv_stream = nodes.connect_source_bincode(external_handle).<span class="kw">await</span>;
+</span><span class="kw">let </span><span class="kw-2">mut </span>external_recv_stream = nodes.connect(external_handle).<span class="kw">await</span>;
 deployment.start().<span class="kw">await</span>.unwrap();
 
 <span class="kw">for </span>w <span class="kw">in </span><span class="number">1</span>..=<span class="number">3 </span>{

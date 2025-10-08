@@ -37,7 +37,7 @@
 <a href=#37 id=37 data-nosnippet>37</a>
 <a href=#38 id=38 data-nosnippet>38</a>    deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#39 id=39 data-nosnippet>39</a>
-<a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">let </span>external_out = nodes.connect_source_bincode(out_port).<span class="kw">await</span>;
+<a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">let </span>external_out = nodes.connect(out_port).<span class="kw">await</span>;
 <a href=#41 id=41 data-nosnippet>41</a>    deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#42 id=42 data-nosnippet>42</a>
 <a href=#43 id=43 data-nosnippet>43</a>    check(external_out).<span class="kw">await</span>;
@@ -65,7 +65,7 @@
 <a href=#65 id=65 data-nosnippet>65</a>
 <a href=#66 id=66 data-nosnippet>66</a>    deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#67 id=67 data-nosnippet>67</a>
-<a href=#68 id=68 data-nosnippet>68</a>    <span class="kw">let </span>external_out = nodes.connect_source_bincode(out_port).<span class="kw">await</span>;
+<a href=#68 id=68 data-nosnippet>68</a>    <span class="kw">let </span>external_out = nodes.connect(out_port).<span class="kw">await</span>;
 <a href=#69 id=69 data-nosnippet>69</a>    deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#70 id=70 data-nosnippet>70</a>
 <a href=#71 id=71 data-nosnippet>71</a>    check(external_out).<span class="kw">await</span>;

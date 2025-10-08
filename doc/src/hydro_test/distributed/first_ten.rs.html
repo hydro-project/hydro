@@ -63,7 +63,7 @@
 <a href=#63 id=63 data-nosnippet>63</a>
 <a href=#64 id=64 data-nosnippet>64</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#65 id=65 data-nosnippet>65</a>
-<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_port = nodes.connect_sink_bincode(external_port).<span class="kw">await</span>;
+<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_port = nodes.connect(external_port).<span class="kw">await</span>;
 <a href=#67 id=67 data-nosnippet>67</a>
 <a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span><span class="kw-2">mut </span>first_node_stdout = nodes.get_process(<span class="kw-2">&amp;</span>p1).stdout().<span class="kw">await</span>;
 <a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">let </span><span class="kw-2">mut </span>second_node_stdout = nodes.get_process(<span class="kw-2">&amp;</span>p2).stdout().<span class="kw">await</span>;

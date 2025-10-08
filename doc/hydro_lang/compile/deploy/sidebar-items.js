@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DeployFlow","DeployResult"]};
+window.SIDEBAR_ITEMS = {"struct":["DeployFlow","DeployResult"],"trait":["ConnectableAsync"]};

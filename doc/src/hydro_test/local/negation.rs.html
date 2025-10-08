@@ -121,8 +121,8 @@
 <a href=#121 id=121 data-nosnippet>121</a>
 <a href=#122 id=122 data-nosnippet>122</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#123 id=123 data-nosnippet>123</a>
-<a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect_sink_bincode(tick_send).<span class="kw">await</span>;
-<a href=#125 id=125 data-nosnippet>125</a>        <span class="kw">let </span>out_recv = nodes.connect_source_bincode(out_recv).<span class="kw">await</span>;
+<a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect(tick_send).<span class="kw">await</span>;
+<a href=#125 id=125 data-nosnippet>125</a>        <span class="kw">let </span>out_recv = nodes.connect(out_recv).<span class="kw">await</span>;
 <a href=#126 id=126 data-nosnippet>126</a>
 <a href=#127 id=127 data-nosnippet>127</a>        tick_send.send(()).<span class="kw">await</span>.unwrap();
 <a href=#128 id=128 data-nosnippet>128</a>
@@ -152,8 +152,8 @@
 <a href=#152 id=152 data-nosnippet>152</a>
 <a href=#153 id=153 data-nosnippet>153</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#154 id=154 data-nosnippet>154</a>
-<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect_sink_bincode(tick_send).<span class="kw">await</span>;
-<a href=#156 id=156 data-nosnippet>156</a>        <span class="kw">let </span>out_recv = nodes.connect_source_bincode(out_recv).<span class="kw">await</span>;
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect(tick_send).<span class="kw">await</span>;
+<a href=#156 id=156 data-nosnippet>156</a>        <span class="kw">let </span>out_recv = nodes.connect(out_recv).<span class="kw">await</span>;
 <a href=#157 id=157 data-nosnippet>157</a>
 <a href=#158 id=158 data-nosnippet>158</a>        tick_send.send(()).<span class="kw">await</span>.unwrap();
 <a href=#159 id=159 data-nosnippet>159</a>
@@ -183,8 +183,8 @@
 <a href=#183 id=183 data-nosnippet>183</a>
 <a href=#184 id=184 data-nosnippet>184</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#185 id=185 data-nosnippet>185</a>
-<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect_sink_bincode(tick_send).<span class="kw">await</span>;
-<a href=#187 id=187 data-nosnippet>187</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect_source_bincode(out_recv).<span class="kw">await</span>;
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect(tick_send).<span class="kw">await</span>;
+<a href=#187 id=187 data-nosnippet>187</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect(out_recv).<span class="kw">await</span>;
 <a href=#188 id=188 data-nosnippet>188</a>
 <a href=#189 id=189 data-nosnippet>189</a>        tick_send.send(()).<span class="kw">await</span>.unwrap();
 <a href=#190 id=190 data-nosnippet>190</a>
@@ -218,8 +218,8 @@
 <a href=#218 id=218 data-nosnippet>218</a>
 <a href=#219 id=219 data-nosnippet>219</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#220 id=220 data-nosnippet>220</a>
-<a href=#221 id=221 data-nosnippet>221</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect_sink_bincode(tick_send).<span class="kw">await</span>;
-<a href=#222 id=222 data-nosnippet>222</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect_source_bincode(out_recv).<span class="kw">await</span>;
+<a href=#221 id=221 data-nosnippet>221</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect(tick_send).<span class="kw">await</span>;
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect(out_recv).<span class="kw">await</span>;
 <a href=#223 id=223 data-nosnippet>223</a>
 <a href=#224 id=224 data-nosnippet>224</a>        tick_send.send(()).<span class="kw">await</span>.unwrap();
 <a href=#225 id=225 data-nosnippet>225</a>
@@ -253,8 +253,8 @@
 <a href=#253 id=253 data-nosnippet>253</a>
 <a href=#254 id=254 data-nosnippet>254</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#255 id=255 data-nosnippet>255</a>
-<a href=#256 id=256 data-nosnippet>256</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect_sink_bincode(tick_send).<span class="kw">await</span>;
-<a href=#257 id=257 data-nosnippet>257</a>        <span class="kw">let </span>out_recv = nodes.connect_source_bincode(out_recv).<span class="kw">await</span>;
+<a href=#256 id=256 data-nosnippet>256</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect(tick_send).<span class="kw">await</span>;
+<a href=#257 id=257 data-nosnippet>257</a>        <span class="kw">let </span>out_recv = nodes.connect(out_recv).<span class="kw">await</span>;
 <a href=#258 id=258 data-nosnippet>258</a>
 <a href=#259 id=259 data-nosnippet>259</a>        tick_send.send(()).<span class="kw">await</span>.unwrap();
 <a href=#260 id=260 data-nosnippet>260</a>
@@ -284,8 +284,8 @@
 <a href=#284 id=284 data-nosnippet>284</a>
 <a href=#285 id=285 data-nosnippet>285</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#286 id=286 data-nosnippet>286</a>
-<a href=#287 id=287 data-nosnippet>287</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect_sink_bincode(tick_send).<span class="kw">await</span>;
-<a href=#288 id=288 data-nosnippet>288</a>        <span class="kw">let </span>out_recv = nodes.connect_source_bincode(out_recv).<span class="kw">await</span>;
+<a href=#287 id=287 data-nosnippet>287</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect(tick_send).<span class="kw">await</span>;
+<a href=#288 id=288 data-nosnippet>288</a>        <span class="kw">let </span>out_recv = nodes.connect(out_recv).<span class="kw">await</span>;
 <a href=#289 id=289 data-nosnippet>289</a>
 <a href=#290 id=290 data-nosnippet>290</a>        tick_send.send(()).<span class="kw">await</span>.unwrap();
 <a href=#291 id=291 data-nosnippet>291</a>
@@ -315,8 +315,8 @@
 <a href=#315 id=315 data-nosnippet>315</a>
 <a href=#316 id=316 data-nosnippet>316</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#317 id=317 data-nosnippet>317</a>
-<a href=#318 id=318 data-nosnippet>318</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect_sink_bincode(tick_send).<span class="kw">await</span>;
-<a href=#319 id=319 data-nosnippet>319</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect_source_bincode(out_recv).<span class="kw">await</span>;
+<a href=#318 id=318 data-nosnippet>318</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect(tick_send).<span class="kw">await</span>;
+<a href=#319 id=319 data-nosnippet>319</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect(out_recv).<span class="kw">await</span>;
 <a href=#320 id=320 data-nosnippet>320</a>
 <a href=#321 id=321 data-nosnippet>321</a>        tick_send.send(()).<span class="kw">await</span>.unwrap();
 <a href=#322 id=322 data-nosnippet>322</a>
@@ -350,8 +350,8 @@
 <a href=#350 id=350 data-nosnippet>350</a>
 <a href=#351 id=351 data-nosnippet>351</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#352 id=352 data-nosnippet>352</a>
-<a href=#353 id=353 data-nosnippet>353</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect_sink_bincode(tick_send).<span class="kw">await</span>;
-<a href=#354 id=354 data-nosnippet>354</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect_source_bincode(out_recv).<span class="kw">await</span>;
+<a href=#353 id=353 data-nosnippet>353</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_send = nodes.connect(tick_send).<span class="kw">await</span>;
+<a href=#354 id=354 data-nosnippet>354</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect(out_recv).<span class="kw">await</span>;
 <a href=#355 id=355 data-nosnippet>355</a>
 <a href=#356 id=356 data-nosnippet>356</a>        tick_send.send(()).<span class="kw">await</span>.unwrap();
 <a href=#357 id=357 data-nosnippet>357</a>

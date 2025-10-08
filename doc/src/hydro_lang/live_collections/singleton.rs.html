@@ -1094,8 +1094,8 @@
 <a href=#1094 id=1094 data-nosnippet>1094</a>
 <a href=#1095 id=1095 data-nosnippet>1095</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
 <a href=#1096 id=1096 data-nosnippet>1096</a>
-<a href=#1097 id=1097 data-nosnippet>1097</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_trigger = nodes.connect_sink_bincode(input_send).<span class="kw">await</span>;
-<a href=#1098 id=1098 data-nosnippet>1098</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(counts).<span class="kw">await</span>;
+<a href=#1097 id=1097 data-nosnippet>1097</a>        <span class="kw">let </span><span class="kw-2">mut </span>tick_trigger = nodes.connect(input_send).<span class="kw">await</span>;
+<a href=#1098 id=1098 data-nosnippet>1098</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect(counts).<span class="kw">await</span>;
 <a href=#1099 id=1099 data-nosnippet>1099</a>
 <a href=#1100 id=1100 data-nosnippet>1100</a>        deployment.start().<span class="kw">await</span>.unwrap();
 <a href=#1101 id=1101 data-nosnippet>1101</a>
