@@ -1,5 +1,4 @@
 use bytes::Bytes;
-use futures::StreamExt;
 use stageleft::q;
 
 use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
@@ -18,14 +17,14 @@ fn sim_crash_in_output() {
     let node = flow.process::<()>();
 
     let (port, input) = node.source_external_bincode(&external);
-    let out_port = input.send_bincode_external(&external);
+    let out_port: ExternalBincodeStream<Bytes> = input.send_bincode_external(&external);
 
     flow.sim().fuzz(async |mut compiled| {
-        let in_send = compiled.connect_sink_bincode(&port);
-        let mut out_recv = compiled.connect_source_bincode::<Bytes>(&out_port);
+        let in_send = compiled.connect(&port);
+        let mut out_recv = compiled.connect(&out_port);
         compiled.launch();
 
-        in_send(bolero::any::<Vec<u8>>().into()).unwrap();
+        in_send.send(bolero::any::<Vec<u8>>().into()).unwrap();
 
         let x = out_recv.next().await.unwrap();
         if !x.is_empty() && x[0] == 42 && x.len() > 1 && x[1] == 43 && x.len() > 2 && x[2] == 44 {
@@ -49,11 +48,11 @@ fn sim_crash_in_output_with_filter() {
         .send_bincode_external(&external);
 
     flow.sim().fuzz(async |mut compiled| {
-        let in_send = compiled.connect_sink_bincode(&port);
-        let mut out_recv = compiled.connect_source_bincode::<Bytes>(&out_port);
+        let in_send = compiled.connect(&port);
+        let mut out_recv = compiled.connect(&out_port);
         compiled.launch();
 
-        in_send(bolero::any::<Vec<u8>>().into()).unwrap();
+        in_send.send(bolero::any::<Vec<u8>>().into()).unwrap();
 
         if let Some(x) = out_recv.next().await
             && x.len() > 2
@@ -81,13 +80,13 @@ fn sim_batch_nondet_size() {
         .send_bincode_external(&external);
 
     flow.sim().exhaustive(async |mut compiled| {
-        let in_send = compiled.connect_sink_bincode(&port);
-        let mut out_recv = compiled.connect_source_bincode(&out_port);
+        let in_send = compiled.connect(&port);
+        let mut out_recv = compiled.connect(&out_port);
         compiled.launch();
 
-        in_send(()).unwrap();
-        in_send(()).unwrap();
-        in_send(()).unwrap();
+        in_send.send(()).unwrap();
+        in_send.send(()).unwrap();
+        in_send.send(()).unwrap();
 
         assert_eq!(out_recv.next().await.unwrap(), 3); // fails with nondet batching
     });
@@ -108,13 +107,13 @@ fn sim_batch_preserves_order() {
         .send_bincode_external(&external);
 
     flow.sim().exhaustive(async |mut compiled| {
-        let in_send = compiled.connect_sink_bincode(&port);
-        let mut out_recv = compiled.connect_source_bincode(&out_port);
+        let in_send = compiled.connect(&port);
+        let mut out_recv = compiled.connect(&out_port);
         compiled.launch();
 
-        in_send(1).unwrap();
-        in_send(2).unwrap();
-        in_send(3).unwrap();
+        in_send.send(1).unwrap();
+        in_send.send(2).unwrap();
+        in_send.send(3).unwrap();
 
         assert_eq!(out_recv.next().await.unwrap(), 1);
         assert_eq!(out_recv.next().await.unwrap(), 2);
@@ -139,13 +138,13 @@ fn sim_batch_preserves_order_fuzzed() {
         .send_bincode_external(&external);
 
     flow.sim().fuzz(async |mut compiled| {
-        let in_send = compiled.connect_sink_bincode(&port);
-        let mut out_recv = compiled.connect_source_bincode(&out_port);
+        let in_send = compiled.connect(&port);
+        let mut out_recv = compiled.connect(&out_port);
         compiled.launch();
 
-        in_send(1).unwrap();
-        in_send(2).unwrap();
-        in_send(3).unwrap();
+        in_send.send(1).unwrap();
+        in_send.send(2).unwrap();
+        in_send.send(3).unwrap();
 
         assert_eq!(out_recv.next().await.unwrap(), 1);
         assert_eq!(out_recv.next().await.unwrap(), 2);
@@ -181,18 +180,18 @@ fn sim_crash_with_fuzzed_batching() {
 
     // takes forever with exhaustive, but should complete quickly with fuzz
     flow.sim().fuzz(async |mut compiled| {
-        let in_send = compiled.connect_sink_bincode(&port);
-        let mut out_recv = compiled.connect_source_bincode(&out_port);
+        let in_send = compiled.connect(&port);
+        let mut out_recv = compiled.connect(&out_port);
         compiled.launch();
 
         for _ in 0..1000 {
-            in_send(456).unwrap(); // the fuzzer should put these some batches
+            in_send.send(456).unwrap(); // the fuzzer should put these some batches
         }
 
-        in_send(100).unwrap();
-        in_send(23).unwrap(); // the fuzzer must put these in one batch
+        in_send.send(100).unwrap();
+        in_send.send(23).unwrap(); // the fuzzer must put these in one batch
 
-        in_send(99).unwrap(); // the fuzzer must put this in a later batch
+        in_send.send(99).unwrap(); // the fuzzer must put this in a later batch
 
         while let Some(out) = out_recv.next().await {
             if out == 456 {
@@ -224,19 +223,19 @@ fn trace_for_fuzzed_batching() {
     flow.sim()
         .compiled()
         .fuzz_repro(repro_bytes, async |mut compiled| {
-            let in_send = compiled.connect_sink_bincode(&port);
-            let mut out_recv = compiled.connect_source_bincode(&out_port);
+            let in_send = compiled.connect(&port);
+            let mut out_recv = compiled.connect(&out_port);
 
             let schedule = compiled.schedule_with_logger(&mut log_out);
             let rest = async move {
                 for _ in 0..1000 {
-                    in_send(456).unwrap(); // the fuzzer should put these some batches
+                    in_send.send(456).unwrap(); // the fuzzer should put these some batches
                 }
 
-                in_send(100).unwrap();
-                in_send(23).unwrap(); // the fuzzer must put these in one batch
+                in_send.send(100).unwrap();
+                in_send.send(23).unwrap(); // the fuzzer must put these in one batch
 
-                in_send(99).unwrap(); // the fuzzer must put this in a later batch
+                in_send.send(99).unwrap(); // the fuzzer must put this in a later batch
 
                 while let Some(out) = out_recv.next().await {
                     if out == 456 {

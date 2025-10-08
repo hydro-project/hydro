@@ -217,7 +217,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///
     /// deployment.deploy().await.unwrap();
     /// // establish the TCP connection
-    /// let mut external_recv_stream = nodes.connect_source_bincode(external_handle).await;
+    /// let mut external_recv_stream = nodes.connect(external_handle).await;
     /// deployment.start().await.unwrap();
     ///
     /// for w in 1..=3 {
@@ -225,7 +225,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// }
     /// # });
     /// ```
-    pub fn send_bincode_external<L2>(self, other: &External<L2>) -> ExternalBincodeStream<T>
+    pub fn send_bincode_external<L2>(self, other: &External<L2>) -> ExternalBincodeStream<T, O, R>
     where
         T: Serialize + DeserializeOwned,
     {

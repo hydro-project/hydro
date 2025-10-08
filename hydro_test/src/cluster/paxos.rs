@@ -881,7 +881,6 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
 
 #[cfg(test)]
 mod tests {
-    use futures::StreamExt;
     use hydro_lang::prelude::*;
 
     use super::index_payloads;
@@ -903,14 +902,14 @@ mod tests {
         let out_port = indexed.all_ticks().send_bincode_external(&external);
 
         flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect_sink_bincode(&input_port);
-            let out_recv = compiled.connect_source_bincode(&out_port);
+            let in_send = compiled.connect(&input_port);
+            let out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send(1).unwrap();
-            in_send(2).unwrap();
-            in_send(3).unwrap();
-            in_send(4).unwrap();
+            in_send.send(1).unwrap();
+            in_send.send(2).unwrap();
+            in_send.send(3).unwrap();
+            in_send.send(4).unwrap();
 
             let all_out = out_recv.collect::<Vec<_>>().await;
             assert_eq!(all_out, vec![(0, 1), (1, 2), (2, 3), (3, 4),]);
@@ -938,14 +937,14 @@ mod tests {
         let out_port = indexed.all_ticks().send_bincode_external(&external);
 
         flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect_sink_bincode(&input_port);
-            let mut out_recv = compiled.connect_source_bincode(&out_port);
+            let in_send = compiled.connect(&input_port);
+            let mut out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send(1).unwrap();
-            in_send(2).unwrap();
-            in_send(3).unwrap();
-            in_send(4).unwrap();
+            in_send.send(1).unwrap();
+            in_send.send(2).unwrap();
+            in_send.send(3).unwrap();
+            in_send.send(4).unwrap();
 
             let mut next_expected = 0;
             for i in 1..=4 {

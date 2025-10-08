@@ -50,7 +50,7 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let out_recv = nodes.connect_source_bincode(out_recv).await;
+        let out_recv = nodes.connect(out_recv).await;
 
         deployment.start().await.unwrap();
 
@@ -82,7 +82,7 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let out_recv = nodes.connect_source_bincode(out_recv).await;
+        let out_recv = nodes.connect(out_recv).await;
 
         deployment.start().await.unwrap();
 

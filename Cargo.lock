@@ -2259,7 +2259,6 @@ version = "0.14.0"
 dependencies = [
  "bolero-hydro",
  "ctor 0.2.9",
- "futures",
  "hdrhistogram",
  "hydro_deploy",
  "hydro_lang",

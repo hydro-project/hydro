@@ -41,8 +41,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut input_send = nodes.connect_sink_bincode(input_send).await;
-        let mut out_recv = nodes.connect_source_bincode(out_recv).await;
+        let mut input_send = nodes.connect(input_send).await;
+        let mut out_recv = nodes.connect(out_recv).await;
 
         // send before starting so everything shows up in single tick
         input_send.send(1).await.unwrap();

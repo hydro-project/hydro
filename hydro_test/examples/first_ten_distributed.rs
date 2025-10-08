@@ -114,7 +114,7 @@ async fn main() {
 
     deployment.deploy().await.unwrap();
 
-    let mut external_port = nodes.connect_sink_bincode(external_port).await;
+    let mut external_port = nodes.connect(external_port).await;
 
     deployment.start().await.unwrap();
 

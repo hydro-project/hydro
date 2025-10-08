@@ -13,7 +13,6 @@
 //!
 //! The comments in the code are from the original implementation before the bug was discovered.
 
-use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 
 use crate::forward_handle::TickCycleHandle;
@@ -111,14 +110,14 @@ fn test() {
     let out_port = sequenced.all_ticks().send_bincode_external(&external);
 
     flow.sim().fuzz(async |mut compiled| {
-        let in_send = compiled.connect_sink_bincode(&input_port);
-        let out_recv = compiled.connect_source_bincode(&out_port);
+        let in_send = compiled.connect(&input_port);
+        let out_recv = compiled.connect(&out_port);
         compiled.launch();
 
-        in_send(SequencedKv { seq: 0 }).unwrap();
-        in_send(SequencedKv { seq: 1 }).unwrap();
-        in_send(SequencedKv { seq: 2 }).unwrap();
-        in_send(SequencedKv { seq: 3 }).unwrap();
+        in_send.send(SequencedKv { seq: 0 }).unwrap();
+        in_send.send(SequencedKv { seq: 1 }).unwrap();
+        in_send.send(SequencedKv { seq: 2 }).unwrap();
+        in_send.send(SequencedKv { seq: 3 }).unwrap();
 
         let all_out = out_recv.collect::<Vec<_>>().await;
         assert_eq!(
@@ -167,15 +166,15 @@ fn trace_snapshot() {
     flow.sim()
         .compiled()
         .fuzz_repro(repro_bytes, async |mut compiled| {
-            let in_send = compiled.connect_sink_bincode(&input_port);
-            let out_recv = compiled.connect_source_bincode(&out_port);
+            let in_send = compiled.connect(&input_port);
+            let out_recv = compiled.connect(&out_port);
 
             let schedule = compiled.schedule_with_logger(&mut log_out);
             let rest = async move {
-                in_send(SequencedKv { seq: 0 }).unwrap();
-                in_send(SequencedKv { seq: 1 }).unwrap();
-                in_send(SequencedKv { seq: 2 }).unwrap();
-                in_send(SequencedKv { seq: 3 }).unwrap();
+                in_send.send(SequencedKv { seq: 0 }).unwrap();
+                in_send.send(SequencedKv { seq: 1 }).unwrap();
+                in_send.send(SequencedKv { seq: 2 }).unwrap();
+                in_send.send(SequencedKv { seq: 3 }).unwrap();
 
                 let _all_out = out_recv.collect::<Vec<_>>().await;
             };

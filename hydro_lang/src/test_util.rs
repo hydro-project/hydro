@@ -37,7 +37,7 @@ pub async fn multi_location_test<'a, T, C, O: Ordering, R: Retries>(
 
     deployment.deploy().await.unwrap();
 
-    let external_out = nodes.connect_source_bincode(out_port).await;
+    let external_out = nodes.connect(out_port).await;
     deployment.start().await.unwrap();
 
     check(external_out).await;
@@ -65,7 +65,7 @@ pub async fn stream_transform_test<'a, T, C, O: Ordering, R: Retries>(
 
     deployment.deploy().await.unwrap();
 
-    let external_out = nodes.connect_source_bincode(out_port).await;
+    let external_out = nodes.connect(out_port).await;
     deployment.start().await.unwrap();
 
     check(external_out).await;

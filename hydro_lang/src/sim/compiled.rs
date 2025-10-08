@@ -1,13 +1,16 @@
 //! Interfaces for compiled Hydro simulators and concrete simulation instances.
 
 use std::collections::{HashMap, HashSet};
+use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 use std::path::Path;
+use std::pin::Pin;
+use std::task::{Context, Poll, Waker};
 
 use bytes::Bytes;
 use colored::Colorize;
 use dfir_rs::scheduled::graph::Dfir;
-use futures::{Stream, StreamExt};
+use futures::{FutureExt, Stream, StreamExt};
 use libloading::Library;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -16,6 +19,8 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use super::runtime::SimHook;
+use crate::compile::deploy::ConnectableAsync;
+use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
 use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
 
 /// A handle to a compiled Hydro simulation, which can be instantiated and run.
@@ -269,28 +274,39 @@ pub struct CompiledSimInstance<'a> {
 }
 
 impl<'a> CompiledSimInstance<'a> {
+    #[deprecated(note = "Use `connect` instead")]
     /// Like the corresponding method on [`crate::compile::deploy::DeployResult`], connects to the
     /// given input port, and returns a closure that can be used to send messages to it.
-    pub fn connect_sink_bincode<T: 'static + Send + Serialize + DeserializeOwned>(
+    pub fn connect_sink_bincode<T: Serialize + 'static>(
         &mut self,
         port: &ExternalBincodeSink<T>,
-    ) -> impl Fn(T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>> + 'a {
-        assert!(self.remaining_ports.remove(&port.port_id));
-        let (sink, source) = dfir_rs::util::unbounded_channel::<Bytes>();
-        self.input_ports.insert(port.port_id, source);
-        move |t| sink.send(bincode::serialize(&t).unwrap().into())
+    ) -> SimSender<T> {
+        self.connect(port)
     }
 
+    #[deprecated(note = "Use `connect` instead")]
     /// Like the corresponding method on [`crate::compile::deploy::DeployResult`], connects to the
     /// given output port, and returns a stream that can be used to receive messages from it.
-    pub fn connect_source_bincode<T: 'static + Send + Serialize + DeserializeOwned>(
+    pub fn connect_source_bincode<T: DeserializeOwned + 'static, O: Ordering, R: Retries>(
         &mut self,
-        port: &ExternalBincodeStream<T>,
-    ) -> impl Stream<Item = T> + 'a {
-        assert!(self.remaining_ports.remove(&port.port_id));
-        let (sink, source) = dfir_rs::util::unbounded_channel::<Bytes>();
-        self.output_ports.insert(port.port_id, sink);
-        source.map(|b| bincode::deserialize(&b).unwrap())
+        port: &ExternalBincodeStream<T, O, R>,
+    ) -> SimReceiver<'a, T, O, R> {
+        self.connect(port)
+    }
+
+    /// Establishes a connection to the given input or output port, returning either a
+    /// [`SimSender`] (for input ports) or a stream (for output ports). This should be invoked
+    /// before calling [`Self::launch`], and should only be invoked once per port.
+    pub fn connect<'b, P: ConnectableAsync<&'b mut Self>>(
+        &'b mut self,
+        port: P,
+    ) -> <P as ConnectableAsync<&'b mut Self>>::Output {
+        let mut pinned = std::pin::pin!(port.connect(self));
+        if let Poll::Ready(v) = pinned.poll_unpin(&mut Context::from_waker(Waker::noop())) {
+            v
+        } else {
+            panic!("Connect impl should not have used any async operations");
+        }
     }
 
     /// Launches the simulation, which will asynchronously simulate the Hydro program. This should
@@ -333,6 +349,68 @@ impl<'a> CompiledSimInstance<'a> {
         };
 
         async move { launched.scheduler().await }
+    }
+}
+
+/// A receiver for an external bincode stream in a simulation.
+pub struct SimReceiver<'a, T, O: Ordering, R: Retries>(
+    Pin<Box<dyn Stream<Item = T> + 'a>>,
+    PhantomData<(O, R)>,
+);
+
+impl<'a, T> SimReceiver<'a, T, TotalOrder, ExactlyOnce> {
+    /// Receives the next message from the external bincode stream. This will wait until a message
+    /// is available, or return `None` if no more messages can possibly arrive.
+    pub async fn next(&mut self) -> Option<T> {
+        self.0.next().await
+    }
+
+    /// Collects all remaining messages from the external bincode stream into a collection. This
+    /// will wait until no more messages can possibly arrive.
+    pub async fn collect<C: Default + Extend<T>>(self) -> C {
+        self.0.collect().await
+    }
+}
+
+impl<'a, T: DeserializeOwned + 'static, O: Ordering, R: Retries>
+    ConnectableAsync<&mut CompiledSimInstance<'a>> for &ExternalBincodeStream<T, O, R>
+{
+    type Output = SimReceiver<'a, T, O, R>;
+
+    async fn connect(self, ctx: &mut CompiledSimInstance<'a>) -> Self::Output {
+        assert!(ctx.remaining_ports.remove(&self.port_id));
+        let (sink, source) = dfir_rs::util::unbounded_channel::<Bytes>();
+        ctx.output_ports.insert(self.port_id, sink);
+
+        SimReceiver(
+            Box::pin(source.map(|b| bincode::deserialize(&b).unwrap())),
+            PhantomData,
+        )
+    }
+}
+
+/// A sender to an external bincode sink in a simulation.
+pub struct SimSender<T>(Box<dyn Fn(T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>>>);
+impl<T> SimSender<T> {
+    /// Sends a message to the external bincode sink. The message will be asynchronously processed
+    /// as part of the simulation.
+    pub fn send(&self, t: T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>> {
+        (self.0)(t)
+    }
+}
+
+impl<'a, T: Serialize + 'static> ConnectableAsync<&mut CompiledSimInstance<'a>>
+    for &ExternalBincodeSink<T>
+{
+    type Output = SimSender<T>;
+
+    async fn connect(self, ctx: &mut CompiledSimInstance<'a>) -> Self::Output {
+        assert!(ctx.remaining_ports.remove(&self.port_id));
+        let (sink, source) = dfir_rs::util::unbounded_channel::<Bytes>();
+        ctx.input_ports.insert(self.port_id, source);
+        SimSender(Box::new(move |t| {
+            sink.send(bincode::serialize(&t).unwrap().into())
+        }))
     }
 }
 

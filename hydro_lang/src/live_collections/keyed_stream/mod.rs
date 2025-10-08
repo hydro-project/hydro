@@ -2099,7 +2099,7 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut out = nodes.connect_source_bincode(sum).await;
+        let mut out = nodes.connect(sum).await;
 
         deployment.start().await.unwrap();
 
@@ -2155,8 +2155,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut tick_send = nodes.connect_sink_bincode(tick_send).await;
-        let mut out_recv = nodes.connect_source_bincode(sum).await;
+        let mut tick_send = nodes.connect(tick_send).await;
+        let mut out_recv = nodes.connect(sum).await;
 
         deployment.start().await.unwrap();
 
