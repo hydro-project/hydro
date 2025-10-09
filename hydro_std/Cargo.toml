@@ -29,5 +29,4 @@ hydro_lang = { path = "../hydro_lang", version = "^0.14.0", features = [
     "sim",
 ] }
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0" }
-bolero = { package = "bolero-hydro", version = "0.13.4", features = ["arbitrary"] }
 ctor = "0.2"

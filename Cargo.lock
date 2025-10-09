@@ -198,12 +198,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arbitrary"
-version = "1.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
-
-[[package]]
 name = "argon2"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -593,9 +587,9 @@ dependencies = [
 
 [[package]]
 name = "bolero-engine-hydro"
-version = "0.13.4"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64b43094b129cee8f712aa402cc7b110c25197971bd2b135db31e97ebc07a6f0"
+checksum = "691790fb2d24fe4984eebd9ef3eb0afc8598a0530471f4d5de499d379e504fc5"
 dependencies = [
  "anyhow",
  "bolero-generator-hydro",
@@ -629,11 +623,10 @@ dependencies = [
 
 [[package]]
 name = "bolero-generator-hydro"
-version = "0.13.5"
+version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "532837141f59f35092ea57c594e752de2d98a8cdab639ec4935f584afd643789"
+checksum = "a78618f55ac4dfa3c66dde097f26105478348b52e985249999c859c250c5719e"
 dependencies = [
- "arbitrary",
  "bolero-generator-derive",
  "either",
  "getrandom 0.3.3",
@@ -652,9 +645,9 @@ dependencies = [
 
 [[package]]
 name = "bolero-hydro"
-version = "0.13.4"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afb2a21f0ba1166fba3b2d67ebd497a95f0c5ae75d107d82fc5b12c536ba0f29"
+checksum = "ef7956e385b91a5aee997d23d40c65ff65af698e71f49ba5f3d87ee99ea4b6f5"
 dependencies = [
  "bolero-afl",
  "bolero-engine-hydro",
@@ -677,9 +670,9 @@ dependencies = [
 
 [[package]]
 name = "bolero-libfuzzer-hydro"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b53fd75fd865d2bd5f9ffac689865140667c10bc2fe5fd439e6b97bc8e9c117"
+checksum = "59a4b5c591eff98751f101412e42edac650f417a9fefbe36d3ecb0773009470c"
 dependencies = [
  "bolero-engine-hydro",
  "cc",
@@ -2257,7 +2250,6 @@ dependencies = [
 name = "hydro_std"
 version = "0.14.0"
 dependencies = [
- "bolero-hydro",
  "ctor 0.2.9",
  "hdrhistogram",
  "hydro_deploy",
