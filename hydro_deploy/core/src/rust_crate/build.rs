@@ -118,6 +118,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                     match params.target_type {
                         HostTargetType::Local => {}
                         HostTargetType::Linux => {
+                            // TODO: no linux-musl
                             command.args(["--target", "x86_64-unknown-linux-musl"]);
                         }
                     }
@@ -134,7 +135,8 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.args(["--config", config]);
                     }
 
-                    command.arg("--message-format=json-diagnostic-rendered-ansi");
+                    // command.arg("--message-format=json-diagnostic-rendered-ansi");
+                    command.arg("--message-format=json");
 
                     if let Some(target_dir) = params.target_dir.as_ref() {
                         command.args(["--target-dir", target_dir.to_str().unwrap()]);
@@ -206,11 +208,11 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     }
                                 }
 
-                                ProgressTracker::println(msg.message.to_string());
+                                // ProgressTracker::println(msg.message.to_string());
                                 diagnostics.push(msg.message);
                             }
                             cargo_metadata::Message::TextLine(line) => {
-                                ProgressTracker::println(&line);
+                                // ProgressTracker::println(&line);
                                 text_lines.push(line);
                             }
                             cargo_metadata::Message::BuildFinished(_) => {}

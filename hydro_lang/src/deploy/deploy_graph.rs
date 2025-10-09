@@ -585,12 +585,12 @@ impl TrybuildHost {
         }
     }
 
-    pub fn features(self, features: Vec<String>) -> Self {
-        Self {
-            features: self.features.into_iter().chain(features).collect(),
-            ..self
-        }
-    }
+    // pub fn features(self, features: Vec<String>) -> Self {
+    //     Self {
+    //         features: self.features.into_iter().chain(features).collect(),
+    //         ..self
+    //     }
+    // }
 
     pub fn tracing(self, tracing: TracingOptions) -> Self {
         if self.tracing.is_some() {
@@ -603,16 +603,16 @@ impl TrybuildHost {
         }
     }
 
-    pub fn build_env(self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        Self {
-            build_envs: self
-                .build_envs
-                .into_iter()
-                .chain(std::iter::once((key.into(), value.into())))
-                .collect(),
-            ..self
-        }
-    }
+    // pub fn build_env(self, key: impl Into<String>, value: impl Into<String>) -> Self {
+    //     Self {
+    //         build_envs: self
+    //             .build_envs
+    //             .into_iter()
+    //             .chain(std::iter::once((key.into(), value.into())))
+    //             .collect(),
+    //         ..self
+    //     }
+    // }
 }
 
 impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
@@ -794,7 +794,7 @@ impl<H: Host + 'static> ExternalSpec<'_, HydroDeploy> for Arc<H> {
 }
 
 pub(crate) enum CrateOrTrybuild {
-    Crate(RustCrate),
+    Crate(RustCrate, Arc<dyn Host>),
     Trybuild(TrybuildHost),
 }
 
@@ -842,22 +842,26 @@ impl Node for DeployNode {
         graph: DfirGraph,
         extra_stmts: Vec<syn::Stmt>,
     ) {
-        let service = match self.service_spec.borrow_mut().take().unwrap() {
-            CrateOrTrybuild::Crate(c) => c,
+        let (service, host) = match self.service_spec.borrow_mut().take().unwrap() {
+            CrateOrTrybuild::Crate(c, host) => (c, host),
             CrateOrTrybuild::Trybuild(trybuild) => {
                 let (bin_name, config) =
-                    create_graph_trybuild(graph, extra_stmts, &trybuild.name_hint);
-                create_trybuild_service(
-                    trybuild,
-                    &config.project_dir,
-                    &config.target_dir,
-                    &config.features,
-                    &bin_name,
+                    create_graph_trybuild(graph, extra_stmts, &trybuild.name_hint, false);
+                let host = trybuild.host.clone();
+                (
+                    create_trybuild_service(
+                        trybuild,
+                        &config.project_dir,
+                        &config.target_dir,
+                        &config.features,
+                        &bin_name,
+                    ),
+                    host,
                 )
             }
         };
 
-        *self.underlying.borrow_mut() = Some(env.add_service(service));
+        *self.underlying.borrow_mut() = Some(env.add_service(service, host));
     }
 }
 
@@ -917,7 +921,12 @@ impl Node for DeployCluster {
             .any(|spec| matches!(spec, CrateOrTrybuild::Trybuild { .. }));
 
         let maybe_trybuild = if has_trybuild {
-            Some(create_graph_trybuild(graph, extra_stmts, &self.name_hint))
+            Some(create_graph_trybuild(
+                graph,
+                extra_stmts,
+                &self.name_hint,
+                false,
+            ))
         } else {
             None
         };
@@ -929,21 +938,25 @@ impl Node for DeployCluster {
             .unwrap()
             .into_iter()
             .map(|spec| {
-                let service = match spec {
-                    CrateOrTrybuild::Crate(c) => c,
+                let (service, host) = match spec {
+                    CrateOrTrybuild::Crate(c, host) => (c, host),
                     CrateOrTrybuild::Trybuild(trybuild) => {
                         let (bin_name, config) = maybe_trybuild.as_ref().unwrap();
-                        create_trybuild_service(
-                            trybuild,
-                            &config.project_dir,
-                            &config.target_dir,
-                            &config.features,
-                            bin_name,
+                        let host = trybuild.host.clone();
+                        (
+                            create_trybuild_service(
+                                trybuild,
+                                &config.project_dir,
+                                &config.target_dir,
+                                &config.features,
+                                bin_name,
+                            ),
+                            host,
                         )
                     }
                 };
 
-                env.add_service(service)
+                env.add_service(service, host)
             })
             .collect::<Vec<_>>();
         meta.insert(self.id, (0..(cluster_nodes.len() as u32)).collect());
@@ -967,12 +980,12 @@ impl Node for DeployCluster {
 
 #[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
-pub struct DeployProcessSpec(RustCrate);
+pub struct DeployProcessSpec(RustCrate, Arc<dyn Host>);
 
 impl DeployProcessSpec {
     #[expect(missing_docs, reason = "TODO")]
-    pub fn new(t: RustCrate) -> Self {
-        Self(t)
+    pub fn new(t: RustCrate, host: Arc<dyn Host>) -> Self {
+        Self(t, host)
     }
 }
 
@@ -981,7 +994,7 @@ impl ProcessSpec<'_, HydroDeploy> for DeployProcessSpec {
         DeployNode {
             id,
             next_port: Rc::new(RefCell::new(0)),
-            service_spec: Rc::new(RefCell::new(Some(CrateOrTrybuild::Crate(self.0)))),
+            service_spec: Rc::new(RefCell::new(Some(CrateOrTrybuild::Crate(self.0, self.1)))),
             underlying: Rc::new(RefCell::new(None)),
         }
     }
@@ -1001,11 +1014,11 @@ impl ProcessSpec<'_, HydroDeploy> for TrybuildHost {
 
 #[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
-pub struct DeployClusterSpec(Vec<RustCrate>);
+pub struct DeployClusterSpec(Vec<(RustCrate, Arc<dyn Host>)>);
 
 impl DeployClusterSpec {
     #[expect(missing_docs, reason = "TODO")]
-    pub fn new(crates: Vec<RustCrate>) -> Self {
+    pub fn new(crates: Vec<(RustCrate, Arc<dyn Host>)>) -> Self {
         Self(crates)
     }
 }
@@ -1016,7 +1029,10 @@ impl ClusterSpec<'_, HydroDeploy> for DeployClusterSpec {
             id,
             next_port: Rc::new(RefCell::new(0)),
             cluster_spec: Rc::new(RefCell::new(Some(
-                self.0.into_iter().map(CrateOrTrybuild::Crate).collect(),
+                self.0
+                    .into_iter()
+                    .map(|(c, h)| CrateOrTrybuild::Crate(c, h))
+                    .collect(),
             ))),
             members: Rc::new(RefCell::new(vec![])),
             name_hint: None,
@@ -1054,7 +1070,7 @@ fn create_trybuild_service(
     features: &Option<Vec<String>>,
     bin_name: &str,
 ) -> RustCrate {
-    let mut ret = RustCrate::new(dir, trybuild.host)
+    let mut ret = RustCrate::new(dir)
         .target_dir(target_dir)
         .bin(bin_name)
         .no_default_features();

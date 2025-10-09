@@ -18,7 +18,7 @@ type FlamegraphOptions = inferno::flamegraph::Options<'static>;
 /// so we trick it by defining a type alias.
 pub type CowStr = Cow<'static, str>;
 
-#[derive(Clone, buildstructor::Builder)]
+#[derive(Clone, buildstructor::Builder, Debug)]
 #[non_exhaustive] // Prevent direct construction.
 pub struct TracingOptions {
     /// Samples per second.

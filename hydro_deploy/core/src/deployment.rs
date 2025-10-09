@@ -62,7 +62,10 @@ impl Deployment {
         on: Arc<dyn Host>,
         external_ports: Vec<u16>,
     ) -> Arc<RwLock<CustomService>> {
-        self.add_service(|id| CustomService::new(id, on, external_ports))
+        self.add_service(
+            |id| CustomService::new(id, on.clone(), external_ports),
+            on.clone(),
+        )
     }
 
     /// Runs `deploy()`, and `start()`, waits for the trigger future, then runs `stop()`.
@@ -212,8 +215,9 @@ impl Deployment {
     pub fn add_service<T: Service + 'static>(
         &mut self,
         service: impl ServiceBuilder<Service = T>,
+        on: Arc<dyn Host>,
     ) -> Arc<RwLock<T>> {
-        let arc = Arc::new(RwLock::new(service.build(self.next_service_id)));
+        let arc = Arc::new(RwLock::new(service.build(self.next_service_id, on)));
         self.next_service_id += 1;
 
         self.services
