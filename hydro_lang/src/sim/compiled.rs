@@ -1,5 +1,6 @@
 //! Interfaces for compiled Hydro simulators and concrete simulation instances.
 
+use core::fmt;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
@@ -38,12 +39,24 @@ pub trait Instantiator<'a>: RefUnwindSafe + Fn() -> CompiledSimInstance<'a> {}
 #[sealed::sealed]
 impl<'a, T: RefUnwindSafe + Fn() -> CompiledSimInstance<'a>> Instantiator<'a> for T {}
 
+fn null_handler(_args: fmt::Arguments) {}
+
+fn println_handler(args: fmt::Arguments) {
+    println!("{}", args);
+}
+
+fn eprintln_handler(args: fmt::Arguments) {
+    eprintln!("{}", args);
+}
+
 type SimLoaded<'a> = libloading::Symbol<
     'a,
     unsafe extern "Rust" fn(
         bool,
         HashMap<usize, UnboundedSender<Bytes>>,
         HashMap<usize, UnboundedReceiverStream<Bytes>>,
+        fn(fmt::Arguments<'_>),
+        fn(fmt::Arguments<'_>),
     ) -> (
         Dfir<'static>,
         Vec<(&'static str, Dfir<'static>)>,
@@ -61,10 +74,16 @@ impl CompiledSim {
     /// independent instances of the simulation. This is useful for fuzzing, where we need to
     /// re-execute the simulation several times with different decisions.
     ///
-    /// The `log` parameter controls whether to log tick executions and stream releases.
-    pub fn with_instantiator<T>(&self, thunk: impl FnOnce(&dyn Instantiator) -> T, log: bool) -> T {
+    /// The `always_log` parameter controls whether to log tick executions and stream releases. If
+    /// it is `true`, logging will always be enabled. If it is `false`, logging will only be
+    /// enabled if the `HYDRO_SIM_LOG` environment variable is set to `1`.
+    pub fn with_instantiator<T>(
+        &self,
+        thunk: impl FnOnce(&dyn Instantiator) -> T,
+        always_log: bool,
+    ) -> T {
         let func: SimLoaded = unsafe { self.lib.get(b"__hydro_runtime").unwrap() };
-        let log = log || std::env::var("HYDRO_SIM_LOG").is_ok_and(|v| v == "1");
+        let log = always_log || std::env::var("HYDRO_SIM_LOG").is_ok_and(|v| v == "1");
         thunk(
             &(|| CompiledSimInstance {
                 func: func.clone(),
@@ -138,6 +157,16 @@ impl CompiledSim {
                     })
                     .run(move || {
                         let instance = instantiator();
+
+                        if instance.log {
+                            eprintln!(
+                                "{}",
+                                "\n==== New Simulation Instance ===="
+                                    .color(colored::Color::Cyan)
+                                    .bold()
+                            );
+                        }
+
                         tokio::runtime::Builder::new_current_thread()
                             .build()
                             .unwrap()
@@ -243,7 +272,7 @@ impl CompiledSim {
                     if instance.log {
                         eprintln!(
                             "{}",
-                            "\n==== New Exhaustive Instance ===="
+                            "\n==== New Simulation Instance ===="
                                 .color(colored::Color::Cyan)
                                 .bold()
                         );
@@ -312,11 +341,7 @@ impl<'a> CompiledSimInstance<'a> {
     /// Launches the simulation, which will asynchronously simulate the Hydro program. This should
     /// be invoked after connecting all inputs and outputs, but before receiving any messages.
     pub fn launch(self) {
-        if self.log {
-            tokio::task::spawn_local(self.schedule_with_logger(std::io::stderr()));
-        } else {
-            tokio::task::spawn_local(self.schedule_with_logger(std::io::empty()));
-        };
+        tokio::task::spawn_local(self.schedule_with_maybe_logger::<std::io::Empty>(None));
     }
 
     /// Returns a future that schedules simulation with the given logger for reporting the
@@ -326,6 +351,13 @@ impl<'a> CompiledSimInstance<'a> {
     pub fn schedule_with_logger<W: std::io::Write>(
         self,
         log_writer: W,
+    ) -> impl use<W> + Future<Output = ()> {
+        self.schedule_with_maybe_logger(Some(log_writer))
+    }
+
+    fn schedule_with_maybe_logger<W: std::io::Write>(
+        self,
+        log_override: Option<W>,
     ) -> impl use<W> + Future<Output = ()> {
         if !self.remaining_ports.is_empty() {
             panic!(
@@ -338,6 +370,16 @@ impl<'a> CompiledSimInstance<'a> {
                 colored::control::SHOULD_COLORIZE.should_colorize(),
                 self.output_ports,
                 self.input_ports,
+                if self.log {
+                    println_handler
+                } else {
+                    null_handler
+                },
+                if self.log {
+                    eprintln_handler
+                } else {
+                    null_handler
+                },
             )
         };
         let mut launched = LaunchedSim {
@@ -345,7 +387,8 @@ impl<'a> CompiledSimInstance<'a> {
             possibly_ready_ticks: vec![],
             not_ready_ticks: ticks.into_iter().collect(),
             hooks,
-            log_writer,
+            log: self.log,
+            log_override,
         };
 
         async move { launched.scheduler().await }
@@ -517,14 +560,19 @@ impl<'a, T: Serialize + 'static, M, O: Ordering, R: Retries>
 }
 
 // via https://www.reddit.com/r/rust/comments/t69sld/is_there_a_way_to_allow_either_stdfmtwrite_or/
-struct FmtWriter<W: std::io::Write>(W);
+struct FmtWriter<W: std::io::Write>(bool, Option<W>);
 impl<W: std::io::Write> std::fmt::Write for FmtWriter<W> {
     fn write_str(&mut self, s: &str) -> Result<(), std::fmt::Error> {
-        self.0.write_all(s.as_bytes()).map_err(|_| std::fmt::Error)
-    }
-
-    fn write_fmt(&mut self, args: std::fmt::Arguments<'_>) -> Result<(), std::fmt::Error> {
-        self.0.write_fmt(args).map_err(|_| std::fmt::Error)
+        if self.0 {
+            if let Some(w) = self.1.as_mut() {
+                w.write_all(s.as_bytes()).map_err(|_| std::fmt::Error)
+            } else {
+                eprint!("{}", s);
+                Ok(())
+            }
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -535,7 +583,8 @@ struct LaunchedSim<W: std::io::Write> {
     possibly_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
     not_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
     hooks: HashMap<&'static str, Vec<Box<dyn SimHook>>>,
-    log_writer: W,
+    log: bool,
+    log_override: Option<W>,
 }
 
 impl<W: std::io::Write> LaunchedSim<W> {
@@ -566,13 +615,20 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     let mut removed: (&'static str, Dfir<'static>) =
                         self.possibly_ready_ticks.remove(next_tick);
 
-                    let _ = writeln!(
-                        self.log_writer,
-                        "\n{}",
-                        "Running Tick".color(colored::Color::Magenta).bold()
-                    );
+                    if self.log {
+                        if let Some(writer) = self.log_override.as_mut() {
+                            writeln!(
+                                writer,
+                                "\n{}",
+                                "Running Tick".color(colored::Color::Magenta).bold()
+                            )
+                            .unwrap();
+                        } else {
+                            eprintln!("\n{}", "Running Tick".color(colored::Color::Magenta).bold())
+                        }
+                    }
 
-                    let mut fmt_writer = FmtWriter(&mut self.log_writer);
+                    let mut fmt_writer = FmtWriter(self.log, self.log_override.as_mut());
                     let mut asterisk_indenter = |_line_no, write: &mut dyn std::fmt::Write| {
                         write.write_str(&"*".color(colored::Color::Magenta).bold())?;
                         write.write_str(" ")
