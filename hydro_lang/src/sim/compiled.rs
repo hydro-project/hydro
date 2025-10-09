@@ -155,16 +155,20 @@ impl CompiledSim {
                         item_path: "<unknown>::__bolero_item_path__",
                         test_name: None,
                     })
-                    .run(move || {
-                        let instance = instantiator();
+                    .run_with_replay(move |is_replay| {
+                        let mut instance = instantiator();
 
                         if instance.log {
                             eprintln!(
                                 "{}",
-                                "\n==== New Simulation Instance ===="
+                                "\n==== New Simulation Instance ====\n"
                                     .color(colored::Color::Cyan)
                                     .bold()
                             );
+                        }
+
+                        if is_replay {
+                            instance.log = true;
                         }
 
                         tokio::runtime::Builder::new_current_thread()
@@ -267,15 +271,19 @@ impl CompiledSim {
                     test_name: None,
                 })
                 .exhaustive()
-                .run(move || {
-                    let instance = instantiator();
+                .run_with_replay(move |is_replay| {
+                    let mut instance = instantiator();
                     if instance.log {
                         eprintln!(
                             "{}",
-                            "\n==== New Simulation Instance ===="
+                            "\n==== New Simulation Instance ====\n"
                                 .color(colored::Color::Cyan)
                                 .bold()
                         );
+                    }
+
+                    if is_replay {
+                        instance.log = true;
                     }
 
                     tokio::runtime::Builder::new_current_thread()
