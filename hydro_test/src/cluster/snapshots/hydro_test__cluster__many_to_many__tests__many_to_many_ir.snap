@@ -156,6 +156,7 @@ expression: built.ir()
                                                 },
                                             },
                                         },
+                                        trusted: false,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
                                                 0,
@@ -284,6 +285,7 @@ expression: built.ir()
                     },
                 },
             },
+            trusted: false,
             metadata: HydroIrMetadata {
                 location_kind: Cluster(
                     0,
