@@ -1,7 +1,6 @@
 use bytes::Bytes;
 use stageleft::q;
 
-use crate::live_collections::stream::TotalOrder;
 use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
 use crate::location::{External, Location, Process};
 use crate::nondet::nondet;
@@ -61,65 +60,6 @@ fn sim_crash_in_output_with_filter() {
         {
             panic!("boom");
         }
-    });
-}
-
-#[test]
-#[should_panic]
-fn sim_batch_nondet_size() {
-    let flow = FlowBuilder::new();
-    let external = flow.external::<()>();
-    let node = flow.process::<()>();
-
-    let (port, input) = node.source_external_bincode::<_, _, TotalOrder, _>(&external);
-
-    let tick = node.tick();
-    let out_port = input
-        .batch(&tick, nondet!(/** test */))
-        .count()
-        .all_ticks()
-        .send_bincode_external(&external);
-
-    flow.sim().exhaustive(async |mut compiled| {
-        let in_send = compiled.connect(&port);
-        let mut out_recv = compiled.connect(&out_port);
-        compiled.launch();
-
-        in_send.send(()).unwrap();
-        in_send.send(()).unwrap();
-        in_send.send(()).unwrap();
-
-        assert_eq!(out_recv.next().await.unwrap(), 3); // fails with nondet batching
-    });
-}
-
-#[test]
-fn sim_batch_preserves_order() {
-    let flow = FlowBuilder::new();
-    let external = flow.external::<()>();
-    let node = flow.process::<()>();
-
-    let (port, input) = node.source_external_bincode(&external);
-
-    let tick = node.tick();
-    let out_port = input
-        .batch(&tick, nondet!(/** test */))
-        .all_ticks()
-        .send_bincode_external(&external);
-
-    flow.sim().exhaustive(async |mut compiled| {
-        let in_send = compiled.connect(&port);
-        let mut out_recv = compiled.connect(&out_port);
-        compiled.launch();
-
-        in_send.send(1).unwrap();
-        in_send.send(2).unwrap();
-        in_send.send(3).unwrap();
-
-        assert_eq!(out_recv.next().await.unwrap(), 1);
-        assert_eq!(out_recv.next().await.unwrap(), 2);
-        assert_eq!(out_recv.next().await.unwrap(), 3);
-        assert!(out_recv.next().await.is_none());
     });
 }
 

@@ -2744,13 +2744,15 @@ where
 
 #[cfg(test)]
 mod tests {
+    use core::panic;
+
     use futures::{SinkExt, StreamExt};
     use hydro_deploy::Deployment;
     use serde::{Deserialize, Serialize};
     use stageleft::q;
 
     use crate::compile::builder::FlowBuilder;
-    use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
+    use crate::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
     use crate::location::Location;
     use crate::nondet::nondet;
 
@@ -3005,5 +3007,88 @@ mod tests {
         external_in.send(1).await.unwrap();
         external_in.send(3).await.unwrap();
         assert_eq!(external_out.next().await.unwrap(), 3);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sim_batch_nondet_size() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, TotalOrder, _>(&external);
+
+        let tick = node.tick();
+        let out_port = input
+            .batch(&tick, nondet!(/** test */))
+            .count()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let mut out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send(()).unwrap();
+            in_send.send(()).unwrap();
+            in_send.send(()).unwrap();
+
+            assert_eq!(out_recv.next().await.unwrap(), 3); // fails with nondet batching
+        });
+    }
+
+    #[test]
+    fn sim_batch_preserves_order() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode(&external);
+
+        let tick = node.tick();
+        let out_port = input
+            .batch(&tick, nondet!(/** test */))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send(1).unwrap();
+            in_send.send(2).unwrap();
+            in_send.send(3).unwrap();
+
+            out_recv.assert_yields_only([1, 2, 3]).await;
+        });
+    }
+
+    #[test]
+    fn sim_batch_unordered_shuffles_count() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+
+        let tick = node.tick();
+        let batch = input.batch(&tick, nondet!(/** test */));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        let instance_count = flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+            out_recv.assert_yields_only_unordered([1, 2, 3, 4]).await;
+        });
+
+        assert_eq!(
+            instance_count,
+            75 // ∑ (k=1 to 4) S(4,k) × k! = 75
+        )
     }
 }
