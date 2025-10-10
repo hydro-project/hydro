@@ -18,6 +18,7 @@ pub mod flat_map;
 pub mod flatten;
 pub mod for_each;
 pub mod inspect;
+pub mod lazy;
 pub mod map;
 pub mod send_iter;
 pub mod send_stream;
