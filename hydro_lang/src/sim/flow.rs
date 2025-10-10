@@ -61,7 +61,9 @@ impl<'a> SimFlow<'a> {
     /// are no dataflow loops that generate infinite messages. Exhaustive searching provides a
     /// stronger guarantee of correctness than fuzzing, but may take a long time to complete.
     /// Because no fuzzer is involved, you can run exhaustive tests with `cargo test`.
-    pub fn exhaustive(self, thunk: impl AsyncFn(CompiledSimInstance) + RefUnwindSafe) {
+    ///
+    /// Returns the number of distinct executions explored.
+    pub fn exhaustive(self, thunk: impl AsyncFn(CompiledSimInstance) + RefUnwindSafe) -> usize {
         self.compiled().exhaustive(thunk)
     }
 
