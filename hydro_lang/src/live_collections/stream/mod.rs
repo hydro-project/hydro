@@ -1109,6 +1109,27 @@ where
             .reduce(comb)
     }
 
+    // only for internal APIs that have been carefully vetted, will eventually be removed once we
+    // have algebraic verification of these properties
+    fn reduce_commutative_idempotent_trusted<F>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> Optional<T, L, B>
+    where
+        F: Fn(&mut T, T) + 'a,
+    {
+        let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
+        let core = HydroNode::Reduce {
+            f,
+            input: Box::new(self.ir_node.into_inner()),
+            metadata: self
+                .location
+                .new_node_metadata(Optional::<T, L, B>::collection_kind()),
+        };
+
+        Optional::new(self.location, core)
+    }
+
     /// Computes the maximum element in the stream as an [`Optional`], which
     /// will be empty until the first element in the input arrives.
     ///
@@ -1130,7 +1151,7 @@ where
     where
         T: Ord,
     {
-        self.reduce_commutative_idempotent(q!(|curr, new| {
+        self.reduce_commutative_idempotent_trusted(q!(|curr, new| {
             if new > *curr {
                 *curr = new;
             }
@@ -1158,7 +1179,7 @@ where
     where
         T: Ord,
     {
-        self.reduce_commutative_idempotent(q!(|curr, new| {
+        self.reduce_commutative_idempotent_trusted(q!(|curr, new| {
             if new < *curr {
                 *curr = new;
             }
@@ -3066,6 +3087,34 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn sim_batch_unordered_shuffles() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+
+        let tick = node.tick();
+        let batch = input.batch(&tick, nondet!(/** test */));
+        let out_port = batch.clone().min().zip(batch.max())
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send_many_unordered([1, 2, 3]).unwrap();
+
+            if out_recv.collect::<Vec<_>>().await == vec![(1, 3), (2, 2)] {
+                panic!("saw both (1, 3) and (2, 2), so batching must have shuffled the order");
+            }
+        });
+    }
+
+    #[test]
     fn sim_batch_unordered_shuffles_count() {
         let flow = FlowBuilder::new();
         let external = flow.external::<()>();
@@ -3091,4 +3140,31 @@ mod tests {
             75 // ∑ (k=1 to 4) S(4,k) × k! = 75
         )
     }
+
+    // #[test]
+    // fn sim_observe_order_batched_count() {
+    //     let flow = FlowBuilder::new();
+    //     let external = flow.external::<()>();
+    //     let node = flow.process::<()>();
+
+    //     let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+
+    //     let tick = node.tick();
+    //     let batch = input.batch(&tick, nondet!(/** test */));
+    //     let out_port = batch.assume_ordering::<TotalOrder>(nondet!(/** test */)).all_ticks().send_bincode_external(&external);
+
+    //     let instance_count = flow.sim().exhaustive(async |mut compiled| {
+    //         let in_send = compiled.connect(&port);
+    //         let out_recv = compiled.connect(&out_port);
+    //         compiled.launch();
+
+    //         in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+    //         let _ = out_recv.collect::<Vec<_>>().await;
+    //     });
+
+    //     assert_eq!(
+    //         instance_count,
+    //         192 // 4! * 2^{4 - 1}
+    //     )
+    // }
 }
