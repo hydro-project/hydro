@@ -231,6 +231,7 @@ expression: built.ir()
                                                                 },
                                                             },
                                                         },
+                                                        trusted: true,
                                                         metadata: HydroIrMetadata {
                                                             location_kind: Cluster(
                                                                 0,
@@ -243,6 +244,7 @@ expression: built.ir()
                                                             },
                                                         },
                                                     },
+                                                    trusted: true,
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Cluster(
                                                             0,
@@ -707,6 +709,7 @@ expression: built.ir()
                                                     },
                                                 },
                                             },
+                                            trusted: false,
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
                                                     7,
@@ -1352,6 +1355,7 @@ expression: built.ir()
                                                                                                                                                     },
                                                                                                                                                 },
                                                                                                                                             },
+                                                                                                                                            trusted: false,
                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                 location_kind: Tick(
                                                                                                                                                     9,
@@ -1422,6 +1426,7 @@ expression: built.ir()
                                                                                                                                                                                                                         },
                                                                                                                                                                                                                     },
                                                                                                                                                                                                                 },
+                                                                                                                                                                                                                trusted: false,
                                                                                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                                                                                     location_kind: Cluster(
                                                                                                                                                                                                                         0,
@@ -1434,6 +1439,7 @@ expression: built.ir()
                                                                                                                                                                                                                     },
                                                                                                                                                                                                                 },
                                                                                                                                                                                                             },
+                                                                                                                                                                                                            trusted: false,
                                                                                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                                                                                 location_kind: Cluster(
                                                                                                                                                                                                                     0,
@@ -2026,6 +2032,7 @@ expression: built.ir()
                                                                                                                                     },
                                                                                                                                 },
                                                                                                                             },
+                                                                                                                            trusted: true,
                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                 location_kind: Tick(
                                                                                                                                     2,
@@ -2372,6 +2379,7 @@ expression: built.ir()
                                                 },
                                             },
                                         },
+                                        trusted: false,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
                                                 10,
@@ -2884,6 +2892,7 @@ expression: built.ir()
                                                                                 },
                                                                             },
                                                                         },
+                                                                        trusted: false,
                                                                         metadata: HydroIrMetadata {
                                                                             location_kind: Cluster(
                                                                                 0,
@@ -2958,6 +2967,7 @@ expression: built.ir()
                                                         },
                                                     },
                                                 },
+                                                trusted: false,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Cluster(
                                                         0,
@@ -3571,6 +3581,7 @@ expression: built.ir()
                                                                                                         },
                                                                                                     },
                                                                                                 },
+                                                                                                trusted: false,
                                                                                                 metadata: HydroIrMetadata {
                                                                                                     location_kind: Tick(
                                                                                                         11,
@@ -4001,6 +4012,7 @@ expression: built.ir()
                                                                     },
                                                                 },
                                                             },
+                                                            trusted: true,
                                                             metadata: HydroIrMetadata {
                                                                 location_kind: Cluster(
                                                                     2,
@@ -4372,6 +4384,7 @@ expression: built.ir()
                                                                     },
                                                                 },
                                                             },
+                                                            trusted: false,
                                                             metadata: HydroIrMetadata {
                                                                 location_kind: Cluster(
                                                                     0,
@@ -4594,6 +4607,7 @@ expression: built.ir()
                                                                                                             },
                                                                                                         },
                                                                                                     },
+                                                                                                    trusted: false,
                                                                                                     metadata: HydroIrMetadata {
                                                                                                         location_kind: Tick(
                                                                                                             1,
@@ -4698,6 +4712,7 @@ expression: built.ir()
                                                                                 },
                                                                             },
                                                                         },
+                                                                        trusted: true,
                                                                         metadata: HydroIrMetadata {
                                                                             location_kind: Tick(
                                                                                 1,
@@ -5261,6 +5276,7 @@ expression: built.ir()
                                                                                                                                             },
                                                                                                                                         },
                                                                                                                                     },
+                                                                                                                                    trusted: false,
                                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                                         location_kind: Tick(
                                                                                                                                             13,
@@ -5506,6 +5522,7 @@ expression: built.ir()
                                                                                                                                                                                                                 },
                                                                                                                                                                                                             },
                                                                                                                                                                                                         },
+                                                                                                                                                                                                        trusted: true,
                                                                                                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                                                                                                             location_kind: Tick(
                                                                                                                                                                                                                 1,
@@ -6371,6 +6388,7 @@ expression: built.ir()
                                                 },
                                             },
                                         },
+                                        trusted: false,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
                                                 14,
@@ -7165,6 +7183,7 @@ expression: built.ir()
                                                             },
                                                         },
                                                     },
+                                                    trusted: false,
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Atomic(
                                                             Tick(
@@ -7259,6 +7278,7 @@ expression: built.ir()
                                         },
                                     },
                                 },
+                                trusted: false,
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
                                         2,
@@ -7558,6 +7578,7 @@ expression: built.ir()
                                                                                 },
                                                                             },
                                                                         },
+                                                                        trusted: false,
                                                                         metadata: HydroIrMetadata {
                                                                             location_kind: Tick(
                                                                                 15,
@@ -8789,6 +8810,7 @@ expression: built.ir()
                                                                                     },
                                                                                 },
                                                                             },
+                                                                            trusted: false,
                                                                             metadata: HydroIrMetadata {
                                                                                 location_kind: Tick(
                                                                                     18,
@@ -9060,6 +9082,7 @@ expression: built.ir()
                                                         },
                                                     },
                                                 },
+                                                trusted: false,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
                                                         17,
@@ -9159,6 +9182,7 @@ expression: built.ir()
                             },
                         },
                     },
+                    trusted: true,
                     metadata: HydroIrMetadata {
                         location_kind: Tick(
                             17,
@@ -9480,6 +9504,7 @@ expression: built.ir()
                                                 },
                                             },
                                         },
+                                        trusted: false,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
                                                 19,
@@ -9788,6 +9813,7 @@ expression: built.ir()
                     },
                 },
             },
+            trusted: false,
             metadata: HydroIrMetadata {
                 location_kind: Cluster(
                     2,
@@ -10008,6 +10034,7 @@ expression: built.ir()
                                 },
                             },
                         },
+                        trusted: false,
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
                                 0,
@@ -10213,6 +10240,7 @@ expression: built.ir()
                                                                                     },
                                                                                 },
                                                                             },
+                                                                            trusted: false,
                                                                             metadata: HydroIrMetadata {
                                                                                 location_kind: Tick(
                                                                                     21,
@@ -10342,6 +10370,7 @@ expression: built.ir()
                                                                                                                                                                                     },
                                                                                                                                                                                 },
                                                                                                                                                                             },
+                                                                                                                                                                            trusted: false,
                                                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                                                 location_kind: Tick(
                                                                                                                                                                                     0,
@@ -10876,6 +10905,7 @@ expression: built.ir()
                                                                                                             },
                                                                                                         },
                                                                                                     },
+                                                                                                    trusted: false,
                                                                                                     metadata: HydroIrMetadata {
                                                                                                         location_kind: Process(
                                                                                                             3,
@@ -10967,6 +10997,7 @@ expression: built.ir()
                                                                                 },
                                                                             },
                                                                         },
+                                                                        trusted: false,
                                                                         metadata: HydroIrMetadata {
                                                                             location_kind: Tick(
                                                                                 23,
@@ -11228,6 +11259,7 @@ expression: built.ir()
                     },
                 },
             },
+            trusted: false,
             metadata: HydroIrMetadata {
                 location_kind: Process(
                     3,
@@ -11307,6 +11339,7 @@ expression: built.ir()
                                                                             },
                                                                         },
                                                                     },
+                                                                    trusted: false,
                                                                     metadata: HydroIrMetadata {
                                                                         location_kind: Tick(
                                                                             25,
@@ -11720,6 +11753,7 @@ expression: built.ir()
                     },
                 },
             },
+            trusted: false,
             metadata: HydroIrMetadata {
                 location_kind: Process(
                     3,
@@ -11863,6 +11897,7 @@ expression: built.ir()
                                                                                                                                         },
                                                                                                                                     },
                                                                                                                                 },
+                                                                                                                                trusted: false,
                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                     location_kind: Cluster(
                                                                                                                                         2,
@@ -12075,6 +12110,7 @@ expression: built.ir()
                                                                                         },
                                                                                     },
                                                                                 },
+                                                                                trusted: false,
                                                                                 metadata: HydroIrMetadata {
                                                                                     location_kind: Process(
                                                                                         3,
@@ -12128,6 +12164,7 @@ expression: built.ir()
                                                                         },
                                                                     },
                                                                 },
+                                                                trusted: false,
                                                                 metadata: HydroIrMetadata {
                                                                     location_kind: Tick(
                                                                         28,
@@ -12497,6 +12534,7 @@ expression: built.ir()
                     },
                 },
             },
+            trusted: false,
             metadata: HydroIrMetadata {
                 location_kind: Process(
                     3,
