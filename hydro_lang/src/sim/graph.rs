@@ -550,13 +550,59 @@ fn compile_sim_graph_trybuild(
 
         #[allow(unused)]
         fn __hydro_runtime_core<'a>(
-                mut __hydro_external_out: ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
-                mut __hydro_external_in: ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>
-            ) -> (
-                hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a>,
-                Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
-                ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
-            ) {
+            mut __hydro_external_out: ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
+            mut __hydro_external_in: ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>,
+            __println_handler: fn(::std::fmt::Arguments<'_>),
+            __eprintln_handler: fn(::std::fmt::Arguments<'_>),
+        ) -> (
+            hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a>,
+            Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
+            ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
+        ) {
+            macro_rules! println {
+                ($($arg:tt)*) => ({
+                    __println_handler(::std::format_args!($($arg)*));
+                })
+            }
+
+            macro_rules! eprintln {
+                ($($arg:tt)*) => ({
+                    __eprintln_handler(::std::format_args!($($arg)*));
+                })
+            }
+
+            // copy-pasted from std::dbg! so we can use the local eprintln! above
+            macro_rules! dbg {
+                // NOTE: We cannot use `concat!` to make a static string as a format argument
+                // of `eprintln!` because `file!` could contain a `{` or
+                // `$val` expression could be a block (`{ .. }`), in which case the `eprintln!`
+                // will be malformed.
+                () => {
+                    eprintln!("[{}:{}:{}]", ::std::file!(), ::std::line!(), ::std::column!())
+                };
+                ($val:expr $(,)?) => {
+                    // Use of `match` here is intentional because it affects the lifetimes
+                    // of temporaries - https://stackoverflow.com/a/48732525/1063961
+                    match $val {
+                        tmp => {
+                            eprintln!("[{}:{}:{}] {} = {:#?}",
+                                ::std::file!(),
+                                ::std::line!(),
+                                ::std::column!(),
+                                ::std::stringify!($val),
+                                // The `&T: Debug` check happens here (not in the format literal desugaring)
+                                // to avoid format literal related messages and suggestions.
+                                &&tmp as &dyn ::std::fmt::Debug,
+                            );
+                            tmp
+                        }
+                    }
+                };
+                ($($val:expr),+ $(,)?) => {
+                    ($(dbg!($val)),+,)
+                };
+            }
+
             let mut __hydro_hooks: ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
             #(#extra_stmts)*
             (#dfir_expr, vec![#(#tick_dfir_epxrs),*], __hydro_hooks)
@@ -566,14 +612,16 @@ fn compile_sim_graph_trybuild(
         unsafe extern "Rust" fn __hydro_runtime(
             should_color: bool,
             __hydro_external_out: ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
-            __hydro_external_in: ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>
+            __hydro_external_in: ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>,
+            __println_handler: fn(::std::fmt::Arguments<'_>),
+            __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
             __root_dfir_rs::scheduled::graph::Dfir<'static>,
             Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
         ) {
             hydro_lang::runtime_support::colored::control::set_override(should_color);
-            __hydro_runtime_core(__hydro_external_out, __hydro_external_in)
+            __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __println_handler, __eprintln_handler)
         }
     };
     source_ast
