@@ -136,56 +136,66 @@
 <a href=#136 id=136 data-nosnippet>136</a>    ) -&gt; bool {
 <a href=#137 id=137 data-nosnippet>137</a>        <span class="kw">let </span><span class="kw-2">mut </span>current_input = <span class="self">self</span>.input.borrow_mut();
 <a href=#138 id=138 data-nosnippet>138</a>        <span class="kw">let </span><span class="kw-2">mut </span>out = <span class="macro">vec!</span>[];
-<a href=#139 id=139 data-nosnippet>139</a>        <span class="kw">while </span>!current_input.is_empty() {
-<a href=#140 id=140 data-nosnippet>140</a>            <span class="kw">let </span>must_release = force_nontrivial &amp;&amp; out.is_empty();
-<a href=#141 id=141 data-nosnippet>141</a>            <span class="kw">if </span>!must_release &amp;&amp; produce().generate(driver).unwrap() {
-<a href=#142 id=142 data-nosnippet>142</a>                <span class="kw">break</span>;
-<a href=#143 id=143 data-nosnippet>143</a>            }
-<a href=#144 id=144 data-nosnippet>144</a>
-<a href=#145 id=145 data-nosnippet>145</a>            <span class="kw">let </span>idx = (<span class="number">0</span>..current_input.len()).generate(driver).unwrap();
-<a href=#146 id=146 data-nosnippet>146</a>            <span class="kw">let </span>item = current_input.remove(idx).unwrap();
-<a href=#147 id=147 data-nosnippet>147</a>            out.push(item);
-<a href=#148 id=148 data-nosnippet>148</a>        }
+<a href=#139 id=139 data-nosnippet>139</a>        <span class="kw">let </span><span class="kw-2">mut </span>min_index = <span class="number">0</span>;
+<a href=#140 id=140 data-nosnippet>140</a>        <span class="kw">while </span>!current_input.is_empty() {
+<a href=#141 id=141 data-nosnippet>141</a>            <span class="kw">let </span>must_release = force_nontrivial &amp;&amp; out.is_empty();
+<a href=#142 id=142 data-nosnippet>142</a>            <span class="kw">if </span>!must_release &amp;&amp; produce().generate(driver).unwrap() {
+<a href=#143 id=143 data-nosnippet>143</a>                <span class="kw">break</span>;
+<a href=#144 id=144 data-nosnippet>144</a>            }
+<a href=#145 id=145 data-nosnippet>145</a>
+<a href=#146 id=146 data-nosnippet>146</a>            <span class="kw">let </span>idx = (min_index..current_input.len()).generate(driver).unwrap();
+<a href=#147 id=147 data-nosnippet>147</a>            <span class="kw">let </span>item = current_input.remove(idx).unwrap();
+<a href=#148 id=148 data-nosnippet>148</a>            out.push(item);
 <a href=#149 id=149 data-nosnippet>149</a>
-<a href=#150 id=150 data-nosnippet>150</a>        <span class="kw">let </span>was_nontrivial = !out.is_empty();
-<a href=#151 id=151 data-nosnippet>151</a>        <span class="self">self</span>.to_release = <span class="prelude-val">Some</span>(out);
-<a href=#152 id=152 data-nosnippet>152</a>        was_nontrivial
-<a href=#153 id=153 data-nosnippet>153</a>    }
+<a href=#150 id=150 data-nosnippet>150</a>            min_index = idx;
+<a href=#151 id=151 data-nosnippet>151</a>            <span class="comment">// Next time, only consider items at or after this index. The reason this is safe is
+<a href=#152 id=152 data-nosnippet>152</a>            // because batching a `NoOrder` streams results in batches with a `NoOrder` guarantee.
+<a href=#153 id=153 data-nosnippet>153</a>            // Therefore, simulating different order of elements _within_ a batch is redundant.
 <a href=#154 id=154 data-nosnippet>154</a>
-<a href=#155 id=155 data-nosnippet>155</a>    <span class="kw">fn </span>release_decision(<span class="kw-2">&amp;mut </span><span class="self">self</span>, log_writer: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write) {
-<a href=#156 id=156 data-nosnippet>156</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(to_release) = <span class="self">self</span>.to_release.take() {
-<a href=#157 id=157 data-nosnippet>157</a>            <span class="kw">let </span>(batch_location, line, caret_indent) = <span class="self">self</span>.batch_location;
-<a href=#158 id=158 data-nosnippet>158</a>            <span class="kw">let </span>note_str = <span class="kw">if </span>to_release.is_empty() {
-<a href=#159 id=159 data-nosnippet>159</a>                <span class="string">"^ releasing no items"</span>.to_string()
-<a href=#160 id=160 data-nosnippet>160</a>            } <span class="kw">else </span>{
-<a href=#161 id=161 data-nosnippet>161</a>                <span class="macro">format!</span>(
-<a href=#162 id=162 data-nosnippet>162</a>                    <span class="string">"^ releasing unordered items: {:?}"</span>,
-<a href=#163 id=163 data-nosnippet>163</a>                    TruncatedVecDebug(<span class="kw-2">&amp;</span>to_release, <span class="number">8</span>, <span class="self">self</span>.format_item_debug)
-<a href=#164 id=164 data-nosnippet>164</a>                )
-<a href=#165 id=165 data-nosnippet>165</a>            };
-<a href=#166 id=166 data-nosnippet>166</a>
-<a href=#167 id=167 data-nosnippet>167</a>            <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
-<a href=#168 id=168 data-nosnippet>168</a>                log_writer,
-<a href=#169 id=169 data-nosnippet>169</a>                <span class="string">"{} {}"</span>,
-<a href=#170 id=170 data-nosnippet>170</a>                <span class="string">"--&gt;"</span>.color(colored::Color::Blue),
-<a href=#171 id=171 data-nosnippet>171</a>                batch_location
-<a href=#172 id=172 data-nosnippet>172</a>            );
-<a href=#173 id=173 data-nosnippet>173</a>
-<a href=#174 id=174 data-nosnippet>174</a>            <span class="kw">let _ </span>= <span class="macro">writeln!</span>(log_writer, <span class="string">" {}{}"</span>, <span class="string">"|"</span>.color(colored::Color::Blue), line);
-<a href=#175 id=175 data-nosnippet>175</a>
-<a href=#176 id=176 data-nosnippet>176</a>            <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
-<a href=#177 id=177 data-nosnippet>177</a>                log_writer,
-<a href=#178 id=178 data-nosnippet>178</a>                <span class="string">" {}{}{}"</span>,
-<a href=#179 id=179 data-nosnippet>179</a>                <span class="string">"|"</span>.color(colored::Color::Blue),
-<a href=#180 id=180 data-nosnippet>180</a>                caret_indent,
-<a href=#181 id=181 data-nosnippet>181</a>                note_str.color(colored::Color::Green)
+<a href=#155 id=155 data-nosnippet>155</a>            </span><span class="kw">if </span>min_index == current_input.len() {
+<a href=#156 id=156 data-nosnippet>156</a>                <span class="kw">break</span>;
+<a href=#157 id=157 data-nosnippet>157</a>            }
+<a href=#158 id=158 data-nosnippet>158</a>        }
+<a href=#159 id=159 data-nosnippet>159</a>
+<a href=#160 id=160 data-nosnippet>160</a>        <span class="kw">let </span>was_nontrivial = !out.is_empty();
+<a href=#161 id=161 data-nosnippet>161</a>        <span class="self">self</span>.to_release = <span class="prelude-val">Some</span>(out);
+<a href=#162 id=162 data-nosnippet>162</a>        was_nontrivial
+<a href=#163 id=163 data-nosnippet>163</a>    }
+<a href=#164 id=164 data-nosnippet>164</a>
+<a href=#165 id=165 data-nosnippet>165</a>    <span class="kw">fn </span>release_decision(<span class="kw-2">&amp;mut </span><span class="self">self</span>, log_writer: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write) {
+<a href=#166 id=166 data-nosnippet>166</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(to_release) = <span class="self">self</span>.to_release.take() {
+<a href=#167 id=167 data-nosnippet>167</a>            <span class="kw">let </span>(batch_location, line, caret_indent) = <span class="self">self</span>.batch_location;
+<a href=#168 id=168 data-nosnippet>168</a>            <span class="kw">let </span>note_str = <span class="kw">if </span>to_release.is_empty() {
+<a href=#169 id=169 data-nosnippet>169</a>                <span class="string">"^ releasing no items"</span>.to_string()
+<a href=#170 id=170 data-nosnippet>170</a>            } <span class="kw">else </span>{
+<a href=#171 id=171 data-nosnippet>171</a>                <span class="macro">format!</span>(
+<a href=#172 id=172 data-nosnippet>172</a>                    <span class="string">"^ releasing unordered items: {:?}"</span>,
+<a href=#173 id=173 data-nosnippet>173</a>                    TruncatedVecDebug(<span class="kw-2">&amp;</span>to_release, <span class="number">8</span>, <span class="self">self</span>.format_item_debug)
+<a href=#174 id=174 data-nosnippet>174</a>                )
+<a href=#175 id=175 data-nosnippet>175</a>            };
+<a href=#176 id=176 data-nosnippet>176</a>
+<a href=#177 id=177 data-nosnippet>177</a>            <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
+<a href=#178 id=178 data-nosnippet>178</a>                log_writer,
+<a href=#179 id=179 data-nosnippet>179</a>                <span class="string">"{} {}"</span>,
+<a href=#180 id=180 data-nosnippet>180</a>                <span class="string">"--&gt;"</span>.color(colored::Color::Blue),
+<a href=#181 id=181 data-nosnippet>181</a>                batch_location
 <a href=#182 id=182 data-nosnippet>182</a>            );
 <a href=#183 id=183 data-nosnippet>183</a>
-<a href=#184 id=184 data-nosnippet>184</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
-<a href=#185 id=185 data-nosnippet>185</a>                <span class="self">self</span>.output.send(item).unwrap();
-<a href=#186 id=186 data-nosnippet>186</a>            }
-<a href=#187 id=187 data-nosnippet>187</a>        } <span class="kw">else </span>{
-<a href=#188 id=188 data-nosnippet>188</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
-<a href=#189 id=189 data-nosnippet>189</a>        }
-<a href=#190 id=190 data-nosnippet>190</a>    }
-<a href=#191 id=191 data-nosnippet>191</a>}</code></pre></div></section></main></body></html>
+<a href=#184 id=184 data-nosnippet>184</a>            <span class="kw">let _ </span>= <span class="macro">writeln!</span>(log_writer, <span class="string">" {}{}"</span>, <span class="string">"|"</span>.color(colored::Color::Blue), line);
+<a href=#185 id=185 data-nosnippet>185</a>
+<a href=#186 id=186 data-nosnippet>186</a>            <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
+<a href=#187 id=187 data-nosnippet>187</a>                log_writer,
+<a href=#188 id=188 data-nosnippet>188</a>                <span class="string">" {}{}{}"</span>,
+<a href=#189 id=189 data-nosnippet>189</a>                <span class="string">"|"</span>.color(colored::Color::Blue),
+<a href=#190 id=190 data-nosnippet>190</a>                caret_indent,
+<a href=#191 id=191 data-nosnippet>191</a>                note_str.color(colored::Color::Green)
+<a href=#192 id=192 data-nosnippet>192</a>            );
+<a href=#193 id=193 data-nosnippet>193</a>
+<a href=#194 id=194 data-nosnippet>194</a>            <span class="kw">for </span>item <span class="kw">in </span>to_release {
+<a href=#195 id=195 data-nosnippet>195</a>                <span class="self">self</span>.output.send(item).unwrap();
+<a href=#196 id=196 data-nosnippet>196</a>            }
+<a href=#197 id=197 data-nosnippet>197</a>        } <span class="kw">else </span>{
+<a href=#198 id=198 data-nosnippet>198</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
+<a href=#199 id=199 data-nosnippet>199</a>        }
+<a href=#200 id=200 data-nosnippet>200</a>    }
+<a href=#201 id=201 data-nosnippet>201</a>}</code></pre></div></section></main></body></html>
