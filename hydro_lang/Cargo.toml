@@ -98,7 +98,7 @@ data-encoding = { version = "2.6.0", optional = true }
 serde_json = { version = "1.0.132", optional = true }
 
 # For the simulator
-bolero = { package = "bolero-hydro", version = "0.13.4", features = ["arbitrary"], optional = true }
+bolero = { package = "bolero-hydro", version = "0.13.5", optional = true }
 cargo_metadata = { version = "0.18.0", optional = true }
 colored = { version = "3", optional = true }
 indenter = { version = "0.3", optional = true }
