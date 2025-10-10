@@ -136,15 +136,25 @@ impl<T> SimHook for StreamHook<T, NoOrder> {
     ) -> bool {
         let mut current_input = self.input.borrow_mut();
         let mut out = vec![];
+        let mut min_index = 0;
         while !current_input.is_empty() {
             let must_release = force_nontrivial && out.is_empty();
             if !must_release && produce().generate(driver).unwrap() {
                 break;
             }
 
-            let idx = (0..current_input.len()).generate(driver).unwrap();
+            let idx = (min_index..current_input.len()).generate(driver).unwrap();
             let item = current_input.remove(idx).unwrap();
             out.push(item);
+
+            min_index = idx;
+            // Next time, only consider items at or after this index. The reason this is safe is
+            // because batching a `NoOrder` streams results in batches with a `NoOrder` guarantee.
+            // Therefore, simulating different order of elements _within_ a batch is redundant.
+
+            if min_index == current_input.len() {
+                break;
+            }
         }
 
         let was_nontrivial = !out.is_empty();

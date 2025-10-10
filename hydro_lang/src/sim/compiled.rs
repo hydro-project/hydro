@@ -251,13 +251,21 @@ impl CompiledSim {
     /// are no dataflow loops that generate infinite messages. Exhaustive searching provides a
     /// stronger guarantee of correctness than fuzzing, but may take a long time to complete.
     /// Because no fuzzer is involved, you can run exhaustive tests with `cargo test`.
-    pub fn exhaustive<'a>(&'a self, thunk: impl AsyncFn(CompiledSimInstance) + RefUnwindSafe) {
+    ///
+    /// Returns the number of distinct executions explored.
+    pub fn exhaustive<'a>(
+        &'a self,
+        thunk: impl AsyncFn(CompiledSimInstance) + RefUnwindSafe,
+    ) -> usize {
         if std::env::var("BOLERO_FUZZER").is_ok() {
             eprintln!(
                 "Cannot run exhaustive tests with a fuzzer. Please use `cargo test` instead of `cargo sim`."
             );
             std::process::abort();
         }
+
+        let mut count = 0;
+        let count_mut = &mut count;
 
         self.with_instantiator(
             |instantiator| {
@@ -272,6 +280,8 @@ impl CompiledSim {
                 })
                 .exhaustive()
                 .run_with_replay(move |is_replay| {
+                    *count_mut += 1;
+
                     let mut instance = instantiator();
                     if instance.log {
                         eprintln!(
@@ -297,6 +307,8 @@ impl CompiledSim {
             },
             false,
         );
+
+        count
     }
 }
 
@@ -470,6 +482,17 @@ impl<'a, T> SimReceiver<'a, T, TotalOrder, ExactlyOnce> {
 }
 
 impl<'a, T> SimReceiver<'a, T, NoOrder, ExactlyOnce> {
+    /// Collects all remaining messages from the external bincode stream into a collection,
+    /// sorting them. This will wait until no more messages can possibly arrive.
+    pub async fn collect_sorted<C: Default + Extend<T> + AsMut<[T]>>(self) -> C
+    where
+        T: Ord,
+    {
+        let mut collected: C = self.0.collect().await;
+        collected.as_mut().sort();
+        collected
+    }
+
     /// Asserts that the stream yields exactly the expected sequence of messages, in some order.
     /// This does not check that the stream ends, use [`Self::assert_yields_only_unordered`] for that.
     pub async fn assert_yields_unordered(&mut self, expected: impl IntoIterator<Item = T>)
