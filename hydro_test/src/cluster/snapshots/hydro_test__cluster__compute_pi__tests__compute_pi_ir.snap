@@ -214,6 +214,7 @@ expression: built.ir()
                                                     },
                                                 },
                                             },
+                                            trusted: false,
                                             metadata: HydroIrMetadata {
                                                 location_kind: Process(
                                                     1,
@@ -376,6 +377,7 @@ expression: built.ir()
                     },
                 },
             },
+            trusted: false,
             metadata: HydroIrMetadata {
                 location_kind: Process(
                     1,

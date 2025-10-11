@@ -233,13 +233,25 @@ impl DfirBuilder for SimBuilder {
 
     fn observe_nondet(
         &mut self,
-        _location: &LocationId,
-        _in_ident: syn::Ident,
+        trusted: bool,
+        location: &LocationId,
+        in_ident: syn::Ident,
         _in_kind: &CollectionKind,
-        _out_ident: &syn::Ident,
+        out_ident: &syn::Ident,
         _out_kind: &CollectionKind,
     ) {
-        todo!()
+        if trusted {
+            let builder = self.get_dfir_mut(location);
+            builder.add_dfir(
+                parse_quote! {
+                    #out_ident = #in_ident;
+                },
+                None,
+                None,
+            );
+        } else {
+            todo!()
+        }
     }
 
     fn create_network(

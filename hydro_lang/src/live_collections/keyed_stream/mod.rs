@@ -255,6 +255,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 self.location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.into_inner()),
+                    trusted: false,
                     metadata: self
                         .location
                         .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
@@ -297,6 +298,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 self.location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.into_inner()),
+                    trusted: false,
                     metadata: self
                         .location
                         .new_node_metadata(KeyedStream::<K, V, L, B, O, R2>::collection_kind()),
