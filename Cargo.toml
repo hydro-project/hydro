@@ -67,5 +67,5 @@ uninlined_format_args = "allow"
 upper_case_acronyms = "warn"
 
 [workspace.dependencies]
-stageleft = "0.9.8"
-stageleft_tool = "0.9.8"
+stageleft = { git = "https://github.com/hydro-project/stageleft.git", branch = "pr36" } # "0.9.8"
+stageleft_tool = { git = "https://github.com/hydro-project/stageleft.git", branch = "pr36" } # "0.9.8"

@@ -3,15 +3,13 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 use dfir_lang::graph::DfirGraph;
+use proc_macro2::Span;
 use sha2::{Digest, Sha256};
 use stageleft::internal::quote;
-use syn::visit_mut::VisitMut;
 use trybuild_internals_api::cargo::{self, Metadata};
 use trybuild_internals_api::env::Update;
 use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{Runner, dependencies, features, path};
-
-use super::trybuild_rewriters::UseTestModeStaged;
 
 pub const HYDRO_RUNTIME_FEATURES: &[&str] = &["deploy_integration", "runtime_measure"];
 
@@ -52,6 +50,7 @@ pub struct TrybuildConfig {
     pub project_dir: PathBuf,
     pub target_dir: PathBuf,
     pub features: Option<Vec<String>>,
+    pub test_mode_env: Option<String>,
 }
 
 pub fn create_graph_trybuild(
@@ -65,39 +64,12 @@ pub fn create_graph_trybuild(
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let generated_code = compile_graph_trybuild(graph, extra_stmts, crate_name.clone(), is_test);
+    let generated_code = compile_graph_trybuild(graph, extra_stmts);
 
-    let inlined_staged: syn::File = if is_test {
-        let gen_staged = stageleft_tool::gen_staged_trybuild(
-            &path!(source_dir / "src" / "lib.rs"),
-            &path!(source_dir / "Cargo.toml"),
-            crate_name.clone(),
-            is_test,
-        );
-
-        syn::parse_quote! {
-            #[allow(
-                unused,
-                ambiguous_glob_reexports,
-                clippy::suspicious_else_formatting,
-                unexpected_cfgs,
-                reason = "generated code"
-            )]
-            pub mod __staged {
-                #gen_staged
-            }
-        }
-    } else {
-        let crate_name_ident = syn::Ident::new(crate_name, proc_macro2::Span::call_site());
-        syn::parse_quote!(
-            pub use #crate_name_ident::__staged;
-        )
-    };
-
+    let crate_name_ident = syn::Ident::new(&crate_name, Span::call_site());
     let source = prettyplease::unparse(&syn::parse_quote! {
         #generated_code
-
-        #inlined_staged
+        pub use #crate_name_ident::__staged;
     });
 
     let hash = format!("{:X}", Sha256::digest(&source))
@@ -122,6 +94,7 @@ pub fn create_graph_trybuild(
         write_atomic(source.as_ref(), &out_path).unwrap();
     }
 
+    let mut test_mode_env = None;
     if is_test {
         if cur_bin_enabled_features.is_none() {
             cur_bin_enabled_features = Some(vec![]);
@@ -131,6 +104,8 @@ pub fn create_graph_trybuild(
             .as_mut()
             .unwrap()
             .push("hydro___test".to_string());
+
+        test_mode_env = Some(format!("STAGELEFT_TEST_MODE_{}", crate_name));
     }
 
     (
@@ -139,6 +114,7 @@ pub fn create_graph_trybuild(
             project_dir,
             target_dir,
             features: cur_bin_enabled_features,
+            test_mode_env,
         },
     )
 }
@@ -146,24 +122,15 @@ pub fn create_graph_trybuild(
 pub fn compile_graph_trybuild(
     partitioned_graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
-    crate_name: String,
-    is_test: bool,
 ) -> syn::File {
     let mut diagnostics = Vec::new();
-    let mut dfir_expr: syn::Expr = syn::parse2(partitioned_graph.as_code(
+    let dfir_expr: syn::Expr = syn::parse2(partitioned_graph.as_code(
         &quote! { __root_dfir_rs },
         true,
         quote!(),
         &mut diagnostics,
     ))
     .unwrap();
-
-    if is_test {
-        UseTestModeStaged {
-            crate_name: crate_name.clone(),
-        }
-        .visit_expr_mut(&mut dfir_expr);
-    }
 
     let source_ast: syn::File = syn::parse_quote! {
         #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]

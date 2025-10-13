@@ -4742,8 +4742,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "stageleft"
 version = "0.9.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b915ab838401960cb432c92dd04a3b165e8dde9d9f5f81497afe5e224e87b72"
+source = "git+https://github.com/hydro-project/stageleft.git?branch=pr36#ab56200feec621222b28e08a858c804a843aa15d"
 dependencies = [
  "ctor 0.4.3",
  "proc-macro-crate 3.3.0",
@@ -4756,8 +4755,7 @@ dependencies = [
 [[package]]
 name = "stageleft_macro"
 version = "0.9.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c8550ce6539cb7ce3a310c7f3f1d22f7fbfd5e0607f728c6472059e0df02679"
+source = "git+https://github.com/hydro-project/stageleft.git?branch=pr36#ab56200feec621222b28e08a858c804a843aa15d"
 dependencies = [
  "proc-macro-crate 3.3.0",
  "proc-macro2",
@@ -4769,8 +4767,7 @@ dependencies = [
 [[package]]
 name = "stageleft_tool"
 version = "0.9.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2547c755b850036e86e059d44130d2119beccfb173c583950ba02bee17e6f928"
+source = "git+https://github.com/hydro-project/stageleft.git?branch=pr36#ab56200feec621222b28e08a858c804a843aa15d"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.3.0",

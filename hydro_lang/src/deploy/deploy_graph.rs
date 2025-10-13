@@ -852,6 +852,7 @@ impl Node for DeployNode {
                     &config.project_dir,
                     &config.target_dir,
                     &config.features,
+                    &config.test_mode_env,
                     &bin_name,
                 )
             }
@@ -938,6 +939,7 @@ impl Node for DeployCluster {
                             &config.project_dir,
                             &config.target_dir,
                             &config.features,
+                            &config.test_mode_env,
                             bin_name,
                         )
                     }
@@ -1052,6 +1054,7 @@ fn create_trybuild_service(
     dir: &std::path::PathBuf,
     target_dir: &std::path::PathBuf,
     features: &Option<Vec<String>>,
+    test_mode_env: &Option<String>,
     bin_name: &str,
 ) -> RustCrate {
     let mut ret = RustCrate::new(dir, trybuild.host)
@@ -1097,6 +1100,10 @@ fn create_trybuild_service(
 
     for (key, value) in trybuild.build_envs {
         ret = ret.build_env(key, value);
+    }
+
+    if let Some(env) = test_mode_env.as_ref() {
+        ret = ret.build_env(env, "1")
     }
 
     ret = ret.build_env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");

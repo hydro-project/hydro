@@ -5,9 +5,9 @@ use std::process::{Command, Stdio};
 use std::rc::Rc;
 
 use dfir_lang::graph::DfirGraph;
+use proc_macro2::Span;
 use quote::quote;
 use sha2::{Digest, Sha256};
-use syn::visit_mut::VisitMut;
 use tempfile::TempPath;
 use trybuild_internals_api::{cargo, dependencies, path};
 
@@ -15,7 +15,6 @@ use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort}
 use crate::deploy::trybuild::{
     CONCURRENT_TEST_LOCK, IS_TEST, TrybuildConfig, create_trybuild, write_atomic,
 };
-use crate::deploy::trybuild_rewriters::UseTestModeStaged;
 use crate::location::dynamic::LocationId;
 
 #[derive(Clone)]
@@ -256,7 +255,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p2: &Self::Process,
         _p2_port: &Self::Port,
     ) -> syn::Expr {
-        let ident = syn::Ident::new("__hydro_external_in", proc_macro2::Span::call_site());
+        let ident = syn::Ident::new("__hydro_external_in", Span::call_site());
         syn::parse_quote!(
             #ident.remove(&#p1_port).unwrap()
         )
@@ -280,7 +279,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p2: &Self::External,
         p2_port: &Self::Port,
     ) -> syn::Expr {
-        let ident = syn::Ident::new("__hydro_external_out", proc_macro2::Span::call_site());
+        let ident = syn::Ident::new("__hydro_external_out", Span::call_site());
         syn::parse_quote!(
             #ident.remove(&#p2_port).unwrap()
         )
@@ -327,6 +326,10 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     command.arg("--message-format=json-diagnostic-rendered-ansi");
     command.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
     command.env("TRYBUILD_LIB_NAME", &bin);
+
+    if let Some(env) = trybuild.test_mode_env {
+        command.env(env, "1");
+    }
 
     if let Ok(fuzzer) = std::env::var("BOLERO_FUZZER") {
         command.env_remove("BOLERO_FUZZER");
@@ -407,40 +410,12 @@ pub(super) fn create_sim_graph_trybuild(
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let generated_code =
-        compile_sim_graph_trybuild(graph, tick_graphs, extra_stmts, crate_name.clone(), is_test);
+    let generated_code = compile_sim_graph_trybuild(graph, tick_graphs, extra_stmts);
 
-    let inlined_staged: syn::File = if is_test {
-        let gen_staged = stageleft_tool::gen_staged_trybuild(
-            &path!(source_dir / "src" / "lib.rs"),
-            &path!(source_dir / "Cargo.toml"),
-            crate_name.clone(),
-            is_test,
-        );
-
-        syn::parse_quote! {
-            #[allow(
-                unused,
-                ambiguous_glob_reexports,
-                clippy::suspicious_else_formatting,
-                unexpected_cfgs,
-                reason = "generated code"
-            )]
-            pub mod __staged {
-                #gen_staged
-            }
-        }
-    } else {
-        let crate_name_ident = syn::Ident::new(crate_name, proc_macro2::Span::call_site());
-        syn::parse_quote!(
-            pub use #crate_name_ident::__staged;
-        )
-    };
-
+    let crate_name_ident = syn::Ident::new(&crate_name, Span::call_site());
     let source = prettyplease::unparse(&syn::parse_quote! {
         #generated_code
-
-        #inlined_staged
+        pub use #crate_name_ident::__staged;
     });
 
     let hash = format!("{:X}", Sha256::digest(&source))
@@ -477,6 +452,7 @@ pub(super) fn create_sim_graph_trybuild(
         .unwrap();
     }
 
+    let mut test_mode_env = None;
     if is_test {
         if cur_bin_enabled_features.is_none() {
             cur_bin_enabled_features = Some(vec![]);
@@ -486,6 +462,8 @@ pub(super) fn create_sim_graph_trybuild(
             .as_mut()
             .unwrap()
             .push("hydro___test".to_string());
+
+        test_mode_env = Some(format!("STAGELEFT_TEST_MODE_{}", crate_name));
     }
 
     (
@@ -494,6 +472,7 @@ pub(super) fn create_sim_graph_trybuild(
             project_dir,
             target_dir,
             features: cur_bin_enabled_features,
+            test_mode_env,
         },
     )
 }
@@ -502,11 +481,9 @@ fn compile_sim_graph_trybuild(
     partitioned_graph: DfirGraph,
     tick_graphs: BTreeMap<LocationId, DfirGraph>,
     extra_stmts: Vec<syn::Stmt>,
-    crate_name: String,
-    is_test: bool,
 ) -> syn::File {
     let mut diagnostics = Vec::new();
-    let mut dfir_expr: syn::Expr = syn::parse2(partitioned_graph.as_code(
+    let dfir_expr: syn::Expr = syn::parse2(partitioned_graph.as_code(
         &quote! { __root_dfir_rs },
         true,
         quote!(),
@@ -514,30 +491,16 @@ fn compile_sim_graph_trybuild(
     ))
     .unwrap();
 
-    if is_test {
-        UseTestModeStaged {
-            crate_name: crate_name.clone(),
-        }
-        .visit_expr_mut(&mut dfir_expr);
-    }
-
     let tick_dfir_epxrs = tick_graphs
         .into_iter()
         .map(|(lid, g)| {
-            let mut dfir_expr: syn::Expr = syn::parse2(g.as_code(
+            let dfir_expr: syn::Expr = syn::parse2(g.as_code(
                 &quote! { __root_dfir_rs },
                 true,
                 quote!(),
                 &mut diagnostics,
             ))
             .unwrap();
-
-            if is_test {
-                UseTestModeStaged {
-                    crate_name: crate_name.clone(),
-                }
-                .visit_expr_mut(&mut dfir_expr);
-            }
 
             let ser_lid = serde_json::to_string(&lid).unwrap();
             syn::parse_quote!((#ser_lid, #dfir_expr))
