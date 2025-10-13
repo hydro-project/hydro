@@ -603,7 +603,9 @@ impl HydroNode {
 
             // Transform operations with Stream edges - grouped by node/edge type
             HydroNode::Cast { inner, metadata }
-            | HydroNode::ObserveNonDet { inner, metadata }
+            | HydroNode::ObserveNonDet {
+                inner, metadata, ..
+            }
             | HydroNode::DeferTick {
                 input: inner,
                 metadata,
