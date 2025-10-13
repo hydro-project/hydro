@@ -48,9 +48,15 @@ pub async fn launch_flow(mut flow: Dfir<'_>) {
     }
 }
 
+pub async fn launch_flow_containerized(mut flow: Dfir<'_>) {
+    let local_set = tokio::task::LocalSet::new();
+    local_set.run_until(flow.run()).await;
+}
+
 pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T> {
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();
+    eprintln!("INPUT: {input}");
     let trimmed = input.trim();
 
     let bind_config = serde_json::from_str::<InitConfig>(trimmed).unwrap();
@@ -66,9 +72,11 @@ pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T
 
     let bind_serialized = serde_json::to_string(&bind_results).unwrap();
     println!("ready: {bind_serialized}");
+    eprintln!("ready: {bind_serialized}");
 
     let mut start_buf = String::new();
     std::io::stdin().read_line(&mut start_buf).unwrap();
+    eprintln!("START COMMAND: {start_buf}");
     let connection_defns = if start_buf.starts_with("start: ") {
         serde_json::from_str::<HashMap<String, ServerPort>>(
             start_buf.trim_start_matches("start: ").trim(),
@@ -78,25 +86,41 @@ pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T
         panic!("expected start");
     };
 
+    eprintln!("PRE CONNECT/ACCEPT: connections_defn: {connection_defns:?}, binds: {binds:?}",);
+
     let (client_conns, server_conns) = futures::join!(
         connection_defns
             .into_iter()
-            .map(|(name, defn)| async move { (name, Connection::AsClient(defn.connect().await)) })
+            .map(|(name, defn)| async move {
+                eprintln!("connecting to {name} {defn:?}");
+                let r = (name, Connection::AsClient(defn.connect().await));
+                eprintln!("connected to {} {:?}", r.0, r.1);
+                r
+            })
             .collect::<FuturesUnordered<_>>()
             .collect::<Vec<_>>(),
         binds
             .into_iter()
-            .map(
-                |(name, defn)| async move { (name, Connection::AsServer(accept_bound(defn).await)) }
-            )
+            .map(|(name, defn)| async move {
+                eprintln!("accepting on {name} {defn:?}");
+                let r = (name, Connection::AsServer(accept_bound(defn).await));
+                eprintln!("accepted on {} {:?}", r.0, r.1);
+                r
+            })
             .collect::<FuturesUnordered<_>>()
             .collect::<Vec<_>>()
+    );
+
+    eprintln!(
+        "POST CONNECT/ACCEPT. client_conns: {client_conns:?}, server_conns: {server_conns:?}"
     );
 
     let all_connected = client_conns
         .into_iter()
         .chain(server_conns.into_iter())
         .collect();
+
+    eprintln!("POST CONNECT/ACCEPT 2: {all_connected:?}");
 
     DeployPorts {
         ports: RefCell::new(all_connected),
@@ -111,6 +135,7 @@ pub async fn init<T: DeserializeOwned + Default>() -> DeployPorts<T> {
     let ret = init_no_ack_start::<T>().await;
 
     println!("ack start");
+    eprintln!("ack start");
 
     ret
 }
