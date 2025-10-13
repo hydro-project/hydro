@@ -335,6 +335,7 @@ pub trait DfirBuilder {
 
     fn observe_nondet(
         &mut self,
+        trusted: bool,
         location: &LocationId,
         in_ident: syn::Ident,
         in_kind: &CollectionKind,
@@ -419,6 +420,7 @@ impl DfirBuilder for BTreeMap<usize, FlatGraphBuilder> {
 
     fn observe_nondet(
         &mut self,
+        _trusted: bool,
         location: &LocationId,
         in_ident: syn::Ident,
         _in_kind: &CollectionKind,
@@ -1324,6 +1326,7 @@ pub enum HydroNode {
     /// explicitly selects a randomized interpretation.
     ObserveNonDet {
         inner: Box<HydroNode>,
+        trusted: bool, // if true, we do not need to simulate non-determinism
         metadata: HydroIrMetadata,
     },
 
@@ -1663,8 +1666,13 @@ impl HydroNode {
                 inner: Box::new(inner.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
-            HydroNode::ObserveNonDet { inner, metadata } => HydroNode::ObserveNonDet {
+            HydroNode::ObserveNonDet {
+                inner,
+                trusted,
+                metadata,
+            } => HydroNode::ObserveNonDet {
                 inner: Box::new(inner.deep_clone(seen_tees)),
+                trusted: *trusted,
                 metadata: metadata.clone(),
             },
             HydroNode::Source { source, metadata } => HydroNode::Source {
@@ -1941,7 +1949,10 @@ impl HydroNode {
             }
 
             HydroNode::ObserveNonDet {
-                inner, metadata, ..
+                inner,
+                trusted,
+                metadata,
+                ..
             } => {
                 let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
@@ -1951,6 +1962,7 @@ impl HydroNode {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         graph_builders.observe_nondet(
+                            *trusted,
                             &inner.metadata().location_kind,
                             inner_ident,
                             &inner.metadata().collection_kind,
