@@ -353,7 +353,7 @@ pub trait Location<'a>: dynamic::DynLocation {
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: None,
                 metadata: self.new_node_metadata(Stream::<
-                    std::io::Result<(u64, <Codec as Decoder>::Item)>,
+                    Result<(u64, <Codec as Decoder>::Item), <Codec as Decoder>::Error>,
                     Self,
                     Unbounded,
                     TotalOrder,
