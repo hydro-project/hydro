@@ -57,3 +57,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::signal::ctrl_c().await.unwrap();
     Ok(())
 }
+
+#[test]
+fn test() {
+    use example_test::run_current_example;
+
+    let mut run = run_current_example!();
+    run.read_regex(r"Chat server started");
+}
