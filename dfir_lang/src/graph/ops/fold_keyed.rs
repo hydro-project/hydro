@@ -91,7 +91,6 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                    is_pull,
                    work_fn,
                    root,
-                   op_name,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -106,7 +105,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                    ..
                },
                _| {
-        assert!(is_pull, "TODO(mingwei): `{}` only supports pull.", op_name);
+        assert!(is_pull);
 
         let persistence = match persistence_args[..] {
             [] => Persistence::Tick,

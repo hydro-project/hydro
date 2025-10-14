@@ -167,7 +167,7 @@ pub fn identity_write_iterator_fn(
         let input = &inputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_input<Iter: ::std::iter::Iterator<Item = Item>, Item>(iter: Iter) -> impl ::std::iter::Iterator<Item = Item> { iter }
+                fn check_input<St: #root::futures::stream::Stream<Item = Item>, Item>(stream: St) -> impl #root::futures::stream::Stream<Item = Item> { stream }
                 check_input::<_, #generic_type>(#input)
             };
         }
