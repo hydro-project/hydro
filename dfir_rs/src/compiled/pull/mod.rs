@@ -9,3 +9,6 @@ pub use half_join_state::*;
 
 mod anti_join;
 pub use anti_join::*;
+
+mod persist;
+pub use persist::Persist;
