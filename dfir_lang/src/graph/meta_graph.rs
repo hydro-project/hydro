@@ -906,7 +906,7 @@ impl DfirGraph {
                 let recv_port_code = recv_ports.iter().map(|ident| {
                     quote_spanned! {ident.span()=>
                         let mut #ident = #ident.borrow_mut_swap();
-                        let #ident = #ident.drain(..);
+                        let #ident = #root::futures::stream::iter(#ident.drain(..));
                     }
                 });
                 let send_port_code = send_ports.iter().map(|ident| {
@@ -1112,18 +1112,27 @@ impl DfirGraph {
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
-                                            pub fn #work_fn<Item, Input: ::std::iter::Iterator<Item = Item>>(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
-                                                #[repr(transparent)]
-                                                struct Pull<Item, Input: ::std::iter::Iterator<Item = Item>> {
-                                                    inner: Input
+                                            pub fn #work_fn<Item, Input: #root::futures::stream::Stream<Item = Item>>(input: Input) -> impl #root::futures::stream::Stream<Item = Item> {
+                                                #root::pin_project_lite::pin_project! {
+                                                    #[repr(transparent)]
+                                                    struct Pull<Item, Input: #root::futures::stream::Stream<Item = Item>> {
+                                                        #[pin]
+                                                        inner: Input
+                                                    }
                                                 }
 
-                                                impl<Item, Input: ::std::iter::Iterator<Item = Item>> Iterator for Pull<Item, Input> {
+                                                impl<Item, Input> #root::futures::stream::Stream for Pull<Item, Input>
+                                                where
+                                                    Input: #root::futures::stream::Stream<Item = Item>,
+                                                {
                                                     type Item = Item;
 
                                                     #[inline(always)]
-                                                    fn next(&mut self) -> Option<Self::Item> {
-                                                        self.inner.next()
+                                                    fn poll_next(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        cx: &mut ::std::task::Context>,
+                                                    ) -> ::std::task::Poll<::std::option::Option<Self::Item>> {
+                                                        self.project().inner.poll_next(cx)
                                                     }
 
                                                     #[inline(always)]
@@ -1155,6 +1164,7 @@ impl DfirGraph {
                                                         si: Si,
                                                     }
                                                 }
+
                                                 impl<Item, Si> #root::futures::sink::Sink<Item> for Push<Si>
                                                 where
                                                     Si: #root::futures::sink::Sink<Item>,
@@ -1243,10 +1253,10 @@ impl DfirGraph {
                             fn #pivot_fn_ident<Pull, Push, Item>(pull: Pull, push: Push)
                                 -> impl ::std::future::Future<Output = ::std::result::Result<(), #root::Never>>
                             where
-                                Pull: ::std::iter::Iterator<Item = Item>,
+                                Pull: #root::futures::stream::Stream<Item = Item>,
                                 Push: #root::futures::sink::Sink<Item, Error = #root::Never>,
                             {
-                                #root::sinktools::send_iter(pull, push)
+                                #root::sinktools::send_stream(pull, push)
                             }
                             (#pivot_fn_ident)(#pull_ident, #push_ident).await.unwrap(/* Never */);
                         });

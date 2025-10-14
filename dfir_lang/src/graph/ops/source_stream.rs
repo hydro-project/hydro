@@ -63,10 +63,12 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
             };
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = std::iter::from_fn(|| {
+            let #ident = #root::futures::stream::poll_fn(|_tick_cx| {
+                // Using the `tick_cx` will cause the tick to "block" until the stream is exhausted, which is not what we want.
+                // We want only the ready items, and will awaken this subgraph on a later tick when more items are available.
                 match #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut #stream_ident), &mut std::task::Context::from_waker(&#context.waker())) {
-                    std::task::Poll::Ready(maybe) => maybe,
-                    std::task::Poll::Pending => None,
+                    std::task::Poll::Ready(maybe) => Poll::Ready(maybe),
+                    std::task::Poll::Pending => Poll::Ready(None),
                 }
             });
         };

@@ -37,6 +37,7 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |&WriteContextArgs {
+        root,
                    op_span,
                    ident,
                    inputs,
@@ -48,36 +49,35 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                _| {
         let max_output = arguments.get(0); // used in chain_first_n
 
-        let without_limit = if is_pull {
-            quote_spanned!(op_span=>a.chain(b))
-        } else {
-            quote::quote!(()) // unused
-        };
-
-        let with_limit = if let Some(max) = max_output {
-            quote_spanned!(op_span=>#without_limit.take(#max))
-        } else {
-            without_limit
-        };
-
         let write_iterator = if is_pull {
+            let mut chain_expr = quote_spanned! {op_span=>
+                // NOTE(mingwei): `StreamExt::merge` may make more sense, but may inline worse.
+                #root::futures::stream::StreamExt::chain(a, b)
+            };
+            if let Some(max) = max_output {
+                chain_expr = quote_spanned! {op_span=>
+                    #chain_expr.take(#max)
+                };
+            }
+
             let chains = inputs
                 .iter()
                 .map(|i| i.to_token_stream())
                 .reduce(|a, b| quote_spanned! {op_span=> check_inputs(#a, #b) })
-                .unwrap_or_else(|| quote_spanned! {op_span=> std::iter::empty() });
+                .unwrap_or_else(|| quote_spanned! {op_span=> ::std::iter::empty() });
             quote_spanned! {op_span=>
                 let #ident = {
                     #[allow(unused)]
                     #[inline(always)]
                     fn check_inputs<A: ::std::iter::Iterator<Item = Item>, B: ::std::iter::Iterator<Item = Item>, Item>(a: A, b: B) -> impl ::std::iter::Iterator<Item = Item> {
-                        #with_limit
+                        #chain_expr
                     }
                     #chains
                 };
             }
         } else {
             assert_eq!(1, outputs.len());
+            assert_eq!(None, max_output);
             let output = &outputs[0];
             quote_spanned! {op_span=>
                 let #ident = #output;
