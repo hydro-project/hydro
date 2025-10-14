@@ -5,6 +5,7 @@ use std::process::{Command, Stdio};
 use std::rc::Rc;
 
 use dfir_lang::graph::DfirGraph;
+use proc_macro2::Span;
 use quote::quote;
 use sha2::{Digest, Sha256};
 use syn::visit_mut::VisitMut;
@@ -256,7 +257,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p2: &Self::Process,
         _p2_port: &Self::Port,
     ) -> syn::Expr {
-        let ident = syn::Ident::new("__hydro_external_in", proc_macro2::Span::call_site());
+        let ident = syn::Ident::new("__hydro_external_in", Span::call_site());
         syn::parse_quote!(
             #ident.remove(&#p1_port).unwrap()
         )
@@ -280,7 +281,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p2: &Self::External,
         p2_port: &Self::Port,
     ) -> syn::Expr {
-        let ident = syn::Ident::new("__hydro_external_out", proc_macro2::Span::call_site());
+        let ident = syn::Ident::new("__hydro_external_out", Span::call_site());
         syn::parse_quote!(
             #ident.remove(&#p2_port).unwrap()
         )
@@ -317,7 +318,7 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     let mut command = Command::new("cargo");
     command.current_dir(&trybuild.project_dir);
     command.args(["rustc"]);
-    command.args(["--lib"]);
+    command.args(["--example", "sim-dylib"]);
     command.args(["--target-dir", trybuild.target_dir.to_str().unwrap()]);
     if let Some(features) = &trybuild.features {
         command.args(["--features", &features.join(",")]);
@@ -410,38 +411,30 @@ pub(super) fn create_sim_graph_trybuild(
     let generated_code =
         compile_sim_graph_trybuild(graph, tick_graphs, extra_stmts, crate_name.clone(), is_test);
 
-    let inlined_staged: syn::File = if is_test {
+    let inlined_staged = if is_test {
         let gen_staged = stageleft_tool::gen_staged_trybuild(
             &path!(source_dir / "src" / "lib.rs"),
             &path!(source_dir / "Cargo.toml"),
             crate_name.clone(),
-            is_test,
+            Some("hydro___test".to_string()),
         );
 
-        syn::parse_quote! {
-            #[allow(
+        Some(prettyplease::unparse(&syn::parse_quote! {
+            #![allow(
                 unused,
                 ambiguous_glob_reexports,
                 clippy::suspicious_else_formatting,
                 unexpected_cfgs,
                 reason = "generated code"
             )]
-            pub mod __staged {
-                #gen_staged
-            }
-        }
+
+            #gen_staged
+        }))
     } else {
-        let crate_name_ident = syn::Ident::new(crate_name, proc_macro2::Span::call_site());
-        syn::parse_quote!(
-            pub use #crate_name_ident::__staged;
-        )
+        None
     };
 
-    let source = prettyplease::unparse(&syn::parse_quote! {
-        #generated_code
-
-        #inlined_staged
-    });
+    let source = prettyplease::unparse(&generated_code);
 
     let hash = format!("{:X}", Sha256::digest(&source))
         .chars()
@@ -454,17 +447,54 @@ pub(super) fn create_sim_graph_trybuild(
 
     // TODO(shadaj): garbage collect this directory occasionally
     fs::create_dir_all(path!(project_dir / "src")).unwrap();
+    fs::create_dir_all(path!(project_dir / "examples")).unwrap();
 
-    let out_path = path!(project_dir / "src" / format!("{bin_name}.rs"));
+    let out_path = path!(project_dir / "examples" / format!("{bin_name}.rs"));
     {
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
         write_atomic(source.as_ref(), &out_path).unwrap();
     }
 
+    if let Some(inlined_staged) = inlined_staged {
+        let staged_path = path!(project_dir / "src" / format!("__staged.rs"));
+        {
+            let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
+            write_atomic(inlined_staged.as_bytes(), &staged_path).unwrap();
+        }
+    }
+
+    let crate_name_ident = syn::Ident::new(&crate_name, Span::call_site());
     let lib_path = path!(project_dir / "src" / format!("lib.rs"));
     {
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
-        write_atomic("#![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]\n#[cfg(__hydro_sim)]include!(std::concat!(env!(\"TRYBUILD_LIB_NAME\"), \".rs\"));".as_bytes(), &lib_path).unwrap();
+        write_atomic(
+            prettyplease::unparse(&syn::parse_quote! {
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+
+                #[cfg(feature = "hydro___test")]
+                pub mod __staged;
+
+                #[cfg(not(feature = "hydro___test"))]
+                pub use #crate_name_ident::__staged;
+            })
+            .as_bytes(),
+            &lib_path,
+        )
+        .unwrap();
+    }
+
+    let sim_dylib_example_path = path!(project_dir / "examples" / "sim-dylib.rs");
+    {
+        let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
+        write_atomic(
+            prettyplease::unparse(&syn::parse_quote! {
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+                include!(std::concat!(env!("TRYBUILD_LIB_NAME"), ".rs"));
+            })
+            .as_bytes(),
+            &sim_dylib_example_path,
+        )
+        .unwrap();
     }
 
     let build_rs_path = path!(project_dir / "build.rs");
@@ -544,9 +574,13 @@ fn compile_sim_graph_trybuild(
         })
         .collect::<Vec<syn::Expr>>();
 
+    let trybuild_crate_name = format!("{}_hydro_trybuild", crate_name);
+    let trybuild_crate_name_ident = syn::Ident::new(&trybuild_crate_name, Span::call_site());
+
     let source_ast: syn::File = syn::parse_quote! {
         use hydro_lang::prelude::*;
         use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
+        pub use #trybuild_crate_name_ident::__staged;
 
         #[allow(unused)]
         fn __hydro_runtime_core<'a>(
