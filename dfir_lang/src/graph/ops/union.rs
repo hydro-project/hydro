@@ -51,7 +51,7 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = if is_pull {
             let mut chain_expr = quote_spanned! {op_span=>
-                // NOTE(mingwei): `StreamExt::merge` may make more sense, but may inline worse.
+                // NOTE(mingwei): tokio `StreamExt::merge` may make more sense, but also might inline worse.
                 #root::futures::stream::StreamExt::chain(a, b)
             };
             if let Some(max) = max_output {
@@ -69,7 +69,7 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     #[allow(unused)]
                     #[inline(always)]
-                    fn check_inputs<A: ::std::iter::Iterator<Item = Item>, B: ::std::iter::Iterator<Item = Item>, Item>(a: A, b: B) -> impl ::std::iter::Iterator<Item = Item> {
+                    fn check_inputs<A: #root::futures::stream::Stream<Item = Item>, B: #root::futures::stream::Stream<Item = Item>, Item>(a: A, b: B) -> impl #root::futures::stream::Stream<Item = Item> {
                         #chain_expr
                     }
                     #chains

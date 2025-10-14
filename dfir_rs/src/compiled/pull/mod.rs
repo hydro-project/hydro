@@ -11,3 +11,6 @@ pub use anti_join::*;
 
 mod join_fused;
 pub use join_fused::*;
+
+mod persist;
+pub use persist::Persist;
