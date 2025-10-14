@@ -214,10 +214,16 @@ pub fn null_write_iterator_fn(
 
     if is_pull {
         quote_spanned! {op_span=>
-            #(
-                #inputs.for_each(::std::mem::drop);
-            )*
-            let #ident = ::std::iter::empty::<#iter_type>();
+            let #ident = #root::futures::stream::poll_fn(move |cx| {
+                // Make sure to poll all #inputs to completion.
+                #(
+                    let #inputs = ::std::task::pin!(#inputs).poll_next(cx);
+                )*
+                #(
+                    let _ = ::std::task::ready!(#inputs);
+                )*
+                ::std::task::Poll::Ready(::std::option::Option::None)
+            });
         }
     } else {
         quote_spanned! {op_span=>

@@ -62,7 +62,6 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                    outputs,
                    singleton_output_ident,
                    op_name,
-                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -105,14 +104,19 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = {
-                    if #context.is_first_run_this_tick() {
-                        #work_fn(|| #vec_ident.extend(#input));
-                        #vec_ident.iter().cloned()
-                    } else {
-                        let len = #vec_ident.len();
-                        #work_fn(|| #vec_ident.extend(#input));
-                        #vec_ident[len..].iter().cloned()
+                    fn constrain_types<'ctx, Pull, Item>(input: Pull, vec: &'ctx mut Vec<Item>, is_new_tick: bool) -> impl 'ctx + #root::futures::stream::Stream<Item = Item>
+                    where
+                        Pull: 'ctx + #root::futures::stream::Stream<Item = Item>,
+                        Item: ::std::clone::Clone,
+                    {
+                        let replay_idx = if is_new_tick {
+                            0
+                        } else {
+                            vec.len()
+                        };
+                        #root::compiled::pull::Persist::new(input, vec, replay_idx)
                     }
+                    constrain_types(#input, &mut *#vec_ident, #context.is_first_run_this_tick())
                 };
             }
         } else {
