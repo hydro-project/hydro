@@ -204,7 +204,7 @@ impl Service for RustCrateService {
                 .unwrap_or_else(|| format!("service/{}", self.id)),
             None,
             || async {
-                let built = ProgressTracker::leaf("build", self.build()).await?;
+                let built = self.build().await?;
 
                 let host = &self.on;
                 let launched = host.provision(resource_result);
