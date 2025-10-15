@@ -1108,4 +1108,190 @@ mod tests {
 
         assert_eq!(external_out.next().await.unwrap(), 1);
     }
+
+    #[test]
+    #[should_panic]
+    fn sim_fold_intermediate_states() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let mut out_recv = compiled.connect(&out_port);
+            compiled.launch();
+            assert_eq!(out_recv.next().await.unwrap(), 10);
+        });
+    }
+
+    #[test]
+    fn sim_fold_intermediate_state_count() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        let instance_count = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            let out = out_recv.collect::<Vec<_>>().await;
+            assert_eq!(out.last(), Some(&10));
+        });
+
+        assert_eq!(
+            instance_count,
+            16 // 2^4 possible subsets of intermediates (including initial state)
+        )
+    }
+
+    #[test]
+    fn sim_fold_no_repeat_initial() {
+        // check that we don't repeat the initial state of the fold in autonomous decisions
+
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (in_port, input) = node.source_external_bincode(&external);
+        let folded = input.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&in_port);
+            let mut out_recv = compiled.connect(&out_port);
+            compiled.launch();
+            assert_eq!(out_recv.next().await.unwrap(), 0);
+
+            in_send.send(123).unwrap();
+
+            assert_eq!(out_recv.next().await.unwrap(), 123);
+        });
+    }
+
+    #[test]
+    #[should_panic]
+    fn sim_fold_repeats_snapshots() {
+        // when the tick is driven by a snapshot AND something else, the snapshot can
+        // "stutter" and repeat the same state multiple times
+
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.clone().fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = source_iter
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let mut out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            if out_recv.next().await.unwrap() == (1, 3) && out_recv.next().await.unwrap() == (2, 3)
+            {
+                panic!("repeated snapshot");
+            }
+        });
+    }
+
+    #[test]
+    fn sim_fold_repeats_snapshots_count() {
+        // check the number of instances
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2]));
+        let folded = source_iter.clone().fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = source_iter
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        let count = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            let _ = out_recv.collect::<Vec<_>>().await;
+        });
+
+        assert_eq!(count, 52);
+        // don't have a combinatorial explanation for this number yet, but checked via logs
+    }
+
+    #[test]
+    fn sim_top_level_singleton_exhaustive() {
+        // ensures that top-level singletons have only one snapshot
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let singleton = node.singleton(q!(1));
+        let tick = node.tick();
+        let batch = singleton.snapshot(&tick, nondet!(/** test */));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        let count = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            let _ = out_recv.collect::<Vec<_>>().await;
+        });
+
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn sim_top_level_singleton_join_count() {
+        // if a tick consumes a static snapshot and a stream batch, only the batch require space
+        // exploration
+
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let tick = node.tick();
+        let batch = source_iter
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(
+                node.singleton(q!(123))
+                    .snapshot(&tick, nondet!(/** test */)),
+            );
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        let instance_count = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            let _ = out_recv.collect::<Vec<_>>().await;
+        });
+
+        assert_eq!(
+            instance_count,
+            16 // 2^4 ways to split up (including a possibly empty first batch)
+        )
+    }
 }

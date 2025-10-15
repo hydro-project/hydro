@@ -313,6 +313,9 @@ pub enum HydroSource {
 /// In particular, this lets the simulator fuse together all locations into one DFIR graph, spit
 /// out separate graphs for each tick, and emit hooks for controlling non-deterministic operators.
 pub trait DfirBuilder {
+    /// Whether the representation of singletons should include intermediate states.
+    fn singleton_intermediates(&self) -> bool;
+
     /// Gets the DFIR builder for the given location, creating it if necessary.
     fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder;
 
@@ -378,6 +381,10 @@ pub trait DfirBuilder {
 
 #[cfg(feature = "build")]
 impl DfirBuilder for BTreeMap<usize, FlatGraphBuilder> {
+    fn singleton_intermediates(&self) -> bool {
+        false
+    }
+
     fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
         self.entry(location.root().raw_id()).or_default()
     }
@@ -1335,6 +1342,11 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
+    SingletonSource {
+        value: DebugExpr,
+        metadata: HydroIrMetadata,
+    },
+
     CycleSource {
         ident: syn::Ident,
         metadata: HydroIrMetadata,
@@ -1581,6 +1593,7 @@ impl HydroNode {
             }
 
             HydroNode::Source { .. }
+            | HydroNode::SingletonSource { .. }
             | HydroNode::CycleSource { .. }
             | HydroNode::ExternalInput { .. } => {}
 
@@ -1677,6 +1690,10 @@ impl HydroNode {
             },
             HydroNode::Source { source, metadata } => HydroNode::Source {
                 source: source.clone(),
+                metadata: metadata.clone(),
+            },
+            HydroNode::SingletonSource { value, metadata } => HydroNode::SingletonSource {
+                value: value.clone(),
                 metadata: metadata.clone(),
             },
             HydroNode::CycleSource { ident, metadata } => HydroNode::CycleSource {
@@ -2125,6 +2142,43 @@ impl HydroNode {
 
                     source_ident
                 }
+            }
+
+            HydroNode::SingletonSource { value, metadata } => {
+                let source_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        let should_replay = !graph_builders.singleton_intermediates();
+                        let builder = graph_builders.get_dfir_mut(&out_location);
+
+                        if metadata.location_kind.is_top_level() && should_replay {
+                            builder.add_dfir(
+                                parse_quote! {
+                                    #source_ident = source_iter([#value]) -> persist::<'static>();
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                        } else {
+                            builder.add_dfir(
+                                parse_quote! {
+                                    #source_ident = source_iter([#value]);
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                        }
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                source_ident
             }
 
             HydroNode::CycleSource { ident, .. } => {
@@ -2732,15 +2786,9 @@ impl HydroNode {
                     parse_quote!(fold_keyed)
                 };
 
-                let (HydroNode::Fold {
-                    init, acc, input, ..
-                }
-                | HydroNode::FoldKeyed {
-                    init, acc, input, ..
-                }
-                | HydroNode::Scan {
-                    init, acc, input, ..
-                }) = self
+                let (HydroNode::Fold { input, .. }
+                | HydroNode::FoldKeyed { input, .. }
+                | HydroNode::Scan { input, .. }) = self
                 else {
                     unreachable!()
                 };
@@ -2757,19 +2805,50 @@ impl HydroNode {
 
                 let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
+                let (HydroNode::Fold { init, acc, .. }
+                | HydroNode::FoldKeyed { init, acc, .. }
+                | HydroNode::Scan { init, acc, .. }) = &*self
+                else {
+                    unreachable!()
+                };
+
                 let fold_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.get_dfir_mut(&out_location);
-                        builder.add_dfir(
-                            parse_quote! {
-                                #fold_ident = #input_ident -> #operator::<#lifetime>(#init, #acc);
-                            },
-                            None,
-                            Some(&next_stmt_id.to_string()),
-                        );
+                        if matches!(self, HydroNode::Fold { .. })
+                            && self.metadata().location_kind.is_top_level()
+                            && graph_builders.singleton_intermediates()
+                        {
+                            let acc: syn::Expr = parse_quote!({
+                                let mut __inner = #acc;
+                                move |__state, __value| {
+                                    __inner(__state, __value);
+                                    Some(__state.clone())
+                                }
+                            });
+
+                            let builder = graph_builders.get_dfir_mut(&out_location);
+                            builder.add_dfir(
+                                parse_quote! {
+                                    source_iter([(#init)()]) -> [0]#fold_ident;
+                                    #input_ident -> scan::<#lifetime>(#init, #acc) -> [1]#fold_ident;
+                                    #fold_ident = chain();
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                        } else {
+                            let builder = graph_builders.get_dfir_mut(&out_location);
+                            builder.add_dfir(
+                                parse_quote! {
+                                    #fold_ident = #input_ident -> #operator::<#lifetime>(#init, #acc);
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                        }
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
@@ -3053,6 +3132,9 @@ impl HydroNode {
                 HydroSource::Stream(expr) | HydroSource::Iter(expr) => transform(expr),
                 HydroSource::ExternalNetwork() | HydroSource::Spin() => {}
             },
+            HydroNode::SingletonSource { value, .. } => {
+                transform(value);
+            }
             HydroNode::CycleSource { .. }
             | HydroNode::Tee { .. }
             | HydroNode::Persist { .. }
@@ -3124,6 +3206,7 @@ impl HydroNode {
             HydroNode::Cast { metadata, .. } => metadata,
             HydroNode::ObserveNonDet { metadata, .. } => metadata,
             HydroNode::Source { metadata, .. } => metadata,
+            HydroNode::SingletonSource { metadata, .. } => metadata,
             HydroNode::CycleSource { metadata, .. } => metadata,
             HydroNode::Tee { metadata, .. } => metadata,
             HydroNode::Persist { metadata, .. } => metadata,
@@ -3173,6 +3256,7 @@ impl HydroNode {
             HydroNode::Cast { metadata, .. } => metadata,
             HydroNode::ObserveNonDet { metadata, .. } => metadata,
             HydroNode::Source { metadata, .. } => metadata,
+            HydroNode::SingletonSource { metadata, .. } => metadata,
             HydroNode::CycleSource { metadata, .. } => metadata,
             HydroNode::Tee { metadata, .. } => metadata,
             HydroNode::Persist { metadata, .. } => metadata,
@@ -3216,6 +3300,7 @@ impl HydroNode {
                 panic!()
             }
             HydroNode::Source { .. }
+            | HydroNode::SingletonSource { .. }
             | HydroNode::ExternalInput { .. }
             | HydroNode::CycleSource { .. } // CycleSource and Tee should calculate input metadata in separate special ways
             | HydroNode::Tee { .. } => {
@@ -3290,6 +3375,7 @@ impl HydroNode {
             HydroNode::Cast { .. } => "Cast()".to_string(),
             HydroNode::ObserveNonDet { .. } => "ObserveNonDet()".to_string(),
             HydroNode::Source { source, .. } => format!("Source({:?})", source),
+            HydroNode::SingletonSource { value, .. } => format!("SingletonSource({:?})", value),
             HydroNode::CycleSource { ident, .. } => format!("CycleSource({})", ident),
             HydroNode::Tee { inner, .. } => format!("Tee({})", inner.0.borrow().print_root()),
             HydroNode::Persist { .. } => "Persist()".to_string(),

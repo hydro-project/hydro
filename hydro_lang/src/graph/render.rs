@@ -561,6 +561,11 @@ impl HydroNode {
                 build_source_node(structure, metadata, label)
             }
 
+            HydroNode::SingletonSource { value, metadata } => {
+                let label = format!("singleton({})", value);
+                build_source_node(structure, metadata, label)
+            }
+
             HydroNode::ExternalInput {
                 from_external_id,
                 from_key,
