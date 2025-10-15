@@ -2,142 +2,144 @@
 
 use core::future::Future;
 use core::pin::Pin;
-use core::task::{Context, Poll};
+use core::task::{Context, Poll, ready};
 
-use futures_util::{FutureExt, Sink, SinkExt, Stream, StreamExt};
+use futures_util::{FutureExt, Sink, Stream, StreamExt};
+use pin_project_lite::pin_project;
 
-enum LazySinkState<S, Fut, ThunkFunc, Item> {
-    Ready(ThunkFunc),
-    Taken,
-    Thunkulating(Fut, Item),
-    Thunkulated(S),
+pin_project! {
+    #[project = LazySinkProj]
+    enum LazySinkState<Func, Fut, Si, Item> {
+        Uninit {
+            // Initialization func, always `Some`
+            func: Option<Func>,
+        },
+        Initing {
+            // Initialization future.
+            #[pin]
+            future: Fut,
+             // First item sent, always `Some`
+            item: Option<Item>,
+        },
+        Inited {
+            // The final sink.
+            #[pin]
+            sink: Si,
+            // First item sent, then after always `None`.
+            buf: Option<Item>,
+        },
+    }
 }
 
-/// A lazy sink will attempt to get a [`Sink`] using the thunk when the first item is sent into it
-pub struct LazySink<ThunkFunc, SinkType, Item, ThunkulatingFutureType> {
-    state: LazySinkState<SinkType, ThunkulatingFutureType, ThunkFunc, Item>,
+pin_project! {
+    /// A lazy sink will attempt to get a [`Sink`] using the init `Func` when the first item is sent into it.
+    pub struct LazySink<Func, Fut, Si, Item> {
+        #[pin]
+        state: LazySinkState<Func, Fut, Si, Item>,
+    }
 }
 
-impl<F, S, T, Fut, E> LazySink<F, S, T, Fut>
+impl<Func, Fut, Si, Item, Error> LazySink<Func, Fut, Si, Item>
 where
-    F: FnOnce() -> Fut + Unpin,
-    Fut: Future<Output = Result<S, E>> + Unpin,
-    T: Unpin,
+    Func: FnOnce() -> Fut,
+    Fut: Future<Output = Result<Si, Error>>,
+    Si: Sink<Item>,
+    Error: From<Si::Error>,
 {
-    /// Creates a new [`LazySink`]. Thunk should be something callable that returns a future that resolves to a [`Sink`] that the lazy sink will forward items to.
-    pub fn new(thunk: F) -> Self {
+    /// Creates a new `LazySink` with the given initialization `func`.
+    pub fn new(func: Func) -> Self {
         Self {
-            state: LazySinkState::Ready(thunk),
+            state: LazySinkState::Uninit { func: Some(func) },
         }
+    }
+
+    fn poll_sink_op(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        sink_op: impl FnOnce(Pin<&mut Si>, &mut Context<'_>) -> Poll<Result<(), Si::Error>>,
+    ) -> Poll<Result<(), Error>> {
+        let mut this = self.project();
+
+        if let LazySinkProj::Uninit { func: _ } = this.state.as_mut().project() {
+            return Poll::Ready(Ok(())); // Lazy
+        }
+
+        if let LazySinkProj::Initing { mut future, item } = this.state.as_mut().project() {
+            let sink = ready!(future.poll_unpin(cx))?;
+            let buf = Some(item.take().unwrap());
+            this.state.as_mut().set(LazySinkState::Inited { sink, buf });
+        }
+
+        if let LazySinkProj::Inited { mut sink, buf } = this.state.as_mut().project() {
+            if buf.is_some() {
+                let () = ready!(sink.as_mut().poll_ready(cx)?);
+                let () = sink.as_mut().start_send(buf.take().unwrap())?;
+            }
+            return (sink_op)(sink, cx).map_err(From::from);
+        }
+
+        panic!("`LazySink` in invalid state.");
     }
 }
 
-impl<F, S, T, Fut, E> LazySink<F, S, T, Fut>
+impl<Func, Fut, Si, Item, Error> Sink<Item> for LazySink<Func, Fut, Si, Item>
 where
-    F: FnOnce() -> Fut + Unpin,
-    Fut: Future<Output = Result<S, E>> + Unpin,
-    S: Sink<T> + Unpin,
-    S::Error: Into<E>,
-    T: Unpin,
+    Func: FnOnce() -> Fut,
+    Fut: Future<Output = Result<Si, Error>>,
+    Si: Sink<Item>,
+    Error: From<Si::Error>,
 {
-    fn poll_with_sink_op<Op>(&mut self, cx: &mut Context<'_>, op: Op) -> Poll<Result<(), E>>
-    where
-        Op: FnOnce(&mut S, &mut Context<'_>) -> Poll<Result<(), S::Error>>,
-    {
-        assert!(!matches!(self.state, LazySinkState::Taken));
+    type Error = Error;
 
-        if matches!(self.state, LazySinkState::Ready(_)) {
-            return Poll::Ready(Ok(()));
-        }
-
-        if let LazySinkState::Thunkulating(ref mut v, _) = self.state {
-            match std::task::ready!(v.poll_unpin(cx)) {
-                Ok(sink) => {
-                    let LazySinkState::Thunkulating(_, item) =
-                        std::mem::replace(&mut self.state, LazySinkState::Thunkulated(sink))
-                    else {
-                        unreachable!();
-                    };
-
-                    let LazySinkState::Thunkulated(ref mut sink) = self.state else {
-                        unreachable!();
-                    };
-
-                    if let Err(err) = sink.start_send_unpin(item) {
-                        return Poll::Ready(Err(err.into()));
-                    }
-                }
-                Err(err) => return Poll::Ready(Err(err.into())),
-            }
-        }
-
-        let LazySinkState::Thunkulated(sink) = &mut self.state else {
-            unreachable!()
-        };
-
-        op(sink, cx).map_err(Into::into)
-    }
-}
-
-impl<F, S, T, Fut, E> Sink<T> for LazySink<F, S, T, Fut>
-where
-    F: FnOnce() -> Fut + Unpin,
-    Fut: Future<Output = Result<S, E>> + Unpin,
-    S: Sink<T> + Unpin,
-    S::Error: Into<E>,
-    T: Unpin,
-{
-    type Error = E;
-
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), E>> {
-        self.get_mut()
-            .poll_with_sink_op(cx, |sink, cx| sink.poll_ready_unpin(cx))
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_sink_op(cx, Sink::poll_ready)
     }
 
-    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
-        let this = self.get_mut();
-        match std::mem::replace(&mut this.state, LazySinkState::Taken) {
-            LazySinkState::Ready(thunk) => {
-                this.state = LazySinkState::Thunkulating(thunk(), item);
-                Ok(())
-            }
-            LazySinkState::Thunkulated(mut sink) => {
-                let result = sink.start_send_unpin(item);
-                this.state = LazySinkState::Thunkulated(sink);
-                result.map_err(Into::into)
-            }
-            _ => unreachable!(),
+    fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
+        let mut this = self.project();
+
+        if let LazySinkProj::Uninit { func } = this.state.as_mut().project() {
+            let func = func.take().unwrap();
+            let future = (func)();
+            let item = Some(item);
+            this.state
+                .as_mut()
+                .set(LazySinkState::Initing { future, item });
+            Ok(())
+        } else if let LazySinkProj::Inited { sink, buf: _buf } = this.state.project() {
+            debug_assert!(_buf.is_none());
+            sink.start_send(item).map_err(From::from)
+        } else {
+            panic!("`LazySink` not ready.");
         }
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), E>> {
-        self.get_mut()
-            .poll_with_sink_op(cx, |sink, cx| sink.poll_flush_unpin(cx))
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_sink_op(cx, Sink::poll_flush)
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), E>> {
-        self.get_mut()
-            .poll_with_sink_op(cx, |sink, cx| sink.poll_close_unpin(cx))
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_sink_op(cx, Sink::poll_close)
     }
 }
 
 enum LazySourceState<S, Fut, Func> {
     None(Func),
     Taken,
-    Thunkulating(Fut),
-    Thunkulated(S),
+    Preparing(Fut),
+    Readying(S),
 }
 
 /// A lazy source will attempt to acquire a stream using the thunk when the first item is pulled from it
-pub struct LazySource<ThunkFunc, StreamType, ThunkulatingFutureType> {
+pub struct LazySource<ThunkFunc, StreamType, PreparingFutureType> {
     // thunk: Option<ThunkFunc>,
-    state: LazySourceState<StreamType, ThunkulatingFutureType, ThunkFunc>,
+    state: LazySourceState<StreamType, PreparingFutureType, ThunkFunc>,
 }
 
 impl<F, S, Fut, E> LazySource<F, S, Fut>
 where
-    F: FnOnce() -> Fut + Unpin,
-    Fut: Future<Output = Result<S, E>> + Unpin,
+    F: FnOnce() -> Fut,
+    Fut: Future<Output = Result<S, E>>,
 {
     /// Creates a new [`LazySource`]. Thunk should be something callable that returns a future that resolves to a [`Stream`] that the lazy sink will forward items to.
     pub fn new(thunk: F) -> Self {
@@ -158,24 +160,24 @@ where
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if matches!(self.state, LazySourceState::None(_)) {
             let LazySourceState::None(thunk_func) =
-                std::mem::replace(&mut self.state, LazySourceState::Taken)
+                core::mem::replace(&mut self.state, LazySourceState::Taken)
             else {
                 unreachable!();
             };
 
-            self.state = LazySourceState::Thunkulating(thunk_func());
+            self.state = LazySourceState::Preparing(thunk_func());
         }
 
-        if let LazySourceState::Thunkulating(ref mut fut) = self.state {
-            match std::task::ready!(fut.poll_unpin(cx)) {
+        if let LazySourceState::Preparing(ref mut fut) = self.state {
+            match ready!(fut.poll_unpin(cx)) {
                 Ok(stream) => {
-                    self.state = LazySourceState::Thunkulated(stream);
+                    self.state = LazySourceState::Readying(stream);
                 }
                 Err(_) => return Poll::Ready(None),
             }
         }
 
-        let LazySourceState::Thunkulated(ref mut stream) = self.state else {
+        let LazySourceState::Readying(ref mut stream) = self.state else {
             unreachable!()
         };
 
@@ -186,26 +188,13 @@ where
 #[cfg(test)]
 mod test {
     use core::cell::RefCell;
+    use core::pin::pin;
+    use core::task::Context;
 
-    use futures_util::{SinkExt, StreamExt};
+    use futures_util::{Sink, SinkExt, StreamExt};
 
+    use super::*;
     use crate::for_each::ForEach;
-    use crate::lazy::{LazySink, LazySource};
-
-    #[tokio::test]
-    async fn test_lazy_source() {
-        let test_data = b"test";
-
-        let mut lazy_source = LazySource::new(|| {
-            Box::pin(async {
-                Result::<_, std::io::Error>::Ok(futures_util::stream::iter(vec![
-                    test_data.as_slice(),
-                ]))
-            })
-        });
-
-        assert_eq!(lazy_source.next().await.unwrap(), test_data);
-    }
 
     #[tokio::test]
     async fn test_lazy_sink() {
@@ -234,5 +223,80 @@ mod test {
 
         assert_eq!(&output.borrow().as_slice()[0..test_data.len()], test_data);
         assert_eq!(&output.borrow().as_slice()[test_data.len()..], test_data);
+    }
+
+    #[test]
+    fn test_lazy_sink_fut_err() {
+        enum DummySink {}
+        impl Sink<()> for DummySink {
+            type Error = &'static str;
+            fn poll_ready(
+                self: Pin<&mut Self>,
+                _cx: &mut Context<'_>,
+            ) -> Poll<Result<(), Self::Error>> {
+                panic!()
+            }
+            fn start_send(self: Pin<&mut Self>, _item: ()) -> Result<(), Self::Error> {
+                panic!()
+            }
+            fn poll_flush(
+                self: Pin<&mut Self>,
+                _cx: &mut Context<'_>,
+            ) -> Poll<Result<(), Self::Error>> {
+                panic!()
+            }
+            fn poll_close(
+                self: Pin<&mut Self>,
+                _cx: &mut Context<'_>,
+            ) -> Poll<Result<(), Self::Error>> {
+                panic!()
+            }
+        }
+
+        let mut lazy_sink = pin!(LazySink::new(|| async {
+            Result::<DummySink, _>::Err("Fail!")
+        }));
+
+        let cx = &mut Context::from_waker(futures_task::noop_waker_ref());
+
+        assert_eq!(Poll::Ready(Ok(())), lazy_sink.as_mut().poll_ready(cx));
+        assert_eq!(Poll::Ready(Ok(())), lazy_sink.as_mut().poll_flush(cx));
+        assert_eq!(Poll::Ready(Ok(())), lazy_sink.as_mut().poll_close(cx));
+        assert_eq!(Poll::Ready(Ok(())), lazy_sink.as_mut().poll_ready(cx));
+        assert_eq!(Ok(()), lazy_sink.as_mut().start_send(())); // Works because item is buffered.
+        assert_eq!(Poll::Ready(Err("Fail!")), lazy_sink.as_mut().poll_flush(cx)); // Now anything fails.
+    }
+
+    #[test]
+    fn test_lazy_sink_sink_err() {
+        let mut lazy_sink = pin!(LazySink::new(|| async {
+            Ok(futures_util::sink::unfold((), |(), _item| async {
+                Err("Fail!")
+            }))
+        }));
+
+        let cx = &mut Context::from_waker(futures_task::noop_waker_ref());
+
+        assert_eq!(Poll::Ready(Ok(())), lazy_sink.as_mut().poll_ready(cx));
+        assert_eq!(Poll::Ready(Ok(())), lazy_sink.as_mut().poll_flush(cx));
+        assert_eq!(Poll::Ready(Ok(())), lazy_sink.as_mut().poll_close(cx));
+        assert_eq!(Poll::Ready(Ok(())), lazy_sink.as_mut().poll_ready(cx));
+        assert_eq!(Ok(()), lazy_sink.as_mut().start_send(())); // Works because item is buffered.
+        assert_eq!(Poll::Ready(Err("Fail!")), lazy_sink.as_mut().poll_flush(cx)); // Now anything fails.
+    }
+
+    #[tokio::test]
+    async fn test_lazy_source() {
+        let test_data = b"test";
+
+        let mut lazy_source = LazySource::new(|| {
+            Box::pin(async {
+                Result::<_, std::io::Error>::Ok(futures_util::stream::iter(vec![
+                    test_data.as_slice(),
+                ]))
+            })
+        });
+
+        assert_eq!(lazy_source.next().await.unwrap(), test_data);
     }
 }
