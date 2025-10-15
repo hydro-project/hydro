@@ -1130,14 +1130,14 @@ impl DfirGraph {
                                                     #[inline(always)]
                                                     fn poll_next(
                                                         self: ::std::pin::Pin<&mut Self>,
-                                                        cx: &mut ::std::task::Context>,
+                                                        cx: &mut ::std::task::Context<'_>,
                                                     ) -> ::std::task::Poll<::std::option::Option<Self::Item>> {
-                                                        self.project().inner.poll_next(cx)
+                                                        #root::futures::stream::Stream::poll_next(self.project().inner, cx)
                                                     }
 
                                                     #[inline(always)]
                                                     fn size_hint(&self) -> (usize, Option<usize>) {
-                                                        self.inner.size_hint()
+                                                        #root::futures::stream::Stream::size_hint(&self.inner)
                                                     }
                                                 }
 

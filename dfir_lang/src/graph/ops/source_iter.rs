@@ -47,7 +47,10 @@ pub const SOURCE_ITER: OperatorConstraints = OperatorConstraints {
         let write_prologue = quote_spanned! {op_span=>
             let mut #iter_ident = {
                 #[inline(always)]
-                fn check_iter<IntoIter: ::std::iter::IntoIterator<Item = Item>, Item>(into_iter: IntoIter) -> impl ::std::iter::Iterator<Item = Item> {
+                fn check_iter<IntoIter, Item>(into_iter: IntoIter) -> impl ::std::iter::Iterator<Item = Item>
+                where
+                    IntoIter: ::std::iter::IntoIterator<Item = Item>,
+                {
                     ::std::iter::IntoIterator::into_iter(into_iter)
                 }
                 check_iter(#iter)
