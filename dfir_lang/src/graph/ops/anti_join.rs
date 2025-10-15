@@ -50,11 +50,14 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                    df_ident,
                    op_span,
                    ident,
+                   is_pull,
                    inputs,
                    work_fn,
                    ..
                },
                diagnostics| {
+        assert!(is_pull);
+
         let [pos_persistence, neg_persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let make_antijoindata = |persistence, side| {
@@ -65,15 +68,18 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                 quote_spanned! {op_span=>
                     let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
                 },
+
                 lifespan.map(|lifespan| quote_spanned! {op_span=>
                     #df_ident.set_state_lifespan_hook(#antijoindata_ident, #lifespan, |rcell| { rcell.take(); });
                 }).unwrap_or_default(),
+
                 quote_spanned! {op_span=>
                     let mut #borrow_ident = unsafe {
                         // SAFETY: handle from `#df_ident.add_state(..)`.
                         #context.state_ref_unchecked(#antijoindata_ident)
                     }.borrow_mut();
                 },
+
                 quote_spanned! {op_span=>
                     &mut *#borrow_ident
                 },
@@ -100,12 +106,12 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                         neg_state: &'a mut #root::rustc_hash::FxHashSet<K>,
                         pos_state: &'a mut #root::rustc_hash::FxHashSet<(K, V)>,
                         is_new_tick: bool,
-                    ) -> impl 'a + Iterator<Item = (K, V)>
+                    ) -> impl 'a + #root::futures::stream::Stream<Item = (K, V)>
                     where
                         K: Eq + ::std::hash::Hash + Clone,
                         V: Eq + ::std::hash::Hash + Clone,
-                        I1: 'a + Iterator<Item = K>,
-                        I2: 'a + Iterator<Item = (K, V)>,
+                        I1: 'a + #root::futures::stream::Stream<Item = K>,
+                        I2: 'a + #root::futures::stream::Stream<Item = (K, V)>,
                     {
                         #work_fn(|| neg_state.extend(input_neg));
 
