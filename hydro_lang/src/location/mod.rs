@@ -557,38 +557,16 @@ pub trait Location<'a>: dynamic::DynLocation {
         // TODO(shadaj): we mark this as unbounded because we do not yet have a representation
         // for bounded top-level singletons, and this is the only way to generate one
 
-        let e_arr = q!([e]);
-        let e = e_arr.splice_untyped_ctx(self);
+        let e = e.splice_untyped_ctx(self);
 
-        if Self::is_top_level() {
-            Singleton::new(
-                self.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::Source {
-                        source: HydroSource::Iter(e.into()),
-                        metadata: self.new_node_metadata(Stream::<
-                            T,
-                            Self,
-                            Unbounded,
-                            TotalOrder,
-                            ExactlyOnce,
-                        >::collection_kind(
-                        )),
-                    }),
-                    metadata: self
-                        .new_node_metadata(Singleton::<T, Self, Unbounded>::collection_kind()),
-                },
-            )
-        } else {
-            Singleton::new(
-                self.clone(),
-                HydroNode::Source {
-                    source: HydroSource::Iter(e.into()),
-                    metadata: self
-                        .new_node_metadata(Singleton::<T, Self, Unbounded>::collection_kind()),
-                },
-            )
-        }
+        Singleton::new(
+            self.clone(),
+            HydroNode::SingletonSource {
+                value: e.into(),
+                metadata: self
+                    .new_node_metadata(Singleton::<T, Self, Unbounded>::collection_kind()),
+            },
+        )
     }
 
     /// Generates a stream with values emitted at a fixed interval, with

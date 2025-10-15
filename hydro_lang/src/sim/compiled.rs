@@ -161,7 +161,7 @@ impl CompiledSim {
                         if instance.log {
                             eprintln!(
                                 "{}",
-                                "\n==== New Simulation Instance ====\n"
+                                "\n==== New Simulation Instance ===="
                                     .color(colored::Color::Cyan)
                                     .bold()
                             );
@@ -286,7 +286,7 @@ impl CompiledSim {
                     if instance.log {
                         eprintln!(
                             "{}",
-                            "\n==== New Simulation Instance ====\n"
+                            "\n==== New Simulation Instance ===="
                                 .color(colored::Color::Cyan)
                                 .bold()
                         );
@@ -630,7 +630,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
     async fn scheduler(&mut self) {
         loop {
             tokio::task::yield_now().await;
-            if self.async_dfir.run_available().await {
+            if self.async_dfir.run_tick().await {
                 self.possibly_ready_ticks.append(&mut self.not_ready_ticks);
                 continue;
             } else {
