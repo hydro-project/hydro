@@ -32,6 +32,7 @@ pub const SORT: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |&WriteContextArgs {
+                   root,
                    op_span,
                    ident,
                    inputs,
@@ -46,13 +47,12 @@ pub const SORT: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
             // Fix requires handoff specialization.
-            let #ident = {
-                #work_fn(|| {
-                    let mut v = #input.collect::<::std::vec::Vec<_>>();
-                    v.sort_unstable();
-                    v
-                }).into_iter()
-            };
+            let #ident = #work_fn(|| {
+                let mut v = #input.collect::<::std::vec::Vec<_>>();
+                v.sort_unstable();
+                let i = v.into_iter();
+                #root::futures::stream::iter(i)
+            });
         };
         Ok(OperatorWriteOutput {
             write_iterator,
