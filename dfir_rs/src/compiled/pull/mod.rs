@@ -10,5 +10,8 @@ pub use half_join_state::*;
 mod anti_join;
 pub use anti_join::*;
 
+mod fold;
+pub use fold::Fold;
+
 mod persist;
 pub use persist::Persist;
