@@ -32,6 +32,10 @@ pub struct SimBuilder {
 }
 
 impl DfirBuilder for SimBuilder {
+    fn singleton_intermediates(&self) -> bool {
+        true
+    }
+
     fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
         match location {
             LocationId::Process(_) => &mut self.async_level,
@@ -159,6 +163,66 @@ impl DfirBuilder for SimBuilder {
                         },
                         _order: std::marker::PhantomData,
                     }));
+                });
+
+                self.async_level.add_dfir(
+                    parse_quote! {
+                        #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                    },
+                    None,
+                    None,
+                );
+
+                self.get_dfir_mut(out_location).add_dfir(
+                    parse_quote! {
+                        #out_ident = source_stream(#hoff_recv_ident);
+                    },
+                    None,
+                    None,
+                );
+            }
+            CollectionKind::Singleton { .. } => {
+                debug_assert!(in_location.is_top_level());
+
+                let hoff_id = self.next_hoff_id;
+                self.next_hoff_id += 1;
+
+                let out_location_ser = serde_json::to_string(out_location).unwrap();
+                let buffered_ident =
+                    syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                let hoff_send_ident =
+                    syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                let hoff_recv_ident =
+                    syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                self.extra_stmts.push(syn::parse_quote! {
+                    let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                });
+                self.extra_stmts.push(syn::parse_quote! {
+                    let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                });
+                self.extra_stmts.push(syn::parse_quote! {
+                    __hydro_hooks.entry(#out_location_ser).or_default().push(Box::new(hydro_lang::sim::runtime::SingletonHook::<_>::new(
+                        #buffered_ident.clone(),
+                        #hoff_send_ident,
+                        (#batch_location, #line, #caret),
+                        {
+                            trait NotDebug {
+                                fn format_debug(&self) -> Option<String> {
+                                    None
+                                }
+                            }
+
+                            impl<T> NotDebug for T {}
+                            struct IsDebug<T>(std::marker::PhantomData<T>);
+                            impl<T: std::fmt::Debug> IsDebug<T> {
+                                fn format_debug(v: &T) -> Option<String> {
+                                    Some(format!("{:?}", v))
+                                }
+                            }
+                            IsDebug::format_debug
+                        },
+                    )));
                 });
 
                 self.async_level.add_dfir(

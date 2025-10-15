@@ -134,13 +134,12 @@ where
     where
         T: Clone,
     {
-        let e_arr = q!([e]);
-        let e = e_arr.splice_untyped_ctx(self);
+        let e = e.splice_untyped_ctx(self);
 
         Singleton::new(
             self.clone(),
-            HydroNode::Source {
-                source: HydroSource::Iter(e.into()),
+            HydroNode::SingletonSource {
+                value: e.into(),
                 metadata: self.new_node_metadata(Singleton::<T, Self, Bounded>::collection_kind()),
             },
         )

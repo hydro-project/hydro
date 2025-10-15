@@ -199,3 +199,121 @@ impl<T> SimHook for StreamHook<T, NoOrder> {
         }
     }
 }
+
+pub struct SingletonHook<T> {
+    input: Rc<RefCell<VecDeque<T>>>,
+    to_release: Option<(T, bool)>, // (data, is new)
+    last_released: Option<T>,
+    skipped_states: Vec<T>,
+    output: UnboundedSender<T>,
+    batch_location: (&'static str, &'static str, &'static str),
+    format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T: Clone> SingletonHook<T> {
+    pub fn new(
+        input: Rc<RefCell<VecDeque<T>>>,
+        output: UnboundedSender<T>,
+        batch_location: (&'static str, &'static str, &'static str),
+        format_item_debug: fn(&T) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            last_released: None,
+            skipped_states: vec![],
+            output,
+            batch_location,
+            format_item_debug,
+        }
+    }
+}
+
+impl<T: Clone> SimHook for SingletonHook<T> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|t| t.1)
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        if current_input.is_empty() {
+            if force_nontrivial {
+                panic!("Cannot make nontrivial decision when there is no input");
+            }
+
+            if let Some(last) = &self.last_released {
+                // Re-release the last item
+                self.to_release = Some((last.clone(), false));
+                false
+            } else {
+                panic!("No input and no last released item to re-release");
+            }
+        } else if !force_nontrivial
+            && let Some(last) = &self.last_released
+            && produce().generate(driver).unwrap()
+        {
+            // Re-release the last item
+            self.to_release = Some((last.clone(), false));
+            false
+        } else {
+            // Release a new item
+            let idx_to_release = (0..current_input.len()).generate(driver).unwrap();
+            self.skipped_states = current_input.drain(0..idx_to_release).collect(); // Drop earlier items
+            let item = current_input.pop_front().unwrap();
+            self.to_release = Some((item, true));
+            true
+        }
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some((to_release, _)) = self.to_release.take() {
+            self.last_released = Some(to_release.clone());
+
+            let (batch_location, line, caret_indent) = self.batch_location;
+            let note_str = if self.skipped_states.is_empty() {
+                format!(
+                    "^ releasing snapshot: {:?}",
+                    ManualDebug(&to_release, self.format_item_debug)
+                )
+            } else {
+                format!(
+                    "^ releasing snapshot: {:?} (skipping earlier states: {:?})",
+                    ManualDebug(&to_release, self.format_item_debug),
+                    self.skipped_states
+                        .iter()
+                        .map(|s| ManualDebug(s, self.format_item_debug))
+                        .collect::<Vec<_>>()
+                )
+            };
+
+            let _ = writeln!(
+                log_writer,
+                "{} {}",
+                "-->".color(colored::Color::Blue),
+                batch_location
+            );
+
+            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+            let _ = writeln!(
+                log_writer,
+                " {}{}{}",
+                "|".color(colored::Color::Blue),
+                caret_indent,
+                note_str.color(colored::Color::Green)
+            );
+
+            self.output.send(to_release).unwrap();
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
