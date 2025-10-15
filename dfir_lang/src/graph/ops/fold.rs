@@ -56,6 +56,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                    ident,
                    is_pull,
                    inputs,
+                   outputs,
                    singleton_output_ident,
                    work_fn,
                    arguments,
@@ -114,20 +115,19 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
-                let #ident = {
-                    #assign_accum_ident
+                // TODO(mingwei): untangle these substitutions/create a corresponding push::Fold Sink.
+                #assign_accum_ident
 
-                    #work_fn(|| #input.for_each(|#iterator_item_ident| {
+                let #ident = #root::compiled::pull::Fold::new(
+                    #input,
+                    #accumulator_ident,
+                    move |#accumulator_ident, #iterator_item_ident| {
                         #iterator_foreach
-                    }));
-
-                    #[allow(clippy::clone_on_copy)]
-                    {
-                        ::std::iter::once(#work_fn(|| ::std::clone::Clone::clone(&*#accumulator_ident)))
                     }
-                };
+                );
             }
         } else {
+            assert_eq!(0, outputs.len());
             quote_spanned! {op_span=>
                 let #ident = #root::sinktools::for_each::ForEach::new(|#iterator_item_ident| {
                     #assign_accum_ident

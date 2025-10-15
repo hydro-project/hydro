@@ -64,7 +64,7 @@ pub const SOURCE_STREAM_SERDE: OperatorConstraints = OperatorConstraints {
         let receiver = &arguments[0];
         let stream_ident = wc.make_ident("stream");
         let write_prologue = quote_spanned! {op_span=>
-            // TODO(mingwei): use `::std::task::pin!(..)`?
+            // TODO(mingwei): use `::std::pin::pin!(..)`?
             let mut #stream_ident = Box::pin(#receiver);
         };
         let write_iterator = quote_spanned! {op_span=>

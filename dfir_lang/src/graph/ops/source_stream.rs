@@ -52,7 +52,7 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
         let receiver = &arguments[0];
         let stream_ident = wc.make_ident("stream");
         let write_prologue = quote_spanned! {op_span=>
-            // TODO(mingwei): use `::std::task::pin!(..)`?
+            // TODO(mingwei): use `::std::pin::pin!(..)`?
             let mut #stream_ident = {
                 #[inline(always)]
                 fn check_stream<Stream: #root::futures::stream::Stream<Item = Item> + ::std::marker::Unpin, Item>(stream: Stream)
