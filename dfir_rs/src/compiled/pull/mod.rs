@@ -9,6 +9,9 @@ pub use half_join_state::*;
 mod anti_join;
 pub use anti_join::*;
 
+mod fold;
+pub use fold::Fold;
+
 mod join_fused;
 pub use join_fused::*;
 
