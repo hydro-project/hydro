@@ -49,11 +49,14 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                    df_ident,
                    op_span,
                    ident,
+                   is_pull,
                    inputs,
                    work_fn,
                    ..
                },
                diagnostics| {
+        assert!(is_pull);
+
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let pos_antijoindata_ident = wc.make_ident("antijoindata_pos");
