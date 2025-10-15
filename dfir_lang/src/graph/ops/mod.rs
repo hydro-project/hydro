@@ -167,7 +167,12 @@ pub fn identity_write_iterator_fn(
         let input = &inputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_input<St: #root::futures::stream::Stream<Item = Item>, Item>(stream: St) -> impl #root::futures::stream::Stream<Item = Item> { stream }
+                fn check_input<St, Item>(stream: St) -> impl #root::futures::stream::Stream<Item = Item>
+                where
+                    St: #root::futures::stream::Stream<Item = Item>,
+                {
+                    stream
+                }
                 check_input::<_, #generic_type>(#input)
             };
         }
@@ -175,7 +180,12 @@ pub fn identity_write_iterator_fn(
         let output = &outputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_output<Push: #root::futures::sink::Sink<Item>, Item>(push: Push) -> impl #root::futures::sink::Sink<Item> { push }
+                fn check_output<Si, Item>(sink: Si) -> impl #root::futures::sink::Sink<Item>
+                where
+                    Si: #root::futures::sink::Sink<Item>,
+                {
+                    sink
+                }
                 check_output::<_, #generic_type>(#output)
             };
         }
@@ -217,7 +227,7 @@ pub fn null_write_iterator_fn(
             let #ident = #root::futures::stream::poll_fn(move |cx| {
                 // Make sure to poll all #inputs to completion.
                 #(
-                    let #inputs = ::std::task::pin!(#inputs).poll_next(cx);
+                    let #inputs = #root::futures::stream::Stream::poll_next(::std::task::pin!(#inputs), cx);
                 )*
                 #(
                     let _ = ::std::task::ready!(#inputs);
