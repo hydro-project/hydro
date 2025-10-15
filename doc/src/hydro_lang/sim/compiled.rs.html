@@ -161,7 +161,7 @@
 <a href=#161 id=161 data-nosnippet>161</a>                        <span class="kw">if </span>instance.log {
 <a href=#162 id=162 data-nosnippet>162</a>                            <span class="macro">eprintln!</span>(
 <a href=#163 id=163 data-nosnippet>163</a>                                <span class="string">"{}"</span>,
-<a href=#164 id=164 data-nosnippet>164</a>                                <span class="string">"\n==== New Simulation Instance ====\n"
+<a href=#164 id=164 data-nosnippet>164</a>                                <span class="string">"\n==== New Simulation Instance ===="
 <a href=#165 id=165 data-nosnippet>165</a>                                    </span>.color(colored::Color::Cyan)
 <a href=#166 id=166 data-nosnippet>166</a>                                    .bold()
 <a href=#167 id=167 data-nosnippet>167</a>                            );
@@ -286,7 +286,7 @@
 <a href=#286 id=286 data-nosnippet>286</a>                    <span class="kw">if </span>instance.log {
 <a href=#287 id=287 data-nosnippet>287</a>                        <span class="macro">eprintln!</span>(
 <a href=#288 id=288 data-nosnippet>288</a>                            <span class="string">"{}"</span>,
-<a href=#289 id=289 data-nosnippet>289</a>                            <span class="string">"\n==== New Simulation Instance ====\n"
+<a href=#289 id=289 data-nosnippet>289</a>                            <span class="string">"\n==== New Simulation Instance ===="
 <a href=#290 id=290 data-nosnippet>290</a>                                </span>.color(colored::Color::Cyan)
 <a href=#291 id=291 data-nosnippet>291</a>                                .bold()
 <a href=#292 id=292 data-nosnippet>292</a>                        );
@@ -630,7 +630,7 @@
 <a href=#630 id=630 data-nosnippet>630</a>    <span class="kw">async fn </span>scheduler(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
 <a href=#631 id=631 data-nosnippet>631</a>        <span class="kw">loop </span>{
 <a href=#632 id=632 data-nosnippet>632</a>            tokio::task::yield_now().<span class="kw">await</span>;
-<a href=#633 id=633 data-nosnippet>633</a>            <span class="kw">if </span><span class="self">self</span>.async_dfir.run_available().<span class="kw">await </span>{
+<a href=#633 id=633 data-nosnippet>633</a>            <span class="kw">if </span><span class="self">self</span>.async_dfir.run_tick().<span class="kw">await </span>{
 <a href=#634 id=634 data-nosnippet>634</a>                <span class="self">self</span>.possibly_ready_ticks.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.not_ready_ticks);
 <a href=#635 id=635 data-nosnippet>635</a>                <span class="kw">continue</span>;
 <a href=#636 id=636 data-nosnippet>636</a>            } <span class="kw">else </span>{
