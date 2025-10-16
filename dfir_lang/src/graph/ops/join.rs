@@ -141,7 +141,11 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
 
             let lifespan = wc.persistence_as_state_lifespan(persistence);
             let reset = lifespan.map(|lifespan| quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(#joindata_ident, #lifespan, |rcell| (#work_fn)(|| #root::util::clear::Clear::clear(::std::cell::RefCell::get_mut(rcell))));
+                #df_ident.set_state_lifespan_hook(
+                    #joindata_ident,
+                    #lifespan,
+                    |rcell| (#work_fn)(|| #root::util::clear::Clear::clear(::std::cell::RefCell::get_mut(rcell)))
+                );
             }).unwrap_or_default();
 
             let prologue = quote_spanned! {op_span=>
