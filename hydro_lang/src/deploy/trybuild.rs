@@ -319,9 +319,12 @@ pub fn create_trybuild()
         let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
         project_lock.lock()?;
 
+        fs::create_dir_all(path!(project.dir / "src"))?;
+        let _ = File::create(path!(project.dir / "src" / "lib.rs"))?;
+
         let manifest_toml = toml::to_string(&project.manifest)?;
         let manifest_with_example = format!(
-            "{}\n\n[[example]]\nname = \"sim-dylib\"\ncrate-type = [\"dylib\"]",
+            "{}\n\n[lib]\ncrate-type = [\"rlib\", \"dylib\"]\n\n[[example]]\nname = \"sim-dylib\"\ncrate-type = [\"dylib\"]",
             manifest_toml
         );
 

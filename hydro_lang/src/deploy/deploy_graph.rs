@@ -30,6 +30,7 @@ use super::trybuild::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
 use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
+use crate::deploy::trybuild::IS_TEST;
 use crate::location::NetworkHint;
 use crate::staging_util::get_this_crate;
 
@@ -1071,6 +1072,8 @@ fn create_trybuild_service(
 
     if let Some(rustflags) = trybuild.rustflags {
         ret = ret.rustflags(rustflags);
+    } else if IS_TEST.load(std::sync::atomic::Ordering::Relaxed) {
+        ret = ret.rustflags("-C prefer-dynamic");
     }
 
     if let Some(tracing) = trybuild.tracing {
