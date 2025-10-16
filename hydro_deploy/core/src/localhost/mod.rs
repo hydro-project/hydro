@@ -193,6 +193,29 @@ impl LaunchedHost for LaunchedLocalhost {
             (None, command)
         };
 
+        // from cargo
+        let dylib_path_var = if cfg!(windows) {
+            "PATH"
+        } else if cfg!(target_os = "macos") {
+            "DYLD_FALLBACK_LIBRARY_PATH"
+        } else if cfg!(target_os = "aix") {
+            "LIBPATH"
+        } else {
+            "LD_LIBRARY_PATH"
+        };
+
+        command.env(
+            dylib_path_var,
+            std::env::var_os(dylib_path_var).map_or_else(
+                || binary.bin_path.parent().unwrap().as_os_str().to_os_string(),
+                |paths| {
+                    let mut paths = std::env::split_paths(&paths).collect::<Vec<_>>();
+                    paths.insert(0, binary.bin_path.parent().unwrap().to_path_buf());
+                    std::env::join_paths(paths).unwrap()
+                },
+            ),
+        );
+
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
