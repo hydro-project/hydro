@@ -346,6 +346,28 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
                 "-Cllvm-args=-sanitizer-coverage-trace-compares",
             ]);
         }
+    } else if IS_TEST.load(std::sync::atomic::Ordering::Relaxed) {
+        command.env("RUSTFLAGS", "-C prefer-dynamic");
+
+        if cfg!(target_os = "macos") {
+            command.args([
+                "--",
+                "-Clink-arg=-rpath",
+                &format!(
+                    "-Clink-arg={}",
+                    path!(trybuild.target_dir / "debug").to_str().unwrap()
+                ),
+            ]);
+        } else if cfg!(target_family = "unix") {
+            command.args([
+                "--",
+                &format!(
+                    "-Clink-arg=-Wl,-rpath,{}",
+                    path!(trybuild.target_dir / "debug").to_str().unwrap()
+                ),
+                "-Clink-args=-Wl,-z,nodelete"
+            ]);
+        }
     }
 
     let mut spawned = command
@@ -393,7 +415,7 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     spawned.wait().unwrap();
 
     let out_file = tempfile::NamedTempFile::new().unwrap().into_temp_path();
-    fs::rename(out.as_ref().unwrap(), &out_file).unwrap();
+    fs::copy(out.as_ref().unwrap(), &out_file).unwrap();
     Ok(out_file)
 }
 
