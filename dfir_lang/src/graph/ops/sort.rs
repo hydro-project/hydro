@@ -37,7 +37,6 @@ pub const SORT: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    is_pull,
-                   work_fn,
                    ..
                },
                _| {
@@ -47,12 +46,7 @@ pub const SORT: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
             // Fix requires handoff specialization.
-            let #ident = #work_fn(|| {
-                let mut v = #input.collect::<::std::vec::Vec<_>>();
-                v.sort_unstable();
-                let i = v.into_iter();
-                #root::futures::stream::iter(i)
-            });
+            let #ident = let #ident = #root::compiled::pull::SortByKey::new(#input, ::std::convert::identity);
         };
         Ok(OperatorWriteOutput {
             write_iterator,

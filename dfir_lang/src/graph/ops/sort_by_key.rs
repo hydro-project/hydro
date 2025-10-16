@@ -38,18 +38,16 @@ pub const SORT_BY_KEY: OperatorConstraints = OperatorConstraints {
                    inputs,
                    is_pull,
                    arguments,
-                   work_fn,
                    ..
                },
                _| {
         assert!(is_pull);
         let input = &inputs[0];
+        let sort_func = &arguments[0];
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #work_fn(|| {
-                let mut tmp = #input.collect::<Vec<_>>();
-                #root::util::sort_unstable_by_key_hrtb(&mut tmp, #arguments);
-                tmp
-            }).into_iter();
+            // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
+            // Fix requires handoff specialization.
+            let #ident = #root::compiled::pull::SortByKey::new(#input, #sort_func);
         };
         Ok(OperatorWriteOutput {
             write_iterator,

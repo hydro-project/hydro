@@ -17,3 +17,6 @@ pub use join_fused::*;
 
 mod persist;
 pub use persist::Persist;
+
+mod sort_by_key;
+pub use sort_by_key::SortByKey;
