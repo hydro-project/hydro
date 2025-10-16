@@ -4631,6 +4631,7 @@ checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 name = "sinktools"
 version = "0.0.1"
 dependencies = [
+ "futures-task",
  "futures-util",
  "pin-project-lite",
  "sealed",
