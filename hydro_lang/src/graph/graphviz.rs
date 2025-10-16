@@ -87,6 +87,7 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
+        _backtrace: Option<&super::render::Backtrace>,
     ) -> Result<(), Self::Err> {
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
@@ -146,7 +147,7 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_type: HydroEdgeType,
+        edge_properties: &std::collections::HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
         let mut properties = Vec::<Cow<'static, str>>::new();
@@ -155,21 +156,32 @@ where
             properties.push(format!("label=\"{}\"", escape_dot(label, "\\n")).into());
         }
 
-        // Styling based on edge type
-        match edge_type {
-            HydroEdgeType::Persistent => {
-                properties.push("color=\"#008800\"".into());
-                properties.push("style=\"bold\"".into());
-            }
-            HydroEdgeType::Network => {
-                properties.push("color=\"#880088\"".into());
-                properties.push("style=\"dashed\"".into());
-            }
-            HydroEdgeType::Cycle => {
-                properties.push("color=\"#ff8800\"".into());
+        // Use unified edge style system
+        let style = super::render::get_unified_edge_style(edge_properties, None, None);
+        
+        // Apply color
+        properties.push(format!("color=\"{}\"", style.color).into());
+        
+        // Apply line width
+        if style.line_width > 1 {
+            properties.push("style=\"bold\"".into());
+        }
+        
+        // Apply line pattern
+        match style.line_pattern {
+            super::render::LinePattern::Dotted => {
                 properties.push("style=\"dotted\"".into());
             }
-            HydroEdgeType::Stream => {}
+            super::render::LinePattern::Dashed => {
+                properties.push("style=\"dashed\"".into());
+            }
+            _ => {}
+        }
+        
+        // Legacy fallback for old edge types (if not using unified style)
+        if edge_properties.contains(&HydroEdgeType::Cycle) && style.halo == super::render::HaloStyle::None {
+            properties.push("color=\"#ff8800\"".into());
+            properties.push("style=\"dotted\"".into());
         }
 
         write!(

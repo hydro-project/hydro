@@ -40,3 +40,53 @@ pub struct GraphConfig {
     #[clap(long)]
     pub long_labels: bool,
 }
+
+/// Configuration for visualizer URL generation and compression.
+/// Controls how graphs are encoded and opened in web browsers.
+#[derive(Debug, Clone)]
+pub struct VisualizerConfig {
+    /// Base URL for the visualizer (default: https://hydro.run/docs/hydroscope)
+    pub base_url: String,
+    /// Whether to enable compression for small graphs
+    pub enable_compression: bool,
+    /// Maximum URL length before falling back to file-based approach
+    pub max_url_length: usize,
+    /// Minimum JSON size to attempt compression
+    pub min_compression_size: usize,
+}
+
+impl Default for VisualizerConfig {
+    fn default() -> Self {
+        // Check for environment variable override for local development
+        let base_url = std::env::var("HYDRO_VISUALIZER_URL")
+            .unwrap_or_else(|_| "https://hydro.run/docs/hydroscope".to_string());
+        
+        Self {
+            base_url,
+            enable_compression: true,
+            max_url_length: 4000,
+            min_compression_size: 1000,
+        }
+    }
+}
+
+impl VisualizerConfig {
+    /// Create a new configuration with custom base URL
+    pub fn with_base_url(base_url: impl Into<String>) -> Self {
+        Self {
+            base_url: base_url.into(),
+            ..Default::default()
+        }
+    }
+    
+    /// Create a configuration for local development
+    pub fn local() -> Self {
+        Self::with_base_url("http://localhost:3000/hydroscope")
+    }
+    
+    /// Disable compression (useful for debugging)
+    pub fn without_compression(mut self) -> Self {
+        self.enable_compression = false;
+        self
+    }
+}

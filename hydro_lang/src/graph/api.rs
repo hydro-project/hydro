@@ -75,7 +75,7 @@ impl<'a> GraphApi<'a> {
             GraphFormat::Mermaid => crate::graph::render::render_hydro_ir_mermaid(self.ir, config),
             GraphFormat::Dot => crate::graph::render::render_hydro_ir_dot(self.ir, config),
             GraphFormat::ReactFlow => {
-                crate::graph::render::render_hydro_ir_reactflow(self.ir, config)
+                crate::graph::render::render_hydro_ir_json(self.ir, config)
             }
         }
     }
@@ -89,11 +89,16 @@ impl<'a> GraphApi<'a> {
         match format {
             GraphFormat::Mermaid => Ok(crate::graph::debug::open_mermaid(self.ir, Some(config))?),
             GraphFormat::Dot => Ok(crate::graph::debug::open_dot(self.ir, Some(config))?),
-            GraphFormat::ReactFlow => Ok(crate::graph::debug::open_reactflow_browser(
-                self.ir,
-                None,
-                Some(config),
-            )?),
+            GraphFormat::ReactFlow => {
+                #[cfg(feature = "viz")]
+                {
+                    Ok(crate::graph::debug::open_json_visualizer(self.ir, Some(config))?)
+                }
+                #[cfg(not(feature = "viz"))]
+                {
+                    Err("viz feature not enabled".into())
+                }
+            }
         }
     }
 

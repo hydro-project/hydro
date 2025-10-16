@@ -75,6 +75,7 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
+        _backtrace: Option<&super::render::Backtrace>,
     ) -> Result<(), Self::Err> {
         let class_str = match node_type {
             HydroNodeType::Source => "sourceClass",
@@ -134,14 +135,31 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_type: HydroEdgeType,
+        edge_properties: &std::collections::HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
-        let arrow_style = match edge_type {
-            HydroEdgeType::Stream => "-->",
-            HydroEdgeType::Persistent => "==>",
-            HydroEdgeType::Network => "-.->",
-            HydroEdgeType::Cycle => "--o",
+        // Use unified edge style system
+        let style = super::render::get_unified_edge_style(edge_properties, None, None);
+        
+        // Determine arrow style based on edge properties
+        let arrow_style = if edge_properties.contains(&HydroEdgeType::Persistent) {
+            "==>"
+        } else if edge_properties.contains(&HydroEdgeType::Network) {
+            "-.->".to_string()
+        } else if edge_properties.contains(&HydroEdgeType::Cycle) {
+            "--o"
+        } else {
+            match style.line_pattern {
+                super::render::LinePattern::Dotted => "-.->",
+                super::render::LinePattern::Dashed => "--o",
+                _ => {
+                    if style.line_width > 1 {
+                        "==>"
+                    } else {
+                        "-->"
+                    }
+                }
+            }
         };
 
         // Write the edge definition on its own line
@@ -160,22 +178,15 @@ where
             i = self.base.indent,
         )?;
 
-        // Add styling for different edge types on a separate line
-        if !matches!(edge_type, HydroEdgeType::Stream) {
-            writeln!(
-                self.base.write,
-                "{b:i$}linkStyle {} stroke:{}",
-                self.link_count,
-                match edge_type {
-                    HydroEdgeType::Persistent => "#008800",
-                    HydroEdgeType::Network => "#880088",
-                    HydroEdgeType::Cycle => "#ff0000",
-                    HydroEdgeType::Stream => "#666666", /* Should not be used here, but for completeness. */
-                },
-                b = "",
-                i = self.base.indent,
-            )?;
-        }
+        // Add styling using unified edge style color
+        writeln!(
+            self.base.write,
+            "{b:i$}linkStyle {} stroke:{}",
+            self.link_count,
+            style.color,
+            b = "",
+            i = self.base.indent,
+        )?;
 
         self.link_count += 1;
         Ok(())
