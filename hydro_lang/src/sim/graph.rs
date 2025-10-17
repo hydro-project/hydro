@@ -346,6 +346,34 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
                 "-Cllvm-args=-sanitizer-coverage-trace-compares",
             ]);
         }
+    } else if IS_TEST.load(std::sync::atomic::Ordering::Relaxed) {
+        command.env("RUSTFLAGS", "-C prefer-dynamic");
+
+        if cfg!(target_os = "macos") {
+            command.args([
+                "--",
+                "-Clink-arg=-rpath",
+                &format!(
+                    "-Clink-arg={}",
+                    path!(trybuild.target_dir / "debug").to_str().unwrap()
+                ),
+            ]);
+        } else if cfg!(target_family = "unix") {
+            command.args([
+                "--",
+                &format!(
+                    "-Clink-arg=-Wl,-rpath,{}",
+                    path!(trybuild.target_dir / "debug").to_str().unwrap()
+                ),
+            ]);
+
+            if cfg!(target_env = "gnu") {
+                command.arg(
+                    // https://github.com/rust-lang/rust/issues/91979
+                    "-Clink-args=-Wl,-z,nodelete",
+                );
+            }
+        }
     }
 
     let mut spawned = command
@@ -393,7 +421,7 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     spawned.wait().unwrap();
 
     let out_file = tempfile::NamedTempFile::new().unwrap().into_temp_path();
-    fs::rename(out.as_ref().unwrap(), &out_file).unwrap();
+    fs::copy(out.as_ref().unwrap(), &out_file).unwrap();
     Ok(out_file)
 }
 
@@ -461,26 +489,6 @@ pub(super) fn create_sim_graph_trybuild(
             let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
             write_atomic(inlined_staged.as_bytes(), &staged_path).unwrap();
         }
-    }
-
-    let crate_name_ident = syn::Ident::new(crate_name, Span::call_site());
-    let lib_path = path!(project_dir / "src" / "lib.rs");
-    {
-        let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
-        write_atomic(
-            prettyplease::unparse(&syn::parse_quote! {
-                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-
-                #[cfg(feature = "hydro___test")]
-                pub mod __staged;
-
-                #[cfg(not(feature = "hydro___test"))]
-                pub use #crate_name_ident::__staged;
-            })
-            .as_bytes(),
-            &lib_path,
-        )
-        .unwrap();
     }
 
     if is_test {

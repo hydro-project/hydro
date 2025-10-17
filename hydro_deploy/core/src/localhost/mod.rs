@@ -1,5 +1,5 @@
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::{Result, bail};
 use async_process::{Command, Stdio};
@@ -17,6 +17,8 @@ use crate::{
 pub mod launched_binary;
 pub use launched_binary::*;
 mod samply;
+
+static LOCAL_LIBDIR: OnceLock<String> = OnceLock::new();
 
 #[derive(Debug)]
 pub struct LocalhostHost {
@@ -192,6 +194,45 @@ impl LaunchedHost for LaunchedLocalhost {
             command.args(args);
             (None, command)
         };
+
+        // from cargo
+        let dylib_path_var = if cfg!(windows) {
+            "PATH"
+        } else if cfg!(target_os = "macos") {
+            "DYLD_FALLBACK_LIBRARY_PATH"
+        } else if cfg!(target_os = "aix") {
+            "LIBPATH"
+        } else {
+            "LD_LIBRARY_PATH"
+        };
+
+        let local_libdir = LOCAL_LIBDIR.get_or_init(|| {
+            std::process::Command::new("rustc")
+                .arg("--print")
+                .arg("target-libdir")
+                .output()
+                .map(|output| String::from_utf8(output.stdout).unwrap().trim().to_string())
+                .unwrap()
+        });
+
+        command.env(
+            dylib_path_var,
+            std::env::var_os(dylib_path_var).map_or_else(
+                || {
+                    std::env::join_paths([
+                        binary.bin_path.parent().unwrap(),
+                        &std::path::PathBuf::from(local_libdir),
+                    ])
+                    .unwrap()
+                },
+                |paths| {
+                    let mut paths = std::env::split_paths(&paths).collect::<Vec<_>>();
+                    paths.insert(0, binary.bin_path.parent().unwrap().to_path_buf());
+                    paths.insert(1, std::path::PathBuf::from(local_libdir));
+                    std::env::join_paths(paths).unwrap()
+                },
+            ),
+        );
 
         command
             .stdin(Stdio::piped())

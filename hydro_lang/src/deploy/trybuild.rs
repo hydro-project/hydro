@@ -107,9 +107,9 @@ pub fn create_graph_trybuild(
     let (project_dir, target_dir, mut cur_bin_enabled_features) = create_trybuild().unwrap();
 
     // TODO(shadaj): garbage collect this directory occasionally
-    fs::create_dir_all(path!(project_dir / "src" / "bin")).unwrap();
+    fs::create_dir_all(path!(project_dir / "examples")).unwrap();
 
-    let out_path = path!(project_dir / "src" / "bin" / format!("{bin_name}.rs"));
+    let out_path = path!(project_dir / "examples" / format!("{bin_name}.rs"));
     {
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
         write_atomic(source.as_ref(), &out_path).unwrap();
@@ -121,26 +121,6 @@ pub fn create_graph_trybuild(
             let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
             write_atomic(inlined_staged.as_bytes(), &staged_path).unwrap();
         }
-    }
-
-    let crate_name_ident = syn::Ident::new(crate_name, Span::call_site());
-    let lib_path = path!(project_dir / "src" / "lib.rs");
-    {
-        let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
-        write_atomic(
-            prettyplease::unparse(&syn::parse_quote! {
-                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-
-                #[cfg(feature = "hydro___test")]
-                pub mod __staged;
-
-                #[cfg(not(feature = "hydro___test"))]
-                pub use #crate_name_ident::__staged;
-            })
-            .as_bytes(),
-            &lib_path,
-        )
-        .unwrap();
     }
 
     if is_test {
@@ -318,9 +298,27 @@ pub fn create_trybuild()
         let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
         project_lock.lock()?;
 
+        fs::create_dir_all(path!(project.dir / "src"))?;
+
+        let crate_name_ident = syn::Ident::new(&crate_name, Span::call_site());
+        write_atomic(
+            prettyplease::unparse(&syn::parse_quote! {
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+
+                #[cfg(feature = "hydro___test")]
+                pub mod __staged;
+
+                #[cfg(not(feature = "hydro___test"))]
+                pub use #crate_name_ident::__staged;
+            })
+            .as_bytes(),
+            &path!(project.dir / "src" / "lib.rs"),
+        )
+        .unwrap();
+
         let manifest_toml = toml::to_string(&project.manifest)?;
         let manifest_with_example = format!(
-            "{}\n\n[[example]]\nname = \"sim-dylib\"\ncrate-type = [\"dylib\"]",
+            "{}\n\n[lib]\ncrate-type = [\"rlib\", \"dylib\"]\n\n[[example]]\nname = \"sim-dylib\"\ncrate-type = [\"dylib\"]",
             manifest_toml
         );
 

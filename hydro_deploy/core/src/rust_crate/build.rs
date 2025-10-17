@@ -142,6 +142,9 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     if let Some(rustflags) = params.rustflags.as_ref() {
                         command.env("RUSTFLAGS", rustflags);
+                    } else if params.target_type == HostTargetType::Local {
+                        // When compiling for local, prefer dynamic linking to reduce binary size
+                        command.env("RUSTFLAGS", "-C prefer-dynamic");
                     }
 
                     for (k, v) in params.build_env {
