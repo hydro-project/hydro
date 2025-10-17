@@ -82,6 +82,8 @@ pub struct BuildOutput {
     pub bin_data: Vec<u8>,
     /// The path to the binary file. [`Self::bin_data`] has a copy of the content.
     pub bin_path: PathBuf,
+    /// Shared library path, containing any necessary dylibs.
+    pub shared_library_path: Option<PathBuf>,
 }
 impl BuildOutput {
     /// A unique ID for the binary, based its contents.
@@ -140,9 +142,16 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.args(["--target-dir", target_dir.to_str().unwrap()]);
                     }
 
-                    if let Some(rustflags) = params.rustflags.as_ref() {
+                    let is_dylib = if let Some(rustflags) = params.rustflags.as_ref() {
                         command.env("RUSTFLAGS", rustflags);
-                    }
+                        false
+                    } else if params.target_type == HostTargetType::Local {
+                        // When compiling for local, prefer dynamic linking to reduce binary size
+                        command.env("RUSTFLAGS", "-C prefer-dynamic");
+                        true
+                    } else {
+                        false
+                    };
 
                     for (k, v) in params.build_env {
                         command.env(k, v);
@@ -191,6 +200,18 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     return Ok(BuildOutput {
                                         bin_data: data,
                                         bin_path: path_buf,
+                                        shared_library_path: if is_dylib {
+                                            Some(
+                                                params
+                                                    .target_dir
+                                                    .as_ref()
+                                                    .unwrap_or(&params.src.join("target"))
+                                                    .join("debug")
+                                                    .join("deps"),
+                                            )
+                                        } else {
+                                            None
+                                        },
                                     });
                                 }
                             }
