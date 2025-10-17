@@ -82,6 +82,8 @@ pub struct BuildOutput {
     pub bin_data: Vec<u8>,
     /// The path to the binary file. [`Self::bin_data`] has a copy of the content.
     pub bin_path: PathBuf,
+    /// Shared library path, containing any necessary dylibs.
+    pub shared_library_path: Option<PathBuf>,
 }
 impl BuildOutput {
     /// A unique ID for the binary, based its contents.
@@ -142,6 +144,9 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     if let Some(rustflags) = params.rustflags.as_ref() {
                         command.env("RUSTFLAGS", rustflags);
+                    } else if params.target_type == HostTargetType::Local {
+                        // When compiling for local, prefer dynamic linking to reduce binary size
+                        command.env("RUSTFLAGS", "-C prefer-dynamic");
                     }
 
                     for (k, v) in params.build_env {
@@ -191,6 +196,13 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     return Ok(BuildOutput {
                                         bin_data: data,
                                         bin_path: path_buf,
+                                        shared_library_path: Some(
+                                            params
+                                                .target_dir
+                                                .as_ref()
+                                                .unwrap_or(&params.src.join("target"))
+                                                .join("deps"),
+                                        ),
                                     });
                                 }
                             }
