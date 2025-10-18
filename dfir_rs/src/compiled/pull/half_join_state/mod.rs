@@ -26,6 +26,8 @@ pub trait HalfJoinState<Key, ValBuild, ValProbe> {
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
+    /// Iterate all keys and values.
     fn iter(&self) -> std::collections::hash_map::Iter<'_, Key, SmallVec<[ValBuild; 1]>>;
+    // Probe all items for a key
     fn full_probe(&self, k: &Key) -> std::slice::Iter<'_, ValBuild>;
 }
