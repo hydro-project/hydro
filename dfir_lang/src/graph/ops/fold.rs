@@ -58,7 +58,6 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                    inputs,
                    outputs,
                    singleton_output_ident,
-                   work_fn,
                    arguments,
                    ..
                },

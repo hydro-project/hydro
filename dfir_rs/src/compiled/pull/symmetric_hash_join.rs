@@ -1,32 +1,33 @@
+use std::pin::Pin;
+use std::task::{Context, Poll, ready};
+
+use futures::stream::{Fuse, FusedStream, Stream, StreamExt};
 use itertools::Either;
+use pin_project_lite::pin_project;
+use smallvec::SmallVec;
 
 use super::HalfJoinState;
 
-/// Custom [`Iterator`] for the `join` operator.
-pub struct SymmetricHashJoin<'a, Key, I1, V1, I2, V2, LhsState, RhsState>
-where
-    Key: Eq + std::hash::Hash + Clone,
-    V1: Clone,
-    V2: Clone,
-    I1: Iterator<Item = (Key, V1)>,
-    I2: Iterator<Item = (Key, V2)>,
-    LhsState: HalfJoinState<Key, V1, V2>,
-    RhsState: HalfJoinState<Key, V2, V1>,
-{
-    lhs: I1,
-    rhs: I2,
-    lhs_state: &'a mut LhsState,
-    rhs_state: &'a mut RhsState,
+pin_project! {
+    pub struct SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState> {
+        #[pin]
+        lhs: Lhs,
+        #[pin]
+        rhs: Rhs,
+
+        lhs_state: &'a mut LhsState,
+        rhs_state: &'a mut RhsState,
+    }
 }
 
-impl<Key, I1, V1, I2, V2, LhsState, RhsState> Iterator
-    for SymmetricHashJoin<'_, Key, I1, V1, I2, V2, LhsState, RhsState>
+impl<Key, Lhs, V1, Rhs, V2, LhsState, RhsState> Iterator
+    for SymmetricHashJoin<'_, Lhs, Rhs, LhsState, RhsState>
 where
     Key: Eq + std::hash::Hash + Clone,
     V1: Clone,
     V2: Clone,
-    I1: Iterator<Item = (Key, V1)>,
-    I2: Iterator<Item = (Key, V2)>,
+    Lhs: Iterator<Item = (Key, V1)>,
+    Rhs: Iterator<Item = (Key, V2)>,
     LhsState: HalfJoinState<Key, V1, V2>,
     RhsState: HalfJoinState<Key, V2, V1>,
 {
@@ -63,10 +64,60 @@ where
     }
 }
 
-/// Creates a custom [`Iterator`] for the `join` operator.
-pub fn symmetric_hash_join_into_iter<'a, Key, I1, V1, I2, V2, LhsState, RhsState>(
-    mut lhs: I1,
-    mut rhs: I2,
+impl<Key, Lhs, V1, Rhs, V2, LhsState, RhsState> Stream
+    for SymmetricHashJoin<'_, Fuse<Lhs>, Fuse<Rhs>, LhsState, RhsState>
+where
+    Key: Eq + std::hash::Hash + Clone,
+    V1: Clone,
+    V2: Clone,
+    Lhs: Stream<Item = (Key, V1)>,
+    Rhs: Stream<Item = (Key, V2)>,
+    LhsState: HalfJoinState<Key, V1, V2>,
+    RhsState: HalfJoinState<Key, V2, V1>,
+{
+    type Item = (Key, (V1, V2));
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+
+        loop {
+            if let Some((k, v2, v1)) = this.lhs_state.pop_match() {
+                return Poll::Ready(Some((k, (v1, v2))));
+            }
+            if let Some((k, v1, v2)) = this.rhs_state.pop_match() {
+                return Poll::Ready(Some((k, (v1, v2))));
+            }
+
+            let lhs_poll = this.lhs.as_mut().poll_next(cx);
+            if let Poll::Ready(Some((k, v1))) = lhs_poll {
+                if this.lhs_state.build(k.clone(), &v1)
+                    && let Some((k, v1, v2)) = this.rhs_state.probe(&k, &v1)
+                {
+                    return Poll::Ready(Some((k, (v1, v2))));
+                }
+                continue;
+            }
+
+            let rhs_poll = this.rhs.as_mut().poll_next(cx);
+            if let Poll::Ready(Some((k, v2))) = rhs_poll {
+                if this.rhs_state.build(k.clone(), &v2)
+                    && let Some((k, v2, v1)) = this.lhs_state.probe(&k, &v2)
+                {
+                    return Poll::Ready(Some((k, (v1, v2))));
+                }
+                continue;
+            }
+
+            let _none = ready!(lhs_poll);
+            let _none = ready!(rhs_poll);
+            return Poll::Ready(None);
+        }
+    }
+}
+
+pub fn symmetric_hash_join_into_iter<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState>(
+    mut lhs: Lhs,
+    mut rhs: Rhs,
     lhs_state: &'a mut LhsState,
     rhs_state: &'a mut RhsState,
     is_new_tick: bool,
@@ -75,8 +126,8 @@ where
     Key: 'a + Eq + std::hash::Hash + Clone,
     V1: 'a + Clone,
     V2: 'a + Clone,
-    I1: 'a + Iterator<Item = (Key, V1)>,
-    I2: 'a + Iterator<Item = (Key, V2)>,
+    Lhs: 'a + Iterator<Item = (Key, V1)>,
+    Rhs: 'a + Iterator<Item = (Key, V2)>,
     LhsState: HalfJoinState<Key, V1, V2>,
     RhsState: HalfJoinState<Key, V2, V1>,
 {
@@ -113,6 +164,68 @@ where
             lhs_state,
             rhs_state,
         })
+    }
+}
+
+pub fn symmetric_hash_join_into_stream<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState>(
+    mut lhs: Lhs,
+    mut rhs: Rhs,
+    lhs_state: &'a mut LhsState,
+    rhs_state: &'a mut RhsState,
+    is_new_tick: bool,
+) -> impl 'a + Stream<Item = (Key, (V1, V2))>
+where
+    Key: 'a + Eq + std::hash::Hash + Clone,
+    V1: 'a + Clone,
+    V2: 'a + Clone,
+    Lhs: 'a + Stream<Item = (Key, V1)>,
+    Rhs: 'a + Stream<Item = (Key, V2)>,
+    LhsState: HalfJoinState<Key, V1, V2>,
+    RhsState: HalfJoinState<Key, V2, V1>,
+{
+    fn assert_stream<St>(stream: St) -> St
+    where
+        St: Stream,
+    {
+        stream
+    }
+
+    if is_new_tick {
+        // For Stream, we don't bother to pre-build all the new items this tick.
+        // Instead, just replay, then do SymmetricHashJoin.
+
+        let replay = if lhs_state.len() < rhs_state.len() {
+            Either::Left(lhs_state.iter().flat_map(|(k, sv)| {
+                sv.iter().flat_map(|v1| {
+                    rhs_state
+                        .full_probe(k)
+                        .map(|v2| (k.clone(), (v1.clone(), v2.clone())))
+                })
+            }))
+        } else {
+            Either::Right(rhs_state.iter().flat_map(|(k, sv)| {
+                sv.iter().flat_map(|v2| {
+                    lhs_state
+                        .full_probe(k)
+                        .map(|v1| (k.clone(), (v1.clone(), v2.clone())))
+                })
+            }))
+        };
+        futures::future::Either::Left(futures::stream::iter(replay).chain(assert_stream(
+            SymmetricHashJoin {
+                lhs: lhs.fuse(),
+                rhs: rhs.fuse(),
+                lhs_state,
+                rhs_state,
+            },
+        )))
+    } else {
+        futures::future::Either::Right(assert_stream(SymmetricHashJoin {
+            lhs: lhs.fuse(),
+            rhs: rhs.fuse(),
+            lhs_state,
+            rhs_state,
+        }))
     }
 }
 
