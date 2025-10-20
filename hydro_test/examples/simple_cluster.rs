@@ -60,6 +60,11 @@ async fn main() {
         eprintln!("Error generating graph: {}", e);
     }
 
+    // If we're just generating a graph file, exit early
+    if args.graph.file && args.graph.graph.is_some() {
+        return;
+    }
+
     let _nodes = built
         .with_default_optimize()
         .with_process(

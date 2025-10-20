@@ -106,6 +106,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Generate graphs if requested
     let _ = built.generate_graph_with_config(&args.graph, None);
 
+    // If we're just generating a graph file, exit early
+    if args.graph.file && args.graph.graph.is_some() {
+        return Ok(());
+    }
+
     let optimized = built.with_default_optimize();
 
     let _nodes = optimized

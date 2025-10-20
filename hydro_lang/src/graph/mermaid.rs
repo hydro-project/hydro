@@ -75,7 +75,7 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
-        _backtrace: Option<&super::render::Backtrace>,
+        _backtrace: Option<&crate::compile::ir::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
         let class_str = match node_type {
             HydroNodeType::Source => "sourceClass",
@@ -143,20 +143,18 @@ where
         
         // Determine arrow style based on edge properties
         let arrow_style = if edge_properties.contains(&HydroEdgeType::Persistent) {
-            "==>"
+            "==>".to_string()
         } else if edge_properties.contains(&HydroEdgeType::Network) {
             "-.->".to_string()
-        } else if edge_properties.contains(&HydroEdgeType::Cycle) {
-            "--o"
         } else {
             match style.line_pattern {
-                super::render::LinePattern::Dotted => "-.->",
-                super::render::LinePattern::Dashed => "--o",
+                super::render::LinePattern::Dotted => "-.->".to_string(),
+                super::render::LinePattern::Dashed => "--o".to_string(),
                 _ => {
                     if style.line_width > 1 {
-                        "==>"
+                        "==>".to_string()
                     } else {
-                        "-->"
+                        "-->".to_string()
                     }
                 }
             }

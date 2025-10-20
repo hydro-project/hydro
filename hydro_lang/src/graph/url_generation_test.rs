@@ -9,7 +9,7 @@ mod tests {
     fn test_visualizer_config_default() {
         let config = VisualizerConfig::default();
         assert!(config.base_url.contains("hydro.run") || config.base_url.contains("localhost"));
-        assert_eq!(config.enable_compression, true);
+        assert!(config.enable_compression);
         assert_eq!(config.max_url_length, 4000);
         assert_eq!(config.min_compression_size, 1000);
     }
@@ -18,7 +18,7 @@ mod tests {
     fn test_visualizer_config_with_base_url() {
         let config = VisualizerConfig::with_base_url("https://example.com/viz");
         assert_eq!(config.base_url, "https://example.com/viz");
-        assert_eq!(config.enable_compression, true);
+        assert!(config.enable_compression);
     }
 
     #[test]
@@ -30,7 +30,7 @@ mod tests {
     #[test]
     fn test_visualizer_config_without_compression() {
         let config = VisualizerConfig::default().without_compression();
-        assert_eq!(config.enable_compression, false);
+        assert!(!config.enable_compression);
     }
 
     #[test]
@@ -38,7 +38,7 @@ mod tests {
         // Test with a small JSON that should not be compressed
         let small_json = r#"{"nodes":[],"edges":[]}"#;
         let config = VisualizerConfig::default();
-        
+
         // Small JSON should skip compression
         assert!(small_json.len() < config.min_compression_size);
     }
@@ -47,12 +47,12 @@ mod tests {
     fn test_url_length_calculation() {
         let base_url = "https://hydro.run/docs/hydroscope";
         let param_name = "data";
-        let encoded_data = "eyJub2RlcyI6W10sImVkZ2VzIjpbXX0"; // base64 encoded
-        
+        let encoded_data = "eyJub2RlcyI6W10sImVkZ2VzIjpbXX0"; // base64 encoded {"nodes":[],"edges":[]}
+
         // Format: base_url#param_name=encoded_data
         let expected_length = base_url.len() + 1 + param_name.len() + 1 + encoded_data.len();
-        
-        // Verify calculation
-        assert_eq!(expected_length, 35 + 1 + 4 + 1 + 35); // 76 total
+
+        // Verify calculation: 35 (base_url) + 1 (#) + 4 (param_name) + 1 (=) + 29 (encoded_data)
+        assert_eq!(expected_length, 35 + 1 + 4 + 1 + 29); // 70 total
     }
 }

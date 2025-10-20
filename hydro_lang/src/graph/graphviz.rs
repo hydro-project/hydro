@@ -87,7 +87,7 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
-        _backtrace: Option<&super::render::Backtrace>,
+        _backtrace: Option<&crate::compile::ir::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
@@ -158,15 +158,15 @@ where
 
         // Use unified edge style system
         let style = super::render::get_unified_edge_style(edge_properties, None, None);
-        
+
         // Apply color
         properties.push(format!("color=\"{}\"", style.color).into());
-        
+
         // Apply line width
         if style.line_width > 1 {
             properties.push("style=\"bold\"".into());
         }
-        
+
         // Apply line pattern
         match style.line_pattern {
             super::render::LinePattern::Dotted => {
@@ -176,12 +176,6 @@ where
                 properties.push("style=\"dashed\"".into());
             }
             _ => {}
-        }
-        
-        // Legacy fallback for old edge types (if not using unified style)
-        if edge_properties.contains(&HydroEdgeType::Cycle) && style.halo == super::render::HaloStyle::None {
-            properties.push("color=\"#ff8800\"".into());
-            properties.push("style=\"dotted\"".into());
         }
 
         write!(

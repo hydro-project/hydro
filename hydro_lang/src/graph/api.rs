@@ -318,19 +318,32 @@ impl<'a> GraphApi<'a> {
             let format = match graph_type {
                 crate::graph::config::GraphType::Mermaid => GraphFormat::Mermaid,
                 crate::graph::config::GraphType::Dot => GraphFormat::Dot,
-                crate::graph::config::GraphType::Reactflow => GraphFormat::ReactFlow,
+                crate::graph::config::GraphType::Json => GraphFormat::ReactFlow,
             };
 
-            self.open_browser(
-                format,
-                !config.no_metadata,
-                !config.no_location_groups,
-                !config.long_labels, // use_short_labels is the inverse of long_labels
-                message_handler,
-            )
-        } else {
-            Ok(())
+            if config.file {
+                // Write to file
+                let filename = format!("hydro_graph.{}", format.file_extension());
+                self.write_graph_to_file(
+                    format,
+                    &filename,
+                    !config.no_metadata,
+                    !config.no_location_groups,
+                    !config.long_labels,
+                )?;
+                println!("Graph written to {}", filename);
+            } else {
+                // Open in browser
+                self.open_browser(
+                    format,
+                    !config.no_metadata,
+                    !config.no_location_groups,
+                    !config.long_labels,
+                    message_handler,
+                )?;
+            }
         }
+        Ok(())
     }
 
     /// Generate all graph files based on GraphConfig

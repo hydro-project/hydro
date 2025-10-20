@@ -36,10 +36,8 @@ function HydroscopePage() {
         const compressedParam = urlParams.get('compressed');
 
         if (dataParam || compressedParam) {
-          console.log('🔄 Parsing data from URL parameters...');
           const parsedData = await parseDataFromUrl(dataParam, compressedParam);
           if (parsedData) {
-            console.log('✅ Successfully parsed data from URL');
             setUrlData(parsedData);
           }
         }
@@ -133,20 +131,9 @@ function HydroscopePage() {
           // initialLayoutAlgorithm defaults to mrtree
           // initialColorPalette defaults to Set3
           onFileUpload={(data, filename) => {
-            console.log('📁 File uploaded:', filename);
             // Update the data state so the component shows the visualization
             setUrlData(data);
           }}
-          onContainerCollapse={(containerId, visualizationState) => {
-            console.log('📦 Container collapsed:', containerId);
-          }}
-          onContainerExpand={(containerId, visualizationState) => {
-            console.log('📦 Container expanded:', containerId);
-          }}
-          onConfigChange={(config) => {
-            console.log('⚙️ Configuration changed:', config);
-          }}
-
         />
       </div>
     </Layout>

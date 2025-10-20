@@ -1,14 +1,14 @@
 use clap::{Parser, ValueEnum};
 
-/// Enum for choosing between mermaid, dot, and reactflow graph writing.
+/// Enum for choosing between mermaid, dot, and json graph writing.
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum GraphType {
     /// Mermaid graphs.
     Mermaid,
     /// Dot (Graphviz) graphs.
     Dot,
-    /// Reactflow.js interactive graphs.
-    Reactflow,
+    /// JSON format for interactive graphs.
+    Json,
 }
 
 impl std::fmt::Display for GraphType {
@@ -23,6 +23,10 @@ pub struct GraphConfig {
     /// Graph format to generate and display
     #[clap(long)]
     pub graph: Option<GraphType>,
+
+    /// Write graph to file instead of opening in browser
+    #[clap(long)]
+    pub file: bool,
 
     /// Don't show metadata in graph nodes
     #[clap(long)]

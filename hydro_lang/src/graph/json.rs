@@ -69,24 +69,6 @@ impl<W> HydroJson<W> {
         }
     }
 
-    /// Get semantic tags for a node based on its type and location
-    fn get_node_semantic_tags(
-        node_type: HydroNodeType,
-        location_type: Option<&str>,
-    ) -> Vec<String> {
-        let mut tags = Vec::new();
-
-        // Add node type as a semantic tag
-        tags.push(Self::node_type_to_string(node_type).to_string());
-
-        // Add location type if available
-        if let Some(loc_type) = location_type {
-            tags.push(loc_type.to_string());
-        }
-
-        tags
-    }
-
     /// Get all node type definitions for JSON output
     fn get_node_type_definitions() -> Vec<serde_json::Value> {
         super::render::node_type_utils::all_types_with_strings()
@@ -116,9 +98,14 @@ impl<W> HydroJson<W> {
     }
 
     /// Get edge style configuration with semantic→style mappings.
-    /// This is now simplified since styles are computed per-edge using unified system.
     fn get_edge_style_config() -> serde_json::Value {
         serde_json::json!({
+            "semanticPriorities": [
+                ["Unbounded", "Bounded"],
+                ["NoOrder", "TotalOrder"],
+                ["Keyed", "NotKeyed"],
+                ["Network", "Local"]
+            ],
             "semanticMappings": {
                 // Network communication group - controls line pattern AND animation
                 "NetworkGroup": {
@@ -127,58 +114,64 @@ impl<W> HydroJson<W> {
                         "animation": "static"
                     },
                     "Network": {
-                        "line-pattern": "dotted",
+                        "line-pattern": "dashed",
                         "animation": "animated"
                     }
                 },
 
-                // Boundedness group - controls line width
-                "BoundednessGroup": {
-                    "Unbounded": {
-                        "line-width": 1
-                    },
-                    "Bounded": {
-                        "line-width": 3
-                    }
-                },
-
-                // Collection type group - controls arrowhead and rails (line-style)
-                "CollectionGroup": {
-                    "Stream": {
-                        "arrowhead": "triangle-filled",
-                        "line-style": "single"
-                    },
-                    "KeyedStream": {
-                        "arrowhead": "triangle-filled",
-                        "line-style": "double"
-                    },
-                    "Singleton": {
-                        "arrowhead": "circle-filled",
-                        "line-style": "single"
-                    },
-                    "Optional": {
-                        "arrowhead": "diamond-open",
-                        "line-style": "single"
-                    }
-                },
-
-                // Flow control group - controls halo
-                "FlowGroup": {
-                    "Linear": {
-                        "halo": "none"
-                    },
-                    "Cycle": {
-                        "halo": "light-red"
-                    }
-                },
-
-                // Ordering group - waviness channel
+                // Ordering group - controls waviness
                 "OrderingGroup": {
                     "TotalOrder": {
-                        "waviness": "none"
+                        "waviness": "straight"
                     },
                     "NoOrder": {
                         "waviness": "wavy"
+                    }
+                },
+
+                // Boundedness group - controls halo
+                "BoundednessGroup": {
+                    "Bounded": {
+                        "halo": "none"
+                    },
+                    "Unbounded": {
+                        "halo": "light-blue"
+                    }
+                },
+
+                // Keyedness group - controls vertical hash marks on the line
+                "KeyednessGroup": {
+                    "NotKeyed": {
+                        "line-style": "single"
+                    },
+                    "Keyed": {
+                        "line-style": "hash-marks"
+                    }
+                },
+
+                // Collection type group - controls color
+                "CollectionGroup": {
+                    "Stream": {
+                        "color": "#2563eb",
+                        "arrowhead": "triangle-filled"
+                    },
+                    "Singleton": {
+                        "color": "#000000",
+                        "arrowhead": "circle-filled"
+                    },
+                    "Optional": {
+                        "color": "#6b7280",
+                        "arrowhead": "diamond-open"
+                    }
+                },
+
+                // Flow group - controls flow direction or persistence
+                "FlowGroup": {
+                    "Transient": {
+                        "persistence": "none"
+                    },
+                    "Persistent": {
+                        "persistence": "stored"
                     }
                 }
             },
@@ -345,12 +338,13 @@ where
             serde_json::json!([])
         };
 
-        // Generate semantic tags for the node based on its type
-        let semantic_tags = Self::get_node_semantic_tags(node_type, location_type);
+        // Add semantic tags for nodes (node type as semantic tag)
+        let node_type_str = Self::node_type_to_string(node_type);
+        let semantic_tags = vec![node_type_str];
 
         let node = serde_json::json!({
             "id": node_id.to_string(),
-            "nodeType": Self::node_type_to_string(node_type),
+            "nodeType": node_type_str,
             "fullLabel": enhanced_full_label,
             "shortLabel": short_label,
             "semanticTags": semantic_tags,
@@ -391,51 +385,18 @@ where
         let dst_loc = self.node_locations.get(&dst_id).copied();
 
         // Add Network tag if edge crosses locations
-        if let (Some(src), Some(dst)) = (src_loc, dst_loc) {
-            if src != dst && !semantic_tags.contains(&"Network".to_string()) {
-                semantic_tags.push("Network".to_string());
-            }
+        if let (Some(src), Some(dst)) = (src_loc, dst_loc)
+            && src != dst
+            && !semantic_tags.contains(&"Network".to_string())
+        {
+            semantic_tags.push("Network".to_string());
         }
-
-        // Get unified edge style
-        let style = super::render::get_unified_edge_style(edge_properties, src_loc, dst_loc);
 
         let mut edge = serde_json::json!({
             "id": edge_id,
             "source": src_id.to_string(),
             "target": dst_id.to_string(),
             "semanticTags": semantic_tags,
-            "style": {
-                "line-pattern": match style.line_pattern {
-                    super::render::LinePattern::Solid => "solid",
-                    super::render::LinePattern::Dotted => "dotted",
-                    super::render::LinePattern::Dashed => "dashed",
-                },
-                "line-width": style.line_width,
-                "arrowhead": match style.arrowhead {
-                    super::render::ArrowheadStyle::TriangleFilled => "triangle-filled",
-                    super::render::ArrowheadStyle::CircleFilled => "circle-filled",
-                    super::render::ArrowheadStyle::DiamondOpen => "diamond-open",
-                    super::render::ArrowheadStyle::Default => "triangle-filled",
-                },
-                "line-style": match style.line_style {
-                    super::render::LineStyle::Single => "single",
-                    super::render::LineStyle::Double => "double",
-                },
-                "halo": match style.halo {
-                    super::render::HaloStyle::None => "none",
-                    super::render::HaloStyle::LightRed => "light-red",
-                },
-                "waviness": match style.waviness {
-                    super::render::WavinessStyle::None => "none",
-                    super::render::WavinessStyle::Wavy => "wavy",
-                },
-                "animation": match style.animation {
-                    super::render::AnimationStyle::Static => "static",
-                    super::render::AnimationStyle::Animated => "animated",
-                },
-                "color": style.color,
-            }
         });
 
         if let Some(label_text) = label {
@@ -454,7 +415,12 @@ where
         let location_label = match location_type {
             "Process" => {
                 if let Some(name) = self.process_names.get(&location_id) {
-                    name.clone()
+                    // Use default name if the type name is just "()" (unit type)
+                    if name == "()" {
+                        format!("Process {}", location_id)
+                    } else {
+                        name.clone()
+                    }
                 } else {
                     format!("Process {}", location_id)
                 }
@@ -730,7 +696,36 @@ impl<W> HydroJson<W> {
             }
         }
         // Build hierarchy tree and create proper ID mapping
-        let (hierarchy, path_to_id_map) = self.build_hierarchy_tree_with_ids(&hierarchy_map);
+        let (mut hierarchy, mut path_to_id_map) =
+            self.build_hierarchy_tree_with_ids(&hierarchy_map);
+
+        // Create a root node for nodes without backtraces
+        let root_id = "bt_root".to_string();
+        let mut nodes_without_backtrace = Vec::new();
+
+        // Collect all node IDs
+        for node in &self.nodes {
+            if let Some(node_id_str) = node["id"].as_str() {
+                nodes_without_backtrace.push(node_id_str.to_string());
+            }
+        }
+
+        // Remove nodes that already have backtrace assignments
+        for node_ids in path_to_node_assignments.values() {
+            for node_id in node_ids {
+                nodes_without_backtrace.retain(|id| id != node_id);
+            }
+        }
+
+        // If there are nodes without backtraces, create a root container for them
+        if !nodes_without_backtrace.is_empty() {
+            hierarchy.push(serde_json::json!({
+                "id": root_id.clone(),
+                "name": "(no backtrace)",
+                "children": []
+            }));
+            path_to_id_map.insert("__root__".to_string(), root_id.clone());
+        }
 
         // Create node assignments using the actual hierarchy IDs
         let mut node_assignments = serde_json::Map::new();
@@ -742,6 +737,12 @@ impl<W> HydroJson<W> {
                 }
             }
         }
+
+        // Assign nodes without backtraces to the root
+        for node_id in nodes_without_backtrace {
+            node_assignments.insert(node_id, serde_json::Value::String(root_id.clone()));
+        }
+
         (hierarchy, node_assignments)
     }
 
@@ -864,7 +865,6 @@ pub fn open_json_browser(
         ..Default::default()
     };
 
-    // Use the centralized debug functionality instead of duplicating logic
     super::debug::open_json_visualizer(ir, Some(config))
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }
@@ -891,7 +891,7 @@ pub fn save_json(
 /// Open JSON visualization in browser for a BuiltFlow
 #[cfg(feature = "build")]
 pub fn open_browser(
-    built_flow: &crate::builder::built::BuiltFlow,
+    built_flow: &crate::compile::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
     open_json_browser(
         built_flow.ir(),

@@ -204,15 +204,15 @@ pub enum HydroEdgeType {
 /// This intermediate format allows consistent styling across JSON, DOT, and Mermaid.
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnifiedEdgeStyle {
-    /// Line pattern (solid, dotted, dashed)
+    /// Line pattern (solid, dashed)
     pub line_pattern: LinePattern,
     /// Line width (1 = thin, 3 = thick)
     pub line_width: u8,
     /// Arrowhead style
     pub arrowhead: ArrowheadStyle,
-    /// Line style for rails (single, double)
+    /// Line style (single plain line, or line with hash marks for keyed streams)
     pub line_style: LineStyle,
-    /// Halo/background effect
+    /// Halo/background effect for boundedness
     pub halo: HaloStyle,
     /// Line waviness for ordering information
     pub waviness: WavinessStyle,
@@ -239,14 +239,16 @@ pub enum ArrowheadStyle {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LineStyle {
+    /// Plain single line
     Single,
-    Double,
+    /// Single line with vertical hash marks (for keyed streams)
+    HashMarks,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HaloStyle {
     None,
-    LightRed,
+    LightBlue,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -278,6 +280,16 @@ impl Default for UnifiedEdgeStyle {
 
 /// Convert HydroEdgeType properties to unified edge style.
 /// This is the core logic for determining edge visual properties.
+///
+/// # Visual Encoding Mapping
+///
+/// | Semantic Property | Visual Channel | Values |
+/// |------------------|----------------|---------|
+/// | Network | Line Pattern + Animation | Local (solid, static), Network (dashed, animated) |
+/// | Ordering | Waviness | TotalOrder (straight), NoOrder (wavy) |
+/// | Boundedness | Halo | Bounded (none), Unbounded (light-blue transparent) |
+/// | Keyedness | Line Style | NotKeyed (plain line), Keyed (line with vertical hash marks) |
+/// | Collection Type | Color + Arrowhead | Stream (blue #2563eb, triangle), Singleton (black, circle), Optional (gray, diamond) |
 pub fn get_unified_edge_style(
     edge_properties: &HashSet<HydroEdgeType>,
     src_location: Option<usize>,
@@ -290,58 +302,45 @@ pub fn get_unified_edge_style(
         || (src_location.is_some() && dst_location.is_some() && src_location != dst_location);
 
     if is_network {
-        style.line_pattern = LinePattern::Dotted;
+        style.line_pattern = LinePattern::Dashed;
         style.animation = AnimationStyle::Animated;
-        style.color = "#880088";
     } else {
         style.line_pattern = LinePattern::Solid;
         style.animation = AnimationStyle::Static;
     }
 
-    // Boundedness group - controls line width
-    if edge_properties.contains(&HydroEdgeType::Bounded) {
-        style.line_width = 3;
-        if !is_network {
-            style.color = "#008800";
-        }
-    } else if edge_properties.contains(&HydroEdgeType::Unbounded) {
-        style.line_width = 1;
+    // Boundedness group - controls halo
+    if edge_properties.contains(&HydroEdgeType::Unbounded) {
+        style.halo = HaloStyle::LightBlue;
+    } else {
+        style.halo = HaloStyle::None;
     }
 
-    // Collection type group - controls arrowhead and rails (line-style)
+    // Collection type group - controls arrowhead and color
     if edge_properties.contains(&HydroEdgeType::Stream) {
         style.arrowhead = ArrowheadStyle::TriangleFilled;
-        style.line_style = LineStyle::Single;
+        style.color = "#2563eb"; // Bright blue for Stream
     } else if edge_properties.contains(&HydroEdgeType::KeyedStream) {
         style.arrowhead = ArrowheadStyle::TriangleFilled;
-        style.line_style = LineStyle::Double;
-        if !is_network && !edge_properties.contains(&HydroEdgeType::Bounded) {
-            style.color = "#0088ff";
-        }
+        style.color = "#2563eb"; // Bright blue for Stream (keyed variant)
     } else if edge_properties.contains(&HydroEdgeType::Singleton) {
         style.arrowhead = ArrowheadStyle::CircleFilled;
-        style.line_style = LineStyle::Single;
+        style.color = "#000000"; // Black for Singleton
     } else if edge_properties.contains(&HydroEdgeType::Optional) {
         style.arrowhead = ArrowheadStyle::DiamondOpen;
-        style.line_style = LineStyle::Single;
+        style.color = "#6b7280"; // Gray for Optional
     }
 
-    // Flow control group - controls halo
-    if edge_properties.contains(&HydroEdgeType::Cycle) {
-        style.halo = HaloStyle::LightRed;
-        style.color = "#ff8800";
+    // Keyedness group - controls hash marks on the line
+    if edge_properties.contains(&HydroEdgeType::Keyed) {
+        style.line_style = LineStyle::HashMarks; // Renders as vertical hash marks on the line in hydroscope
+    } else {
+        style.line_style = LineStyle::Single;
     }
 
     // Ordering group - waviness channel
     if edge_properties.contains(&HydroEdgeType::NoOrder) {
         style.waviness = WavinessStyle::Wavy;
-        if !is_network
-            && !edge_properties.contains(&HydroEdgeType::Bounded)
-            && !edge_properties.contains(&HydroEdgeType::KeyedStream)
-            && !edge_properties.contains(&HydroEdgeType::Cycle)
-        {
-            style.color = "#ff0000";
-        }
     } else if edge_properties.contains(&HydroEdgeType::TotalOrder) {
         style.waviness = WavinessStyle::None;
     }
@@ -355,17 +354,19 @@ pub fn get_unified_edge_style(
 pub fn extract_edge_properties_from_collection_kind(
     collection_kind: &crate::compile::ir::CollectionKind,
 ) -> HashSet<HydroEdgeType> {
-    use crate::compile::ir::{BoundKind, CollectionKind, StreamOrder};
-    
+    use crate::compile::ir::CollectionKind;
+
     let mut properties = HashSet::new();
-    
+
     match collection_kind {
         CollectionKind::Stream { bound, order, .. } => {
             properties.insert(HydroEdgeType::Stream);
             add_bound_property(&mut properties, bound);
             add_order_property(&mut properties, order);
         }
-        CollectionKind::KeyedStream { bound, value_order, .. } => {
+        CollectionKind::KeyedStream {
+            bound, value_order, ..
+        } => {
             properties.insert(HydroEdgeType::KeyedStream);
             properties.insert(HydroEdgeType::Keyed);
             add_bound_property(&mut properties, bound);
@@ -391,14 +392,17 @@ pub fn extract_edge_properties_from_collection_kind(
             properties.insert(HydroEdgeType::TotalOrder);
         }
     }
-    
+
     properties
 }
 
 /// Helper function to add bound property based on BoundKind.
-fn add_bound_property(properties: &mut HashSet<HydroEdgeType>, bound: &crate::compile::ir::BoundKind) {
+fn add_bound_property(
+    properties: &mut HashSet<HydroEdgeType>,
+    bound: &crate::compile::ir::BoundKind,
+) {
     use crate::compile::ir::BoundKind;
-    
+
     match bound {
         BoundKind::Bounded => {
             properties.insert(HydroEdgeType::Bounded);
@@ -415,7 +419,7 @@ fn add_keyed_singleton_bound_property(
     bound: &crate::compile::ir::KeyedSingletonBoundKind,
 ) {
     use crate::compile::ir::KeyedSingletonBoundKind;
-    
+
     match bound {
         KeyedSingletonBoundKind::Bounded | KeyedSingletonBoundKind::BoundedValue => {
             properties.insert(HydroEdgeType::Bounded);
@@ -427,9 +431,12 @@ fn add_keyed_singleton_bound_property(
 }
 
 /// Helper function to add order property based on StreamOrder.
-fn add_order_property(properties: &mut HashSet<HydroEdgeType>, order: &crate::compile::ir::StreamOrder) {
+fn add_order_property(
+    properties: &mut HashSet<HydroEdgeType>,
+    order: &crate::compile::ir::StreamOrder,
+) {
     use crate::compile::ir::StreamOrder;
-    
+
     match order {
         StreamOrder::TotalOrder => {
             properties.insert(HydroEdgeType::TotalOrder);
@@ -442,10 +449,7 @@ fn add_order_property(properties: &mut HashSet<HydroEdgeType>, order: &crate::co
 
 /// Detect if an edge crosses network boundaries by comparing source and destination locations.
 /// Returns true if the edge represents network communication between different locations.
-pub fn is_network_edge(
-    src_location: &LocationId,
-    dst_location: &LocationId,
-) -> bool {
+pub fn is_network_edge(src_location: &LocationId, dst_location: &LocationId) -> bool {
     // Compare the root locations to determine if they differ
     // Tick locations are unwrapped to their underlying location
     src_location.root() != dst_location.root()
@@ -466,12 +470,6 @@ pub fn add_network_edge_tag(
 /// CycleSource nodes are the source of feedback loops in the dataflow graph.
 pub fn is_cycle_source_node(node: &HydroNode) -> bool {
     matches!(node, HydroNode::CycleSource { .. })
-}
-
-/// Add cycle edge tag if the edge is part of a feedback loop.
-/// This should be called when connecting to a CycleSink or from a CycleSource.
-pub fn add_cycle_edge_tag(properties: &mut HashSet<HydroEdgeType>) {
-    properties.insert(HydroEdgeType::Cycle);
 }
 
 /// Configuration for graph writing.
@@ -499,11 +497,11 @@ impl Default for HydroWriteConfig {
 }
 
 /// Graph structure tracker for Hydro IR rendering.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct HydroGraphStructure {
     pub nodes: HashMap<usize, (NodeLabel, HydroNodeType, Option<usize>, Option<Backtrace>)>, /* node_id -> (label, type, location, backtrace) */
-    pub edges: Vec<(usize, usize, HashSet<HydroEdgeType>, Option<String>)>, // (src, dst, edge_properties, label)
-    pub locations: HashMap<usize, String>,                         // location_id -> location_type
+    pub edges: Vec<(usize, usize, HashSet<HydroEdgeType>, Option<String>)>, /* (src, dst, edge_properties, label) */
+    pub locations: HashMap<usize, String>, // location_id -> location_type
     pub next_node_id: usize,
 }
 
@@ -518,12 +516,9 @@ impl HydroGraphStructure {
         node_type: HydroNodeType,
         location: Option<usize>,
     ) -> usize {
-        let node_id = self.next_node_id;
-        self.next_node_id += 1;
-        self.nodes.insert(node_id, (label, node_type, location, None));
-        node_id
+        self.add_node_with_backtrace(label, node_type, location, None)
     }
-    
+
     pub fn add_node_with_backtrace(
         &mut self,
         label: NodeLabel,
@@ -533,8 +528,21 @@ impl HydroGraphStructure {
     ) -> usize {
         let node_id = self.next_node_id;
         self.next_node_id += 1;
-        self.nodes.insert(node_id, (label, node_type, location, backtrace));
+        self.nodes
+            .insert(node_id, (label, node_type, location, backtrace));
         node_id
+    }
+
+    /// Add a node with metadata, extracting backtrace automatically
+    pub fn add_node_with_metadata(
+        &mut self,
+        label: NodeLabel,
+        node_type: HydroNodeType,
+        metadata: &crate::compile::ir::HydroIrMetadata,
+    ) -> usize {
+        let location = setup_location(self, metadata);
+        let backtrace = Some(metadata.op.backtrace.clone());
+        self.add_node_with_backtrace(label, node_type, location, backtrace)
     }
 
     pub fn add_edge(
@@ -546,7 +554,7 @@ impl HydroGraphStructure {
     ) {
         self.edges.push((src, dst, edge_properties, label));
     }
-    
+
     // Legacy method for backward compatibility
     pub fn add_edge_single(
         &mut self,
@@ -639,38 +647,38 @@ fn setup_location(
 }
 
 /// Helper function to add an edge with semantic tags extracted from metadata.
-/// This function combines collection kind extraction with network and cycle detection.
+/// This function combines collection kind extraction with network detection.
 fn add_edge_with_metadata(
     structure: &mut HydroGraphStructure,
     src_id: usize,
     dst_id: usize,
     src_metadata: Option<&crate::compile::ir::HydroIrMetadata>,
     dst_metadata: Option<&crate::compile::ir::HydroIrMetadata>,
-    is_cycle: bool,
     label: Option<String>,
 ) {
     let mut properties = HashSet::new();
-    
+
     // Extract semantic tags from source metadata's collection kind
     if let Some(metadata) = src_metadata {
-        properties.extend(extract_edge_properties_from_collection_kind(&metadata.collection_kind));
+        properties.extend(extract_edge_properties_from_collection_kind(
+            &metadata.collection_kind,
+        ));
     }
-    
+
     // Add network edge tag if locations differ
     if let (Some(src_meta), Some(dst_meta)) = (src_metadata, dst_metadata) {
-        add_network_edge_tag(&mut properties, &src_meta.location_kind, &dst_meta.location_kind);
+        add_network_edge_tag(
+            &mut properties,
+            &src_meta.location_kind,
+            &dst_meta.location_kind,
+        );
     }
-    
-    // Add cycle edge tag if this is a cycle edge
-    if is_cycle {
-        add_cycle_edge_tag(&mut properties);
-    }
-    
+
     // If no properties were extracted, default to Stream
     if properties.is_empty() {
         properties.insert(HydroEdgeType::Stream);
     }
-    
+
     structure.add_edge(src_id, dst_id, properties, label);
 }
 
@@ -761,12 +769,28 @@ impl HydroRoot {
             input: &HydroNode,
             sink_metadata: Option<&crate::compile::ir::HydroIrMetadata>,
             label: NodeLabel,
-            is_cycle: bool,
         ) -> usize {
             let input_id = input.build_graph_structure(structure, seen_tees, config);
-            let location_id = sink_metadata.and_then(|m| setup_location(structure, m));
-            let sink_id = structure.add_node(label, HydroNodeType::Sink, location_id);
-            
+
+            // If no explicit metadata is provided, extract it from the input node
+            let effective_metadata = if let Some(meta) = sink_metadata {
+                Some(meta)
+            } else {
+                match input {
+                    HydroNode::Placeholder => None,
+                    // All other variants have metadata
+                    _ => Some(input.metadata()),
+                }
+            };
+
+            let location_id = effective_metadata.and_then(|m| setup_location(structure, m));
+            let sink_id = structure.add_node_with_backtrace(
+                label,
+                HydroNodeType::Sink,
+                location_id,
+                effective_metadata.map(|m| m.op.backtrace.clone()),
+            );
+
             // Extract semantic tags from input metadata
             let input_metadata = input.metadata();
             add_edge_with_metadata(
@@ -775,10 +799,9 @@ impl HydroRoot {
                 sink_id,
                 Some(input_metadata),
                 sink_metadata,
-                is_cycle,
                 None,
             );
-            
+
             sink_id
         }
 
@@ -791,7 +814,6 @@ impl HydroRoot {
                 input,
                 None,
                 NodeLabel::with_exprs("for_each".to_string(), vec![f.clone()]),
-                false, // not a cycle
             ),
 
             HydroRoot::SendExternal {
@@ -809,7 +831,6 @@ impl HydroRoot {
                     format!("send_external({}:{})", to_external_id, to_key),
                     vec![],
                 ),
-                false, // not a cycle
             ),
 
             HydroRoot::DestSink { sink, input, .. } => build_sink_node(
@@ -819,10 +840,8 @@ impl HydroRoot {
                 input,
                 None,
                 NodeLabel::with_exprs("dest_sink".to_string(), vec![sink.clone()]),
-                false, // not a cycle
             ),
 
-            // Sink operation with Cycle edge
             HydroRoot::CycleSink { ident, input, .. } => build_sink_node(
                 structure,
                 seen_tees,
@@ -830,7 +849,6 @@ impl HydroRoot {
                 input,
                 None,
                 NodeLabel::static_label(format!("cycle_sink({})", ident)),
-                true, // this is a cycle edge
             ),
         }
     }
@@ -866,13 +884,12 @@ impl HydroNode {
                 params.seen_tees,
                 params.config,
             );
-            let location_id = setup_location(params.structure, params.metadata);
-            let node_id = params.structure.add_node(
+            let node_id = params.structure.add_node_with_metadata(
                 NodeLabel::Static(params.op_name.to_string()),
                 params.node_type,
-                location_id,
+                params.metadata,
             );
-            
+
             // Extract semantic tags from input metadata
             let input_metadata = params.input.metadata();
             add_edge_with_metadata(
@@ -881,10 +898,9 @@ impl HydroNode {
                 node_id,
                 Some(input_metadata),
                 Some(params.metadata),
-                false, // not a cycle
                 None,
             );
-            
+
             node_id
         }
 
@@ -895,13 +911,12 @@ impl HydroNode {
                 params.seen_tees,
                 params.config,
             );
-            let location_id = setup_location(params.structure, params.metadata);
-            let node_id = params.structure.add_node(
+            let node_id = params.structure.add_node_with_metadata(
                 NodeLabel::with_exprs(params.op_name.to_string(), vec![expr.clone()]),
                 params.node_type,
-                location_id,
+                params.metadata,
             );
-            
+
             // Extract semantic tags from input metadata
             let input_metadata = params.input.metadata();
             add_edge_with_metadata(
@@ -910,10 +925,9 @@ impl HydroNode {
                 node_id,
                 Some(input_metadata),
                 Some(params.metadata),
-                false, // not a cycle
                 None,
             );
-            
+
             node_id
         }
 
@@ -928,16 +942,15 @@ impl HydroNode {
                 params.seen_tees,
                 params.config,
             );
-            let location_id = setup_location(params.structure, params.metadata);
-            let node_id = params.structure.add_node(
+            let node_id = params.structure.add_node_with_metadata(
                 NodeLabel::with_exprs(
                     params.op_name.to_string(),
                     vec![expr1.clone(), expr2.clone()],
                 ),
                 params.node_type,
-                location_id,
+                params.metadata,
             );
-            
+
             // Extract semantic tags from input metadata
             let input_metadata = params.input.metadata();
             add_edge_with_metadata(
@@ -946,10 +959,9 @@ impl HydroNode {
                 node_id,
                 Some(input_metadata),
                 Some(params.metadata),
-                false, // not a cycle
                 None,
             );
-            
+
             node_id
         }
 
@@ -959,8 +971,11 @@ impl HydroNode {
             metadata: &crate::compile::ir::HydroIrMetadata,
             label: String,
         ) -> usize {
-            let location_id = setup_location(structure, metadata);
-            structure.add_node(NodeLabel::Static(label), HydroNodeType::Source, location_id)
+            structure.add_node_with_metadata(
+                NodeLabel::Static(label),
+                HydroNodeType::Source,
+                metadata,
+            )
         }
 
         match self {
@@ -1012,27 +1027,26 @@ impl HydroNode {
                     .0
                     .borrow()
                     .build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-
-                let tee_id = structure.add_node(
+                let tee_id = structure.add_node_with_metadata(
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Tee,
-                    location_id,
+                    metadata,
                 );
 
                 seen_tees.insert(ptr, tee_id);
 
                 // Extract semantic tags from input
-                let input_metadata = inner.0.borrow().metadata();
+                let inner_borrow = inner.0.borrow();
+                let input_metadata = inner_borrow.metadata();
                 add_edge_with_metadata(
                     structure,
                     input_id,
                     tee_id,
                     Some(input_metadata),
                     Some(metadata),
-                    false, // not a cycle
                     None,
                 );
+                drop(inner_borrow);
 
                 tee_id
             }
@@ -1148,13 +1162,12 @@ impl HydroNode {
             } => {
                 let left_id = left.build_graph_structure(structure, seen_tees, config);
                 let right_id = right.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let node_id = structure.add_node(
+                let node_id = structure.add_node_with_metadata(
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
-                    location_id,
+                    metadata,
                 );
-                
+
                 // Extract semantic tags for left edge
                 let left_metadata = left.metadata();
                 add_edge_with_metadata(
@@ -1163,10 +1176,9 @@ impl HydroNode {
                     node_id,
                     Some(left_metadata),
                     Some(metadata),
-                    false,
                     Some("left".to_string()),
                 );
-                
+
                 // Extract semantic tags for right edge
                 let right_metadata = right.metadata();
                 add_edge_with_metadata(
@@ -1175,10 +1187,9 @@ impl HydroNode {
                     node_id,
                     Some(right_metadata),
                     Some(metadata),
-                    false,
                     Some("right".to_string()),
                 );
-                
+
                 node_id
             }
 
@@ -1195,13 +1206,12 @@ impl HydroNode {
             } => {
                 let left_id = left.build_graph_structure(structure, seen_tees, config);
                 let right_id = right.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let node_id = structure.add_node(
+                let node_id = structure.add_node_with_metadata(
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
-                    location_id,
+                    metadata,
                 );
-                
+
                 // Extract semantic tags for pos edge
                 let left_metadata = left.metadata();
                 add_edge_with_metadata(
@@ -1210,10 +1220,9 @@ impl HydroNode {
                     node_id,
                     Some(left_metadata),
                     Some(metadata),
-                    false,
                     Some("pos".to_string()),
                 );
-                
+
                 // Extract semantic tags for neg edge
                 let right_metadata = right.metadata();
                 add_edge_with_metadata(
@@ -1222,10 +1231,9 @@ impl HydroNode {
                     node_id,
                     Some(right_metadata),
                     Some(metadata),
-                    false,
                     Some("neg".to_string()),
                 );
-                
+
                 node_id
             }
 
@@ -1280,7 +1288,7 @@ impl HydroNode {
                     HydroNodeType::Join,
                     location_id,
                 );
-                
+
                 // Extract semantic tags for input edge
                 let input_metadata = input.metadata();
                 add_edge_with_metadata(
@@ -1289,10 +1297,9 @@ impl HydroNode {
                     join_node_id,
                     Some(input_metadata),
                     Some(metadata),
-                    false,
                     Some("input".to_string()),
                 );
-                
+
                 // Extract semantic tags for watermark edge
                 let watermark_metadata = watermark.metadata();
                 add_edge_with_metadata(
@@ -1301,7 +1308,6 @@ impl HydroNode {
                     join_node_id,
                     Some(watermark_metadata),
                     Some(metadata),
-                    false,
                     Some("watermark".to_string()),
                 );
 
@@ -1313,7 +1319,7 @@ impl HydroNode {
                     HydroNodeType::Aggregation,
                     location_id,
                 );
-                
+
                 // Edge from join to aggregation node
                 let join_metadata = metadata; // Use the same metadata
                 add_edge_with_metadata(
@@ -1322,10 +1328,9 @@ impl HydroNode {
                     node_id,
                     Some(join_metadata),
                     Some(metadata),
-                    false,
                     None,
                 );
-                
+
                 node_id
             }
 
@@ -1368,7 +1373,7 @@ impl HydroNode {
                     HydroNodeType::Network,
                     to_location_id,
                 );
-                
+
                 // Extract semantic tags for network edge
                 let input_metadata = input.metadata();
                 add_edge_with_metadata(
@@ -1377,10 +1382,9 @@ impl HydroNode {
                     network_id,
                     Some(input_metadata),
                     Some(metadata),
-                    false,
                     Some(format!("to {:?}", to_location_id)),
                 );
-                
+
                 network_id
             }
 
@@ -1416,7 +1420,7 @@ impl HydroNode {
                     HydroNodeType::Transform,
                     location_id,
                 );
-                
+
                 // Extract semantic tags for first edge
                 let first_metadata = first.metadata();
                 add_edge_with_metadata(
@@ -1425,10 +1429,9 @@ impl HydroNode {
                     chain_id,
                     Some(first_metadata),
                     Some(metadata),
-                    false,
                     Some("first".to_string()),
                 );
-                
+
                 // Extract semantic tags for second edge
                 let second_metadata = second.metadata();
                 add_edge_with_metadata(
@@ -1437,10 +1440,9 @@ impl HydroNode {
                     chain_id,
                     Some(second_metadata),
                     Some(metadata),
-                    false,
                     Some("second".to_string()),
                 );
-                
+
                 chain_id
             }
 
@@ -1457,7 +1459,7 @@ impl HydroNode {
                     HydroNodeType::Transform,
                     location_id,
                 );
-                
+
                 // Extract semantic tags for first edge
                 let first_metadata = first.metadata();
                 add_edge_with_metadata(
@@ -1466,10 +1468,9 @@ impl HydroNode {
                     chain_id,
                     Some(first_metadata),
                     Some(metadata),
-                    false,
                     Some("first".to_string()),
                 );
-                
+
                 // Extract semantic tags for second edge
                 let second_metadata = second.metadata();
                 add_edge_with_metadata(
@@ -1478,10 +1479,9 @@ impl HydroNode {
                     chain_id,
                     Some(second_metadata),
                     Some(metadata),
-                    false,
                     Some("second".to_string()),
                 );
-                
+
                 chain_id
             }
 
@@ -1548,11 +1548,7 @@ render_hydro_ir!(render_hydro_ir_reactflow, write_hydro_ir_json);
 
 // JSON rendering (replaces ReactFlow)
 render_hydro_ir!(render_hydro_ir_json, write_hydro_ir_json);
-write_hydro_ir!(
-    write_hydro_ir_json,
-    HydroJson<_>,
-    HydroJson::new
-);
+write_hydro_ir!(write_hydro_ir_json, HydroJson<_>, HydroJson::new);
 
 fn write_hydro_ir_graph<W>(
     mut graph_write: W,

@@ -60,6 +60,11 @@ async fn main() {
         eprintln!("Error generating graph: {}", e);
     }
 
+    // If we're just generating a graph file, exit early
+    if args.graph.file && args.graph.graph.is_some() {
+        return;
+    }
+
     // Optimize the flow before deployment to remove marker nodes
     let optimized = built.with_default_optimize();
 

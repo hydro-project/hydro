@@ -228,6 +228,8 @@ const config = {
       },
     }),
   scripts: [
+    // Suppress ResizeObserver errors globally (must load first, synchronously)
+    '/suppress-resize-observer-errors.js',
     // {
     //   id: "runllm-widget-script",
     //   type: "module",

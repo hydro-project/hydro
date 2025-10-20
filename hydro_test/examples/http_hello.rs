@@ -34,6 +34,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Generate graph visualizations based on command line arguments
     built.generate_graph_with_config(&args.graph, None)?;
 
+    // If we're just generating a graph file, exit early
+    if args.graph.file && args.graph.graph.is_some() {
+        return Ok(());
+    }
+
     // Now use the built flow for deployment with optimization
     let nodes = built
         .with_default_optimize()
