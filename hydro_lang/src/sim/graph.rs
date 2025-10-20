@@ -324,7 +324,7 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
         command.args(["--features", &features.join(",")]);
     }
     command.args(["--config", "build.incremental = false"]);
-    command.args(["--crate-type", "dylib"]);
+    command.args(["--crate-type", "cdylib"]);
     command.arg("--message-format=json-diagnostic-rendered-ansi");
     command.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
     command.env("TRYBUILD_LIB_NAME", &bin);
@@ -387,7 +387,7 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     for message in cargo_metadata::Message::parse_stream(reader) {
         match message.unwrap() {
             cargo_metadata::Message::CompilerArtifact(artifact) => {
-                let is_output = artifact.target.crate_types.contains(&"dylib".to_string());
+                let is_output = artifact.target.crate_types.contains(&"cdylib".to_string());
 
                 if is_output {
                     use std::path::PathBuf;
