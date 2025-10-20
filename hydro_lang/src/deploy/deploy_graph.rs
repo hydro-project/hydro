@@ -1056,7 +1056,7 @@ fn create_trybuild_service(
 ) -> RustCrate {
     let mut ret = RustCrate::new(dir, trybuild.host)
         .target_dir(target_dir)
-        .bin(bin_name)
+        .example(bin_name)
         .no_default_features();
 
     if let Some(display_name) = trybuild.display_name {

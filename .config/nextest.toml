@@ -21,14 +21,11 @@ test-group = 'serial-integration'
 [[profile.default.overrides]]
 filter = 'package(hydro_lang)'
 test-group = 'hydro-trybuild-group'
-priority = 100
 
 [[profile.default.overrides]]
 filter = 'package(hydro_std)'
 test-group = 'hydro-trybuild-group'
-priority = 100
 
 [[profile.default.overrides]]
 filter = 'package(hydro_test)'
 test-group = 'hydro-trybuild-group'
-priority = 100
