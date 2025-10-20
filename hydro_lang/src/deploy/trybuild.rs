@@ -321,11 +321,16 @@ pub fn create_trybuild()
             r#"{}
 
 [lib]
-crate-type = ["rlib", "dylib"]
+crate-type = [{}]
 
 [[example]]
 name = "sim-dylib"
 crate-type = ["dylib"]"#,
+            if cfg!(target_os = "windows") {
+                r#""rlib""# // see https://github.com/bevyengine/bevy/pull/2016
+            } else {
+                r#""rlib", "dylib""#
+            },
             manifest_toml
         );
 
