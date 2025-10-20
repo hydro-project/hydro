@@ -9,7 +9,6 @@ use async_trait::async_trait;
 use futures::io::BufReader as FuturesBufReader;
 use futures::{AsyncBufReadExt as _, AsyncWriteExt as _};
 use inferno::collapse::Collapse;
-use inferno::collapse::dtrace::Folder as DtraceFolder;
 use inferno::collapse::perf::Folder as PerfFolder;
 use tempfile::NamedTempFile;
 use tokio::io::{AsyncBufReadExt as _, BufReader as TokioBufReader};
@@ -17,6 +16,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::SyncIoBridge;
 
+#[cfg(any(target_os = "macos", target_family = "windows"))]
 use super::samply::{FxProfile, samply_to_folded};
 use crate::progress::ProgressTracker;
 use crate::rust_crate::flamegraph::handle_fold_data;
@@ -155,7 +155,7 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
         {
             let tracing_data = self.tracing_data_local.take().unwrap();
 
-            if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+            if cfg!(any(target_os = "macos", target_family = "windows")) {
                 if let Some(samply_outfile) = tracing_config.samply_outfile.as_ref() {
                     std::fs::copy(&tracing_data.outfile, samply_outfile)?;
                 }
@@ -165,31 +165,23 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 std::fs::copy(&tracing_data.outfile, perf_outfile)?;
             }
 
-            let fold_data = if cfg!(target_os = "macos") {
-                let deserializer = &mut serde_json::Deserializer::from_reader(std::fs::File::open(
-                    tracing_data.outfile.path(),
-                )?);
-                let loaded = serde_path_to_error::deserialize::<_, FxProfile>(deserializer)?;
+            let fold_data = if cfg!(any(target_os = "macos", target_family = "windows")) {
+                #[cfg(any(target_os = "macos", target_family = "windows"))]
+                {
+                    let deserializer = &mut serde_json::Deserializer::from_reader(
+                        std::fs::File::open(tracing_data.outfile.path())?,
+                    );
+                    let loaded = serde_path_to_error::deserialize::<_, FxProfile>(deserializer)?;
 
-                ProgressTracker::leaf("processing samply", samply_to_folded(loaded))
-                    .await
-                    .into()
-            } else if cfg!(target_family = "windows") {
-                let mut fold_er = DtraceFolder::from(
-                    tracing_config
-                        .fold_dtrace_options
-                        .clone()
-                        .unwrap_or_default(),
-                );
+                    ProgressTracker::leaf("processing samply", samply_to_folded(loaded))
+                        .await
+                        .into()
+                }
 
-                let fold_data =
-                    ProgressTracker::leaf("fold dtrace output".to_owned(), async move {
-                        let mut fold_data = Vec::new();
-                        fold_er.collapse_file(Some(tracing_data.outfile), &mut fold_data)?;
-                        Result::<_>::Ok(fold_data)
-                    })
-                    .await?;
-                fold_data
+                #[cfg(not(any(target_os = "macos", target_family = "windows")))]
+                {
+                    unreachable!()
+                }
             } else if cfg!(target_family = "unix") {
                 // Run perf script.
                 let mut perf_script = Command::new("perf")
@@ -236,7 +228,7 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 fold_data
             } else {
                 bail!(
-                    "Unknown OS for perf/dtrace tracing: {}",
+                    "Unknown OS for samply/perf tracing: {}",
                     std::env::consts::OS
                 );
             };
