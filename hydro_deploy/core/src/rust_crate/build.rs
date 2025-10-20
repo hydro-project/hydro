@@ -145,8 +145,11 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                     let is_dylib = if let Some(rustflags) = params.rustflags.as_ref() {
                         command.env("RUSTFLAGS", rustflags);
                         false
-                    } else if params.target_type == HostTargetType::Local {
+                    } else if params.target_type == HostTargetType::Local
+                        && !cfg!(target_os = "windows")
+                    {
                         // When compiling for local, prefer dynamic linking to reduce binary size
+                        // Windows is currently not supported due to https://github.com/bevyengine/bevy/pull/2016
                         command.env("RUSTFLAGS", "-C prefer-dynamic");
                         true
                     } else {
