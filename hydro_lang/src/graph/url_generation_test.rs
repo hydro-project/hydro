@@ -72,7 +72,7 @@ mod tests {
         assert_eq!(parts[0], param_name);
         assert_eq!(parts[1], encoded_data);
         // Decoding should succeed with URL-safe base64 without padding
-        let decoded = data_encoding::BASE64URL.decode(parts[1].as_bytes());
+        let decoded = data_encoding::BASE64URL_NOPAD.decode(parts[1].as_bytes());
         assert!(decoded.is_ok());
     }
 }
