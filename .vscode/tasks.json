@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build-docs",
+			"type": "shell",
+			"command": "bash build_docs.bash x86_64-linux-gnu-ubuntu-20.04",
+			"args": [],
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
