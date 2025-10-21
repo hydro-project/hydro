@@ -77,9 +77,6 @@ fn open_dot_browser(dot_src: &str) -> Result<()> {
     webbrowser::open(&url)
 }
 
-/// Helper function to create a complete HTML file with JSON visualization and open it in browser.
-/// Creates files in temporary directory to avoid cluttering the workspace.
-/// This is a legacy function kept for backward compatibility.
 
 /// Helper function to save content to a file with consistent path handling.
 /// If no filename is provided, saves to temporary directory with the default name.
