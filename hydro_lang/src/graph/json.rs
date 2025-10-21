@@ -396,7 +396,7 @@ where
         // Add Network tag if edge crosses locations; otherwise add Local for completeness
         if let (Some(src), Some(dst)) = (src_loc, dst_loc)
             && src != dst
-            && !semantic_tags.contains(&"Network".to_string())
+            && !semantic_tags.iter().any(|t| t == "Network")
         {
             semantic_tags.push("Network".to_string());
         } else if semantic_tags.iter().all(|t| t != "Network") {
