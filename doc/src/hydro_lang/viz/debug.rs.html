@@ -307,62 +307,55 @@
 <a href=#307 id=307 data-nosnippet>307</a></span><span class="kw">fn </span>open_json_visualizer_with_fallback(json_content: <span class="kw-2">&amp;</span>str, config: <span class="kw-2">&amp;</span>VisualizerConfig) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
 <a href=#308 id=308 data-nosnippet>308</a>    <span class="comment">// Try to generate a URL with embedded data
 <a href=#309 id=309 data-nosnippet>309</a>    </span><span class="kw">match </span>generate_visualizer_url(json_content, config) {
-<a href=#310 id=310 data-nosnippet>310</a>        <span class="prelude-val">Some</span>((url, is_compressed)) =&gt; {
+<a href=#310 id=310 data-nosnippet>310</a>        <span class="prelude-val">Some</span>((url, _is_compressed)) =&gt; {
 <a href=#311 id=311 data-nosnippet>311</a>            <span class="comment">// URL fits within length limit, open it directly
-<a href=#312 id=312 data-nosnippet>312</a>            </span><span class="kw">let </span>compression_msg = <span class="kw">if </span>is_compressed { <span class="string">" (compressed)" </span>} <span class="kw">else </span>{ <span class="string">"" </span>};
-<a href=#313 id=313 data-nosnippet>313</a>            <span class="macro">println!</span>(
-<a href=#314 id=314 data-nosnippet>314</a>                <span class="string">"🌐 Opening visualizer with embedded data{}..."</span>,
-<a href=#315 id=315 data-nosnippet>315</a>                compression_msg
-<a href=#316 id=316 data-nosnippet>316</a>            );
-<a href=#317 id=317 data-nosnippet>317</a>            <span class="comment">// Print the full URL for debugging purposes
-<a href=#318 id=318 data-nosnippet>318</a>            </span><span class="macro">println!</span>(<span class="string">"Visualizer URL: {}"</span>, url);
-<a href=#319 id=319 data-nosnippet>319</a>            webbrowser::open(<span class="kw-2">&amp;</span>url)<span class="question-mark">?</span>;
-<a href=#320 id=320 data-nosnippet>320</a>            <span class="macro">println!</span>(<span class="string">"✓ Successfully opened visualizer in browser"</span>);
-<a href=#321 id=321 data-nosnippet>321</a>            <span class="prelude-val">Ok</span>(())
-<a href=#322 id=322 data-nosnippet>322</a>        }
-<a href=#323 id=323 data-nosnippet>323</a>        <span class="prelude-val">None </span>=&gt; {
-<a href=#324 id=324 data-nosnippet>324</a>            <span class="comment">// URL too long, use file-based fallback
-<a href=#325 id=325 data-nosnippet>325</a>            </span><span class="macro">println!</span>(<span class="string">"📦 Graph too large for URL embedding, using file-based approach..."</span>);
-<a href=#326 id=326 data-nosnippet>326</a>            handle_large_graph_fallback(json_content, config)
-<a href=#327 id=327 data-nosnippet>327</a>        }
-<a href=#328 id=328 data-nosnippet>328</a>    }
-<a href=#329 id=329 data-nosnippet>329</a>}
-<a href=#330 id=330 data-nosnippet>330</a>
-<a href=#331 id=331 data-nosnippet>331</a><span class="doccomment">/// Opens Hydro IR roots as a JSON visualization in the browser.
-<a href=#332 id=332 data-nosnippet>332</a>/// Automatically handles compression and file-based fallback for large graphs.
-<a href=#333 id=333 data-nosnippet>333</a>///
-<a href=#334 id=334 data-nosnippet>334</a>/// This function generates JSON from the Hydro IR and opens it in the configured
-<a href=#335 id=335 data-nosnippet>335</a>/// visualizer (defaults to &lt;https://hydro.run/docs/hydroscope&gt;, can be overridden
-<a href=#336 id=336 data-nosnippet>336</a>/// with HYDRO_VISUALIZER_URL environment variable).
-<a href=#337 id=337 data-nosnippet>337</a></span><span class="kw">pub fn </span>open_json_visualizer(roots: <span class="kw-2">&amp;</span>[HydroRoot], config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#338 id=338 data-nosnippet>338</a>    <span class="kw">let </span>json_content = render_with_config(roots, config, render_hydro_ir_json);
-<a href=#339 id=339 data-nosnippet>339</a>    <span class="kw">let </span>viz_config = VisualizerConfig::default();
-<a href=#340 id=340 data-nosnippet>340</a>    open_json_visualizer_with_fallback(<span class="kw-2">&amp;</span>json_content, <span class="kw-2">&amp;</span>viz_config)
-<a href=#341 id=341 data-nosnippet>341</a>}
-<a href=#342 id=342 data-nosnippet>342</a>
-<a href=#343 id=343 data-nosnippet>343</a><span class="doccomment">/// Opens Hydro IR roots as a JSON visualization with custom visualizer configuration.
-<a href=#344 id=344 data-nosnippet>344</a>/// Allows specifying a custom base URL and compression settings.
-<a href=#345 id=345 data-nosnippet>345</a></span><span class="kw">pub fn </span>open_json_visualizer_with_config(
-<a href=#346 id=346 data-nosnippet>346</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
-<a href=#347 id=347 data-nosnippet>347</a>    config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;,
-<a href=#348 id=348 data-nosnippet>348</a>    viz_config: VisualizerConfig,
-<a href=#349 id=349 data-nosnippet>349</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#350 id=350 data-nosnippet>350</a>    <span class="kw">let </span>json_content = render_with_config(roots, config, render_hydro_ir_json);
-<a href=#351 id=351 data-nosnippet>351</a>    open_json_visualizer_with_fallback(<span class="kw-2">&amp;</span>json_content, <span class="kw-2">&amp;</span>viz_config)
-<a href=#352 id=352 data-nosnippet>352</a>}
-<a href=#353 id=353 data-nosnippet>353</a>
-<a href=#354 id=354 data-nosnippet>354</a><span class="doccomment">/// Saves Hydro IR roots as a JSON file.
-<a href=#355 id=355 data-nosnippet>355</a>/// If no filename is provided, saves to temporary directory.
-<a href=#356 id=356 data-nosnippet>356</a></span><span class="kw">pub fn </span>save_json(
-<a href=#357 id=357 data-nosnippet>357</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
-<a href=#358 id=358 data-nosnippet>358</a>    filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
-<a href=#359 id=359 data-nosnippet>359</a>    config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;,
-<a href=#360 id=360 data-nosnippet>360</a>) -&gt; <span class="prelude-ty">Result</span>&lt;std::path::PathBuf&gt; {
-<a href=#361 id=361 data-nosnippet>361</a>    <span class="kw">let </span>content = render_with_config(roots, config, render_hydro_ir_json);
-<a href=#362 id=362 data-nosnippet>362</a>    save_to_file(content, filename, <span class="string">"hydro_graph.json"</span>, <span class="string">"JSON file"</span>)
-<a href=#363 id=363 data-nosnippet>363</a>}
-<a href=#364 id=364 data-nosnippet>364</a>
-<a href=#365 id=365 data-nosnippet>365</a><span class="doccomment">/// Helper function to render multiple Hydro IR roots as JSON.
-<a href=#366 id=366 data-nosnippet>366</a></span><span class="kw">fn </span>render_hydro_ir_json(roots: <span class="kw-2">&amp;</span>[HydroRoot], config: <span class="kw-2">&amp;</span>HydroWriteConfig) -&gt; String {
-<a href=#367 id=367 data-nosnippet>367</a>    <span class="kw">super</span>::render::render_hydro_ir_json(roots, config)
-<a href=#368 id=368 data-nosnippet>368</a>}</code></pre></div></section></main></body></html>
+<a href=#312 id=312 data-nosnippet>312</a>            </span>webbrowser::open(<span class="kw-2">&amp;</span>url)<span class="question-mark">?</span>;
+<a href=#313 id=313 data-nosnippet>313</a>            <span class="macro">println!</span>(<span class="string">"✓ Successfully opened visualizer in browser"</span>);
+<a href=#314 id=314 data-nosnippet>314</a>            <span class="prelude-val">Ok</span>(())
+<a href=#315 id=315 data-nosnippet>315</a>        }
+<a href=#316 id=316 data-nosnippet>316</a>        <span class="prelude-val">None </span>=&gt; {
+<a href=#317 id=317 data-nosnippet>317</a>            <span class="comment">// URL too long, use file-based fallback
+<a href=#318 id=318 data-nosnippet>318</a>            </span><span class="macro">println!</span>(<span class="string">"📦 Graph too large for URL embedding, using file-based approach..."</span>);
+<a href=#319 id=319 data-nosnippet>319</a>            handle_large_graph_fallback(json_content, config)
+<a href=#320 id=320 data-nosnippet>320</a>        }
+<a href=#321 id=321 data-nosnippet>321</a>    }
+<a href=#322 id=322 data-nosnippet>322</a>}
+<a href=#323 id=323 data-nosnippet>323</a>
+<a href=#324 id=324 data-nosnippet>324</a><span class="doccomment">/// Opens Hydro IR roots as a JSON visualization in the browser.
+<a href=#325 id=325 data-nosnippet>325</a>/// Automatically handles compression and file-based fallback for large graphs.
+<a href=#326 id=326 data-nosnippet>326</a>///
+<a href=#327 id=327 data-nosnippet>327</a>/// This function generates JSON from the Hydro IR and opens it in the configured
+<a href=#328 id=328 data-nosnippet>328</a>/// visualizer (defaults to &lt;https://hydro.run/docs/hydroscope&gt;, can be overridden
+<a href=#329 id=329 data-nosnippet>329</a>/// with HYDRO_VISUALIZER_URL environment variable).
+<a href=#330 id=330 data-nosnippet>330</a></span><span class="kw">pub fn </span>open_json_visualizer(roots: <span class="kw-2">&amp;</span>[HydroRoot], config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#331 id=331 data-nosnippet>331</a>    <span class="kw">let </span>json_content = render_with_config(roots, config, render_hydro_ir_json);
+<a href=#332 id=332 data-nosnippet>332</a>    <span class="kw">let </span>viz_config = VisualizerConfig::default();
+<a href=#333 id=333 data-nosnippet>333</a>    open_json_visualizer_with_fallback(<span class="kw-2">&amp;</span>json_content, <span class="kw-2">&amp;</span>viz_config)
+<a href=#334 id=334 data-nosnippet>334</a>}
+<a href=#335 id=335 data-nosnippet>335</a>
+<a href=#336 id=336 data-nosnippet>336</a><span class="doccomment">/// Opens Hydro IR roots as a JSON visualization with custom visualizer configuration.
+<a href=#337 id=337 data-nosnippet>337</a>/// Allows specifying a custom base URL and compression settings.
+<a href=#338 id=338 data-nosnippet>338</a></span><span class="kw">pub fn </span>open_json_visualizer_with_config(
+<a href=#339 id=339 data-nosnippet>339</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
+<a href=#340 id=340 data-nosnippet>340</a>    config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;,
+<a href=#341 id=341 data-nosnippet>341</a>    viz_config: VisualizerConfig,
+<a href=#342 id=342 data-nosnippet>342</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#343 id=343 data-nosnippet>343</a>    <span class="kw">let </span>json_content = render_with_config(roots, config, render_hydro_ir_json);
+<a href=#344 id=344 data-nosnippet>344</a>    open_json_visualizer_with_fallback(<span class="kw-2">&amp;</span>json_content, <span class="kw-2">&amp;</span>viz_config)
+<a href=#345 id=345 data-nosnippet>345</a>}
+<a href=#346 id=346 data-nosnippet>346</a>
+<a href=#347 id=347 data-nosnippet>347</a><span class="doccomment">/// Saves Hydro IR roots as a JSON file.
+<a href=#348 id=348 data-nosnippet>348</a>/// If no filename is provided, saves to temporary directory.
+<a href=#349 id=349 data-nosnippet>349</a></span><span class="kw">pub fn </span>save_json(
+<a href=#350 id=350 data-nosnippet>350</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
+<a href=#351 id=351 data-nosnippet>351</a>    filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+<a href=#352 id=352 data-nosnippet>352</a>    config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;,
+<a href=#353 id=353 data-nosnippet>353</a>) -&gt; <span class="prelude-ty">Result</span>&lt;std::path::PathBuf&gt; {
+<a href=#354 id=354 data-nosnippet>354</a>    <span class="kw">let </span>content = render_with_config(roots, config, render_hydro_ir_json);
+<a href=#355 id=355 data-nosnippet>355</a>    save_to_file(content, filename, <span class="string">"hydro_graph.json"</span>, <span class="string">"JSON file"</span>)
+<a href=#356 id=356 data-nosnippet>356</a>}
+<a href=#357 id=357 data-nosnippet>357</a>
+<a href=#358 id=358 data-nosnippet>358</a><span class="doccomment">/// Helper function to render multiple Hydro IR roots as JSON.
+<a href=#359 id=359 data-nosnippet>359</a></span><span class="kw">fn </span>render_hydro_ir_json(roots: <span class="kw-2">&amp;</span>[HydroRoot], config: <span class="kw-2">&amp;</span>HydroWriteConfig) -&gt; String {
+<a href=#360 id=360 data-nosnippet>360</a>    <span class="kw">super</span>::render::render_hydro_ir_json(roots, config)
+<a href=#361 id=361 data-nosnippet>361</a>}</code></pre></div></section></main></body></html>
