@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
-use crate::compile::ir::HydroRoot;
-use crate::compile::ir::backtrace::Backtrace;
+use hydro_lang::compile::ir::HydroRoot;
+use hydro_lang::compile::ir::backtrace::Backtrace;
 
 /// JSON graph writer for Hydro IR.
 /// Outputs JSON that can be used with interactive graph visualization tools.
@@ -382,8 +382,8 @@ where
         edge_properties: &HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
-        let edge_id = format!("e{}", self.edge_count);
-        self.edge_count += 1;
+    let edge_id = format!("e{}", self.edge_count);
+    self.edge_count = self.edge_count.saturating_add(1);
 
         // Convert edge properties to semantic tags (string array)
         let mut semantic_tags: Vec<String> = edge_properties
@@ -793,7 +793,7 @@ impl<W> HydroJson<W> {
         keys.sort();
         let mut path_to_id: HashMap<String, String> = HashMap::new();
         for (i, path) in keys.iter().enumerate() {
-            path_to_id.insert((***path).to_string(), format!("bt_{}", i + 1));
+            path_to_id.insert((***path).to_string(), format!("bt_{}", i.saturating_add(1)));
         }
 
         // Find root items (depth 0) and sort by name
@@ -934,7 +934,7 @@ pub fn save_json(
 /// Open JSON visualization in browser for a BuiltFlow
 #[cfg(feature = "build")]
 pub fn open_browser(
-    built_flow: &crate::compile::built::BuiltFlow,
+    built_flow: &hydro_lang::compile::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
     open_json_browser(
         built_flow.ir(),

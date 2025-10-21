@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::config::VisualizerConfig;
 use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
-use crate::compile::ir::HydroRoot;
+use hydro_lang::compile::ir::HydroRoot;
 
 /// Opens Hydro IR roots as a single mermaid diagram.
 pub fn open_mermaid(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result<()> {

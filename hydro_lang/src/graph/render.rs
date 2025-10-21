@@ -8,8 +8,8 @@ pub use super::graphviz::{HydroDot, escape_dot};
 pub use super::json::HydroJson;
 // Re-export specific implementations
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
-use crate::compile::ir::backtrace::Backtrace;
-use crate::compile::ir::{DebugExpr, HydroNode, HydroRoot, HydroSource};
+use hydro_lang::compile::ir::backtrace::Backtrace;
+use hydro_lang::compile::ir::{DebugExpr, HydroNode, HydroRoot, HydroSource};
 use crate::location::dynamic::LocationId;
 
 /// Label for a graph node - can be either a static string or contain expressions.
@@ -354,7 +354,7 @@ pub fn get_unified_edge_style(
 pub fn extract_edge_properties_from_collection_kind(
     collection_kind: &crate::compile::ir::CollectionKind,
 ) -> HashSet<HydroEdgeType> {
-    use crate::compile::ir::CollectionKind;
+    use hydro_lang::compile::ir::CollectionKind;
 
     let mut properties = HashSet::new();
 
@@ -401,7 +401,7 @@ fn add_bound_property(
     properties: &mut HashSet<HydroEdgeType>,
     bound: &crate::compile::ir::BoundKind,
 ) {
-    use crate::compile::ir::BoundKind;
+    use hydro_lang::compile::ir::BoundKind;
 
     match bound {
         BoundKind::Bounded => {
@@ -418,7 +418,7 @@ fn add_keyed_singleton_bound_property(
     properties: &mut HashSet<HydroEdgeType>,
     bound: &crate::compile::ir::KeyedSingletonBoundKind,
 ) {
-    use crate::compile::ir::KeyedSingletonBoundKind;
+    use hydro_lang::compile::ir::KeyedSingletonBoundKind;
 
     match bound {
         KeyedSingletonBoundKind::Bounded | KeyedSingletonBoundKind::BoundedValue => {
@@ -435,7 +435,7 @@ fn add_order_property(
     properties: &mut HashSet<HydroEdgeType>,
     order: &crate::compile::ir::StreamOrder,
 ) {
-    use crate::compile::ir::StreamOrder;
+    use hydro_lang::compile::ir::StreamOrder;
 
     match order {
         StreamOrder::TotalOrder => {

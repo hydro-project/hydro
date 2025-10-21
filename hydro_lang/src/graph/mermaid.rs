@@ -75,7 +75,7 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
-        _backtrace: Option<&crate::compile::ir::backtrace::Backtrace>,
+        _backtrace: Option<&hydro_lang::compile::ir::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
         let class_str = match node_type {
             HydroNodeType::Source => "sourceClass",
@@ -228,7 +228,7 @@ where
 /// Open mermaid visualization in browser for a BuiltFlow
 #[cfg(feature = "build")]
 pub fn open_browser(
-    built_flow: &crate::compile::built::BuiltFlow,
+    built_flow: &hydro_lang::compile::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let config = super::render::HydroWriteConfig {
         show_metadata: false,
