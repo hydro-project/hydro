@@ -546,400 +546,410 @@
 <a href=#546 id=546 data-nosnippet>546</a>            <span class="string">"items"</span>: legend_items
 <a href=#547 id=547 data-nosnippet>547</a>        });
 <a href=#548 id=548 data-nosnippet>548</a>
-<a href=#549 id=549 data-nosnippet>549</a>        <span class="attr">#[derive(serde::Serialize)]
-<a href=#550 id=550 data-nosnippet>550</a>        </span><span class="kw">struct </span>GraphPayload {
-<a href=#551 id=551 data-nosnippet>551</a>            nodes: Vec&lt;serde_json::Value&gt;,
-<a href=#552 id=552 data-nosnippet>552</a>            edges: Vec&lt;serde_json::Value&gt;,
-<a href=#553 id=553 data-nosnippet>553</a>            <span class="attr">#[serde(rename = <span class="string">"hierarchyChoices"</span>)]
-<a href=#554 id=554 data-nosnippet>554</a>            </span>hierarchy_choices: Vec&lt;serde_json::Value&gt;,
-<a href=#555 id=555 data-nosnippet>555</a>            <span class="attr">#[serde(rename = <span class="string">"nodeAssignments"</span>)]
-<a href=#556 id=556 data-nosnippet>556</a>            </span>node_assignments: serde_json::Map&lt;String, serde_json::Value&gt;,
-<a href=#557 id=557 data-nosnippet>557</a>            <span class="attr">#[serde(rename = <span class="string">"edgeStyleConfig"</span>)]
-<a href=#558 id=558 data-nosnippet>558</a>            </span>edge_style_config: serde_json::Value,
-<a href=#559 id=559 data-nosnippet>559</a>            <span class="attr">#[serde(rename = <span class="string">"nodeTypeConfig"</span>)]
-<a href=#560 id=560 data-nosnippet>560</a>            </span>node_type_config: serde_json::Value,
-<a href=#561 id=561 data-nosnippet>561</a>            legend: serde_json::Value,
-<a href=#562 id=562 data-nosnippet>562</a>        }
-<a href=#563 id=563 data-nosnippet>563</a>
-<a href=#564 id=564 data-nosnippet>564</a>        <span class="kw">let </span>payload = GraphPayload {
-<a href=#565 id=565 data-nosnippet>565</a>            nodes: nodes_sorted,
-<a href=#566 id=566 data-nosnippet>566</a>            edges: edges_sorted,
-<a href=#567 id=567 data-nosnippet>567</a>            hierarchy_choices,
-<a href=#568 id=568 data-nosnippet>568</a>            node_assignments: node_assignments_choices,
-<a href=#569 id=569 data-nosnippet>569</a>            edge_style_config: <span class="self">Self</span>::get_edge_style_config(),
-<a href=#570 id=570 data-nosnippet>570</a>            node_type_config,
-<a href=#571 id=571 data-nosnippet>571</a>            legend,
-<a href=#572 id=572 data-nosnippet>572</a>        };
-<a href=#573 id=573 data-nosnippet>573</a>
-<a href=#574 id=574 data-nosnippet>574</a>        <span class="kw">let </span>final_json = serde_json::to_string_pretty(<span class="kw-2">&amp;</span>payload).unwrap();
-<a href=#575 id=575 data-nosnippet>575</a>
-<a href=#576 id=576 data-nosnippet>576</a>        <span class="macro">write!</span>(<span class="self">self</span>.write, <span class="string">"{}"</span>, final_json)
-<a href=#577 id=577 data-nosnippet>577</a>    }
-<a href=#578 id=578 data-nosnippet>578</a>}
-<a href=#579 id=579 data-nosnippet>579</a>
-<a href=#580 id=580 data-nosnippet>580</a><span class="kw">impl</span>&lt;W&gt; HydroJson&lt;W&gt; {
-<a href=#581 id=581 data-nosnippet>581</a>    <span class="doccomment">/// Check if any nodes have meaningful backtrace data
-<a href=#582 id=582 data-nosnippet>582</a>    </span><span class="kw">fn </span>has_backtrace_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-<a href=#583 id=583 data-nosnippet>583</a>        <span class="self">self</span>.nodes.iter().any(|node| {
-<a href=#584 id=584 data-nosnippet>584</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(backtrace_array) = node[<span class="string">"data"</span>][<span class="string">"backtrace"</span>].as_array() {
-<a href=#585 id=585 data-nosnippet>585</a>                <span class="comment">// Check if any frame has meaningful filename or fn_name data
-<a href=#586 id=586 data-nosnippet>586</a>                </span>backtrace_array.iter().any(|frame| {
-<a href=#587 id=587 data-nosnippet>587</a>                    <span class="kw">let </span>filename = frame[<span class="string">"file"</span>].as_str().unwrap_or(<span class="string">""</span>);
-<a href=#588 id=588 data-nosnippet>588</a>                    <span class="kw">let </span>fn_name = frame[<span class="string">"fn"</span>].as_str().unwrap_or(<span class="string">""</span>);
-<a href=#589 id=589 data-nosnippet>589</a>                    !filename.is_empty() || !fn_name.is_empty()
-<a href=#590 id=590 data-nosnippet>590</a>                })
-<a href=#591 id=591 data-nosnippet>591</a>            } <span class="kw">else </span>{
-<a href=#592 id=592 data-nosnippet>592</a>                <span class="bool-val">false
-<a href=#593 id=593 data-nosnippet>593</a>            </span>}
-<a href=#594 id=594 data-nosnippet>594</a>        })
-<a href=#595 id=595 data-nosnippet>595</a>    }
-<a href=#596 id=596 data-nosnippet>596</a>
-<a href=#597 id=597 data-nosnippet>597</a>    <span class="doccomment">/// Create location-based hierarchy (original behavior)
-<a href=#598 id=598 data-nosnippet>598</a>    </span><span class="kw">fn </span>create_location_hierarchy(
-<a href=#599 id=599 data-nosnippet>599</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#600 id=600 data-nosnippet>600</a>    ) -&gt; (
-<a href=#601 id=601 data-nosnippet>601</a>        Vec&lt;serde_json::Value&gt;,
-<a href=#602 id=602 data-nosnippet>602</a>        serde_json::Map&lt;String, serde_json::Value&gt;,
-<a href=#603 id=603 data-nosnippet>603</a>    ) {
-<a href=#604 id=604 data-nosnippet>604</a>        <span class="comment">// Create hierarchy structure (single level: locations as parents, nodes as children)
-<a href=#605 id=605 data-nosnippet>605</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>locs: Vec&lt;(<span class="kw-2">&amp;</span>usize, <span class="kw-2">&amp;</span>(String, Vec&lt;usize&gt;))&gt; = <span class="self">self</span>.locations.iter().collect();
-<a href=#606 id=606 data-nosnippet>606</a>        locs.sort_by(|a, b| a.<span class="number">0</span>.cmp(b.<span class="number">0</span>));
-<a href=#607 id=607 data-nosnippet>607</a>        <span class="kw">let </span>hierarchy: Vec&lt;serde_json::Value&gt; = locs
-<a href=#608 id=608 data-nosnippet>608</a>            .into_iter()
-<a href=#609 id=609 data-nosnippet>609</a>            .map(|(location_id, (label, <span class="kw">_</span>))| {
-<a href=#610 id=610 data-nosnippet>610</a>                <span class="macro">serde_json::json!</span>({
-<a href=#611 id=611 data-nosnippet>611</a>                    <span class="string">"id"</span>: <span class="macro">format!</span>(<span class="string">"loc_{}"</span>, location_id),
-<a href=#612 id=612 data-nosnippet>612</a>                    <span class="string">"name"</span>: label,
-<a href=#613 id=613 data-nosnippet>613</a>                    <span class="string">"children"</span>: [] <span class="comment">// Single level hierarchy - no nested children
-<a href=#614 id=614 data-nosnippet>614</a>                </span>})
-<a href=#615 id=615 data-nosnippet>615</a>            })
-<a href=#616 id=616 data-nosnippet>616</a>            .collect();
-<a href=#617 id=617 data-nosnippet>617</a>
-<a href=#618 id=618 data-nosnippet>618</a>        <span class="comment">// Create node assignments by reading locationId from each node's data
-<a href=#619 id=619 data-nosnippet>619</a>        // This is more reliable than using the write_node tracking which depends on HashMap iteration order
-<a href=#620 id=620 data-nosnippet>620</a>        // Build and then sort assignments deterministically by node id key
-<a href=#621 id=621 data-nosnippet>621</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>tmp: Vec&lt;(String, String)&gt; = Vec::new();
-<a href=#622 id=622 data-nosnippet>622</a>        <span class="kw">for </span>node <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.nodes {
-<a href=#623 id=623 data-nosnippet>623</a>            <span class="kw">if let </span>(<span class="prelude-val">Some</span>(node_id), <span class="prelude-val">Some</span>(location_id)) =
-<a href=#624 id=624 data-nosnippet>624</a>                (node[<span class="string">"id"</span>].as_str(), node[<span class="string">"data"</span>][<span class="string">"locationId"</span>].as_u64())
-<a href=#625 id=625 data-nosnippet>625</a>            {
-<a href=#626 id=626 data-nosnippet>626</a>                <span class="kw">let </span>location_key = <span class="macro">format!</span>(<span class="string">"loc_{}"</span>, location_id);
-<a href=#627 id=627 data-nosnippet>627</a>                tmp.push((node_id.to_string(), location_key));
-<a href=#628 id=628 data-nosnippet>628</a>            }
-<a href=#629 id=629 data-nosnippet>629</a>        }
-<a href=#630 id=630 data-nosnippet>630</a>        tmp.sort_by(|a, b| a.<span class="number">0</span>.cmp(<span class="kw-2">&amp;</span>b.<span class="number">0</span>));
-<a href=#631 id=631 data-nosnippet>631</a>        <span class="kw">let </span><span class="kw-2">mut </span>node_assignments = serde_json::Map::new();
-<a href=#632 id=632 data-nosnippet>632</a>        <span class="kw">for </span>(k, v) <span class="kw">in </span>tmp {
-<a href=#633 id=633 data-nosnippet>633</a>            node_assignments.insert(k, serde_json::Value::String(v));
-<a href=#634 id=634 data-nosnippet>634</a>        }
-<a href=#635 id=635 data-nosnippet>635</a>
-<a href=#636 id=636 data-nosnippet>636</a>        (hierarchy, node_assignments)
-<a href=#637 id=637 data-nosnippet>637</a>    }
-<a href=#638 id=638 data-nosnippet>638</a>
-<a href=#639 id=639 data-nosnippet>639</a>    <span class="doccomment">/// Create backtrace-based hierarchy using structured backtrace data
-<a href=#640 id=640 data-nosnippet>640</a>    </span><span class="kw">fn </span>create_backtrace_hierarchy(
-<a href=#641 id=641 data-nosnippet>641</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#642 id=642 data-nosnippet>642</a>    ) -&gt; (
-<a href=#643 id=643 data-nosnippet>643</a>        Vec&lt;serde_json::Value&gt;,
-<a href=#644 id=644 data-nosnippet>644</a>        serde_json::Map&lt;String, serde_json::Value&gt;,
-<a href=#645 id=645 data-nosnippet>645</a>    ) {
-<a href=#646 id=646 data-nosnippet>646</a>        <span class="kw">use </span>std::collections::HashMap;
-<a href=#647 id=647 data-nosnippet>647</a>
-<a href=#648 id=648 data-nosnippet>648</a>        <span class="kw">let </span><span class="kw-2">mut </span>hierarchy_map: HashMap&lt;String, (String, usize, <span class="prelude-ty">Option</span>&lt;String&gt;)&gt; = HashMap::new(); <span class="comment">// path -&gt; (name, depth, parent_path)
-<a href=#649 id=649 data-nosnippet>649</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>path_to_node_assignments: HashMap&lt;String, Vec&lt;String&gt;&gt; = HashMap::new(); <span class="comment">// path -&gt; [node_ids]
-<a href=#650 id=650 data-nosnippet>650</a>
-<a href=#651 id=651 data-nosnippet>651</a>        // Process each node's backtrace using the stored backtraces
-<a href=#652 id=652 data-nosnippet>652</a>        </span><span class="kw">for </span>node <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.nodes {
-<a href=#653 id=653 data-nosnippet>653</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(node_id_str) = node[<span class="string">"id"</span>].as_str()
-<a href=#654 id=654 data-nosnippet>654</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Ok</span>(node_id) = node_id_str.parse::&lt;usize&gt;()
-<a href=#655 id=655 data-nosnippet>655</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(backtrace) = <span class="self">self</span>.node_backtraces.get(<span class="kw-2">&amp;</span>node_id)
-<a href=#656 id=656 data-nosnippet>656</a>            {
-<a href=#657 id=657 data-nosnippet>657</a>                <span class="kw">let </span>elements = backtrace.elements();
-<a href=#658 id=658 data-nosnippet>658</a>                <span class="kw">if </span>elements.is_empty() {
-<a href=#659 id=659 data-nosnippet>659</a>                    <span class="kw">continue</span>;
-<a href=#660 id=660 data-nosnippet>660</a>                }
-<a href=#661 id=661 data-nosnippet>661</a>
-<a href=#662 id=662 data-nosnippet>662</a>                <span class="comment">// Do not filter frames for now; just take the first few for brevity
-<a href=#663 id=663 data-nosnippet>663</a>                </span><span class="kw">let </span>user_frames: Vec&lt;<span class="kw">_</span>&gt; = elements.iter().take(<span class="number">5</span>).collect();
-<a href=#664 id=664 data-nosnippet>664</a>                <span class="kw">if </span>user_frames.is_empty() {
-<a href=#665 id=665 data-nosnippet>665</a>                    <span class="kw">continue</span>;
-<a href=#666 id=666 data-nosnippet>666</a>                }
-<a href=#667 id=667 data-nosnippet>667</a>
-<a href=#668 id=668 data-nosnippet>668</a>                <span class="comment">// Build hierarchy path from backtrace frames (reverse order for call stack)
-<a href=#669 id=669 data-nosnippet>669</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>hierarchy_path = Vec::new();
-<a href=#670 id=670 data-nosnippet>670</a>                <span class="kw">for </span>(i, elem) <span class="kw">in </span>user_frames.iter().rev().enumerate() {
-<a href=#671 id=671 data-nosnippet>671</a>                    <span class="kw">let </span>label = <span class="kw">if </span>i == <span class="number">0 </span>{
-<a href=#672 id=672 data-nosnippet>672</a>                        <span class="kw">if let </span><span class="prelude-val">Some</span>(filename) = <span class="kw-2">&amp;</span>elem.filename {
-<a href=#673 id=673 data-nosnippet>673</a>                            <span class="self">Self</span>::extract_file_path(filename)
-<a href=#674 id=674 data-nosnippet>674</a>                        } <span class="kw">else </span>{
-<a href=#675 id=675 data-nosnippet>675</a>                            <span class="macro">format!</span>(<span class="string">"fn_{}"</span>, <span class="self">Self</span>::truncate_function_name(<span class="kw-2">&amp;</span>elem.fn_name))
-<a href=#676 id=676 data-nosnippet>676</a>                        }
-<a href=#677 id=677 data-nosnippet>677</a>                    } <span class="kw">else </span>{
-<a href=#678 id=678 data-nosnippet>678</a>                        <span class="self">Self</span>::truncate_function_name(<span class="kw-2">&amp;</span>elem.fn_name)
-<a href=#679 id=679 data-nosnippet>679</a>                    };
-<a href=#680 id=680 data-nosnippet>680</a>                    hierarchy_path.push(label);
-<a href=#681 id=681 data-nosnippet>681</a>                }
-<a href=#682 id=682 data-nosnippet>682</a>
-<a href=#683 id=683 data-nosnippet>683</a>                <span class="comment">// Create hierarchy nodes for this path
-<a href=#684 id=684 data-nosnippet>684</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>current_path = String::new();
-<a href=#685 id=685 data-nosnippet>685</a>                <span class="kw">let </span><span class="kw-2">mut </span>parent_path: <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="prelude-val">None</span>;
-<a href=#686 id=686 data-nosnippet>686</a>                <span class="kw">let </span><span class="kw-2">mut </span>deepest_path = String::new();
-<a href=#687 id=687 data-nosnippet>687</a>                <span class="comment">// Deduplicate consecutive identical labels for cleanliness
-<a href=#688 id=688 data-nosnippet>688</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>deduped: Vec&lt;String&gt; = Vec::new();
-<a href=#689 id=689 data-nosnippet>689</a>                <span class="kw">for </span>seg <span class="kw">in </span>hierarchy_path {
-<a href=#690 id=690 data-nosnippet>690</a>                    <span class="kw">if </span>deduped.last().map(|s| s == <span class="kw-2">&amp;</span>seg).unwrap_or(<span class="bool-val">false</span>) {
-<a href=#691 id=691 data-nosnippet>691</a>                        <span class="kw">continue</span>;
-<a href=#692 id=692 data-nosnippet>692</a>                    }
-<a href=#693 id=693 data-nosnippet>693</a>                    deduped.push(seg);
-<a href=#694 id=694 data-nosnippet>694</a>                }
-<a href=#695 id=695 data-nosnippet>695</a>                <span class="kw">for </span>(depth, label) <span class="kw">in </span>deduped.iter().enumerate() {
-<a href=#696 id=696 data-nosnippet>696</a>                    current_path = <span class="kw">if </span>current_path.is_empty() {
-<a href=#697 id=697 data-nosnippet>697</a>                        label.clone()
-<a href=#698 id=698 data-nosnippet>698</a>                    } <span class="kw">else </span>{
-<a href=#699 id=699 data-nosnippet>699</a>                        <span class="macro">format!</span>(<span class="string">"{}/{}"</span>, current_path, label)
-<a href=#700 id=700 data-nosnippet>700</a>                    };
-<a href=#701 id=701 data-nosnippet>701</a>                    <span class="kw">if </span>!hierarchy_map.contains_key(<span class="kw-2">&amp;</span>current_path) {
-<a href=#702 id=702 data-nosnippet>702</a>                        hierarchy_map.insert(
-<a href=#703 id=703 data-nosnippet>703</a>                            current_path.clone(),
-<a href=#704 id=704 data-nosnippet>704</a>                            (label.clone(), depth, parent_path.clone()),
-<a href=#705 id=705 data-nosnippet>705</a>                        );
-<a href=#706 id=706 data-nosnippet>706</a>                    }
-<a href=#707 id=707 data-nosnippet>707</a>                    deepest_path = current_path.clone();
-<a href=#708 id=708 data-nosnippet>708</a>                    parent_path = <span class="prelude-val">Some</span>(current_path.clone());
-<a href=#709 id=709 data-nosnippet>709</a>                }
-<a href=#710 id=710 data-nosnippet>710</a>
-<a href=#711 id=711 data-nosnippet>711</a>                <span class="kw">if </span>!deepest_path.is_empty() {
-<a href=#712 id=712 data-nosnippet>712</a>                    path_to_node_assignments
-<a href=#713 id=713 data-nosnippet>713</a>                        .entry(deepest_path)
-<a href=#714 id=714 data-nosnippet>714</a>                        .or_default()
-<a href=#715 id=715 data-nosnippet>715</a>                        .push(node_id_str.to_string());
-<a href=#716 id=716 data-nosnippet>716</a>                }
-<a href=#717 id=717 data-nosnippet>717</a>            }
-<a href=#718 id=718 data-nosnippet>718</a>        }
-<a href=#719 id=719 data-nosnippet>719</a>        <span class="comment">// Build hierarchy tree and create proper ID mapping
-<a href=#720 id=720 data-nosnippet>720</a>        // Build hierarchy tree and create proper ID mapping (deterministic)
-<a href=#721 id=721 data-nosnippet>721</a>        </span><span class="kw">let </span>(<span class="kw-2">mut </span>hierarchy, <span class="kw-2">mut </span>path_to_id_map) =
-<a href=#722 id=722 data-nosnippet>722</a>            <span class="self">self</span>.build_hierarchy_tree_with_ids(<span class="kw-2">&amp;</span>hierarchy_map);
-<a href=#723 id=723 data-nosnippet>723</a>
-<a href=#724 id=724 data-nosnippet>724</a>        <span class="comment">// Create a root node for nodes without backtraces
-<a href=#725 id=725 data-nosnippet>725</a>        </span><span class="kw">let </span>root_id = <span class="string">"bt_root"</span>.to_string();
-<a href=#726 id=726 data-nosnippet>726</a>        <span class="kw">let </span><span class="kw-2">mut </span>nodes_without_backtrace = Vec::new();
-<a href=#727 id=727 data-nosnippet>727</a>
-<a href=#728 id=728 data-nosnippet>728</a>        <span class="comment">// Collect all node IDs
-<a href=#729 id=729 data-nosnippet>729</a>        </span><span class="kw">for </span>node <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.nodes {
-<a href=#730 id=730 data-nosnippet>730</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(node_id_str) = node[<span class="string">"id"</span>].as_str() {
-<a href=#731 id=731 data-nosnippet>731</a>                nodes_without_backtrace.push(node_id_str.to_string());
-<a href=#732 id=732 data-nosnippet>732</a>            }
-<a href=#733 id=733 data-nosnippet>733</a>        }
-<a href=#734 id=734 data-nosnippet>734</a>
-<a href=#735 id=735 data-nosnippet>735</a>        <span class="comment">// Remove nodes that already have backtrace assignments
-<a href=#736 id=736 data-nosnippet>736</a>        </span><span class="kw">for </span>node_ids <span class="kw">in </span>path_to_node_assignments.values() {
-<a href=#737 id=737 data-nosnippet>737</a>            <span class="kw">for </span>node_id <span class="kw">in </span>node_ids {
-<a href=#738 id=738 data-nosnippet>738</a>                nodes_without_backtrace.retain(|id| id != node_id);
-<a href=#739 id=739 data-nosnippet>739</a>            }
-<a href=#740 id=740 data-nosnippet>740</a>        }
-<a href=#741 id=741 data-nosnippet>741</a>
-<a href=#742 id=742 data-nosnippet>742</a>        <span class="comment">// If there are nodes without backtraces, create a root container for them
-<a href=#743 id=743 data-nosnippet>743</a>        </span><span class="kw">if </span>!nodes_without_backtrace.is_empty() {
-<a href=#744 id=744 data-nosnippet>744</a>            hierarchy.push(<span class="macro">serde_json::json!</span>({
-<a href=#745 id=745 data-nosnippet>745</a>                <span class="string">"id"</span>: root_id.clone(),
-<a href=#746 id=746 data-nosnippet>746</a>                <span class="string">"name"</span>: <span class="string">"(no backtrace)"</span>,
-<a href=#747 id=747 data-nosnippet>747</a>                <span class="string">"children"</span>: []
-<a href=#748 id=748 data-nosnippet>748</a>            }));
-<a href=#749 id=749 data-nosnippet>749</a>            path_to_id_map.insert(<span class="string">"__root__"</span>.to_string(), root_id.clone());
+<a href=#549 id=549 data-nosnippet>549</a>        <span class="comment">// Determine the selected hierarchy (first one is default)
+<a href=#550 id=550 data-nosnippet>550</a>        </span><span class="kw">let </span>selected_hierarchy = <span class="kw">if </span>!hierarchy_choices.is_empty() {
+<a href=#551 id=551 data-nosnippet>551</a>            hierarchy_choices[<span class="number">0</span>][<span class="string">"id"</span>].as_str().map(|s| s.to_string())
+<a href=#552 id=552 data-nosnippet>552</a>        } <span class="kw">else </span>{
+<a href=#553 id=553 data-nosnippet>553</a>            <span class="prelude-val">None
+<a href=#554 id=554 data-nosnippet>554</a>        </span>};
+<a href=#555 id=555 data-nosnippet>555</a>
+<a href=#556 id=556 data-nosnippet>556</a>        <span class="attr">#[derive(serde::Serialize)]
+<a href=#557 id=557 data-nosnippet>557</a>        </span><span class="kw">struct </span>GraphPayload {
+<a href=#558 id=558 data-nosnippet>558</a>            nodes: Vec&lt;serde_json::Value&gt;,
+<a href=#559 id=559 data-nosnippet>559</a>            edges: Vec&lt;serde_json::Value&gt;,
+<a href=#560 id=560 data-nosnippet>560</a>            <span class="attr">#[serde(rename = <span class="string">"hierarchyChoices"</span>)]
+<a href=#561 id=561 data-nosnippet>561</a>            </span>hierarchy_choices: Vec&lt;serde_json::Value&gt;,
+<a href=#562 id=562 data-nosnippet>562</a>            <span class="attr">#[serde(rename = <span class="string">"nodeAssignments"</span>)]
+<a href=#563 id=563 data-nosnippet>563</a>            </span>node_assignments: serde_json::Map&lt;String, serde_json::Value&gt;,
+<a href=#564 id=564 data-nosnippet>564</a>            <span class="attr">#[serde(rename = <span class="string">"selectedHierarchy"</span>, skip_serializing_if = <span class="string">"Option::is_none"</span>)]
+<a href=#565 id=565 data-nosnippet>565</a>            </span>selected_hierarchy: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#566 id=566 data-nosnippet>566</a>            <span class="attr">#[serde(rename = <span class="string">"edgeStyleConfig"</span>)]
+<a href=#567 id=567 data-nosnippet>567</a>            </span>edge_style_config: serde_json::Value,
+<a href=#568 id=568 data-nosnippet>568</a>            <span class="attr">#[serde(rename = <span class="string">"nodeTypeConfig"</span>)]
+<a href=#569 id=569 data-nosnippet>569</a>            </span>node_type_config: serde_json::Value,
+<a href=#570 id=570 data-nosnippet>570</a>            legend: serde_json::Value,
+<a href=#571 id=571 data-nosnippet>571</a>        }
+<a href=#572 id=572 data-nosnippet>572</a>
+<a href=#573 id=573 data-nosnippet>573</a>        <span class="kw">let </span>payload = GraphPayload {
+<a href=#574 id=574 data-nosnippet>574</a>            nodes: nodes_sorted,
+<a href=#575 id=575 data-nosnippet>575</a>            edges: edges_sorted,
+<a href=#576 id=576 data-nosnippet>576</a>            hierarchy_choices,
+<a href=#577 id=577 data-nosnippet>577</a>            node_assignments: node_assignments_choices,
+<a href=#578 id=578 data-nosnippet>578</a>            selected_hierarchy,
+<a href=#579 id=579 data-nosnippet>579</a>            edge_style_config: <span class="self">Self</span>::get_edge_style_config(),
+<a href=#580 id=580 data-nosnippet>580</a>            node_type_config,
+<a href=#581 id=581 data-nosnippet>581</a>            legend,
+<a href=#582 id=582 data-nosnippet>582</a>        };
+<a href=#583 id=583 data-nosnippet>583</a>
+<a href=#584 id=584 data-nosnippet>584</a>        <span class="kw">let </span>final_json = serde_json::to_string_pretty(<span class="kw-2">&amp;</span>payload).unwrap();
+<a href=#585 id=585 data-nosnippet>585</a>
+<a href=#586 id=586 data-nosnippet>586</a>        <span class="macro">write!</span>(<span class="self">self</span>.write, <span class="string">"{}"</span>, final_json)
+<a href=#587 id=587 data-nosnippet>587</a>    }
+<a href=#588 id=588 data-nosnippet>588</a>}
+<a href=#589 id=589 data-nosnippet>589</a>
+<a href=#590 id=590 data-nosnippet>590</a><span class="kw">impl</span>&lt;W&gt; HydroJson&lt;W&gt; {
+<a href=#591 id=591 data-nosnippet>591</a>    <span class="doccomment">/// Check if any nodes have meaningful backtrace data
+<a href=#592 id=592 data-nosnippet>592</a>    </span><span class="kw">fn </span>has_backtrace_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#593 id=593 data-nosnippet>593</a>        <span class="self">self</span>.nodes.iter().any(|node| {
+<a href=#594 id=594 data-nosnippet>594</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(backtrace_array) = node[<span class="string">"data"</span>][<span class="string">"backtrace"</span>].as_array() {
+<a href=#595 id=595 data-nosnippet>595</a>                <span class="comment">// Check if any frame has meaningful filename or fn_name data
+<a href=#596 id=596 data-nosnippet>596</a>                </span>backtrace_array.iter().any(|frame| {
+<a href=#597 id=597 data-nosnippet>597</a>                    <span class="kw">let </span>filename = frame[<span class="string">"file"</span>].as_str().unwrap_or(<span class="string">""</span>);
+<a href=#598 id=598 data-nosnippet>598</a>                    <span class="kw">let </span>fn_name = frame[<span class="string">"fn"</span>].as_str().unwrap_or(<span class="string">""</span>);
+<a href=#599 id=599 data-nosnippet>599</a>                    !filename.is_empty() || !fn_name.is_empty()
+<a href=#600 id=600 data-nosnippet>600</a>                })
+<a href=#601 id=601 data-nosnippet>601</a>            } <span class="kw">else </span>{
+<a href=#602 id=602 data-nosnippet>602</a>                <span class="bool-val">false
+<a href=#603 id=603 data-nosnippet>603</a>            </span>}
+<a href=#604 id=604 data-nosnippet>604</a>        })
+<a href=#605 id=605 data-nosnippet>605</a>    }
+<a href=#606 id=606 data-nosnippet>606</a>
+<a href=#607 id=607 data-nosnippet>607</a>    <span class="doccomment">/// Create location-based hierarchy (original behavior)
+<a href=#608 id=608 data-nosnippet>608</a>    </span><span class="kw">fn </span>create_location_hierarchy(
+<a href=#609 id=609 data-nosnippet>609</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#610 id=610 data-nosnippet>610</a>    ) -&gt; (
+<a href=#611 id=611 data-nosnippet>611</a>        Vec&lt;serde_json::Value&gt;,
+<a href=#612 id=612 data-nosnippet>612</a>        serde_json::Map&lt;String, serde_json::Value&gt;,
+<a href=#613 id=613 data-nosnippet>613</a>    ) {
+<a href=#614 id=614 data-nosnippet>614</a>        <span class="comment">// Create hierarchy structure (single level: locations as parents, nodes as children)
+<a href=#615 id=615 data-nosnippet>615</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>locs: Vec&lt;(<span class="kw-2">&amp;</span>usize, <span class="kw-2">&amp;</span>(String, Vec&lt;usize&gt;))&gt; = <span class="self">self</span>.locations.iter().collect();
+<a href=#616 id=616 data-nosnippet>616</a>        locs.sort_by(|a, b| a.<span class="number">0</span>.cmp(b.<span class="number">0</span>));
+<a href=#617 id=617 data-nosnippet>617</a>        <span class="kw">let </span>hierarchy: Vec&lt;serde_json::Value&gt; = locs
+<a href=#618 id=618 data-nosnippet>618</a>            .into_iter()
+<a href=#619 id=619 data-nosnippet>619</a>            .map(|(location_id, (label, <span class="kw">_</span>))| {
+<a href=#620 id=620 data-nosnippet>620</a>                <span class="macro">serde_json::json!</span>({
+<a href=#621 id=621 data-nosnippet>621</a>                    <span class="string">"id"</span>: <span class="macro">format!</span>(<span class="string">"loc_{}"</span>, location_id),
+<a href=#622 id=622 data-nosnippet>622</a>                    <span class="string">"name"</span>: label,
+<a href=#623 id=623 data-nosnippet>623</a>                    <span class="string">"children"</span>: [] <span class="comment">// Single level hierarchy - no nested children
+<a href=#624 id=624 data-nosnippet>624</a>                </span>})
+<a href=#625 id=625 data-nosnippet>625</a>            })
+<a href=#626 id=626 data-nosnippet>626</a>            .collect();
+<a href=#627 id=627 data-nosnippet>627</a>
+<a href=#628 id=628 data-nosnippet>628</a>        <span class="comment">// Create node assignments by reading locationId from each node's data
+<a href=#629 id=629 data-nosnippet>629</a>        // This is more reliable than using the write_node tracking which depends on HashMap iteration order
+<a href=#630 id=630 data-nosnippet>630</a>        // Build and then sort assignments deterministically by node id key
+<a href=#631 id=631 data-nosnippet>631</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>tmp: Vec&lt;(String, String)&gt; = Vec::new();
+<a href=#632 id=632 data-nosnippet>632</a>        <span class="kw">for </span>node <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.nodes {
+<a href=#633 id=633 data-nosnippet>633</a>            <span class="kw">if let </span>(<span class="prelude-val">Some</span>(node_id), <span class="prelude-val">Some</span>(location_id)) =
+<a href=#634 id=634 data-nosnippet>634</a>                (node[<span class="string">"id"</span>].as_str(), node[<span class="string">"data"</span>][<span class="string">"locationId"</span>].as_u64())
+<a href=#635 id=635 data-nosnippet>635</a>            {
+<a href=#636 id=636 data-nosnippet>636</a>                <span class="kw">let </span>location_key = <span class="macro">format!</span>(<span class="string">"loc_{}"</span>, location_id);
+<a href=#637 id=637 data-nosnippet>637</a>                tmp.push((node_id.to_string(), location_key));
+<a href=#638 id=638 data-nosnippet>638</a>            }
+<a href=#639 id=639 data-nosnippet>639</a>        }
+<a href=#640 id=640 data-nosnippet>640</a>        tmp.sort_by(|a, b| a.<span class="number">0</span>.cmp(<span class="kw-2">&amp;</span>b.<span class="number">0</span>));
+<a href=#641 id=641 data-nosnippet>641</a>        <span class="kw">let </span><span class="kw-2">mut </span>node_assignments = serde_json::Map::new();
+<a href=#642 id=642 data-nosnippet>642</a>        <span class="kw">for </span>(k, v) <span class="kw">in </span>tmp {
+<a href=#643 id=643 data-nosnippet>643</a>            node_assignments.insert(k, serde_json::Value::String(v));
+<a href=#644 id=644 data-nosnippet>644</a>        }
+<a href=#645 id=645 data-nosnippet>645</a>
+<a href=#646 id=646 data-nosnippet>646</a>        (hierarchy, node_assignments)
+<a href=#647 id=647 data-nosnippet>647</a>    }
+<a href=#648 id=648 data-nosnippet>648</a>
+<a href=#649 id=649 data-nosnippet>649</a>    <span class="doccomment">/// Create backtrace-based hierarchy using structured backtrace data
+<a href=#650 id=650 data-nosnippet>650</a>    </span><span class="kw">fn </span>create_backtrace_hierarchy(
+<a href=#651 id=651 data-nosnippet>651</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#652 id=652 data-nosnippet>652</a>    ) -&gt; (
+<a href=#653 id=653 data-nosnippet>653</a>        Vec&lt;serde_json::Value&gt;,
+<a href=#654 id=654 data-nosnippet>654</a>        serde_json::Map&lt;String, serde_json::Value&gt;,
+<a href=#655 id=655 data-nosnippet>655</a>    ) {
+<a href=#656 id=656 data-nosnippet>656</a>        <span class="kw">use </span>std::collections::HashMap;
+<a href=#657 id=657 data-nosnippet>657</a>
+<a href=#658 id=658 data-nosnippet>658</a>        <span class="kw">let </span><span class="kw-2">mut </span>hierarchy_map: HashMap&lt;String, (String, usize, <span class="prelude-ty">Option</span>&lt;String&gt;)&gt; = HashMap::new(); <span class="comment">// path -&gt; (name, depth, parent_path)
+<a href=#659 id=659 data-nosnippet>659</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>path_to_node_assignments: HashMap&lt;String, Vec&lt;String&gt;&gt; = HashMap::new(); <span class="comment">// path -&gt; [node_ids]
+<a href=#660 id=660 data-nosnippet>660</a>
+<a href=#661 id=661 data-nosnippet>661</a>        // Process each node's backtrace using the stored backtraces
+<a href=#662 id=662 data-nosnippet>662</a>        </span><span class="kw">for </span>node <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.nodes {
+<a href=#663 id=663 data-nosnippet>663</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(node_id_str) = node[<span class="string">"id"</span>].as_str()
+<a href=#664 id=664 data-nosnippet>664</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Ok</span>(node_id) = node_id_str.parse::&lt;usize&gt;()
+<a href=#665 id=665 data-nosnippet>665</a>                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(backtrace) = <span class="self">self</span>.node_backtraces.get(<span class="kw-2">&amp;</span>node_id)
+<a href=#666 id=666 data-nosnippet>666</a>            {
+<a href=#667 id=667 data-nosnippet>667</a>                <span class="kw">let </span>elements = backtrace.elements();
+<a href=#668 id=668 data-nosnippet>668</a>                <span class="kw">if </span>elements.is_empty() {
+<a href=#669 id=669 data-nosnippet>669</a>                    <span class="kw">continue</span>;
+<a href=#670 id=670 data-nosnippet>670</a>                }
+<a href=#671 id=671 data-nosnippet>671</a>
+<a href=#672 id=672 data-nosnippet>672</a>                <span class="comment">// Do not filter frames for now; just take the first few for brevity
+<a href=#673 id=673 data-nosnippet>673</a>                </span><span class="kw">let </span>user_frames: Vec&lt;<span class="kw">_</span>&gt; = elements.iter().take(<span class="number">5</span>).collect();
+<a href=#674 id=674 data-nosnippet>674</a>                <span class="kw">if </span>user_frames.is_empty() {
+<a href=#675 id=675 data-nosnippet>675</a>                    <span class="kw">continue</span>;
+<a href=#676 id=676 data-nosnippet>676</a>                }
+<a href=#677 id=677 data-nosnippet>677</a>
+<a href=#678 id=678 data-nosnippet>678</a>                <span class="comment">// Build hierarchy path from backtrace frames (reverse order for call stack)
+<a href=#679 id=679 data-nosnippet>679</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>hierarchy_path = Vec::new();
+<a href=#680 id=680 data-nosnippet>680</a>                <span class="kw">for </span>(i, elem) <span class="kw">in </span>user_frames.iter().rev().enumerate() {
+<a href=#681 id=681 data-nosnippet>681</a>                    <span class="kw">let </span>label = <span class="kw">if </span>i == <span class="number">0 </span>{
+<a href=#682 id=682 data-nosnippet>682</a>                        <span class="kw">if let </span><span class="prelude-val">Some</span>(filename) = <span class="kw-2">&amp;</span>elem.filename {
+<a href=#683 id=683 data-nosnippet>683</a>                            <span class="self">Self</span>::extract_file_path(filename)
+<a href=#684 id=684 data-nosnippet>684</a>                        } <span class="kw">else </span>{
+<a href=#685 id=685 data-nosnippet>685</a>                            <span class="macro">format!</span>(<span class="string">"fn_{}"</span>, <span class="self">Self</span>::truncate_function_name(<span class="kw-2">&amp;</span>elem.fn_name))
+<a href=#686 id=686 data-nosnippet>686</a>                        }
+<a href=#687 id=687 data-nosnippet>687</a>                    } <span class="kw">else </span>{
+<a href=#688 id=688 data-nosnippet>688</a>                        <span class="self">Self</span>::truncate_function_name(<span class="kw-2">&amp;</span>elem.fn_name)
+<a href=#689 id=689 data-nosnippet>689</a>                    };
+<a href=#690 id=690 data-nosnippet>690</a>                    hierarchy_path.push(label);
+<a href=#691 id=691 data-nosnippet>691</a>                }
+<a href=#692 id=692 data-nosnippet>692</a>
+<a href=#693 id=693 data-nosnippet>693</a>                <span class="comment">// Create hierarchy nodes for this path
+<a href=#694 id=694 data-nosnippet>694</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>current_path = String::new();
+<a href=#695 id=695 data-nosnippet>695</a>                <span class="kw">let </span><span class="kw-2">mut </span>parent_path: <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="prelude-val">None</span>;
+<a href=#696 id=696 data-nosnippet>696</a>                <span class="kw">let </span><span class="kw-2">mut </span>deepest_path = String::new();
+<a href=#697 id=697 data-nosnippet>697</a>                <span class="comment">// Deduplicate consecutive identical labels for cleanliness
+<a href=#698 id=698 data-nosnippet>698</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>deduped: Vec&lt;String&gt; = Vec::new();
+<a href=#699 id=699 data-nosnippet>699</a>                <span class="kw">for </span>seg <span class="kw">in </span>hierarchy_path {
+<a href=#700 id=700 data-nosnippet>700</a>                    <span class="kw">if </span>deduped.last().map(|s| s == <span class="kw-2">&amp;</span>seg).unwrap_or(<span class="bool-val">false</span>) {
+<a href=#701 id=701 data-nosnippet>701</a>                        <span class="kw">continue</span>;
+<a href=#702 id=702 data-nosnippet>702</a>                    }
+<a href=#703 id=703 data-nosnippet>703</a>                    deduped.push(seg);
+<a href=#704 id=704 data-nosnippet>704</a>                }
+<a href=#705 id=705 data-nosnippet>705</a>                <span class="kw">for </span>(depth, label) <span class="kw">in </span>deduped.iter().enumerate() {
+<a href=#706 id=706 data-nosnippet>706</a>                    current_path = <span class="kw">if </span>current_path.is_empty() {
+<a href=#707 id=707 data-nosnippet>707</a>                        label.clone()
+<a href=#708 id=708 data-nosnippet>708</a>                    } <span class="kw">else </span>{
+<a href=#709 id=709 data-nosnippet>709</a>                        <span class="macro">format!</span>(<span class="string">"{}/{}"</span>, current_path, label)
+<a href=#710 id=710 data-nosnippet>710</a>                    };
+<a href=#711 id=711 data-nosnippet>711</a>                    <span class="kw">if </span>!hierarchy_map.contains_key(<span class="kw-2">&amp;</span>current_path) {
+<a href=#712 id=712 data-nosnippet>712</a>                        hierarchy_map.insert(
+<a href=#713 id=713 data-nosnippet>713</a>                            current_path.clone(),
+<a href=#714 id=714 data-nosnippet>714</a>                            (label.clone(), depth, parent_path.clone()),
+<a href=#715 id=715 data-nosnippet>715</a>                        );
+<a href=#716 id=716 data-nosnippet>716</a>                    }
+<a href=#717 id=717 data-nosnippet>717</a>                    deepest_path = current_path.clone();
+<a href=#718 id=718 data-nosnippet>718</a>                    parent_path = <span class="prelude-val">Some</span>(current_path.clone());
+<a href=#719 id=719 data-nosnippet>719</a>                }
+<a href=#720 id=720 data-nosnippet>720</a>
+<a href=#721 id=721 data-nosnippet>721</a>                <span class="kw">if </span>!deepest_path.is_empty() {
+<a href=#722 id=722 data-nosnippet>722</a>                    path_to_node_assignments
+<a href=#723 id=723 data-nosnippet>723</a>                        .entry(deepest_path)
+<a href=#724 id=724 data-nosnippet>724</a>                        .or_default()
+<a href=#725 id=725 data-nosnippet>725</a>                        .push(node_id_str.to_string());
+<a href=#726 id=726 data-nosnippet>726</a>                }
+<a href=#727 id=727 data-nosnippet>727</a>            }
+<a href=#728 id=728 data-nosnippet>728</a>        }
+<a href=#729 id=729 data-nosnippet>729</a>        <span class="comment">// Build hierarchy tree and create proper ID mapping
+<a href=#730 id=730 data-nosnippet>730</a>        // Build hierarchy tree and create proper ID mapping (deterministic)
+<a href=#731 id=731 data-nosnippet>731</a>        </span><span class="kw">let </span>(<span class="kw-2">mut </span>hierarchy, <span class="kw-2">mut </span>path_to_id_map) =
+<a href=#732 id=732 data-nosnippet>732</a>            <span class="self">self</span>.build_hierarchy_tree_with_ids(<span class="kw-2">&amp;</span>hierarchy_map);
+<a href=#733 id=733 data-nosnippet>733</a>
+<a href=#734 id=734 data-nosnippet>734</a>        <span class="comment">// Create a root node for nodes without backtraces
+<a href=#735 id=735 data-nosnippet>735</a>        </span><span class="kw">let </span>root_id = <span class="string">"bt_root"</span>.to_string();
+<a href=#736 id=736 data-nosnippet>736</a>        <span class="kw">let </span><span class="kw-2">mut </span>nodes_without_backtrace = Vec::new();
+<a href=#737 id=737 data-nosnippet>737</a>
+<a href=#738 id=738 data-nosnippet>738</a>        <span class="comment">// Collect all node IDs
+<a href=#739 id=739 data-nosnippet>739</a>        </span><span class="kw">for </span>node <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.nodes {
+<a href=#740 id=740 data-nosnippet>740</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(node_id_str) = node[<span class="string">"id"</span>].as_str() {
+<a href=#741 id=741 data-nosnippet>741</a>                nodes_without_backtrace.push(node_id_str.to_string());
+<a href=#742 id=742 data-nosnippet>742</a>            }
+<a href=#743 id=743 data-nosnippet>743</a>        }
+<a href=#744 id=744 data-nosnippet>744</a>
+<a href=#745 id=745 data-nosnippet>745</a>        <span class="comment">// Remove nodes that already have backtrace assignments
+<a href=#746 id=746 data-nosnippet>746</a>        </span><span class="kw">for </span>node_ids <span class="kw">in </span>path_to_node_assignments.values() {
+<a href=#747 id=747 data-nosnippet>747</a>            <span class="kw">for </span>node_id <span class="kw">in </span>node_ids {
+<a href=#748 id=748 data-nosnippet>748</a>                nodes_without_backtrace.retain(|id| id != node_id);
+<a href=#749 id=749 data-nosnippet>749</a>            }
 <a href=#750 id=750 data-nosnippet>750</a>        }
 <a href=#751 id=751 data-nosnippet>751</a>
-<a href=#752 id=752 data-nosnippet>752</a>        <span class="comment">// Create node assignments using the actual hierarchy IDs
-<a href=#753 id=753 data-nosnippet>753</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>node_assignments = serde_json::Map::new();
-<a href=#754 id=754 data-nosnippet>754</a>        <span class="kw">let </span><span class="kw-2">mut </span>pairs: Vec&lt;(String, Vec&lt;String&gt;)&gt; = path_to_node_assignments.into_iter().collect();
-<a href=#755 id=755 data-nosnippet>755</a>        pairs.sort_by(|a, b| a.<span class="number">0</span>.cmp(<span class="kw-2">&amp;</span>b.<span class="number">0</span>));
-<a href=#756 id=756 data-nosnippet>756</a>        <span class="kw">for </span>(path, <span class="kw-2">mut </span>node_ids) <span class="kw">in </span>pairs {
-<a href=#757 id=757 data-nosnippet>757</a>            node_ids.sort();
-<a href=#758 id=758 data-nosnippet>758</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(hierarchy_id) = path_to_id_map.get(<span class="kw-2">&amp;</span>path) {
-<a href=#759 id=759 data-nosnippet>759</a>                <span class="kw">for </span>node_id <span class="kw">in </span>node_ids {
-<a href=#760 id=760 data-nosnippet>760</a>                    node_assignments
-<a href=#761 id=761 data-nosnippet>761</a>                        .insert(node_id, serde_json::Value::String(hierarchy_id.clone()));
-<a href=#762 id=762 data-nosnippet>762</a>                }
-<a href=#763 id=763 data-nosnippet>763</a>            }
-<a href=#764 id=764 data-nosnippet>764</a>        }
-<a href=#765 id=765 data-nosnippet>765</a>
-<a href=#766 id=766 data-nosnippet>766</a>        <span class="comment">// Assign nodes without backtraces to the root
-<a href=#767 id=767 data-nosnippet>767</a>        </span><span class="kw">for </span>node_id <span class="kw">in </span>nodes_without_backtrace {
-<a href=#768 id=768 data-nosnippet>768</a>            node_assignments.insert(node_id, serde_json::Value::String(root_id.clone()));
-<a href=#769 id=769 data-nosnippet>769</a>        }
-<a href=#770 id=770 data-nosnippet>770</a>
-<a href=#771 id=771 data-nosnippet>771</a>        (hierarchy, node_assignments)
-<a href=#772 id=772 data-nosnippet>772</a>    }
-<a href=#773 id=773 data-nosnippet>773</a>
-<a href=#774 id=774 data-nosnippet>774</a>    <span class="doccomment">/// Build a tree structure and return both the tree and path-to-ID mapping
-<a href=#775 id=775 data-nosnippet>775</a>    </span><span class="kw">fn </span>build_hierarchy_tree_with_ids(
-<a href=#776 id=776 data-nosnippet>776</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#777 id=777 data-nosnippet>777</a>        hierarchy_map: <span class="kw-2">&amp;</span>HashMap&lt;String, (String, usize, <span class="prelude-ty">Option</span>&lt;String&gt;)&gt;,
-<a href=#778 id=778 data-nosnippet>778</a>    ) -&gt; (Vec&lt;serde_json::Value&gt;, HashMap&lt;String, String&gt;) {
-<a href=#779 id=779 data-nosnippet>779</a>        <span class="comment">// Assign IDs deterministically based on sorted path names
-<a href=#780 id=780 data-nosnippet>780</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>keys: Vec&lt;<span class="kw-2">&amp;</span>String&gt; = hierarchy_map.keys().collect();
-<a href=#781 id=781 data-nosnippet>781</a>        keys.sort();
-<a href=#782 id=782 data-nosnippet>782</a>        <span class="kw">let </span><span class="kw-2">mut </span>path_to_id: HashMap&lt;String, String&gt; = HashMap::new();
-<a href=#783 id=783 data-nosnippet>783</a>        <span class="kw">for </span>(i, path) <span class="kw">in </span>keys.iter().enumerate() {
-<a href=#784 id=784 data-nosnippet>784</a>            path_to_id.insert((<span class="kw-2">***</span>path).to_string(), <span class="macro">format!</span>(<span class="string">"bt_{}"</span>, i.saturating_add(<span class="number">1</span>)));
-<a href=#785 id=785 data-nosnippet>785</a>        }
-<a href=#786 id=786 data-nosnippet>786</a>
-<a href=#787 id=787 data-nosnippet>787</a>        <span class="comment">// Find root items (depth 0) and sort by name
-<a href=#788 id=788 data-nosnippet>788</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>roots: Vec&lt;(String, String)&gt; = hierarchy_map
-<a href=#789 id=789 data-nosnippet>789</a>            .iter()
-<a href=#790 id=790 data-nosnippet>790</a>            .filter_map(|(path, (name, depth, <span class="kw">_</span>))| {
-<a href=#791 id=791 data-nosnippet>791</a>                <span class="kw">if </span><span class="kw-2">*</span>depth == <span class="number">0 </span>{
-<a href=#792 id=792 data-nosnippet>792</a>                    <span class="prelude-val">Some</span>((path.clone(), name.clone()))
-<a href=#793 id=793 data-nosnippet>793</a>                } <span class="kw">else </span>{
-<a href=#794 id=794 data-nosnippet>794</a>                    <span class="prelude-val">None
-<a href=#795 id=795 data-nosnippet>795</a>                </span>}
-<a href=#796 id=796 data-nosnippet>796</a>            })
-<a href=#797 id=797 data-nosnippet>797</a>            .collect();
-<a href=#798 id=798 data-nosnippet>798</a>        roots.sort_by(|a, b| a.<span class="number">1</span>.cmp(<span class="kw-2">&amp;</span>b.<span class="number">1</span>));
-<a href=#799 id=799 data-nosnippet>799</a>        <span class="kw">let </span><span class="kw-2">mut </span>root_nodes = Vec::new();
-<a href=#800 id=800 data-nosnippet>800</a>        <span class="kw">for </span>(path, name) <span class="kw">in </span>roots {
-<a href=#801 id=801 data-nosnippet>801</a>            <span class="kw">let </span>tree_node = <span class="self">Self</span>::build_tree_node(<span class="kw-2">&amp;</span>path, <span class="kw-2">&amp;</span>name, hierarchy_map, <span class="kw-2">&amp;</span>path_to_id);
-<a href=#802 id=802 data-nosnippet>802</a>            root_nodes.push(tree_node);
-<a href=#803 id=803 data-nosnippet>803</a>        }
-<a href=#804 id=804 data-nosnippet>804</a>
-<a href=#805 id=805 data-nosnippet>805</a>        (root_nodes, path_to_id)
-<a href=#806 id=806 data-nosnippet>806</a>    }
-<a href=#807 id=807 data-nosnippet>807</a>
-<a href=#808 id=808 data-nosnippet>808</a>    <span class="doccomment">/// Build a single tree node recursively
-<a href=#809 id=809 data-nosnippet>809</a>    </span><span class="kw">fn </span>build_tree_node(
-<a href=#810 id=810 data-nosnippet>810</a>        current_path: <span class="kw-2">&amp;</span>str,
-<a href=#811 id=811 data-nosnippet>811</a>        name: <span class="kw-2">&amp;</span>str,
-<a href=#812 id=812 data-nosnippet>812</a>        hierarchy_map: <span class="kw-2">&amp;</span>HashMap&lt;String, (String, usize, <span class="prelude-ty">Option</span>&lt;String&gt;)&gt;,
-<a href=#813 id=813 data-nosnippet>813</a>        path_to_id: <span class="kw-2">&amp;</span>HashMap&lt;String, String&gt;,
-<a href=#814 id=814 data-nosnippet>814</a>    ) -&gt; serde_json::Value {
-<a href=#815 id=815 data-nosnippet>815</a>        <span class="kw">let </span>current_id = path_to_id.get(current_path).unwrap().clone();
-<a href=#816 id=816 data-nosnippet>816</a>
-<a href=#817 id=817 data-nosnippet>817</a>        <span class="comment">// Find children (paths that have this path as parent)
-<a href=#818 id=818 data-nosnippet>818</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>child_specs: Vec&lt;(<span class="kw-2">&amp;</span>String, <span class="kw-2">&amp;</span>String)&gt; = hierarchy_map
-<a href=#819 id=819 data-nosnippet>819</a>            .iter()
-<a href=#820 id=820 data-nosnippet>820</a>            .filter_map(|(child_path, (child_name, <span class="kw">_</span>, parent_path))| {
-<a href=#821 id=821 data-nosnippet>821</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(parent) = parent_path {
-<a href=#822 id=822 data-nosnippet>822</a>                    <span class="kw">if </span>parent == current_path {
-<a href=#823 id=823 data-nosnippet>823</a>                        <span class="prelude-val">Some</span>((child_path, child_name))
-<a href=#824 id=824 data-nosnippet>824</a>                    } <span class="kw">else </span>{
-<a href=#825 id=825 data-nosnippet>825</a>                        <span class="prelude-val">None
-<a href=#826 id=826 data-nosnippet>826</a>                    </span>}
-<a href=#827 id=827 data-nosnippet>827</a>                } <span class="kw">else </span>{
-<a href=#828 id=828 data-nosnippet>828</a>                    <span class="prelude-val">None
-<a href=#829 id=829 data-nosnippet>829</a>                </span>}
-<a href=#830 id=830 data-nosnippet>830</a>            })
-<a href=#831 id=831 data-nosnippet>831</a>            .collect();
-<a href=#832 id=832 data-nosnippet>832</a>        child_specs.sort_by(|a, b| a.<span class="number">1</span>.cmp(b.<span class="number">1</span>));
-<a href=#833 id=833 data-nosnippet>833</a>        <span class="kw">let </span><span class="kw-2">mut </span>children = Vec::new();
-<a href=#834 id=834 data-nosnippet>834</a>        <span class="kw">for </span>(child_path, child_name) <span class="kw">in </span>child_specs {
-<a href=#835 id=835 data-nosnippet>835</a>            <span class="kw">let </span>child_node =
-<a href=#836 id=836 data-nosnippet>836</a>                <span class="self">Self</span>::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
-<a href=#837 id=837 data-nosnippet>837</a>            children.push(child_node);
-<a href=#838 id=838 data-nosnippet>838</a>        }
-<a href=#839 id=839 data-nosnippet>839</a>
-<a href=#840 id=840 data-nosnippet>840</a>        <span class="kw">if </span>children.is_empty() {
-<a href=#841 id=841 data-nosnippet>841</a>            <span class="macro">serde_json::json!</span>({
-<a href=#842 id=842 data-nosnippet>842</a>                <span class="string">"id"</span>: current_id,
-<a href=#843 id=843 data-nosnippet>843</a>                <span class="string">"name"</span>: name
-<a href=#844 id=844 data-nosnippet>844</a>            })
-<a href=#845 id=845 data-nosnippet>845</a>        } <span class="kw">else </span>{
-<a href=#846 id=846 data-nosnippet>846</a>            <span class="macro">serde_json::json!</span>({
-<a href=#847 id=847 data-nosnippet>847</a>                <span class="string">"id"</span>: current_id,
-<a href=#848 id=848 data-nosnippet>848</a>                <span class="string">"name"</span>: name,
-<a href=#849 id=849 data-nosnippet>849</a>                <span class="string">"children"</span>: children
-<a href=#850 id=850 data-nosnippet>850</a>            })
-<a href=#851 id=851 data-nosnippet>851</a>        }
-<a href=#852 id=852 data-nosnippet>852</a>    }
-<a href=#853 id=853 data-nosnippet>853</a>
-<a href=#854 id=854 data-nosnippet>854</a>    <span class="doccomment">/// Extract meaningful file path
-<a href=#855 id=855 data-nosnippet>855</a>    </span><span class="kw">fn </span>extract_file_path(filename: <span class="kw-2">&amp;</span>str) -&gt; String {
-<a href=#856 id=856 data-nosnippet>856</a>        <span class="kw">if </span>filename.is_empty() {
-<a href=#857 id=857 data-nosnippet>857</a>            <span class="kw">return </span><span class="string">"unknown"</span>.to_string();
-<a href=#858 id=858 data-nosnippet>858</a>        }
-<a href=#859 id=859 data-nosnippet>859</a>
-<a href=#860 id=860 data-nosnippet>860</a>        <span class="comment">// Extract the most relevant part of the file path
-<a href=#861 id=861 data-nosnippet>861</a>        </span><span class="kw">let </span>parts: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = filename.split(<span class="string">'/'</span>).collect();
-<a href=#862 id=862 data-nosnippet>862</a>        <span class="kw">let </span>file_name = parts.last().unwrap_or(<span class="kw-2">&amp;</span><span class="string">"unknown"</span>);
+<a href=#752 id=752 data-nosnippet>752</a>        <span class="comment">// If there are nodes without backtraces, create a root container for them
+<a href=#753 id=753 data-nosnippet>753</a>        </span><span class="kw">if </span>!nodes_without_backtrace.is_empty() {
+<a href=#754 id=754 data-nosnippet>754</a>            hierarchy.push(<span class="macro">serde_json::json!</span>({
+<a href=#755 id=755 data-nosnippet>755</a>                <span class="string">"id"</span>: root_id.clone(),
+<a href=#756 id=756 data-nosnippet>756</a>                <span class="string">"name"</span>: <span class="string">"(no backtrace)"</span>,
+<a href=#757 id=757 data-nosnippet>757</a>                <span class="string">"children"</span>: []
+<a href=#758 id=758 data-nosnippet>758</a>            }));
+<a href=#759 id=759 data-nosnippet>759</a>            path_to_id_map.insert(<span class="string">"__root__"</span>.to_string(), root_id.clone());
+<a href=#760 id=760 data-nosnippet>760</a>        }
+<a href=#761 id=761 data-nosnippet>761</a>
+<a href=#762 id=762 data-nosnippet>762</a>        <span class="comment">// Create node assignments using the actual hierarchy IDs
+<a href=#763 id=763 data-nosnippet>763</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>node_assignments = serde_json::Map::new();
+<a href=#764 id=764 data-nosnippet>764</a>        <span class="kw">let </span><span class="kw-2">mut </span>pairs: Vec&lt;(String, Vec&lt;String&gt;)&gt; = path_to_node_assignments.into_iter().collect();
+<a href=#765 id=765 data-nosnippet>765</a>        pairs.sort_by(|a, b| a.<span class="number">0</span>.cmp(<span class="kw-2">&amp;</span>b.<span class="number">0</span>));
+<a href=#766 id=766 data-nosnippet>766</a>        <span class="kw">for </span>(path, <span class="kw-2">mut </span>node_ids) <span class="kw">in </span>pairs {
+<a href=#767 id=767 data-nosnippet>767</a>            node_ids.sort();
+<a href=#768 id=768 data-nosnippet>768</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(hierarchy_id) = path_to_id_map.get(<span class="kw-2">&amp;</span>path) {
+<a href=#769 id=769 data-nosnippet>769</a>                <span class="kw">for </span>node_id <span class="kw">in </span>node_ids {
+<a href=#770 id=770 data-nosnippet>770</a>                    node_assignments
+<a href=#771 id=771 data-nosnippet>771</a>                        .insert(node_id, serde_json::Value::String(hierarchy_id.clone()));
+<a href=#772 id=772 data-nosnippet>772</a>                }
+<a href=#773 id=773 data-nosnippet>773</a>            }
+<a href=#774 id=774 data-nosnippet>774</a>        }
+<a href=#775 id=775 data-nosnippet>775</a>
+<a href=#776 id=776 data-nosnippet>776</a>        <span class="comment">// Assign nodes without backtraces to the root
+<a href=#777 id=777 data-nosnippet>777</a>        </span><span class="kw">for </span>node_id <span class="kw">in </span>nodes_without_backtrace {
+<a href=#778 id=778 data-nosnippet>778</a>            node_assignments.insert(node_id, serde_json::Value::String(root_id.clone()));
+<a href=#779 id=779 data-nosnippet>779</a>        }
+<a href=#780 id=780 data-nosnippet>780</a>
+<a href=#781 id=781 data-nosnippet>781</a>        (hierarchy, node_assignments)
+<a href=#782 id=782 data-nosnippet>782</a>    }
+<a href=#783 id=783 data-nosnippet>783</a>
+<a href=#784 id=784 data-nosnippet>784</a>    <span class="doccomment">/// Build a tree structure and return both the tree and path-to-ID mapping
+<a href=#785 id=785 data-nosnippet>785</a>    </span><span class="kw">fn </span>build_hierarchy_tree_with_ids(
+<a href=#786 id=786 data-nosnippet>786</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#787 id=787 data-nosnippet>787</a>        hierarchy_map: <span class="kw-2">&amp;</span>HashMap&lt;String, (String, usize, <span class="prelude-ty">Option</span>&lt;String&gt;)&gt;,
+<a href=#788 id=788 data-nosnippet>788</a>    ) -&gt; (Vec&lt;serde_json::Value&gt;, HashMap&lt;String, String&gt;) {
+<a href=#789 id=789 data-nosnippet>789</a>        <span class="comment">// Assign IDs deterministically based on sorted path names
+<a href=#790 id=790 data-nosnippet>790</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>keys: Vec&lt;<span class="kw-2">&amp;</span>String&gt; = hierarchy_map.keys().collect();
+<a href=#791 id=791 data-nosnippet>791</a>        keys.sort();
+<a href=#792 id=792 data-nosnippet>792</a>        <span class="kw">let </span><span class="kw-2">mut </span>path_to_id: HashMap&lt;String, String&gt; = HashMap::new();
+<a href=#793 id=793 data-nosnippet>793</a>        <span class="kw">for </span>(i, path) <span class="kw">in </span>keys.iter().enumerate() {
+<a href=#794 id=794 data-nosnippet>794</a>            path_to_id.insert((<span class="kw-2">***</span>path).to_string(), <span class="macro">format!</span>(<span class="string">"bt_{}"</span>, i.saturating_add(<span class="number">1</span>)));
+<a href=#795 id=795 data-nosnippet>795</a>        }
+<a href=#796 id=796 data-nosnippet>796</a>
+<a href=#797 id=797 data-nosnippet>797</a>        <span class="comment">// Find root items (depth 0) and sort by name
+<a href=#798 id=798 data-nosnippet>798</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>roots: Vec&lt;(String, String)&gt; = hierarchy_map
+<a href=#799 id=799 data-nosnippet>799</a>            .iter()
+<a href=#800 id=800 data-nosnippet>800</a>            .filter_map(|(path, (name, depth, <span class="kw">_</span>))| {
+<a href=#801 id=801 data-nosnippet>801</a>                <span class="kw">if </span><span class="kw-2">*</span>depth == <span class="number">0 </span>{
+<a href=#802 id=802 data-nosnippet>802</a>                    <span class="prelude-val">Some</span>((path.clone(), name.clone()))
+<a href=#803 id=803 data-nosnippet>803</a>                } <span class="kw">else </span>{
+<a href=#804 id=804 data-nosnippet>804</a>                    <span class="prelude-val">None
+<a href=#805 id=805 data-nosnippet>805</a>                </span>}
+<a href=#806 id=806 data-nosnippet>806</a>            })
+<a href=#807 id=807 data-nosnippet>807</a>            .collect();
+<a href=#808 id=808 data-nosnippet>808</a>        roots.sort_by(|a, b| a.<span class="number">1</span>.cmp(<span class="kw-2">&amp;</span>b.<span class="number">1</span>));
+<a href=#809 id=809 data-nosnippet>809</a>        <span class="kw">let </span><span class="kw-2">mut </span>root_nodes = Vec::new();
+<a href=#810 id=810 data-nosnippet>810</a>        <span class="kw">for </span>(path, name) <span class="kw">in </span>roots {
+<a href=#811 id=811 data-nosnippet>811</a>            <span class="kw">let </span>tree_node = <span class="self">Self</span>::build_tree_node(<span class="kw-2">&amp;</span>path, <span class="kw-2">&amp;</span>name, hierarchy_map, <span class="kw-2">&amp;</span>path_to_id);
+<a href=#812 id=812 data-nosnippet>812</a>            root_nodes.push(tree_node);
+<a href=#813 id=813 data-nosnippet>813</a>        }
+<a href=#814 id=814 data-nosnippet>814</a>
+<a href=#815 id=815 data-nosnippet>815</a>        (root_nodes, path_to_id)
+<a href=#816 id=816 data-nosnippet>816</a>    }
+<a href=#817 id=817 data-nosnippet>817</a>
+<a href=#818 id=818 data-nosnippet>818</a>    <span class="doccomment">/// Build a single tree node recursively
+<a href=#819 id=819 data-nosnippet>819</a>    </span><span class="kw">fn </span>build_tree_node(
+<a href=#820 id=820 data-nosnippet>820</a>        current_path: <span class="kw-2">&amp;</span>str,
+<a href=#821 id=821 data-nosnippet>821</a>        name: <span class="kw-2">&amp;</span>str,
+<a href=#822 id=822 data-nosnippet>822</a>        hierarchy_map: <span class="kw-2">&amp;</span>HashMap&lt;String, (String, usize, <span class="prelude-ty">Option</span>&lt;String&gt;)&gt;,
+<a href=#823 id=823 data-nosnippet>823</a>        path_to_id: <span class="kw-2">&amp;</span>HashMap&lt;String, String&gt;,
+<a href=#824 id=824 data-nosnippet>824</a>    ) -&gt; serde_json::Value {
+<a href=#825 id=825 data-nosnippet>825</a>        <span class="kw">let </span>current_id = path_to_id.get(current_path).unwrap().clone();
+<a href=#826 id=826 data-nosnippet>826</a>
+<a href=#827 id=827 data-nosnippet>827</a>        <span class="comment">// Find children (paths that have this path as parent)
+<a href=#828 id=828 data-nosnippet>828</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>child_specs: Vec&lt;(<span class="kw-2">&amp;</span>String, <span class="kw-2">&amp;</span>String)&gt; = hierarchy_map
+<a href=#829 id=829 data-nosnippet>829</a>            .iter()
+<a href=#830 id=830 data-nosnippet>830</a>            .filter_map(|(child_path, (child_name, <span class="kw">_</span>, parent_path))| {
+<a href=#831 id=831 data-nosnippet>831</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(parent) = parent_path {
+<a href=#832 id=832 data-nosnippet>832</a>                    <span class="kw">if </span>parent == current_path {
+<a href=#833 id=833 data-nosnippet>833</a>                        <span class="prelude-val">Some</span>((child_path, child_name))
+<a href=#834 id=834 data-nosnippet>834</a>                    } <span class="kw">else </span>{
+<a href=#835 id=835 data-nosnippet>835</a>                        <span class="prelude-val">None
+<a href=#836 id=836 data-nosnippet>836</a>                    </span>}
+<a href=#837 id=837 data-nosnippet>837</a>                } <span class="kw">else </span>{
+<a href=#838 id=838 data-nosnippet>838</a>                    <span class="prelude-val">None
+<a href=#839 id=839 data-nosnippet>839</a>                </span>}
+<a href=#840 id=840 data-nosnippet>840</a>            })
+<a href=#841 id=841 data-nosnippet>841</a>            .collect();
+<a href=#842 id=842 data-nosnippet>842</a>        child_specs.sort_by(|a, b| a.<span class="number">1</span>.cmp(b.<span class="number">1</span>));
+<a href=#843 id=843 data-nosnippet>843</a>        <span class="kw">let </span><span class="kw-2">mut </span>children = Vec::new();
+<a href=#844 id=844 data-nosnippet>844</a>        <span class="kw">for </span>(child_path, child_name) <span class="kw">in </span>child_specs {
+<a href=#845 id=845 data-nosnippet>845</a>            <span class="kw">let </span>child_node =
+<a href=#846 id=846 data-nosnippet>846</a>                <span class="self">Self</span>::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
+<a href=#847 id=847 data-nosnippet>847</a>            children.push(child_node);
+<a href=#848 id=848 data-nosnippet>848</a>        }
+<a href=#849 id=849 data-nosnippet>849</a>
+<a href=#850 id=850 data-nosnippet>850</a>        <span class="kw">if </span>children.is_empty() {
+<a href=#851 id=851 data-nosnippet>851</a>            <span class="macro">serde_json::json!</span>({
+<a href=#852 id=852 data-nosnippet>852</a>                <span class="string">"id"</span>: current_id,
+<a href=#853 id=853 data-nosnippet>853</a>                <span class="string">"name"</span>: name
+<a href=#854 id=854 data-nosnippet>854</a>            })
+<a href=#855 id=855 data-nosnippet>855</a>        } <span class="kw">else </span>{
+<a href=#856 id=856 data-nosnippet>856</a>            <span class="macro">serde_json::json!</span>({
+<a href=#857 id=857 data-nosnippet>857</a>                <span class="string">"id"</span>: current_id,
+<a href=#858 id=858 data-nosnippet>858</a>                <span class="string">"name"</span>: name,
+<a href=#859 id=859 data-nosnippet>859</a>                <span class="string">"children"</span>: children
+<a href=#860 id=860 data-nosnippet>860</a>            })
+<a href=#861 id=861 data-nosnippet>861</a>        }
+<a href=#862 id=862 data-nosnippet>862</a>    }
 <a href=#863 id=863 data-nosnippet>863</a>
-<a href=#864 id=864 data-nosnippet>864</a>        <span class="comment">// If it's a source file, include the parent directory for context
-<a href=#865 id=865 data-nosnippet>865</a>        </span><span class="kw">if </span>file_name.ends_with(<span class="string">".rs"</span>) &amp;&amp; parts.len() &gt; <span class="number">1 </span>{
-<a href=#866 id=866 data-nosnippet>866</a>            <span class="kw">let </span>parent_dir = parts[parts.len() - <span class="number">2</span>];
-<a href=#867 id=867 data-nosnippet>867</a>            <span class="macro">format!</span>(<span class="string">"{}/{}"</span>, parent_dir, file_name)
-<a href=#868 id=868 data-nosnippet>868</a>        } <span class="kw">else </span>{
-<a href=#869 id=869 data-nosnippet>869</a>            file_name.to_string()
-<a href=#870 id=870 data-nosnippet>870</a>        }
-<a href=#871 id=871 data-nosnippet>871</a>    }
-<a href=#872 id=872 data-nosnippet>872</a>}
+<a href=#864 id=864 data-nosnippet>864</a>    <span class="doccomment">/// Extract meaningful file path
+<a href=#865 id=865 data-nosnippet>865</a>    </span><span class="kw">fn </span>extract_file_path(filename: <span class="kw-2">&amp;</span>str) -&gt; String {
+<a href=#866 id=866 data-nosnippet>866</a>        <span class="kw">if </span>filename.is_empty() {
+<a href=#867 id=867 data-nosnippet>867</a>            <span class="kw">return </span><span class="string">"unknown"</span>.to_string();
+<a href=#868 id=868 data-nosnippet>868</a>        }
+<a href=#869 id=869 data-nosnippet>869</a>
+<a href=#870 id=870 data-nosnippet>870</a>        <span class="comment">// Extract the most relevant part of the file path
+<a href=#871 id=871 data-nosnippet>871</a>        </span><span class="kw">let </span>parts: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = filename.split(<span class="string">'/'</span>).collect();
+<a href=#872 id=872 data-nosnippet>872</a>        <span class="kw">let </span>file_name = parts.last().unwrap_or(<span class="kw-2">&amp;</span><span class="string">"unknown"</span>);
 <a href=#873 id=873 data-nosnippet>873</a>
-<a href=#874 id=874 data-nosnippet>874</a><span class="doccomment">/// Create JSON from Hydro IR with type names
-<a href=#875 id=875 data-nosnippet>875</a></span><span class="kw">pub fn </span>hydro_ir_to_json(
-<a href=#876 id=876 data-nosnippet>876</a>    ir: <span class="kw-2">&amp;</span>[HydroRoot],
-<a href=#877 id=877 data-nosnippet>877</a>    process_names: Vec&lt;(usize, String)&gt;,
-<a href=#878 id=878 data-nosnippet>878</a>    cluster_names: Vec&lt;(usize, String)&gt;,
-<a href=#879 id=879 data-nosnippet>879</a>    external_names: Vec&lt;(usize, String)&gt;,
-<a href=#880 id=880 data-nosnippet>880</a>) -&gt; <span class="prelude-ty">Result</span>&lt;String, Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#881 id=881 data-nosnippet>881</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = String::new();
-<a href=#882 id=882 data-nosnippet>882</a>
-<a href=#883 id=883 data-nosnippet>883</a>    <span class="kw">let </span>config = <span class="kw">super</span>::render::HydroWriteConfig {
-<a href=#884 id=884 data-nosnippet>884</a>        show_metadata: <span class="bool-val">false</span>,
-<a href=#885 id=885 data-nosnippet>885</a>        show_location_groups: <span class="bool-val">true</span>,
-<a href=#886 id=886 data-nosnippet>886</a>        use_short_labels: <span class="bool-val">true</span>, <span class="comment">// Default to short labels
-<a href=#887 id=887 data-nosnippet>887</a>        </span>process_id_name: process_names,
-<a href=#888 id=888 data-nosnippet>888</a>        cluster_id_name: cluster_names,
-<a href=#889 id=889 data-nosnippet>889</a>        external_id_name: external_names,
-<a href=#890 id=890 data-nosnippet>890</a>    };
-<a href=#891 id=891 data-nosnippet>891</a>
-<a href=#892 id=892 data-nosnippet>892</a>    <span class="kw">super</span>::render::write_hydro_ir_json(<span class="kw-2">&amp;mut </span>output, ir, <span class="kw-2">&amp;</span>config)<span class="question-mark">?</span>;
-<a href=#893 id=893 data-nosnippet>893</a>
-<a href=#894 id=894 data-nosnippet>894</a>    <span class="prelude-val">Ok</span>(output)
-<a href=#895 id=895 data-nosnippet>895</a>}
-<a href=#896 id=896 data-nosnippet>896</a>
-<a href=#897 id=897 data-nosnippet>897</a><span class="doccomment">/// Open JSON visualization in browser using the docs visualizer with URL-encoded data
-<a href=#898 id=898 data-nosnippet>898</a></span><span class="kw">pub fn </span>open_json_browser(
-<a href=#899 id=899 data-nosnippet>899</a>    ir: <span class="kw-2">&amp;</span>[HydroRoot],
-<a href=#900 id=900 data-nosnippet>900</a>    process_names: Vec&lt;(usize, String)&gt;,
-<a href=#901 id=901 data-nosnippet>901</a>    cluster_names: Vec&lt;(usize, String)&gt;,
-<a href=#902 id=902 data-nosnippet>902</a>    external_names: Vec&lt;(usize, String)&gt;,
-<a href=#903 id=903 data-nosnippet>903</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#904 id=904 data-nosnippet>904</a>    <span class="kw">let </span>config = <span class="kw">super</span>::render::HydroWriteConfig {
-<a href=#905 id=905 data-nosnippet>905</a>        process_id_name: process_names,
-<a href=#906 id=906 data-nosnippet>906</a>        cluster_id_name: cluster_names,
-<a href=#907 id=907 data-nosnippet>907</a>        external_id_name: external_names,
-<a href=#908 id=908 data-nosnippet>908</a>        ..Default::default()
-<a href=#909 id=909 data-nosnippet>909</a>    };
-<a href=#910 id=910 data-nosnippet>910</a>
-<a href=#911 id=911 data-nosnippet>911</a>    <span class="kw">super</span>::debug::open_json_visualizer(ir, <span class="prelude-val">Some</span>(config))
-<a href=#912 id=912 data-nosnippet>912</a>        .map_err(|e| Box::new(e) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>std::error::Error&gt;)
-<a href=#913 id=913 data-nosnippet>913</a>}
-<a href=#914 id=914 data-nosnippet>914</a>
-<a href=#915 id=915 data-nosnippet>915</a><span class="doccomment">/// Save JSON to file using the consolidated debug utilities
-<a href=#916 id=916 data-nosnippet>916</a></span><span class="kw">pub fn </span>save_json(
-<a href=#917 id=917 data-nosnippet>917</a>    ir: <span class="kw-2">&amp;</span>[HydroRoot],
-<a href=#918 id=918 data-nosnippet>918</a>    process_names: Vec&lt;(usize, String)&gt;,
-<a href=#919 id=919 data-nosnippet>919</a>    cluster_names: Vec&lt;(usize, String)&gt;,
-<a href=#920 id=920 data-nosnippet>920</a>    external_names: Vec&lt;(usize, String)&gt;,
-<a href=#921 id=921 data-nosnippet>921</a>    filename: <span class="kw-2">&amp;</span>str,
-<a href=#922 id=922 data-nosnippet>922</a>) -&gt; <span class="prelude-ty">Result</span>&lt;std::path::PathBuf, Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#923 id=923 data-nosnippet>923</a>    <span class="kw">let </span>config = <span class="kw">super</span>::render::HydroWriteConfig {
-<a href=#924 id=924 data-nosnippet>924</a>        process_id_name: process_names,
-<a href=#925 id=925 data-nosnippet>925</a>        cluster_id_name: cluster_names,
-<a href=#926 id=926 data-nosnippet>926</a>        external_id_name: external_names,
-<a href=#927 id=927 data-nosnippet>927</a>        ..Default::default()
-<a href=#928 id=928 data-nosnippet>928</a>    };
-<a href=#929 id=929 data-nosnippet>929</a>
-<a href=#930 id=930 data-nosnippet>930</a>    <span class="kw">super</span>::debug::save_json(ir, <span class="prelude-val">Some</span>(filename), <span class="prelude-val">Some</span>(config))
-<a href=#931 id=931 data-nosnippet>931</a>        .map_err(|e| Box::new(e) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>std::error::Error&gt;)
-<a href=#932 id=932 data-nosnippet>932</a>}
-<a href=#933 id=933 data-nosnippet>933</a>
-<a href=#934 id=934 data-nosnippet>934</a><span class="doccomment">/// Open JSON visualization in browser for a BuiltFlow
-<a href=#935 id=935 data-nosnippet>935</a></span><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-<a href=#936 id=936 data-nosnippet>936</a></span><span class="kw">pub fn </span>open_browser(
-<a href=#937 id=937 data-nosnippet>937</a>    built_flow: <span class="kw-2">&amp;</span><span class="kw">crate</span>::compile::built::BuiltFlow,
-<a href=#938 id=938 data-nosnippet>938</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#939 id=939 data-nosnippet>939</a>    open_json_browser(
-<a href=#940 id=940 data-nosnippet>940</a>        built_flow.ir(),
-<a href=#941 id=941 data-nosnippet>941</a>        built_flow.process_id_name().clone(),
-<a href=#942 id=942 data-nosnippet>942</a>        built_flow.cluster_id_name().clone(),
-<a href=#943 id=943 data-nosnippet>943</a>        built_flow.external_id_name().clone(),
-<a href=#944 id=944 data-nosnippet>944</a>    )
-<a href=#945 id=945 data-nosnippet>945</a>}</code></pre></div></section></main></body></html>
+<a href=#874 id=874 data-nosnippet>874</a>        <span class="comment">// If it's a source file, include the parent directory for context
+<a href=#875 id=875 data-nosnippet>875</a>        </span><span class="kw">if </span>file_name.ends_with(<span class="string">".rs"</span>) &amp;&amp; parts.len() &gt; <span class="number">1 </span>{
+<a href=#876 id=876 data-nosnippet>876</a>            <span class="kw">let </span>parent_dir = parts[parts.len() - <span class="number">2</span>];
+<a href=#877 id=877 data-nosnippet>877</a>            <span class="macro">format!</span>(<span class="string">"{}/{}"</span>, parent_dir, file_name)
+<a href=#878 id=878 data-nosnippet>878</a>        } <span class="kw">else </span>{
+<a href=#879 id=879 data-nosnippet>879</a>            file_name.to_string()
+<a href=#880 id=880 data-nosnippet>880</a>        }
+<a href=#881 id=881 data-nosnippet>881</a>    }
+<a href=#882 id=882 data-nosnippet>882</a>}
+<a href=#883 id=883 data-nosnippet>883</a>
+<a href=#884 id=884 data-nosnippet>884</a><span class="doccomment">/// Create JSON from Hydro IR with type names
+<a href=#885 id=885 data-nosnippet>885</a></span><span class="kw">pub fn </span>hydro_ir_to_json(
+<a href=#886 id=886 data-nosnippet>886</a>    ir: <span class="kw-2">&amp;</span>[HydroRoot],
+<a href=#887 id=887 data-nosnippet>887</a>    process_names: Vec&lt;(usize, String)&gt;,
+<a href=#888 id=888 data-nosnippet>888</a>    cluster_names: Vec&lt;(usize, String)&gt;,
+<a href=#889 id=889 data-nosnippet>889</a>    external_names: Vec&lt;(usize, String)&gt;,
+<a href=#890 id=890 data-nosnippet>890</a>) -&gt; <span class="prelude-ty">Result</span>&lt;String, Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#891 id=891 data-nosnippet>891</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = String::new();
+<a href=#892 id=892 data-nosnippet>892</a>
+<a href=#893 id=893 data-nosnippet>893</a>    <span class="kw">let </span>config = <span class="kw">super</span>::render::HydroWriteConfig {
+<a href=#894 id=894 data-nosnippet>894</a>        show_metadata: <span class="bool-val">false</span>,
+<a href=#895 id=895 data-nosnippet>895</a>        show_location_groups: <span class="bool-val">true</span>,
+<a href=#896 id=896 data-nosnippet>896</a>        use_short_labels: <span class="bool-val">true</span>, <span class="comment">// Default to short labels
+<a href=#897 id=897 data-nosnippet>897</a>        </span>process_id_name: process_names,
+<a href=#898 id=898 data-nosnippet>898</a>        cluster_id_name: cluster_names,
+<a href=#899 id=899 data-nosnippet>899</a>        external_id_name: external_names,
+<a href=#900 id=900 data-nosnippet>900</a>    };
+<a href=#901 id=901 data-nosnippet>901</a>
+<a href=#902 id=902 data-nosnippet>902</a>    <span class="kw">super</span>::render::write_hydro_ir_json(<span class="kw-2">&amp;mut </span>output, ir, <span class="kw-2">&amp;</span>config)<span class="question-mark">?</span>;
+<a href=#903 id=903 data-nosnippet>903</a>
+<a href=#904 id=904 data-nosnippet>904</a>    <span class="prelude-val">Ok</span>(output)
+<a href=#905 id=905 data-nosnippet>905</a>}
+<a href=#906 id=906 data-nosnippet>906</a>
+<a href=#907 id=907 data-nosnippet>907</a><span class="doccomment">/// Open JSON visualization in browser using the docs visualizer with URL-encoded data
+<a href=#908 id=908 data-nosnippet>908</a></span><span class="kw">pub fn </span>open_json_browser(
+<a href=#909 id=909 data-nosnippet>909</a>    ir: <span class="kw-2">&amp;</span>[HydroRoot],
+<a href=#910 id=910 data-nosnippet>910</a>    process_names: Vec&lt;(usize, String)&gt;,
+<a href=#911 id=911 data-nosnippet>911</a>    cluster_names: Vec&lt;(usize, String)&gt;,
+<a href=#912 id=912 data-nosnippet>912</a>    external_names: Vec&lt;(usize, String)&gt;,
+<a href=#913 id=913 data-nosnippet>913</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#914 id=914 data-nosnippet>914</a>    <span class="kw">let </span>config = <span class="kw">super</span>::render::HydroWriteConfig {
+<a href=#915 id=915 data-nosnippet>915</a>        process_id_name: process_names,
+<a href=#916 id=916 data-nosnippet>916</a>        cluster_id_name: cluster_names,
+<a href=#917 id=917 data-nosnippet>917</a>        external_id_name: external_names,
+<a href=#918 id=918 data-nosnippet>918</a>        ..Default::default()
+<a href=#919 id=919 data-nosnippet>919</a>    };
+<a href=#920 id=920 data-nosnippet>920</a>
+<a href=#921 id=921 data-nosnippet>921</a>    <span class="kw">super</span>::debug::open_json_visualizer(ir, <span class="prelude-val">Some</span>(config))
+<a href=#922 id=922 data-nosnippet>922</a>        .map_err(|e| Box::new(e) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>std::error::Error&gt;)
+<a href=#923 id=923 data-nosnippet>923</a>}
+<a href=#924 id=924 data-nosnippet>924</a>
+<a href=#925 id=925 data-nosnippet>925</a><span class="doccomment">/// Save JSON to file using the consolidated debug utilities
+<a href=#926 id=926 data-nosnippet>926</a></span><span class="kw">pub fn </span>save_json(
+<a href=#927 id=927 data-nosnippet>927</a>    ir: <span class="kw-2">&amp;</span>[HydroRoot],
+<a href=#928 id=928 data-nosnippet>928</a>    process_names: Vec&lt;(usize, String)&gt;,
+<a href=#929 id=929 data-nosnippet>929</a>    cluster_names: Vec&lt;(usize, String)&gt;,
+<a href=#930 id=930 data-nosnippet>930</a>    external_names: Vec&lt;(usize, String)&gt;,
+<a href=#931 id=931 data-nosnippet>931</a>    filename: <span class="kw-2">&amp;</span>str,
+<a href=#932 id=932 data-nosnippet>932</a>) -&gt; <span class="prelude-ty">Result</span>&lt;std::path::PathBuf, Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#933 id=933 data-nosnippet>933</a>    <span class="kw">let </span>config = <span class="kw">super</span>::render::HydroWriteConfig {
+<a href=#934 id=934 data-nosnippet>934</a>        process_id_name: process_names,
+<a href=#935 id=935 data-nosnippet>935</a>        cluster_id_name: cluster_names,
+<a href=#936 id=936 data-nosnippet>936</a>        external_id_name: external_names,
+<a href=#937 id=937 data-nosnippet>937</a>        ..Default::default()
+<a href=#938 id=938 data-nosnippet>938</a>    };
+<a href=#939 id=939 data-nosnippet>939</a>
+<a href=#940 id=940 data-nosnippet>940</a>    <span class="kw">super</span>::debug::save_json(ir, <span class="prelude-val">Some</span>(filename), <span class="prelude-val">Some</span>(config))
+<a href=#941 id=941 data-nosnippet>941</a>        .map_err(|e| Box::new(e) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>std::error::Error&gt;)
+<a href=#942 id=942 data-nosnippet>942</a>}
+<a href=#943 id=943 data-nosnippet>943</a>
+<a href=#944 id=944 data-nosnippet>944</a><span class="doccomment">/// Open JSON visualization in browser for a BuiltFlow
+<a href=#945 id=945 data-nosnippet>945</a></span><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+<a href=#946 id=946 data-nosnippet>946</a></span><span class="kw">pub fn </span>open_browser(
+<a href=#947 id=947 data-nosnippet>947</a>    built_flow: <span class="kw-2">&amp;</span><span class="kw">crate</span>::compile::built::BuiltFlow,
+<a href=#948 id=948 data-nosnippet>948</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#949 id=949 data-nosnippet>949</a>    open_json_browser(
+<a href=#950 id=950 data-nosnippet>950</a>        built_flow.ir(),
+<a href=#951 id=951 data-nosnippet>951</a>        built_flow.process_id_name().clone(),
+<a href=#952 id=952 data-nosnippet>952</a>        built_flow.cluster_id_name().clone(),
+<a href=#953 id=953 data-nosnippet>953</a>        built_flow.external_id_name().clone(),
+<a href=#954 id=954 data-nosnippet>954</a>    )
+<a href=#955 id=955 data-nosnippet>955</a>}</code></pre></div></section></main></body></html>

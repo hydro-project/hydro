@@ -167,7 +167,7 @@
 <a href=#167 id=167 data-nosnippet>167</a><span class="doccomment">/// Calculate the total URL length for a given encoded data and parameter name.
 <a href=#168 id=168 data-nosnippet>168</a>/// Returns the total length including base URL, parameter name, and encoded data.
 <a href=#169 id=169 data-nosnippet>169</a></span><span class="kw">fn </span>calculate_url_length(base_url: <span class="kw-2">&amp;</span>str, param_name: <span class="kw-2">&amp;</span>str, encoded_data: <span class="kw-2">&amp;</span>str) -&gt; usize {
-<a href=#170 id=170 data-nosnippet>170</a>    <span class="comment">// Format: base_url#param_name=encoded_data
+<a href=#170 id=170 data-nosnippet>170</a>    <span class="comment">// Format: base_url?param_name=encoded_data
 <a href=#171 id=171 data-nosnippet>171</a>    </span>base_url.len() + <span class="number">1 </span>+ param_name.len() + <span class="number">1 </span>+ encoded_data.len()
 <a href=#172 id=172 data-nosnippet>172</a>}
 <a href=#173 id=173 data-nosnippet>173</a>
@@ -183,191 +183,186 @@
 <a href=#183 id=183 data-nosnippet>183</a>    <span class="comment">// Determine parameter name based on compression
 <a href=#184 id=184 data-nosnippet>184</a>    </span><span class="kw">let </span>param_name = <span class="kw">if </span>is_compressed { <span class="string">"compressed" </span>} <span class="kw">else </span>{ <span class="string">"data" </span>};
 <a href=#185 id=185 data-nosnippet>185</a>
-<a href=#186 id=186 data-nosnippet>186</a>    <span class="comment">// Calculate total URL length
-<a href=#187 id=187 data-nosnippet>187</a>    </span><span class="kw">let </span>url_length = calculate_url_length(<span class="kw-2">&amp;</span>config.base_url, param_name, <span class="kw-2">&amp;</span>encoded_data);
-<a href=#188 id=188 data-nosnippet>188</a>
-<a href=#189 id=189 data-nosnippet>189</a>    <span class="comment">// Check if URL is within length limit
-<a href=#190 id=190 data-nosnippet>190</a>    </span><span class="kw">if </span>url_length &lt;= config.max_url_length {
-<a href=#191 id=191 data-nosnippet>191</a>        <span class="kw">let </span>url = <span class="macro">format!</span>(<span class="string">"{}#{}={}"</span>, config.base_url, param_name, encoded_data);
-<a href=#192 id=192 data-nosnippet>192</a>        <span class="prelude-val">Some</span>((url, is_compressed))
-<a href=#193 id=193 data-nosnippet>193</a>    } <span class="kw">else </span>{
-<a href=#194 id=194 data-nosnippet>194</a>        <span class="comment">// If compressed URL is too long, try uncompressed as a fallback
-<a href=#195 id=195 data-nosnippet>195</a>        </span><span class="kw">if </span>is_compressed {
-<a href=#196 id=196 data-nosnippet>196</a>            <span class="macro">println!</span>(<span class="string">"⚠️  Compressed URL too long, trying uncompressed..."</span>);
-<a href=#197 id=197 data-nosnippet>197</a>            <span class="kw">let </span>uncompressed_encoded = encode_base64_url_safe(json_content.as_bytes());
-<a href=#198 id=198 data-nosnippet>198</a>            <span class="kw">let </span>uncompressed_length =
-<a href=#199 id=199 data-nosnippet>199</a>                calculate_url_length(<span class="kw-2">&amp;</span>config.base_url, <span class="string">"data"</span>, <span class="kw-2">&amp;</span>uncompressed_encoded);
-<a href=#200 id=200 data-nosnippet>200</a>
-<a href=#201 id=201 data-nosnippet>201</a>            <span class="kw">if </span>uncompressed_length &lt;= config.max_url_length {
-<a href=#202 id=202 data-nosnippet>202</a>                <span class="kw">let </span>url = <span class="macro">format!</span>(<span class="string">"{}#data={}"</span>, config.base_url, uncompressed_encoded);
-<a href=#203 id=203 data-nosnippet>203</a>                <span class="kw">return </span><span class="prelude-val">Some</span>((url, <span class="bool-val">false</span>));
-<a href=#204 id=204 data-nosnippet>204</a>            }
-<a href=#205 id=205 data-nosnippet>205</a>        }
-<a href=#206 id=206 data-nosnippet>206</a>
-<a href=#207 id=207 data-nosnippet>207</a>        <span class="macro">println!</span>(<span class="string">"❌ URL too long even with compression, will use file-based fallback"</span>);
-<a href=#208 id=208 data-nosnippet>208</a>        <span class="prelude-val">None
-<a href=#209 id=209 data-nosnippet>209</a>    </span>}
-<a href=#210 id=210 data-nosnippet>210</a>}
-<a href=#211 id=211 data-nosnippet>211</a>
-<a href=#212 id=212 data-nosnippet>212</a><span class="doccomment">/// Generate a timestamped filename for temporary graph files.
-<a href=#213 id=213 data-nosnippet>213</a>/// Format: hydro_graph_&lt;timestamp&gt;.json
-<a href=#214 id=214 data-nosnippet>214</a></span><span class="kw">fn </span>generate_timestamped_filename() -&gt; String {
-<a href=#215 id=215 data-nosnippet>215</a>    <span class="kw">let </span>timestamp = SystemTime::now()
-<a href=#216 id=216 data-nosnippet>216</a>        .duration_since(UNIX_EPOCH)
-<a href=#217 id=217 data-nosnippet>217</a>        .expect(<span class="string">"System clock is before Unix epoch - clock may be corrupted"</span>)
-<a href=#218 id=218 data-nosnippet>218</a>        .as_secs();
-<a href=#219 id=219 data-nosnippet>219</a>    <span class="macro">format!</span>(<span class="string">"hydro_graph_{}.json"</span>, timestamp)
-<a href=#220 id=220 data-nosnippet>220</a>}
-<a href=#221 id=221 data-nosnippet>221</a>
-<a href=#222 id=222 data-nosnippet>222</a><span class="doccomment">/// Save JSON content to a temporary file with a timestamped filename.
-<a href=#223 id=223 data-nosnippet>223</a>/// Returns the path to the created file.
-<a href=#224 id=224 data-nosnippet>224</a>///
-<a href=#225 id=225 data-nosnippet>225</a>/// Requirements: 9.1, 9.2, 9.3
-<a href=#226 id=226 data-nosnippet>226</a></span><span class="kw">fn </span>save_json_to_temp_file(json_content: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;std::path::PathBuf&gt; {
-<a href=#227 id=227 data-nosnippet>227</a>    <span class="kw">let </span>filename = generate_timestamped_filename();
-<a href=#228 id=228 data-nosnippet>228</a>    <span class="kw">let </span>temp_file = std::env::temp_dir().join(filename);
-<a href=#229 id=229 data-nosnippet>229</a>
-<a href=#230 id=230 data-nosnippet>230</a>    std::fs::write(<span class="kw-2">&amp;</span>temp_file, json_content)<span class="question-mark">?</span>;
-<a href=#231 id=231 data-nosnippet>231</a>
-<a href=#232 id=232 data-nosnippet>232</a>    <span class="macro">println!</span>(<span class="string">"📁 Saved graph to temporary file: {}"</span>, temp_file.display());
+<a href=#186 id=186 data-nosnippet>186</a>    <span class="kw">let </span>url_length = calculate_url_length(<span class="kw-2">&amp;</span>config.base_url, param_name, <span class="kw-2">&amp;</span>encoded_data);
+<a href=#187 id=187 data-nosnippet>187</a>
+<a href=#188 id=188 data-nosnippet>188</a>    <span class="kw">if </span>url_length &lt;= config.max_url_length {
+<a href=#189 id=189 data-nosnippet>189</a>        <span class="kw">let </span>url = <span class="macro">format!</span>(<span class="string">"{}?{}={}"</span>, config.base_url, param_name, encoded_data);
+<a href=#190 id=190 data-nosnippet>190</a>        <span class="prelude-val">Some</span>((url, is_compressed))
+<a href=#191 id=191 data-nosnippet>191</a>    } <span class="kw">else </span>{
+<a href=#192 id=192 data-nosnippet>192</a>        <span class="kw">if </span>is_compressed {
+<a href=#193 id=193 data-nosnippet>193</a>            <span class="macro">println!</span>(<span class="string">"⚠️  Compressed URL too long, trying uncompressed..."</span>);
+<a href=#194 id=194 data-nosnippet>194</a>            <span class="kw">let </span>uncompressed_encoded = encode_base64_url_safe(json_content.as_bytes());
+<a href=#195 id=195 data-nosnippet>195</a>            <span class="kw">let </span>uncompressed_length =
+<a href=#196 id=196 data-nosnippet>196</a>                calculate_url_length(<span class="kw-2">&amp;</span>config.base_url, <span class="string">"data"</span>, <span class="kw-2">&amp;</span>uncompressed_encoded);
+<a href=#197 id=197 data-nosnippet>197</a>
+<a href=#198 id=198 data-nosnippet>198</a>            <span class="kw">if </span>uncompressed_length &lt;= config.max_url_length {
+<a href=#199 id=199 data-nosnippet>199</a>                <span class="kw">let </span>url = <span class="macro">format!</span>(<span class="string">"{}?data={}"</span>, config.base_url, uncompressed_encoded);
+<a href=#200 id=200 data-nosnippet>200</a>                <span class="kw">return </span><span class="prelude-val">Some</span>((url, <span class="bool-val">false</span>));
+<a href=#201 id=201 data-nosnippet>201</a>            }
+<a href=#202 id=202 data-nosnippet>202</a>        }
+<a href=#203 id=203 data-nosnippet>203</a>
+<a href=#204 id=204 data-nosnippet>204</a>        <span class="macro">println!</span>(<span class="string">"❌ URL too long even with compression, will use file-based fallback"</span>);
+<a href=#205 id=205 data-nosnippet>205</a>        <span class="prelude-val">None
+<a href=#206 id=206 data-nosnippet>206</a>    </span>}
+<a href=#207 id=207 data-nosnippet>207</a>}
+<a href=#208 id=208 data-nosnippet>208</a>
+<a href=#209 id=209 data-nosnippet>209</a><span class="doccomment">/// Generate a timestamped filename for temporary graph files.
+<a href=#210 id=210 data-nosnippet>210</a>/// Format: hydro_graph_&lt;timestamp&gt;.json
+<a href=#211 id=211 data-nosnippet>211</a></span><span class="kw">fn </span>generate_timestamped_filename() -&gt; String {
+<a href=#212 id=212 data-nosnippet>212</a>    <span class="kw">let </span>timestamp = SystemTime::now()
+<a href=#213 id=213 data-nosnippet>213</a>        .duration_since(UNIX_EPOCH)
+<a href=#214 id=214 data-nosnippet>214</a>        .expect(<span class="string">"System clock is before Unix epoch - clock may be corrupted"</span>)
+<a href=#215 id=215 data-nosnippet>215</a>        .as_secs();
+<a href=#216 id=216 data-nosnippet>216</a>    <span class="macro">format!</span>(<span class="string">"hydro_graph_{}.json"</span>, timestamp)
+<a href=#217 id=217 data-nosnippet>217</a>}
+<a href=#218 id=218 data-nosnippet>218</a>
+<a href=#219 id=219 data-nosnippet>219</a><span class="doccomment">/// Save JSON content to a temporary file with a timestamped filename.
+<a href=#220 id=220 data-nosnippet>220</a>/// Returns the path to the created file.
+<a href=#221 id=221 data-nosnippet>221</a>///
+<a href=#222 id=222 data-nosnippet>222</a>/// Requirements: 9.1, 9.2, 9.3
+<a href=#223 id=223 data-nosnippet>223</a></span><span class="kw">fn </span>save_json_to_temp_file(json_content: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;std::path::PathBuf&gt; {
+<a href=#224 id=224 data-nosnippet>224</a>    <span class="kw">let </span>filename = generate_timestamped_filename();
+<a href=#225 id=225 data-nosnippet>225</a>    <span class="kw">let </span>temp_file = std::env::temp_dir().join(filename);
+<a href=#226 id=226 data-nosnippet>226</a>
+<a href=#227 id=227 data-nosnippet>227</a>    std::fs::write(<span class="kw-2">&amp;</span>temp_file, json_content)<span class="question-mark">?</span>;
+<a href=#228 id=228 data-nosnippet>228</a>
+<a href=#229 id=229 data-nosnippet>229</a>    <span class="macro">println!</span>(<span class="string">"📁 Saved graph to temporary file: {}"</span>, temp_file.display());
+<a href=#230 id=230 data-nosnippet>230</a>
+<a href=#231 id=231 data-nosnippet>231</a>    <span class="prelude-val">Ok</span>(temp_file)
+<a href=#232 id=232 data-nosnippet>232</a>}
 <a href=#233 id=233 data-nosnippet>233</a>
-<a href=#234 id=234 data-nosnippet>234</a>    <span class="prelude-val">Ok</span>(temp_file)
-<a href=#235 id=235 data-nosnippet>235</a>}
-<a href=#236 id=236 data-nosnippet>236</a>
-<a href=#237 id=237 data-nosnippet>237</a><span class="doccomment">/// URL-encode a file path for safe transmission in query parameters.
-<a href=#238 id=238 data-nosnippet>238</a>/// Uses percent encoding to ensure special characters are properly escaped.
-<a href=#239 id=239 data-nosnippet>239</a>///
-<a href=#240 id=240 data-nosnippet>240</a>/// Requirements: 9.4
-<a href=#241 id=241 data-nosnippet>241</a></span><span class="kw">fn </span>url_encode_file_path(file_path: <span class="kw-2">&amp;</span>std::path::Path) -&gt; String {
-<a href=#242 id=242 data-nosnippet>242</a>    <span class="kw">let </span>path_str = file_path.to_string_lossy();
-<a href=#243 id=243 data-nosnippet>243</a>    urlencoding::encode(<span class="kw-2">&amp;</span>path_str).to_string()
-<a href=#244 id=244 data-nosnippet>244</a>}
-<a href=#245 id=245 data-nosnippet>245</a>
-<a href=#246 id=246 data-nosnippet>246</a><span class="doccomment">/// Generate a visualizer URL with a file query parameter.
-<a href=#247 id=247 data-nosnippet>247</a>/// Format: base_url?file=&lt;encoded_path&gt;
-<a href=#248 id=248 data-nosnippet>248</a>///
-<a href=#249 id=249 data-nosnippet>249</a>/// Requirements: 9.4, 9.5
-<a href=#250 id=250 data-nosnippet>250</a></span><span class="kw">fn </span>generate_file_based_url(file_path: <span class="kw-2">&amp;</span>std::path::Path, config: <span class="kw-2">&amp;</span>VisualizerConfig) -&gt; String {
-<a href=#251 id=251 data-nosnippet>251</a>    <span class="kw">let </span>encoded_path = url_encode_file_path(file_path);
-<a href=#252 id=252 data-nosnippet>252</a>    <span class="macro">format!</span>(<span class="string">"{}?file={}"</span>, config.base_url, encoded_path)
-<a href=#253 id=253 data-nosnippet>253</a>}
-<a href=#254 id=254 data-nosnippet>254</a>
-<a href=#255 id=255 data-nosnippet>255</a><span class="doccomment">/// Print fallback instructions for manual loading of the graph file.
-<a href=#256 id=256 data-nosnippet>256</a>/// Provides clear guidance if automatic browser opening fails.
-<a href=#257 id=257 data-nosnippet>257</a>///
-<a href=#258 id=258 data-nosnippet>258</a>/// Requirements: 9.6, 9.7
-<a href=#259 id=259 data-nosnippet>259</a></span><span class="kw">fn </span>print_fallback_instructions(file_path: <span class="kw-2">&amp;</span>std::path::Path, url: <span class="kw-2">&amp;</span>str) {
-<a href=#260 id=260 data-nosnippet>260</a>    <span class="macro">println!</span>(<span class="string">"\n📊 Graph Visualization Instructions"</span>);
-<a href=#261 id=261 data-nosnippet>261</a>    <span class="macro">println!</span>(<span class="string">"═══════════════════════════════════════════════════════════"</span>);
-<a href=#262 id=262 data-nosnippet>262</a>    <span class="macro">println!</span>(<span class="string">"The graph is too large to embed in a URL."</span>);
-<a href=#263 id=263 data-nosnippet>263</a>    <span class="macro">println!</span>(<span class="string">"It has been saved to a temporary file:"</span>);
-<a href=#264 id=264 data-nosnippet>264</a>    <span class="macro">println!</span>(<span class="string">"  📁 {}"</span>, file_path.display());
+<a href=#234 id=234 data-nosnippet>234</a><span class="doccomment">/// URL-encode a file path for safe transmission in query parameters.
+<a href=#235 id=235 data-nosnippet>235</a>/// Uses percent encoding to ensure special characters are properly escaped.
+<a href=#236 id=236 data-nosnippet>236</a>///
+<a href=#237 id=237 data-nosnippet>237</a>/// Requirements: 9.4
+<a href=#238 id=238 data-nosnippet>238</a></span><span class="kw">fn </span>url_encode_file_path(file_path: <span class="kw-2">&amp;</span>std::path::Path) -&gt; String {
+<a href=#239 id=239 data-nosnippet>239</a>    <span class="kw">let </span>path_str = file_path.to_string_lossy();
+<a href=#240 id=240 data-nosnippet>240</a>    urlencoding::encode(<span class="kw-2">&amp;</span>path_str).to_string()
+<a href=#241 id=241 data-nosnippet>241</a>}
+<a href=#242 id=242 data-nosnippet>242</a>
+<a href=#243 id=243 data-nosnippet>243</a><span class="doccomment">/// Generate a visualizer URL with a file query parameter.
+<a href=#244 id=244 data-nosnippet>244</a>/// Format: base_url?file=&lt;encoded_path&gt;
+<a href=#245 id=245 data-nosnippet>245</a>///
+<a href=#246 id=246 data-nosnippet>246</a>/// Requirements: 9.4, 9.5
+<a href=#247 id=247 data-nosnippet>247</a></span><span class="kw">fn </span>generate_file_based_url(file_path: <span class="kw-2">&amp;</span>std::path::Path, config: <span class="kw-2">&amp;</span>VisualizerConfig) -&gt; String {
+<a href=#248 id=248 data-nosnippet>248</a>    <span class="kw">let </span>encoded_path = url_encode_file_path(file_path);
+<a href=#249 id=249 data-nosnippet>249</a>    <span class="macro">format!</span>(<span class="string">"{}?file={}"</span>, config.base_url, encoded_path)
+<a href=#250 id=250 data-nosnippet>250</a>}
+<a href=#251 id=251 data-nosnippet>251</a>
+<a href=#252 id=252 data-nosnippet>252</a><span class="doccomment">/// Print fallback instructions for manual loading of the graph file.
+<a href=#253 id=253 data-nosnippet>253</a>/// Provides clear guidance if automatic browser opening fails.
+<a href=#254 id=254 data-nosnippet>254</a>///
+<a href=#255 id=255 data-nosnippet>255</a>/// Requirements: 9.6, 9.7
+<a href=#256 id=256 data-nosnippet>256</a></span><span class="kw">fn </span>print_fallback_instructions(file_path: <span class="kw-2">&amp;</span>std::path::Path, url: <span class="kw-2">&amp;</span>str) {
+<a href=#257 id=257 data-nosnippet>257</a>    <span class="macro">println!</span>(<span class="string">"\n📊 Graph Visualization Instructions"</span>);
+<a href=#258 id=258 data-nosnippet>258</a>    <span class="macro">println!</span>(<span class="string">"═══════════════════════════════════════════════════════════"</span>);
+<a href=#259 id=259 data-nosnippet>259</a>    <span class="macro">println!</span>(<span class="string">"The graph is too large to embed in a URL."</span>);
+<a href=#260 id=260 data-nosnippet>260</a>    <span class="macro">println!</span>(<span class="string">"It has been saved to a temporary file:"</span>);
+<a href=#261 id=261 data-nosnippet>261</a>    <span class="macro">println!</span>(<span class="string">"  📁 {}"</span>, file_path.display());
+<a href=#262 id=262 data-nosnippet>262</a>    <span class="macro">println!</span>();
+<a href=#263 id=263 data-nosnippet>263</a>    <span class="macro">println!</span>(<span class="string">"Opening visualizer in browser..."</span>);
+<a href=#264 id=264 data-nosnippet>264</a>    <span class="macro">println!</span>(<span class="string">"  🌐 {}"</span>, url);
 <a href=#265 id=265 data-nosnippet>265</a>    <span class="macro">println!</span>();
-<a href=#266 id=266 data-nosnippet>266</a>    <span class="macro">println!</span>(<span class="string">"Opening visualizer in browser..."</span>);
-<a href=#267 id=267 data-nosnippet>267</a>    <span class="macro">println!</span>(<span class="string">"  🌐 {}"</span>, url);
-<a href=#268 id=268 data-nosnippet>268</a>    <span class="macro">println!</span>();
-<a href=#269 id=269 data-nosnippet>269</a>    <span class="macro">println!</span>(<span class="string">"If the browser doesn't open automatically, you can:"</span>);
-<a href=#270 id=270 data-nosnippet>270</a>    <span class="macro">println!</span>(<span class="string">"  1. Manually open: {}"</span>, url);
-<a href=#271 id=271 data-nosnippet>271</a>    <span class="macro">println!</span>(
-<a href=#272 id=272 data-nosnippet>272</a>        <span class="string">"  2. Or visit {} and drag-and-drop the file"</span>,
-<a href=#273 id=273 data-nosnippet>273</a>        url.split(<span class="string">'?'</span>).next().unwrap_or(url)
-<a href=#274 id=274 data-nosnippet>274</a>    );
-<a href=#275 id=275 data-nosnippet>275</a>    <span class="macro">println!</span>(<span class="string">"═══════════════════════════════════════════════════════════\n"</span>);
-<a href=#276 id=276 data-nosnippet>276</a>}
-<a href=#277 id=277 data-nosnippet>277</a>
-<a href=#278 id=278 data-nosnippet>278</a><span class="doccomment">/// Handle large graph visualization using file-based fallback.
-<a href=#279 id=279 data-nosnippet>279</a>/// Saves the JSON to a temporary file and opens the visualizer with a file parameter.
-<a href=#280 id=280 data-nosnippet>280</a>/// Uses the configured base URL from VisualizerConfig.
-<a href=#281 id=281 data-nosnippet>281</a>///
-<a href=#282 id=282 data-nosnippet>282</a>/// Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9
-<a href=#283 id=283 data-nosnippet>283</a></span><span class="kw">fn </span>handle_large_graph_fallback(json_content: <span class="kw-2">&amp;</span>str, config: <span class="kw-2">&amp;</span>VisualizerConfig) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#284 id=284 data-nosnippet>284</a>    <span class="comment">// Save JSON to temporary file with timestamped filename
-<a href=#285 id=285 data-nosnippet>285</a>    </span><span class="kw">let </span>temp_file = save_json_to_temp_file(json_content)<span class="question-mark">?</span>;
+<a href=#266 id=266 data-nosnippet>266</a>    <span class="macro">println!</span>(<span class="string">"If the browser doesn't open automatically, you can:"</span>);
+<a href=#267 id=267 data-nosnippet>267</a>    <span class="macro">println!</span>(<span class="string">"  1. Manually open: {}"</span>, url);
+<a href=#268 id=268 data-nosnippet>268</a>    <span class="macro">println!</span>(
+<a href=#269 id=269 data-nosnippet>269</a>        <span class="string">"  2. Or visit {} and drag-and-drop the file"</span>,
+<a href=#270 id=270 data-nosnippet>270</a>        url.split(<span class="string">'?'</span>).next().unwrap_or(url)
+<a href=#271 id=271 data-nosnippet>271</a>    );
+<a href=#272 id=272 data-nosnippet>272</a>    <span class="macro">println!</span>(<span class="string">"═══════════════════════════════════════════════════════════\n"</span>);
+<a href=#273 id=273 data-nosnippet>273</a>}
+<a href=#274 id=274 data-nosnippet>274</a>
+<a href=#275 id=275 data-nosnippet>275</a><span class="doccomment">/// Handle large graph visualization using file-based fallback.
+<a href=#276 id=276 data-nosnippet>276</a>/// Saves the JSON to a temporary file and opens the visualizer with a file parameter.
+<a href=#277 id=277 data-nosnippet>277</a>/// Uses the configured base URL from VisualizerConfig.
+<a href=#278 id=278 data-nosnippet>278</a></span><span class="kw">fn </span>handle_large_graph_fallback(json_content: <span class="kw-2">&amp;</span>str, config: <span class="kw-2">&amp;</span>VisualizerConfig) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#279 id=279 data-nosnippet>279</a>    <span class="comment">// Save JSON to temporary file with timestamped filename
+<a href=#280 id=280 data-nosnippet>280</a>    </span><span class="kw">let </span>temp_file = save_json_to_temp_file(json_content)<span class="question-mark">?</span>;
+<a href=#281 id=281 data-nosnippet>281</a>
+<a href=#282 id=282 data-nosnippet>282</a>    <span class="comment">// Generate URL with file parameter using configured base URL
+<a href=#283 id=283 data-nosnippet>283</a>    </span><span class="kw">let </span>url = generate_file_based_url(<span class="kw-2">&amp;</span>temp_file, config);
+<a href=#284 id=284 data-nosnippet>284</a>
+<a href=#285 id=285 data-nosnippet>285</a>    print_fallback_instructions(<span class="kw-2">&amp;</span>temp_file, <span class="kw-2">&amp;</span>url);
 <a href=#286 id=286 data-nosnippet>286</a>
-<a href=#287 id=287 data-nosnippet>287</a>    <span class="comment">// Generate URL with file parameter using configured base URL
-<a href=#288 id=288 data-nosnippet>288</a>    </span><span class="kw">let </span>url = generate_file_based_url(<span class="kw-2">&amp;</span>temp_file, config);
-<a href=#289 id=289 data-nosnippet>289</a>
-<a href=#290 id=290 data-nosnippet>290</a>    <span class="comment">// Print fallback instructions
-<a href=#291 id=291 data-nosnippet>291</a>    </span>print_fallback_instructions(<span class="kw-2">&amp;</span>temp_file, <span class="kw-2">&amp;</span>url);
-<a href=#292 id=292 data-nosnippet>292</a>
-<a href=#293 id=293 data-nosnippet>293</a>    <span class="comment">// Try to open the visualizer in browser
-<a href=#294 id=294 data-nosnippet>294</a>    </span><span class="kw">match </span>webbrowser::open(<span class="kw-2">&amp;</span>url) {
-<a href=#295 id=295 data-nosnippet>295</a>        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-<a href=#296 id=296 data-nosnippet>296</a>            <span class="macro">println!</span>(<span class="string">"✓ Successfully opened visualizer in browser"</span>);
-<a href=#297 id=297 data-nosnippet>297</a>        }
-<a href=#298 id=298 data-nosnippet>298</a>        <span class="prelude-val">Err</span>(e) =&gt; {
-<a href=#299 id=299 data-nosnippet>299</a>            <span class="macro">println!</span>(<span class="string">"⚠️  Failed to open browser automatically: {}"</span>, e);
-<a href=#300 id=300 data-nosnippet>300</a>            <span class="macro">println!</span>(<span class="string">"Please manually open the URL above or drag-and-drop the file."</span>);
-<a href=#301 id=301 data-nosnippet>301</a>        }
-<a href=#302 id=302 data-nosnippet>302</a>    }
-<a href=#303 id=303 data-nosnippet>303</a>
-<a href=#304 id=304 data-nosnippet>304</a>    <span class="prelude-val">Ok</span>(())
-<a href=#305 id=305 data-nosnippet>305</a>}
-<a href=#306 id=306 data-nosnippet>306</a>
-<a href=#307 id=307 data-nosnippet>307</a><span class="doccomment">/// Open JSON visualizer with automatic fallback to file-based approach for large graphs.
-<a href=#308 id=308 data-nosnippet>308</a>/// First attempts to embed the JSON in the URL using compression.
-<a href=#309 id=309 data-nosnippet>309</a>/// If the URL is too long, falls back to saving the file and using a file parameter.
-<a href=#310 id=310 data-nosnippet>310</a>///
-<a href=#311 id=311 data-nosnippet>311</a>/// This is the main entry point for opening JSON visualizations.
-<a href=#312 id=312 data-nosnippet>312</a>///
-<a href=#313 id=313 data-nosnippet>313</a>/// Requirements: 8.1-8.9, 9.1-9.9
-<a href=#314 id=314 data-nosnippet>314</a></span><span class="kw">fn </span>open_json_visualizer_with_fallback(json_content: <span class="kw-2">&amp;</span>str, config: <span class="kw-2">&amp;</span>VisualizerConfig) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#315 id=315 data-nosnippet>315</a>    <span class="comment">// Try to generate a URL with embedded data
-<a href=#316 id=316 data-nosnippet>316</a>    </span><span class="kw">match </span>generate_visualizer_url(json_content, config) {
-<a href=#317 id=317 data-nosnippet>317</a>        <span class="prelude-val">Some</span>((url, is_compressed)) =&gt; {
-<a href=#318 id=318 data-nosnippet>318</a>            <span class="comment">// URL fits within length limit, open it directly
-<a href=#319 id=319 data-nosnippet>319</a>            </span><span class="kw">let </span>compression_msg = <span class="kw">if </span>is_compressed { <span class="string">" (compressed)" </span>} <span class="kw">else </span>{ <span class="string">"" </span>};
-<a href=#320 id=320 data-nosnippet>320</a>            <span class="macro">println!</span>(
-<a href=#321 id=321 data-nosnippet>321</a>                <span class="string">"🌐 Opening visualizer with embedded data{}..."</span>,
-<a href=#322 id=322 data-nosnippet>322</a>                compression_msg
-<a href=#323 id=323 data-nosnippet>323</a>            );
-<a href=#324 id=324 data-nosnippet>324</a>            webbrowser::open(<span class="kw-2">&amp;</span>url)<span class="question-mark">?</span>;
-<a href=#325 id=325 data-nosnippet>325</a>            <span class="macro">println!</span>(<span class="string">"✓ Successfully opened visualizer in browser"</span>);
-<a href=#326 id=326 data-nosnippet>326</a>            <span class="prelude-val">Ok</span>(())
+<a href=#287 id=287 data-nosnippet>287</a>    <span class="kw">match </span>webbrowser::open(<span class="kw-2">&amp;</span>url) {
+<a href=#288 id=288 data-nosnippet>288</a>        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+<a href=#289 id=289 data-nosnippet>289</a>            <span class="macro">println!</span>(<span class="string">"✓ Successfully opened visualizer in browser"</span>);
+<a href=#290 id=290 data-nosnippet>290</a>        }
+<a href=#291 id=291 data-nosnippet>291</a>        <span class="prelude-val">Err</span>(e) =&gt; {
+<a href=#292 id=292 data-nosnippet>292</a>            <span class="macro">println!</span>(<span class="string">"⚠️  Failed to open browser automatically: {}"</span>, e);
+<a href=#293 id=293 data-nosnippet>293</a>            <span class="macro">println!</span>(<span class="string">"Please manually open the URL above or drag-and-drop the file."</span>);
+<a href=#294 id=294 data-nosnippet>294</a>        }
+<a href=#295 id=295 data-nosnippet>295</a>    }
+<a href=#296 id=296 data-nosnippet>296</a>
+<a href=#297 id=297 data-nosnippet>297</a>    <span class="prelude-val">Ok</span>(())
+<a href=#298 id=298 data-nosnippet>298</a>}
+<a href=#299 id=299 data-nosnippet>299</a>
+<a href=#300 id=300 data-nosnippet>300</a><span class="doccomment">/// Open JSON visualizer with automatic fallback to file-based approach for large graphs.
+<a href=#301 id=301 data-nosnippet>301</a>/// First attempts to embed the JSON in the URL using compression.
+<a href=#302 id=302 data-nosnippet>302</a>/// If the URL is too long, falls back to saving the file and using a file parameter.
+<a href=#303 id=303 data-nosnippet>303</a>///
+<a href=#304 id=304 data-nosnippet>304</a>/// This is the main entry point for opening JSON visualizations.
+<a href=#305 id=305 data-nosnippet>305</a>///
+<a href=#306 id=306 data-nosnippet>306</a>/// Requirements: 8.1-8.9, 9.1-9.9
+<a href=#307 id=307 data-nosnippet>307</a></span><span class="kw">fn </span>open_json_visualizer_with_fallback(json_content: <span class="kw-2">&amp;</span>str, config: <span class="kw-2">&amp;</span>VisualizerConfig) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#308 id=308 data-nosnippet>308</a>    <span class="comment">// Try to generate a URL with embedded data
+<a href=#309 id=309 data-nosnippet>309</a>    </span><span class="kw">match </span>generate_visualizer_url(json_content, config) {
+<a href=#310 id=310 data-nosnippet>310</a>        <span class="prelude-val">Some</span>((url, is_compressed)) =&gt; {
+<a href=#311 id=311 data-nosnippet>311</a>            <span class="comment">// URL fits within length limit, open it directly
+<a href=#312 id=312 data-nosnippet>312</a>            </span><span class="kw">let </span>compression_msg = <span class="kw">if </span>is_compressed { <span class="string">" (compressed)" </span>} <span class="kw">else </span>{ <span class="string">"" </span>};
+<a href=#313 id=313 data-nosnippet>313</a>            <span class="macro">println!</span>(
+<a href=#314 id=314 data-nosnippet>314</a>                <span class="string">"🌐 Opening visualizer with embedded data{}..."</span>,
+<a href=#315 id=315 data-nosnippet>315</a>                compression_msg
+<a href=#316 id=316 data-nosnippet>316</a>            );
+<a href=#317 id=317 data-nosnippet>317</a>            <span class="comment">// Print the full URL for debugging purposes
+<a href=#318 id=318 data-nosnippet>318</a>            </span><span class="macro">println!</span>(<span class="string">"Visualizer URL: {}"</span>, url);
+<a href=#319 id=319 data-nosnippet>319</a>            webbrowser::open(<span class="kw-2">&amp;</span>url)<span class="question-mark">?</span>;
+<a href=#320 id=320 data-nosnippet>320</a>            <span class="macro">println!</span>(<span class="string">"✓ Successfully opened visualizer in browser"</span>);
+<a href=#321 id=321 data-nosnippet>321</a>            <span class="prelude-val">Ok</span>(())
+<a href=#322 id=322 data-nosnippet>322</a>        }
+<a href=#323 id=323 data-nosnippet>323</a>        <span class="prelude-val">None </span>=&gt; {
+<a href=#324 id=324 data-nosnippet>324</a>            <span class="comment">// URL too long, use file-based fallback
+<a href=#325 id=325 data-nosnippet>325</a>            </span><span class="macro">println!</span>(<span class="string">"📦 Graph too large for URL embedding, using file-based approach..."</span>);
+<a href=#326 id=326 data-nosnippet>326</a>            handle_large_graph_fallback(json_content, config)
 <a href=#327 id=327 data-nosnippet>327</a>        }
-<a href=#328 id=328 data-nosnippet>328</a>        <span class="prelude-val">None </span>=&gt; {
-<a href=#329 id=329 data-nosnippet>329</a>            <span class="comment">// URL too long, use file-based fallback
-<a href=#330 id=330 data-nosnippet>330</a>            </span><span class="macro">println!</span>(<span class="string">"📦 Graph too large for URL embedding, using file-based approach..."</span>);
-<a href=#331 id=331 data-nosnippet>331</a>            handle_large_graph_fallback(json_content, config)
-<a href=#332 id=332 data-nosnippet>332</a>        }
-<a href=#333 id=333 data-nosnippet>333</a>    }
-<a href=#334 id=334 data-nosnippet>334</a>}
-<a href=#335 id=335 data-nosnippet>335</a>
-<a href=#336 id=336 data-nosnippet>336</a><span class="doccomment">/// Opens Hydro IR roots as a JSON visualization in the browser.
-<a href=#337 id=337 data-nosnippet>337</a>/// Automatically handles compression and file-based fallback for large graphs.
-<a href=#338 id=338 data-nosnippet>338</a>///
-<a href=#339 id=339 data-nosnippet>339</a>/// This function generates JSON from the Hydro IR and opens it in the configured
-<a href=#340 id=340 data-nosnippet>340</a>/// visualizer (defaults to &lt;https://hydro.run/docs/hydroscope&gt;, can be overridden
-<a href=#341 id=341 data-nosnippet>341</a>/// with HYDRO_VISUALIZER_URL environment variable).
-<a href=#342 id=342 data-nosnippet>342</a></span><span class="kw">pub fn </span>open_json_visualizer(roots: <span class="kw-2">&amp;</span>[HydroRoot], config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#343 id=343 data-nosnippet>343</a>    <span class="kw">let </span>json_content = render_with_config(roots, config, render_hydro_ir_json);
-<a href=#344 id=344 data-nosnippet>344</a>    <span class="kw">let </span>viz_config = VisualizerConfig::default();
-<a href=#345 id=345 data-nosnippet>345</a>    open_json_visualizer_with_fallback(<span class="kw-2">&amp;</span>json_content, <span class="kw-2">&amp;</span>viz_config)
-<a href=#346 id=346 data-nosnippet>346</a>}
-<a href=#347 id=347 data-nosnippet>347</a>
-<a href=#348 id=348 data-nosnippet>348</a><span class="doccomment">/// Opens Hydro IR roots as a JSON visualization with custom visualizer configuration.
-<a href=#349 id=349 data-nosnippet>349</a>/// Allows specifying a custom base URL and compression settings.
-<a href=#350 id=350 data-nosnippet>350</a></span><span class="kw">pub fn </span>open_json_visualizer_with_config(
-<a href=#351 id=351 data-nosnippet>351</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
-<a href=#352 id=352 data-nosnippet>352</a>    config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;,
-<a href=#353 id=353 data-nosnippet>353</a>    viz_config: VisualizerConfig,
-<a href=#354 id=354 data-nosnippet>354</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#355 id=355 data-nosnippet>355</a>    <span class="kw">let </span>json_content = render_with_config(roots, config, render_hydro_ir_json);
-<a href=#356 id=356 data-nosnippet>356</a>    open_json_visualizer_with_fallback(<span class="kw-2">&amp;</span>json_content, <span class="kw-2">&amp;</span>viz_config)
-<a href=#357 id=357 data-nosnippet>357</a>}
-<a href=#358 id=358 data-nosnippet>358</a>
-<a href=#359 id=359 data-nosnippet>359</a><span class="doccomment">/// Saves Hydro IR roots as a JSON file.
-<a href=#360 id=360 data-nosnippet>360</a>/// If no filename is provided, saves to temporary directory.
-<a href=#361 id=361 data-nosnippet>361</a></span><span class="kw">pub fn </span>save_json(
-<a href=#362 id=362 data-nosnippet>362</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
-<a href=#363 id=363 data-nosnippet>363</a>    filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
-<a href=#364 id=364 data-nosnippet>364</a>    config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;,
-<a href=#365 id=365 data-nosnippet>365</a>) -&gt; <span class="prelude-ty">Result</span>&lt;std::path::PathBuf&gt; {
-<a href=#366 id=366 data-nosnippet>366</a>    <span class="kw">let </span>content = render_with_config(roots, config, render_hydro_ir_json);
-<a href=#367 id=367 data-nosnippet>367</a>    save_to_file(content, filename, <span class="string">"hydro_graph.json"</span>, <span class="string">"JSON file"</span>)
-<a href=#368 id=368 data-nosnippet>368</a>}
-<a href=#369 id=369 data-nosnippet>369</a>
-<a href=#370 id=370 data-nosnippet>370</a><span class="doccomment">/// Helper function to render multiple Hydro IR roots as JSON.
-<a href=#371 id=371 data-nosnippet>371</a></span><span class="kw">fn </span>render_hydro_ir_json(roots: <span class="kw-2">&amp;</span>[HydroRoot], config: <span class="kw-2">&amp;</span>HydroWriteConfig) -&gt; String {
-<a href=#372 id=372 data-nosnippet>372</a>    <span class="kw">super</span>::render::render_hydro_ir_json(roots, config)
-<a href=#373 id=373 data-nosnippet>373</a>}</code></pre></div></section></main></body></html>
+<a href=#328 id=328 data-nosnippet>328</a>    }
+<a href=#329 id=329 data-nosnippet>329</a>}
+<a href=#330 id=330 data-nosnippet>330</a>
+<a href=#331 id=331 data-nosnippet>331</a><span class="doccomment">/// Opens Hydro IR roots as a JSON visualization in the browser.
+<a href=#332 id=332 data-nosnippet>332</a>/// Automatically handles compression and file-based fallback for large graphs.
+<a href=#333 id=333 data-nosnippet>333</a>///
+<a href=#334 id=334 data-nosnippet>334</a>/// This function generates JSON from the Hydro IR and opens it in the configured
+<a href=#335 id=335 data-nosnippet>335</a>/// visualizer (defaults to &lt;https://hydro.run/docs/hydroscope&gt;, can be overridden
+<a href=#336 id=336 data-nosnippet>336</a>/// with HYDRO_VISUALIZER_URL environment variable).
+<a href=#337 id=337 data-nosnippet>337</a></span><span class="kw">pub fn </span>open_json_visualizer(roots: <span class="kw-2">&amp;</span>[HydroRoot], config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#338 id=338 data-nosnippet>338</a>    <span class="kw">let </span>json_content = render_with_config(roots, config, render_hydro_ir_json);
+<a href=#339 id=339 data-nosnippet>339</a>    <span class="kw">let </span>viz_config = VisualizerConfig::default();
+<a href=#340 id=340 data-nosnippet>340</a>    open_json_visualizer_with_fallback(<span class="kw-2">&amp;</span>json_content, <span class="kw-2">&amp;</span>viz_config)
+<a href=#341 id=341 data-nosnippet>341</a>}
+<a href=#342 id=342 data-nosnippet>342</a>
+<a href=#343 id=343 data-nosnippet>343</a><span class="doccomment">/// Opens Hydro IR roots as a JSON visualization with custom visualizer configuration.
+<a href=#344 id=344 data-nosnippet>344</a>/// Allows specifying a custom base URL and compression settings.
+<a href=#345 id=345 data-nosnippet>345</a></span><span class="kw">pub fn </span>open_json_visualizer_with_config(
+<a href=#346 id=346 data-nosnippet>346</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
+<a href=#347 id=347 data-nosnippet>347</a>    config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;,
+<a href=#348 id=348 data-nosnippet>348</a>    viz_config: VisualizerConfig,
+<a href=#349 id=349 data-nosnippet>349</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#350 id=350 data-nosnippet>350</a>    <span class="kw">let </span>json_content = render_with_config(roots, config, render_hydro_ir_json);
+<a href=#351 id=351 data-nosnippet>351</a>    open_json_visualizer_with_fallback(<span class="kw-2">&amp;</span>json_content, <span class="kw-2">&amp;</span>viz_config)
+<a href=#352 id=352 data-nosnippet>352</a>}
+<a href=#353 id=353 data-nosnippet>353</a>
+<a href=#354 id=354 data-nosnippet>354</a><span class="doccomment">/// Saves Hydro IR roots as a JSON file.
+<a href=#355 id=355 data-nosnippet>355</a>/// If no filename is provided, saves to temporary directory.
+<a href=#356 id=356 data-nosnippet>356</a></span><span class="kw">pub fn </span>save_json(
+<a href=#357 id=357 data-nosnippet>357</a>    roots: <span class="kw-2">&amp;</span>[HydroRoot],
+<a href=#358 id=358 data-nosnippet>358</a>    filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+<a href=#359 id=359 data-nosnippet>359</a>    config: <span class="prelude-ty">Option</span>&lt;HydroWriteConfig&gt;,
+<a href=#360 id=360 data-nosnippet>360</a>) -&gt; <span class="prelude-ty">Result</span>&lt;std::path::PathBuf&gt; {
+<a href=#361 id=361 data-nosnippet>361</a>    <span class="kw">let </span>content = render_with_config(roots, config, render_hydro_ir_json);
+<a href=#362 id=362 data-nosnippet>362</a>    save_to_file(content, filename, <span class="string">"hydro_graph.json"</span>, <span class="string">"JSON file"</span>)
+<a href=#363 id=363 data-nosnippet>363</a>}
+<a href=#364 id=364 data-nosnippet>364</a>
+<a href=#365 id=365 data-nosnippet>365</a><span class="doccomment">/// Helper function to render multiple Hydro IR roots as JSON.
+<a href=#366 id=366 data-nosnippet>366</a></span><span class="kw">fn </span>render_hydro_ir_json(roots: <span class="kw-2">&amp;</span>[HydroRoot], config: <span class="kw-2">&amp;</span>HydroWriteConfig) -&gt; String {
+<a href=#367 id=367 data-nosnippet>367</a>    <span class="kw">super</span>::render::render_hydro_ir_json(roots, config)
+<a href=#368 id=368 data-nosnippet>368</a>}</code></pre></div></section></main></body></html>
