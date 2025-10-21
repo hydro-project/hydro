@@ -98,7 +98,7 @@ function HydroscopePage() {
                 window.location.reload();
               } catch (err) {
                 // Fallback for test environments where reload isn't available
-                window.location.href = window.location.href;
+                window.location.replace(window.location.href);
               }
             }}
             style={{
