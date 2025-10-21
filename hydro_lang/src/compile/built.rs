@@ -90,14 +90,14 @@ impl<'a> BuiltFlow<'a> {
     }
 
     #[cfg(feature = "viz")]
-    pub fn reactflow_string(
+    pub fn hydroscope_string(
         &self,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> String {
         self.graph_api()
-            .reactflow_to_string(show_metadata, show_location_groups, use_short_labels)
+            .hydroscope_to_string(show_metadata, show_location_groups, use_short_labels)
     }
 
     // File generation methods
@@ -134,14 +134,14 @@ impl<'a> BuiltFlow<'a> {
     }
 
     #[cfg(feature = "viz")]
-    pub fn reactflow_to_file(
+    pub fn hydroscope_to_file(
         &self,
         filename: &str,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().reactflow_to_file(
+        self.graph_api().hydroscope_to_file(
             filename,
             show_metadata,
             show_location_groups,
@@ -183,14 +183,14 @@ impl<'a> BuiltFlow<'a> {
     }
 
     #[cfg(feature = "viz")]
-    pub fn reactflow_to_browser(
+    pub fn hydroscope_to_browser(
         &self,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().reactflow_to_browser(
+        self.graph_api().hydroscope_to_browser(
             show_metadata,
             show_location_groups,
             use_short_labels,
