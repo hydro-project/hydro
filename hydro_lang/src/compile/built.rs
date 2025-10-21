@@ -9,7 +9,7 @@ use super::deploy::{DeployFlow, DeployResult};
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use super::ir::{HydroRoot, emit};
 #[cfg(feature = "viz")]
-use crate::graph::api::GraphApi;
+use crate::viz::api::GraphApi;
 use crate::location::{Cluster, External, Process};
 #[cfg(feature = "sim")]
 #[cfg(stageleft_runtime)]
@@ -381,7 +381,7 @@ impl<'a> BuiltFlow<'a> {
     #[cfg(feature = "viz")]
     pub fn generate_graph_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &crate::viz::config::GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.graph_api()
@@ -391,7 +391,7 @@ impl<'a> BuiltFlow<'a> {
     #[cfg(feature = "viz")]
     pub fn generate_all_files_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &crate::viz::config::GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.graph_api()

@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::compile::ir::HydroRoot;
-use crate::graph::render::HydroWriteConfig;
+use crate::viz::render::HydroWriteConfig;
 
 /// Graph generation API for built flows
 pub struct GraphApi<'a> {
@@ -72,9 +72,9 @@ impl<'a> GraphApi<'a> {
     /// Generate graph content as string
     fn render_graph_to_string(&self, format: GraphFormat, config: &HydroWriteConfig) -> String {
         match format {
-            GraphFormat::Mermaid => crate::graph::render::render_hydro_ir_mermaid(self.ir, config),
-            GraphFormat::Dot => crate::graph::render::render_hydro_ir_dot(self.ir, config),
-            GraphFormat::Hydroscope => crate::graph::render::render_hydro_ir_json(self.ir, config),
+            GraphFormat::Mermaid => crate::viz::render::render_hydro_ir_mermaid(self.ir, config),
+            GraphFormat::Dot => crate::viz::render::render_hydro_ir_dot(self.ir, config),
+            GraphFormat::Hydroscope => crate::viz::render::render_hydro_ir_json(self.ir, config),
         }
     }
 
@@ -85,12 +85,12 @@ impl<'a> GraphApi<'a> {
         config: HydroWriteConfig,
     ) -> Result<(), Box<dyn Error>> {
         match format {
-            GraphFormat::Mermaid => Ok(crate::graph::debug::open_mermaid(self.ir, Some(config))?),
-            GraphFormat::Dot => Ok(crate::graph::debug::open_dot(self.ir, Some(config))?),
+            GraphFormat::Mermaid => Ok(crate::viz::debug::open_mermaid(self.ir, Some(config))?),
+            GraphFormat::Dot => Ok(crate::viz::debug::open_dot(self.ir, Some(config))?),
             GraphFormat::Hydroscope => {
                 #[cfg(feature = "viz")]
                 {
-                    Ok(crate::graph::debug::open_json_visualizer(
+                    Ok(crate::viz::debug::open_json_visualizer(
                         self.ir,
                         Some(config),
                     )?)
@@ -312,14 +312,14 @@ impl<'a> GraphApi<'a> {
     #[cfg(feature = "build")]
     pub fn generate_graph_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &crate::viz::config::GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn Error>> {
         if let Some(graph_type) = config.graph {
             let format = match graph_type {
-                crate::graph::config::GraphType::Mermaid => GraphFormat::Mermaid,
-                crate::graph::config::GraphType::Dot => GraphFormat::Dot,
-                crate::graph::config::GraphType::Json => GraphFormat::Hydroscope,
+                crate::viz::config::GraphType::Mermaid => GraphFormat::Mermaid,
+                crate::viz::config::GraphType::Dot => GraphFormat::Dot,
+                crate::viz::config::GraphType::Json => GraphFormat::Hydroscope,
             };
 
             if config.file {
@@ -351,7 +351,7 @@ impl<'a> GraphApi<'a> {
     #[cfg(feature = "build")]
     pub fn generate_all_files_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &crate::viz::config::GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn Error>> {
         self.generate_all_files(

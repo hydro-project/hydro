@@ -4,8 +4,8 @@
 mod tests {
     use std::collections::HashSet;
 
-    use crate::graph::json::HydroJson;
-    use crate::graph::render::{
+    use crate::viz::json::HydroJson;
+    use crate::viz::render::{
         HydroEdgeType, HydroGraphWrite, HydroNodeType, HydroWriteConfig, NodeLabel,
     };
 
@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_deterministic_output_and_network_tagging() {
-        use crate::graph::render::HydroWriteConfig;
+        use crate::viz::render::HydroWriteConfig;
         let mut output1 = String::new();
         let mut output2 = String::new();
         let config = HydroWriteConfig::default();

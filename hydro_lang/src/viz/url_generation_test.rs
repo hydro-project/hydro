@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::graph::config::VisualizerConfig;
+    use crate::viz::config::VisualizerConfig;
 
     #[test]
     fn test_visualizer_config_default() {

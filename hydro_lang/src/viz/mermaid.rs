@@ -240,7 +240,7 @@ pub fn open_browser(
     };
 
     // Use the existing debug function
-    crate::graph::debug::open_mermaid(built_flow.ir(), Some(config))?;
+    crate::viz::debug::open_mermaid(built_flow.ir(), Some(config))?;
 
     Ok(())
 }

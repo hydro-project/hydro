@@ -3,7 +3,7 @@ use dfir_rs::tokio_util::codec::LinesCodec;
 use hydro_deploy::Deployment;
 use hydro_deploy::custom_service::ServerPort;
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::graph::config::GraphConfig;
+use hydro_lang::viz::config::GraphConfig;
 use hydro_lang::location::{Location, NetworkHint};
 
 #[derive(Parser, Debug)]
