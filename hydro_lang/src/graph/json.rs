@@ -1,10 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
+use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
 use crate::compile::ir::HydroRoot;
 use crate::compile::ir::backtrace::Backtrace;
-
-use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
 
 /// JSON graph writer for Hydro IR.
 /// Outputs JSON that can be used with interactive graph visualization tools.
@@ -21,6 +20,8 @@ pub struct HydroJson<W> {
     external_names: HashMap<usize, String>,
     // Store backtraces for hierarchy generation
     node_backtraces: HashMap<usize, Backtrace>,
+    // Config flags
+    use_short_labels: bool,
 }
 
 impl<W> HydroJson<W> {
@@ -43,6 +44,7 @@ impl<W> HydroJson<W> {
             cluster_names,
             external_names,
             node_backtraces: HashMap::new(),
+            use_short_labels: config.use_short_labels,
         }
     }
 
@@ -71,7 +73,14 @@ impl<W> HydroJson<W> {
 
     /// Get all node type definitions for JSON output
     fn get_node_type_definitions() -> Vec<serde_json::Value> {
-        super::render::node_type_utils::all_types_with_strings()
+        // Ensure deterministic ordering by sorting by type string
+        let mut types: Vec<(usize, &'static str)> = super::render::node_type_utils::all_types_with_strings()
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (_, type_str))| (idx, type_str))
+            .collect();
+        types.sort_by(|a, b| a.1.cmp(b.1));
+        types
             .into_iter()
             .enumerate()
             .map(|(color_index, (_, type_str))| {
@@ -347,6 +356,8 @@ where
             "nodeType": node_type_str,
             "fullLabel": enhanced_full_label,
             "shortLabel": short_label,
+            // Primary display label follows configuration (defaults to short)
+            "label": if self.use_short_labels { serde_json::Value::String(super::render::extract_short_label(&full_label)) } else { serde_json::Value::String(full_label) },
             "semanticTags": semantic_tags,
             "data": {
                 "locationId": location_id,
@@ -384,13 +395,19 @@ where
         let src_loc = self.node_locations.get(&src_id).copied();
         let dst_loc = self.node_locations.get(&dst_id).copied();
 
-        // Add Network tag if edge crosses locations
+        // Add Network tag if edge crosses locations; otherwise add Local for completeness
         if let (Some(src), Some(dst)) = (src_loc, dst_loc)
             && src != dst
             && !semantic_tags.contains(&"Network".to_string())
         {
             semantic_tags.push("Network".to_string());
+        } else if semantic_tags.iter().all(|t| t != "Network") {
+            // Only add Local if Network not present (complement for styling)
+            semantic_tags.push("Local".to_string());
         }
+
+        // Ensure deterministic ordering of semantic tags
+        semantic_tags.sort();
 
         let mut edge = serde_json::json!({
             "id": edge_id,
@@ -491,6 +508,26 @@ where
             );
         }
 
+        // Before serialization, enforce deterministic ordering for nodes and edges
+        let mut nodes_sorted = self.nodes.clone();
+        nodes_sorted.sort_by(|a, b| a["id"].as_str().cmp(&b["id"].as_str()));
+        let mut edges_sorted = self.edges.clone();
+        edges_sorted.sort_by(|a, b| {
+            let a_src = a["source"].as_str();
+            let b_src = b["source"].as_str();
+            match a_src.cmp(&b_src) {
+                std::cmp::Ordering::Equal => {
+                    let a_dst = a["target"].as_str();
+                    let b_dst = b["target"].as_str();
+                    match a_dst.cmp(&b_dst) {
+                        std::cmp::Ordering::Equal => a["id"].as_str().cmp(&b["id"].as_str()),
+                        other => other,
+                    }
+                }
+                other => other,
+            }
+        });
+
         // Create the final JSON structure in the format expected by the visualizer
         let node_type_definitions = Self::get_node_type_definitions();
         let legend_items = Self::get_legend_items();
@@ -501,13 +538,13 @@ where
         // 1. nodes (required field first)
         json_parts.push(format!(
             "\"nodes\": {}",
-            serde_json::to_string_pretty(&self.nodes).unwrap()
+            serde_json::to_string_pretty(&nodes_sorted).unwrap()
         ));
 
         // 2. edges (required field second)
         json_parts.push(format!(
             "\"edges\": {}",
-            serde_json::to_string_pretty(&self.edges).unwrap()
+            serde_json::to_string_pretty(&edges_sorted).unwrap()
         ));
 
         // 3. hierarchyChoices
@@ -579,9 +616,10 @@ impl<W> HydroJson<W> {
         serde_json::Map<String, serde_json::Value>,
     ) {
         // Create hierarchy structure (single level: locations as parents, nodes as children)
-        let hierarchy: Vec<serde_json::Value> = self
-            .locations
-            .iter()
+        let mut locs: Vec<(&usize, &(String, Vec<usize>))> = self.locations.iter().collect();
+        locs.sort_by(|a, b| a.0.cmp(b.0));
+        let hierarchy: Vec<serde_json::Value> = locs
+            .into_iter()
             .map(|(location_id, (label, _))| {
                 serde_json::json!({
                     "id": format!("loc_{}", location_id),
@@ -593,15 +631,20 @@ impl<W> HydroJson<W> {
 
         // Create node assignments by reading locationId from each node's data
         // This is more reliable than using the write_node tracking which depends on HashMap iteration order
-        let mut node_assignments = serde_json::Map::new();
+        // Build and then sort assignments deterministically by node id key
+        let mut tmp: Vec<(String, String)> = Vec::new();
         for node in &self.nodes {
             if let (Some(node_id), Some(location_id)) =
                 (node["id"].as_str(), node["data"]["locationId"].as_u64())
             {
                 let location_key = format!("loc_{}", location_id);
-                node_assignments
-                    .insert(node_id.to_string(), serde_json::Value::String(location_key));
+                tmp.push((node_id.to_string(), location_key));
             }
+        }
+        tmp.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut node_assignments = serde_json::Map::new();
+        for (k, v) in tmp {
+            node_assignments.insert(k, serde_json::Value::String(v));
         }
 
         (hierarchy, node_assignments)
@@ -671,7 +714,16 @@ impl<W> HydroJson<W> {
                 let mut current_path = String::new();
                 let mut parent_path: Option<String> = None;
                 let mut deepest_path = String::new();
-                for (depth, label) in hierarchy_path.iter().enumerate() {
+                // Deduplicate consecutive identical labels for cleanliness
+                let mut path_iter = hierarchy_path.into_iter().peekable();
+                let mut deduped: Vec<String> = Vec::new();
+                while let Some(seg) = path_iter.next() {
+                    if deduped.last().map(|s| s == &seg).unwrap_or(false) {
+                        continue;
+                    }
+                    deduped.push(seg);
+                }
+                for (depth, label) in deduped.iter().enumerate() {
                     current_path = if current_path.is_empty() {
                         label.clone()
                     } else {
@@ -696,6 +748,7 @@ impl<W> HydroJson<W> {
             }
         }
         // Build hierarchy tree and create proper ID mapping
+        // Build hierarchy tree and create proper ID mapping (deterministic)
         let (mut hierarchy, mut path_to_id_map) =
             self.build_hierarchy_tree_with_ids(&hierarchy_map);
 
@@ -729,7 +782,10 @@ impl<W> HydroJson<W> {
 
         // Create node assignments using the actual hierarchy IDs
         let mut node_assignments = serde_json::Map::new();
-        for (path, node_ids) in path_to_node_assignments {
+        let mut pairs: Vec<(String, Vec<String>)> = path_to_node_assignments.into_iter().collect();
+        pairs.sort_by(|a, b| a.0.cmp(&b.0));
+        for (path, mut node_ids) in pairs {
+            node_ids.sort();
             if let Some(hierarchy_id) = path_to_id_map.get(&path) {
                 for node_id in node_ids {
                     node_assignments
@@ -751,25 +807,27 @@ impl<W> HydroJson<W> {
         &self,
         hierarchy_map: &HashMap<String, (String, usize, Option<String>)>,
     ) -> (Vec<serde_json::Value>, HashMap<String, String>) {
+        // Assign IDs deterministically based on sorted path names
+        let mut keys: Vec<&String> = hierarchy_map.keys().collect();
+        keys.sort();
         let mut path_to_id: HashMap<String, String> = HashMap::new();
-        let mut id_counter = 1;
-
-        for path in hierarchy_map.keys() {
-            path_to_id.insert(path.clone(), format!("bt_{}", id_counter));
-            id_counter += 1;
+        for (i, path) in keys.iter().enumerate() {
+            path_to_id.insert((***path).to_string(), format!("bt_{}", i + 1));
         }
 
-        // Find root items (depth 0)
-        let mut roots = Vec::new();
-
-        for (path, (name, depth, _)) in hierarchy_map {
-            if *depth == 0 {
-                let tree_node = Self::build_tree_node(path, name, hierarchy_map, &path_to_id);
-                roots.push(tree_node);
-            }
+        // Find root items (depth 0) and sort by name
+        let mut roots: Vec<(String, String)> = hierarchy_map
+            .iter()
+            .filter_map(|(path, (name, depth, _))| if *depth == 0 { Some((path.clone(), name.clone())) } else { None })
+            .collect();
+        roots.sort_by(|a, b| a.1.cmp(&b.1));
+        let mut root_nodes = Vec::new();
+        for (path, name) in roots {
+            let tree_node = Self::build_tree_node(&path, &name, hierarchy_map, &path_to_id);
+            root_nodes.push(tree_node);
         }
 
-        (roots, path_to_id)
+        (root_nodes, path_to_id)
     }
 
     /// Build a single tree node recursively
@@ -782,15 +840,19 @@ impl<W> HydroJson<W> {
         let current_id = path_to_id.get(current_path).unwrap().clone();
 
         // Find children (paths that have this path as parent)
+        let mut child_specs: Vec<(&String, &String)> = hierarchy_map
+            .iter()
+            .filter_map(|(child_path, (child_name, _, parent_path))| {
+                if let Some(parent) = parent_path {
+                    if parent == current_path { Some((child_path, child_name)) } else { None }
+                } else { None }
+            })
+            .collect();
+        child_specs.sort_by(|a, b| a.1.cmp(b.1));
         let mut children = Vec::new();
-        for (child_path, (child_name, _, parent_path)) in hierarchy_map {
-            if let Some(parent) = parent_path
-                && parent == current_path
-            {
-                let child_node =
-                    Self::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
-                children.push(child_node);
-            }
+        for (child_path, child_name) in child_specs {
+            let child_node = Self::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
+            children.push(child_node);
         }
 
         if children.is_empty() {
