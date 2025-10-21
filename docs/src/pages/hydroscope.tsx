@@ -5,21 +5,13 @@ import "@xyflow/react/dist/style.css";
 
 import { Hydroscope, parseDataFromUrl } from "@hydro-project/hydroscope";
 
-import {
-  enableResizeObserverErrorSuppression,
-  disableResizeObserverErrorSuppression,
-} from "@hydro-project/hydroscope";
-
 function HydroscopePage() {
   const [urlData, setUrlData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize ResizeObserver error suppression and parse URL parameters
+  // Parse URL parameters on mount
   useEffect(() => {
-    // Enable ResizeObserver error suppression for Docusaurus environment
-    enableResizeObserverErrorSuppression();
-
     const parseUrlData = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -34,37 +26,19 @@ function HydroscopePage() {
         }
       } catch (err) {
         console.error("❌ Failed to parse URL data:", err);
-        setError(`Failed to parse URL data: ${err.message}`);
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : typeof err === "string"
+            ? err
+            : "Unknown error";
+        setError(`Failed to parse URL data: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
     };
 
     parseUrlData();
-
-    // Cleanup on unmount
-    return () => {
-      disableResizeObserverErrorSuppression();
-    };
-  }, []);
-
-  // Calculate dynamic height for responsive behavior
-  const [height, setHeight] = useState("600px");
-
-  useEffect(() => {
-    const calculateHeight = () => {
-      try {
-        const navbar = document.querySelector(".navbar") as HTMLElement;
-        const navbarHeight = navbar ? navbar.offsetHeight : 60;
-        setHeight(`calc(100vh - ${navbarHeight + 40}px)`); // 40px for padding
-      } catch (error) {
-        setHeight("600px"); // fallback
-      }
-    };
-
-    calculateHeight();
-    window.addEventListener("resize", calculateHeight);
-    return () => window.removeEventListener("resize", calculateHeight);
   }, []);
 
   if (loading) {
@@ -114,10 +88,15 @@ function HydroscopePage() {
       description="Interactive graph visualization"
       noFooter={true}
     >
-      <div style={{ height, overflow: "hidden" }}>
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        height: 'calc(100vh - var(--ifm-navbar-height, 60px))',
+        overflow: 'hidden' 
+      }}>
         <Hydroscope
           data={urlData} // Pass URL data if available
-          height={height}
+          height="100%"
           width="100%"
           responsive={true} // Enable responsive height calculation
           // All other props use their defaults:
