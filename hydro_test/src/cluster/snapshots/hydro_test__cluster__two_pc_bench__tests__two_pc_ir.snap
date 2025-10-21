@@ -1901,7 +1901,7 @@ expression: built.ir()
                                                                                     },
                                                                                 },
                                                                             },
-                                                                            trusted: false,
+                                                                            trusted: true,
                                                                             metadata: HydroIrMetadata {
                                                                                 location_kind: Tick(
                                                                                     6,
@@ -2031,7 +2031,7 @@ expression: built.ir()
                                                                                                                                                                                     },
                                                                                                                                                                                 },
                                                                                                                                                                             },
-                                                                                                                                                                            trusted: false,
+                                                                                                                                                                            trusted: true,
                                                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                                                 location_kind: Tick(
                                                                                                                                                                                     0,
@@ -2658,7 +2658,7 @@ expression: built.ir()
                                                                                 },
                                                                             },
                                                                         },
-                                                                        trusted: false,
+                                                                        trusted: true,
                                                                         metadata: HydroIrMetadata {
                                                                             location_kind: Tick(
                                                                                 8,
