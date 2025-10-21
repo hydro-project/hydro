@@ -1,9 +1,3 @@
-/**
- * Hydroscope - Interactive Graph Visualization for Hydro
- * 
- * Simplified docusaurus page using the new Hydroscope component
- */
-
 import React, { useState, useEffect } from "react";
 import Layout from "@theme/Layout";
 import BrowserOnly from "@docusaurus/BrowserOnly";
