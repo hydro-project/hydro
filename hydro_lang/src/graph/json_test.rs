@@ -74,26 +74,17 @@ mod tests {
             "JSON should have 'nodeTypeConfig' field"
         );
 
-        // Validate nodes have semantic tags
+        // Validate nodes basic fields
         let nodes = json["nodes"].as_array().expect("nodes should be an array");
         assert_eq!(nodes.len(), 2, "Should have 2 nodes");
 
         for node in nodes {
-            assert!(
-                node.get("semanticTags").is_some(),
-                "Node should have semanticTags field"
-            );
-            let tags = node["semanticTags"]
-                .as_array()
-                .expect("semanticTags should be an array");
-            assert!(
-                !tags.is_empty(),
-                "Node should have at least one semantic tag"
-            );
             // label fields
             assert!(node.get("label").is_some(), "Node should have primary label field");
             assert!(node.get("shortLabel").is_some(), "Node should have shortLabel field");
             assert!(node.get("fullLabel").is_some(), "Node should have fullLabel field");
+            // nodeType for legend/styling
+            assert!(node.get("nodeType").is_some(), "Node should have nodeType field");
         }
 
         // Validate edges have semantic tags

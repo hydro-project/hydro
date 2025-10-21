@@ -347,9 +347,8 @@ where
             serde_json::json!([])
         };
 
-        // Add semantic tags for nodes (node type as semantic tag)
-        let node_type_str = Self::node_type_to_string(node_type);
-        let semantic_tags = vec![node_type_str];
+    // Node type string for styling/legend
+    let node_type_str = Self::node_type_to_string(node_type);
 
         let node = serde_json::json!({
             "id": node_id.to_string(),
@@ -358,7 +357,6 @@ where
             "shortLabel": short_label,
             // Primary display label follows configuration (defaults to short)
             "label": if self.use_short_labels { serde_json::Value::String(super::render::extract_short_label(&full_label)) } else { serde_json::Value::String(full_label) },
-            "semanticTags": semantic_tags,
             "data": {
                 "locationId": location_id,
                 "locationType": location_type,

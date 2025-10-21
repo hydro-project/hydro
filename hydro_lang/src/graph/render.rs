@@ -210,7 +210,7 @@ pub struct UnifiedEdgeStyle {
     pub line_width: u8,
     /// Arrowhead style
     pub arrowhead: ArrowheadStyle,
-    /// Line style (single plain line, or line with hash marks for keyed streams)
+    /// Line style (single plain line, or line with hash marks/dots for keyed streams)
     pub line_style: LineStyle,
     /// Halo/background effect for boundedness
     pub halo: HaloStyle,
@@ -241,7 +241,7 @@ pub enum ArrowheadStyle {
 pub enum LineStyle {
     /// Plain single line
     Single,
-    /// Single line with vertical hash marks (for keyed streams)
+    /// Single line with hash marks/dots (for keyed streams)
     HashMarks,
 }
 
@@ -288,7 +288,7 @@ impl Default for UnifiedEdgeStyle {
 /// | Network | Line Pattern + Animation | Local (solid, static), Network (dashed, animated) |
 /// | Ordering | Waviness | TotalOrder (straight), NoOrder (wavy) |
 /// | Boundedness | Halo | Bounded (none), Unbounded (light-blue transparent) |
-/// | Keyedness | Line Style | NotKeyed (plain line), Keyed (line with vertical hash marks) |
+/// | Keyedness | Line Style | NotKeyed (plain line), Keyed (line with hash marks/dots) |
 /// | Collection Type | Color + Arrowhead | Stream (blue #2563eb, triangle), Singleton (black, circle), Optional (gray, diamond) |
 pub fn get_unified_edge_style(
     edge_properties: &HashSet<HydroEdgeType>,
@@ -333,7 +333,7 @@ pub fn get_unified_edge_style(
 
     // Keyedness group - controls hash marks on the line
     if edge_properties.contains(&HydroEdgeType::Keyed) {
-        style.line_style = LineStyle::HashMarks; // Renders as vertical hash marks on the line in hydroscope
+        style.line_style = LineStyle::HashMarks; // Renders as hash marks/dots on the line in hydroscope
     } else {
         style.line_style = LineStyle::Single;
     }
@@ -451,7 +451,6 @@ fn add_order_property(
 /// Returns true if the edge represents network communication between different locations.
 pub fn is_network_edge(src_location: &LocationId, dst_location: &LocationId) -> bool {
     // Compare the root locations to determine if they differ
-    // Tick locations are unwrapped to their underlying location
     src_location.root() != dst_location.root()
 }
 
@@ -464,12 +463,6 @@ pub fn add_network_edge_tag(
     if is_network_edge(src_location, dst_location) {
         properties.insert(HydroEdgeType::Network);
     }
-}
-
-/// Check if a node is a CycleSource node.
-/// CycleSource nodes are the source of feedback loops in the dataflow graph.
-pub fn is_cycle_source_node(node: &HydroNode) -> bool {
-    matches!(node, HydroNode::CycleSource { .. })
 }
 
 /// Configuration for graph writing.

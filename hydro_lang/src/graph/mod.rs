@@ -7,7 +7,6 @@ pub mod graphviz;
 pub mod json;
 pub mod mermaid;
 pub mod render;
-pub mod template;
 
 #[cfg(test)]
 mod json_test;
