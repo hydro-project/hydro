@@ -530,60 +530,41 @@ where
         let node_type_definitions = Self::get_node_type_definitions();
         let legend_items = Self::get_legend_items();
 
-        // Build JSON string manually to guarantee field ordering
-        let mut json_parts = Vec::new();
-
-        // 1. nodes (required field first)
-        json_parts.push(format!(
-            "\"nodes\": {}",
-            serde_json::to_string_pretty(&nodes_sorted).unwrap()
-        ));
-
-        // 2. edges (required field second)
-        json_parts.push(format!(
-            "\"edges\": {}",
-            serde_json::to_string_pretty(&edges_sorted).unwrap()
-        ));
-
-        // 3. hierarchyChoices
-        json_parts.push(format!(
-            "\"hierarchyChoices\": {}",
-            serde_json::to_string_pretty(&hierarchy_choices).unwrap()
-        ));
-
-        // 4. nodeAssignments
-        json_parts.push(format!(
-            "\"nodeAssignments\": {}",
-            serde_json::to_string_pretty(&node_assignments_choices).unwrap()
-        ));
-
-        // 5. edgeStyleConfig
-        json_parts.push(format!(
-            "\"edgeStyleConfig\": {}",
-            serde_json::to_string_pretty(&Self::get_edge_style_config()).unwrap()
-        ));
-
-        // 6. nodeTypeConfig
         let node_type_config = serde_json::json!({
             "types": node_type_definitions,
             "defaultType": "Transform"
         });
-        json_parts.push(format!(
-            "\"nodeTypeConfig\": {}",
-            serde_json::to_string_pretty(&node_type_config).unwrap()
-        ));
-
-        // 7. legend
         let legend = serde_json::json!({
             "title": "Node Types",
             "items": legend_items
         });
-        json_parts.push(format!(
-            "\"legend\": {}",
-            serde_json::to_string_pretty(&legend).unwrap()
-        ));
 
-        let final_json = format!("{{\n  {}\n}}", json_parts.join(",\n  "));
+        #[derive(serde::Serialize)]
+        struct GraphPayload {
+            nodes: Vec<serde_json::Value>,
+            edges: Vec<serde_json::Value>,
+            #[serde(rename = "hierarchyChoices")]
+            hierarchy_choices: Vec<serde_json::Value>,
+            #[serde(rename = "nodeAssignments")]
+            node_assignments: serde_json::Map<String, serde_json::Value>,
+            #[serde(rename = "edgeStyleConfig")]
+            edge_style_config: serde_json::Value,
+            #[serde(rename = "nodeTypeConfig")]
+            node_type_config: serde_json::Value,
+            legend: serde_json::Value,
+        }
+
+        let payload = GraphPayload {
+            nodes: nodes_sorted,
+            edges: edges_sorted,
+            hierarchy_choices: hierarchy_choices,
+            node_assignments: node_assignments_choices,
+            edge_style_config: Self::get_edge_style_config(),
+            node_type_config,
+            legend,
+        };
+
+        let final_json = serde_json::to_string_pretty(&payload).unwrap();
 
         write!(self.write, "{}", final_json)
     }
