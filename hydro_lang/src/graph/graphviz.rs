@@ -114,7 +114,7 @@ where
         let label = format!("n{}", node_id);
 
         let (shape_str, color_str) = match node_type {
-            // ColorBrewer Set3 palette colors (matching Mermaid and ReactFlow)
+            // ColorBrewer Set3 palette colors (matching Mermaid and Hydroscope)
             HydroNodeType::Source => ("ellipse", "\"#8dd3c7\""), // Light teal
             HydroNodeType::Transform => ("box", "\"#ffffb3\""),  // Light yellow
             HydroNodeType::Join => ("diamond", "\"#bebada\""),   // Light purple

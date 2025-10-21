@@ -1543,10 +1543,10 @@ write_hydro_ir!(
 render_hydro_ir!(render_hydro_ir_dot, write_hydro_ir_dot);
 write_hydro_ir!(write_hydro_ir_dot, HydroDot<_>, HydroDot::new_with_config);
 
-// Legacy reactflow function - now uses HydroJson for consistency
-render_hydro_ir!(render_hydro_ir_reactflow, write_hydro_ir_json);
+// Legacy hydroscope function - now uses HydroJson for consistency
+render_hydro_ir!(render_hydro_ir_hydroscope, write_hydro_ir_json);
 
-// JSON rendering (replaces ReactFlow)
+// JSON rendering
 render_hydro_ir!(render_hydro_ir_json, write_hydro_ir_json);
 write_hydro_ir!(write_hydro_ir_json, HydroJson<_>, HydroJson::new);
 
