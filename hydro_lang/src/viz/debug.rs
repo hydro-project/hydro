@@ -307,15 +307,8 @@ fn handle_large_graph_fallback(json_content: &str, config: &VisualizerConfig) ->
 fn open_json_visualizer_with_fallback(json_content: &str, config: &VisualizerConfig) -> Result<()> {
     // Try to generate a URL with embedded data
     match generate_visualizer_url(json_content, config) {
-        Some((url, is_compressed)) => {
+        Some((url, _is_compressed)) => {
             // URL fits within length limit, open it directly
-            let compression_msg = if is_compressed { " (compressed)" } else { "" };
-            println!(
-                "🌐 Opening visualizer with embedded data{}...",
-                compression_msg
-            );
-            // Print the full URL for debugging purposes
-            println!("Visualizer URL: {}", url);
             webbrowser::open(&url)?;
             println!("✓ Successfully opened visualizer in browser");
             Ok(())
