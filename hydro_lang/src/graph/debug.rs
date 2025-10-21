@@ -232,7 +232,10 @@ fn generate_visualizer_url(
 fn generate_timestamped_filename() -> String {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_else(|e| {
+            println!("⚠️  System time is before Unix epoch: {}. Using fallback timestamp 0.", e);
+            std::time::Duration::from_secs(0)
+        })
         .as_secs();
     format!("hydro_graph_{}.json", timestamp)
 }
