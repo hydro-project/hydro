@@ -10,6 +10,7 @@ mod trophies;
 
 #[test]
 #[should_panic]
+#[cfg_attr(not(target_os = "linux"), ignore)] // sim reproducer not yet reproducible on non-linux OSes
 fn sim_crash_in_output() {
     // run as PATH="$PATH:." cargo sim -p hydro_lang --features sim -- sim_crash_in_output
     let flow = FlowBuilder::new();
@@ -35,6 +36,7 @@ fn sim_crash_in_output() {
 
 #[test]
 #[should_panic]
+#[cfg_attr(not(target_os = "linux"), ignore)] // sim reproducer not yet reproducible on non-linux OSes
 fn sim_crash_in_output_with_filter() {
     // run as PATH="$PATH:." cargo sim -p hydro_lang --features sim -- sim_crash_in_output_with_filter
     let flow = FlowBuilder::new();
@@ -146,6 +148,7 @@ fn sim_crash_with_fuzzed_batching() {
 }
 
 #[test]
+#[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
 fn trace_for_fuzzed_batching() {
     let flow = FlowBuilder::new();
     let external = flow.external::<()>();
