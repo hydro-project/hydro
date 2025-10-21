@@ -9,7 +9,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::config::VisualizerConfig;
 use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
-use super::template::get_template;
 use crate::compile::ir::HydroRoot;
 
 /// Opens Hydro IR roots as a single mermaid diagram.
@@ -24,32 +23,6 @@ pub fn open_dot(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result
     open_dot_browser(&dot_src)
 }
 
-/// Opens Hydro IR roots as a JSON visualization in a browser (legacy HTML wrapper).
-/// This is kept for backward compatibility but will be deprecated in favor of open_json_visualizer.
-/// Creates a complete HTML file with Hydroscope.js interactive graph visualization.
-#[deprecated(note = "Use open_json_visualizer instead for better compression and URL handling")]
-pub fn open_hydroscope_browser(
-    roots: &[HydroRoot],
-    filename: Option<&str>,
-    config: Option<HydroWriteConfig>,
-) -> Result<()> {
-    let json_content = render_with_config(roots, config, render_hydro_ir_json);
-    let filename = filename.unwrap_or("hydro_graph.html");
-    save_and_open_hydroscope_browser(&json_content, filename)
-}
-
-/// Saves Hydro IR roots as a JSON file (legacy name).
-/// This is kept for backward compatibility but will be deprecated in favor of save_json.
-/// If no filename is provided, saves to temporary directory.
-#[deprecated(note = "Use save_json instead")]
-pub fn save_hydroscope_json(
-    roots: &[HydroRoot],
-    filename: Option<&str>,
-    config: Option<HydroWriteConfig>,
-) -> Result<std::path::PathBuf> {
-    let content = render_with_config(roots, config, render_hydro_ir_json);
-    save_to_file(content, filename, "hydro_graph.json", "JSON file")
-}
 
 /// Saves Hydro IR roots as a Mermaid diagram file.
 /// If no filename is provided, saves to temporary directory.
@@ -107,21 +80,6 @@ fn open_dot_browser(dot_src: &str) -> Result<()> {
 /// Helper function to create a complete HTML file with JSON visualization and open it in browser.
 /// Creates files in temporary directory to avoid cluttering the workspace.
 /// This is a legacy function kept for backward compatibility.
-pub fn save_and_open_hydroscope_browser(json_content: &str, filename: &str) -> Result<()> {
-    let template = get_template();
-    let html_content = template.replace("{{GRAPH_DATA}}", json_content);
-
-    // Create file in temporary directory
-    let temp_file = save_to_file(html_content, None, filename, "HTML file").unwrap();
-    println!("Got path {}", temp_file.display());
-
-    // Open the HTML file in browser
-    let file_url = format!("file://{}", temp_file.display());
-    webbrowser::open(&file_url)?;
-
-    println!("Opened graph visualization in browser.");
-    Ok(())
-}
 
 /// Helper function to save content to a file with consistent path handling.
 /// If no filename is provided, saves to temporary directory with the default name.
