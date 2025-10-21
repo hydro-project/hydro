@@ -61,17 +61,17 @@ async fn main() {
         &client_aggregator,
     );
 
+    // If we're just generating a graph file, exit early
+    if args.graph.file && args.graph.graph.is_some() {
+        return;
+    }
+
     // Extract the IR for graph visualization
     let built = builder.finalize();
 
     // Generate graph visualizations based on command line arguments
     if let Err(e) = built.generate_graph_with_config(&args.graph, None) {
         eprintln!("Error generating graph: {}", e);
-    }
-
-    // If we're just generating a graph file, exit early
-    if args.graph.file && args.graph.graph.is_some() {
-        return;
     }
 
     // Optimize the flow before deployment to remove marker nodes
