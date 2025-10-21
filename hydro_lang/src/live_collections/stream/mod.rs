@@ -1181,8 +1181,15 @@ where
         F: Fn(&mut T, T) + 'a,
     {
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        self.assume_ordering_trusted(nondet)
-            .assume_retries_trusted(nondet)
+
+        let ordered = if B::BOUNDED {
+            self.assume_ordering_trusted(nondet)
+        } else {
+            self.assume_ordering(nondet) // if unbounded, ordering affects intermediate states
+        };
+
+        ordered
+            .assume_retries_trusted(nondet) // retries never affect intermediate states
             .reduce(comb)
     }
 
@@ -1330,7 +1337,9 @@ where
     /// # }));
     /// ```
     pub fn count(self) -> Singleton<usize, L, B> {
-        self.fold_commutative(q!(|| 0usize), q!(|count, _| *count += 1))
+        self.assume_ordering_trusted(nondet!(
+            /// Order does not matter eventual count, and also does not affect intermediate states.
+        )).fold(q!(|| 0usize), q!(|count, _| *count += 1))
     }
 }
 
@@ -3226,6 +3235,36 @@ mod tests {
         assert_eq!(
             instance_count,
             192 // 4! * 2^{4 - 1}
+        )
+    }
+
+    #[test]
+    fn sim_unordered_count_instance_count() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+
+        let tick = node.tick();
+        let out_port = input
+            .count()
+            .snapshot(&tick, nondet!(/** test */))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let instance_count = flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+            assert!(out_recv.collect::<Vec<_>>().await.last().unwrap() == &4);
+        });
+
+        assert_eq!(
+            instance_count,
+            16 // 2^4, { 0, 1, 2, 3 } can be a snapshot and 4 is always included
         )
     }
 }
