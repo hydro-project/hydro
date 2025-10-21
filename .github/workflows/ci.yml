@@ -35,7 +35,7 @@ jobs:
   test:
     name: All tests, lints, and checks
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     needs: pre_job
     runs-on: ${{ matrix.os }}
     strategy:
