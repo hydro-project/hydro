@@ -110,7 +110,6 @@ where
 
 /// Compress JSON content using gzip compression.
 /// Returns the compressed bytes or an error if compression fails.
-#[cfg(feature = "viz")]
 fn compress_json(json_content: &str) -> Result<Vec<u8>> {
     use flate2::Compression;
     use flate2::write::GzEncoder;
@@ -122,7 +121,6 @@ fn compress_json(json_content: &str) -> Result<Vec<u8>> {
 
 /// Encode data to base64 URL-safe format without padding.
 /// This format is safe for use in URLs and doesn't require additional escaping.
-#[cfg(feature = "viz")]
 fn encode_base64_url_safe(data: &[u8]) -> String {
     data_encoding::BASE64URL_NOPAD.encode(data)
 }
@@ -132,7 +130,6 @@ fn encode_base64_url_safe(data: &[u8]) -> String {
 ///
 /// Compression is skipped for small JSON (<min_compression_size bytes).
 /// If compression fails or doesn't reduce size, falls back to uncompressed encoding.
-#[cfg(feature = "viz")]
 fn try_compress_and_encode(json_content: &str, config: &VisualizerConfig) -> (String, bool, f64) {
     let original_size = json_content.len();
 
@@ -173,7 +170,6 @@ fn try_compress_and_encode(json_content: &str, config: &VisualizerConfig) -> (St
 
 /// Calculate the total URL length for a given encoded data and parameter name.
 /// Returns the total length including base URL, parameter name, and encoded data.
-#[cfg(feature = "viz")]
 fn calculate_url_length(base_url: &str, param_name: &str, encoded_data: &str) -> usize {
     // Format: base_url#param_name=encoded_data
     base_url.len() + 1 + param_name.len() + 1 + encoded_data.len()
@@ -182,7 +178,6 @@ fn calculate_url_length(base_url: &str, param_name: &str, encoded_data: &str) ->
 /// Generate a URL for the visualizer with the given JSON content.
 /// Automatically chooses between compressed and uncompressed encoding based on URL length.
 /// Returns (url, is_compressed) or None if the URL would be too long.
-#[cfg(feature = "viz")]
 fn generate_visualizer_url(
     json_content: &str,
     config: &VisualizerConfig,
@@ -229,7 +224,6 @@ fn generate_visualizer_url(
 
 /// Generate a timestamped filename for temporary graph files.
 /// Format: hydro_graph_<timestamp>.json
-#[cfg(feature = "viz")]
 fn generate_timestamped_filename() -> String {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -248,7 +242,6 @@ fn generate_timestamped_filename() -> String {
 /// Returns the path to the created file.
 ///
 /// Requirements: 9.1, 9.2, 9.3
-#[cfg(feature = "viz")]
 fn save_json_to_temp_file(json_content: &str) -> Result<std::path::PathBuf> {
     let filename = generate_timestamped_filename();
     let temp_file = std::env::temp_dir().join(filename);
@@ -264,7 +257,6 @@ fn save_json_to_temp_file(json_content: &str) -> Result<std::path::PathBuf> {
 /// Uses percent encoding to ensure special characters are properly escaped.
 ///
 /// Requirements: 9.4
-#[cfg(feature = "viz")]
 fn url_encode_file_path(file_path: &std::path::Path) -> String {
     let path_str = file_path.to_string_lossy();
     urlencoding::encode(&path_str).to_string()
@@ -274,7 +266,6 @@ fn url_encode_file_path(file_path: &std::path::Path) -> String {
 /// Format: base_url?file=<encoded_path>
 ///
 /// Requirements: 9.4, 9.5
-#[cfg(feature = "viz")]
 fn generate_file_based_url(file_path: &std::path::Path, config: &VisualizerConfig) -> String {
     let encoded_path = url_encode_file_path(file_path);
     format!("{}?file={}", config.base_url, encoded_path)
@@ -284,7 +275,6 @@ fn generate_file_based_url(file_path: &std::path::Path, config: &VisualizerConfi
 /// Provides clear guidance if automatic browser opening fails.
 ///
 /// Requirements: 9.6, 9.7
-#[cfg(feature = "viz")]
 fn print_fallback_instructions(file_path: &std::path::Path, url: &str) {
     println!("\n📊 Graph Visualization Instructions");
     println!("═══════════════════════════════════════════════════════════");
@@ -309,7 +299,6 @@ fn print_fallback_instructions(file_path: &std::path::Path, url: &str) {
 /// Uses the configured base URL from VisualizerConfig.
 ///
 /// Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9
-#[cfg(feature = "viz")]
 fn handle_large_graph_fallback(json_content: &str, config: &VisualizerConfig) -> Result<()> {
     // Save JSON to temporary file with timestamped filename
     let temp_file = save_json_to_temp_file(json_content)?;
@@ -341,7 +330,6 @@ fn handle_large_graph_fallback(json_content: &str, config: &VisualizerConfig) ->
 /// This is the main entry point for opening JSON visualizations.
 ///
 /// Requirements: 8.1-8.9, 9.1-9.9
-#[cfg(feature = "viz")]
 fn open_json_visualizer_with_fallback(json_content: &str, config: &VisualizerConfig) -> Result<()> {
     // Try to generate a URL with embedded data
     match generate_visualizer_url(json_content, config) {
@@ -370,7 +358,6 @@ fn open_json_visualizer_with_fallback(json_content: &str, config: &VisualizerCon
 /// This function generates JSON from the Hydro IR and opens it in the configured
 /// visualizer (defaults to <https://hydro.run/docs/hydroscope>, can be overridden
 /// with HYDRO_VISUALIZER_URL environment variable).
-#[cfg(feature = "viz")]
 pub fn open_json_visualizer(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result<()> {
     let json_content = render_with_config(roots, config, render_hydro_ir_json);
     let viz_config = VisualizerConfig::default();
@@ -379,7 +366,6 @@ pub fn open_json_visualizer(roots: &[HydroRoot], config: Option<HydroWriteConfig
 
 /// Opens Hydro IR roots as a JSON visualization with custom visualizer configuration.
 /// Allows specifying a custom base URL and compression settings.
-#[cfg(feature = "viz")]
 pub fn open_json_visualizer_with_config(
     roots: &[HydroRoot],
     config: Option<HydroWriteConfig>,
