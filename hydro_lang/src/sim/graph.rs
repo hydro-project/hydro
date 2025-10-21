@@ -420,6 +420,38 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 
     spawned.wait().unwrap();
 
+    // On macOS, local dynamically built libraries may be blocked by system policy unless
+    // they are at least ad-hoc code signed. Proactively sign produced dylibs and example
+    // binaries in the trybuild target directory to make dlopen/exec dependable in tests.
+    #[cfg(target_os = "macos")]
+    {
+        use std::ffi::OsStr;
+
+        for sub in [
+            path!(trybuild.target_dir / "debug"),
+            path!(trybuild.target_dir / "debug" / "deps"),
+            path!(trybuild.target_dir / "debug" / "examples"),
+        ] {
+            if sub.exists() {
+                for entry in fs::read_dir(&sub).unwrap() {
+                    if let Ok(entry) = entry {
+                        let p = entry.path();
+                        let is_dylib = p.extension() == Some(OsStr::new("dylib"));
+                        let is_exe = p.is_file() && p.extension().is_none();
+                        if is_dylib || is_exe {
+                            let _ = Command::new("codesign")
+                                .arg("-s")
+                                .arg("-")
+                                .arg("-f")
+                                .arg(p.as_os_str())
+                                .status();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let out_file = tempfile::NamedTempFile::new().unwrap().into_temp_path();
     fs::copy(out.as_ref().unwrap(), &out_file).unwrap();
     Ok(out_file)
@@ -447,7 +479,10 @@ pub(super) fn create_sim_graph_trybuild(
             Some("hydro___test".to_string()),
         );
 
-        Some(prettyplease::unparse(&syn::parse_quote! {
+        // Pretty-print the generated staged module and rewrite any crate-internal
+        // references that would point at the temporary trybuild crate instead of
+        // the real hydro_lang crate. This avoids unresolved imports during tests.
+        let mut staged_src = prettyplease::unparse(&syn::parse_quote! {
             #![allow(
                 unused,
                 ambiguous_glob_reexports,
@@ -457,7 +492,11 @@ pub(super) fn create_sim_graph_trybuild(
             )]
 
             #gen_staged
-        }))
+        });
+
+        staged_src = staged_src.replace("crate::compile::", "hydro_lang::compile::");
+
+        Some(staged_src)
     } else {
         None
     };

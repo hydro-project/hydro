@@ -91,6 +91,12 @@ impl CompiledSim {
                 input_ports: HashMap::new(),
                 output_ports: HashMap::new(),
                 log,
+                port_max: self
+                    .external_ports
+                    .iter()
+                    .cloned()
+                    .max()
+                    .unwrap_or(0),
             }),
         )
     }
@@ -320,6 +326,7 @@ pub struct CompiledSimInstance<'a> {
     output_ports: HashMap<usize, UnboundedSender<Bytes>>,
     input_ports: HashMap<usize, UnboundedReceiverStream<Bytes>>,
     log: bool,
+    port_max: usize,
 }
 
 impl<'a> CompiledSimInstance<'a> {
@@ -385,11 +392,26 @@ impl<'a> CompiledSimInstance<'a> {
             )
         }
 
+        // Provide inert defaults for any unconnected external ports up to port_max.
+        // This prevents unwrap() panics in generated DFIR that may reference unused ports.
+        let mut provided_output_ports = self.output_ports;
+        let mut provided_input_ports = self.input_ports;
+        for pid in 0..=self.port_max {
+            provided_output_ports.entry(pid).or_insert_with(|| {
+                let (tx, _rx) = dfir_rs::util::unbounded_channel::<Bytes>();
+                tx
+            });
+            provided_input_ports.entry(pid).or_insert_with(|| {
+                let (_tx, rx) = dfir_rs::util::unbounded_channel::<Bytes>();
+                rx
+            });
+        }
+
         let (async_dfir, ticks, hooks) = unsafe {
             (self.func)(
                 colored::control::SHOULD_COLORIZE.should_colorize(),
-                self.output_ports,
-                self.input_ports,
+                provided_output_ports,
+                provided_input_ports,
                 if self.log {
                     println_handler
                 } else {

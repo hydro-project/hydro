@@ -76,7 +76,9 @@ pub fn create_graph_trybuild(
             Some("hydro___test".to_string()),
         );
 
-        Some(prettyplease::unparse(&syn::parse_quote! {
+        // Pretty-print the generated staged file and fix up crate-relative paths that
+        // would otherwise refer to the local trybuild crate instead of hydro_lang.
+        let mut staged_src = prettyplease::unparse(&syn::parse_quote! {
             #![allow(
                 unused,
                 ambiguous_glob_reexports,
@@ -86,7 +88,14 @@ pub fn create_graph_trybuild(
             )]
 
             #gen_staged
-        }))
+        });
+
+        // Map internal references that assume being inside `hydro_lang` to explicit paths.
+        // This avoids unresolved imports like `crate::compile::ir::HydroIrMetadata` in the
+        // isolated trybuild crate used during tests.
+        staged_src = staged_src.replace("crate::compile::", "hydro_lang::compile::");
+
+        Some(staged_src)
     } else {
         None
     };
@@ -115,7 +124,7 @@ pub fn create_graph_trybuild(
         write_atomic(source.as_ref(), &out_path).unwrap();
     }
 
-    if let Some(inlined_staged) = inlined_staged {
+        if let Some(inlined_staged) = inlined_staged {
         let staged_path = path!(project_dir / "src" / "__staged.rs");
         {
             let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
@@ -369,6 +378,35 @@ crate-type = ["dylib"]"#,
                 manifest_hash.as_bytes(),
                 &path!(project.dir / ".hydro-trybuild-manifest"),
             )?;
+
+            // Ensure macOS can load locally built dylibs by ad-hoc signing them.
+            #[cfg(target_os = "macos")]
+            {
+                use std::ffi::OsStr;
+                for sub in [
+                    path!(project.target_dir / "debug"),
+                    path!(project.target_dir / "debug" / "deps"),
+                    path!(project.target_dir / "debug" / "examples"),
+                ] {
+                    if sub.exists() {
+                        for entry in fs::read_dir(&sub).unwrap() {
+                            if let Ok(entry) = entry {
+                                let p = entry.path();
+                                let is_dylib = p.extension() == Some(OsStr::new("dylib"));
+                                let is_exe = p.is_file() && p.extension().is_none();
+                                if is_dylib || is_exe {
+                                    let _ = std::process::Command::new("codesign")
+                                        .arg("-s")
+                                        .arg("-")
+                                        .arg("-f")
+                                        .arg(p.as_os_str())
+                                        .status();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         let examples_folder = path!(project.dir / "examples");

@@ -40,11 +40,40 @@ fn track_membership<'a, C, L: Location<'a> + NoTick>(
 fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr {
     let root = get_this_crate();
 
+    // Detect bytes::Bytes regardless of the crate path (staged or runtime)
+    let is_bytes = matches!(t_type,
+        syn::Type::Path(tp)
+            if tp.path.segments.last().map(|s| s.ident == "Bytes").unwrap_or(false)
+                && tp.path.segments.iter().any(|s| s.ident == "bytes")
+    );
+
     if is_demux {
+        if is_bytes {
+            // Avoid double-encoding: pass bytes through, converting staged Bytes to runtime Bytes
+            parse_quote! {
+                ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::location::MemberId<_>, #t_type), _>(
+                    |(id, data)| {
+                        let v: ::std::vec::Vec<u8> = data.to_vec();
+                        (id.raw_id, v.into())
+                    }
+                )
+            }
+        } else {
+            parse_quote! {
+                ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::location::MemberId<_>, #t_type), _>(
+                    |(id, data)| {
+                        (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
+                    }
+                )
+            }
+        }
+    } else if is_bytes {
+        // Avoid double-encoding: pass bytes through, converting staged Bytes to runtime Bytes
         parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::location::MemberId<_>, #t_type), _>(
-                |(id, data)| {
-                    (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#t_type, _>(
+                |data| {
+                    let v: ::std::vec::Vec<u8> = data.to_vec();
+                    v.into()
                 }
             )
         }
@@ -66,11 +95,38 @@ pub(crate) fn serialize_bincode<T: Serialize>(is_demux: bool) -> syn::Expr {
 fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type) -> syn::Expr {
     let root = get_this_crate();
 
+    // Detect bytes::Bytes regardless of the crate path (staged or runtime)
+    let is_bytes = matches!(t_type,
+        syn::Type::Path(tp)
+            if tp.path.segments.last().map(|s| s.ident == "Bytes").unwrap_or(false)
+                && tp.path.segments.iter().any(|s| s.ident == "bytes")
+    );
+
     if let Some(c_type) = tagged {
+        if is_bytes {
+            // Pass-through for Bytes: convert runtime Bytes to staged Bytes
+            parse_quote! {
+                |res| {
+                    let (id, b) = res.unwrap();
+                    let v: ::std::vec::Vec<u8> = b.to_vec();
+                    (#root::location::MemberId::<#c_type>::from_raw(id), #t_type::from(v))
+                }
+            }
+        } else {
+            parse_quote! {
+                |res| {
+                    let (id, b) = res.unwrap();
+                    (#root::location::MemberId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                }
+            }
+        }
+    } else if is_bytes {
+        // Pass-through for Bytes: convert runtime Bytes to staged Bytes
         parse_quote! {
             |res| {
-                let (id, b) = res.unwrap();
-                (#root::location::MemberId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                let b = res.unwrap();
+                let v: ::std::vec::Vec<u8> = b.to_vec();
+                #t_type::from(v)
             }
         }
     } else {
