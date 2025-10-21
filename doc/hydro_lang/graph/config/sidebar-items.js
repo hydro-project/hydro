@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["GraphType"],"struct":["GraphConfig"]};
+window.SIDEBAR_ITEMS = {"enum":["GraphType"],"struct":["GraphConfig","VisualizerConfig"]};
