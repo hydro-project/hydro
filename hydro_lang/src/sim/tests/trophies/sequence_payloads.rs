@@ -134,6 +134,7 @@ fn test() {
 }
 
 #[test]
+#[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
 fn trace_snapshot() {
     let flow = FlowBuilder::new();
     let external = flow.external::<()>();
