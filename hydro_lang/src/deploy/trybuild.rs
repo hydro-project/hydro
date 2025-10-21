@@ -434,11 +434,11 @@ pub(crate) fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::
         .create(true)
         .truncate(false)
         .open(path)?;
-    file.lock()?;
 
     let mut existing_contents = Vec::new();
     file.read_to_end(&mut existing_contents)?;
     if existing_contents != contents {
+        file.lock()?;
         file.seek(SeekFrom::Start(0))?;
         file.set_len(0)?;
         file.write_all(contents)?;
