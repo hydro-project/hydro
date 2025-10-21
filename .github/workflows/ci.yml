@@ -35,13 +35,13 @@ jobs:
   test:
     name: All tests, lints, and checks
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     needs: pre_job
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         rust_release: [latest-nightly, latest-stable]
         exclude:
           # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
@@ -49,6 +49,7 @@ jobs:
           # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
           - rust_release: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
           - os: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'windows-latest' }}
+          - os: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'macos-latest' }}
 
     steps:
       - name: Checkout sources
@@ -63,9 +64,7 @@ jobs:
       - if: matrix.rust_release == 'latest-stable' && matrix.os == 'ubuntu-latest'
         uses: ./.github/actions/use-sccache
 
-      - uses: ./.github/actions/install-nexttest
-        with:
-          os: ${{ matrix.os }}
+      - uses: taiki-e/install-action@nextest
 
       - name: Run cargo nextest on all targets
         id: nextest

@@ -321,12 +321,17 @@ pub fn create_trybuild()
             r#"{}
 
 [lib]
-crate-type = ["rlib", "dylib"]
+crate-type = [{}]
 
 [[example]]
 name = "sim-dylib"
 crate-type = ["dylib"]"#,
-            manifest_toml
+            manifest_toml,
+            if cfg!(target_os = "windows") {
+                r#""rlib""# // see https://github.com/bevyengine/bevy/pull/2016
+            } else {
+                r#""rlib", "dylib""#
+            },
         );
 
         write_atomic(
@@ -429,11 +434,11 @@ pub(crate) fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::
         .create(true)
         .truncate(false)
         .open(path)?;
-    file.lock()?;
 
     let mut existing_contents = Vec::new();
     file.read_to_end(&mut existing_contents)?;
     if existing_contents != contents {
+        file.lock()?;
         file.seek(SeekFrom::Start(0))?;
         file.set_len(0)?;
         file.write_all(contents)?;
