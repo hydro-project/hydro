@@ -3,7 +3,6 @@ import Layout from "@theme/Layout";
 import BrowserOnly from "@docusaurus/BrowserOnly";
 import "@xyflow/react/dist/style.css";
 
-// Import the Hydroscope component and URL parser
 import { Hydroscope, parseDataFromUrl } from "@hydro-project/hydroscope";
 
 // Import ResizeObserver error suppression for Docusaurus environment
