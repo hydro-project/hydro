@@ -93,7 +93,50 @@ const config = {
       },
     ],
     require.resolve("./wasm-plugin.js"),
+    function skipMinifyHydroscope() {
+      return {
+        name: "skip-minify-hydroscope",
+        configureWebpack(config, isServer) {
+          const skip =
+            process.env.SKIP_MINIFY_HYDROSCOPE === "1" ||
+            process.env.CI === "true";
+          const skipAll = process.env.SKIP_MINIFY_ALL === "1";
+          if (skipAll && !isServer && config.optimization) {
+            // Disable JS minification entirely (fastest builds)
+            config.optimization.minimize = false;
+            // Also disable source maps in prod for speed
+            config.devtool = false;
+            return {};
+          }
+          if (!skip || isServer || !config.optimization) return {};
+          try {
+            for (const minimizer of config.optimization.minimizer || []) {
+              if (
+                minimizer &&
+                minimizer.constructor &&
+                minimizer.constructor.name === "TerserPlugin"
+              ) {
+                // @ts-ignore - webpack plugin types don't expose .options, but TerserPlugin supports it
+                minimizer.options = {
+                  // @ts-ignore
+                  ...(minimizer.options || {}),
+                  exclude: /node_modules\/@hydro-project\/hydroscope/,
+                  parallel: true,
+                };
+              }
+            }
+          } catch (e) {
+            console.warn(
+              "[docs] Failed to tweak TerserPlugin to exclude Hydroscope:",
+              e
+            );
+          }
+          return {};
+        },
+      };
+    },
   ],
+
 
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */

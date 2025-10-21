@@ -167,7 +167,7 @@ fn try_compress_and_encode(json_content: &str, config: &VisualizerConfig) -> (St
 /// Calculate the total URL length for a given encoded data and parameter name.
 /// Returns the total length including base URL, parameter name, and encoded data.
 fn calculate_url_length(base_url: &str, param_name: &str, encoded_data: &str) -> usize {
-    // Format: base_url#param_name=encoded_data
+    // Format: base_url?param_name=encoded_data
     base_url.len() + 1 + param_name.len() + 1 + encoded_data.len()
 }
 
@@ -183,15 +183,12 @@ fn generate_visualizer_url(
     // Determine parameter name based on compression
     let param_name = if is_compressed { "compressed" } else { "data" };
 
-    // Calculate total URL length
     let url_length = calculate_url_length(&config.base_url, param_name, &encoded_data);
 
-    // Check if URL is within length limit
     if url_length <= config.max_url_length {
-        let url = format!("{}#{}={}", config.base_url, param_name, encoded_data);
+        let url = format!("{}?{}={}", config.base_url, param_name, encoded_data);
         Some((url, is_compressed))
     } else {
-        // If compressed URL is too long, try uncompressed as a fallback
         if is_compressed {
             println!("⚠️  Compressed URL too long, trying uncompressed...");
             let uncompressed_encoded = encode_base64_url_safe(json_content.as_bytes());
@@ -199,7 +196,7 @@ fn generate_visualizer_url(
                 calculate_url_length(&config.base_url, "data", &uncompressed_encoded);
 
             if uncompressed_length <= config.max_url_length {
-                let url = format!("{}#data={}", config.base_url, uncompressed_encoded);
+                let url = format!("{}?data={}", config.base_url, uncompressed_encoded);
                 return Some((url, false));
             }
         }
@@ -278,8 +275,6 @@ fn print_fallback_instructions(file_path: &std::path::Path, url: &str) {
 /// Handle large graph visualization using file-based fallback.
 /// Saves the JSON to a temporary file and opens the visualizer with a file parameter.
 /// Uses the configured base URL from VisualizerConfig.
-///
-/// Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9
 fn handle_large_graph_fallback(json_content: &str, config: &VisualizerConfig) -> Result<()> {
     // Save JSON to temporary file with timestamped filename
     let temp_file = save_json_to_temp_file(json_content)?;
@@ -287,10 +282,8 @@ fn handle_large_graph_fallback(json_content: &str, config: &VisualizerConfig) ->
     // Generate URL with file parameter using configured base URL
     let url = generate_file_based_url(&temp_file, config);
 
-    // Print fallback instructions
     print_fallback_instructions(&temp_file, &url);
 
-    // Try to open the visualizer in browser
     match webbrowser::open(&url) {
         Ok(_) => {
             println!("✓ Successfully opened visualizer in browser");
@@ -321,6 +314,8 @@ fn open_json_visualizer_with_fallback(json_content: &str, config: &VisualizerCon
                 "🌐 Opening visualizer with embedded data{}...",
                 compression_msg
             );
+            // Print the full URL for debugging purposes
+            println!("Visualizer URL: {}", url);
             webbrowser::open(&url)?;
             println!("✓ Successfully opened visualizer in browser");
             Ok(())

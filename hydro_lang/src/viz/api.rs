@@ -88,17 +88,10 @@ impl<'a> GraphApi<'a> {
             GraphFormat::Mermaid => Ok(crate::viz::debug::open_mermaid(self.ir, Some(config))?),
             GraphFormat::Dot => Ok(crate::viz::debug::open_dot(self.ir, Some(config))?),
             GraphFormat::Hydroscope => {
-                #[cfg(feature = "viz")]
-                {
-                    Ok(crate::viz::debug::open_json_visualizer(
-                        self.ir,
-                        Some(config),
-                    )?)
-                }
-                #[cfg(not(feature = "viz"))]
-                {
-                    Err("viz feature not enabled".into())
-                }
+                Ok(crate::viz::debug::open_json_visualizer(
+                    self.ir,
+                    Some(config),
+                )?)
             }
         }
     }
@@ -323,7 +316,6 @@ impl<'a> GraphApi<'a> {
             };
 
             if config.file {
-                // Write to file
                 let filename = format!("hydro_graph.{}", format.file_extension());
                 self.write_graph_to_file(
                     format,

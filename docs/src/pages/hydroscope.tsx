@@ -14,9 +14,19 @@ function HydroscopePage() {
   useEffect(() => {
     const parseUrlData = async () => {
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const dataParam = urlParams.get("data");
-        const compressedParam = urlParams.get("compressed");
+        const searchParams = new URLSearchParams(window.location.search);
+        let dataParam = searchParams.get("data");
+        let compressedParam = searchParams.get("compressed");
+
+        // Fallback: also support hash fragment params (#data= / #compressed=)
+        if (!dataParam && !compressedParam && typeof window !== "undefined") {
+          const hash = window.location.hash?.replace(/^#/, "");
+          if (hash) {
+            const hashParams = new URLSearchParams(hash);
+            dataParam = hashParams.get("data") || dataParam;
+            compressedParam = hashParams.get("compressed") || compressedParam;
+          }
+        }
 
         if (dataParam || compressedParam) {
           const parsedData = await parseDataFromUrl(dataParam, compressedParam);

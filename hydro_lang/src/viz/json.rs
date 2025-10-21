@@ -546,6 +546,13 @@ where
             "items": legend_items
         });
 
+        // Determine the selected hierarchy (first one is default)
+        let selected_hierarchy = if !hierarchy_choices.is_empty() {
+            hierarchy_choices[0]["id"].as_str().map(|s| s.to_string())
+        } else {
+            None
+        };
+
         #[derive(serde::Serialize)]
         struct GraphPayload {
             nodes: Vec<serde_json::Value>,
@@ -554,6 +561,8 @@ where
             hierarchy_choices: Vec<serde_json::Value>,
             #[serde(rename = "nodeAssignments")]
             node_assignments: serde_json::Map<String, serde_json::Value>,
+            #[serde(rename = "selectedHierarchy", skip_serializing_if = "Option::is_none")]
+            selected_hierarchy: Option<String>,
             #[serde(rename = "edgeStyleConfig")]
             edge_style_config: serde_json::Value,
             #[serde(rename = "nodeTypeConfig")]
@@ -566,6 +575,7 @@ where
             edges: edges_sorted,
             hierarchy_choices,
             node_assignments: node_assignments_choices,
+            selected_hierarchy,
             edge_style_config: Self::get_edge_style_config(),
             node_type_config,
             legend,

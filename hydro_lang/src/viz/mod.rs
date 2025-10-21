@@ -12,7 +12,6 @@ pub mod render;
 mod json_test;
 
 #[cfg(test)]
-#[cfg(feature = "viz")]
 mod url_generation_test;
 
 // Re-export only the necessary public API

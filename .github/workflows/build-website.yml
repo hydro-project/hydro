@@ -36,3 +36,5 @@ jobs:
 
       - name: Build Website
         run: bash build_docs.bash x86_64-linux-gnu-ubuntu-20.04
+        env:
+          SKIP_MINIFY_ALL: 1
