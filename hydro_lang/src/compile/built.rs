@@ -8,13 +8,13 @@ use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use super::ir::{HydroRoot, emit};
-#[cfg(feature = "viz")]
-use crate::viz::api::GraphApi;
 use crate::location::{Cluster, External, Process};
 #[cfg(feature = "sim")]
 #[cfg(stageleft_runtime)]
 use crate::sim::{flow::SimFlow, graph::SimNode};
 use crate::staging_util::Invariant;
+#[cfg(feature = "viz")]
+use crate::viz::api::GraphApi;
 
 pub struct BuiltFlow<'a> {
     pub(super) ir: Vec<HydroRoot>,
