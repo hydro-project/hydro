@@ -362,7 +362,7 @@ fn open_json_visualizer_with_fallback(
 /// Automatically handles compression and file-based fallback for large graphs.
 /// 
 /// This function generates JSON from the Hydro IR and opens it in the configured
-/// visualizer (defaults to https://hydro.run/docs/hydroscope, can be overridden
+/// visualizer (defaults to <https://hydro.run/docs/hydroscope>, can be overridden
 /// with HYDRO_VISUALIZER_URL environment variable).
 #[cfg(feature = "viz")]
 pub fn open_json_visualizer(
