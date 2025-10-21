@@ -1,7 +1,6 @@
 //! Tests for URL generation and compression logic
 
 #[cfg(test)]
-#[cfg(feature = "viz")]
 mod tests {
     use crate::graph::config::VisualizerConfig;
 
