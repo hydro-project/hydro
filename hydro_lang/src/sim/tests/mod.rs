@@ -148,6 +148,7 @@ fn sim_crash_with_fuzzed_batching() {
 }
 
 #[test]
+#[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
 fn trace_for_fuzzed_batching() {
     let flow = FlowBuilder::new();
     let external = flow.external::<()>();
