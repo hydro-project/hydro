@@ -8,8 +8,8 @@ pub use super::graphviz::{HydroDot, escape_dot};
 pub use super::json::HydroJson;
 // Re-export specific implementations
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
-use hydro_lang::compile::ir::backtrace::Backtrace;
-use hydro_lang::compile::ir::{DebugExpr, HydroNode, HydroRoot, HydroSource};
+use crate::compile::ir::backtrace::Backtrace;
+use crate::compile::ir::{DebugExpr, HydroNode, HydroRoot, HydroSource};
 use crate::location::dynamic::LocationId;
 
 /// Label for a graph node - can be either a static string or contain expressions.
@@ -354,7 +354,7 @@ pub fn get_unified_edge_style(
 pub fn extract_edge_properties_from_collection_kind(
     collection_kind: &crate::compile::ir::CollectionKind,
 ) -> HashSet<HydroEdgeType> {
-    use hydro_lang::compile::ir::CollectionKind;
+    use crate::compile::ir::CollectionKind;
 
     let mut properties = HashSet::new();
 
@@ -401,7 +401,7 @@ fn add_bound_property(
     properties: &mut HashSet<HydroEdgeType>,
     bound: &crate::compile::ir::BoundKind,
 ) {
-    use hydro_lang::compile::ir::BoundKind;
+    use crate::compile::ir::BoundKind;
 
     match bound {
         BoundKind::Bounded => {
@@ -418,7 +418,7 @@ fn add_keyed_singleton_bound_property(
     properties: &mut HashSet<HydroEdgeType>,
     bound: &crate::compile::ir::KeyedSingletonBoundKind,
 ) {
-    use hydro_lang::compile::ir::KeyedSingletonBoundKind;
+    use crate::compile::ir::KeyedSingletonBoundKind;
 
     match bound {
         KeyedSingletonBoundKind::Bounded | KeyedSingletonBoundKind::BoundedValue => {
@@ -435,7 +435,7 @@ fn add_order_property(
     properties: &mut HashSet<HydroEdgeType>,
     order: &crate::compile::ir::StreamOrder,
 ) {
-    use hydro_lang::compile::ir::StreamOrder;
+    use crate::compile::ir::StreamOrder;
 
     match order {
         StreamOrder::TotalOrder => {
@@ -531,7 +531,7 @@ impl HydroGraphStructure {
         &mut self,
         label: NodeLabel,
         node_type: HydroNodeType,
-        metadata: &hydro_lang::compile::ir::HydroIrMetadata,
+        metadata: &crate::compile::ir::HydroIrMetadata,
     ) -> usize {
         let location = setup_location(self, metadata);
         let backtrace = Some(metadata.op.backtrace.clone());
@@ -630,7 +630,7 @@ fn extract_location_id(location_id: &LocationId) -> (Option<usize>, Option<Strin
 /// Helper function to set up location in structure from metadata.
 fn setup_location(
     structure: &mut HydroGraphStructure,
-    metadata: &hydro_lang::compile::ir::HydroIrMetadata,
+    metadata: &crate::compile::ir::HydroIrMetadata,
 ) -> Option<usize> {
     let (location_id, location_type) = extract_location_id(&metadata.location_kind);
     if let (Some(loc_id), Some(loc_type)) = (location_id, location_type) {
@@ -645,8 +645,8 @@ fn add_edge_with_metadata(
     structure: &mut HydroGraphStructure,
     src_id: usize,
     dst_id: usize,
-    src_metadata: Option<&hydro_lang::compile::ir::HydroIrMetadata>,
-    dst_metadata: Option<&hydro_lang::compile::ir::HydroIrMetadata>,
+    src_metadata: Option<&crate::compile::ir::HydroIrMetadata>,
+    dst_metadata: Option<&crate::compile::ir::HydroIrMetadata>,
     label: Option<String>,
 ) {
     let mut properties = HashSet::new();
@@ -760,7 +760,7 @@ impl HydroRoot {
             seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
             config: &HydroWriteConfig,
             input: &HydroNode,
-            sink_metadata: Option<&hydro_lang::compile::ir::HydroIrMetadata>,
+            sink_metadata: Option<&crate::compile::ir::HydroIrMetadata>,
             label: NodeLabel,
         ) -> usize {
             let input_id = input.build_graph_structure(structure, seen_tees, config);
@@ -865,7 +865,7 @@ impl HydroNode {
             seen_tees: &'a mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
             config: &'a HydroWriteConfig,
             input: &'a HydroNode,
-            metadata: &'a hydro_lang::compile::ir::HydroIrMetadata,
+            metadata: &'a crate::compile::ir::HydroIrMetadata,
             op_name: String,
             node_type: HydroNodeType,
         }
@@ -961,7 +961,7 @@ impl HydroNode {
         // Helper function for source nodes
         fn build_source_node(
             structure: &mut HydroGraphStructure,
-            metadata: &hydro_lang::compile::ir::HydroIrMetadata,
+            metadata: &crate::compile::ir::HydroIrMetadata,
             label: String,
         ) -> usize {
             structure.add_node_with_metadata(

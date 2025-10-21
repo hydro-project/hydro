@@ -54,7 +54,10 @@ mod tests {
         assert!(expected_length >= base_url.len());
         assert!(expected_length >= encoded_data.len());
         // And ensure separator characters are counted
-        assert_eq!(expected_length, base_url.len() + 1 + param_name.len() + 1 + encoded_data.len());
+        assert_eq!(
+            expected_length,
+            base_url.len() + 1 + param_name.len() + 1 + encoded_data.len()
+        );
     }
 
     #[test]

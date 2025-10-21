@@ -64,7 +64,7 @@ impl Default for VisualizerConfig {
         // Check for environment variable override for local development
         let base_url = std::env::var("HYDRO_VISUALIZER_URL")
             .unwrap_or_else(|_| "https://hydro.run/docs/hydroscope".to_string());
-        
+
         Self {
             base_url,
             enable_compression: true,
@@ -82,12 +82,12 @@ impl VisualizerConfig {
             ..Default::default()
         }
     }
-    
+
     /// Create a configuration for local development
     pub fn local() -> Self {
         Self::with_base_url("http://localhost:3000/hydroscope")
     }
-    
+
     /// Disable compression (useful for debugging)
     pub fn without_compression(mut self) -> Self {
         self.enable_compression = false;

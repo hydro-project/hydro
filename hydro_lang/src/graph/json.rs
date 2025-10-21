@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
-use hydro_lang::compile::ir::HydroRoot;
-use hydro_lang::compile::ir::backtrace::Backtrace;
+use crate::compile::ir::HydroRoot;
+use crate::compile::ir::backtrace::Backtrace;
 
 /// JSON graph writer for Hydro IR.
 /// Outputs JSON that can be used with interactive graph visualization tools.
@@ -74,11 +74,12 @@ impl<W> HydroJson<W> {
     /// Get all node type definitions for JSON output
     fn get_node_type_definitions() -> Vec<serde_json::Value> {
         // Ensure deterministic ordering by sorting by type string
-        let mut types: Vec<(usize, &'static str)> = super::render::node_type_utils::all_types_with_strings()
-            .into_iter()
-            .enumerate()
-            .map(|(idx, (_, type_str))| (idx, type_str))
-            .collect();
+        let mut types: Vec<(usize, &'static str)> =
+            super::render::node_type_utils::all_types_with_strings()
+                .into_iter()
+                .enumerate()
+                .map(|(idx, (_, type_str))| (idx, type_str))
+                .collect();
         types.sort_by(|a, b| a.1.cmp(b.1));
         types
             .into_iter()
@@ -349,8 +350,8 @@ where
             serde_json::json!([])
         };
 
-    // Node type string for styling/legend
-    let node_type_str = Self::node_type_to_string(node_type);
+        // Node type string for styling/legend
+        let node_type_str = Self::node_type_to_string(node_type);
 
         let node = serde_json::json!({
             "id": node_id.to_string(),
@@ -382,8 +383,8 @@ where
         edge_properties: &HashSet<HydroEdgeType>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
-    let edge_id = format!("e{}", self.edge_count);
-    self.edge_count = self.edge_count.saturating_add(1);
+        let edge_id = format!("e{}", self.edge_count);
+        self.edge_count = self.edge_count.saturating_add(1);
 
         // Convert edge properties to semantic tags (string array)
         let mut semantic_tags: Vec<String> = edge_properties
@@ -559,7 +560,7 @@ where
         let payload = GraphPayload {
             nodes: nodes_sorted,
             edges: edges_sorted,
-            hierarchy_choices: hierarchy_choices,
+            hierarchy_choices,
             node_assignments: node_assignments_choices,
             edge_style_config: Self::get_edge_style_config(),
             node_type_config,
@@ -696,9 +697,8 @@ impl<W> HydroJson<W> {
                 let mut parent_path: Option<String> = None;
                 let mut deepest_path = String::new();
                 // Deduplicate consecutive identical labels for cleanliness
-                let mut path_iter = hierarchy_path.into_iter().peekable();
                 let mut deduped: Vec<String> = Vec::new();
-                while let Some(seg) = path_iter.next() {
+                for seg in hierarchy_path {
                     if deduped.last().map(|s| s == &seg).unwrap_or(false) {
                         continue;
                     }
@@ -799,7 +799,13 @@ impl<W> HydroJson<W> {
         // Find root items (depth 0) and sort by name
         let mut roots: Vec<(String, String)> = hierarchy_map
             .iter()
-            .filter_map(|(path, (name, depth, _))| if *depth == 0 { Some((path.clone(), name.clone())) } else { None })
+            .filter_map(|(path, (name, depth, _))| {
+                if *depth == 0 {
+                    Some((path.clone(), name.clone()))
+                } else {
+                    None
+                }
+            })
             .collect();
         roots.sort_by(|a, b| a.1.cmp(&b.1));
         let mut root_nodes = Vec::new();
@@ -825,14 +831,21 @@ impl<W> HydroJson<W> {
             .iter()
             .filter_map(|(child_path, (child_name, _, parent_path))| {
                 if let Some(parent) = parent_path {
-                    if parent == current_path { Some((child_path, child_name)) } else { None }
-                } else { None }
+                    if parent == current_path {
+                        Some((child_path, child_name))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
             })
             .collect();
         child_specs.sort_by(|a, b| a.1.cmp(b.1));
         let mut children = Vec::new();
         for (child_path, child_name) in child_specs {
-            let child_node = Self::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
+            let child_node =
+                Self::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
             children.push(child_node);
         }
 
@@ -934,7 +947,7 @@ pub fn save_json(
 /// Open JSON visualization in browser for a BuiltFlow
 #[cfg(feature = "build")]
 pub fn open_browser(
-    built_flow: &hydro_lang::compile::built::BuiltFlow,
+    built_flow: &crate::compile::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
     open_json_browser(
         built_flow.ir(),

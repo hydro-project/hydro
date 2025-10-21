@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use hydro_lang::compile::ir::HydroRoot;
+use crate::compile::ir::HydroRoot;
 use crate::graph::render::HydroWriteConfig;
 
 /// Graph generation API for built flows

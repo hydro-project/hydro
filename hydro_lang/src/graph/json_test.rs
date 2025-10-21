@@ -80,11 +80,23 @@ mod tests {
 
         for node in nodes {
             // label fields
-            assert!(node.get("label").is_some(), "Node should have primary label field");
-            assert!(node.get("shortLabel").is_some(), "Node should have shortLabel field");
-            assert!(node.get("fullLabel").is_some(), "Node should have fullLabel field");
+            assert!(
+                node.get("label").is_some(),
+                "Node should have primary label field"
+            );
+            assert!(
+                node.get("shortLabel").is_some(),
+                "Node should have shortLabel field"
+            );
+            assert!(
+                node.get("fullLabel").is_some(),
+                "Node should have fullLabel field"
+            );
             // nodeType for legend/styling
-            assert!(node.get("nodeType").is_some(), "Node should have nodeType field");
+            assert!(
+                node.get("nodeType").is_some(),
+                "Node should have nodeType field"
+            );
         }
 
         // Validate edges have semantic tags
@@ -99,8 +111,8 @@ mod tests {
         let tags = edge["semanticTags"]
             .as_array()
             .expect("semanticTags should be an array");
-    // Tags include collection and boundedness/order and Local if not crossing
-    assert!(tags.len() >= 3, "Edge should have at least 3 semantic tags");
+        // Tags include collection and boundedness/order and Local if not crossing
+        assert!(tags.len() >= 3, "Edge should have at least 3 semantic tags");
 
         // Verify the semantic tags are strings
         let tag_strings: Vec<String> = tags
@@ -176,23 +188,65 @@ mod tests {
 
         // Graph 1
         w1.write_prologue().unwrap();
-        w1.write_node_definition(0, &NodeLabel::Static("a".into()), HydroNodeType::Source, Some(0), Some("Process"), None).unwrap();
-        w1.write_node_definition(1, &NodeLabel::Static("b".into()), HydroNodeType::Transform, Some(1), Some("Process"), None).unwrap();
+        w1.write_node_definition(
+            0,
+            &NodeLabel::Static("a".into()),
+            HydroNodeType::Source,
+            Some(0),
+            Some("Process"),
+            None,
+        )
+        .unwrap();
+        w1.write_node_definition(
+            1,
+            &NodeLabel::Static("b".into()),
+            HydroNodeType::Transform,
+            Some(1),
+            Some("Process"),
+            None,
+        )
+        .unwrap();
         w1.write_edge(0, 1, &edge_props, None).unwrap();
         w1.write_epilogue().unwrap();
 
         // Graph 2 (same operations, different insertion order to test determinism)
         w2.write_prologue().unwrap();
-        w2.write_node_definition(1, &NodeLabel::Static("b".into()), HydroNodeType::Transform, Some(1), Some("Process"), None).unwrap();
-        w2.write_node_definition(0, &NodeLabel::Static("a".into()), HydroNodeType::Source, Some(0), Some("Process"), None).unwrap();
+        w2.write_node_definition(
+            1,
+            &NodeLabel::Static("b".into()),
+            HydroNodeType::Transform,
+            Some(1),
+            Some("Process"),
+            None,
+        )
+        .unwrap();
+        w2.write_node_definition(
+            0,
+            &NodeLabel::Static("a".into()),
+            HydroNodeType::Source,
+            Some(0),
+            Some("Process"),
+            None,
+        )
+        .unwrap();
         w2.write_edge(0, 1, &edge_props, None).unwrap();
         w2.write_epilogue().unwrap();
 
-        assert_eq!(output1, output2, "JSON output should be deterministic regardless of insertion order");
+        assert_eq!(
+            output1, output2,
+            "JSON output should be deterministic regardless of insertion order"
+        );
 
         let json: serde_json::Value = serde_json::from_str(&output1).unwrap();
-        let edge_tags = json["edges"][0]["semanticTags"].as_array().unwrap()
-            .iter().map(|v| v.as_str().unwrap().to_string()).collect::<Vec<_>>();
-        assert!(edge_tags.contains(&"Network".to_string()), "Edge should be tagged Network when crossing locations");
+        let edge_tags = json["edges"][0]["semanticTags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect::<Vec<_>>();
+        assert!(
+            edge_tags.contains(&"Network".to_string()),
+            "Edge should be tagged Network when crossing locations"
+        );
     }
 }

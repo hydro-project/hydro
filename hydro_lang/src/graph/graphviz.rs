@@ -87,7 +87,7 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
-        _backtrace: Option<&hydro_lang::compile::ir::backtrace::Backtrace>,
+        _backtrace: Option<&crate::compile::ir::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
@@ -270,7 +270,7 @@ where
 /// Open DOT/Graphviz visualization in browser for a BuiltFlow
 #[cfg(feature = "build")]
 pub fn open_browser(
-    built_flow: &hydro_lang::compile::built::BuiltFlow,
+    built_flow: &crate::compile::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let config = super::render::HydroWriteConfig {
         show_metadata: false,
