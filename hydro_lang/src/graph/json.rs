@@ -309,7 +309,9 @@ where
         let short_label = super::render::extract_short_label(&full_label);
 
         // If short and full labels are the same or very similar, enhance the full label
-        let enhanced_full_label = if short_label.len() >= full_label.len() - 2 {
+        // Use saturating comparison to avoid underflow when full_label is very short
+        let full_len = full_label.len();
+        let enhanced_full_label = if short_label.len() >= full_len.saturating_sub(2) {
             // If they're nearly the same length, add more context to full label
             match short_label.as_str() {
                 "inspect" => "inspect [debug output]".to_string(),
