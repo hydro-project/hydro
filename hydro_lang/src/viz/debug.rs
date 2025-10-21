@@ -148,10 +148,6 @@ fn try_compress_and_encode(json_content: &str, config: &VisualizerConfig) -> (St
             // Only use compression if it actually reduces size
             if compressed_size < original_size {
                 let encoded = encode_base64_url_safe(&compressed);
-                println!(
-                    "📦 Compressed JSON: {} bytes → {} bytes (ratio: {:.2}x)",
-                    original_size, compressed_size, ratio
-                );
                 (encoded, true, ratio)
             } else {
                 // Compression didn't help, use uncompressed
@@ -190,11 +186,6 @@ fn generate_visualizer_url(
     // Calculate total URL length
     let url_length = calculate_url_length(&config.base_url, param_name, &encoded_data);
 
-    println!(
-        "🔗 URL length: {} characters (max: {})",
-        url_length, config.max_url_length
-    );
-
     // Check if URL is within length limit
     if url_length <= config.max_url_length {
         let url = format!("{}#{}={}", config.base_url, param_name, encoded_data);
@@ -208,10 +199,6 @@ fn generate_visualizer_url(
                 calculate_url_length(&config.base_url, "data", &uncompressed_encoded);
 
             if uncompressed_length <= config.max_url_length {
-                println!(
-                    "✓ Uncompressed URL fits: {} characters",
-                    uncompressed_length
-                );
                 let url = format!("{}#data={}", config.base_url, uncompressed_encoded);
                 return Some((url, false));
             }
@@ -227,13 +214,7 @@ fn generate_visualizer_url(
 fn generate_timestamped_filename() -> String {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap_or_else(|e| {
-            println!(
-                "⚠️  System time is before Unix epoch: {}. Using fallback timestamp 0.",
-                e
-            );
-            std::time::Duration::from_secs(0)
-        })
+        .expect("System clock is before Unix epoch - clock may be corrupted")
         .as_secs();
     format!("hydro_graph_{}.json", timestamp)
 }

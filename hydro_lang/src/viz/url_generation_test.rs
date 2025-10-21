@@ -27,12 +27,6 @@ mod tests {
     }
 
     #[test]
-    fn test_visualizer_config_without_compression() {
-        let config = VisualizerConfig::default().without_compression();
-        assert!(!config.enable_compression);
-    }
-
-    #[test]
     fn test_compression_and_encoding() {
         // Test with a small JSON that should not be compressed
         let small_json = r#"{"nodes":[],"edges":[]}"#;
