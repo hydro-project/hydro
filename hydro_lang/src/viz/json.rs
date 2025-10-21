@@ -228,10 +228,14 @@ impl<W> HydroJson<W> {
 
                     let short_fn_name = Self::truncate_function_name(&elem.fn_name);
 
+                    // Include compatibility aliases to match potential viewer expectations
                     serde_json::json!({
                         "fn": short_fn_name,
+                        "function": short_fn_name,
                         "file": short_filename,
-                        "line": elem.lineno
+                        "filename": short_filename,
+                        "line": elem.lineno,
+                        "lineNumber": elem.lineno
                         // Removed "addr" - not useful for visualization and saves space
                     })
                 })
@@ -655,24 +659,8 @@ impl<W> HydroJson<W> {
                     continue;
                 }
 
-                // Filter to user-relevant frames using structured data
-                let user_frames: Vec<_> = elements
-                    .iter()
-                    .filter(|elem| {
-                        let filename = elem.filename.as_deref().unwrap_or("");
-                        let fn_name = &elem.fn_name;
-                        // Include frames that are from user code (more precise filtering)
-                        filename.contains("hydro_test")
-                            || filename.contains("/src/")
-                            || (filename.contains("examples/") && !filename.contains(".cargo/"))
-                            || (!filename.contains(".cargo/registry/")
-                                && !filename.contains(".rustup/toolchains/")
-                                && !fn_name.starts_with("std::")
-                                && !fn_name.starts_with("core::")
-                                && !fn_name.contains("tokio::"))
-                    })
-                    .take(5)
-                    .collect();
+                // Do not filter frames for now; just take the first few for brevity
+                let user_frames: Vec<_> = elements.iter().take(5).collect();
                 if user_frames.is_empty() {
                     continue;
                 }
@@ -907,7 +895,6 @@ pub fn hydro_ir_to_json(
 }
 
 /// Open JSON visualization in browser using the docs visualizer with URL-encoded data
-#[cfg(feature = "viz")]
 pub fn open_json_browser(
     ir: &[HydroRoot],
     process_names: Vec<(usize, String)>,
