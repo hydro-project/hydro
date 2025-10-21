@@ -88,12 +88,14 @@ function HydroscopePage() {
       description="Interactive graph visualization"
       noFooter={true}
     >
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        height: 'calc(100vh - var(--ifm-navbar-height, 60px))',
-        overflow: 'hidden' 
-      }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "calc(100vh - var(--ifm-navbar-height, 60px))",
+          overflow: "hidden",
+        }}
+      >
         <Hydroscope
           data={urlData} // Pass URL data if available
           height="100%"

@@ -145,7 +145,7 @@ const config = {
             href: "https://github.com/hydro-project/hydro",
             position: "right",
             className: "header-github-link",
-            "aria-label": "GitHub Repository"
+            "aria-label": "GitHub Repository",
           },
           {
             href: "https://discord.gg/QXKwMNA6RS",
