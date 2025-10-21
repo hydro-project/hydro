@@ -9,7 +9,7 @@
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">super</span>::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">super</span>::ir::{HydroRoot, emit};
 <a href=#11 id=11 data-nosnippet>11</a><span class="attr">#[cfg(feature = <span class="string">"viz"</span>)]
-<a href=#12 id=12 data-nosnippet>12</a></span><span class="kw">use </span><span class="kw">crate</span>::graph::api::GraphApi;
+<a href=#12 id=12 data-nosnippet>12</a></span><span class="kw">use </span><span class="kw">crate</span>::viz::api::GraphApi;
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span><span class="kw">crate</span>::location::{Cluster, External, Process};
 <a href=#14 id=14 data-nosnippet>14</a><span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#15 id=15 data-nosnippet>15</a>#[cfg(stageleft_runtime)]
@@ -381,7 +381,7 @@
 <a href=#381 id=381 data-nosnippet>381</a>    <span class="attr">#[cfg(feature = <span class="string">"viz"</span>)]
 <a href=#382 id=382 data-nosnippet>382</a>    </span><span class="kw">pub fn </span>generate_graph_with_config(
 <a href=#383 id=383 data-nosnippet>383</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#384 id=384 data-nosnippet>384</a>        config: <span class="kw-2">&amp;</span><span class="kw">crate</span>::graph::config::GraphConfig,
+<a href=#384 id=384 data-nosnippet>384</a>        config: <span class="kw-2">&amp;</span><span class="kw">crate</span>::viz::config::GraphConfig,
 <a href=#385 id=385 data-nosnippet>385</a>        message_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">dyn </span>Fn(<span class="kw-2">&amp;</span>str)&gt;,
 <a href=#386 id=386 data-nosnippet>386</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
 <a href=#387 id=387 data-nosnippet>387</a>        <span class="self">self</span>.graph_api()
@@ -391,7 +391,7 @@
 <a href=#391 id=391 data-nosnippet>391</a>    <span class="attr">#[cfg(feature = <span class="string">"viz"</span>)]
 <a href=#392 id=392 data-nosnippet>392</a>    </span><span class="kw">pub fn </span>generate_all_files_with_config(
 <a href=#393 id=393 data-nosnippet>393</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#394 id=394 data-nosnippet>394</a>        config: <span class="kw-2">&amp;</span><span class="kw">crate</span>::graph::config::GraphConfig,
+<a href=#394 id=394 data-nosnippet>394</a>        config: <span class="kw-2">&amp;</span><span class="kw">crate</span>::viz::config::GraphConfig,
 <a href=#395 id=395 data-nosnippet>395</a>        prefix: <span class="kw-2">&amp;</span>str,
 <a href=#396 id=396 data-nosnippet>396</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
 <a href=#397 id=397 data-nosnippet>397</a>        <span class="self">self</span>.graph_api()
