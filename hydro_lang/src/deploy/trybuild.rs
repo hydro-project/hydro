@@ -325,7 +325,7 @@ crate-type = [{}]
 
 [[example]]
 name = "sim-dylib"
-crate-type = ["dylib"]"#,
+crate-type = ["cdylib"]"#,
             manifest_toml,
             if cfg!(target_os = "windows") {
                 r#""rlib""# // see https://github.com/bevyengine/bevy/pull/2016
