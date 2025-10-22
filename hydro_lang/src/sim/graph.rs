@@ -332,11 +332,11 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     if let Ok(fuzzer) = std::env::var("BOLERO_FUZZER") {
         command.env_remove("BOLERO_FUZZER");
         command.env_remove("RUSTFLAGS");
+        command.env("RUSTFLAGS", "-Cprefer-dynamic");
 
         if fuzzer == "libfuzzer" {
             command.args([
                 "--",
-                "-Cprefer-dynamic",
                 "-Clink-arg=-undefined",
                 "-Clink-arg=dynamic_lookup",
                 "-Cpasses=sancov-module",
@@ -346,7 +346,7 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
                 "-Cllvm-args=-sanitizer-coverage-trace-compares",
             ]);
         }
-    } else if IS_TEST.load(std::sync::atomic::Ordering::Relaxed) {
+    } else {
         command.env("RUSTFLAGS", "-C prefer-dynamic");
 
         if cfg!(target_os = "macos") {
@@ -387,6 +387,7 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     for message in cargo_metadata::Message::parse_stream(reader) {
         match message.unwrap() {
             cargo_metadata::Message::CompilerArtifact(artifact) => {
+                // unlike dylib, cdylib only exports the explicitly exported symbols
                 let is_output = artifact.target.crate_types.contains(&"cdylib".to_string());
 
                 if is_output {
