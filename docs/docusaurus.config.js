@@ -6,21 +6,7 @@ import { themes } from "prism-react-renderer";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 
-// Early visibility for build flags regardless of webpack output buffering
-const _envSkipAll = process.env.SKIP_MINIFY_ALL === "1" ? "1" : (process.env.SKIP_MINIFY_ALL || "0");
-const _envSkipHydro = process.env.SKIP_MINIFY_HYDROSCOPE === "1" ? "1" : (process.env.SKIP_MINIFY_HYDROSCOPE || "0");
-const _envCI = process.env.CI === "true" ? "true" : (process.env.CI || "");
-try {
-  // These logs help confirm which minify path is active when running `npm run build` directly
-  console.log(`[docs] flags: SKIP_MINIFY_ALL=${_envSkipAll} SKIP_MINIFY_HYDROSCOPE=${_envSkipHydro} CI=${_envCI}`);
-  if (_envSkipAll === "1") {
-    console.log("[docs] resolved: disabling ALL JS minification and source maps");
-  } else if (_envSkipHydro === "1" || _envCI === "true") {
-    console.log("[docs] resolved: excluding @hydro-project/hydroscope from Terser minification");
-  } else {
-    console.log("[docs] resolved: default minification (no skips)");
-  }
-} catch {}
+
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -109,68 +95,6 @@ const config = {
       },
     ],
     require.resolve("./wasm-plugin.js"),
-    function skipMinifyHydroscope() {
-      return {
-        name: "skip-minify-hydroscope",
-        configureWebpack(config, isServer) {
-          const skipHydroscope =
-            process.env.SKIP_MINIFY_HYDROSCOPE === "1" ||
-            process.env.CI === "true";
-          const skipAll = process.env.SKIP_MINIFY_ALL === "1";
-          // Diagnostics to verify minification settings during builds (printed once per compiler)
-          console.log(
-            `[docs] configureWebpack isServer=${isServer} SKIP_MINIFY_ALL=${process.env.SKIP_MINIFY_ALL} SKIP_MINIFY_HYDROSCOPE=${process.env.SKIP_MINIFY_HYDROSCOPE} CI=${process.env.CI}`
-          );
-          if (skipAll && !isServer && config.optimization) {
-            // Disable JS minification entirely (fastest builds)
-            config.optimization.minimize = false;
-            // Speed up asset processing by skipping expensive real content hashing
-            // This slightly changes long-term caching characteristics but is fine for CI builds
-            // and does not affect site correctness.
-            // Webpack 5 option: https://webpack.js.org/configuration/optimization/#optimizationrealcontenthash
-            // Guard if the field exists in this webpack version.
-            try {
-              // @ts-ignore
-              config.optimization.realContentHash = false;
-              console.log("[docs] SKIP_MINIFY_ALL=1: Disabled optimization.realContentHash for faster asset processing.");
-            } catch {}
-            // Also disable source maps in prod for speed
-            config.devtool = false;
-            console.log(
-              "[docs] SKIP_MINIFY_ALL=1: Disabled all JS minification and source maps for client build."
-            );
-            return {};
-          }
-          if (!skipHydroscope || isServer || !config.optimization) return {};
-          try {
-            for (const minimizer of config.optimization.minimizer || []) {
-              if (
-                minimizer &&
-                minimizer.constructor &&
-                minimizer.constructor.name === "TerserPlugin"
-              ) {
-                // @ts-ignore - webpack plugin types don't expose .options, but TerserPlugin supports it
-                minimizer.options = {
-                  // @ts-ignore
-                  ...(minimizer.options || {}),
-                  exclude: /node_modules\/@hydro-project\/hydroscope/,
-                  parallel: true,
-                };
-                console.log(
-                  "[docs] CI=1 or SKIP_MINIFY_HYDROSCOPE=1: Excluding @hydro-project/hydroscope from Terser minification."
-                );
-              }
-            }
-          } catch (e) {
-            console.warn(
-              "[docs] Failed to tweak TerserPlugin to exclude Hydroscope:",
-              e
-            );
-          }
-          return {};
-        },
-      };
-    },
   ],
 
   themeConfig:

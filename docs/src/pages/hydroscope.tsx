@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Layout from "@theme/Layout";
 import BrowserOnly from "@docusaurus/BrowserOnly";
-import "@xyflow/react/dist/style.css";
 
 import { Hydroscope, parseDataFromUrl } from "@hydro-project/hydroscope";
 
@@ -130,7 +129,11 @@ function HydroscopePage() {
 export default function HydroscopePageWrapper() {
   return (
     <BrowserOnly fallback={<div>Loading...</div>}>
-      {() => <HydroscopePage />}
+      {() => {
+        // Import CSS only in browser context
+        require("@xyflow/react/dist/style.css");
+        return <HydroscopePage />;
+      }}
     </BrowserOnly>
   );
 }

@@ -87,12 +87,10 @@ impl<'a> GraphApi<'a> {
         match format {
             GraphFormat::Mermaid => Ok(crate::viz::debug::open_mermaid(self.ir, Some(config))?),
             GraphFormat::Dot => Ok(crate::viz::debug::open_dot(self.ir, Some(config))?),
-            GraphFormat::Hydroscope => {
-                Ok(crate::viz::debug::open_json_visualizer(
-                    self.ir,
-                    Some(config),
-                )?)
-            }
+            GraphFormat::Hydroscope => Ok(crate::viz::debug::open_json_visualizer(
+                self.ir,
+                Some(config),
+            )?),
         }
     }
 
