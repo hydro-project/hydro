@@ -120,10 +120,9 @@ impl Debug for BacktraceElement {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(unix)]
     use super::*;
 
-    #[cfg(unix)]
+    #[cfg_attr(not(target_os = "linux"), ignore)]
     #[test]
     fn test_backtrace() {
         let backtrace = Backtrace::get_backtrace(0);
