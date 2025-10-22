@@ -6,8 +6,6 @@ import { themes } from "prism-react-renderer";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 
-
-
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "Hydro",
