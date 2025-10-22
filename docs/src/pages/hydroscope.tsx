@@ -2,16 +2,26 @@ import React, { useState, useEffect } from "react";
 import Layout from "@theme/Layout";
 import BrowserOnly from "@docusaurus/BrowserOnly";
 
-import { Hydroscope, parseDataFromUrl } from "@hydro-project/hydroscope";
-
 function HydroscopePage() {
+  const [HydroscopeComponent, setHydroscopeComponent] = useState<any>(null);
   const [urlData, setUrlData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Parse URL parameters on mount
+  // Dynamically import Hydroscope library on mount (browser only)
   useEffect(() => {
-    const parseUrlData = async () => {
+    const loadHydroscope = async () => {
+      try {
+        const hydroscopeModule = await import("@hydro-project/hydroscope");
+        setHydroscopeComponent(() => hydroscopeModule.Hydroscope);
+      } catch (err) {
+        console.error("❌ Failed to load Hydroscope:", err);
+        setError("Failed to load Hydroscope library");
+        setLoading(false);
+        return;
+      }
+
+      // Parse URL parameters after library is loaded
       try {
         const searchParams = new URLSearchParams(window.location.search);
         let dataParam = searchParams.get("data");
@@ -28,7 +38,8 @@ function HydroscopePage() {
         }
 
         if (dataParam || compressedParam) {
-          const parsedData = await parseDataFromUrl(dataParam, compressedParam);
+          const hydroscopeModule = await import("@hydro-project/hydroscope");
+          const parsedData = await hydroscopeModule.parseDataFromUrl(dataParam, compressedParam);
           if (parsedData) {
             setUrlData(parsedData);
           }
@@ -39,18 +50,18 @@ function HydroscopePage() {
           err instanceof Error
             ? err.message
             : typeof err === "string"
-            ? err
-            : "Unknown error";
+              ? err
+              : "Unknown error";
         setError(`Failed to parse URL data: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
     };
 
-    parseUrlData();
+    loadHydroscope();
   }, []);
 
-  if (loading) {
+  if (loading || !HydroscopeComponent) {
     return (
       <Layout title="Hydroscope" description="Interactive graph visualization">
         <div style={{ padding: "40px", textAlign: "center" }}>
@@ -105,7 +116,7 @@ function HydroscopePage() {
           overflow: "hidden",
         }}
       >
-        <Hydroscope
+        <HydroscopeComponent
           data={urlData} // Pass URL data if available
           height="100%"
           width="100%"
@@ -115,7 +126,7 @@ function HydroscopePage() {
           // showInfoPanel, showStylePanel, enableCollapse all default to true
           // initialLayoutAlgorithm defaults to mrtree
           // initialColorPalette defaults to Set3
-          onFileUpload={(data, filename) => {
+          onFileUpload={(data) => {
             // Update the data state so the component shows the visualization
             setUrlData(data);
           }}
