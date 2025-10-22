@@ -6,6 +6,22 @@ import { themes } from "prism-react-renderer";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 
+// Early visibility for build flags regardless of webpack output buffering
+const _envSkipAll = process.env.SKIP_MINIFY_ALL === "1" ? "1" : (process.env.SKIP_MINIFY_ALL || "0");
+const _envSkipHydro = process.env.SKIP_MINIFY_HYDROSCOPE === "1" ? "1" : (process.env.SKIP_MINIFY_HYDROSCOPE || "0");
+const _envCI = process.env.CI === "true" ? "true" : (process.env.CI || "");
+try {
+  // These logs help confirm which minify path is active when running `npm run build` directly
+  console.log(`[docs] flags: SKIP_MINIFY_ALL=${_envSkipAll} SKIP_MINIFY_HYDROSCOPE=${_envSkipHydro} CI=${_envCI}`);
+  if (_envSkipAll === "1") {
+    console.log("[docs] resolved: disabling ALL JS minification and source maps");
+  } else if (_envSkipHydro === "1" || _envCI === "true") {
+    console.log("[docs] resolved: excluding @hydro-project/hydroscope from Terser minification");
+  } else {
+    console.log("[docs] resolved: default minification (no skips)");
+  }
+} catch {}
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "Hydro",

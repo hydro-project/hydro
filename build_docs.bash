@@ -45,9 +45,9 @@ echo "========================================="
 echo "Step 7/7: Building Docusaurus site..."
 echo "Note: This step may take several minutes during minification (TerserPlugin)"
 echo "Note: Set SKIP_MINIFY_ALL=1 to speed up builds by disabling minification"
-echo "SKIP_MINIFY_ALL=${SKIP_MINIFY_ALL:-0}"
+echo "SKIP_MINIFY_ALL=${SKIP_MINIFY_ALL:-0} SKIP_MINIFY_HYDROSCOPE=${SKIP_MINIFY_HYDROSCOPE:-0} CI=${CI:-}"
 echo "========================================="
-LOAD_PLAYGROUND=1 SKIP_MINIFY_ALL="${SKIP_MINIFY_ALL:-0}" npm run build
+LOAD_PLAYGROUND=1 SKIP_MINIFY_ALL="${SKIP_MINIFY_ALL:-0}" SKIP_MINIFY_HYDROSCOPE="${SKIP_MINIFY_HYDROSCOPE:-0}" npm run build
 
 echo "========================================="
 echo "Build complete!"
