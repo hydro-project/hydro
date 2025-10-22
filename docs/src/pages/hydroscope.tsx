@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Layout from "@theme/Layout";
-import BrowserOnly from "@docusaurus/BrowserOnly";
 
-function HydroscopePage() {
+export default function HydroscopePage() {
   const [HydroscopeComponent, setHydroscopeComponent] = useState<any>(null);
   const [urlData, setUrlData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -10,8 +9,17 @@ function HydroscopePage() {
 
   // Dynamically import Hydroscope library on mount (browser only)
   useEffect(() => {
+    // Only run in browser
+    if (typeof window === "undefined") {
+      return;
+    }
+
     const loadHydroscope = async () => {
       try {
+        // Import CSS first
+        await import("@xyflow/react/dist/style.css");
+
+        // Then import the library
         const hydroscopeModule = await import("@hydro-project/hydroscope");
         setHydroscopeComponent(() => hydroscopeModule.Hydroscope);
       } catch (err) {
@@ -28,18 +36,19 @@ function HydroscopePage() {
         let compressedParam = searchParams.get("compressed");
 
         // Fallback: also support hash fragment params (#data= / #compressed=)
-        if (!dataParam && !compressedParam && typeof window !== "undefined") {
-          const hash = window.location.hash?.replace(/^#/, "");
-          if (hash) {
-            const hashParams = new URLSearchParams(hash);
-            dataParam = hashParams.get("data") || dataParam;
-            compressedParam = hashParams.get("compressed") || compressedParam;
-          }
+        const hash = window.location.hash?.replace(/^#/, "");
+        if (hash && !dataParam && !compressedParam) {
+          const hashParams = new URLSearchParams(hash);
+          dataParam = hashParams.get("data") || dataParam;
+          compressedParam = hashParams.get("compressed") || compressedParam;
         }
 
         if (dataParam || compressedParam) {
           const hydroscopeModule = await import("@hydro-project/hydroscope");
-          const parsedData = await hydroscopeModule.parseDataFromUrl(dataParam, compressedParam);
+          const parsedData = await hydroscopeModule.parseDataFromUrl(
+            dataParam,
+            compressedParam
+          );
           if (parsedData) {
             setUrlData(parsedData);
           }
@@ -133,18 +142,5 @@ function HydroscopePage() {
         />
       </div>
     </Layout>
-  );
-}
-
-// Main export with BrowserOnly wrapper
-export default function HydroscopePageWrapper() {
-  return (
-    <BrowserOnly fallback={<div>Loading...</div>}>
-      {() => {
-        // Import CSS only in browser context
-        require("@xyflow/react/dist/style.css");
-        return <HydroscopePage />;
-      }}
-    </BrowserOnly>
   );
 }
