@@ -97,18 +97,25 @@ const config = {
       return {
         name: "skip-minify-hydroscope",
         configureWebpack(config, isServer) {
-          const skip =
+          const skipHydroscope =
             process.env.SKIP_MINIFY_HYDROSCOPE === "1" ||
             process.env.CI === "true";
           const skipAll = process.env.SKIP_MINIFY_ALL === "1";
+          // Diagnostics to verify minification settings during builds (printed once per compiler)
+          console.log(
+            `[docs] configureWebpack isServer=${isServer} SKIP_MINIFY_ALL=${process.env.SKIP_MINIFY_ALL} SKIP_MINIFY_HYDROSCOPE=${process.env.SKIP_MINIFY_HYDROSCOPE} CI=${process.env.CI}`
+          );
           if (skipAll && !isServer && config.optimization) {
             // Disable JS minification entirely (fastest builds)
             config.optimization.minimize = false;
             // Also disable source maps in prod for speed
             config.devtool = false;
+            console.log(
+              "[docs] SKIP_MINIFY_ALL=1: Disabled all JS minification and source maps for client build."
+            );
             return {};
           }
-          if (!skip || isServer || !config.optimization) return {};
+          if (!skipHydroscope || isServer || !config.optimization) return {};
           try {
             for (const minimizer of config.optimization.minimizer || []) {
               if (
@@ -123,6 +130,9 @@ const config = {
                   exclude: /node_modules\/@hydro-project\/hydroscope/,
                   parallel: true,
                 };
+                console.log(
+                  "[docs] CI=1 or SKIP_MINIFY_HYDROSCOPE=1: Excluding @hydro-project/hydroscope from Terser minification."
+                );
               }
             }
           } catch (e) {
@@ -136,7 +146,6 @@ const config = {
       };
     },
   ],
-
 
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
