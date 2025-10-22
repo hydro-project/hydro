@@ -298,6 +298,20 @@ pub fn create_trybuild()
         let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
         project_lock.lock()?;
 
+        write_atomic(
+            prettyplease::unparse(&syn::parse_quote! {
+                fn main() {
+                    println!("cargo::rerun-if-env-changed=TRYBUILD_DYNAMIC_FUZZ");
+                    if std::env::var("TRYBUILD_DYNAMIC_FUZZ").is_ok() {
+                        println!("cargo::rustc-link-arg=-undefined");
+                        println!("cargo::rustc-link-arg=dynamic_lookup");
+                    }
+                }
+            })
+            .as_bytes(),
+            &path!(project.dir / "build.rs"),
+        )?;
+
         fs::create_dir_all(path!(project.dir / "src"))?;
 
         let crate_name_ident = syn::Ident::new(&crate_name.replace("-", "_"), Span::call_site());
@@ -325,7 +339,7 @@ crate-type = [{}]
 
 [[example]]
 name = "sim-dylib"
-crate-type = ["dylib"]"#,
+crate-type = ["cdylib"]"#,
             manifest_toml,
             if cfg!(target_os = "windows") {
                 r#""rlib""# // see https://github.com/bevyengine/bevy/pull/2016
