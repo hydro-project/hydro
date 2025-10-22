@@ -124,6 +124,16 @@ const config = {
           if (skipAll && !isServer && config.optimization) {
             // Disable JS minification entirely (fastest builds)
             config.optimization.minimize = false;
+            // Speed up asset processing by skipping expensive real content hashing
+            // This slightly changes long-term caching characteristics but is fine for CI builds
+            // and does not affect site correctness.
+            // Webpack 5 option: https://webpack.js.org/configuration/optimization/#optimizationrealcontenthash
+            // Guard if the field exists in this webpack version.
+            try {
+              // @ts-ignore
+              config.optimization.realContentHash = false;
+              console.log("[docs] SKIP_MINIFY_ALL=1: Disabled optimization.realContentHash for faster asset processing.");
+            } catch {}
             // Also disable source maps in prod for speed
             config.devtool = false;
             console.log(
