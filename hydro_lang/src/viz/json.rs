@@ -67,7 +67,6 @@ impl<W> HydroJson<W> {
             HydroEdgeType::Optional => "Optional".to_string(),
             HydroEdgeType::Network => "Network".to_string(),
             HydroEdgeType::Cycle => "Cycle".to_string(),
-            HydroEdgeType::Persistent => "Persistent".to_string(),
         }
     }
 
@@ -174,16 +173,6 @@ impl<W> HydroJson<W> {
                         "arrowhead": "diamond-open"
                     }
                 },
-
-                // Flow group - controls flow direction or persistence
-                "FlowGroup": {
-                    "Transient": {
-                        "persistence": "none"
-                    },
-                    "Persistent": {
-                        "persistence": "stored"
-                    }
-                }
             },
             "note": "Edge styles are now computed per-edge using the unified edge style system. This config is provided for reference and compatibility."
         })
@@ -193,7 +182,6 @@ impl<W> HydroJson<W> {
     /// 1. Remove redundant/non-essential frames
     /// 2. Truncate paths
     /// 3. Remove memory addresses (not useful for visualization)
-    /// 4. Limit frame count for size efficiency
     fn optimize_backtrace(&self, backtrace: &Backtrace) -> serde_json::Value {
         #[cfg(feature = "build")]
         {
@@ -669,8 +657,8 @@ impl<W> HydroJson<W> {
                     continue;
                 }
 
-                // Do not filter frames for now; just take the first few for brevity
-                let user_frames: Vec<_> = elements.iter().take(5).collect();
+                // Do not filter frames for now
+                let user_frames = elements;
                 if user_frames.is_empty() {
                     continue;
                 }
@@ -726,9 +714,8 @@ impl<W> HydroJson<W> {
                 }
             }
         }
-        // Build hierarchy tree and create proper ID mapping
         // Build hierarchy tree and create proper ID mapping (deterministic)
-        let (mut hierarchy, mut path_to_id_map) =
+        let (mut hierarchy, mut path_to_id_map, id_remapping) =
             self.build_hierarchy_tree_with_ids(&hierarchy_map);
 
         // Create a root node for nodes without backtraces
@@ -778,14 +765,31 @@ impl<W> HydroJson<W> {
             node_assignments.insert(node_id, serde_json::Value::String(root_id.clone()));
         }
 
-        (hierarchy, node_assignments)
+        // CRITICAL FIX: Apply ID remapping to node assignments
+        // When containers are collapsed, their IDs change, but nodeAssignments still reference old IDs
+        // We need to update all assignments to use the new (collapsed) container IDs
+        let mut remapped_assignments = serde_json::Map::new();
+        for (node_id, container_id_value) in node_assignments.iter() {
+            if let Some(container_id) = container_id_value.as_str() {
+                // Check if this container ID was remapped during collapsing
+                let final_container_id = id_remapping.get(container_id)
+                    .map(|s| s.as_str())
+                    .unwrap_or(container_id);
+                remapped_assignments.insert(
+                    node_id.clone(),
+                    serde_json::Value::String(final_container_id.to_string()),
+                );
+            }
+        }
+
+        (hierarchy, remapped_assignments)
     }
 
     /// Build a tree structure and return both the tree and path-to-ID mapping
     fn build_hierarchy_tree_with_ids(
         &self,
         hierarchy_map: &HashMap<String, (String, usize, Option<String>)>,
-    ) -> (Vec<serde_json::Value>, HashMap<String, String>) {
+    ) -> (Vec<serde_json::Value>, HashMap<String, String>, HashMap<String, String>) {
         // Assign IDs deterministically based on sorted path names
         let mut keys: Vec<&String> = hierarchy_map.keys().collect();
         keys.sort();
@@ -812,7 +816,23 @@ impl<W> HydroJson<W> {
             root_nodes.push(tree_node);
         }
 
-        (root_nodes, path_to_id)
+        // Apply top-down collapsing of single-child container chains
+        // and build a mapping of old IDs to new IDs
+        let mut id_remapping: HashMap<String, String> = HashMap::new();
+        root_nodes = root_nodes
+            .into_iter()
+            .map(|node| Self::collapse_single_child_containers(node, None, &mut id_remapping))
+            .collect();
+
+        // Update path_to_id with remappings
+        let mut updated_path_to_id = path_to_id.clone();
+        for (path, old_id) in path_to_id.iter() {
+            if let Some(new_id) = id_remapping.get(old_id) {
+                updated_path_to_id.insert(path.clone(), new_id.clone());
+            }
+        }
+
+        (root_nodes, updated_path_to_id, id_remapping)
     }
 
     /// Build a single tree node recursively
@@ -859,6 +879,93 @@ impl<W> HydroJson<W> {
                 "children": children
             })
         }
+    }
+
+    /// Collapse single-child container chains (top-down)
+    /// When a container has exactly one child AND that child is also a container,
+    /// we collapse them by keeping the child's ID and combining names.
+    /// parent_name is used to accumulate names during recursion (None for roots)
+    /// id_remapping tracks which old IDs map to which new IDs after collapsing
+    fn collapse_single_child_containers(
+        node: serde_json::Value,
+        parent_name: Option<String>,
+        id_remapping: &mut HashMap<String, String>,
+    ) -> serde_json::Value {
+        let mut node_obj = match node {
+            serde_json::Value::Object(obj) => obj,
+            _ => return node,
+        };
+
+        let current_name = node_obj
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let current_id = node_obj
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Determine the effective name (combined with parent if collapsing)
+        // Use ← to show call chain (parent called child)
+        let effective_name = if let Some(parent) = parent_name.clone() {
+            format!("{} ← {}", parent, current_name)
+        } else {
+            current_name.clone()
+        };
+
+        // Check if this node has children (is a container)
+        if let Some(serde_json::Value::Array(children)) = node_obj.get("children") {
+            // If exactly one child AND that child is also a container
+            if children.len() == 1 {
+                if let Some(child) = children.first() {
+                    let child_is_container = child
+                        .get("children")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| !arr.is_empty())
+                        .unwrap_or(false);
+
+                    if child_is_container {
+                        let child_id = child
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+
+                        // Record that this parent's ID should map to the child's ID
+                        if !current_id.is_empty() && !child_id.is_empty() {
+                            id_remapping.insert(current_id.clone(), child_id.clone());
+                        }
+
+                        // Collapse: recursively process the child with accumulated name
+                        return Self::collapse_single_child_containers(
+                            child.clone(),
+                            Some(effective_name),
+                            id_remapping,
+                        );
+                    }
+                }
+            }
+
+            // Not collapsing: process children normally and update name if accumulated
+            let processed_children: Vec<serde_json::Value> = children
+                .iter()
+                .map(|child| Self::collapse_single_child_containers(child.clone(), None, id_remapping))
+                .collect();
+
+            node_obj.insert("name".to_string(), serde_json::Value::String(effective_name));
+            node_obj.insert(
+                "children".to_string(),
+                serde_json::Value::Array(processed_children),
+            );
+        } else {
+            // Leaf node: just update name if accumulated
+            node_obj.insert("name".to_string(), serde_json::Value::String(effective_name));
+        }
+
+        serde_json::Value::Object(node_obj)
     }
 
     /// Extract meaningful file path

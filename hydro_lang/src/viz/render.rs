@@ -196,8 +196,6 @@ pub enum HydroEdgeType {
     Optional,
     Network,
     Cycle,
-    // Legacy types for backward compatibility
-    Persistent,
 }
 
 /// Unified edge style representation for all graph formats.
@@ -675,24 +673,18 @@ fn add_edge_with_metadata(
     structure.add_edge(src_id, dst_id, properties, label);
 }
 
-impl HydroRoot {
-    /// Core graph writing logic that works with any GraphWrite implementation.
-    pub fn write_graph<W>(
-        &self,
-        mut graph_write: W,
-        config: &HydroWriteConfig,
-    ) -> Result<(), W::Err>
-    where
-        W: HydroGraphWrite,
-    {
-        let mut structure = HydroGraphStructure::new();
-        let mut seen_tees = HashMap::new();
-
-        // Build the graph structure by traversing the IR
-        let _sink_id = self.build_graph_structure(&mut structure, &mut seen_tees, config);
-
-        // Write the graph
-        graph_write.write_prologue()?;
+/// Helper function to write a graph structure using any GraphWrite implementation
+fn write_graph_structure<W>(
+    structure: &HydroGraphStructure,
+    graph_write: W,
+    config: &HydroWriteConfig,
+) -> Result<(), W::Err>
+where
+    W: HydroGraphWrite,
+{
+    let mut graph_write = graph_write;
+    // Write the graph
+    graph_write.write_prologue()?;
 
         // Write node definitions
         for (&node_id, (label, node_type, location, backtrace)) in &structure.nodes {
@@ -743,10 +735,11 @@ impl HydroRoot {
             graph_write.write_edge(*src_id, *dst_id, edge_properties, label.as_deref())?;
         }
 
-        graph_write.write_epilogue()?;
-        Ok(())
-    }
+    graph_write.write_epilogue()?;
+    Ok(())
+}
 
+impl HydroRoot {
     /// Build the graph structure by traversing the IR tree.
     pub fn build_graph_structure(
         &self,
@@ -1079,7 +1072,7 @@ impl HydroNode {
                 node_type: HydroNodeType::Transform,
             }),
 
-            // Transform operation with Persistent edge - semantic tags extracted from metadata
+            // Transform operation - semantic tags extracted from metadata
             HydroNode::Persist { inner, metadata } => build_simple_transform(TransformParams {
                 structure,
                 seen_tees,
@@ -1276,10 +1269,11 @@ impl HydroNode {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let watermark_id = watermark.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
-                let join_node_id = structure.add_node(
+                let join_node_id = structure.add_node_with_backtrace(
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
                     location_id,
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 // Extract semantic tags for input edge
@@ -1304,13 +1298,14 @@ impl HydroNode {
                     Some("watermark".to_string()),
                 );
 
-                let node_id = structure.add_node(
+                let node_id = structure.add_node_with_backtrace(
                     NodeLabel::with_exprs(
                         extract_op_name(self.print_root()).to_string(),
                         vec![f.clone()],
                     ),
                     HydroNodeType::Aggregation,
                     location_id,
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 // Edge from join to aggregation node
@@ -1351,20 +1346,21 @@ impl HydroNode {
 
                 let mut label = "network(".to_string();
                 if serialize_fn.is_some() {
-                    label.push_str("ser");
+                    label.push_str("send");
                 }
                 if deserialize_fn.is_some() {
                     if serialize_fn.is_some() {
                         label.push_str(" + ");
                     }
-                    label.push_str("deser");
+                    label.push_str("recv");
                 }
                 label.push(')');
 
-                let network_id = structure.add_node(
+                let network_id = structure.add_node_with_backtrace(
                     NodeLabel::Static(label),
                     HydroNodeType::Network,
                     to_location_id,
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 // Extract semantic tags for network edge
@@ -1408,10 +1404,11 @@ impl HydroNode {
                 let first_id = first.build_graph_structure(structure, seen_tees, config);
                 let second_id = second.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
-                let chain_id = structure.add_node(
+                let chain_id = structure.add_node_with_backtrace(
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Transform,
                     location_id,
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 // Extract semantic tags for first edge
@@ -1447,10 +1444,11 @@ impl HydroNode {
                 let first_id = first.build_graph_structure(structure, seen_tees, config);
                 let second_id = second.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
-                let chain_id = structure.add_node(
+                let chain_id = structure.add_node_with_backtrace(
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Transform,
                     location_id,
+                    Some(metadata.op.backtrace.clone()),
                 );
 
                 // Extract semantic tags for first edge
@@ -1544,7 +1542,7 @@ render_hydro_ir!(render_hydro_ir_json, write_hydro_ir_json);
 write_hydro_ir!(write_hydro_ir_json, HydroJson<_>, HydroJson::new);
 
 fn write_hydro_ir_graph<W>(
-    mut graph_write: W,
+    graph_write: W,
     roots: &[HydroRoot],
     config: &HydroWriteConfig,
 ) -> Result<(), W::Err>
@@ -1553,60 +1551,11 @@ where
 {
     let mut structure = HydroGraphStructure::new();
     let mut seen_tees = HashMap::new();
-
+    
     // Build the graph structure for all roots
     for leaf in roots {
         leaf.build_graph_structure(&mut structure, &mut seen_tees, config);
     }
-
-    // Write the graph using the same logic as individual roots
-    graph_write.write_prologue()?;
-
-    for (&node_id, (label, node_type, location, backtrace)) in &structure.nodes {
-        let (location_id, location_type) = if let Some(loc_id) = location {
-            (
-                Some(*loc_id),
-                structure.locations.get(loc_id).map(|s| s.as_str()),
-            )
-        } else {
-            (None, None)
-        };
-        graph_write.write_node_definition(
-            node_id,
-            label,
-            *node_type,
-            location_id,
-            location_type,
-            backtrace.as_ref(),
-        )?;
-    }
-
-    if config.show_location_groups {
-        let mut nodes_by_location: HashMap<usize, Vec<usize>> = HashMap::new();
-        for (&node_id, (_, _, location, _)) in &structure.nodes {
-            if let Some(location_id) = location {
-                nodes_by_location
-                    .entry(*location_id)
-                    .or_default()
-                    .push(node_id);
-            }
-        }
-
-        for (&location_id, node_ids) in &nodes_by_location {
-            if let Some(location_type) = structure.locations.get(&location_id) {
-                graph_write.write_location_start(location_id, location_type)?;
-                for &node_id in node_ids {
-                    graph_write.write_node(node_id)?;
-                }
-                graph_write.write_location_end()?;
-            }
-        }
-    }
-
-    for (src_id, dst_id, edge_properties, label) in &structure.edges {
-        graph_write.write_edge(*src_id, *dst_id, edge_properties, label.as_deref())?;
-    }
-
-    graph_write.write_epilogue()?;
-    Ok(())
+    
+    write_graph_structure(&structure, graph_write, config)
 }

@@ -142,9 +142,7 @@ where
         let style = super::render::get_unified_edge_style(edge_properties, None, None);
 
         // Determine arrow style based on edge properties
-        let arrow_style = if edge_properties.contains(&HydroEdgeType::Persistent) {
-            "==>".to_string()
-        } else if edge_properties.contains(&HydroEdgeType::Network) {
+        let arrow_style = if edge_properties.contains(&HydroEdgeType::Network) {
             "-.->".to_string()
         } else {
             match style.line_pattern {
