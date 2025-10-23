@@ -150,7 +150,10 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                     {
                         // When compiling for local, prefer dynamic linking to reduce binary size
                         // Windows is currently not supported due to https://github.com/bevyengine/bevy/pull/2016
-                        command.env("RUSTFLAGS", "-C prefer-dynamic");
+                        command.env(
+                            "RUSTFLAGS",
+                            std::env::var("RUSTFLAGS").unwrap_or_default() + " -C prefer-dynamic",
+                        );
                         true
                     } else {
                         false
