@@ -4,7 +4,8 @@ set -e
 mkdir -p fuzz
 
 export CARGO_BUILD_TARGET=$(rustc -vV | grep 'host:' | awk '{print $2}')
-export RUSTFLAGS="-C prefer-dynamic -C opt-level=3 -C codegen-units=1 -Cpasses=sancov-module -Cllvm-args=-sanitizer-coverage-inline-8bit-counters -Cllvm-args=-sanitizer-coverage-level=4 -Cllvm-args=-sanitizer-coverage-pc-table -Cllvm-args=-sanitizer-coverage-trace-compares"
+CARGO_BUILD_UPPER=$(echo "$CARGO_BUILD_TARGET" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+declare "CARGO_TARGET_${CARGO_BUILD_UPPER}_RUSTFLAGS"="-C prefer-dynamic -C opt-level=3 -C codegen-units=1 -Cpasses=sancov-module -Cllvm-args=-sanitizer-coverage-inline-8bit-counters -Cllvm-args=-sanitizer-coverage-level=4 -Cllvm-args=-sanitizer-coverage-pc-table -Cllvm-args=-sanitizer-coverage-trace-compares"
 export BOLERO_FUZZER="libfuzzer"
 
 cargo test --lib ${@:2} --nocapture --test-threads=1

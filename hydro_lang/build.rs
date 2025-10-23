@@ -3,7 +3,15 @@ fn main() {
     {
         println!("cargo::rerun-if-env-changed=BOLERO_FUZZER");
         if std::env::var("BOLERO_FUZZER").is_ok() {
-            println!("cargo::rustc-link-arg=-export_dynamic");
+            #[cfg(target_os = "macos")]
+            {
+                println!("cargo::rustc-link-arg=-export_dynamic");
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                println!("cargo::rustc-link-arg=-Wl,-export-dynamic");
+            }
         }
     }
 
