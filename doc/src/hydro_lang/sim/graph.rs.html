@@ -324,7 +324,7 @@
 <a href=#324 id=324 data-nosnippet>324</a>        command.args([<span class="string">"--features"</span>, <span class="kw-2">&amp;</span>features.join(<span class="string">","</span>)]);
 <a href=#325 id=325 data-nosnippet>325</a>    }
 <a href=#326 id=326 data-nosnippet>326</a>    command.args([<span class="string">"--config"</span>, <span class="string">"build.incremental = false"</span>]);
-<a href=#327 id=327 data-nosnippet>327</a>    command.args([<span class="string">"--crate-type"</span>, <span class="string">"dylib"</span>]);
+<a href=#327 id=327 data-nosnippet>327</a>    command.args([<span class="string">"--crate-type"</span>, <span class="string">"cdylib"</span>]);
 <a href=#328 id=328 data-nosnippet>328</a>    command.arg(<span class="string">"--message-format=json-diagnostic-rendered-ansi"</span>);
 <a href=#329 id=329 data-nosnippet>329</a>    command.env(<span class="string">"STAGELEFT_TRYBUILD_BUILD_STAGED"</span>, <span class="string">"1"</span>);
 <a href=#330 id=330 data-nosnippet>330</a>    command.env(<span class="string">"TRYBUILD_LIB_NAME"</span>, <span class="kw-2">&amp;</span>bin);
@@ -387,7 +387,7 @@
 <a href=#387 id=387 data-nosnippet>387</a>    <span class="kw">for </span>message <span class="kw">in </span>cargo_metadata::Message::parse_stream(reader) {
 <a href=#388 id=388 data-nosnippet>388</a>        <span class="kw">match </span>message.unwrap() {
 <a href=#389 id=389 data-nosnippet>389</a>            cargo_metadata::Message::CompilerArtifact(artifact) =&gt; {
-<a href=#390 id=390 data-nosnippet>390</a>                <span class="kw">let </span>is_output = artifact.target.crate_types.contains(<span class="kw-2">&amp;</span><span class="string">"dylib"</span>.to_string());
+<a href=#390 id=390 data-nosnippet>390</a>                <span class="kw">let </span>is_output = artifact.target.crate_types.contains(<span class="kw-2">&amp;</span><span class="string">"cdylib"</span>.to_string());
 <a href=#391 id=391 data-nosnippet>391</a>
 <a href=#392 id=392 data-nosnippet>392</a>                <span class="kw">if </span>is_output {
 <a href=#393 id=393 data-nosnippet>393</a>                    <span class="kw">use </span>std::path::PathBuf;

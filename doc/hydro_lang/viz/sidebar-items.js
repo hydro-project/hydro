@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["api","config","debug","graphviz","json","mermaid","render"]};

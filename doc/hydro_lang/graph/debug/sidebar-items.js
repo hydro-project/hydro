@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["open_dot","open_mermaid","open_reactflow_browser","save_and_open_reactflow_browser","save_dot","save_mermaid","save_reactflow_json"]};
