@@ -329,50 +329,65 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     command.env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");
     command.env("TRYBUILD_LIB_NAME", &bin);
 
+    command.arg("--");
+
+    let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
+    if is_fuzz {
+        command.env(
+            "RUSTFLAGS",
+            std::env::var("RUSTFLAGS_OUTER").unwrap_or_default() + " -C prefer-dynamic",
+        );
+    } else {
+        command.env(
+            "RUSTFLAGS",
+            std::env::var("RUSTFLAGS").unwrap_or_default() + " -C prefer-dynamic",
+        );
+    }
+
+    if cfg!(target_os = "linux") {
+        let debug_path = if let Ok(target) = std::env::var("CARGO_BUILD_TARGET")
+            && !is_fuzz
+        {
+            path!(trybuild.target_dir / target / "debug")
+        } else {
+            path!(trybuild.target_dir / "debug")
+        };
+
+        command.args([&format!(
+            "-Clink-arg=-Wl,-rpath,{}",
+            debug_path.to_str().unwrap()
+        )]);
+
+        if cfg!(target_env = "gnu") {
+            command.arg(
+                // https://github.com/rust-lang/rust/issues/91979
+                "-Clink-args=-Wl,-z,nodelete",
+            );
+        }
+    }
+
     if let Ok(fuzzer) = std::env::var("BOLERO_FUZZER") {
         command.env_remove("BOLERO_FUZZER");
-        command.env_remove("RUSTFLAGS");
+        command.env_remove("CARGO_BUILD_TARGET");
 
         if fuzzer == "libfuzzer" {
+            #[cfg(target_os = "macos")]
+            {
+                command.args(["-Clink-arg=-undefined", "-Clink-arg=dynamic_lookup"]);
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                command.args(["-Clink-arg=-Wl,--unresolved-symbols=ignore-all"]);
+            }
+
             command.args([
-                "--",
-                "-Cprefer-dynamic",
-                "-Clink-arg=-undefined",
-                "-Clink-arg=dynamic_lookup",
                 "-Cpasses=sancov-module",
                 "-Cllvm-args=-sanitizer-coverage-inline-8bit-counters",
                 "-Cllvm-args=-sanitizer-coverage-level=4",
                 "-Cllvm-args=-sanitizer-coverage-pc-table",
                 "-Cllvm-args=-sanitizer-coverage-trace-compares",
             ]);
-        }
-    } else if IS_TEST.load(std::sync::atomic::Ordering::Relaxed) {
-        command.env("RUSTFLAGS", "-C prefer-dynamic");
-
-        if cfg!(target_os = "macos") {
-            command.args([
-                "--",
-                "-Clink-arg=-rpath",
-                &format!(
-                    "-Clink-arg={}",
-                    path!(trybuild.target_dir / "debug").to_str().unwrap()
-                ),
-            ]);
-        } else if cfg!(target_family = "unix") {
-            command.args([
-                "--",
-                &format!(
-                    "-Clink-arg=-Wl,-rpath,{}",
-                    path!(trybuild.target_dir / "debug").to_str().unwrap()
-                ),
-            ]);
-
-            if cfg!(target_env = "gnu") {
-                command.arg(
-                    // https://github.com/rust-lang/rust/issues/91979
-                    "-Clink-args=-Wl,-z,nodelete",
-                );
-            }
         }
     }
 
@@ -387,7 +402,8 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
     for message in cargo_metadata::Message::parse_stream(reader) {
         match message.unwrap() {
             cargo_metadata::Message::CompilerArtifact(artifact) => {
-                let is_output = artifact.target.crate_types.contains(&"cdylib".to_string());
+                // unlike dylib, cdylib only exports the explicitly exported symbols
+                let is_output = artifact.target.is_example();
 
                 if is_output {
                     use std::path::PathBuf;
