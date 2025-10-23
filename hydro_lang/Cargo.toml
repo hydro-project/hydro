@@ -23,18 +23,14 @@ viz = [
     "dep:serde_json",
 ]
 deploy = [
-    "build",
+    "trybuild",
     "deploy_integration",
     "dep:hydro_deploy",
-    "dep:prettyplease",
-    "dep:trybuild-internals-api",
-    "dep:toml",
-    "dep:sha2",
-    "dep:stageleft_tool",
     "dep:nameof",
 ]
 sim = [
-    "deploy",
+    "trybuild",
+    "deploy_integration",
     "dep:bolero",
     "dep:cargo_metadata",
     "dep:colored",
@@ -47,6 +43,7 @@ sim = [
 ]
 deploy_integration = ["dep:hydro_deploy_integration"]
 build = ["dep:dfir_lang", "dep:backtrace", "dep:ctor"]
+trybuild = ["build", "dep:toml", "dep:prettyplease", "dep:stageleft_tool", "dep:trybuild-internals-api", "dep:sha2"]
 runtime_measure = ["dep:chrono", "dep:procfs"]
 runtime_support = ["dep:dfir_rs", "dfir_rs/deploy_integration"]
 dfir_context = ["dep:dfir_rs"]
@@ -119,7 +116,6 @@ stageleft_tool.workspace = true
 hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
 
 [dev-dependencies]
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0" }
 ctor = "0.2"
 hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
 tokio-test = "0.4.4"
