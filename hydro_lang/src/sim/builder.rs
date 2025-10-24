@@ -25,12 +25,50 @@ use crate::location::dynamic::LocationId;
 /// by accumulating inputs from the async level into a buffer, and then the hook can send selected
 /// elements from that buffer into the tick's DFIR graph with a separate handoff channel.
 pub struct SimBuilder {
-    pub extra_stmts: Vec<syn::Stmt>,
+    pub extra_stmts_global: Vec<syn::Stmt>,
     pub extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
     pub process_graphs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub cluster_graphs: BTreeMap<LocationId, FlatGraphBuilder>,
-    pub tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
+    pub process_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
+    pub cluster_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub next_hoff_id: usize,
+}
+
+impl SimBuilder {
+    fn add_extra_stmt_internal(&mut self, location: &LocationId, stmt: syn::Stmt) {
+        match location {
+            LocationId::Process(_) => {
+                self.extra_stmts_global.push(stmt);
+            }
+            LocationId::Cluster(_) => {
+                self.extra_stmts_cluster
+                    .entry(location.clone())
+                    .or_default()
+                    .push(stmt);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn add_hook(&mut self, in_location: &LocationId, out_location: &LocationId, expr: syn::Expr) {
+        let out_location_ser = serde_json::to_string(out_location).unwrap();
+        match in_location {
+            LocationId::Process(_) => {
+                self.add_extra_stmt_internal(
+                    in_location,
+                    syn::parse_quote! {
+                        __hydro_hooks.entry((#out_location_ser, None)).or_default().push(#expr);
+                    },
+                );
+            }
+            LocationId::Cluster(_) => {
+                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                    __hydro_hooks.entry((#out_location_ser, Some(__current_cluster_id))).or_default().push(#expr);
+                });
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl DfirBuilder for SimBuilder {
@@ -44,9 +82,11 @@ impl DfirBuilder for SimBuilder {
             LocationId::Cluster(_) => self.cluster_graphs.entry(location.clone()).or_default(),
             LocationId::Atomic(_) => todo!("SimBuilder does not support atomic locations"),
             LocationId::Tick(_, l) => match l.root() {
-                LocationId::Process(_) => self.tick_dfirs.entry(location.clone()).or_default(),
+                LocationId::Process(_) => {
+                    self.process_tick_dfirs.entry(location.clone()).or_default()
+                }
                 LocationId::Cluster(_) => {
-                    todo!("SimBuilder does not yet support ticks on cluster locations")
+                    self.cluster_tick_dfirs.entry(location.clone()).or_default()
                 }
                 _ => unreachable!(),
             },
@@ -133,7 +173,6 @@ impl DfirBuilder for SimBuilder {
                 let hoff_id = self.next_hoff_id;
                 self.next_hoff_id += 1;
 
-                let out_location_ser = serde_json::to_string(out_location).unwrap();
                 let buffered_ident =
                     syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
                 let hoff_send_ident =
@@ -141,37 +180,41 @@ impl DfirBuilder for SimBuilder {
                 let hoff_recv_ident =
                     syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
-                self.extra_stmts.push(syn::parse_quote! {
+                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                     let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
                 });
-                self.extra_stmts.push(syn::parse_quote! {
+                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                     let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
                 });
-                self.extra_stmts.push(syn::parse_quote! {
-                    __hydro_hooks.entry(#out_location_ser).or_default().push(Box::new(hydro_lang::sim::runtime::StreamHook::<_, #order_ty> {
-                        input: #buffered_ident.clone(),
-                        to_release: None,
-                        output: #hoff_send_ident,
-                        batch_location: (#batch_location, #line, #caret),
-                        format_item_debug: {
-                            trait NotDebug {
-                                fn format_debug(&self) -> Option<String> {
-                                    None
+                self.add_hook(
+                    in_location,
+                    out_location,
+                    syn::parse_quote!(
+                        Box::new(hydro_lang::sim::runtime::StreamHook::<_, #order_ty> {
+                            input: #buffered_ident.clone(),
+                            to_release: None,
+                            output: #hoff_send_ident,
+                            batch_location: (#batch_location, #line, #caret),
+                            format_item_debug: {
+                                trait NotDebug {
+                                    fn format_debug(&self) -> Option<String> {
+                                        None
+                                    }
                                 }
-                            }
 
-                            impl<T> NotDebug for T {}
-                            struct IsDebug<T>(std::marker::PhantomData<T>);
-                            impl<T: std::fmt::Debug> IsDebug<T> {
-                                fn format_debug(v: &T) -> Option<String> {
-                                    Some(format!("{:?}", v))
+                                impl<T> NotDebug for T {}
+                                struct IsDebug<T>(std::marker::PhantomData<T>);
+                                impl<T: std::fmt::Debug> IsDebug<T> {
+                                    fn format_debug(v: &T) -> Option<String> {
+                                        Some(format!("{:?}", v))
+                                    }
                                 }
-                            }
-                            IsDebug::format_debug
-                        },
-                        _order: std::marker::PhantomData,
-                    }));
-                });
+                                IsDebug::format_debug
+                            },
+                            _order: std::marker::PhantomData,
+                        })
+                    ),
+                );
 
                 self.get_dfir_mut(in_location).add_dfir(
                     parse_quote! {
@@ -195,7 +238,6 @@ impl DfirBuilder for SimBuilder {
                 let hoff_id = self.next_hoff_id;
                 self.next_hoff_id += 1;
 
-                let out_location_ser = serde_json::to_string(out_location).unwrap();
                 let buffered_ident =
                     syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
                 let hoff_send_ident =
@@ -203,35 +245,39 @@ impl DfirBuilder for SimBuilder {
                 let hoff_recv_ident =
                     syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
-                self.extra_stmts.push(syn::parse_quote! {
+                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                     let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
                 });
-                self.extra_stmts.push(syn::parse_quote! {
+                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                     let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
                 });
-                self.extra_stmts.push(syn::parse_quote! {
-                    __hydro_hooks.entry(#out_location_ser).or_default().push(Box::new(hydro_lang::sim::runtime::SingletonHook::<_>::new(
-                        #buffered_ident.clone(),
-                        #hoff_send_ident,
-                        (#batch_location, #line, #caret),
-                        {
-                            trait NotDebug {
-                                fn format_debug(&self) -> Option<String> {
-                                    None
+                self.add_hook(
+                    in_location,
+                    out_location,
+                    syn::parse_quote! (
+                        Box::new(hydro_lang::sim::runtime::SingletonHook::<_>::new(
+                            #buffered_ident.clone(),
+                            #hoff_send_ident,
+                            (#batch_location, #line, #caret),
+                            {
+                                trait NotDebug {
+                                    fn format_debug(&self) -> Option<String> {
+                                        None
+                                    }
                                 }
-                            }
 
-                            impl<T> NotDebug for T {}
-                            struct IsDebug<T>(std::marker::PhantomData<T>);
-                            impl<T: std::fmt::Debug> IsDebug<T> {
-                                fn format_debug(v: &T) -> Option<String> {
-                                    Some(format!("{:?}", v))
+                                impl<T> NotDebug for T {}
+                                struct IsDebug<T>(std::marker::PhantomData<T>);
+                                impl<T: std::fmt::Debug> IsDebug<T> {
+                                    fn format_debug(v: &T) -> Option<String> {
+                                        Some(format!("{:?}", v))
+                                    }
                                 }
-                            }
-                            IsDebug::format_debug
-                        },
-                    )));
-                });
+                                IsDebug::format_debug
+                            },
+                        ))
+                    ),
+                );
 
                 self.get_dfir_mut(in_location).add_dfir(
                     parse_quote! {
@@ -276,7 +322,7 @@ impl DfirBuilder for SimBuilder {
                     let hoff_recv_ident =
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
-                    self.extra_stmts.push(syn::parse_quote! {
+                    self.add_extra_stmt_internal(outer, syn::parse_quote! {
                         let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
                     });
 
@@ -340,7 +386,7 @@ impl DfirBuilder for SimBuilder {
     ) {
         match (from, to) {
             (LocationId::Process(_), LocationId::Process(_)) => {
-                self.extra_stmts.push(syn::parse_quote! {
+                self.extra_stmts_global.push(syn::parse_quote! {
                     let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
                 });
 
@@ -381,7 +427,7 @@ impl DfirBuilder for SimBuilder {
                 }
             }
             (LocationId::Cluster(_), LocationId::Process(_)) => {
-                self.extra_stmts.push(syn::parse_quote! {
+                self.extra_stmts_global.push(syn::parse_quote! {
                     let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(u32, __root_dfir_rs::bytes::Bytes)>();
                 });
 
@@ -473,7 +519,7 @@ impl DfirBuilder for SimBuilder {
         tag_id: usize,
     ) {
         let grabbed_ident = syn::Ident::new(&format!("__sink_{tag_id}"), Span::call_site());
-        self.extra_stmts.push(syn::parse_quote! {
+        self.extra_stmts_global.push(syn::parse_quote! {
             let #grabbed_ident = #sink_expr;
         });
 
