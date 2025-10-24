@@ -635,6 +635,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     }
 }
 
+#[cfg(feature = "deploy")]
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
