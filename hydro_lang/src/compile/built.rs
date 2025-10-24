@@ -226,13 +226,17 @@ impl<'a> BuiltFlow<'a> {
         let processes = self
             .process_id_name
             .iter()
-            .map(|id| (id.0, SimNode {}))
+            .map(|id| (id.0, SimNode {
+                port_counter: Rc::new(RefCell::new(0)),
+            }))
             .collect();
 
         let clusters = self
             .cluster_id_name
             .iter()
-            .map(|id| (id.0, SimNode {}))
+            .map(|id| (id.0, SimNode {
+                port_counter: Rc::new(RefCell::new(0)),
+            }))
             .collect();
 
         let externals = self
