@@ -93,6 +93,26 @@ const config = {
       },
     ],
     require.resolve("./wasm-plugin.js"),
+    function (context, options) {
+      return {
+        name: 'webpack-process-polyfill',
+        configureWebpack(config, isServer, utils) {
+          const webpack = require('webpack');
+          return {
+            resolve: {
+              fallback: {
+                process: require.resolve('process/browser.js'),
+              },
+            },
+            plugins: [
+              new webpack.ProvidePlugin({
+                process: 'process/browser.js',
+              }),
+            ],
+          };
+        },
+      };
+    },
   ],
 
   themeConfig:
@@ -145,7 +165,7 @@ const config = {
             href: "https://github.com/hydro-project/hydro",
             position: "right",
             className: "header-github-link",
-            "aria-label": "GitHub Repository"
+            "aria-label": "GitHub Repository",
           },
           {
             href: "https://discord.gg/QXKwMNA6RS",

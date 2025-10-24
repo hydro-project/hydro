@@ -21,6 +21,8 @@ viz = [
     "dep:webbrowser", 
     "dep:data-encoding",
     "dep:serde_json",
+    "dep:flate2",
+    "dep:urlencoding",
 ]
 deploy = [
     "build",
@@ -96,6 +98,8 @@ itertools = { version = "0.13.0", optional = true }
 webbrowser = { version = "1.0.2", optional = true }
 data-encoding = { version = "2.6.0", optional = true }
 serde_json = { version = "1.0.132", optional = true }
+flate2 = { version = "1.0", optional = true }
+urlencoding = { version = "2.1", optional = true }
 
 # For the simulator
 bolero = { package = "bolero-hydro", version = "0.13.5", optional = true }

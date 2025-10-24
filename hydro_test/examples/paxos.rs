@@ -15,7 +15,7 @@ struct Args {
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::graph::config::GraphConfig;
+use hydro_lang::viz::config::GraphConfig;
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 use tokio::sync::RwLock;
 
@@ -86,6 +86,11 @@ async fn main() {
 
     // Generate graphs if requested
     let _ = built.generate_graph_with_config(&args.graph, None);
+
+    // If we're just generating a graph file, exit early
+    if args.graph.should_exit_after_graph_generation() {
+        return;
+    }
 
     let optimized = built.with_default_optimize();
 

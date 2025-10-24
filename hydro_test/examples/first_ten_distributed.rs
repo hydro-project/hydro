@@ -6,7 +6,7 @@ use hydro_deploy::aws::AwsNetwork;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::graph::config::GraphConfig;
+use hydro_lang::viz::config::GraphConfig;
 use tokio::sync::RwLock;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -95,6 +95,11 @@ async fn main() {
     // Generate graph visualizations based on command line arguments
     if let Err(e) = built.generate_graph_with_config(&args.graph, None) {
         eprintln!("Error generating graph: {}", e);
+    }
+
+    // If we're just generating a graph file, exit early
+    if args.graph.should_exit_after_graph_generation() {
+        return;
     }
 
     // Optimize the flow before deployment to remove marker nodes

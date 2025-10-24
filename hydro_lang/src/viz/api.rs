@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::compile::ir::HydroRoot;
-use crate::graph::render::HydroWriteConfig;
+use crate::viz::render::HydroWriteConfig;
 
 /// Graph generation API for built flows
 pub struct GraphApi<'a> {
@@ -16,7 +16,7 @@ pub struct GraphApi<'a> {
 pub enum GraphFormat {
     Mermaid,
     Dot,
-    ReactFlow,
+    Hydroscope,
 }
 
 impl GraphFormat {
@@ -24,7 +24,7 @@ impl GraphFormat {
         match self {
             GraphFormat::Mermaid => "mmd",
             GraphFormat::Dot => "dot",
-            GraphFormat::ReactFlow => "json",
+            GraphFormat::Hydroscope => "json",
         }
     }
 
@@ -32,7 +32,7 @@ impl GraphFormat {
         match self {
             GraphFormat::Mermaid => "Opening Mermaid graph in browser...",
             GraphFormat::Dot => "Opening Graphviz/DOT graph in browser...",
-            GraphFormat::ReactFlow => "Opening ReactFlow graph in browser...",
+            GraphFormat::Hydroscope => "Opening Hydroscope graph in browser...",
         }
     }
 }
@@ -72,11 +72,9 @@ impl<'a> GraphApi<'a> {
     /// Generate graph content as string
     fn render_graph_to_string(&self, format: GraphFormat, config: &HydroWriteConfig) -> String {
         match format {
-            GraphFormat::Mermaid => crate::graph::render::render_hydro_ir_mermaid(self.ir, config),
-            GraphFormat::Dot => crate::graph::render::render_hydro_ir_dot(self.ir, config),
-            GraphFormat::ReactFlow => {
-                crate::graph::render::render_hydro_ir_reactflow(self.ir, config)
-            }
+            GraphFormat::Mermaid => crate::viz::render::render_hydro_ir_mermaid(self.ir, config),
+            GraphFormat::Dot => crate::viz::render::render_hydro_ir_dot(self.ir, config),
+            GraphFormat::Hydroscope => crate::viz::render::render_hydro_ir_json(self.ir, config),
         }
     }
 
@@ -87,11 +85,10 @@ impl<'a> GraphApi<'a> {
         config: HydroWriteConfig,
     ) -> Result<(), Box<dyn Error>> {
         match format {
-            GraphFormat::Mermaid => Ok(crate::graph::debug::open_mermaid(self.ir, Some(config))?),
-            GraphFormat::Dot => Ok(crate::graph::debug::open_dot(self.ir, Some(config))?),
-            GraphFormat::ReactFlow => Ok(crate::graph::debug::open_reactflow_browser(
+            GraphFormat::Mermaid => Ok(crate::viz::debug::open_mermaid(self.ir, Some(config))?),
+            GraphFormat::Dot => Ok(crate::viz::debug::open_dot(self.ir, Some(config))?),
+            GraphFormat::Hydroscope => Ok(crate::viz::debug::open_json_visualizer(
                 self.ir,
-                None,
                 Some(config),
             )?),
         }
@@ -154,15 +151,15 @@ impl<'a> GraphApi<'a> {
         self.render_graph_to_string(GraphFormat::Dot, &config)
     }
 
-    /// Generate ReactFlow graph as string
-    pub fn reactflow_to_string(
+    /// Generate Hydroscope graph as string
+    pub fn hydroscope_to_string(
         &self,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> String {
         let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
-        self.render_graph_to_string(GraphFormat::ReactFlow, &config)
+        self.render_graph_to_string(GraphFormat::Hydroscope, &config)
     }
 
     /// Write mermaid graph to file
@@ -199,8 +196,8 @@ impl<'a> GraphApi<'a> {
         )
     }
 
-    /// Write ReactFlow graph to file
-    pub fn reactflow_to_file(
+    /// Write Hydroscope graph to file
+    pub fn hydroscope_to_file(
         &self,
         filename: &str,
         show_metadata: bool,
@@ -208,7 +205,7 @@ impl<'a> GraphApi<'a> {
         use_short_labels: bool,
     ) -> Result<(), Box<dyn Error>> {
         self.write_graph_to_file(
-            GraphFormat::ReactFlow,
+            GraphFormat::Hydroscope,
             filename,
             show_metadata,
             show_location_groups,
@@ -250,8 +247,8 @@ impl<'a> GraphApi<'a> {
         )
     }
 
-    /// Open ReactFlow graph in browser
-    pub fn reactflow_to_browser(
+    /// Open Hydroscope graph in browser
+    pub fn hydroscope_to_browser(
         &self,
         show_metadata: bool,
         show_location_groups: bool,
@@ -259,7 +256,7 @@ impl<'a> GraphApi<'a> {
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn Error>> {
         self.open_browser(
-            GraphFormat::ReactFlow,
+            GraphFormat::Hydroscope,
             show_metadata,
             show_location_groups,
             use_short_labels,
@@ -280,7 +277,7 @@ impl<'a> GraphApi<'a> {
         let formats = [
             GraphFormat::Mermaid,
             GraphFormat::Dot,
-            GraphFormat::ReactFlow,
+            GraphFormat::Hydroscope,
         ];
 
         for format in formats {
@@ -306,33 +303,44 @@ impl<'a> GraphApi<'a> {
     #[cfg(feature = "build")]
     pub fn generate_graph_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &crate::viz::config::GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn Error>> {
         if let Some(graph_type) = config.graph {
             let format = match graph_type {
-                crate::graph::config::GraphType::Mermaid => GraphFormat::Mermaid,
-                crate::graph::config::GraphType::Dot => GraphFormat::Dot,
-                crate::graph::config::GraphType::Reactflow => GraphFormat::ReactFlow,
+                crate::viz::config::GraphType::Mermaid => GraphFormat::Mermaid,
+                crate::viz::config::GraphType::Dot => GraphFormat::Dot,
+                crate::viz::config::GraphType::Json => GraphFormat::Hydroscope,
             };
 
-            self.open_browser(
-                format,
-                !config.no_metadata,
-                !config.no_location_groups,
-                !config.long_labels, // use_short_labels is the inverse of long_labels
-                message_handler,
-            )
-        } else {
-            Ok(())
+            if config.file {
+                let filename = format!("hydro_graph.{}", format.file_extension());
+                self.write_graph_to_file(
+                    format,
+                    &filename,
+                    !config.no_metadata,
+                    !config.no_location_groups,
+                    !config.long_labels,
+                )?;
+                println!("Graph written to {}", filename);
+            } else {
+                self.open_browser(
+                    format,
+                    !config.no_metadata,
+                    !config.no_location_groups,
+                    !config.long_labels,
+                    message_handler,
+                )?;
+            }
         }
+        Ok(())
     }
 
     /// Generate all graph files based on GraphConfig
     #[cfg(feature = "build")]
     pub fn generate_all_files_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &crate::viz::config::GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn Error>> {
         self.generate_all_files(
@@ -352,7 +360,7 @@ mod tests {
     fn test_graph_format() {
         assert_eq!(GraphFormat::Mermaid.file_extension(), "mmd");
         assert_eq!(GraphFormat::Dot.file_extension(), "dot");
-        assert_eq!(GraphFormat::ReactFlow.file_extension(), "json");
+        assert_eq!(GraphFormat::Hydroscope.file_extension(), "json");
 
         assert_eq!(
             GraphFormat::Mermaid.browser_message(),
@@ -363,8 +371,8 @@ mod tests {
             "Opening Graphviz/DOT graph in browser..."
         );
         assert_eq!(
-            GraphFormat::ReactFlow.browser_message(),
-            "Opening ReactFlow graph in browser..."
+            GraphFormat::Hydroscope.browser_message(),
+            "Opening Hydroscope graph in browser..."
         );
     }
 
@@ -398,11 +406,11 @@ mod tests {
         // Test that string generation methods don't panic and return some content
         let mermaid = api.mermaid_to_string(true, true, false);
         let dot = api.dot_to_string(true, true, false);
-        let reactflow = api.reactflow_to_string(true, true, false);
+        let hydroscope = api.hydroscope_to_string(true, true, false);
 
         // These should all return non-empty strings
         assert!(!mermaid.is_empty());
         assert!(!dot.is_empty());
-        assert!(!reactflow.is_empty());
+        assert!(!hydroscope.is_empty());
     }
 }

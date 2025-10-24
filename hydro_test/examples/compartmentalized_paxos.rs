@@ -15,7 +15,7 @@ struct Args {
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::graph::config::GraphConfig;
+use hydro_lang::viz::config::GraphConfig;
 use hydro_test::cluster::compartmentalized_paxos::{
     CompartmentalizedPaxosConfig, CoreCompartmentalizedPaxos,
 };
@@ -105,6 +105,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Generate graphs if requested
     let _ = built.generate_graph_with_config(&args.graph, None);
+
+    // If we're just generating a graph file, exit early
+    if args.graph.should_exit_after_graph_generation() {
+        return Ok(());
+    }
 
     let optimized = built.with_default_optimize();
 

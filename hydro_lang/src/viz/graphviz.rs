@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::fmt::Write;
 
-use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
+use super::render::{HydroEdgeProp, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
 
 /// Escapes a string for use in a DOT graph label.
 pub fn escape_dot(string: &str, newline: &str) -> String {
@@ -87,6 +87,7 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
+        _backtrace: Option<&crate::compile::ir::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
@@ -113,7 +114,7 @@ where
         let label = format!("n{}", node_id);
 
         let (shape_str, color_str) = match node_type {
-            // ColorBrewer Set3 palette colors (matching Mermaid and ReactFlow)
+            // ColorBrewer Set3 palette colors (matching Mermaid and Hydroscope)
             HydroNodeType::Source => ("ellipse", "\"#8dd3c7\""), // Light teal
             HydroNodeType::Transform => ("box", "\"#ffffb3\""),  // Light yellow
             HydroNodeType::Join => ("diamond", "\"#bebada\""),   // Light purple
@@ -146,7 +147,7 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_type: HydroEdgeType,
+        edge_properties: &std::collections::HashSet<HydroEdgeProp>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
         let mut properties = Vec::<Cow<'static, str>>::new();
@@ -155,21 +156,22 @@ where
             properties.push(format!("label=\"{}\"", escape_dot(label, "\\n")).into());
         }
 
-        // Styling based on edge type
-        match edge_type {
-            HydroEdgeType::Persistent => {
-                properties.push("color=\"#008800\"".into());
-                properties.push("style=\"bold\"".into());
-            }
-            HydroEdgeType::Network => {
-                properties.push("color=\"#880088\"".into());
-                properties.push("style=\"dashed\"".into());
-            }
-            HydroEdgeType::Cycle => {
-                properties.push("color=\"#ff8800\"".into());
+        let style = super::render::get_unified_edge_style(edge_properties, None, None);
+
+        properties.push(format!("color=\"{}\"", style.color).into());
+
+        if style.line_width > 1 {
+            properties.push("style=\"bold\"".into());
+        }
+
+        match style.line_pattern {
+            super::render::LinePattern::Dotted => {
                 properties.push("style=\"dotted\"".into());
             }
-            HydroEdgeType::Stream => {}
+            super::render::LinePattern::Dashed => {
+                properties.push("style=\"dashed\"".into());
+            }
+            _ => {}
         }
 
         write!(
@@ -276,7 +278,7 @@ pub fn open_browser(
     };
 
     // Use the existing debug function
-    crate::graph::debug::open_dot(built_flow.ir(), Some(config))?;
+    crate::viz::debug::open_dot(built_flow.ir(), Some(config))?;
 
     Ok(())
 }

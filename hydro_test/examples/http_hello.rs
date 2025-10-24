@@ -3,8 +3,8 @@ use dfir_rs::tokio_util::codec::LinesCodec;
 use hydro_deploy::Deployment;
 use hydro_deploy::custom_service::ServerPort;
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::graph::config::GraphConfig;
 use hydro_lang::location::{Location, NetworkHint};
+use hydro_lang::viz::config::GraphConfig;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -33,6 +33,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Generate graph visualizations based on command line arguments
     built.generate_graph_with_config(&args.graph, None)?;
+
+    // If we're just generating a graph file, exit early
+    if args.graph.should_exit_after_graph_generation() {
+        return Ok(());
+    }
 
     // Now use the built flow for deployment with optimization
     let nodes = built

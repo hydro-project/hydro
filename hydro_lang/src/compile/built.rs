@@ -8,13 +8,13 @@ use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use super::ir::{HydroRoot, emit};
-#[cfg(feature = "viz")]
-use crate::graph::api::GraphApi;
 use crate::location::{Cluster, External, Process};
 #[cfg(feature = "sim")]
 #[cfg(stageleft_runtime)]
 use crate::sim::{flow::SimFlow, graph::SimNode};
 use crate::staging_util::Invariant;
+#[cfg(feature = "viz")]
+use crate::viz::api::GraphApi;
 
 pub struct BuiltFlow<'a> {
     pub(super) ir: Vec<HydroRoot>,
@@ -90,14 +90,14 @@ impl<'a> BuiltFlow<'a> {
     }
 
     #[cfg(feature = "viz")]
-    pub fn reactflow_string(
+    pub fn hydroscope_string(
         &self,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> String {
         self.graph_api()
-            .reactflow_to_string(show_metadata, show_location_groups, use_short_labels)
+            .hydroscope_to_string(show_metadata, show_location_groups, use_short_labels)
     }
 
     // File generation methods
@@ -134,14 +134,14 @@ impl<'a> BuiltFlow<'a> {
     }
 
     #[cfg(feature = "viz")]
-    pub fn reactflow_to_file(
+    pub fn hydroscope_to_file(
         &self,
         filename: &str,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().reactflow_to_file(
+        self.graph_api().hydroscope_to_file(
             filename,
             show_metadata,
             show_location_groups,
@@ -183,14 +183,14 @@ impl<'a> BuiltFlow<'a> {
     }
 
     #[cfg(feature = "viz")]
-    pub fn reactflow_to_browser(
+    pub fn hydroscope_to_browser(
         &self,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().reactflow_to_browser(
+        self.graph_api().hydroscope_to_browser(
             show_metadata,
             show_location_groups,
             use_short_labels,
@@ -381,7 +381,7 @@ impl<'a> BuiltFlow<'a> {
     #[cfg(feature = "viz")]
     pub fn generate_graph_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &crate::viz::config::GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.graph_api()
@@ -391,7 +391,7 @@ impl<'a> BuiltFlow<'a> {
     #[cfg(feature = "viz")]
     pub fn generate_all_files_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &crate::viz::config::GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.graph_api()
