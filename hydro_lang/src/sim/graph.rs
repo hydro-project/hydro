@@ -566,6 +566,7 @@ pub(super) fn create_sim_graph_trybuild(
     )
 }
 
+#[expect(clippy::too_many_arguments, reason = "necessary for code generation")]
 fn compile_sim_graph_trybuild(
     process_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_graphs: BTreeMap<LocationId, DfirGraph>,
