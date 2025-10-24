@@ -2,17 +2,21 @@ use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
+#[cfg(feature = "deploy")]
 use dfir_lang::graph::DfirGraph;
 use proc_macro2::Span;
 use sha2::{Digest, Sha256};
+#[cfg(feature = "deploy")]
 use stageleft::internal::quote;
+#[cfg(feature = "deploy")]
 use syn::visit_mut::VisitMut;
 use trybuild_internals_api::cargo::{self, Metadata};
 use trybuild_internals_api::env::Update;
 use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{Runner, dependencies, features, path};
 
-use super::trybuild_rewriters::UseTestModeStaged;
+#[cfg(feature = "deploy")]
+use super::rewriters::UseTestModeStaged;
 
 pub const HYDRO_RUNTIME_FEATURES: &[&str] = &["deploy_integration", "runtime_measure"];
 
@@ -30,7 +34,7 @@ pub(crate) static CONCURRENT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex:
 /// mod test_init {
 ///    #[ctor::ctor]
 ///    fn init() {
-///        hydro_lang::deploy::init_test();
+///        hydro_lang::compile::init_test();
 ///    }
 /// }
 /// ```
@@ -38,6 +42,7 @@ pub fn init_test() {
     IS_TEST.store(true, std::sync::atomic::Ordering::Relaxed);
 }
 
+#[cfg(feature = "deploy")]
 fn clean_name_hint(name_hint: &str) -> String {
     name_hint
         .replace("::", "__")
@@ -55,6 +60,7 @@ pub struct TrybuildConfig {
     pub features: Option<Vec<String>>,
 }
 
+#[cfg(feature = "deploy")]
 pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
@@ -144,6 +150,7 @@ pub fn create_graph_trybuild(
     )
 }
 
+#[cfg(feature = "deploy")]
 pub fn compile_graph_trybuild(
     partitioned_graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,

@@ -5,16 +5,8 @@ mod deploy_runtime;
 
 #[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
-pub(crate) mod trybuild;
-
-#[cfg(stageleft_runtime)]
-#[cfg(feature = "deploy")]
-pub(crate) mod trybuild_rewriters;
-
-#[cfg(stageleft_runtime)]
-#[cfg(feature = "deploy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
-pub use trybuild::init_test;
+pub use crate::compile::init_test;
 
 #[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
