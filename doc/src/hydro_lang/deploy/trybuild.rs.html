@@ -321,123 +321,128 @@
 <a href=#321 id=321 data-nosnippet>321</a>            <span class="string">r#"{}
 <a href=#322 id=322 data-nosnippet>322</a>
 <a href=#323 id=323 data-nosnippet>323</a>[lib]
-<a href=#324 id=324 data-nosnippet>324</a>crate-type = ["rlib", "dylib"]
+<a href=#324 id=324 data-nosnippet>324</a>crate-type = [{}]
 <a href=#325 id=325 data-nosnippet>325</a>
 <a href=#326 id=326 data-nosnippet>326</a>[[example]]
 <a href=#327 id=327 data-nosnippet>327</a>name = "sim-dylib"
-<a href=#328 id=328 data-nosnippet>328</a>crate-type = ["dylib"]"#</span>,
-<a href=#329 id=329 data-nosnippet>329</a>            manifest_toml
-<a href=#330 id=330 data-nosnippet>330</a>        );
-<a href=#331 id=331 data-nosnippet>331</a>
-<a href=#332 id=332 data-nosnippet>332</a>        write_atomic(
-<a href=#333 id=333 data-nosnippet>333</a>            manifest_with_example.as_ref(),
-<a href=#334 id=334 data-nosnippet>334</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"Cargo.toml"</span>),
-<a href=#335 id=335 data-nosnippet>335</a>        )<span class="question-mark">?</span>;
+<a href=#328 id=328 data-nosnippet>328</a>crate-type = ["cdylib"]"#</span>,
+<a href=#329 id=329 data-nosnippet>329</a>            manifest_toml,
+<a href=#330 id=330 data-nosnippet>330</a>            <span class="kw">if </span><span class="macro">cfg!</span>(target_os = <span class="string">"windows"</span>) {
+<a href=#331 id=331 data-nosnippet>331</a>                <span class="string">r#""rlib""# </span><span class="comment">// see https://github.com/bevyengine/bevy/pull/2016
+<a href=#332 id=332 data-nosnippet>332</a>            </span>} <span class="kw">else </span>{
+<a href=#333 id=333 data-nosnippet>333</a>                <span class="string">r#""rlib", "dylib""#
+<a href=#334 id=334 data-nosnippet>334</a>            </span>},
+<a href=#335 id=335 data-nosnippet>335</a>        );
 <a href=#336 id=336 data-nosnippet>336</a>
-<a href=#337 id=337 data-nosnippet>337</a>        <span class="kw">let </span>manifest_hash = <span class="macro">format!</span>(<span class="string">"{:X}"</span>, Sha256::digest(<span class="kw-2">&amp;</span>manifest_with_example))
-<a href=#338 id=338 data-nosnippet>338</a>            .chars()
-<a href=#339 id=339 data-nosnippet>339</a>            .take(<span class="number">8</span>)
-<a href=#340 id=340 data-nosnippet>340</a>            .collect::&lt;String&gt;();
+<a href=#337 id=337 data-nosnippet>337</a>        write_atomic(
+<a href=#338 id=338 data-nosnippet>338</a>            manifest_with_example.as_ref(),
+<a href=#339 id=339 data-nosnippet>339</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"Cargo.toml"</span>),
+<a href=#340 id=340 data-nosnippet>340</a>        )<span class="question-mark">?</span>;
 <a href=#341 id=341 data-nosnippet>341</a>
-<a href=#342 id=342 data-nosnippet>342</a>        <span class="kw">if </span>!check_contents(
-<a href=#343 id=343 data-nosnippet>343</a>            manifest_hash.as_bytes(),
-<a href=#344 id=344 data-nosnippet>344</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">".hydro-trybuild-manifest"</span>),
-<a href=#345 id=345 data-nosnippet>345</a>        )
-<a href=#346 id=346 data-nosnippet>346</a>        .is_ok_and(|b| b)
-<a href=#347 id=347 data-nosnippet>347</a>        {
-<a href=#348 id=348 data-nosnippet>348</a>            <span class="comment">// this is expensive, so we only do it if the manifest changed
-<a href=#349 id=349 data-nosnippet>349</a>            </span><span class="kw">let </span>workspace_cargo_lock = <span class="macro">path!</span>(project.workspace / <span class="string">"Cargo.lock"</span>);
-<a href=#350 id=350 data-nosnippet>350</a>            <span class="kw">if </span>workspace_cargo_lock.exists() {
-<a href=#351 id=351 data-nosnippet>351</a>                write_atomic(
-<a href=#352 id=352 data-nosnippet>352</a>                    fs::read_to_string(<span class="kw-2">&amp;</span>workspace_cargo_lock)<span class="question-mark">?</span>.as_ref(),
-<a href=#353 id=353 data-nosnippet>353</a>                    <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"Cargo.lock"</span>),
-<a href=#354 id=354 data-nosnippet>354</a>                )<span class="question-mark">?</span>;
-<a href=#355 id=355 data-nosnippet>355</a>            } <span class="kw">else </span>{
-<a href=#356 id=356 data-nosnippet>356</a>                <span class="kw">let _ </span>= cargo::cargo(<span class="kw-2">&amp;</span>project).arg(<span class="string">"generate-lockfile"</span>).status();
-<a href=#357 id=357 data-nosnippet>357</a>            }
-<a href=#358 id=358 data-nosnippet>358</a>
-<a href=#359 id=359 data-nosnippet>359</a>            <span class="comment">// not `--offline` because some new runtime features may be enabled
-<a href=#360 id=360 data-nosnippet>360</a>            </span>std::process::Command::new(<span class="string">"cargo"</span>)
-<a href=#361 id=361 data-nosnippet>361</a>                .current_dir(<span class="kw-2">&amp;</span>project.dir)
-<a href=#362 id=362 data-nosnippet>362</a>                .args([<span class="string">"update"</span>, <span class="string">"-w"</span>]) <span class="comment">// -w to not actually update any versions
-<a href=#363 id=363 data-nosnippet>363</a>                </span>.stdout(std::process::Stdio::null())
-<a href=#364 id=364 data-nosnippet>364</a>                .stderr(std::process::Stdio::null())
-<a href=#365 id=365 data-nosnippet>365</a>                .status()
-<a href=#366 id=366 data-nosnippet>366</a>                .unwrap();
-<a href=#367 id=367 data-nosnippet>367</a>
-<a href=#368 id=368 data-nosnippet>368</a>            write_atomic(
-<a href=#369 id=369 data-nosnippet>369</a>                manifest_hash.as_bytes(),
-<a href=#370 id=370 data-nosnippet>370</a>                <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">".hydro-trybuild-manifest"</span>),
-<a href=#371 id=371 data-nosnippet>371</a>            )<span class="question-mark">?</span>;
-<a href=#372 id=372 data-nosnippet>372</a>        }
-<a href=#373 id=373 data-nosnippet>373</a>
-<a href=#374 id=374 data-nosnippet>374</a>        <span class="kw">let </span>examples_folder = <span class="macro">path!</span>(project.dir / <span class="string">"examples"</span>);
-<a href=#375 id=375 data-nosnippet>375</a>        fs::create_dir_all(<span class="kw-2">&amp;</span>examples_folder)<span class="question-mark">?</span>;
-<a href=#376 id=376 data-nosnippet>376</a>        write_atomic(
-<a href=#377 id=377 data-nosnippet>377</a>            prettyplease::unparse(<span class="kw-2">&amp;</span><span class="macro">syn::parse_quote!</span> {
-<a href=#378 id=378 data-nosnippet>378</a>                <span class="attr">#![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-<a href=#379 id=379 data-nosnippet>379</a>                </span><span class="macro">include!</span>(<span class="macro">std::concat!</span>(<span class="macro">env!</span>(<span class="string">"TRYBUILD_LIB_NAME"</span>), <span class="string">".rs"</span>));
-<a href=#380 id=380 data-nosnippet>380</a>            })
-<a href=#381 id=381 data-nosnippet>381</a>            .as_bytes(),
-<a href=#382 id=382 data-nosnippet>382</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"examples" </span>/ <span class="string">"sim-dylib.rs"</span>),
-<a href=#383 id=383 data-nosnippet>383</a>        )<span class="question-mark">?</span>;
-<a href=#384 id=384 data-nosnippet>384</a>
-<a href=#385 id=385 data-nosnippet>385</a>        <span class="kw">let </span>workspace_dot_cargo_config_toml = <span class="macro">path!</span>(project.workspace / <span class="string">".cargo" </span>/ <span class="string">"config.toml"</span>);
-<a href=#386 id=386 data-nosnippet>386</a>        <span class="kw">if </span>workspace_dot_cargo_config_toml.exists() {
-<a href=#387 id=387 data-nosnippet>387</a>            <span class="kw">let </span>dot_cargo_folder = <span class="macro">path!</span>(project.dir / <span class="string">".cargo"</span>);
-<a href=#388 id=388 data-nosnippet>388</a>            fs::create_dir_all(<span class="kw-2">&amp;</span>dot_cargo_folder)<span class="question-mark">?</span>;
+<a href=#342 id=342 data-nosnippet>342</a>        <span class="kw">let </span>manifest_hash = <span class="macro">format!</span>(<span class="string">"{:X}"</span>, Sha256::digest(<span class="kw-2">&amp;</span>manifest_with_example))
+<a href=#343 id=343 data-nosnippet>343</a>            .chars()
+<a href=#344 id=344 data-nosnippet>344</a>            .take(<span class="number">8</span>)
+<a href=#345 id=345 data-nosnippet>345</a>            .collect::&lt;String&gt;();
+<a href=#346 id=346 data-nosnippet>346</a>
+<a href=#347 id=347 data-nosnippet>347</a>        <span class="kw">if </span>!check_contents(
+<a href=#348 id=348 data-nosnippet>348</a>            manifest_hash.as_bytes(),
+<a href=#349 id=349 data-nosnippet>349</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">".hydro-trybuild-manifest"</span>),
+<a href=#350 id=350 data-nosnippet>350</a>        )
+<a href=#351 id=351 data-nosnippet>351</a>        .is_ok_and(|b| b)
+<a href=#352 id=352 data-nosnippet>352</a>        {
+<a href=#353 id=353 data-nosnippet>353</a>            <span class="comment">// this is expensive, so we only do it if the manifest changed
+<a href=#354 id=354 data-nosnippet>354</a>            </span><span class="kw">let </span>workspace_cargo_lock = <span class="macro">path!</span>(project.workspace / <span class="string">"Cargo.lock"</span>);
+<a href=#355 id=355 data-nosnippet>355</a>            <span class="kw">if </span>workspace_cargo_lock.exists() {
+<a href=#356 id=356 data-nosnippet>356</a>                write_atomic(
+<a href=#357 id=357 data-nosnippet>357</a>                    fs::read_to_string(<span class="kw-2">&amp;</span>workspace_cargo_lock)<span class="question-mark">?</span>.as_ref(),
+<a href=#358 id=358 data-nosnippet>358</a>                    <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"Cargo.lock"</span>),
+<a href=#359 id=359 data-nosnippet>359</a>                )<span class="question-mark">?</span>;
+<a href=#360 id=360 data-nosnippet>360</a>            } <span class="kw">else </span>{
+<a href=#361 id=361 data-nosnippet>361</a>                <span class="kw">let _ </span>= cargo::cargo(<span class="kw-2">&amp;</span>project).arg(<span class="string">"generate-lockfile"</span>).status();
+<a href=#362 id=362 data-nosnippet>362</a>            }
+<a href=#363 id=363 data-nosnippet>363</a>
+<a href=#364 id=364 data-nosnippet>364</a>            <span class="comment">// not `--offline` because some new runtime features may be enabled
+<a href=#365 id=365 data-nosnippet>365</a>            </span>std::process::Command::new(<span class="string">"cargo"</span>)
+<a href=#366 id=366 data-nosnippet>366</a>                .current_dir(<span class="kw-2">&amp;</span>project.dir)
+<a href=#367 id=367 data-nosnippet>367</a>                .args([<span class="string">"update"</span>, <span class="string">"-w"</span>]) <span class="comment">// -w to not actually update any versions
+<a href=#368 id=368 data-nosnippet>368</a>                </span>.stdout(std::process::Stdio::null())
+<a href=#369 id=369 data-nosnippet>369</a>                .stderr(std::process::Stdio::null())
+<a href=#370 id=370 data-nosnippet>370</a>                .status()
+<a href=#371 id=371 data-nosnippet>371</a>                .unwrap();
+<a href=#372 id=372 data-nosnippet>372</a>
+<a href=#373 id=373 data-nosnippet>373</a>            write_atomic(
+<a href=#374 id=374 data-nosnippet>374</a>                manifest_hash.as_bytes(),
+<a href=#375 id=375 data-nosnippet>375</a>                <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">".hydro-trybuild-manifest"</span>),
+<a href=#376 id=376 data-nosnippet>376</a>            )<span class="question-mark">?</span>;
+<a href=#377 id=377 data-nosnippet>377</a>        }
+<a href=#378 id=378 data-nosnippet>378</a>
+<a href=#379 id=379 data-nosnippet>379</a>        <span class="kw">let </span>examples_folder = <span class="macro">path!</span>(project.dir / <span class="string">"examples"</span>);
+<a href=#380 id=380 data-nosnippet>380</a>        fs::create_dir_all(<span class="kw-2">&amp;</span>examples_folder)<span class="question-mark">?</span>;
+<a href=#381 id=381 data-nosnippet>381</a>        write_atomic(
+<a href=#382 id=382 data-nosnippet>382</a>            prettyplease::unparse(<span class="kw-2">&amp;</span><span class="macro">syn::parse_quote!</span> {
+<a href=#383 id=383 data-nosnippet>383</a>                <span class="attr">#![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+<a href=#384 id=384 data-nosnippet>384</a>                </span><span class="macro">include!</span>(<span class="macro">std::concat!</span>(<span class="macro">env!</span>(<span class="string">"TRYBUILD_LIB_NAME"</span>), <span class="string">".rs"</span>));
+<a href=#385 id=385 data-nosnippet>385</a>            })
+<a href=#386 id=386 data-nosnippet>386</a>            .as_bytes(),
+<a href=#387 id=387 data-nosnippet>387</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"examples" </span>/ <span class="string">"sim-dylib.rs"</span>),
+<a href=#388 id=388 data-nosnippet>388</a>        )<span class="question-mark">?</span>;
 <a href=#389 id=389 data-nosnippet>389</a>
-<a href=#390 id=390 data-nosnippet>390</a>            write_atomic(
-<a href=#391 id=391 data-nosnippet>391</a>                fs::read_to_string(<span class="kw-2">&amp;</span>workspace_dot_cargo_config_toml)<span class="question-mark">?</span>.as_ref(),
-<a href=#392 id=392 data-nosnippet>392</a>                <span class="kw-2">&amp;</span><span class="macro">path!</span>(dot_cargo_folder / <span class="string">"config.toml"</span>),
-<a href=#393 id=393 data-nosnippet>393</a>            )<span class="question-mark">?</span>;
-<a href=#394 id=394 data-nosnippet>394</a>        }
-<a href=#395 id=395 data-nosnippet>395</a>
-<a href=#396 id=396 data-nosnippet>396</a>        <span class="kw">let </span>vscode_folder = <span class="macro">path!</span>(project.dir / <span class="string">".vscode"</span>);
-<a href=#397 id=397 data-nosnippet>397</a>        fs::create_dir_all(<span class="kw-2">&amp;</span>vscode_folder)<span class="question-mark">?</span>;
-<a href=#398 id=398 data-nosnippet>398</a>        write_atomic(
-<a href=#399 id=399 data-nosnippet>399</a>            <span class="macro">include_bytes!</span>(<span class="string">"./vscode-trybuild.json"</span>),
-<a href=#400 id=400 data-nosnippet>400</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(vscode_folder / <span class="string">"settings.json"</span>),
-<a href=#401 id=401 data-nosnippet>401</a>        )<span class="question-mark">?</span>;
-<a href=#402 id=402 data-nosnippet>402</a>    }
-<a href=#403 id=403 data-nosnippet>403</a>
-<a href=#404 id=404 data-nosnippet>404</a>    <span class="prelude-val">Ok</span>((
-<a href=#405 id=405 data-nosnippet>405</a>        project.dir.as_ref().into(),
-<a href=#406 id=406 data-nosnippet>406</a>        <span class="macro">path!</span>(project.target_dir / <span class="string">"hydro_trybuild"</span>),
-<a href=#407 id=407 data-nosnippet>407</a>        project.features,
-<a href=#408 id=408 data-nosnippet>408</a>    ))
-<a href=#409 id=409 data-nosnippet>409</a>}
-<a href=#410 id=410 data-nosnippet>410</a>
-<a href=#411 id=411 data-nosnippet>411</a><span class="kw">fn </span>check_contents(contents: <span class="kw-2">&amp;</span>[u8], path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;bool, std::io::Error&gt; {
-<a href=#412 id=412 data-nosnippet>412</a>    <span class="kw">let </span><span class="kw-2">mut </span>file = File::options()
-<a href=#413 id=413 data-nosnippet>413</a>        .read(<span class="bool-val">true</span>)
-<a href=#414 id=414 data-nosnippet>414</a>        .write(<span class="bool-val">false</span>)
-<a href=#415 id=415 data-nosnippet>415</a>        .create(<span class="bool-val">false</span>)
-<a href=#416 id=416 data-nosnippet>416</a>        .truncate(<span class="bool-val">false</span>)
-<a href=#417 id=417 data-nosnippet>417</a>        .open(path)<span class="question-mark">?</span>;
-<a href=#418 id=418 data-nosnippet>418</a>    file.lock()<span class="question-mark">?</span>;
-<a href=#419 id=419 data-nosnippet>419</a>
-<a href=#420 id=420 data-nosnippet>420</a>    <span class="kw">let </span><span class="kw-2">mut </span>existing_contents = Vec::new();
-<a href=#421 id=421 data-nosnippet>421</a>    file.read_to_end(<span class="kw-2">&amp;mut </span>existing_contents)<span class="question-mark">?</span>;
-<a href=#422 id=422 data-nosnippet>422</a>    <span class="prelude-val">Ok</span>(existing_contents == contents)
-<a href=#423 id=423 data-nosnippet>423</a>}
+<a href=#390 id=390 data-nosnippet>390</a>        <span class="kw">let </span>workspace_dot_cargo_config_toml = <span class="macro">path!</span>(project.workspace / <span class="string">".cargo" </span>/ <span class="string">"config.toml"</span>);
+<a href=#391 id=391 data-nosnippet>391</a>        <span class="kw">if </span>workspace_dot_cargo_config_toml.exists() {
+<a href=#392 id=392 data-nosnippet>392</a>            <span class="kw">let </span>dot_cargo_folder = <span class="macro">path!</span>(project.dir / <span class="string">".cargo"</span>);
+<a href=#393 id=393 data-nosnippet>393</a>            fs::create_dir_all(<span class="kw-2">&amp;</span>dot_cargo_folder)<span class="question-mark">?</span>;
+<a href=#394 id=394 data-nosnippet>394</a>
+<a href=#395 id=395 data-nosnippet>395</a>            write_atomic(
+<a href=#396 id=396 data-nosnippet>396</a>                fs::read_to_string(<span class="kw-2">&amp;</span>workspace_dot_cargo_config_toml)<span class="question-mark">?</span>.as_ref(),
+<a href=#397 id=397 data-nosnippet>397</a>                <span class="kw-2">&amp;</span><span class="macro">path!</span>(dot_cargo_folder / <span class="string">"config.toml"</span>),
+<a href=#398 id=398 data-nosnippet>398</a>            )<span class="question-mark">?</span>;
+<a href=#399 id=399 data-nosnippet>399</a>        }
+<a href=#400 id=400 data-nosnippet>400</a>
+<a href=#401 id=401 data-nosnippet>401</a>        <span class="kw">let </span>vscode_folder = <span class="macro">path!</span>(project.dir / <span class="string">".vscode"</span>);
+<a href=#402 id=402 data-nosnippet>402</a>        fs::create_dir_all(<span class="kw-2">&amp;</span>vscode_folder)<span class="question-mark">?</span>;
+<a href=#403 id=403 data-nosnippet>403</a>        write_atomic(
+<a href=#404 id=404 data-nosnippet>404</a>            <span class="macro">include_bytes!</span>(<span class="string">"./vscode-trybuild.json"</span>),
+<a href=#405 id=405 data-nosnippet>405</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(vscode_folder / <span class="string">"settings.json"</span>),
+<a href=#406 id=406 data-nosnippet>406</a>        )<span class="question-mark">?</span>;
+<a href=#407 id=407 data-nosnippet>407</a>    }
+<a href=#408 id=408 data-nosnippet>408</a>
+<a href=#409 id=409 data-nosnippet>409</a>    <span class="prelude-val">Ok</span>((
+<a href=#410 id=410 data-nosnippet>410</a>        project.dir.as_ref().into(),
+<a href=#411 id=411 data-nosnippet>411</a>        <span class="macro">path!</span>(project.target_dir / <span class="string">"hydro_trybuild"</span>),
+<a href=#412 id=412 data-nosnippet>412</a>        project.features,
+<a href=#413 id=413 data-nosnippet>413</a>    ))
+<a href=#414 id=414 data-nosnippet>414</a>}
+<a href=#415 id=415 data-nosnippet>415</a>
+<a href=#416 id=416 data-nosnippet>416</a><span class="kw">fn </span>check_contents(contents: <span class="kw-2">&amp;</span>[u8], path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;bool, std::io::Error&gt; {
+<a href=#417 id=417 data-nosnippet>417</a>    <span class="kw">let </span><span class="kw-2">mut </span>file = File::options()
+<a href=#418 id=418 data-nosnippet>418</a>        .read(<span class="bool-val">true</span>)
+<a href=#419 id=419 data-nosnippet>419</a>        .write(<span class="bool-val">false</span>)
+<a href=#420 id=420 data-nosnippet>420</a>        .create(<span class="bool-val">false</span>)
+<a href=#421 id=421 data-nosnippet>421</a>        .truncate(<span class="bool-val">false</span>)
+<a href=#422 id=422 data-nosnippet>422</a>        .open(path)<span class="question-mark">?</span>;
+<a href=#423 id=423 data-nosnippet>423</a>    file.lock()<span class="question-mark">?</span>;
 <a href=#424 id=424 data-nosnippet>424</a>
-<a href=#425 id=425 data-nosnippet>425</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>write_atomic(contents: <span class="kw-2">&amp;</span>[u8], path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-<a href=#426 id=426 data-nosnippet>426</a>    <span class="kw">let </span><span class="kw-2">mut </span>file = File::options()
-<a href=#427 id=427 data-nosnippet>427</a>        .read(<span class="bool-val">true</span>)
-<a href=#428 id=428 data-nosnippet>428</a>        .write(<span class="bool-val">true</span>)
-<a href=#429 id=429 data-nosnippet>429</a>        .create(<span class="bool-val">true</span>)
-<a href=#430 id=430 data-nosnippet>430</a>        .truncate(<span class="bool-val">false</span>)
-<a href=#431 id=431 data-nosnippet>431</a>        .open(path)<span class="question-mark">?</span>;
-<a href=#432 id=432 data-nosnippet>432</a>    file.lock()<span class="question-mark">?</span>;
-<a href=#433 id=433 data-nosnippet>433</a>
-<a href=#434 id=434 data-nosnippet>434</a>    <span class="kw">let </span><span class="kw-2">mut </span>existing_contents = Vec::new();
-<a href=#435 id=435 data-nosnippet>435</a>    file.read_to_end(<span class="kw-2">&amp;mut </span>existing_contents)<span class="question-mark">?</span>;
-<a href=#436 id=436 data-nosnippet>436</a>    <span class="kw">if </span>existing_contents != contents {
-<a href=#437 id=437 data-nosnippet>437</a>        file.seek(SeekFrom::Start(<span class="number">0</span>))<span class="question-mark">?</span>;
-<a href=#438 id=438 data-nosnippet>438</a>        file.set_len(<span class="number">0</span>)<span class="question-mark">?</span>;
-<a href=#439 id=439 data-nosnippet>439</a>        file.write_all(contents)<span class="question-mark">?</span>;
-<a href=#440 id=440 data-nosnippet>440</a>    }
-<a href=#441 id=441 data-nosnippet>441</a>
-<a href=#442 id=442 data-nosnippet>442</a>    <span class="prelude-val">Ok</span>(())
-<a href=#443 id=443 data-nosnippet>443</a>}</code></pre></div></section></main></body></html>
+<a href=#425 id=425 data-nosnippet>425</a>    <span class="kw">let </span><span class="kw-2">mut </span>existing_contents = Vec::new();
+<a href=#426 id=426 data-nosnippet>426</a>    file.read_to_end(<span class="kw-2">&amp;mut </span>existing_contents)<span class="question-mark">?</span>;
+<a href=#427 id=427 data-nosnippet>427</a>    <span class="prelude-val">Ok</span>(existing_contents == contents)
+<a href=#428 id=428 data-nosnippet>428</a>}
+<a href=#429 id=429 data-nosnippet>429</a>
+<a href=#430 id=430 data-nosnippet>430</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>write_atomic(contents: <span class="kw-2">&amp;</span>[u8], path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
+<a href=#431 id=431 data-nosnippet>431</a>    <span class="kw">let </span><span class="kw-2">mut </span>file = File::options()
+<a href=#432 id=432 data-nosnippet>432</a>        .read(<span class="bool-val">true</span>)
+<a href=#433 id=433 data-nosnippet>433</a>        .write(<span class="bool-val">true</span>)
+<a href=#434 id=434 data-nosnippet>434</a>        .create(<span class="bool-val">true</span>)
+<a href=#435 id=435 data-nosnippet>435</a>        .truncate(<span class="bool-val">false</span>)
+<a href=#436 id=436 data-nosnippet>436</a>        .open(path)<span class="question-mark">?</span>;
+<a href=#437 id=437 data-nosnippet>437</a>
+<a href=#438 id=438 data-nosnippet>438</a>    <span class="kw">let </span><span class="kw-2">mut </span>existing_contents = Vec::new();
+<a href=#439 id=439 data-nosnippet>439</a>    file.read_to_end(<span class="kw-2">&amp;mut </span>existing_contents)<span class="question-mark">?</span>;
+<a href=#440 id=440 data-nosnippet>440</a>    <span class="kw">if </span>existing_contents != contents {
+<a href=#441 id=441 data-nosnippet>441</a>        file.lock()<span class="question-mark">?</span>;
+<a href=#442 id=442 data-nosnippet>442</a>        file.seek(SeekFrom::Start(<span class="number">0</span>))<span class="question-mark">?</span>;
+<a href=#443 id=443 data-nosnippet>443</a>        file.set_len(<span class="number">0</span>)<span class="question-mark">?</span>;
+<a href=#444 id=444 data-nosnippet>444</a>        file.write_all(contents)<span class="question-mark">?</span>;
+<a href=#445 id=445 data-nosnippet>445</a>    }
+<a href=#446 id=446 data-nosnippet>446</a>
+<a href=#447 id=447 data-nosnippet>447</a>    <span class="prelude-val">Ok</span>(())
+<a href=#448 id=448 data-nosnippet>448</a>}</code></pre></div></section></main></body></html>
