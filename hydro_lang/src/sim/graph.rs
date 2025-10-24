@@ -162,11 +162,20 @@ impl<'a> Deploy<'a> for SimDeploy {
     fn o2o_sink_source(
         _compile_env: &Self::CompileEnv,
         _p1: &Self::Process,
-        _p1_port: &Self::Port,
+        p1_port: &Self::Port,
         _p2: &Self::Process,
-        _p2_port: &Self::Port,
+        p2_port: &Self::Port,
     ) -> (syn::Expr, syn::Expr) {
-        todo!()
+        let ident_sink =
+            syn::Ident::new(&format!("__hydro_o2o_sink_{}", p1_port), Span::call_site());
+        let ident_source = syn::Ident::new(
+            &format!("__hydro_o2o_source_{}", p2_port),
+            Span::call_site(),
+        );
+        (
+            syn::parse_quote!(#ident_sink),
+            syn::parse_quote!(#ident_source),
+        )
     }
 
     fn o2o_connect(
@@ -175,7 +184,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p2: &Self::Process,
         _p2_port: &Self::Port,
     ) -> Box<dyn FnOnce()> {
-        todo!()
+        Box::new(|| {})
     }
 
     fn o2m_sink_source(
@@ -442,7 +451,7 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 }
 
 pub(super) fn create_sim_graph_trybuild(
-    graph: DfirGraph,
+    async_graphs: BTreeMap<LocationId, DfirGraph>,
     tick_graphs: BTreeMap<LocationId, DfirGraph>,
     extra_stmts: Vec<syn::Stmt>,
 ) -> (String, TrybuildConfig) {
@@ -452,8 +461,13 @@ pub(super) fn create_sim_graph_trybuild(
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let generated_code =
-        compile_sim_graph_trybuild(graph, tick_graphs, extra_stmts, crate_name.clone(), is_test);
+    let generated_code = compile_sim_graph_trybuild(
+        async_graphs,
+        tick_graphs,
+        extra_stmts,
+        crate_name.clone(),
+        is_test,
+    );
 
     let inlined_staged = if is_test {
         let gen_staged = stageleft_tool::gen_staged_trybuild(
@@ -529,29 +543,38 @@ pub(super) fn create_sim_graph_trybuild(
 }
 
 fn compile_sim_graph_trybuild(
-    partitioned_graph: DfirGraph,
+    async_graphs: BTreeMap<LocationId, DfirGraph>,
     tick_graphs: BTreeMap<LocationId, DfirGraph>,
     extra_stmts: Vec<syn::Stmt>,
     crate_name: String,
     is_test: bool,
 ) -> syn::File {
     let mut diagnostics = Vec::new();
-    let mut dfir_expr: syn::Expr = syn::parse2(partitioned_graph.as_code(
-        &quote! { __root_dfir_rs },
-        true,
-        quote!(),
-        &mut diagnostics,
-    ))
-    .unwrap();
 
-    if is_test {
-        UseTestModeStaged {
-            crate_name: crate_name.clone(),
-        }
-        .visit_expr_mut(&mut dfir_expr);
-    }
+    let async_dfir_exprs = async_graphs
+        .into_iter()
+        .map(|(lid, g)| {
+            let mut dfir_expr: syn::Expr = syn::parse2(g.as_code(
+                &quote! { __root_dfir_rs },
+                true,
+                quote!(),
+                &mut diagnostics,
+            ))
+            .unwrap();
 
-    let tick_dfir_epxrs = tick_graphs
+            if is_test {
+                UseTestModeStaged {
+                    crate_name: crate_name.clone(),
+                }
+                .visit_expr_mut(&mut dfir_expr);
+            }
+
+            let ser_lid = serde_json::to_string(&lid).unwrap();
+            syn::parse_quote!((#ser_lid, #dfir_expr))
+        })
+        .collect::<Vec<syn::Expr>>();
+
+    let tick_dfir_exprs = tick_graphs
         .into_iter()
         .map(|(lid, g)| {
             let mut dfir_expr: syn::Expr = syn::parse2(g.as_code(
@@ -588,7 +611,7 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a>,
+            Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
             Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
             ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
         ) {
@@ -638,7 +661,7 @@ fn compile_sim_graph_trybuild(
 
             let mut __hydro_hooks: ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
             #(#extra_stmts)*
-            (#dfir_expr, vec![#(#tick_dfir_epxrs),*], __hydro_hooks)
+            (vec![#(#async_dfir_exprs),*], vec![#(#tick_dfir_exprs),*], __hydro_hooks)
         }
 
         #[unsafe(no_mangle)]
@@ -649,7 +672,7 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            __root_dfir_rs::scheduled::graph::Dfir<'static>,
+            Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
         ) {
