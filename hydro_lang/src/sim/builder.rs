@@ -26,7 +26,9 @@ use crate::location::dynamic::LocationId;
 /// elements from that buffer into the tick's DFIR graph with a separate handoff channel.
 pub struct SimBuilder {
     pub extra_stmts: Vec<syn::Stmt>,
-    pub async_graphs: BTreeMap<LocationId, FlatGraphBuilder>,
+    pub extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
+    pub process_graphs: BTreeMap<LocationId, FlatGraphBuilder>,
+    pub cluster_graphs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub next_hoff_id: usize,
 }
@@ -38,10 +40,16 @@ impl DfirBuilder for SimBuilder {
 
     fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
         match location {
-            LocationId::Process(_) => self.async_graphs.entry(location.clone()).or_default(),
-            LocationId::Cluster(_) => panic!("SimBuilder does not support clusters"),
-            LocationId::Atomic(_) => panic!("SimBuilder does not support atomic locations"),
-            LocationId::Tick(_, _) => self.tick_dfirs.entry(location.clone()).or_default(),
+            LocationId::Process(_) => self.process_graphs.entry(location.clone()).or_default(),
+            LocationId::Cluster(_) => self.cluster_graphs.entry(location.clone()).or_default(),
+            LocationId::Atomic(_) => todo!("SimBuilder does not support atomic locations"),
+            LocationId::Tick(_, l) => match l.root() {
+                LocationId::Process(_) => self.tick_dfirs.entry(location.clone()).or_default(),
+                LocationId::Cluster(_) => {
+                    todo!("SimBuilder does not yet support ticks on cluster locations")
+                }
+                _ => unreachable!(),
+            },
         }
     }
 
@@ -348,6 +356,54 @@ impl DfirBuilder for SimBuilder {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
                             #input_ident -> for_each(|v| #sink.send(v).unwrap());
+                        },
+                        None,
+                        Some(&format!("send{}", tag_id)),
+                    );
+                }
+
+                if let Some(deserialize_pipeline) = deserialize {
+                    self.get_dfir_mut(to).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#source) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                        },
+                        None,
+                        Some(&format!("recv{}", tag_id)),
+                    );
+                } else {
+                    self.get_dfir_mut(to).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#source);
+                        },
+                        None,
+                        Some(&format!("recv{}", tag_id)),
+                    );
+                }
+            }
+            (LocationId::Cluster(_), LocationId::Process(_)) => {
+                self.extra_stmts.push(syn::parse_quote! {
+                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(u32, __root_dfir_rs::bytes::Bytes)>();
+                });
+
+                self.extra_stmts_cluster
+                    .entry(from.clone())
+                    .or_default()
+                    .push(syn::parse_quote! {
+                        let #sink = #sink.clone();
+                    });
+
+                if let Some(serialize_pipeline) = serialize {
+                    self.get_dfir_mut(from).add_dfir(
+                        parse_quote! {
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.send((__current_cluster_id, v)).unwrap());
+                        },
+                        None,
+                        Some(&format!("send{}", tag_id)),
+                    );
+                } else {
+                    self.get_dfir_mut(from).add_dfir(
+                        parse_quote! {
+                            #input_ident -> for_each(|v| #sink.send((__current_cluster_id, v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
