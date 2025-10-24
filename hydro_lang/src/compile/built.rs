@@ -226,13 +226,27 @@ impl<'a> BuiltFlow<'a> {
         let processes = self
             .process_id_name
             .iter()
-            .map(|id| (id.0, SimNode {}))
+            .map(|id| {
+                (
+                    id.0,
+                    SimNode {
+                        port_counter: Rc::new(RefCell::new(0)),
+                    },
+                )
+            })
             .collect();
 
         let clusters = self
             .cluster_id_name
             .iter()
-            .map(|id| (id.0, SimNode {}))
+            .map(|id| {
+                (
+                    id.0,
+                    SimNode {
+                        port_counter: Rc::new(RefCell::new(0)),
+                    },
+                )
+            })
             .collect();
 
         let externals = self
@@ -254,6 +268,7 @@ impl<'a> BuiltFlow<'a> {
             external_ports,
             processes,
             clusters,
+            cluster_max_sizes: HashMap::new(),
             externals,
             _process_id_name: std::mem::take(&mut self.process_id_name),
             _external_id_name: std::mem::take(&mut self.external_id_name),
