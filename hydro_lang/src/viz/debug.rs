@@ -46,11 +46,6 @@ pub fn save_dot(
 }
 
 fn open_mermaid_browser(mermaid_src: &str) -> Result<()> {
-    // Debug: Print the mermaid source being sent to browser
-    println!("=== MERMAID SOURCE BEING SENT TO BROWSER ===");
-    println!("{}", mermaid_src);
-    println!("=== END MERMAID SOURCE ===");
-
     let state = serde_json::json!({
         "code": mermaid_src,
         "mermaid": serde_json::json!({
@@ -139,7 +134,6 @@ fn try_compress_and_encode(json_content: &str, config: &VisualizerConfig) -> (St
         return (encoded, false, 1.0);
     }
 
-    // Try compression
     match compress_json(json_content) {
         Ok(compressed) => {
             let compressed_size = compressed.len();
@@ -189,19 +183,7 @@ fn generate_visualizer_url(
         let url = format!("{}?{}={}", config.base_url, param_name, encoded_data);
         Some((url, is_compressed))
     } else {
-        if is_compressed {
-            println!("⚠️  Compressed URL too long, trying uncompressed...");
-            let uncompressed_encoded = encode_base64_url_safe(json_content.as_bytes());
-            let uncompressed_length =
-                calculate_url_length(&config.base_url, "data", &uncompressed_encoded);
-
-            if uncompressed_length <= config.max_url_length {
-                let url = format!("{}?data={}", config.base_url, uncompressed_encoded);
-                return Some((url, false));
-            }
-        }
-
-        println!("❌ URL too long even with compression, will use file-based fallback");
+        // message will be displayed by print_fallback_instructions
         None
     }
 }
@@ -276,7 +258,6 @@ fn print_fallback_instructions(file_path: &std::path::Path, url: &str) {
 /// Saves the JSON to a temporary file and opens the visualizer with a file parameter.
 /// Uses the configured base URL from VisualizerConfig.
 fn handle_large_graph_fallback(json_content: &str, config: &VisualizerConfig) -> Result<()> {
-    // Save JSON to temporary file with timestamped filename
     let temp_file = save_json_to_temp_file(json_content)?;
 
     // Generate URL with file parameter using configured base URL

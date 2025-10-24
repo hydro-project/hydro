@@ -44,7 +44,7 @@ npm ci
 echo "========================================="
 echo "Step 7/7: Building Docusaurus site..."
 echo "========================================="
-LOAD_PLAYGROUND=1 node build-and-exit.mjs
+LOAD_PLAYGROUND=1 npm run build
 
 echo "========================================="
 echo "Build complete!"

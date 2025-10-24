@@ -135,7 +135,7 @@ export default function HydroscopePage() {
           // showInfoPanel, showStylePanel, enableCollapse all default to true
           // initialLayoutAlgorithm defaults to mrtree
           // initialColorPalette defaults to Set3
-          onFileUpload={(data) => {
+          onFileUpload={(data: any, filename: string) => {
             // Update the data state so the component shows the visualization
             setUrlData(data);
           }}

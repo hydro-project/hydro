@@ -45,6 +45,14 @@ pub struct GraphConfig {
     pub long_labels: bool,
 }
 
+impl GraphConfig {
+    /// Returns true if the program should exit after generating a graph file.
+    /// This happens when both --file and --graph flags are provided.
+    pub fn should_exit_after_graph_generation(&self) -> bool {
+        self.file && self.graph.is_some()
+    }
+}
+
 /// Configuration for visualizer URL generation and compression.
 /// Controls how graphs are encoded and opened in web browsers.
 #[derive(Debug, Clone)]

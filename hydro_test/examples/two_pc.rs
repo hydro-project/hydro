@@ -70,7 +70,7 @@ async fn main() {
     }
 
     // If we're just generating a graph file, exit early
-    if args.graph.file && args.graph.graph.is_some() {
+    if args.graph.should_exit_after_graph_generation() {
         return;
     }
 

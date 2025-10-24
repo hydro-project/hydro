@@ -115,7 +115,7 @@ pub trait HydroGraphWrite {
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_properties: &HashSet<HydroEdgeType>,
+        edge_properties: &HashSet<HydroEdgeProp>,
         label: Option<&str>,
     ) -> Result<(), Self::Err>;
 
@@ -162,15 +162,12 @@ pub mod node_type_utils {
 
     /// Get all node types with their string representations (used by JSON format)
     pub fn all_types_with_strings() -> Vec<(HydroNodeType, &'static str)> {
-        NODE_TYPE_DATA
-            .iter()
-            .map(|(nt, name)| (*nt, *name))
-            .collect()
+        NODE_TYPE_DATA.to_vec()
     }
 }
 
 /// Types of nodes in Hydro IR for styling purposes.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HydroNodeType {
     Source,
     Transform,
@@ -183,7 +180,7 @@ pub enum HydroNodeType {
 
 /// Types of edges in Hydro IR representing stream properties.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum HydroEdgeType {
+pub enum HydroEdgeProp {
     Bounded,
     Unbounded,
     TotalOrder,
@@ -191,6 +188,7 @@ pub enum HydroEdgeType {
     Keyed,
     // Collection type tags for styling
     Stream,
+    KeyedSingleton,
     KeyedStream,
     Singleton,
     Optional,
@@ -200,7 +198,7 @@ pub enum HydroEdgeType {
 
 /// Unified edge style representation for all graph formats.
 /// This intermediate format allows consistent styling across JSON, DOT, and Mermaid.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnifiedEdgeStyle {
     /// Line pattern (solid, dashed)
     pub line_pattern: LinePattern,
@@ -220,14 +218,14 @@ pub struct UnifiedEdgeStyle {
     pub color: &'static str,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LinePattern {
     Solid,
     Dotted,
     Dashed,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArrowheadStyle {
     TriangleFilled,
     CircleFilled,
@@ -235,7 +233,7 @@ pub enum ArrowheadStyle {
     Default,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LineStyle {
     /// Plain single line
     Single,
@@ -243,19 +241,19 @@ pub enum LineStyle {
     HashMarks,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HaloStyle {
     None,
     LightBlue,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WavinessStyle {
     None,
     Wavy,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnimationStyle {
     Static,
     Animated,
@@ -289,14 +287,14 @@ impl Default for UnifiedEdgeStyle {
 /// | Keyedness | Line Style | NotKeyed (plain line), Keyed (line with hash marks/dots) |
 /// | Collection Type | Color + Arrowhead | Stream (blue #2563eb, triangle), Singleton (black, circle), Optional (gray, diamond) |
 pub fn get_unified_edge_style(
-    edge_properties: &HashSet<HydroEdgeType>,
+    edge_properties: &HashSet<HydroEdgeProp>,
     src_location: Option<usize>,
     dst_location: Option<usize>,
 ) -> UnifiedEdgeStyle {
     let mut style = UnifiedEdgeStyle::default();
 
     // Network communication group - controls line pattern AND animation
-    let is_network = edge_properties.contains(&HydroEdgeType::Network)
+    let is_network = edge_properties.contains(&HydroEdgeProp::Network)
         || (src_location.is_some() && dst_location.is_some() && src_location != dst_location);
 
     if is_network {
@@ -308,38 +306,41 @@ pub fn get_unified_edge_style(
     }
 
     // Boundedness group - controls halo
-    if edge_properties.contains(&HydroEdgeType::Unbounded) {
+    if edge_properties.contains(&HydroEdgeProp::Unbounded) {
         style.halo = HaloStyle::LightBlue;
     } else {
         style.halo = HaloStyle::None;
     }
 
     // Collection type group - controls arrowhead and color
-    if edge_properties.contains(&HydroEdgeType::Stream) {
+    if edge_properties.contains(&HydroEdgeProp::Stream) {
         style.arrowhead = ArrowheadStyle::TriangleFilled;
         style.color = "#2563eb"; // Bright blue for Stream
-    } else if edge_properties.contains(&HydroEdgeType::KeyedStream) {
+    } else if edge_properties.contains(&HydroEdgeProp::KeyedStream) {
         style.arrowhead = ArrowheadStyle::TriangleFilled;
         style.color = "#2563eb"; // Bright blue for Stream (keyed variant)
-    } else if edge_properties.contains(&HydroEdgeType::Singleton) {
+    } else if edge_properties.contains(&HydroEdgeProp::KeyedSingleton) {
+        style.arrowhead = ArrowheadStyle::TriangleFilled;
+        style.color = "#000000"; // Black for Singleton (keyed variant)
+    } else if edge_properties.contains(&HydroEdgeProp::Singleton) {
         style.arrowhead = ArrowheadStyle::CircleFilled;
         style.color = "#000000"; // Black for Singleton
-    } else if edge_properties.contains(&HydroEdgeType::Optional) {
+    } else if edge_properties.contains(&HydroEdgeProp::Optional) {
         style.arrowhead = ArrowheadStyle::DiamondOpen;
         style.color = "#6b7280"; // Gray for Optional
     }
 
     // Keyedness group - controls hash marks on the line
-    if edge_properties.contains(&HydroEdgeType::Keyed) {
+    if edge_properties.contains(&HydroEdgeProp::Keyed) {
         style.line_style = LineStyle::HashMarks; // Renders as hash marks/dots on the line in hydroscope
     } else {
         style.line_style = LineStyle::Single;
     }
 
     // Ordering group - waviness channel
-    if edge_properties.contains(&HydroEdgeType::NoOrder) {
+    if edge_properties.contains(&HydroEdgeProp::NoOrder) {
         style.waviness = WavinessStyle::Wavy;
-    } else if edge_properties.contains(&HydroEdgeType::TotalOrder) {
+    } else if edge_properties.contains(&HydroEdgeProp::TotalOrder) {
         style.waviness = WavinessStyle::None;
     }
 
@@ -351,43 +352,43 @@ pub fn get_unified_edge_style(
 /// for visualization purposes.
 pub fn extract_edge_properties_from_collection_kind(
     collection_kind: &crate::compile::ir::CollectionKind,
-) -> HashSet<HydroEdgeType> {
+) -> HashSet<HydroEdgeProp> {
     use crate::compile::ir::CollectionKind;
 
     let mut properties = HashSet::new();
 
     match collection_kind {
         CollectionKind::Stream { bound, order, .. } => {
-            properties.insert(HydroEdgeType::Stream);
+            properties.insert(HydroEdgeProp::Stream);
             add_bound_property(&mut properties, bound);
             add_order_property(&mut properties, order);
         }
         CollectionKind::KeyedStream {
             bound, value_order, ..
         } => {
-            properties.insert(HydroEdgeType::KeyedStream);
-            properties.insert(HydroEdgeType::Keyed);
+            properties.insert(HydroEdgeProp::KeyedStream);
+            properties.insert(HydroEdgeProp::Keyed);
             add_bound_property(&mut properties, bound);
             add_order_property(&mut properties, value_order);
         }
         CollectionKind::Singleton { bound, .. } => {
-            properties.insert(HydroEdgeType::Singleton);
+            properties.insert(HydroEdgeProp::Singleton);
             add_bound_property(&mut properties, bound);
             // Singletons have implicit TotalOrder
-            properties.insert(HydroEdgeType::TotalOrder);
+            properties.insert(HydroEdgeProp::TotalOrder);
         }
         CollectionKind::Optional { bound, .. } => {
-            properties.insert(HydroEdgeType::Optional);
+            properties.insert(HydroEdgeProp::Optional);
             add_bound_property(&mut properties, bound);
             // Optionals have implicit TotalOrder
-            properties.insert(HydroEdgeType::TotalOrder);
+            properties.insert(HydroEdgeProp::TotalOrder);
         }
         CollectionKind::KeyedSingleton { bound, .. } => {
-            properties.insert(HydroEdgeType::Singleton);
-            properties.insert(HydroEdgeType::Keyed);
+            properties.insert(HydroEdgeProp::Singleton);
+            properties.insert(HydroEdgeProp::Keyed);
             // KeyedSingletons boundedness depends on the bound kind
             add_keyed_singleton_bound_property(&mut properties, bound);
-            properties.insert(HydroEdgeType::TotalOrder);
+            properties.insert(HydroEdgeProp::TotalOrder);
         }
     }
 
@@ -396,51 +397,51 @@ pub fn extract_edge_properties_from_collection_kind(
 
 /// Helper function to add bound property based on BoundKind.
 fn add_bound_property(
-    properties: &mut HashSet<HydroEdgeType>,
+    properties: &mut HashSet<HydroEdgeProp>,
     bound: &crate::compile::ir::BoundKind,
 ) {
     use crate::compile::ir::BoundKind;
 
     match bound {
         BoundKind::Bounded => {
-            properties.insert(HydroEdgeType::Bounded);
+            properties.insert(HydroEdgeProp::Bounded);
         }
         BoundKind::Unbounded => {
-            properties.insert(HydroEdgeType::Unbounded);
+            properties.insert(HydroEdgeProp::Unbounded);
         }
     }
 }
 
 /// Helper function to add bound property for KeyedSingleton based on KeyedSingletonBoundKind.
 fn add_keyed_singleton_bound_property(
-    properties: &mut HashSet<HydroEdgeType>,
+    properties: &mut HashSet<HydroEdgeProp>,
     bound: &crate::compile::ir::KeyedSingletonBoundKind,
 ) {
     use crate::compile::ir::KeyedSingletonBoundKind;
 
     match bound {
         KeyedSingletonBoundKind::Bounded | KeyedSingletonBoundKind::BoundedValue => {
-            properties.insert(HydroEdgeType::Bounded);
+            properties.insert(HydroEdgeProp::Bounded);
         }
         KeyedSingletonBoundKind::Unbounded => {
-            properties.insert(HydroEdgeType::Unbounded);
+            properties.insert(HydroEdgeProp::Unbounded);
         }
     }
 }
 
 /// Helper function to add order property based on StreamOrder.
 fn add_order_property(
-    properties: &mut HashSet<HydroEdgeType>,
+    properties: &mut HashSet<HydroEdgeProp>,
     order: &crate::compile::ir::StreamOrder,
 ) {
     use crate::compile::ir::StreamOrder;
 
     match order {
         StreamOrder::TotalOrder => {
-            properties.insert(HydroEdgeType::TotalOrder);
+            properties.insert(HydroEdgeProp::TotalOrder);
         }
         StreamOrder::NoOrder => {
-            properties.insert(HydroEdgeType::NoOrder);
+            properties.insert(HydroEdgeProp::NoOrder);
         }
     }
 }
@@ -454,12 +455,12 @@ pub fn is_network_edge(src_location: &LocationId, dst_location: &LocationId) -> 
 
 /// Add network edge tag if source and destination locations differ.
 pub fn add_network_edge_tag(
-    properties: &mut HashSet<HydroEdgeType>,
+    properties: &mut HashSet<HydroEdgeProp>,
     src_location: &LocationId,
     dst_location: &LocationId,
 ) {
     if is_network_edge(src_location, dst_location) {
-        properties.insert(HydroEdgeType::Network);
+        properties.insert(HydroEdgeProp::Network);
     }
 }
 
@@ -487,11 +488,29 @@ impl Default for HydroWriteConfig {
     }
 }
 
+/// Node information in the Hydro graph.
+#[derive(Clone)]
+pub struct HydroGraphNode {
+    pub label: NodeLabel,
+    pub node_type: HydroNodeType,
+    pub location: Option<usize>,
+    pub backtrace: Option<Backtrace>,
+}
+
+/// Edge information in the Hydro graph.
+#[derive(Debug, Clone)]
+pub struct HydroGraphEdge {
+    pub src: usize,
+    pub dst: usize,
+    pub edge_properties: HashSet<HydroEdgeProp>,
+    pub label: Option<String>,
+}
+
 /// Graph structure tracker for Hydro IR rendering.
 #[derive(Default)]
 pub struct HydroGraphStructure {
-    pub nodes: HashMap<usize, (NodeLabel, HydroNodeType, Option<usize>, Option<Backtrace>)>, /* node_id -> (label, type, location, backtrace) */
-    pub edges: Vec<(usize, usize, HashSet<HydroEdgeType>, Option<String>)>, /* (src, dst, edge_properties, label) */
+    pub nodes: HashMap<usize, HydroGraphNode>,
+    pub edges: Vec<HydroGraphEdge>,
     pub locations: HashMap<usize, String>, // location_id -> location_type
     pub next_node_id: usize,
 }
@@ -519,8 +538,15 @@ impl HydroGraphStructure {
     ) -> usize {
         let node_id = self.next_node_id;
         self.next_node_id += 1;
-        self.nodes
-            .insert(node_id, (label, node_type, location, backtrace));
+        self.nodes.insert(
+            node_id,
+            HydroGraphNode {
+                label,
+                node_type,
+                location,
+                backtrace,
+            },
+        );
         node_id
     }
 
@@ -540,10 +566,15 @@ impl HydroGraphStructure {
         &mut self,
         src: usize,
         dst: usize,
-        edge_properties: HashSet<HydroEdgeType>,
+        edge_properties: HashSet<HydroEdgeProp>,
         label: Option<String>,
     ) {
-        self.edges.push((src, dst, edge_properties, label));
+        self.edges.push(HydroGraphEdge {
+            src,
+            dst,
+            edge_properties,
+            label,
+        });
     }
 
     // Legacy method for backward compatibility
@@ -551,12 +582,17 @@ impl HydroGraphStructure {
         &mut self,
         src: usize,
         dst: usize,
-        edge_type: HydroEdgeType,
+        edge_type: HydroEdgeProp,
         label: Option<String>,
     ) {
         let mut properties = HashSet::new();
         properties.insert(edge_type);
-        self.edges.push((src, dst, properties, label));
+        self.edges.push(HydroGraphEdge {
+            src,
+            dst,
+            edge_properties: properties,
+            label,
+        });
     }
 
     pub fn add_location(&mut self, location_id: usize, location_type: String) {
@@ -667,7 +703,7 @@ fn add_edge_with_metadata(
 
     // If no properties were extracted, default to Stream
     if properties.is_empty() {
-        properties.insert(HydroEdgeType::Stream);
+        properties.insert(HydroEdgeProp::Stream);
     }
 
     structure.add_edge(src_id, dst_id, properties, label);
@@ -686,54 +722,59 @@ where
     // Write the graph
     graph_write.write_prologue()?;
 
-        // Write node definitions
-        for (&node_id, (label, node_type, location, backtrace)) in &structure.nodes {
-            let (location_id, location_type) = if let Some(loc_id) = location {
-                (
-                    Some(*loc_id),
-                    structure.locations.get(loc_id).map(|s| s.as_str()),
-                )
-            } else {
-                (None, None)
-            };
+    // Write node definitions
+    for (&node_id, node) in &structure.nodes {
+        let (location_id, location_type) = if let Some(loc_id) = node.location {
+            (
+                Some(loc_id),
+                structure.locations.get(&loc_id).map(|s| s.as_str()),
+            )
+        } else {
+            (None, None)
+        };
 
-            graph_write.write_node_definition(
-                node_id,
-                label,
-                *node_type,
-                location_id,
-                location_type,
-                backtrace.as_ref(),
-            )?;
-        }
+        graph_write.write_node_definition(
+            node_id,
+            &node.label,
+            node.node_type,
+            location_id,
+            location_type,
+            node.backtrace.as_ref(),
+        )?;
+    }
 
-        // Group nodes by location if requested
-        if config.show_location_groups {
-            let mut nodes_by_location: HashMap<usize, Vec<usize>> = HashMap::new();
-            for (&node_id, (_, _, location, _)) in &structure.nodes {
-                if let Some(location_id) = location {
-                    nodes_by_location
-                        .entry(*location_id)
-                        .or_default()
-                        .push(node_id);
-                }
-            }
-
-            for (&location_id, node_ids) in &nodes_by_location {
-                if let Some(location_type) = structure.locations.get(&location_id) {
-                    graph_write.write_location_start(location_id, location_type)?;
-                    for &node_id in node_ids {
-                        graph_write.write_node(node_id)?;
-                    }
-                    graph_write.write_location_end()?;
-                }
+    // Group nodes by location if requested
+    if config.show_location_groups {
+        let mut nodes_by_location: HashMap<usize, Vec<usize>> = HashMap::new();
+        for (&node_id, node) in &structure.nodes {
+            if let Some(location_id) = node.location {
+                nodes_by_location
+                    .entry(location_id)
+                    .or_default()
+                    .push(node_id);
             }
         }
 
-        // Write edges
-        for (src_id, dst_id, edge_properties, label) in &structure.edges {
-            graph_write.write_edge(*src_id, *dst_id, edge_properties, label.as_deref())?;
+        for (&location_id, node_ids) in &nodes_by_location {
+            if let Some(location_type) = structure.locations.get(&location_id) {
+                graph_write.write_location_start(location_id, location_type)?;
+                for &node_id in node_ids {
+                    graph_write.write_node(node_id)?;
+                }
+                graph_write.write_location_end()?;
+            }
         }
+    }
+
+    // Write edges
+    for edge in &structure.edges {
+        graph_write.write_edge(
+            edge.src,
+            edge.dst,
+            &edge.edge_properties,
+            edge.label.as_deref(),
+        )?;
+    }
 
     graph_write.write_epilogue()?;
     Ok(())
@@ -1551,11 +1592,11 @@ where
 {
     let mut structure = HydroGraphStructure::new();
     let mut seen_tees = HashMap::new();
-    
+
     // Build the graph structure for all roots
     for leaf in roots {
         leaf.build_graph_structure(&mut structure, &mut seen_tees, config);
     }
-    
+
     write_graph_structure(&structure, graph_write, config)
 }

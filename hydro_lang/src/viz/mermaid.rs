@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::fmt::Write;
 
-use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
+use super::render::{HydroEdgeProp, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
 
 /// Escapes a string for use in a mermaid graph label.
 pub fn escape_mermaid(string: &str) -> String {
@@ -135,14 +135,14 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_properties: &std::collections::HashSet<HydroEdgeType>,
+        edge_properties: &std::collections::HashSet<HydroEdgeProp>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
         // Use unified edge style system
         let style = super::render::get_unified_edge_style(edge_properties, None, None);
 
         // Determine arrow style based on edge properties
-        let arrow_style = if edge_properties.contains(&HydroEdgeType::Network) {
+        let arrow_style = if edge_properties.contains(&HydroEdgeProp::Network) {
             "-.->".to_string()
         } else {
             match style.line_pattern {

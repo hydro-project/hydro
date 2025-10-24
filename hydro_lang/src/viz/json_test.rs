@@ -4,9 +4,12 @@
 mod tests {
     use std::collections::HashSet;
 
+    #[cfg(test)]
+    use hydro_build_utils::insta;
+
     use crate::viz::json::HydroJson;
     use crate::viz::render::{
-        HydroEdgeType, HydroGraphWrite, HydroNodeType, HydroWriteConfig, NodeLabel,
+        HydroEdgeProp, HydroGraphWrite, HydroNodeType, HydroWriteConfig, NodeLabel,
     };
 
     #[test]
@@ -44,98 +47,16 @@ mod tests {
 
         // Add an edge with semantic properties
         let mut edge_props = HashSet::new();
-        edge_props.insert(HydroEdgeType::Stream);
-        edge_props.insert(HydroEdgeType::Unbounded);
-        edge_props.insert(HydroEdgeType::TotalOrder);
+        edge_props.insert(HydroEdgeProp::Stream);
+        edge_props.insert(HydroEdgeProp::Unbounded);
+        edge_props.insert(HydroEdgeProp::TotalOrder);
 
         writer.write_edge(0, 1, &edge_props, None).unwrap();
 
         writer.write_epilogue().unwrap();
 
-        // Parse the JSON to validate structure
-        let json: serde_json::Value =
-            serde_json::from_str(&output).expect("Generated JSON should be valid");
-
-        // Validate top-level structure
-        assert!(
-            json.get("nodes").is_some(),
-            "JSON should have 'nodes' field"
-        );
-        assert!(
-            json.get("edges").is_some(),
-            "JSON should have 'edges' field"
-        );
-        assert!(
-            json.get("edgeStyleConfig").is_some(),
-            "JSON should have 'edgeStyleConfig' field"
-        );
-        assert!(
-            json.get("nodeTypeConfig").is_some(),
-            "JSON should have 'nodeTypeConfig' field"
-        );
-
-        // Validate nodes basic fields
-        let nodes = json["nodes"].as_array().expect("nodes should be an array");
-        assert_eq!(nodes.len(), 2, "Should have 2 nodes");
-
-        for node in nodes {
-            // label fields
-            assert!(
-                node.get("label").is_some(),
-                "Node should have primary label field"
-            );
-            assert!(
-                node.get("shortLabel").is_some(),
-                "Node should have shortLabel field"
-            );
-            assert!(
-                node.get("fullLabel").is_some(),
-                "Node should have fullLabel field"
-            );
-            // nodeType for legend/styling
-            assert!(
-                node.get("nodeType").is_some(),
-                "Node should have nodeType field"
-            );
-        }
-
-        // Validate edges have semantic tags
-        let edges = json["edges"].as_array().expect("edges should be an array");
-        assert_eq!(edges.len(), 1, "Should have 1 edge");
-
-        let edge = &edges[0];
-        assert!(
-            edge.get("semanticTags").is_some(),
-            "Edge should have semanticTags field"
-        );
-        let tags = edge["semanticTags"]
-            .as_array()
-            .expect("semanticTags should be an array");
-        // Tags include collection and boundedness/order and Local if not crossing
-        assert!(tags.len() >= 3, "Edge should have at least 3 semantic tags");
-
-        // Verify the semantic tags are strings
-        let tag_strings: Vec<String> = tags
-            .iter()
-            .map(|t| t.as_str().unwrap().to_string())
-            .collect();
-        assert!(tag_strings.contains(&"Stream".to_string()));
-        assert!(tag_strings.contains(&"Unbounded".to_string()));
-        assert!(tag_strings.contains(&"TotalOrder".to_string()));
-
-        // Validate edge style config has semantic mappings
-        let edge_style_config = &json["edgeStyleConfig"];
-        assert!(
-            edge_style_config.get("semanticMappings").is_some(),
-            "edgeStyleConfig should have semanticMappings"
-        );
-
-        let semantic_mappings = &edge_style_config["semanticMappings"];
-        assert!(semantic_mappings.get("NetworkGroup").is_some());
-        assert!(semantic_mappings.get("BoundednessGroup").is_some());
-        assert!(semantic_mappings.get("CollectionGroup").is_some());
-        assert!(semantic_mappings.get("FlowGroup").is_some());
-        assert!(semantic_mappings.get("OrderingGroup").is_some());
+        // Snapshot test the complete JSON output
+        insta::assert_snapshot!(output);
     }
 
     #[test]
@@ -163,14 +84,8 @@ mod tests {
 
         writer.write_epilogue().unwrap();
 
-        let json: serde_json::Value =
-            serde_json::from_str(&output).expect("Generated JSON should be valid");
-
-        // Validate edge has empty semantic tags array
-        let edges = json["edges"].as_array().unwrap();
-        let edge = &edges[0];
-        let tags = edge["semanticTags"].as_array().unwrap();
-        assert!(tags.contains(&serde_json::Value::String("Local".to_string())));
+        // Snapshot test the complete JSON output
+        insta::assert_snapshot!(output);
     }
 
     #[test]
@@ -184,7 +99,7 @@ mod tests {
 
         // Build same small graph with two locations to force Network tag
         let mut edge_props = HashSet::new();
-        edge_props.insert(HydroEdgeType::Stream);
+        edge_props.insert(HydroEdgeProp::Stream);
 
         // Graph 1
         w1.write_prologue().unwrap();
@@ -232,21 +147,13 @@ mod tests {
         w2.write_edge(0, 1, &edge_props, None).unwrap();
         w2.write_epilogue().unwrap();
 
+        // Verify deterministic output
         assert_eq!(
             output1, output2,
             "JSON output should be deterministic regardless of insertion order"
         );
 
-        let json: serde_json::Value = serde_json::from_str(&output1).unwrap();
-        let edge_tags = json["edges"][0]["semanticTags"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|v| v.as_str().unwrap().to_string())
-            .collect::<Vec<_>>();
-        assert!(
-            edge_tags.contains(&"Network".to_string()),
-            "Edge should be tagged Network when crossing locations"
-        );
+        // Snapshot test the complete JSON output
+        insta::assert_snapshot!(output1);
     }
 }

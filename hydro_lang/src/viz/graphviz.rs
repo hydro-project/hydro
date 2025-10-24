@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::fmt::Write;
 
-use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
+use super::render::{HydroEdgeProp, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
 
 /// Escapes a string for use in a DOT graph label.
 pub fn escape_dot(string: &str, newline: &str) -> String {
@@ -147,7 +147,7 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_properties: &std::collections::HashSet<HydroEdgeType>,
+        edge_properties: &std::collections::HashSet<HydroEdgeProp>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
         let mut properties = Vec::<Cow<'static, str>>::new();
@@ -156,18 +156,14 @@ where
             properties.push(format!("label=\"{}\"", escape_dot(label, "\\n")).into());
         }
 
-        // Use unified edge style system
         let style = super::render::get_unified_edge_style(edge_properties, None, None);
 
-        // Apply color
         properties.push(format!("color=\"{}\"", style.color).into());
 
-        // Apply line width
         if style.line_width > 1 {
             properties.push("style=\"bold\"".into());
         }
 
-        // Apply line pattern
         match style.line_pattern {
             super::render::LinePattern::Dotted => {
                 properties.push("style=\"dotted\"".into());

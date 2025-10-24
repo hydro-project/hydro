@@ -1,9 +1,67 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
-use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
+use serde::Serialize;
+
+use super::render::{HydroEdgeProp, HydroGraphWrite, HydroNodeType};
 use crate::compile::ir::HydroRoot;
 use crate::compile::ir::backtrace::Backtrace;
+
+/// A serializable backtrace frame for JSON output.
+/// Includes compatibility aliases to match potential viewer expectations.
+#[derive(Serialize)]
+struct BacktraceFrame {
+    /// Function name (truncated)
+    #[serde(rename = "fn")]
+    fn_name: String,
+    /// Function name alias for compatibility
+    function: String,
+    /// File path (truncated)
+    file: String,
+    /// File path alias for compatibility
+    filename: String,
+    /// Line number
+    line: Option<u32>,
+    /// Line number alias for compatibility
+    #[serde(rename = "lineNumber")]
+    line_number: Option<u32>,
+}
+
+/// Node data for JSON output.
+#[derive(Serialize)]
+struct NodeData {
+    #[serde(rename = "locationId")]
+    location_id: Option<usize>,
+    #[serde(rename = "locationType")]
+    location_type: Option<String>,
+    backtrace: serde_json::Value,
+}
+
+/// A serializable node for JSON output.
+#[derive(Serialize)]
+struct Node {
+    id: String,
+    #[serde(rename = "nodeType")]
+    node_type: String,
+    #[serde(rename = "fullLabel")]
+    full_label: String,
+    #[serde(rename = "shortLabel")]
+    short_label: String,
+    label: String,
+    data: NodeData,
+}
+
+/// A serializable edge for JSON output.
+#[derive(Serialize)]
+struct Edge {
+    id: String,
+    source: String,
+    target: String,
+    #[serde(rename = "semanticTags")]
+    semantic_tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    label: Option<String>,
+}
 
 /// JSON graph writer for Hydro IR.
 /// Outputs JSON that can be used with interactive graph visualization tools.
@@ -54,19 +112,20 @@ impl<W> HydroJson<W> {
     }
 
     /// Convert HydroEdgeType to string representation for semantic tags
-    fn edge_type_to_string(edge_type: HydroEdgeType) -> String {
+    fn edge_type_to_string(edge_type: HydroEdgeProp) -> String {
         match edge_type {
-            HydroEdgeType::Bounded => "Bounded".to_string(),
-            HydroEdgeType::Unbounded => "Unbounded".to_string(),
-            HydroEdgeType::TotalOrder => "TotalOrder".to_string(),
-            HydroEdgeType::NoOrder => "NoOrder".to_string(),
-            HydroEdgeType::Keyed => "Keyed".to_string(),
-            HydroEdgeType::Stream => "Stream".to_string(),
-            HydroEdgeType::KeyedStream => "KeyedStream".to_string(),
-            HydroEdgeType::Singleton => "Singleton".to_string(),
-            HydroEdgeType::Optional => "Optional".to_string(),
-            HydroEdgeType::Network => "Network".to_string(),
-            HydroEdgeType::Cycle => "Cycle".to_string(),
+            HydroEdgeProp::Bounded => "Bounded".to_string(),
+            HydroEdgeProp::Unbounded => "Unbounded".to_string(),
+            HydroEdgeProp::TotalOrder => "TotalOrder".to_string(),
+            HydroEdgeProp::NoOrder => "NoOrder".to_string(),
+            HydroEdgeProp::Keyed => "Keyed".to_string(),
+            HydroEdgeProp::Stream => "Stream".to_string(),
+            HydroEdgeProp::KeyedSingleton => "KeyedSingleton".to_string(),
+            HydroEdgeProp::KeyedStream => "KeyedStream".to_string(),
+            HydroEdgeProp::Singleton => "Singleton".to_string(),
+            HydroEdgeProp::Optional => "Optional".to_string(),
+            HydroEdgeProp::Network => "Network".to_string(),
+            HydroEdgeProp::Cycle => "Cycle".to_string(),
         }
     }
 
@@ -188,24 +247,8 @@ impl<W> HydroJson<W> {
             let elements = backtrace.elements();
 
             // filter out obviously internal frames
-            let relevant_frames: Vec<_> = elements
+            let relevant_frames: Vec<BacktraceFrame> = elements
                 .iter()
-                .filter(|elem| {
-                    let filename = elem.filename.as_deref().unwrap_or("");
-                    let fn_name = &elem.fn_name;
-
-                    // Filter out obviously internal/system frames
-                    !(filename.contains(".cargo/registry/")
-                        || filename.contains(".rustup/toolchains/")
-                        || fn_name.starts_with("std::")
-                        || fn_name.starts_with("core::")
-                        || fn_name.starts_with("alloc::")
-                        || fn_name.contains("rust_begin_unwind")
-                        || fn_name.contains("rust_panic")
-                        || fn_name.contains("__rust_")
-                        || filename.ends_with("panic.rs")
-                        || filename.ends_with("/rustc/"))
-                })
                 .map(|elem| {
                     // Truncate paths and function names for size
                     let short_filename = elem
@@ -216,20 +259,18 @@ impl<W> HydroJson<W> {
 
                     let short_fn_name = Self::truncate_function_name(&elem.fn_name);
 
-                    // Include compatibility aliases to match potential viewer expectations
-                    serde_json::json!({
-                        "fn": short_fn_name,
-                        "function": short_fn_name,
-                        "file": short_filename,
-                        "filename": short_filename,
-                        "line": elem.lineno,
-                        "lineNumber": elem.lineno
-                        // Removed "addr" - not useful for visualization and saves space
-                    })
+                    BacktraceFrame {
+                        fn_name: short_fn_name.clone(),
+                        function: short_fn_name,
+                        file: short_filename.clone(),
+                        filename: short_filename,
+                        line: elem.lineno,
+                        line_number: elem.lineno,
+                    }
                 })
                 .collect();
 
-            serde_json::Value::Array(relevant_frames)
+            serde_json::to_value(relevant_frames).unwrap_or_else(|_| serde_json::json!([]))
         }
         #[cfg(not(feature = "build"))]
         {
@@ -345,20 +386,25 @@ where
         // Node type string for styling/legend
         let node_type_str = Self::node_type_to_string(node_type);
 
-        let node = serde_json::json!({
-            "id": node_id.to_string(),
-            "nodeType": node_type_str,
-            "fullLabel": enhanced_full_label,
-            "shortLabel": short_label,
+        let node = Node {
+            id: node_id.to_string(),
+            node_type: node_type_str.to_string(),
+            full_label: enhanced_full_label,
+            short_label: short_label.clone(),
             // Primary display label follows configuration (defaults to short)
-            "label": if self.use_short_labels { serde_json::Value::String(super::render::extract_short_label(&full_label)) } else { serde_json::Value::String(full_label) },
-            "data": {
-                "locationId": location_id,
-                "locationType": location_type,
-                "backtrace": backtrace_json
-            }
-        });
-        self.nodes.push(node);
+            label: if self.use_short_labels {
+                short_label
+            } else {
+                full_label
+            },
+            data: NodeData {
+                location_id,
+                location_type: location_type.map(|s| s.to_string()),
+                backtrace: backtrace_json,
+            },
+        };
+        self.nodes
+            .push(serde_json::to_value(node).expect("Node serialization should not fail"));
 
         // Track node location for cross-location edge detection
         if let Some(loc_id) = location_id {
@@ -372,7 +418,7 @@ where
         &mut self,
         src_id: usize,
         dst_id: usize,
-        edge_properties: &HashSet<HydroEdgeType>,
+        edge_properties: &HashSet<HydroEdgeProp>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
         let edge_id = format!("e{}", self.edge_count);
@@ -402,18 +448,16 @@ where
         // Ensure deterministic ordering of semantic tags
         semantic_tags.sort();
 
-        let mut edge = serde_json::json!({
-            "id": edge_id,
-            "source": src_id.to_string(),
-            "target": dst_id.to_string(),
-            "semanticTags": semantic_tags,
-        });
+        let edge = Edge {
+            id: edge_id,
+            source: src_id.to_string(),
+            target: dst_id.to_string(),
+            semantic_tags,
+            label: label.map(|s| s.to_string()),
+        };
 
-        if let Some(label_text) = label {
-            edge["label"] = serde_json::Value::String(label_text.to_string());
-        }
-
-        self.edges.push(edge);
+        self.edges
+            .push(serde_json::to_value(edge).expect("Edge serialization should not fail"));
         Ok(())
     }
 
@@ -772,7 +816,8 @@ impl<W> HydroJson<W> {
         for (node_id, container_id_value) in node_assignments.iter() {
             if let Some(container_id) = container_id_value.as_str() {
                 // Check if this container ID was remapped during collapsing
-                let final_container_id = id_remapping.get(container_id)
+                let final_container_id = id_remapping
+                    .get(container_id)
                     .map(|s| s.as_str())
                     .unwrap_or(container_id);
                 remapped_assignments.insert(
@@ -789,13 +834,17 @@ impl<W> HydroJson<W> {
     fn build_hierarchy_tree_with_ids(
         &self,
         hierarchy_map: &HashMap<String, (String, usize, Option<String>)>,
-    ) -> (Vec<serde_json::Value>, HashMap<String, String>, HashMap<String, String>) {
+    ) -> (
+        Vec<serde_json::Value>,
+        HashMap<String, String>,
+        HashMap<String, String>,
+    ) {
         // Assign IDs deterministically based on sorted path names
         let mut keys: Vec<&String> = hierarchy_map.keys().collect();
         keys.sort();
         let mut path_to_id: HashMap<String, String> = HashMap::new();
         for (i, path) in keys.iter().enumerate() {
-            path_to_id.insert((***path).to_string(), format!("bt_{}", i.saturating_add(1)));
+            path_to_id.insert((*path).clone(), format!("bt_{}", i.saturating_add(1)));
         }
 
         // Find root items (depth 0) and sort by name
@@ -909,9 +958,9 @@ impl<W> HydroJson<W> {
             .to_string();
 
         // Determine the effective name (combined with parent if collapsing)
-        // Use ← to show call chain (parent called child)
+        // Use → to show call chain (parent called child)
         let effective_name = if let Some(parent) = parent_name.clone() {
-            format!("{} ← {}", parent, current_name)
+            format!("{} → {}", parent, current_name)
         } else {
             current_name.clone()
         };
@@ -919,50 +968,58 @@ impl<W> HydroJson<W> {
         // Check if this node has children (is a container)
         if let Some(serde_json::Value::Array(children)) = node_obj.get("children") {
             // If exactly one child AND that child is also a container
-            if children.len() == 1 {
-                if let Some(child) = children.first() {
-                    let child_is_container = child
-                        .get("children")
-                        .and_then(|v| v.as_array())
-                        .map(|arr| !arr.is_empty())
-                        .unwrap_or(false);
+            if children.len() == 1
+                && let Some(child) = children.first()
+            {
+                let child_is_container = child
+                    .get("children")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| !arr.is_empty())
+                    .unwrap_or(false);
 
-                    if child_is_container {
-                        let child_id = child
-                            .get("id")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string();
+                if child_is_container {
+                    let child_id = child
+                        .get("id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
 
-                        // Record that this parent's ID should map to the child's ID
-                        if !current_id.is_empty() && !child_id.is_empty() {
-                            id_remapping.insert(current_id.clone(), child_id.clone());
-                        }
-
-                        // Collapse: recursively process the child with accumulated name
-                        return Self::collapse_single_child_containers(
-                            child.clone(),
-                            Some(effective_name),
-                            id_remapping,
-                        );
+                    // Record that this parent's ID should map to the child's ID
+                    if !current_id.is_empty() && !child_id.is_empty() {
+                        id_remapping.insert(current_id.clone(), child_id.clone());
                     }
+
+                    // Collapse: recursively process the child with accumulated name
+                    return Self::collapse_single_child_containers(
+                        child.clone(),
+                        Some(effective_name),
+                        id_remapping,
+                    );
                 }
             }
 
             // Not collapsing: process children normally and update name if accumulated
             let processed_children: Vec<serde_json::Value> = children
                 .iter()
-                .map(|child| Self::collapse_single_child_containers(child.clone(), None, id_remapping))
+                .map(|child| {
+                    Self::collapse_single_child_containers(child.clone(), None, id_remapping)
+                })
                 .collect();
 
-            node_obj.insert("name".to_string(), serde_json::Value::String(effective_name));
+            node_obj.insert(
+                "name".to_string(),
+                serde_json::Value::String(effective_name),
+            );
             node_obj.insert(
                 "children".to_string(),
                 serde_json::Value::Array(processed_children),
             );
         } else {
             // Leaf node: just update name if accumulated
-            node_obj.insert("name".to_string(), serde_json::Value::String(effective_name));
+            node_obj.insert(
+                "name".to_string(),
+                serde_json::Value::String(effective_name),
+            );
         }
 
         serde_json::Value::Object(node_obj)

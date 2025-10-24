@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     built.generate_graph_with_config(&args.graph, None)?;
 
     // If we're just generating a graph file, exit early
-    if args.graph.file && args.graph.graph.is_some() {
+    if args.graph.should_exit_after_graph_generation() {
         return Ok(());
     }
 

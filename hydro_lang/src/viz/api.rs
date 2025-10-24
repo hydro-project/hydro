@@ -324,7 +324,6 @@ impl<'a> GraphApi<'a> {
                 )?;
                 println!("Graph written to {}", filename);
             } else {
-                // Open in browser
                 self.open_browser(
                     format,
                     !config.no_metadata,
