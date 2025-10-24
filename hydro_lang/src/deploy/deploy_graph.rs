@@ -26,10 +26,10 @@ use syn::parse_quote;
 use tokio::sync::RwLock;
 
 use super::deploy_runtime::*;
-use super::trybuild::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
 use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
+use crate::compile::trybuild::generate::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
 use crate::location::NetworkHint;
 use crate::staging_util::get_this_crate;
 

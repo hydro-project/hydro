@@ -13,10 +13,10 @@ use tempfile::TempPath;
 use trybuild_internals_api::{cargo, dependencies, path};
 
 use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort};
-use crate::deploy::trybuild::{
+use crate::compile::trybuild::generate::{
     CONCURRENT_TEST_LOCK, IS_TEST, TrybuildConfig, create_trybuild, write_atomic,
 };
-use crate::deploy::trybuild_rewriters::UseTestModeStaged;
+use crate::compile::trybuild::rewriters::UseTestModeStaged;
 use crate::location::dynamic::LocationId;
 
 #[derive(Clone)]
