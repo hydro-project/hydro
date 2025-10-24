@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["GraphType"],"struct":["GraphConfig"]};
