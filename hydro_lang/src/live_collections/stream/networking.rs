@@ -575,3 +575,42 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         self.into_keyed().demux_bincode(other)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::location::Location;
+    use crate::nondet::nondet;
+    use crate::prelude::FlowBuilder;
+
+    #[test]
+    fn sim_send_bincode() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode(&external);
+
+        let out_port = input
+            .send_bincode(&node2)
+            .batch(&node2.tick(), nondet!(/** test */))
+            .count()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let instances = flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send(()).unwrap();
+            in_send.send(()).unwrap();
+            in_send.send(()).unwrap();
+
+            let received = out_recv.collect::<Vec<_>>().await;
+            assert!(received.into_iter().sum::<usize>() == 3);
+        });
+
+        assert_eq!(instances, 4); // 2^{3 - 1}
+    }
+}
