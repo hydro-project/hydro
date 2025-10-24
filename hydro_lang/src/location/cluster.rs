@@ -158,10 +158,13 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use stageleft::q;
 
     use super::CLUSTER_SELF_ID;
     use crate::location::Location;
+    use crate::nondet::nondet;
     use crate::prelude::FlowBuilder;
 
     #[test]
@@ -196,5 +199,49 @@ mod tests {
                     .assert_yields_only_unordered(vec![0, 1, 2, 0, 1, 2, 3])
                     .await
             });
+    }
+
+    #[test]
+    fn sim_cluster_with_tick() {
+        let flow = FlowBuilder::new();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let out_port = cluster
+            .source_iter(q!(vec![1, 2, 3]))
+            .batch(&cluster.tick(), nondet!(/** test */))
+            .count()
+            .all_ticks()
+            .send_bincode(&node)
+            .entries()
+            .map(q!(|(id, v)| (id.raw_id, v)))
+            .send_bincode_external(&external);
+
+        let count = flow
+            .sim()
+            .with_cluster_size(&cluster, 2)
+            .exhaustive(async |mut compiled| {
+                let out_recv = compiled.connect(&out_port);
+                compiled.launch();
+
+                let grouped = out_recv.collect_sorted::<Vec<_>>().await.into_iter().fold(
+                    HashMap::new(),
+                    |mut acc: HashMap<u32, usize>, (id, v)| {
+                        *acc.entry(id).or_default() += v;
+                        acc
+                    },
+                );
+
+                assert!(grouped.len() == 2);
+                for (_id, v) in grouped {
+                    assert!(v == 3);
+                }
+            });
+
+        assert_eq!(count, 106);
+        // not a square because we simulate all interleavings of ticks across 2 cluster members
+        // eventually, we should be able to identify that the members are independent (because
+        // there are no dataflow cycles) and avoid simulating redundant interleavings
     }
 }
