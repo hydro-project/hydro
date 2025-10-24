@@ -155,3 +155,46 @@ where
     <L as Location<'a>>::Root: IsCluster,
 {
 }
+
+#[cfg(test)]
+mod tests {
+    use stageleft::q;
+
+    use super::CLUSTER_SELF_ID;
+    use crate::location::Location;
+    use crate::prelude::FlowBuilder;
+
+    #[test]
+    fn sim_cluster_self_id() {
+        let flow = FlowBuilder::new();
+        let cluster1 = flow.cluster::<()>();
+        let cluster2 = flow.cluster::<()>();
+
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let out_port = cluster1
+            .source_iter(q!(vec![CLUSTER_SELF_ID.raw_id]))
+            .send_bincode(&node)
+            .values()
+            .interleave(
+                cluster2
+                    .source_iter(q!(vec![CLUSTER_SELF_ID.raw_id]))
+                    .send_bincode(&node)
+                    .values(),
+            )
+            .send_bincode_external(&external);
+
+        flow.sim()
+            .with_cluster_size(&cluster1, 3)
+            .with_cluster_size(&cluster2, 4)
+            .exhaustive(async |mut compiled| {
+                let out_recv = compiled.connect(&out_port);
+                compiled.launch();
+
+                out_recv
+                    .assert_yields_only_unordered(vec![0, 1, 2, 0, 1, 2, 3])
+                    .await
+            });
+    }
+}

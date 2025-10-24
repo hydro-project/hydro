@@ -20,7 +20,10 @@ use crate::compile::trybuild::rewriters::UseTestModeStaged;
 use crate::location::dynamic::LocationId;
 
 #[derive(Clone)]
-pub struct SimNode {}
+pub struct SimNode {
+    /// Counter for port IDs, must be global across all nodes to prevent collisions.
+    pub port_counter: Rc<RefCell<usize>>,
+}
 
 impl Node for SimNode {
     type Port = ();
@@ -142,12 +145,18 @@ impl<'a> Deploy<'a> for SimDeploy {
     type Meta = ();
     type GraphId = ();
 
-    fn allocate_process_port(_process: &Self::Process) -> Self::Port {
-        0
+    fn allocate_process_port(process: &Self::Process) -> Self::Port {
+        let mut borrowed = process.port_counter.borrow_mut();
+        let port_id = *borrowed;
+        *borrowed += 1;
+        port_id
     }
 
-    fn allocate_cluster_port(_cluster: &Self::Cluster) -> Self::Port {
-        todo!()
+    fn allocate_cluster_port(cluster: &Self::Cluster) -> Self::Port {
+        let mut borrowed = cluster.port_counter.borrow_mut();
+        let port_id = *borrowed;
+        *borrowed += 1;
+        port_id
     }
 
     fn allocate_external_port(external: &Self::External) -> Self::Port {
@@ -209,11 +218,20 @@ impl<'a> Deploy<'a> for SimDeploy {
     fn m2o_sink_source(
         _compile_env: &Self::CompileEnv,
         _c1: &Self::Cluster,
-        _c1_port: &Self::Port,
+        c1_port: &Self::Port,
         _p2: &Self::Process,
-        _p2_port: &Self::Port,
+        p2_port: &Self::Port,
     ) -> (syn::Expr, syn::Expr) {
-        todo!()
+        let ident_sink =
+            syn::Ident::new(&format!("__hydro_m2o_sink_{}", c1_port), Span::call_site());
+        let ident_source = syn::Ident::new(
+            &format!("__hydro_m2o_source_{}", p2_port),
+            Span::call_site(),
+        );
+        (
+            syn::parse_quote!(#ident_sink),
+            syn::parse_quote!(#ident_source),
+        )
     }
 
     fn m2o_connect(
@@ -222,7 +240,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p2: &Self::Process,
         _p2_port: &Self::Port,
     ) -> Box<dyn FnOnce()> {
-        todo!()
+        Box::new(|| {})
     }
 
     fn m2m_sink_source(
@@ -451,9 +469,12 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 }
 
 pub(super) fn create_sim_graph_trybuild(
-    async_graphs: BTreeMap<LocationId, DfirGraph>,
+    process_graphs: BTreeMap<LocationId, DfirGraph>,
+    cluster_graphs: BTreeMap<LocationId, DfirGraph>,
+    cluster_max_sizes: HashMap<LocationId, usize>,
     tick_graphs: BTreeMap<LocationId, DfirGraph>,
     extra_stmts: Vec<syn::Stmt>,
+    extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
@@ -462,9 +483,12 @@ pub(super) fn create_sim_graph_trybuild(
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
     let generated_code = compile_sim_graph_trybuild(
-        async_graphs,
+        process_graphs,
+        cluster_graphs,
+        cluster_max_sizes,
         tick_graphs,
         extra_stmts,
+        extra_stmts_cluster,
         crate_name.clone(),
         is_test,
     );
@@ -543,57 +567,87 @@ pub(super) fn create_sim_graph_trybuild(
 }
 
 fn compile_sim_graph_trybuild(
-    async_graphs: BTreeMap<LocationId, DfirGraph>,
+    process_graphs: BTreeMap<LocationId, DfirGraph>,
+    cluster_graphs: BTreeMap<LocationId, DfirGraph>,
+    cluster_max_sizes: HashMap<LocationId, usize>,
     tick_graphs: BTreeMap<LocationId, DfirGraph>,
     extra_stmts: Vec<syn::Stmt>,
+    extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
     crate_name: String,
     is_test: bool,
 ) -> syn::File {
     let mut diagnostics = Vec::new();
 
-    let async_dfir_exprs = async_graphs
+    let mut dfir_into_code = |g: &DfirGraph| {
+        let mut dfir_expr: syn::Expr =
+            syn::parse2(g.as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics))
+                .unwrap();
+
+        if is_test {
+            UseTestModeStaged {
+                crate_name: crate_name.clone(),
+            }
+            .visit_expr_mut(&mut dfir_expr);
+        }
+
+        dfir_expr
+    };
+
+    let process_dfir_exprs = process_graphs
         .into_iter()
         .map(|(lid, g)| {
-            let mut dfir_expr: syn::Expr = syn::parse2(g.as_code(
-                &quote! { __root_dfir_rs },
-                true,
-                quote!(),
-                &mut diagnostics,
-            ))
-            .unwrap();
-
-            if is_test {
-                UseTestModeStaged {
-                    crate_name: crate_name.clone(),
-                }
-                .visit_expr_mut(&mut dfir_expr);
-            }
-
+            let dfir_expr = dfir_into_code(&g);
             let ser_lid = serde_json::to_string(&lid).unwrap();
-            syn::parse_quote!((#ser_lid, #dfir_expr))
+            syn::parse_quote!((#ser_lid, None, #dfir_expr))
         })
         .collect::<Vec<syn::Expr>>();
+
+    let cluster_dfir_stmts = cluster_graphs
+        .into_iter()
+        .map(|(lid, g)| {
+            let dfir_expr = dfir_into_code(&g);
+            let ser_lid = serde_json::to_string(&lid).unwrap();
+            let extra_stmts_per_cluster =
+                extra_stmts_cluster.get(&lid).cloned().unwrap_or_default();
+            let max_size = cluster_max_sizes
+                .get(&lid)
+                .cloned()
+                .unwrap_or_else(|| panic!("Missing cluster max size for cluster {:?}", lid))
+                as u32;
+
+            let cid = if let LocationId::Cluster(cid) = lid {
+                cid
+            } else {
+                unreachable!()
+            };
+
+            let self_id_ident = syn::Ident::new(
+                &format!("__hydro_lang_cluster_self_id_{}", cid),
+                Span::call_site(),
+            );
+
+            syn::parse_quote! {
+                for __current_cluster_id in 0..#max_size {
+                    __async_dfirs.push((
+                        #ser_lid,
+                        Some(__current_cluster_id),
+                        {
+                            #(#extra_stmts_per_cluster)*
+                            let #self_id_ident = __current_cluster_id;
+                            #dfir_expr
+                        }
+                    ));
+                }
+            }
+        })
+        .collect::<Vec<syn::Stmt>>();
 
     let tick_dfir_exprs = tick_graphs
         .into_iter()
         .map(|(lid, g)| {
-            let mut dfir_expr: syn::Expr = syn::parse2(g.as_code(
-                &quote! { __root_dfir_rs },
-                true,
-                quote!(),
-                &mut diagnostics,
-            ))
-            .unwrap();
-
-            if is_test {
-                UseTestModeStaged {
-                    crate_name: crate_name.clone(),
-                }
-                .visit_expr_mut(&mut dfir_expr);
-            }
-
+            let dfir_expr = dfir_into_code(&g);
             let ser_lid = serde_json::to_string(&lid).unwrap();
-            syn::parse_quote!((#ser_lid, #dfir_expr))
+            syn::parse_quote!((#ser_lid, None, #dfir_expr))
         })
         .collect::<Vec<syn::Expr>>();
 
@@ -611,8 +665,8 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
-            Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
             ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
         ) {
             macro_rules! println {
@@ -661,7 +715,11 @@ fn compile_sim_graph_trybuild(
 
             let mut __hydro_hooks: ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
             #(#extra_stmts)*
-            (vec![#(#async_dfir_exprs),*], vec![#(#tick_dfir_exprs),*], __hydro_hooks)
+
+            let mut __async_dfirs = vec![#(#process_dfir_exprs),*];
+            let mut __tick_dfirs = vec![#(#tick_dfir_exprs),*];
+            #(#cluster_dfir_stmts)*
+            (__async_dfirs, __tick_dfirs, __hydro_hooks)
         }
 
         #[unsafe(no_mangle)]
@@ -672,8 +730,8 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
-            Vec<(&'static str, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
         ) {
             hydro_lang::runtime_support::colored::control::set_override(should_color);
