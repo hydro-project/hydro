@@ -58,8 +58,8 @@ type SimLoaded<'a> = libloading::Symbol<
         fn(fmt::Arguments<'_>),
         fn(fmt::Arguments<'_>),
     ) -> (
-        Vec<(&'static str, Dfir<'static>)>,
-        Vec<(&'static str, Dfir<'static>)>,
+        Vec<(&'static str, Option<u32>, Dfir<'static>)>,
+        Vec<(&'static str, Option<u32>, Dfir<'static>)>,
         HashMap<&'static str, Vec<Box<dyn SimHook>>>,
     ),
 >;
@@ -385,7 +385,7 @@ impl<'a> CompiledSimInstance<'a> {
             )
         }
 
-        let (async_dfirs, ticks, hooks) = unsafe {
+        let (async_dfirs, tick_dfirs, hooks) = unsafe {
             (self.func)(
                 colored::control::SHOULD_COLORIZE.should_colorize(),
                 self.output_ports,
@@ -405,7 +405,7 @@ impl<'a> CompiledSimInstance<'a> {
         let mut launched = LaunchedSim {
             async_dfirs,
             possibly_ready_ticks: vec![],
-            not_ready_ticks: ticks.into_iter().collect(),
+            not_ready_ticks: tick_dfirs.into_iter().collect(),
             hooks,
             log: if self.log {
                 if let Some(w) = log_override {
@@ -619,9 +619,9 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
 /// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
 /// about scheduling ticks and choices for non-deterministic operators like batch.
 struct LaunchedSim<W: std::io::Write> {
-    async_dfirs: Vec<(&'static str, Dfir<'static>)>,
-    possibly_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
-    not_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
+    async_dfirs: Vec<(&'static str, Option<u32>, Dfir<'static>)>,
+    possibly_ready_ticks: Vec<(&'static str, Option<u32>, Dfir<'static>)>,
+    not_ready_ticks: Vec<(&'static str, Option<u32>, Dfir<'static>)>,
     hooks: HashMap<&'static str, Vec<Box<dyn SimHook>>>,
     log: LogKind<W>,
 }
@@ -631,8 +631,11 @@ impl<W: std::io::Write> LaunchedSim<W> {
         loop {
             tokio::task::yield_now().await;
             let mut any_made_progress = false;
-            for (_, dfir) in &mut self.async_dfirs {
-                any_made_progress |= dfir.run_tick().await;
+            for (_, _, dfir) in &mut self.async_dfirs {
+                if dfir.run_tick().await {
+                    any_made_progress = true;
+                    // TODO push possibly ready
+                }
             }
 
             if any_made_progress {
@@ -641,8 +644,10 @@ impl<W: std::io::Write> LaunchedSim<W> {
             } else {
                 use bolero::generator::*;
 
-                let (ready, mut not_ready): (Vec<_>, Vec<_>) =
-                    self.possibly_ready_ticks.drain(..).partition(|(name, _)| {
+                let (ready, mut not_ready): (Vec<_>, Vec<_>) = self
+                    .possibly_ready_ticks
+                    .drain(..)
+                    .partition(|(name, _, _)| {
                         self.hooks.get(name).unwrap().iter().any(|hook| {
                             hook.current_decision().unwrap_or(false)
                                 || hook.can_make_nontrivial_decision()
@@ -656,8 +661,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     break;
                 } else {
                     let next_tick = (0..self.possibly_ready_ticks.len()).any();
-                    let mut removed: (&'static str, Dfir<'static>) =
-                        self.possibly_ready_ticks.remove(next_tick);
+                    let mut removed = self.possibly_ready_ticks.remove(next_tick);
 
                     match &mut self.log {
                         LogKind::Null => {}
@@ -716,7 +720,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                         });
                     });
 
-                    assert!(removed.1.run_tick().await);
+                    assert!(removed.2.run_tick().await);
                     self.possibly_ready_ticks.push(removed);
                 }
             }

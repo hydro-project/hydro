@@ -578,12 +578,14 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
 
 #[cfg(test)]
 mod tests {
-    use crate::location::Location;
+    use stageleft::q;
+
+    use crate::location::{Location, MemberId};
     use crate::nondet::nondet;
     use crate::prelude::FlowBuilder;
 
     #[test]
-    fn sim_send_bincode() {
+    fn sim_send_bincode_o2o() {
         let flow = FlowBuilder::new();
         let external = flow.external::<()>();
         let node = flow.process::<()>();
@@ -612,5 +614,41 @@ mod tests {
         });
 
         assert_eq!(instances, 4); // 2^{3 - 1}
+    }
+
+    #[test]
+    fn sim_send_bincode_m2o() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let input = cluster.source_iter(q!(vec![1]));
+
+        let out_port = input
+            .send_bincode(&node)
+            .entries()
+            .batch(&node.tick(), nondet!(/** test */))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let instances =
+            flow.sim()
+                .with_cluster_size(&cluster, 4)
+                .exhaustive(async |mut compiled| {
+                    let out_recv = compiled.connect(&out_port);
+                    compiled.launch();
+
+                    out_recv
+                        .assert_yields_only_unordered(vec![
+                            (MemberId::from_raw(0), 1),
+                            (MemberId::from_raw(1), 1),
+                            (MemberId::from_raw(2), 1),
+                            (MemberId::from_raw(3), 1),
+                        ])
+                        .await
+                });
+
+        assert_eq!(instances, 75); // ∑ (k=1 to 4) S(4,k) × k! = 75
     }
 }
