@@ -58,7 +58,7 @@ type SimLoaded<'a> = libloading::Symbol<
         fn(fmt::Arguments<'_>),
         fn(fmt::Arguments<'_>),
     ) -> (
-        Dfir<'static>,
+        Vec<(&'static str, Dfir<'static>)>,
         Vec<(&'static str, Dfir<'static>)>,
         HashMap<&'static str, Vec<Box<dyn SimHook>>>,
     ),
@@ -385,7 +385,7 @@ impl<'a> CompiledSimInstance<'a> {
             )
         }
 
-        let (async_dfir, ticks, hooks) = unsafe {
+        let (async_dfirs, ticks, hooks) = unsafe {
             (self.func)(
                 colored::control::SHOULD_COLORIZE.should_colorize(),
                 self.output_ports,
@@ -403,7 +403,7 @@ impl<'a> CompiledSimInstance<'a> {
             )
         };
         let mut launched = LaunchedSim {
-            async_dfir,
+            async_dfirs,
             possibly_ready_ticks: vec![],
             not_ready_ticks: ticks.into_iter().collect(),
             hooks,
@@ -619,7 +619,7 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
 /// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
 /// about scheduling ticks and choices for non-deterministic operators like batch.
 struct LaunchedSim<W: std::io::Write> {
-    async_dfir: Dfir<'static>,
+    async_dfirs: Vec<(&'static str, Dfir<'static>)>,
     possibly_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
     not_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
     hooks: HashMap<&'static str, Vec<Box<dyn SimHook>>>,
@@ -630,7 +630,12 @@ impl<W: std::io::Write> LaunchedSim<W> {
     async fn scheduler(&mut self) {
         loop {
             tokio::task::yield_now().await;
-            if self.async_dfir.run_tick().await {
+            let mut any_made_progress = false;
+            for (_, dfir) in &mut self.async_dfirs {
+                any_made_progress |= dfir.run_tick().await;
+            }
+
+            if any_made_progress {
                 self.possibly_ready_ticks.append(&mut self.not_ready_ticks);
                 continue;
             } else {

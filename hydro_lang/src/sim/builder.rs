@@ -26,7 +26,7 @@ use crate::location::dynamic::LocationId;
 /// elements from that buffer into the tick's DFIR graph with a separate handoff channel.
 pub struct SimBuilder {
     pub extra_stmts: Vec<syn::Stmt>,
-    pub async_level: FlatGraphBuilder,
+    pub async_graphs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub next_hoff_id: usize,
 }
@@ -38,7 +38,7 @@ impl DfirBuilder for SimBuilder {
 
     fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
         match location {
-            LocationId::Process(_) => &mut self.async_level,
+            LocationId::Process(_) => self.async_graphs.entry(location.clone()).or_default(),
             LocationId::Cluster(_) => panic!("SimBuilder does not support clusters"),
             LocationId::Atomic(_) => panic!("SimBuilder does not support atomic locations"),
             LocationId::Tick(_, _) => self.tick_dfirs.entry(location.clone()).or_default(),
@@ -165,7 +165,7 @@ impl DfirBuilder for SimBuilder {
                     }));
                 });
 
-                self.async_level.add_dfir(
+                self.get_dfir_mut(in_location).add_dfir(
                     parse_quote! {
                         #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
                     },
@@ -225,7 +225,7 @@ impl DfirBuilder for SimBuilder {
                     )));
                 });
 
-                self.async_level.add_dfir(
+                self.get_dfir_mut(in_location).add_dfir(
                     parse_quote! {
                         #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
                     },
@@ -280,7 +280,7 @@ impl DfirBuilder for SimBuilder {
                         None,
                     );
 
-                    self.async_level.add_dfir(
+                    self.get_dfir_mut(outer).add_dfir(
                         parse_quote! {
                             #out_ident = source_stream(#hoff_recv_ident);
                         },
@@ -320,29 +320,77 @@ impl DfirBuilder for SimBuilder {
 
     fn create_network(
         &mut self,
-        _from: &LocationId,
-        _to: &LocationId,
-        _input_ident: syn::Ident,
-        _out_ident: &syn::Ident,
-        _serialize: &Option<DebugExpr>,
-        _sink: syn::Expr,
-        _source: syn::Expr,
-        _deserialize: &Option<DebugExpr>,
-        _tag_id: usize,
+        from: &LocationId,
+        to: &LocationId,
+        input_ident: syn::Ident,
+        out_ident: &syn::Ident,
+        serialize: &Option<DebugExpr>,
+        sink: syn::Expr,
+        source: syn::Expr,
+        deserialize: &Option<DebugExpr>,
+        tag_id: usize,
     ) {
-        todo!()
+        match (from, to) {
+            (LocationId::Process(_), LocationId::Process(_)) => {
+                self.extra_stmts.push(syn::parse_quote! {
+                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+                });
+
+                if let Some(serialize_pipeline) = serialize {
+                    self.get_dfir_mut(from).add_dfir(
+                        parse_quote! {
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.send(v).unwrap());
+                        },
+                        None,
+                        Some(&format!("send{}", tag_id)),
+                    );
+                } else {
+                    self.get_dfir_mut(from).add_dfir(
+                        parse_quote! {
+                            #input_ident -> for_each(|v| #sink.send(v).unwrap());
+                        },
+                        None,
+                        Some(&format!("send{}", tag_id)),
+                    );
+                }
+
+                if let Some(deserialize_pipeline) = deserialize {
+                    self.get_dfir_mut(to).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#source) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                        },
+                        None,
+                        Some(&format!("recv{}", tag_id)),
+                    );
+                } else {
+                    self.get_dfir_mut(to).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#source);
+                        },
+                        None,
+                        Some(&format!("recv{}", tag_id)),
+                    );
+                }
+            }
+            _ => {
+                panic!(
+                    "Simulations do not yet support network between {:?} and {:?}",
+                    from, to
+                );
+            }
+        }
     }
 
     fn create_external_source(
         &mut self,
-        _on: &LocationId,
+        on: &LocationId,
         source_expr: syn::Expr,
         out_ident: &syn::Ident,
         deserialize: &Option<DebugExpr>,
         tag_id: usize,
     ) {
         if let Some(deserialize_pipeline) = deserialize {
-            self.async_level.add_dfir(
+            self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
                     #out_ident = source_stream(#source_expr) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
                 },
@@ -350,7 +398,7 @@ impl DfirBuilder for SimBuilder {
                 Some(&format!("recv{}", tag_id)),
             );
         } else {
-            self.async_level.add_dfir(
+            self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
                     #out_ident = source_stream(#source_expr);
                 },
@@ -362,7 +410,7 @@ impl DfirBuilder for SimBuilder {
 
     fn create_external_output(
         &mut self,
-        _on: &LocationId,
+        on: &LocationId,
         sink_expr: syn::Expr,
         input_ident: &syn::Ident,
         serialize: &Option<DebugExpr>,
@@ -374,7 +422,7 @@ impl DfirBuilder for SimBuilder {
         });
 
         if let Some(serialize_pipeline) = serialize {
-            self.async_level.add_dfir(
+            self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
                     #input_ident -> map(#serialize_pipeline) -> for_each(|v| #grabbed_ident.send(v).unwrap());
                 },
@@ -382,7 +430,7 @@ impl DfirBuilder for SimBuilder {
                 Some(&format!("send{}", tag_id)),
             );
         } else {
-            self.async_level.add_dfir(
+            self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
                     #input_ident -> for_each(|v| #grabbed_ident.send(v).unwrap());
                 },

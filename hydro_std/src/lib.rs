@@ -10,6 +10,6 @@ pub mod request_response;
 mod test_init {
     #[ctor::ctor]
     fn init() {
-        hydro_lang::deploy::init_test();
+        hydro_lang::compile::init_test();
     }
 }
