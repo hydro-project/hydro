@@ -73,9 +73,11 @@ impl<'a> SimFlow<'a> {
         use dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph};
 
         let mut sim_emit = SimBuilder {
-            async_graphs: BTreeMap::new(),
+            process_graphs: BTreeMap::new(),
+            cluster_graphs: BTreeMap::new(),
             tick_dfirs: BTreeMap::new(),
             extra_stmts: vec![],
+            extra_stmts_cluster: BTreeMap::new(),
             next_hoff_id: 0,
         };
 
@@ -97,8 +99,21 @@ impl<'a> SimFlow<'a> {
             leaf.emit(&mut sim_emit, &mut built_tees, &mut next_stmt_id);
         }
 
-        let async_graphs = sim_emit
-            .async_graphs
+        let process_graphs = sim_emit
+            .process_graphs
+            .into_iter()
+            .map(|(l, g)| {
+                let (mut flat_graph, _, _) = g.build();
+                eliminate_extra_unions_tees(&mut flat_graph);
+                (
+                    l,
+                    partition_graph(flat_graph).expect("Failed to partition (cycle detected)."),
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        let cluster_graphs = sim_emit
+            .cluster_graphs
             .into_iter()
             .map(|(l, g)| {
                 let (mut flat_graph, _, _) = g.build();
@@ -124,7 +139,7 @@ impl<'a> SimFlow<'a> {
             .collect::<BTreeMap<_, _>>();
 
         let (bin, trybuild) =
-            create_sim_graph_trybuild(async_graphs, tick_graphs, sim_emit.extra_stmts);
+            create_sim_graph_trybuild(process_graphs, cluster_graphs, tick_graphs, sim_emit.extra_stmts, sim_emit.extra_stmts_cluster);
 
         let out = compile_sim(bin, trybuild).unwrap();
         let lib = unsafe { Library::new(&out).unwrap() };
