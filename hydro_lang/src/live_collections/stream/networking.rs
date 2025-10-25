@@ -735,4 +735,46 @@ mod tests {
                     .await
             });
     }
+
+    #[test]
+    fn sim_send_bincode_m2m() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!(vec![
+            (MemberId::from_raw(0), 123),
+            (MemberId::from_raw(1), 456),
+        ]));
+
+        let out_port = input
+            .demux_bincode(&cluster)
+            .map(q!(|x| x + 1))
+            .flat_map_ordered(q!(|x| vec![
+                (MemberId::from_raw(0), x),
+                (MemberId::from_raw(1), x),
+            ]))
+            .demux_bincode(&cluster)
+            .entries()
+            .send_bincode(&node)
+            .entries()
+            .send_bincode_external(&external);
+
+        flow.sim()
+            .with_cluster_size(&cluster, 4)
+            .exhaustive(async |mut compiled| {
+                let out_recv = compiled.connect(&out_port);
+                compiled.launch();
+
+                out_recv
+                    .assert_yields_only_unordered(vec![
+                        (MemberId::from_raw(0), (MemberId::from_raw(0), 124)),
+                        (MemberId::from_raw(0), (MemberId::from_raw(1), 457)),
+                        (MemberId::from_raw(1), (MemberId::from_raw(0), 124)),
+                        (MemberId::from_raw(1), (MemberId::from_raw(1), 457)),
+                    ])
+                    .await
+            });
+    }
 }
