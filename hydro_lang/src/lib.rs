@@ -100,6 +100,6 @@ fn init_rewrites() {
 mod test_init {
     #[ctor::ctor]
     fn init() {
-        crate::deploy::init_test();
+        crate::compile::init_test();
     }
 }
