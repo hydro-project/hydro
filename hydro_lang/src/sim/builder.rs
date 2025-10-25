@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use dfir_lang::graph::FlatGraphBuilder;
 use proc_macro2::Span;
+use quote::ToTokens;
 use syn::parse_quote;
 
 use crate::compile::ir::{
@@ -25,10 +26,50 @@ use crate::location::dynamic::LocationId;
 /// by accumulating inputs from the async level into a buffer, and then the hook can send selected
 /// elements from that buffer into the tick's DFIR graph with a separate handoff channel.
 pub struct SimBuilder {
-    pub extra_stmts: Vec<syn::Stmt>,
-    pub async_level: FlatGraphBuilder,
-    pub tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
+    pub extra_stmts_global: Vec<syn::Stmt>,
+    pub extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
+    pub process_graphs: BTreeMap<LocationId, FlatGraphBuilder>,
+    pub cluster_graphs: BTreeMap<LocationId, FlatGraphBuilder>,
+    pub process_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
+    pub cluster_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub next_hoff_id: usize,
+}
+
+impl SimBuilder {
+    fn add_extra_stmt_internal(&mut self, location: &LocationId, stmt: syn::Stmt) {
+        match location {
+            LocationId::Process(_) => {
+                self.extra_stmts_global.push(stmt);
+            }
+            LocationId::Cluster(_) => {
+                self.extra_stmts_cluster
+                    .entry(location.clone())
+                    .or_default()
+                    .push(stmt);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn add_hook(&mut self, in_location: &LocationId, out_location: &LocationId, expr: syn::Expr) {
+        let out_location_ser = serde_json::to_string(out_location).unwrap();
+        match in_location {
+            LocationId::Process(_) => {
+                self.add_extra_stmt_internal(
+                    in_location,
+                    syn::parse_quote! {
+                        __hydro_hooks.entry((#out_location_ser, None)).or_default().push(#expr);
+                    },
+                );
+            }
+            LocationId::Cluster(_) => {
+                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                    __hydro_hooks.entry((#out_location_ser, Some(__current_cluster_id))).or_default().push(#expr);
+                });
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl DfirBuilder for SimBuilder {
@@ -38,10 +79,18 @@ impl DfirBuilder for SimBuilder {
 
     fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
         match location {
-            LocationId::Process(_) => &mut self.async_level,
-            LocationId::Cluster(_) => panic!("SimBuilder does not support clusters"),
-            LocationId::Atomic(_) => panic!("SimBuilder does not support atomic locations"),
-            LocationId::Tick(_, _) => self.tick_dfirs.entry(location.clone()).or_default(),
+            LocationId::Process(_) => self.process_graphs.entry(location.clone()).or_default(),
+            LocationId::Cluster(_) => self.cluster_graphs.entry(location.clone()).or_default(),
+            LocationId::Atomic(_) => todo!("SimBuilder does not support atomic locations"),
+            LocationId::Tick(_, l) => match l.root() {
+                LocationId::Process(_) => {
+                    self.process_tick_dfirs.entry(location.clone()).or_default()
+                }
+                LocationId::Cluster(_) => {
+                    self.cluster_tick_dfirs.entry(location.clone()).or_default()
+                }
+                _ => unreachable!(),
+            },
         }
     }
 
@@ -125,7 +174,6 @@ impl DfirBuilder for SimBuilder {
                 let hoff_id = self.next_hoff_id;
                 self.next_hoff_id += 1;
 
-                let out_location_ser = serde_json::to_string(out_location).unwrap();
                 let buffered_ident =
                     syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
                 let hoff_send_ident =
@@ -133,39 +181,43 @@ impl DfirBuilder for SimBuilder {
                 let hoff_recv_ident =
                     syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
-                self.extra_stmts.push(syn::parse_quote! {
+                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                     let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
                 });
-                self.extra_stmts.push(syn::parse_quote! {
+                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                     let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
                 });
-                self.extra_stmts.push(syn::parse_quote! {
-                    __hydro_hooks.entry(#out_location_ser).or_default().push(Box::new(hydro_lang::sim::runtime::StreamHook::<_, #order_ty> {
-                        input: #buffered_ident.clone(),
-                        to_release: None,
-                        output: #hoff_send_ident,
-                        batch_location: (#batch_location, #line, #caret),
-                        format_item_debug: {
-                            trait NotDebug {
-                                fn format_debug(&self) -> Option<String> {
-                                    None
+                self.add_hook(
+                    in_location,
+                    out_location,
+                    syn::parse_quote!(
+                        Box::new(hydro_lang::sim::runtime::StreamHook::<_, #order_ty> {
+                            input: #buffered_ident.clone(),
+                            to_release: None,
+                            output: #hoff_send_ident,
+                            batch_location: (#batch_location, #line, #caret),
+                            format_item_debug: {
+                                trait NotDebug {
+                                    fn format_debug(&self) -> Option<String> {
+                                        None
+                                    }
                                 }
-                            }
 
-                            impl<T> NotDebug for T {}
-                            struct IsDebug<T>(std::marker::PhantomData<T>);
-                            impl<T: std::fmt::Debug> IsDebug<T> {
-                                fn format_debug(v: &T) -> Option<String> {
-                                    Some(format!("{:?}", v))
+                                impl<T> NotDebug for T {}
+                                struct IsDebug<T>(std::marker::PhantomData<T>);
+                                impl<T: std::fmt::Debug> IsDebug<T> {
+                                    fn format_debug(v: &T) -> Option<String> {
+                                        Some(format!("{:?}", v))
+                                    }
                                 }
-                            }
-                            IsDebug::format_debug
-                        },
-                        _order: std::marker::PhantomData,
-                    }));
-                });
+                                IsDebug::format_debug
+                            },
+                            _order: std::marker::PhantomData,
+                        })
+                    ),
+                );
 
-                self.async_level.add_dfir(
+                self.get_dfir_mut(in_location).add_dfir(
                     parse_quote! {
                         #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
                     },
@@ -187,7 +239,6 @@ impl DfirBuilder for SimBuilder {
                 let hoff_id = self.next_hoff_id;
                 self.next_hoff_id += 1;
 
-                let out_location_ser = serde_json::to_string(out_location).unwrap();
                 let buffered_ident =
                     syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
                 let hoff_send_ident =
@@ -195,37 +246,41 @@ impl DfirBuilder for SimBuilder {
                 let hoff_recv_ident =
                     syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
-                self.extra_stmts.push(syn::parse_quote! {
+                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                     let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
                 });
-                self.extra_stmts.push(syn::parse_quote! {
+                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                     let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
                 });
-                self.extra_stmts.push(syn::parse_quote! {
-                    __hydro_hooks.entry(#out_location_ser).or_default().push(Box::new(hydro_lang::sim::runtime::SingletonHook::<_>::new(
-                        #buffered_ident.clone(),
-                        #hoff_send_ident,
-                        (#batch_location, #line, #caret),
-                        {
-                            trait NotDebug {
-                                fn format_debug(&self) -> Option<String> {
-                                    None
+                self.add_hook(
+                    in_location,
+                    out_location,
+                    syn::parse_quote! (
+                        Box::new(hydro_lang::sim::runtime::SingletonHook::<_>::new(
+                            #buffered_ident.clone(),
+                            #hoff_send_ident,
+                            (#batch_location, #line, #caret),
+                            {
+                                trait NotDebug {
+                                    fn format_debug(&self) -> Option<String> {
+                                        None
+                                    }
                                 }
-                            }
 
-                            impl<T> NotDebug for T {}
-                            struct IsDebug<T>(std::marker::PhantomData<T>);
-                            impl<T: std::fmt::Debug> IsDebug<T> {
-                                fn format_debug(v: &T) -> Option<String> {
-                                    Some(format!("{:?}", v))
+                                impl<T> NotDebug for T {}
+                                struct IsDebug<T>(std::marker::PhantomData<T>);
+                                impl<T: std::fmt::Debug> IsDebug<T> {
+                                    fn format_debug(v: &T) -> Option<String> {
+                                        Some(format!("{:?}", v))
+                                    }
                                 }
-                            }
-                            IsDebug::format_debug
-                        },
-                    )));
-                });
+                                IsDebug::format_debug
+                            },
+                        ))
+                    ),
+                );
 
-                self.async_level.add_dfir(
+                self.get_dfir_mut(in_location).add_dfir(
                     parse_quote! {
                         #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
                     },
@@ -268,7 +323,7 @@ impl DfirBuilder for SimBuilder {
                     let hoff_recv_ident =
                         syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
-                    self.extra_stmts.push(syn::parse_quote! {
+                    self.add_extra_stmt_internal(outer, syn::parse_quote! {
                         let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
                     });
 
@@ -280,7 +335,7 @@ impl DfirBuilder for SimBuilder {
                         None,
                     );
 
-                    self.async_level.add_dfir(
+                    self.get_dfir_mut(outer).add_dfir(
                         parse_quote! {
                             #out_ident = source_stream(#hoff_recv_ident);
                         },
@@ -320,29 +375,185 @@ impl DfirBuilder for SimBuilder {
 
     fn create_network(
         &mut self,
-        _from: &LocationId,
-        _to: &LocationId,
-        _input_ident: syn::Ident,
-        _out_ident: &syn::Ident,
-        _serialize: &Option<DebugExpr>,
-        _sink: syn::Expr,
-        _source: syn::Expr,
-        _deserialize: &Option<DebugExpr>,
-        _tag_id: usize,
+        from: &LocationId,
+        to: &LocationId,
+        input_ident: syn::Ident,
+        out_ident: &syn::Ident,
+        serialize: &Option<DebugExpr>,
+        sink: syn::Expr,
+        source: syn::Expr,
+        deserialize: &Option<DebugExpr>,
+        tag_id: usize,
     ) {
-        todo!()
+        match (from, to) {
+            (LocationId::Process(_), LocationId::Process(_)) => {
+                self.extra_stmts_global.push(syn::parse_quote! {
+                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+                });
+
+                if let Some(serialize_pipeline) = serialize {
+                    self.get_dfir_mut(from).add_dfir(
+                        parse_quote! {
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.send(v).unwrap());
+                        },
+                        None,
+                        Some(&format!("send{}", tag_id)),
+                    );
+                } else {
+                    self.get_dfir_mut(from).add_dfir(
+                        parse_quote! {
+                            #input_ident -> for_each(|v| #sink.send(v).unwrap());
+                        },
+                        None,
+                        Some(&format!("send{}", tag_id)),
+                    );
+                }
+
+                if let Some(deserialize_pipeline) = deserialize {
+                    self.get_dfir_mut(to).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#source) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                        },
+                        None,
+                        Some(&format!("recv{}", tag_id)),
+                    );
+                } else {
+                    self.get_dfir_mut(to).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#source);
+                        },
+                        None,
+                        Some(&format!("recv{}", tag_id)),
+                    );
+                }
+            }
+            (LocationId::Cluster(_), LocationId::Process(_)) => {
+                self.extra_stmts_global.push(syn::parse_quote! {
+                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(u32, __root_dfir_rs::bytes::Bytes)>();
+                });
+
+                self.extra_stmts_cluster
+                    .entry(from.clone())
+                    .or_default()
+                    .push(syn::parse_quote! {
+                        let #sink = #sink.clone();
+                    });
+
+                if let Some(serialize_pipeline) = serialize {
+                    self.get_dfir_mut(from).add_dfir(
+                        parse_quote! {
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.send((__current_cluster_id, v)).unwrap());
+                        },
+                        None,
+                        Some(&format!("send{}", tag_id)),
+                    );
+                } else {
+                    self.get_dfir_mut(from).add_dfir(
+                        parse_quote! {
+                            #input_ident -> for_each(|v| #sink.send((__current_cluster_id, v)).unwrap());
+                        },
+                        None,
+                        Some(&format!("send{}", tag_id)),
+                    );
+                }
+
+                if let Some(deserialize_pipeline) = deserialize {
+                    self.get_dfir_mut(to).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#source) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                        },
+                        None,
+                        Some(&format!("recv{}", tag_id)),
+                    );
+                } else {
+                    self.get_dfir_mut(to).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#source);
+                        },
+                        None,
+                        Some(&format!("recv{}", tag_id)),
+                    );
+                }
+            }
+            (LocationId::Process(_), LocationId::Cluster(_)) => {
+                let sink_writer = syn::Ident::new(
+                    &format!("__cloned_{}", sink.to_token_stream()),
+                    Span::call_site(),
+                );
+                self.extra_stmts_global.push(syn::parse_quote! {
+                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
+                });
+
+                self.extra_stmts_global.push(syn::parse_quote! {
+                    let #sink_writer = #sink.clone();
+                });
+
+                self.extra_stmts_cluster
+                    .entry(to.clone())
+                    .or_default()
+                    .push(syn::parse_quote! {
+                        let #source = {
+                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+                            #sink_writer.borrow_mut().push(__sink);
+                            __source
+                        };
+                    });
+
+                if let Some(serialize_pipeline) = serialize {
+                    self.get_dfir_mut(from).add_dfir(
+                        parse_quote! {
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|(id, v)| (#sink.borrow())[id as usize].send(v).unwrap());
+                        },
+                        None,
+                        Some(&format!("send{}", tag_id)),
+                    );
+                } else {
+                    self.get_dfir_mut(from).add_dfir(
+                        parse_quote! {
+                            #input_ident -> for_each(|(id, v)| (#sink.borrow())[id as usize].send(v).unwrap());
+                        },
+                        None,
+                        Some(&format!("send{}", tag_id)),
+                    );
+                }
+
+                if let Some(deserialize_pipeline) = deserialize {
+                    self.get_dfir_mut(to).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#source) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                        },
+                        None,
+                        Some(&format!("recv{}", tag_id)),
+                    );
+                } else {
+                    self.get_dfir_mut(to).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#source);
+                        },
+                        None,
+                        Some(&format!("recv{}", tag_id)),
+                    );
+                }
+            }
+            _ => {
+                panic!(
+                    "Simulations do not yet support network between {:?} and {:?}",
+                    from, to
+                );
+            }
+        }
     }
 
     fn create_external_source(
         &mut self,
-        _on: &LocationId,
+        on: &LocationId,
         source_expr: syn::Expr,
         out_ident: &syn::Ident,
         deserialize: &Option<DebugExpr>,
         tag_id: usize,
     ) {
         if let Some(deserialize_pipeline) = deserialize {
-            self.async_level.add_dfir(
+            self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
                     #out_ident = source_stream(#source_expr) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
                 },
@@ -350,7 +561,7 @@ impl DfirBuilder for SimBuilder {
                 Some(&format!("recv{}", tag_id)),
             );
         } else {
-            self.async_level.add_dfir(
+            self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
                     #out_ident = source_stream(#source_expr);
                 },
@@ -362,19 +573,19 @@ impl DfirBuilder for SimBuilder {
 
     fn create_external_output(
         &mut self,
-        _on: &LocationId,
+        on: &LocationId,
         sink_expr: syn::Expr,
         input_ident: &syn::Ident,
         serialize: &Option<DebugExpr>,
         tag_id: usize,
     ) {
         let grabbed_ident = syn::Ident::new(&format!("__sink_{tag_id}"), Span::call_site());
-        self.extra_stmts.push(syn::parse_quote! {
+        self.extra_stmts_global.push(syn::parse_quote! {
             let #grabbed_ident = #sink_expr;
         });
 
         if let Some(serialize_pipeline) = serialize {
-            self.async_level.add_dfir(
+            self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
                     #input_ident -> map(#serialize_pipeline) -> for_each(|v| #grabbed_ident.send(v).unwrap());
                 },
@@ -382,7 +593,7 @@ impl DfirBuilder for SimBuilder {
                 Some(&format!("send{}", tag_id)),
             );
         } else {
-            self.async_level.add_dfir(
+            self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
                     #input_ident -> for_each(|v| #grabbed_ident.send(v).unwrap());
                 },

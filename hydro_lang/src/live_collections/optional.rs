@@ -1234,6 +1234,7 @@ where
     }
 }
 
+#[cfg(feature = "deploy")]
 #[cfg(test)]
 mod tests {
     use futures::StreamExt;

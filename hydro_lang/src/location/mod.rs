@@ -177,7 +177,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     {
         // TODO(shadaj): we mark this as unbounded because we do not yet have a representation
         // for bounded top-level streams, and this is the only way to generate one
-        let e = e.splice_untyped_ctx(self);
+        let e = e.splice_typed_ctx(self);
 
         Stream::new(
             self.clone(),
@@ -635,6 +635,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     }
 }
 
+#[cfg(feature = "deploy")]
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;

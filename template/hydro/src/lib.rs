@@ -8,6 +8,6 @@ pub mod first_ten_distributed;
 mod test_init {
     #[ctor::ctor]
     fn init() {
-        hydro_lang::deploy::init_test();
+        hydro_lang::compile::init_test();
     }
 }
