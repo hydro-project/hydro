@@ -643,11 +643,7 @@ fn compile_sim_graph_trybuild(
             let ser_lid = serde_json::to_string(&lid).unwrap();
             let extra_stmts_per_cluster =
                 extra_stmts_cluster.get(&lid).cloned().unwrap_or_default();
-            let max_size = cluster_max_sizes
-                .get(&lid)
-                .cloned()
-                .unwrap_or_else(|| panic!("Missing cluster max size for cluster {:?}", lid))
-                as u32;
+            let max_size = cluster_max_sizes.get(&lid).cloned().unwrap() as u32;
 
             let cid = if let LocationId::Cluster(cid) = lid {
                 cid
@@ -689,6 +685,30 @@ fn compile_sim_graph_trybuild(
         .collect::<Vec<syn::Expr>>();
 
     let trybuild_crate_name_ident = quote::format_ident!("{}_hydro_trybuild", crate_name);
+
+    let cluster_ids_stmts = cluster_max_sizes
+        .iter()
+        .map(|(lid, max_size)| {
+            let ident = syn::Ident::new(
+                &format!(
+                    "__hydro_lang_cluster_ids_{}",
+                    match lid {
+                        LocationId::Cluster(cid) => cid.to_string(),
+                        _ => panic!("Expected cluster location ID"),
+                    }
+                ),
+                Span::call_site(),
+            );
+
+            let elements = (0..*max_size as u32)
+                .map(|i| syn::parse_quote! { #i })
+                .collect::<Vec<syn::Expr>>();
+
+            syn::parse_quote! {
+                let #ident: &'static [u32] = &[#(#elements),*];
+            }
+        })
+        .collect::<Vec<syn::Stmt>>();
 
     let source_ast: syn::File = syn::parse_quote! {
         use hydro_lang::prelude::*;
@@ -752,6 +772,7 @@ fn compile_sim_graph_trybuild(
 
             let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
             #(#extra_stmts_global)*
+            #(#cluster_ids_stmts)*
 
             let mut __async_dfirs = vec![#(#process_dfir_exprs),*];
             let mut __tick_dfirs = vec![#(#process_tick_dfir_exprs),*];

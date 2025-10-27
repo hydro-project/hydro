@@ -163,6 +163,15 @@ impl<'a> SimFlow<'a> {
             })
             .collect::<BTreeMap<_, _>>();
 
+        for c in self.clusters.keys() {
+            assert!(
+                self.cluster_max_sizes
+                    .contains_key(&LocationId::Cluster(*c)),
+                "Cluster {:?} missing max size; call with_cluster_size() before compiled()",
+                c
+            );
+        }
+
         let (bin, trybuild) = create_sim_graph_trybuild(
             process_graphs,
             cluster_graphs,
