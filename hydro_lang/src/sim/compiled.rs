@@ -30,6 +30,7 @@ pub struct CompiledSim {
     pub(super) _path: TempPath,
     pub(super) lib: Library,
     pub(super) external_ports: Vec<usize>,
+    pub(super) external_registered: HashMap<usize, usize>,
 }
 
 #[sealed::sealed]
@@ -89,6 +90,7 @@ impl CompiledSim {
             &(|| CompiledSimInstance {
                 func: func.clone(),
                 remaining_ports: self.external_ports.iter().cloned().collect(),
+                external_registered: self.external_registered.clone(),
                 input_ports: HashMap::new(),
                 output_ports: HashMap::new(),
                 log,
@@ -318,6 +320,7 @@ impl CompiledSim {
 pub struct CompiledSimInstance<'a> {
     func: SimLoaded<'a>,
     remaining_ports: HashSet<usize>,
+    external_registered: HashMap<usize, usize>,
     output_ports: HashMap<usize, UnboundedSender<Bytes>>,
     input_ports: HashMap<usize, UnboundedReceiverStream<Bytes>>,
     log: bool,
@@ -542,9 +545,11 @@ impl<'a, T: DeserializeOwned + 'static, O: Ordering, R: Retries>
     type Output = SimReceiver<'a, T, O, R>;
 
     async fn connect(self, ctx: &mut CompiledSimInstance<'a>) -> Self::Output {
-        assert!(ctx.remaining_ports.remove(&self.port_id));
+        let looked_up = ctx.external_registered.get(&self.port_id).unwrap();
+
+        assert!(ctx.remaining_ports.remove(looked_up));
         let (sink, source) = dfir_rs::util::unbounded_channel::<Bytes>();
-        ctx.output_ports.insert(self.port_id, sink);
+        ctx.output_ports.insert(*looked_up, sink);
 
         SimReceiver(
             Box::pin(source.map(|b| bincode::deserialize(&b).unwrap())),
@@ -598,9 +603,11 @@ impl<'a, T: Serialize + 'static, M, O: Ordering, R: Retries>
     type Output = SimSender<T, O, R>;
 
     async fn connect(self, ctx: &mut CompiledSimInstance<'a>) -> Self::Output {
-        assert!(ctx.remaining_ports.remove(&self.port_id));
+        let looked_up = ctx.external_registered.get(&self.port_id).unwrap();
+
+        assert!(ctx.remaining_ports.remove(looked_up));
         let (sink, source) = dfir_rs::util::unbounded_channel::<Bytes>();
-        ctx.input_ports.insert(self.port_id, source);
+        ctx.input_ports.insert(*looked_up, source);
         SimSender(
             Box::new(move |t| sink.send(bincode::serialize(&t).unwrap().into())),
             PhantomData,
