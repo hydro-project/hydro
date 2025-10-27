@@ -68,15 +68,15 @@ expression: output1
       "CollectionGroup": {
         "Optional": {
           "arrowhead": "diamond-open",
-          "color": "#6b7280"
+          "color-token": "muted"
         },
         "Singleton": {
           "arrowhead": "circle-filled",
-          "color": "#000000"
+          "color-token": "default"
         },
         "Stream": {
           "arrowhead": "triangle-filled",
-          "color": "#2563eb"
+          "color-token": "highlight-1"
         }
       },
       "KeyednessGroup": {

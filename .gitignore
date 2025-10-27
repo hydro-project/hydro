@@ -12,6 +12,7 @@ flamegraph.svg
 
 /rustc-ice-*.txt
 /.hydro/
+/.hydro-debug/
 /*.data.folded
 /*.perf.data
 /*.svg
