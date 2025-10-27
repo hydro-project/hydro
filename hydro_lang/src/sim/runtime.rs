@@ -274,15 +274,22 @@ impl<T: Clone> SimHook for SingletonHook<T> {
     }
 
     fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
-        if let Some((to_release, _)) = self.to_release.take() {
+        if let Some((to_release, is_new)) = self.to_release.take() {
             self.last_released = Some(to_release.clone());
 
             let (batch_location, line, caret_indent) = self.batch_location;
             let note_str = if self.skipped_states.is_empty() {
-                format!(
-                    "^ releasing snapshot: {:?}",
-                    ManualDebug(&to_release, self.format_item_debug)
-                )
+                if is_new {
+                    format!(
+                        "^ releasing snapshot: {:?}",
+                        ManualDebug(&to_release, self.format_item_debug)
+                    )
+                } else {
+                    format!(
+                        "^ releasing unchanged snapshot: {:?}",
+                        ManualDebug(&to_release, self.format_item_debug)
+                    )
+                }
             } else {
                 format!(
                     "^ releasing snapshot: {:?} (skipping earlier states: {:?})",
