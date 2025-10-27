@@ -1,11 +1,13 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::rc::Rc;
 
 use bolero::generator::bolero_generator::driver::object::Borrowed;
 use bolero::{ValueGenerator, produce};
 use colored::Colorize;
+use dfir_rs::rustc_hash::FxHashMap;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::live_collections::stream::{NoOrder, Ordering, TotalOrder};
@@ -170,6 +172,98 @@ impl<T> SimHook for StreamHook<T, NoOrder> {
             } else {
                 format!(
                     "^ releasing unordered items: {:?}",
+                    TruncatedVecDebug(&to_release, 8, self.format_item_debug)
+                )
+            };
+
+            let _ = writeln!(
+                log_writer,
+                "{} {}",
+                "-->".color(colored::Color::Blue),
+                batch_location
+            );
+
+            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+            let _ = writeln!(
+                log_writer,
+                " {}{}{}",
+                "|".color(colored::Color::Blue),
+                caret_indent,
+                note_str.color(colored::Color::Green)
+            );
+
+            for item in to_release {
+                self.output.send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
+pub struct KeyedStreamHook<K: Hash + Eq + Clone, V, Order: Ordering> {
+    pub input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>, // FxHasher is deterministic
+    pub to_release: Option<Vec<(K, V)>>,
+    pub output: UnboundedSender<(K, V)>,
+    pub batch_location: (&'static str, &'static str, &'static str),
+    pub format_item_debug: fn(&(K, V)) -> Option<String>,
+    pub _order: std::marker::PhantomData<Order>,
+}
+
+impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, TotalOrder> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.input.borrow().values().all(|q| q.is_empty())
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        mut force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        self.to_release = Some(vec![]);
+        let nonempty_key_count = current_input.values().filter(|q| !q.is_empty()).count();
+
+        let mut remaining_nonempty_keys = nonempty_key_count;
+        for (key, queue) in current_input.iter_mut() {
+            if queue.is_empty() {
+                continue;
+            }
+
+            remaining_nonempty_keys -= 1;
+
+            let count = ((if force_nontrivial && remaining_nonempty_keys == 0 {
+                1
+            } else {
+                0
+            })..=queue.len())
+                .generate(driver)
+                .unwrap();
+
+            let items: Vec<(K, V)> = queue.drain(0..count).map(|v| (key.clone(), v)).collect();
+            self.to_release.as_mut().unwrap().extend(items);
+
+            if count > 0 {
+                force_nontrivial = false;
+            }
+        }
+
+        !self.to_release.as_ref().unwrap().is_empty()
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            let (batch_location, line, caret_indent) = self.batch_location;
+            let note_str = if to_release.is_empty() {
+                "^ releasing no items".to_string()
+            } else {
+                format!(
+                    "^ releasing items: {:?}",
                     TruncatedVecDebug(&to_release, 8, self.format_item_debug)
                 )
             };
