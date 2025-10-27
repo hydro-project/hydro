@@ -255,11 +255,20 @@ impl<'a> Deploy<'a> for SimDeploy {
     fn m2m_sink_source(
         _compile_env: &Self::CompileEnv,
         _c1: &Self::Cluster,
-        _c1_port: &Self::Port,
+        c1_port: &Self::Port,
         _c2: &Self::Cluster,
-        _c2_port: &Self::Port,
+        c2_port: &Self::Port,
     ) -> (syn::Expr, syn::Expr) {
-        todo!()
+        let ident_sink =
+            syn::Ident::new(&format!("__hydro_m2m_sink_{}", c1_port), Span::call_site());
+        let ident_source = syn::Ident::new(
+            &format!("__hydro_m2m_source_{}", c2_port),
+            Span::call_site(),
+        );
+        (
+            syn::parse_quote!(#ident_sink),
+            syn::parse_quote!(#ident_source),
+        )
     }
 
     fn m2m_connect(
@@ -268,7 +277,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _c2: &Self::Cluster,
         _c2_port: &Self::Port,
     ) -> Box<dyn FnOnce()> {
-        todo!()
+        Box::new(|| {})
     }
 
     fn e2o_many_source(
