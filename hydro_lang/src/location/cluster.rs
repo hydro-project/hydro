@@ -76,7 +76,7 @@ impl<C> Clone for ClusterIds<'_, C> {
 impl<C> Copy for ClusterIds<'_, C> {}
 
 impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
-    type O = &'a Vec<MemberId<C>>;
+    type O = &'a [MemberId<C>];
 
     fn to_tokens(self, _ctx: &Ctx) -> QuoteTokens
     where
@@ -98,7 +98,7 @@ impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
     }
 }
 
-impl<'a, C, Ctx> QuotedWithContext<'a, &'a Vec<MemberId<C>>, Ctx> for ClusterIds<'a, C> {}
+impl<'a, C, Ctx> QuotedWithContext<'a, &'a [MemberId<C>], Ctx> for ClusterIds<'a, C> {}
 
 pub trait IsCluster {
     type Tag;
