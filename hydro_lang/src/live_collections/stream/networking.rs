@@ -23,18 +23,16 @@ use crate::staging_util::get_this_crate;
 // same as the one in `hydro_std`, but internal use only
 fn track_membership<'a, C, L: Location<'a> + NoTick>(
     membership: KeyedStream<MemberId<C>, MembershipEvent, L, Unbounded>,
-) -> KeyedSingleton<MemberId<C>, (), L, Unbounded> {
-    membership
-        .fold(
-            q!(|| false),
-            q!(|present, event| {
-                match event {
-                    MembershipEvent::Joined => *present = true,
-                    MembershipEvent::Left => *present = false,
-                }
-            }),
-        )
-        .filter_map(q!(|v| if v { Some(()) } else { None }))
+) -> KeyedSingleton<MemberId<C>, bool, L, Unbounded> {
+    membership.fold(
+        q!(|| false),
+        q!(|present, event| {
+            match event {
+                MembershipEvent::Joined => *present = true,
+                MembershipEvent::Left => *present = false,
+            }
+        }),
+    )
 }
 
 fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr {
@@ -186,7 +184,9 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     {
         let ids = track_membership(self.location.source_cluster_members(other));
         let join_tick = self.location.tick();
-        let current_members = ids.snapshot(&join_tick, nondet_membership);
+        let current_members = ids
+            .snapshot(&join_tick, nondet_membership)
+            .filter(q!(|b| *b));
 
         self.batch(&join_tick, nondet_membership)
             .repeat_with_keys(current_members)
@@ -358,6 +358,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
         let join_tick = self.location.tick();
         let current_members = ids
             .snapshot(&join_tick, nondet_membership)
+            .filter(q!(|b| *b))
             .keys()
             .assume_ordering(nondet_membership)
             .collect_vec();
@@ -510,7 +511,9 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     {
         let ids = track_membership(self.location.source_cluster_members(other));
         let join_tick = self.location.tick();
-        let current_members = ids.snapshot(&join_tick, nondet_membership);
+        let current_members = ids
+            .snapshot(&join_tick, nondet_membership)
+            .filter(q!(|b| *b));
 
         self.batch(&join_tick, nondet_membership)
             .repeat_with_keys(current_members)

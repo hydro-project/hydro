@@ -21,13 +21,13 @@ expression: built.ir()
                                 inner: CrossProduct {
                                     left: ObserveNonDet {
                                         inner: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , ()) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
                                             input: Cast {
                                                 inner: Cast {
-                                                    inner: Batch {
-                                                        inner: FilterMap {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool) , core :: option :: Option < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , ()) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | v | if v { Some (()) } else { None } }) ; { let orig = f__free ; move | (k , v) | orig (v) . map (| o | (k , o)) } }),
-                                                            input: FoldKeyed {
+                                                    inner: Filter {
+                                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | b | * b }) ; { let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) } }),
+                                                        input: Batch {
+                                                            inner: FoldKeyed {
                                                                 init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | | false }),
                                                                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
                                                                 input: Cast {
@@ -86,13 +86,16 @@ expression: built.ir()
                                                                 },
                                                             },
                                                             metadata: HydroIrMetadata {
-                                                                location_kind: Cluster(
+                                                                location_kind: Tick(
                                                                     0,
+                                                                    Cluster(
+                                                                        0,
+                                                                    ),
                                                                 ),
                                                                 collection_kind: KeyedSingleton {
-                                                                    bound: Unbounded,
+                                                                    bound: Bounded,
                                                                     key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
-                                                                    value_type: (),
+                                                                    value_type: bool,
                                                                 },
                                                             },
                                                         },
@@ -106,7 +109,7 @@ expression: built.ir()
                                                             collection_kind: KeyedSingleton {
                                                                 bound: Bounded,
                                                                 key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
-                                                                value_type: (),
+                                                                value_type: bool,
                                                             },
                                                         },
                                                     },
@@ -122,7 +125,7 @@ expression: built.ir()
                                                             value_order: TotalOrder,
                                                             value_retry: ExactlyOnce,
                                                             key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
-                                                            value_type: (),
+                                                            value_type: bool,
                                                         },
                                                     },
                                                 },
@@ -137,7 +140,7 @@ expression: built.ir()
                                                         bound: Bounded,
                                                         order: NoOrder,
                                                         retry: ExactlyOnce,
-                                                        element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , ()),
+                                                        element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool),
                                                     },
                                                 },
                                             },
