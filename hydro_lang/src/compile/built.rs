@@ -251,6 +251,7 @@ impl<'a> BuiltFlow<'a> {
             })
             .collect();
 
+        let all_external_registered = Rc::new(RefCell::new(HashMap::new()));
         let externals = self
             .external_id_name
             .iter()
@@ -259,7 +260,7 @@ impl<'a> BuiltFlow<'a> {
                     id.0,
                     SimExternal {
                         external_ports: external_ports.clone(),
-                        registered: RefCell::new(HashMap::new()),
+                        registered: all_external_registered.clone(),
                     },
                 )
             })
@@ -272,6 +273,7 @@ impl<'a> BuiltFlow<'a> {
             clusters,
             cluster_max_sizes: HashMap::new(),
             externals,
+            external_registered: all_external_registered.clone(),
             _process_id_name: std::mem::take(&mut self.process_id_name),
             _external_id_name: std::mem::take(&mut self.external_id_name),
             _cluster_id_name: std::mem::take(&mut self.cluster_id_name),

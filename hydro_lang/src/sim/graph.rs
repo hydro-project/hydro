@@ -49,7 +49,7 @@ impl Node for SimNode {
 #[derive(Clone)]
 pub struct SimExternal {
     pub(crate) external_ports: Rc<RefCell<(Vec<usize>, usize)>>,
-    pub(crate) registered: RefCell<HashMap<usize, usize>>,
+    pub(crate) registered: Rc<RefCell<HashMap<usize, usize>>>,
 }
 
 impl Node for SimExternal {
@@ -77,7 +77,7 @@ impl Node for SimExternal {
 
 impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     fn register(&self, key: usize, port: usize) {
-        self.registered.borrow_mut().insert(key, port);
+        assert!(self.registered.borrow_mut().insert(key, port).is_none());
     }
 
     fn raw_port(&self, _key: usize) -> () {
