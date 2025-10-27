@@ -223,18 +223,18 @@ impl<W> HydroJson<W> {
                     }
                 },
 
-                // Collection type group - controls color
+                // Collection type group - controls color via semantic tokens
                 "CollectionGroup": {
                     "Stream": {
-                        "color": "#2563eb",
+                        "color-token": "highlight-1",
                         "arrowhead": "triangle-filled"
                     },
                     "Singleton": {
-                        "color": "#000000",
+                        "color-token": "default",
                         "arrowhead": "circle-filled"
                     },
                     "Optional": {
-                        "color": "#6b7280",
+                        "color-token": "muted",
                         "arrowhead": "diamond-open"
                     }
                 },
