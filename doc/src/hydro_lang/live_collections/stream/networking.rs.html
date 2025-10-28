@@ -42,7 +42,7 @@
 <a href=#42 id=42 data-nosnippet>42</a>
 <a href=#43 id=43 data-nosnippet>43</a>    <span class="kw">if </span>is_demux {
 <a href=#44 id=44 data-nosnippet>44</a>        <span class="macro">parse_quote!</span> {
-<a href=#45 id=45 data-nosnippet>45</a>            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::&lt;(#root::location::MemberId&lt;<span class="kw">_</span>&gt;, #t_type), <span class="kw">_</span>&gt;(
+<a href=#45 id=45 data-nosnippet>45</a>            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::&lt;(#root::__staged::location::MemberId&lt;<span class="kw">_</span>&gt;, #t_type), <span class="kw">_</span>&gt;(
 <a href=#46 id=46 data-nosnippet>46</a>                |(id, data)| {
 <a href=#47 id=47 data-nosnippet>47</a>                    (id.raw_id, #root::runtime_support::bincode::serialize(<span class="kw-2">&amp;</span>data).unwrap().into())
 <a href=#48 id=48 data-nosnippet>48</a>                }
@@ -701,5 +701,39 @@
 <a href=#701 id=701 data-nosnippet>701</a>
 <a href=#702 id=702 data-nosnippet>702</a>        <span class="macro">assert_eq!</span>(instances, <span class="number">1</span>);
 <a href=#703 id=703 data-nosnippet>703</a>    }
-<a href=#704 id=704 data-nosnippet>704</a>}
+<a href=#704 id=704 data-nosnippet>704</a>
+<a href=#705 id=705 data-nosnippet>705</a>    <span class="attr">#[test]
+<a href=#706 id=706 data-nosnippet>706</a>    </span><span class="kw">fn </span>sim_send_bincode_o2m() {
+<a href=#707 id=707 data-nosnippet>707</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#708 id=708 data-nosnippet>708</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#709 id=709 data-nosnippet>709</a>        <span class="kw">let </span>cluster = flow.cluster::&lt;()&gt;();
+<a href=#710 id=710 data-nosnippet>710</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#711 id=711 data-nosnippet>711</a>
+<a href=#712 id=712 data-nosnippet>712</a>        <span class="kw">let </span>input = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[
+<a href=#713 id=713 data-nosnippet>713</a>            (MemberId::from_raw(<span class="number">0</span>), <span class="number">123</span>),
+<a href=#714 id=714 data-nosnippet>714</a>            (MemberId::from_raw(<span class="number">1</span>), <span class="number">456</span>),
+<a href=#715 id=715 data-nosnippet>715</a>        ]));
+<a href=#716 id=716 data-nosnippet>716</a>
+<a href=#717 id=717 data-nosnippet>717</a>        <span class="kw">let </span>out_port = input
+<a href=#718 id=718 data-nosnippet>718</a>            .demux_bincode(<span class="kw-2">&amp;</span>cluster)
+<a href=#719 id=719 data-nosnippet>719</a>            .map(<span class="macro">q!</span>(|x| x + <span class="number">1</span>))
+<a href=#720 id=720 data-nosnippet>720</a>            .send_bincode(<span class="kw-2">&amp;</span>node)
+<a href=#721 id=721 data-nosnippet>721</a>            .entries()
+<a href=#722 id=722 data-nosnippet>722</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#723 id=723 data-nosnippet>723</a>
+<a href=#724 id=724 data-nosnippet>724</a>        flow.sim()
+<a href=#725 id=725 data-nosnippet>725</a>            .with_cluster_size(<span class="kw-2">&amp;</span>cluster, <span class="number">4</span>)
+<a href=#726 id=726 data-nosnippet>726</a>            .exhaustive(<span class="kw">async </span>|<span class="kw-2">mut </span>compiled| {
+<a href=#727 id=727 data-nosnippet>727</a>                <span class="kw">let </span>out_recv = compiled.connect(<span class="kw-2">&amp;</span>out_port);
+<a href=#728 id=728 data-nosnippet>728</a>                compiled.launch();
+<a href=#729 id=729 data-nosnippet>729</a>
+<a href=#730 id=730 data-nosnippet>730</a>                out_recv
+<a href=#731 id=731 data-nosnippet>731</a>                    .assert_yields_only_unordered(<span class="macro">vec!</span>[
+<a href=#732 id=732 data-nosnippet>732</a>                        (MemberId::from_raw(<span class="number">0</span>), <span class="number">124</span>),
+<a href=#733 id=733 data-nosnippet>733</a>                        (MemberId::from_raw(<span class="number">1</span>), <span class="number">457</span>),
+<a href=#734 id=734 data-nosnippet>734</a>                    ])
+<a href=#735 id=735 data-nosnippet>735</a>                    .<span class="kw">await
+<a href=#736 id=736 data-nosnippet>736</a>            </span>});
+<a href=#737 id=737 data-nosnippet>737</a>    }
+<a href=#738 id=738 data-nosnippet>738</a>}
 </code></pre></div></section></main></body></html>
