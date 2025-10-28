@@ -106,7 +106,7 @@ pub trait HydroGraphWrite {
         node_label: &NodeLabel,
         node_type: HydroNodeType,
         location_id: Option<usize>,
-        location_type: Option<&str>,
+        location_kind: Option<&LocationId>,
         backtrace: Option<&Backtrace>,
     ) -> Result<(), Self::Err>;
 
@@ -493,7 +493,7 @@ impl Default for HydroWriteConfig {
 pub struct HydroGraphNode {
     pub label: NodeLabel,
     pub node_type: HydroNodeType,
-    pub location: Option<usize>,
+    pub location_kind: Option<LocationId>, // Full location including ticks
     pub backtrace: Option<Backtrace>,
 }
 
@@ -520,20 +520,25 @@ impl HydroGraphStructure {
         Self::default()
     }
 
-    pub fn add_node(
-        &mut self,
-        label: NodeLabel,
-        node_type: HydroNodeType,
-        location: Option<usize>,
-    ) -> usize {
-        self.add_node_with_backtrace(label, node_type, location, None)
+    pub fn add_node(&mut self, label: NodeLabel, node_type: HydroNodeType) -> usize {
+        self.add_node_with_backtrace(label, node_type, None)
     }
 
     pub fn add_node_with_backtrace(
         &mut self,
         label: NodeLabel,
         node_type: HydroNodeType,
-        location: Option<usize>,
+        backtrace: Option<Backtrace>,
+    ) -> usize {
+        self.add_node_with_location_kind(label, node_type, None, backtrace)
+    }
+
+    /// Add a node with full location information
+    pub fn add_node_with_location_kind(
+        &mut self,
+        label: NodeLabel,
+        node_type: HydroNodeType,
+        location_kind: Option<LocationId>,
         backtrace: Option<Backtrace>,
     ) -> usize {
         let node_id = self.next_node_id;
@@ -543,7 +548,7 @@ impl HydroGraphStructure {
             HydroGraphNode {
                 label,
                 node_type,
-                location,
+                location_kind,
                 backtrace,
             },
         );
@@ -557,9 +562,10 @@ impl HydroGraphStructure {
         node_type: HydroNodeType,
         metadata: &HydroIrMetadata,
     ) -> usize {
-        let location = setup_location(self, metadata);
+        let _ = setup_location(self, metadata);
         let backtrace = Some(metadata.op.backtrace.clone());
-        self.add_node_with_backtrace(label, node_type, location, backtrace)
+        let location_kind = Some(metadata.location_kind.clone());
+        self.add_node_with_location_kind(label, node_type, location_kind, backtrace)
     }
 
     pub fn add_edge(
@@ -724,21 +730,20 @@ where
 
     // Write node definitions
     for (&node_id, node) in &structure.nodes {
-        let (location_id, location_type) = if let Some(loc_id) = node.location {
-            (
-                Some(loc_id),
-                structure.locations.get(&loc_id).map(|s| s.as_str()),
-            )
-        } else {
-            (None, None)
-        };
+        let location_id = node.location_kind.as_ref().and_then(|loc_kind| {
+            match loc_kind.root() {
+                LocationId::Process(id) => Some(*id),
+                LocationId::Cluster(id) => Some(*id),
+                _ => None,
+            }
+        });
 
         graph_write.write_node_definition(
             node_id,
             &node.label,
             node.node_type,
             location_id,
-            location_type,
+            node.location_kind.as_ref(),
             node.backtrace.as_ref(),
         )?;
     }
@@ -747,11 +752,15 @@ where
     if config.show_location_groups {
         let mut nodes_by_location: HashMap<usize, Vec<usize>> = HashMap::new();
         for (&node_id, node) in &structure.nodes {
-            if let Some(location_id) = node.location {
-                nodes_by_location
-                    .entry(location_id)
-                    .or_default()
-                    .push(node_id);
+            let location_id = node.location_kind.as_ref().and_then(|loc_kind| {
+                match loc_kind.root() {
+                    LocationId::Process(id) => Some(*id),
+                    LocationId::Cluster(id) => Some(*id),
+                    _ => None,
+                }
+            });
+            if let Some(location_id) = location_id {
+                nodes_by_location.entry(location_id).or_default().push(node_id);
             }
         }
 
@@ -810,11 +819,11 @@ impl HydroRoot {
                 }
             };
 
-            let location_id = effective_metadata.and_then(|m| setup_location(structure, m));
-            let sink_id = structure.add_node_with_backtrace(
+            let _ = effective_metadata.and_then(|m| setup_location(structure, m));
+            let sink_id = structure.add_node_with_location_kind(
                 label,
                 HydroNodeType::Sink,
-                location_id,
+                effective_metadata.map(|m| m.location_kind.clone()),
                 effective_metadata.map(|m| m.op.backtrace.clone()),
             );
 
@@ -1006,11 +1015,8 @@ impl HydroNode {
         }
 
         match self {
-            HydroNode::Placeholder => structure.add_node(
-                NodeLabel::Static("PLACEHOLDER".to_string()),
-                HydroNodeType::Transform,
-                None,
-            ),
+            HydroNode::Placeholder =>
+                structure.add_node(NodeLabel::Static("PLACEHOLDER".to_string()), HydroNodeType::Transform),
 
             HydroNode::Source {
                 source, metadata, ..
@@ -1309,11 +1315,11 @@ impl HydroNode {
             } => {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let watermark_id = watermark.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let join_node_id = structure.add_node_with_backtrace(
+                let _ = setup_location(structure, metadata);
+                let join_node_id = structure.add_node_with_location_kind(
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
-                    location_id,
+                    Some(metadata.location_kind.clone()),
                     Some(metadata.op.backtrace.clone()),
                 );
 
@@ -1339,13 +1345,13 @@ impl HydroNode {
                     Some("watermark".to_string()),
                 );
 
-                let node_id = structure.add_node_with_backtrace(
+                let node_id = structure.add_node_with_location_kind(
                     NodeLabel::with_exprs(
                         extract_op_name(self.print_root()).to_string(),
                         vec![f.clone()],
                     ),
                     HydroNodeType::Aggregation,
-                    location_id,
+                    Some(metadata.location_kind.clone()),
                     Some(metadata.op.backtrace.clone()),
                 );
 
@@ -1397,10 +1403,16 @@ impl HydroNode {
                 }
                 label.push(')');
 
-                let network_id = structure.add_node_with_backtrace(
+                // Derive a target location_kind for the network node so it groups under the target
+                let target_kind = match (metadata.location_kind.root(), to_location_id) {
+                    (LocationId::Process(_), Some(id)) => Some(LocationId::Process(id)),
+                    (LocationId::Cluster(_), Some(id)) => Some(LocationId::Cluster(id)),
+                    _ => None,
+                };
+                let network_id = structure.add_node_with_location_kind(
                     NodeLabel::Static(label),
                     HydroNodeType::Network,
-                    to_location_id,
+                    target_kind,
                     Some(metadata.op.backtrace.clone()),
                 );
 
@@ -1444,11 +1456,11 @@ impl HydroNode {
             } => {
                 let first_id = first.build_graph_structure(structure, seen_tees, config);
                 let second_id = second.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let chain_id = structure.add_node_with_backtrace(
+                let _ = setup_location(structure, metadata);
+                let chain_id = structure.add_node_with_location_kind(
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Transform,
-                    location_id,
+                    Some(metadata.location_kind.clone()),
                     Some(metadata.op.backtrace.clone()),
                 );
 
@@ -1484,11 +1496,11 @@ impl HydroNode {
             } => {
                 let first_id = first.build_graph_structure(structure, seen_tees, config);
                 let second_id = second.build_graph_structure(structure, seen_tees, config);
-                let location_id = setup_location(structure, metadata);
-                let chain_id = structure.add_node_with_backtrace(
+                let _ = setup_location(structure, metadata);
+                let chain_id = structure.add_node_with_location_kind(
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Transform,
-                    location_id,
+                    Some(metadata.location_kind.clone()),
                     Some(metadata.op.backtrace.clone()),
                 );
 

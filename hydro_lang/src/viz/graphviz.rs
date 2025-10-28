@@ -86,7 +86,7 @@ where
         node_label: &super::render::NodeLabel,
         node_type: HydroNodeType,
         _location_id: Option<usize>,
-        _location_type: Option<&str>,
+        _location_kind: Option<&crate::location::dynamic::LocationId>,
         _backtrace: Option<&crate::compile::ir::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
         // Create the full label string using DebugExpr::Display for expressions

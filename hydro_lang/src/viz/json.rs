@@ -2,10 +2,12 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use serde::Serialize;
+use slotmap::SlotMap;
 
 use super::render::{HydroEdgeProp, HydroGraphWrite, HydroNodeType};
 use crate::compile::ir::HydroRoot;
 use crate::compile::ir::backtrace::Backtrace;
+use crate::location::dynamic::LocationId;
 
 /// A serializable backtrace frame for JSON output.
 /// Includes compatibility aliases to match potential viewer expectations.
@@ -34,6 +36,8 @@ struct NodeData {
     location_id: Option<usize>,
     #[serde(rename = "locationType")]
     location_type: Option<String>,
+    #[serde(rename = "tickId", skip_serializing_if = "Option::is_none")]
+    tick_id: Option<usize>,
     backtrace: serde_json::Value,
 }
 
@@ -71,6 +75,7 @@ pub struct HydroJson<W> {
     edges: Vec<serde_json::Value>,
     locations: HashMap<usize, (String, Vec<usize>)>, // location_id -> (label, node_ids)
     node_locations: HashMap<usize, usize>,           // node_id -> location_id
+    node_ticks: HashMap<usize, usize>,               // node_id -> tick_id
     edge_count: usize,
     // Type name mappings
     process_names: HashMap<usize, String>,
@@ -97,6 +102,7 @@ impl<W> HydroJson<W> {
             edges: Vec::new(),
             locations: HashMap::new(),
             node_locations: HashMap::new(),
+            node_ticks: HashMap::new(),
             edge_count: 0,
             process_names,
             cluster_names,
@@ -312,6 +318,7 @@ where
         self.edges.clear();
         self.locations.clear();
         self.node_locations.clear();
+        self.node_ticks.clear();
         self.edge_count = 0;
         Ok(())
     }
@@ -322,9 +329,25 @@ where
         node_label: &super::render::NodeLabel,
         node_type: HydroNodeType,
         location_id: Option<usize>,
-        location_type: Option<&str>,
+        location_kind: Option<&LocationId>,
         backtrace: Option<&Backtrace>,
     ) -> Result<(), Self::Err> {
+        // Extract tick information and type from location_kind if present
+        let tick_id = location_kind.and_then(|loc_kind| {
+            match loc_kind {
+                LocationId::Tick(tick, _) => Some(*tick),
+                _ => None,
+            }
+        });
+        // serialize the location type to JSON-friendly string
+        let derived_location_type: Option<String> = location_kind.and_then(|loc_kind| {
+            match loc_kind.root() {
+                LocationId::Process(_) => Some("Process".to_string()),
+                LocationId::Cluster(_) => Some("Cluster".to_string()),
+                _ => None,
+            }
+        });
+
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
             super::render::NodeLabel::Static(s) => s.clone(),
@@ -399,7 +422,8 @@ where
             },
             data: NodeData {
                 location_id,
-                location_type: location_type.map(|s| s.to_string()),
+                location_type: derived_location_type,
+                tick_id,
                 backtrace: backtrace_json,
             },
         };
@@ -409,6 +433,11 @@ where
         // Track node location for cross-location edge detection
         if let Some(loc_id) = location_id {
             self.node_locations.insert(node_id, loc_id);
+        }
+
+        // Track node tick for hierarchy generation
+        if let Some(tid) = tick_id {
+            self.node_ticks.insert(node_id, tid);
         }
 
         Ok(())
@@ -636,43 +665,207 @@ impl<W> HydroJson<W> {
         })
     }
 
-    /// Create location-based hierarchy (original behavior)
+    /// Create location-based hierarchy with nested Tick support
     fn create_location_hierarchy(
         &self,
     ) -> (
         Vec<serde_json::Value>,
         serde_json::Map<String, serde_json::Value>,
     ) {
-        // Create hierarchy structure (single level: locations as parents, nodes as children)
-        let mut locs: Vec<(&usize, &(String, Vec<usize>))> = self.locations.iter().collect();
-        locs.sort_by(|a, b| a.0.cmp(b.0));
-        let hierarchy: Vec<serde_json::Value> = locs
-            .into_iter()
-            .map(|(location_id, (label, _))| {
-                serde_json::json!({
-                    "id": format!("loc_{}", location_id),
-                    "name": label,
-                    "children": [] // Single level hierarchy - no nested children
-                })
-            })
-            .collect();
+        use std::collections::{HashMap, HashSet};
 
-        // Create node assignments by reading locationId from each node's data
-        // This is more reliable than using the write_node tracking which depends on HashMap iteration order
-        // Build and then sort assignments deterministically by node id key
-        let mut tmp: Vec<(String, String)> = Vec::new();
+        // Group nodes by (location_id, optional tick_id)
+        let mut location_tick_nodes: HashMap<usize, HashMap<Option<usize>, Vec<String>>> =
+            HashMap::new();
+
         for node in &self.nodes {
-            if let (Some(node_id), Some(location_id)) =
-                (node["id"].as_str(), node["data"]["locationId"].as_u64())
-            {
-                let location_key = format!("loc_{}", location_id);
-                tmp.push((node_id.to_string(), location_key));
+            if let Some(node_id_str) = node["id"].as_str() {
+                let location_id = node["data"]["locationId"].as_u64().map(|v| v as usize);
+                let tick_id = node["data"]["tickId"].as_u64().map(|v| v as usize);
+
+                if let Some(loc_id) = location_id {
+                    location_tick_nodes
+                        .entry(loc_id)
+                        .or_default()
+                        .entry(tick_id)
+                        .or_default()
+                        .push(node_id_str.to_string());
+                }
             }
         }
-        tmp.sort_by(|a, b| a.0.cmp(&b.0));
+
+        // Build hierarchy: locations as top level, with Tick sub-containers when present
+        let mut locs: Vec<(&usize, &(String, Vec<usize>))> = self.locations.iter().collect();
+        locs.sort_by(|a, b| a.0.cmp(b.0));
+
+        let mut hierarchy = Vec::new();
         let mut node_assignments = serde_json::Map::new();
-        for (k, v) in tmp {
-            node_assignments.insert(k, serde_json::Value::String(v));
+
+        for (location_id, (label, _)) in locs {
+            let location_key = format!("loc_{}", location_id);
+
+            if let Some(tick_groups) = location_tick_nodes.get(location_id) {
+                // Collect all tick IDs present for this location
+                let tick_ids: HashSet<Option<usize>> = tick_groups.keys().cloned().collect();
+
+                // If there are nodes in ticks, create sub-containers for each tick
+                if tick_ids.len() > 1 || (tick_ids.len() == 1 && !tick_ids.contains(&None)) {
+                    // Multiple ticks or at least one tick with ID - create nested structure
+                    let mut tick_children = Vec::new();
+                    let mut sorted_ticks: Vec<Option<usize>> = tick_ids.into_iter().collect();
+                    sorted_ticks.sort_by(|a, b| {
+                        match (a, b) {
+                            (None, None) => std::cmp::Ordering::Equal,
+                            (None, Some(_)) => std::cmp::Ordering::Less, // None comes first
+                            (Some(_), None) => std::cmp::Ordering::Greater,
+                            (Some(a_id), Some(b_id)) => a_id.cmp(b_id),
+                        }
+                    });
+
+                    // disconnected components within each tick group belong to independent containers
+                    // need to find connected components per tick group using UnionFind
+                    for tick_id_opt in sorted_ticks {
+                        if let Some(tick_id) = tick_id_opt {
+                            let base_tick_key = format!("{}_tick_{}", location_key, tick_id);
+
+                            // Build connected components for this (location, tick) using UnionFind
+                            let nodes_str: Vec<String> = tick_groups
+                                .get(&tick_id_opt)
+                                .cloned()
+                                .unwrap_or_default();
+                            let mut node_nums: Vec<usize> = nodes_str
+                                .iter()
+                                .filter_map(|s| s.parse::<usize>().ok())
+                                .collect();
+                            node_nums.sort_unstable();
+                            let nodes_set: std::collections::HashSet<usize> =
+                                node_nums.iter().cloned().collect();
+
+                            // Create a SlotMap to map node IDs to keys for UnionFind
+                            slotmap::new_key_type! { struct NodeKey; }
+                            let mut node_map: SlotMap<NodeKey, usize> = SlotMap::with_key();
+                            let mut node_to_key: HashMap<usize, NodeKey> = HashMap::new();
+                            for &node_id in &node_nums {
+                                let key = node_map.insert(node_id);
+                                node_to_key.insert(node_id, key);
+                            }
+
+                            // Use UnionFind from dfir_lang to find connected components
+                            let mut uf = dfir_lang::union_find::UnionFind::with_capacity(node_nums.len());
+
+                            // Union nodes that are connected by edges
+                            for edge in &self.edges {
+                                let s = edge["source"]
+                                    .as_str()
+                                    .and_then(|v| v.parse::<usize>().ok());
+                                let t = edge["target"]
+                                    .as_str()
+                                    .and_then(|v| v.parse::<usize>().ok());
+                                if let (Some(sid), Some(tid)) = (s, t) {
+                                    if nodes_set.contains(&sid) && nodes_set.contains(&tid) {
+                                        if let (Some(&s_key), Some(&t_key)) =
+                                            (node_to_key.get(&sid), node_to_key.get(&tid))
+                                        {
+                                            uf.union(s_key, t_key);
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Group nodes by their component representative
+                            let mut component_map: HashMap<NodeKey, Vec<usize>> = HashMap::new();
+                            for &node_id in &node_nums {
+                                if let Some(&key) = node_to_key.get(&node_id) {
+                                    let root = uf.find(key);
+                                    component_map.entry(root).or_default().push(node_id);
+                                }
+                            }
+
+                            // Convert to vector and sort for determinism
+                            let mut components: Vec<Vec<usize>> = component_map
+                                .into_iter()
+                                .map(|(_, mut nodes)| {
+                                    nodes.sort_unstable();
+                                    nodes
+                                })
+                                .collect();
+                            // Sort components by smallest node id for determinism
+                            components.sort_by_key(|c| c.first().cloned().unwrap_or(usize::MAX));
+
+                            if components.is_empty() {
+                                // No edges and possibly no nodes (shouldn't happen), create empty container for consistency
+                                tick_children.push(serde_json::json!({
+                                    "id": base_tick_key.clone(),
+                                    "name": format!("Tick({})", tick_id),
+                                    "children": []
+                                }));
+                            } else if components.len() == 1 {
+                                // Single component: single Tick container
+                                let tick_key = base_tick_key.clone();
+                                tick_children.push(serde_json::json!({
+                                    "id": tick_key,
+                                    "name": format!("Tick({})", tick_id),
+                                    "children": []
+                                }));
+                                for n in &components[0] {
+                                    node_assignments.insert(n.to_string(), serde_json::Value::String(base_tick_key.clone()));
+                                }
+                            } else {
+                                // Multiple components: split into multiple Tick containers
+                                for (idx, comp) in components.iter().enumerate() {
+                                    let tick_key = format!("{}_c{}", base_tick_key, idx + 1);
+                                    tick_children.push(serde_json::json!({
+                                        "id": tick_key.clone(),
+                                        "name": format!("Tick({})", tick_id),
+                                        "children": []
+                                    }));
+                                    for n in comp {
+                                        node_assignments.insert(n.to_string(), serde_json::Value::String(tick_key.clone()));
+                                    }
+                                }
+                            }
+                        } else {
+                            // Nodes without tick go directly under location
+                            if let Some(nodes) = tick_groups.get(&None) {
+                                for node_id in nodes {
+                                    node_assignments.insert(
+                                        node_id.clone(),
+                                        serde_json::Value::String(location_key.clone()),
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    hierarchy.push(serde_json::json!({
+                        "id": location_key,
+                        "name": label,
+                        "children": tick_children
+                    }));
+                } else {
+                    // Only nodes without tick IDs - flat structure
+                    hierarchy.push(serde_json::json!({
+                        "id": location_key.clone(),
+                        "name": label,
+                        "children": []
+                    }));
+
+                    // Assign all nodes directly to location
+                    if let Some(nodes) = tick_groups.get(&None) {
+                        for node_id in nodes {
+                            node_assignments
+                                .insert(node_id.clone(), serde_json::Value::String(location_key.clone()));
+                        }
+                    }
+                }
+            } else {
+                // No nodes for this location - create empty container
+                hierarchy.push(serde_json::json!({
+                    "id": location_key,
+                    "name": label,
+                    "children": []
+                }));
+            }
         }
 
         (hierarchy, node_assignments)

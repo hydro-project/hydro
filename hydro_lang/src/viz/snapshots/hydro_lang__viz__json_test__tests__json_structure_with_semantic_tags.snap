@@ -44,7 +44,13 @@ expression: output
   ],
   "hierarchyChoices": [
     {
-      "children": [],
+      "children": [
+        {
+          "children": [],
+          "id": "loc_0",
+          "name": "Process 0"
+        }
+      ],
       "id": "location",
       "name": "Location"
     }
