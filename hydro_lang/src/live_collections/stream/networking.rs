@@ -42,7 +42,7 @@ fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr 
 
     if is_demux {
         parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::location::MemberId<_>, #t_type), _>(
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_>, #t_type), _>(
                 |(id, data)| {
                     (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
@@ -700,5 +700,39 @@ mod tests {
             });
 
         assert_eq!(instances, 1);
+    }
+
+    #[test]
+    fn sim_send_bincode_o2m() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!(vec![
+            (MemberId::from_raw(0), 123),
+            (MemberId::from_raw(1), 456),
+        ]));
+
+        let out_port = input
+            .demux_bincode(&cluster)
+            .map(q!(|x| x + 1))
+            .send_bincode(&node)
+            .entries()
+            .send_bincode_external(&external);
+
+        flow.sim()
+            .with_cluster_size(&cluster, 4)
+            .exhaustive(async |mut compiled| {
+                let out_recv = compiled.connect(&out_port);
+                compiled.launch();
+
+                out_recv
+                    .assert_yields_only_unordered(vec![
+                        (MemberId::from_raw(0), 124),
+                        (MemberId::from_raw(1), 457),
+                    ])
+                    .await
+            });
     }
 }
