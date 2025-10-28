@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/sim/compiled.rs`."><title>compiled.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0-nightly (6501e64fc 2025-10-23)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/sim/</div>compiled.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Interfaces for compiled Hydro simulators and concrete simulation instances.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/sim/compiled.rs`."><title>compiled.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (adaa83897 2025-10-27)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/sim/</div>compiled.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Interfaces for compiled Hydro simulators and concrete simulation instances.
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>core::fmt;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>std::collections::{HashMap, HashSet, VecDeque};
@@ -379,7 +379,7 @@
 <a href=#379 id=379 data-nosnippet>379</a>        <span class="self">self</span>,
 <a href=#380 id=380 data-nosnippet>380</a>        log_override: <span class="prelude-ty">Option</span>&lt;W&gt;,
 <a href=#381 id=381 data-nosnippet>381</a>    ) -&gt; <span class="kw">impl use</span>&lt;W&gt; + Future&lt;Output = ()&gt; {
-<a href=#382 id=382 data-nosnippet>382</a>        <span class="kw">if </span>!<span class="self">self</span>.remaining_ports.is_empty() {
+<a href=#382 id=382 data-nosnippet>382</a>        <span class="macro">if !</span><span class="self">self</span>.remaining_ports.is_empty() {
 <a href=#383 id=383 data-nosnippet>383</a>            <span class="macro">panic!</span>(
 <a href=#384 id=384 data-nosnippet>384</a>                <span class="string">"Cannot launch DFIR because some of the inputs / outputs have not been connected."
 <a href=#385 id=385 data-nosnippet>385</a>            </span>)
@@ -461,7 +461,7 @@
 <a href=#461 id=461 data-nosnippet>461</a>    {
 <a href=#462 id=462 data-nosnippet>462</a>        <span class="kw">let </span><span class="kw-2">mut </span>expected: VecDeque&lt;T&gt; = expected.into_iter().collect();
 <a href=#463 id=463 data-nosnippet>463</a>
-<a href=#464 id=464 data-nosnippet>464</a>        <span class="kw">while </span>!expected.is_empty() {
+<a href=#464 id=464 data-nosnippet>464</a>        <span class="macro">while !</span>expected.is_empty() {
 <a href=#465 id=465 data-nosnippet>465</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(next) = <span class="self">self</span>.next().<span class="kw">await </span>{
 <a href=#466 id=466 data-nosnippet>466</a>                <span class="macro">assert_eq!</span>(next, expected.pop_front().unwrap());
 <a href=#467 id=467 data-nosnippet>467</a>            } <span class="kw">else </span>{
@@ -501,10 +501,10 @@
 <a href=#501 id=501 data-nosnippet>501</a>    {
 <a href=#502 id=502 data-nosnippet>502</a>        <span class="kw">let </span><span class="kw-2">mut </span>expected: Vec&lt;T&gt; = expected.into_iter().collect();
 <a href=#503 id=503 data-nosnippet>503</a>
-<a href=#504 id=504 data-nosnippet>504</a>        <span class="kw">while </span>!expected.is_empty() {
+<a href=#504 id=504 data-nosnippet>504</a>        <span class="macro">while !</span>expected.is_empty() {
 <a href=#505 id=505 data-nosnippet>505</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(next) = <span class="self">self</span>.<span class="number">0</span>.next().<span class="kw">await </span>{
 <a href=#506 id=506 data-nosnippet>506</a>                <span class="kw">let </span>prev_length = expected.len();
-<a href=#507 id=507 data-nosnippet>507</a>                expected.retain(|e| e != <span class="kw-2">&amp;</span>next);
+<a href=#507 id=507 data-nosnippet>507</a>                expected.retain(|e| <span class="macro">e !</span>= <span class="kw-2">&amp;</span>next);
 <a href=#508 id=508 data-nosnippet>508</a>                <span class="kw">if </span>expected.len() == prev_length {
 <a href=#509 id=509 data-nosnippet>509</a>                    <span class="macro">panic!</span>(<span class="string">"Stream yielded unexpected message: {:?}"</span>, next);
 <a href=#510 id=510 data-nosnippet>510</a>                }
@@ -689,7 +689,7 @@
 <a href=#689 id=689 data-nosnippet>689</a>                            <span class="kw">if let </span><span class="prelude-val">Some</span>(is_nontrivial) = hook.current_decision() {
 <a href=#690 id=690 data-nosnippet>690</a>                                made_nontrivial_decision |= is_nontrivial;
 <a href=#691 id=691 data-nosnippet>691</a>                                remaining_decision_count -= <span class="number">1</span>;
-<a href=#692 id=692 data-nosnippet>692</a>                            } <span class="kw">else if </span>!hook.can_make_nontrivial_decision() {
+<a href=#692 id=692 data-nosnippet>692</a>                            } <span class="kw">else </span><span class="macro">if !</span>hook.can_make_nontrivial_decision() {
 <a href=#693 id=693 data-nosnippet>693</a>                                <span class="comment">// if no nontrivial decision is possible, make a trivial one
 <a href=#694 id=694 data-nosnippet>694</a>                                // (we need to do this in the first pass to force nontrivial decisions
 <a href=#695 id=695 data-nosnippet>695</a>                                // on the remaining hooks)
@@ -717,4 +717,5 @@
 <a href=#717 id=717 data-nosnippet>717</a>            }
 <a href=#718 id=718 data-nosnippet>718</a>        }
 <a href=#719 id=719 data-nosnippet>719</a>    }
-<a href=#720 id=720 data-nosnippet>720</a>}</code></pre></div></section></main></body></html>
+<a href=#720 id=720 data-nosnippet>720</a>}
+</code></pre></div></section></main></body></html>

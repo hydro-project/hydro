@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_lang/src/graph/ops/partition.rs`."><title>partition.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="dfir_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0-nightly (6501e64fc 2025-10-23)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">dfir_lang/graph/ops/</div>partition.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::BTreeSet;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_lang/src/graph/ops/partition.rs`."><title>partition.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="dfir_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (adaa83897 2025-10-27)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">dfir_lang/graph/ops/</div>partition.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::BTreeSet;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>proc_macro2::Span;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>quote::quote_spanned;
@@ -219,7 +219,7 @@
 <a href=#219 id=219 data-nosnippet>219</a>            <span class="kw">if </span>usize::try_from(max_port_idx).unwrap() &gt;= ports_numeric.len() {
 <a href=#220 id=220 data-nosnippet>220</a>                <span class="kw">let </span><span class="kw-2">mut </span>expected = <span class="number">0</span>;
 <a href=#221 id=221 data-nosnippet>221</a>                <span class="kw">for </span>port_numeric <span class="kw">in </span>ports_numeric {
-<a href=#222 id=222 data-nosnippet>222</a>                    <span class="kw">if </span>expected != port_numeric.value {
+<a href=#222 id=222 data-nosnippet>222</a>                    <span class="kw">if </span><span class="macro">expected !</span>= port_numeric.value {
 <a href=#223 id=223 data-nosnippet>223</a>                        diagnostics.push(Diagnostic::spanned(
 <a href=#224 id=224 data-nosnippet>224</a>                            port_numeric.span,
 <a href=#225 id=225 data-nosnippet>225</a>                            Level::Error,
@@ -313,7 +313,7 @@
 <a href=#313 id=313 data-nosnippet>313</a>        .collect();
 <a href=#314 id=314 data-nosnippet>314</a>
 <a href=#315 id=315 data-nosnippet>315</a>    <span class="comment">// Last step: set the type `[a, b, c]: [usize; 3]` if it is not already specified.
-<a href=#316 id=316 data-nosnippet>316</a>    </span><span class="kw">if </span>!already_has_type {
+<a href=#316 id=316 data-nosnippet>316</a>    </span><span class="macro">if !</span>already_has_type {
 <a href=#317 id=317 data-nosnippet>317</a>        <span class="kw">let </span>len = LitInt::new(<span class="kw-2">&amp;</span>pat_slice.elems.len().to_string(), arg2_span);
 <a href=#318 id=318 data-nosnippet>318</a>        <span class="kw-2">*</span>arg2 = Pat::Type(PatType {
 <a href=#319 id=319 data-nosnippet>319</a>            attrs: <span class="macro">vec!</span>[],
@@ -336,7 +336,7 @@
 <a href=#336 id=336 data-nosnippet>336</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
 <a href=#337 id=337 data-nosnippet>337</a>    <span class="kw">let </span><span class="kw-2">mut </span>err = <span class="bool-val">false</span>;
 <a href=#338 id=338 data-nosnippet>338</a>    <span class="kw">for </span>port_ident <span class="kw">in </span>port_idents {
-<a href=#339 id=339 data-nosnippet>339</a>        <span class="kw">if </span>!closure_idents.contains(port_ident) {
+<a href=#339 id=339 data-nosnippet>339</a>        <span class="macro">if !</span>closure_idents.contains(port_ident) {
 <a href=#340 id=340 data-nosnippet>340</a>            <span class="comment">// An output port is missing from the closure args.
 <a href=#341 id=341 data-nosnippet>341</a>            </span>err = <span class="bool-val">true</span>;
 <a href=#342 id=342 data-nosnippet>342</a>            diagnostics.push(Diagnostic::spanned(
@@ -358,7 +358,7 @@
 <a href=#358 id=358 data-nosnippet>358</a>        }
 <a href=#359 id=359 data-nosnippet>359</a>    }
 <a href=#360 id=360 data-nosnippet>360</a>    <span class="kw">for </span>closure_ident <span class="kw">in </span>closure_idents {
-<a href=#361 id=361 data-nosnippet>361</a>        <span class="kw">if </span>!port_idents.contains(closure_ident) {
+<a href=#361 id=361 data-nosnippet>361</a>        <span class="macro">if !</span>port_idents.contains(closure_ident) {
 <a href=#362 id=362 data-nosnippet>362</a>            <span class="comment">// A closure arg is missing from the output ports.
 <a href=#363 id=363 data-nosnippet>363</a>            </span>err = <span class="bool-val">true</span>;
 <a href=#364 id=364 data-nosnippet>364</a>            diagnostics.push(Diagnostic::spanned(
@@ -372,4 +372,5 @@
 <a href=#372 id=372 data-nosnippet>372</a>        }
 <a href=#373 id=373 data-nosnippet>373</a>    }
 <a href=#374 id=374 data-nosnippet>374</a>    (!err).then_some(()).ok_or(())
-<a href=#375 id=375 data-nosnippet>375</a>}</code></pre></div></section></main></body></html>
+<a href=#375 id=375 data-nosnippet>375</a>}
+</code></pre></div></section></main></body></html>

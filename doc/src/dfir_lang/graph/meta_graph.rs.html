@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_lang/src/graph/meta_graph.rs`."><title>meta_graph.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0-nightly (6501e64fc 2025-10-23)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">dfir_lang/graph/</div>meta_graph.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![warn(missing_docs)]
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_lang/src/graph/meta_graph.rs`."><title>meta_graph.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (adaa83897 2025-10-27)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">dfir_lang/graph/</div>meta_graph.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![warn(missing_docs)]
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">extern crate </span>proc_macro;
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -303,7 +303,7 @@
 <a href=#303 id=303 data-nosnippet>303</a>                    .map(Spanned::span)
 <a href=#304 id=304 data-nosnippet>304</a>                    .unwrap_or_else(|| operator.path.span());
 <a href=#305 id=305 data-nosnippet>305</a>
-<a href=#306 id=306 data-nosnippet>306</a>                <span class="kw">if </span>!op_constraints
+<a href=#306 id=306 data-nosnippet>306</a>                <span class="macro">if !</span>op_constraints
 <a href=#307 id=307 data-nosnippet>307</a>                    .persistence_args
 <a href=#308 id=308 data-nosnippet>308</a>                    .contains(<span class="kw-2">&amp;</span>generics.persistence_args.len())
 <a href=#309 id=309 data-nosnippet>309</a>                {
@@ -318,7 +318,7 @@
 <a href=#318 id=318 data-nosnippet>318</a>                        ),
 <a href=#319 id=319 data-nosnippet>319</a>                    ));
 <a href=#320 id=320 data-nosnippet>320</a>                }
-<a href=#321 id=321 data-nosnippet>321</a>                <span class="kw">if </span>!op_constraints.type_args.contains(<span class="kw-2">&amp;</span>generics.type_args.len()) {
+<a href=#321 id=321 data-nosnippet>321</a>                <span class="macro">if !</span>op_constraints.type_args.contains(<span class="kw-2">&amp;</span>generics.type_args.len()) {
 <a href=#322 id=322 data-nosnippet>322</a>                    diagnostics.push(Diagnostic::spanned(
 <a href=#323 id=323 data-nosnippet>323</a>                        generics_span,
 <a href=#324 id=324 data-nosnippet>324</a>                        Level::Error,
@@ -686,7 +686,7 @@
 <a href=#686 id=686 data-nosnippet>686</a>    <span class="doccomment">/// Removes a node from its subgraph. Returns true if the node was in a subgraph.
 <a href=#687 id=687 data-nosnippet>687</a>    </span><span class="kw">pub fn </span>remove_from_subgraph(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node_id: GraphNodeId) -&gt; bool {
 <a href=#688 id=688 data-nosnippet>688</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(old_sg_id) = <span class="self">self</span>.node_subgraph.remove(node_id) {
-<a href=#689 id=689 data-nosnippet>689</a>            <span class="self">self</span>.subgraph_nodes[old_sg_id].retain(|<span class="kw-2">&amp;</span>other_node_id| other_node_id != node_id);
+<a href=#689 id=689 data-nosnippet>689</a>            <span class="self">self</span>.subgraph_nodes[old_sg_id].retain(|<span class="kw-2">&amp;</span>other_node_id| <span class="macro">other_node_id !</span>= node_id);
 <a href=#690 id=690 data-nosnippet>690</a>            <span class="bool-val">true
 <a href=#691 id=691 data-nosnippet>691</a>        </span>} <span class="kw">else </span>{
 <a href=#692 id=692 data-nosnippet>692</a>            <span class="bool-val">false
@@ -728,7 +728,7 @@
 <a href=#728 id=728 data-nosnippet>728</a>            .iter()
 <a href=#729 id=729 data-nosnippet>729</a>            .position(|<span class="kw-2">&amp;</span>node_id| {
 <a href=#730 id=730 data-nosnippet>730</a>                <span class="self">self</span>.node_color(node_id)
-<a href=#731 id=731 data-nosnippet>731</a>                    .is_some_and(|color| Color::Pull != color)
+<a href=#731 id=731 data-nosnippet>731</a>                    .is_some_and(|color| <span class="macro">Color::Pull !</span>= color)
 <a href=#732 id=732 data-nosnippet>732</a>            })
 <a href=#733 id=733 data-nosnippet>733</a>            .unwrap_or(subgraph_nodes.len())
 <a href=#734 id=734 data-nosnippet>734</a>    }
@@ -793,7 +793,7 @@
 <a href=#793 id=793 data-nosnippet>793</a>
 <a href=#794 id=794 data-nosnippet>794</a>        <span class="comment">// For each handoff node, add it to the `send`/`recv` lists for the corresponding subgraphs.
 <a href=#795 id=795 data-nosnippet>795</a>        </span><span class="kw">for </span>(hoff_id, node) <span class="kw">in </span><span class="self">self</span>.nodes() {
-<a href=#796 id=796 data-nosnippet>796</a>            <span class="kw">if </span>!<span class="macro">matches!</span>(node, GraphNode::Handoff { .. }) {
+<a href=#796 id=796 data-nosnippet>796</a>            <span class="macro">if !matches!</span>(node, GraphNode::Handoff { .. }) {
 <a href=#797 id=797 data-nosnippet>797</a>                <span class="kw">continue</span>;
 <a href=#798 id=798 data-nosnippet>798</a>            }
 <a href=#799 id=799 data-nosnippet>799</a>            <span class="comment">// Receivers from the handoff. (Should really only be one).
@@ -1486,7 +1486,7 @@
 <a href=#1486 id=1486 data-nosnippet>1486</a>        }
 <a href=#1487 id=1487 data-nosnippet>1487</a>
 <a href=#1488 id=1488 data-nosnippet>1488</a>        <span class="comment">// Write reference edges.
-<a href=#1489 id=1489 data-nosnippet>1489</a>        </span><span class="kw">if </span>!write_config.no_references {
+<a href=#1489 id=1489 data-nosnippet>1489</a>        </span><span class="macro">if !</span>write_config.no_references {
 <a href=#1490 id=1490 data-nosnippet>1490</a>            <span class="kw">for </span>dst_id <span class="kw">in </span><span class="self">self</span>.node_ids() {
 <a href=#1491 id=1491 data-nosnippet>1491</a>                <span class="kw">for </span>src_ref_id <span class="kw">in </span><span class="self">self
 <a href=#1492 id=1492 data-nosnippet>1492</a>                    </span>.node_singleton_references(dst_id)
@@ -1767,4 +1767,5 @@
 <a href=#1767 id=1767 data-nosnippet>1767</a>        out.entry(k).or_default().push(v);
 <a href=#1768 id=1768 data-nosnippet>1768</a>    }
 <a href=#1769 id=1769 data-nosnippet>1769</a>    out
-<a href=#1770 id=1770 data-nosnippet>1770</a>}</code></pre></div></section></main></body></html>
+<a href=#1770 id=1770 data-nosnippet>1770</a>}
+</code></pre></div></section></main></body></html>
