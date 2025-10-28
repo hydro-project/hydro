@@ -575,4 +575,43 @@
 <a href=#575 id=575 data-nosnippet>575</a>        <span class="self">self</span>.into_keyed().demux_bincode(other)
 <a href=#576 id=576 data-nosnippet>576</a>    }
 <a href=#577 id=577 data-nosnippet>577</a>}
+<a href=#578 id=578 data-nosnippet>578</a>
+<a href=#579 id=579 data-nosnippet>579</a><span class="attr">#[cfg(test)]
+<a href=#580 id=580 data-nosnippet>580</a></span><span class="kw">mod </span>tests {
+<a href=#581 id=581 data-nosnippet>581</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
+<a href=#582 id=582 data-nosnippet>582</a>    <span class="kw">use </span><span class="kw">crate</span>::nondet::nondet;
+<a href=#583 id=583 data-nosnippet>583</a>    <span class="kw">use </span><span class="kw">crate</span>::prelude::FlowBuilder;
+<a href=#584 id=584 data-nosnippet>584</a>
+<a href=#585 id=585 data-nosnippet>585</a>    <span class="attr">#[test]
+<a href=#586 id=586 data-nosnippet>586</a>    </span><span class="kw">fn </span>sim_send_bincode() {
+<a href=#587 id=587 data-nosnippet>587</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#588 id=588 data-nosnippet>588</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#589 id=589 data-nosnippet>589</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#590 id=590 data-nosnippet>590</a>        <span class="kw">let </span>node2 = flow.process::&lt;()&gt;();
+<a href=#591 id=591 data-nosnippet>591</a>
+<a href=#592 id=592 data-nosnippet>592</a>        <span class="kw">let </span>(port, input) = node.source_external_bincode(<span class="kw-2">&amp;</span>external);
+<a href=#593 id=593 data-nosnippet>593</a>
+<a href=#594 id=594 data-nosnippet>594</a>        <span class="kw">let </span>out_port = input
+<a href=#595 id=595 data-nosnippet>595</a>            .send_bincode(<span class="kw-2">&amp;</span>node2)
+<a href=#596 id=596 data-nosnippet>596</a>            .batch(<span class="kw-2">&amp;</span>node2.tick(), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#597 id=597 data-nosnippet>597</a>            .count()
+<a href=#598 id=598 data-nosnippet>598</a>            .all_ticks()
+<a href=#599 id=599 data-nosnippet>599</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#600 id=600 data-nosnippet>600</a>
+<a href=#601 id=601 data-nosnippet>601</a>        <span class="kw">let </span>instances = flow.sim().exhaustive(<span class="kw">async </span>|<span class="kw-2">mut </span>compiled| {
+<a href=#602 id=602 data-nosnippet>602</a>            <span class="kw">let </span>in_send = compiled.connect(<span class="kw-2">&amp;</span>port);
+<a href=#603 id=603 data-nosnippet>603</a>            <span class="kw">let </span>out_recv = compiled.connect(<span class="kw-2">&amp;</span>out_port);
+<a href=#604 id=604 data-nosnippet>604</a>            compiled.launch();
+<a href=#605 id=605 data-nosnippet>605</a>
+<a href=#606 id=606 data-nosnippet>606</a>            in_send.send(()).unwrap();
+<a href=#607 id=607 data-nosnippet>607</a>            in_send.send(()).unwrap();
+<a href=#608 id=608 data-nosnippet>608</a>            in_send.send(()).unwrap();
+<a href=#609 id=609 data-nosnippet>609</a>
+<a href=#610 id=610 data-nosnippet>610</a>            <span class="kw">let </span>received = out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#611 id=611 data-nosnippet>611</a>            <span class="macro">assert!</span>(received.into_iter().sum::&lt;usize&gt;() == <span class="number">3</span>);
+<a href=#612 id=612 data-nosnippet>612</a>        });
+<a href=#613 id=613 data-nosnippet>613</a>
+<a href=#614 id=614 data-nosnippet>614</a>        <span class="macro">assert_eq!</span>(instances, <span class="number">4</span>); <span class="comment">// 2^{3 - 1}
+<a href=#615 id=615 data-nosnippet>615</a>    </span>}
+<a href=#616 id=616 data-nosnippet>616</a>}
 </code></pre></div></section></main></body></html>
