@@ -22,6 +22,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use super::runtime::SimHook;
 use crate::compile::deploy::ConnectableAsync;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
+use crate::location::dynamic::LocationId;
 use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
 
 /// A handle to a compiled Hydro simulation, which can be instantiated and run.
@@ -58,8 +59,8 @@ type SimLoaded<'a> = libloading::Symbol<
         fn(fmt::Arguments<'_>),
         fn(fmt::Arguments<'_>),
     ) -> (
-        Vec<(&'static str, Dfir<'static>)>,
-        Vec<(&'static str, Dfir<'static>)>,
+        Vec<(&'static str, Option<u32>, Dfir<'static>)>,
+        Vec<(&'static str, Option<u32>, Dfir<'static>)>,
         HashMap<&'static str, Vec<Box<dyn SimHook>>>,
     ),
 >;
@@ -385,7 +386,7 @@ impl<'a> CompiledSimInstance<'a> {
             )
         }
 
-        let (async_dfirs, ticks, hooks) = unsafe {
+        let (async_dfirs, tick_dfirs, hooks) = unsafe {
             (self.func)(
                 colored::control::SHOULD_COLORIZE.should_colorize(),
                 self.output_ports,
@@ -403,10 +404,19 @@ impl<'a> CompiledSimInstance<'a> {
             )
         };
         let mut launched = LaunchedSim {
-            async_dfirs,
+            async_dfirs: async_dfirs
+                .into_iter()
+                .map(|(lid, c_id, dfir)| (serde_json::from_str(lid).unwrap(), c_id, dfir))
+                .collect(),
             possibly_ready_ticks: vec![],
-            not_ready_ticks: ticks.into_iter().collect(),
-            hooks,
+            not_ready_ticks: tick_dfirs
+                .into_iter()
+                .map(|(lid, c_id, dfir)| (serde_json::from_str(lid).unwrap(), c_id, dfir))
+                .collect(),
+            hooks: hooks
+                .into_iter()
+                .map(|(lid, hs)| (serde_json::from_str(lid).unwrap(), hs))
+                .collect(),
             log: if self.log {
                 if let Some(w) = log_override {
                     LogKind::Custom(w)
@@ -503,9 +513,10 @@ impl<'a, T> SimReceiver<'a, T, NoOrder, ExactlyOnce> {
 
         while !expected.is_empty() {
             if let Some(next) = self.0.next().await {
-                let prev_length = expected.len();
-                expected.retain(|e| e != &next);
-                if expected.len() == prev_length {
+                let idx = expected.iter().enumerate().find(|(_, e)| *e == &next);
+                if let Some((i, _)) = idx {
+                    expected.swap_remove(i);
+                } else {
                     panic!("Stream yielded unexpected message: {:?}", next);
                 }
             } else {
@@ -619,10 +630,10 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
 /// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
 /// about scheduling ticks and choices for non-deterministic operators like batch.
 struct LaunchedSim<W: std::io::Write> {
-    async_dfirs: Vec<(&'static str, Dfir<'static>)>,
-    possibly_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
-    not_ready_ticks: Vec<(&'static str, Dfir<'static>)>,
-    hooks: HashMap<&'static str, Vec<Box<dyn SimHook>>>,
+    async_dfirs: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
+    possibly_ready_ticks: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
+    not_ready_ticks: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
+    hooks: HashMap<LocationId, Vec<Box<dyn SimHook>>>,
     log: LogKind<W>,
 }
 
@@ -631,18 +642,33 @@ impl<W: std::io::Write> LaunchedSim<W> {
         loop {
             tokio::task::yield_now().await;
             let mut any_made_progress = false;
-            for (_, dfir) in &mut self.async_dfirs {
-                any_made_progress |= dfir.run_tick().await;
+            for (loc, c_id, dfir) in &mut self.async_dfirs {
+                if dfir.run_tick().await {
+                    any_made_progress = true;
+                    let (now_ready, still_not_ready): (Vec<_>, Vec<_>) = self
+                        .not_ready_ticks
+                        .drain(..)
+                        .partition(|(tick_loc, tick_c_id, _)| {
+                            let LocationId::Tick(_, outer) = tick_loc else {
+                                unreachable!()
+                            };
+                            outer.as_ref() == loc && tick_c_id == c_id
+                        });
+
+                    self.possibly_ready_ticks.extend(now_ready);
+                    self.not_ready_ticks.extend(still_not_ready);
+                }
             }
 
             if any_made_progress {
-                self.possibly_ready_ticks.append(&mut self.not_ready_ticks);
                 continue;
             } else {
                 use bolero::generator::*;
 
-                let (ready, mut not_ready): (Vec<_>, Vec<_>) =
-                    self.possibly_ready_ticks.drain(..).partition(|(name, _)| {
+                let (ready, mut not_ready): (Vec<_>, Vec<_>) = self
+                    .possibly_ready_ticks
+                    .drain(..)
+                    .partition(|(name, _, _)| {
                         self.hooks.get(name).unwrap().iter().any(|hook| {
                             hook.current_decision().unwrap_or(false)
                                 || hook.can_make_nontrivial_decision()
@@ -656,8 +682,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     break;
                 } else {
                     let next_tick = (0..self.possibly_ready_ticks.len()).any();
-                    let mut removed: (&'static str, Dfir<'static>) =
-                        self.possibly_ready_ticks.remove(next_tick);
+                    let mut removed = self.possibly_ready_ticks.remove(next_tick);
 
                     match &mut self.log {
                         LogKind::Null => {}
@@ -684,7 +709,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                             inserter: &mut asterisk_indenter,
                         });
 
-                    let hooks = self.hooks.get_mut(removed.0).unwrap();
+                    let hooks = self.hooks.get_mut(&removed.0).unwrap();
                     let mut remaining_decision_count = hooks.len();
                     let mut made_nontrivial_decision = false;
 
@@ -716,7 +741,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                         });
                     });
 
-                    assert!(removed.1.run_tick().await);
+                    assert!(removed.2.run_tick().await);
                     self.possibly_ready_ticks.push(removed);
                 }
             }
