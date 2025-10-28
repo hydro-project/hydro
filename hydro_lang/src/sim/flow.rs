@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use std::panic::RefUnwindSafe;
 use std::rc::Rc;
 
-use dfir_lang::graph::FlatGraphBuilder;
 use libloading::Library;
 
 use super::builder::SimBuilder;
@@ -74,7 +73,7 @@ impl<'a> SimFlow<'a> {
         use dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph};
 
         let mut sim_emit = SimBuilder {
-            async_level: FlatGraphBuilder::new(),
+            async_graphs: BTreeMap::new(),
             tick_dfirs: BTreeMap::new(),
             extra_stmts: vec![],
             next_hoff_id: 0,
@@ -98,10 +97,18 @@ impl<'a> SimFlow<'a> {
             leaf.emit(&mut sim_emit, &mut built_tees, &mut next_stmt_id);
         }
 
-        let (mut async_level_flat_graph, _, _) = sim_emit.async_level.build();
-        eliminate_extra_unions_tees(&mut async_level_flat_graph);
-        let async_level_graph =
-            partition_graph(async_level_flat_graph).expect("Failed to partition (cycle detected).");
+        let async_graphs = sim_emit
+            .async_graphs
+            .into_iter()
+            .map(|(l, g)| {
+                let (mut flat_graph, _, _) = g.build();
+                eliminate_extra_unions_tees(&mut flat_graph);
+                (
+                    l,
+                    partition_graph(flat_graph).expect("Failed to partition (cycle detected)."),
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
 
         let tick_graphs = sim_emit
             .tick_dfirs
@@ -117,7 +124,7 @@ impl<'a> SimFlow<'a> {
             .collect::<BTreeMap<_, _>>();
 
         let (bin, trybuild) =
-            create_sim_graph_trybuild(async_level_graph, tick_graphs, sim_emit.extra_stmts);
+            create_sim_graph_trybuild(async_graphs, tick_graphs, sim_emit.extra_stmts);
 
         let out = compile_sim(bin, trybuild).unwrap();
         let lib = unsafe { Library::new(&out).unwrap() };
