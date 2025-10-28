@@ -76,7 +76,7 @@
 <a href=#76 id=76 data-nosnippet>76</a><span class="kw">impl</span>&lt;C&gt; Copy <span class="kw">for </span>ClusterIds&lt;<span class="lifetime">'_</span>, C&gt; {}
 <a href=#77 id=77 data-nosnippet>77</a>
 <a href=#78 id=78 data-nosnippet>78</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, C: <span class="lifetime">'a</span>, Ctx&gt; FreeVariableWithContext&lt;Ctx&gt; <span class="kw">for </span>ClusterIds&lt;<span class="lifetime">'a</span>, C&gt; {
-<a href=#79 id=79 data-nosnippet>79</a>    <span class="kw">type </span>O = <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;MemberId&lt;C&gt;&gt;;
+<a href=#79 id=79 data-nosnippet>79</a>    <span class="kw">type </span>O = <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[MemberId&lt;C&gt;];
 <a href=#80 id=80 data-nosnippet>80</a>
 <a href=#81 id=81 data-nosnippet>81</a>    <span class="kw">fn </span>to_tokens(<span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Ctx) -&gt; QuoteTokens
 <a href=#82 id=82 data-nosnippet>82</a>    <span class="kw">where
@@ -92,13 +92,13 @@
 <a href=#92 id=92 data-nosnippet>92</a>        QuoteTokens {
 <a href=#93 id=93 data-nosnippet>93</a>            prelude: <span class="prelude-val">None</span>,
 <a href=#94 id=94 data-nosnippet>94</a>            expr: <span class="prelude-val">Some</span>(
-<a href=#95 id=95 data-nosnippet>95</a>                <span class="macro">quote!</span> { <span class="kw">unsafe </span>{ ::std::mem::transmute::&lt;<span class="kw">_</span>, <span class="kw-2">&amp;</span>[#root::location::MemberId&lt;#c_type&gt;]&gt;(#ident) } },
+<a href=#95 id=95 data-nosnippet>95</a>                <span class="macro">quote!</span> { <span class="kw">unsafe </span>{ ::std::mem::transmute::&lt;<span class="kw">_</span>, <span class="kw-2">&amp;</span>[#root::__staged::location::MemberId&lt;#c_type&gt;]&gt;(#ident) } },
 <a href=#96 id=96 data-nosnippet>96</a>            ),
 <a href=#97 id=97 data-nosnippet>97</a>        }
 <a href=#98 id=98 data-nosnippet>98</a>    }
 <a href=#99 id=99 data-nosnippet>99</a>}
 <a href=#100 id=100 data-nosnippet>100</a>
-<a href=#101 id=101 data-nosnippet>101</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, C, Ctx&gt; QuotedWithContext&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;MemberId&lt;C&gt;&gt;, Ctx&gt; <span class="kw">for </span>ClusterIds&lt;<span class="lifetime">'a</span>, C&gt; {}
+<a href=#101 id=101 data-nosnippet>101</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, C, Ctx&gt; QuotedWithContext&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[MemberId&lt;C&gt;], Ctx&gt; <span class="kw">for </span>ClusterIds&lt;<span class="lifetime">'a</span>, C&gt; {}
 <a href=#102 id=102 data-nosnippet>102</a>
 <a href=#103 id=103 data-nosnippet>103</a><span class="kw">pub trait </span>IsCluster {
 <a href=#104 id=104 data-nosnippet>104</a>    <span class="kw">type </span>Tag;
@@ -163,7 +163,7 @@
 <a href=#163 id=163 data-nosnippet>163</a>    <span class="kw">use </span>stageleft::q;
 <a href=#164 id=164 data-nosnippet>164</a>
 <a href=#165 id=165 data-nosnippet>165</a>    <span class="kw">use </span><span class="kw">super</span>::CLUSTER_SELF_ID;
-<a href=#166 id=166 data-nosnippet>166</a>    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
+<a href=#166 id=166 data-nosnippet>166</a>    <span class="kw">use </span><span class="kw">crate</span>::location::{Location, MembershipEvent};
 <a href=#167 id=167 data-nosnippet>167</a>    <span class="kw">use </span><span class="kw">crate</span>::nondet::nondet;
 <a href=#168 id=168 data-nosnippet>168</a>    <span class="kw">use </span><span class="kw">crate</span>::prelude::FlowBuilder;
 <a href=#169 id=169 data-nosnippet>169</a>
@@ -244,5 +244,33 @@
 <a href=#244 id=244 data-nosnippet>244</a>        // eventually, we should be able to identify that the members are independent (because
 <a href=#245 id=245 data-nosnippet>245</a>        // there are no dataflow cycles) and avoid simulating redundant interleavings
 <a href=#246 id=246 data-nosnippet>246</a>    </span>}
-<a href=#247 id=247 data-nosnippet>247</a>}
+<a href=#247 id=247 data-nosnippet>247</a>
+<a href=#248 id=248 data-nosnippet>248</a>    <span class="attr">#[test]
+<a href=#249 id=249 data-nosnippet>249</a>    </span><span class="kw">fn </span>sim_cluster_membership() {
+<a href=#250 id=250 data-nosnippet>250</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#251 id=251 data-nosnippet>251</a>        <span class="kw">let </span>cluster = flow.cluster::&lt;()&gt;();
+<a href=#252 id=252 data-nosnippet>252</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#253 id=253 data-nosnippet>253</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#254 id=254 data-nosnippet>254</a>
+<a href=#255 id=255 data-nosnippet>255</a>        <span class="kw">let </span>out_port = node
+<a href=#256 id=256 data-nosnippet>256</a>            .source_cluster_members(<span class="kw-2">&amp;</span>cluster)
+<a href=#257 id=257 data-nosnippet>257</a>            .entries()
+<a href=#258 id=258 data-nosnippet>258</a>            .map(<span class="macro">q!</span>(|(id, v)| (id.raw_id, v)))
+<a href=#259 id=259 data-nosnippet>259</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#260 id=260 data-nosnippet>260</a>
+<a href=#261 id=261 data-nosnippet>261</a>        flow.sim()
+<a href=#262 id=262 data-nosnippet>262</a>            .with_cluster_size(<span class="kw-2">&amp;</span>cluster, <span class="number">2</span>)
+<a href=#263 id=263 data-nosnippet>263</a>            .exhaustive(<span class="kw">async </span>|<span class="kw-2">mut </span>compiled| {
+<a href=#264 id=264 data-nosnippet>264</a>                <span class="kw">let </span>out_recv = compiled.connect(<span class="kw-2">&amp;</span>out_port);
+<a href=#265 id=265 data-nosnippet>265</a>                compiled.launch();
+<a href=#266 id=266 data-nosnippet>266</a>
+<a href=#267 id=267 data-nosnippet>267</a>                out_recv
+<a href=#268 id=268 data-nosnippet>268</a>                    .assert_yields_only_unordered(<span class="macro">vec!</span>[
+<a href=#269 id=269 data-nosnippet>269</a>                        (<span class="number">0</span>, MembershipEvent::Joined),
+<a href=#270 id=270 data-nosnippet>270</a>                        (<span class="number">1</span>, MembershipEvent::Joined),
+<a href=#271 id=271 data-nosnippet>271</a>                    ])
+<a href=#272 id=272 data-nosnippet>272</a>                    .<span class="kw">await</span>;
+<a href=#273 id=273 data-nosnippet>273</a>            });
+<a href=#274 id=274 data-nosnippet>274</a>    }
+<a href=#275 id=275 data-nosnippet>275</a>}
 </code></pre></div></section></main></body></html>
