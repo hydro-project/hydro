@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["properties_optimize"],"struct":["PropertyDatabase"]};

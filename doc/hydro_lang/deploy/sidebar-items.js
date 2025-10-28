@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["init_test"],"mod":["deploy_graph"]};
+window.SIDEBAR_ITEMS = {"mod":["deploy_graph"]};

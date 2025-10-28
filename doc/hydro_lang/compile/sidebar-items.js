@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["builder","built","compiled","deploy","deploy_provider","ir","rewrites"]};
+window.SIDEBAR_ITEMS = {"fn":["init_test"],"mod":["builder","built","compiled","deploy","deploy_provider","ir","trybuild"]};
