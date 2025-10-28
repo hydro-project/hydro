@@ -668,10 +668,7 @@ fn extract_location_id(location_id: &LocationId) -> (Option<usize>, Option<Strin
 }
 
 /// Helper function to set up location in structure from metadata.
-fn setup_location(
-    structure: &mut HydroGraphStructure,
-    metadata: &HydroIrMetadata,
-) {
+fn setup_location(structure: &mut HydroGraphStructure, metadata: &HydroIrMetadata) {
     let (location_id, location_type) = extract_location_id(&metadata.location_kind);
     if let (Some(loc_id), Some(loc_type)) = (location_id, location_type) {
         structure.add_location(loc_id, loc_type);

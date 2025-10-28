@@ -760,7 +760,8 @@ impl<W> HydroJson<W> {
                                     .as_str()
                                     .and_then(|v| v.parse::<usize>().ok());
                                 if let (Some(sid), Some(tid)) = (s, t)
-                                    && nodes_set.contains(&sid) && nodes_set.contains(&tid)
+                                    && nodes_set.contains(&sid)
+                                    && nodes_set.contains(&tid)
                                     && let (Some(&s_key), Some(&t_key)) =
                                         (node_to_key.get(&sid), node_to_key.get(&tid))
                                 {
