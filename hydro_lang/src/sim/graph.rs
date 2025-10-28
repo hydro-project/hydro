@@ -470,8 +470,9 @@ pub(super) fn create_sim_graph_trybuild(
     process_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_max_sizes: HashMap<LocationId, usize>,
-    tick_graphs: BTreeMap<LocationId, DfirGraph>,
-    extra_stmts: Vec<syn::Stmt>,
+    process_tick_graphs: BTreeMap<LocationId, DfirGraph>,
+    cluster_tick_graphs: BTreeMap<LocationId, DfirGraph>,
+    extra_stmts_global: Vec<syn::Stmt>,
     extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
@@ -484,8 +485,9 @@ pub(super) fn create_sim_graph_trybuild(
         process_graphs,
         cluster_graphs,
         cluster_max_sizes,
-        tick_graphs,
-        extra_stmts,
+        process_tick_graphs,
+        cluster_tick_graphs,
+        extra_stmts_global,
         extra_stmts_cluster,
         crate_name.clone(),
         is_test,
@@ -569,8 +571,9 @@ fn compile_sim_graph_trybuild(
     process_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_max_sizes: HashMap<LocationId, usize>,
-    tick_graphs: BTreeMap<LocationId, DfirGraph>,
-    extra_stmts: Vec<syn::Stmt>,
+    process_tick_graphs: BTreeMap<LocationId, DfirGraph>,
+    cluster_tick_graphs: BTreeMap<LocationId, DfirGraph>,
+    extra_stmts_global: Vec<syn::Stmt>,
     extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
     crate_name: String,
     is_test: bool,
@@ -601,10 +604,40 @@ fn compile_sim_graph_trybuild(
         })
         .collect::<Vec<syn::Expr>>();
 
+    let mut cluster_ticks_grouped_by_root = cluster_tick_graphs.into_iter().fold::<BTreeMap<
+        LocationId,
+        Vec<(LocationId, DfirGraph)>,
+    >, _>(
+        BTreeMap::new(),
+        |mut acc, (lid, g)| {
+            let root = lid.root();
+            acc.entry(root.clone()).or_default().push((lid, g));
+            acc
+        },
+    );
+
     let cluster_dfir_stmts = cluster_graphs
         .into_iter()
         .map(|(lid, g)| {
             let dfir_expr = dfir_into_code(&g);
+
+            let tick_dfir_stmts = cluster_ticks_grouped_by_root
+                .remove(&lid)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(tick_lid, tick_g)| {
+                    let tick_dfir_expr = dfir_into_code(&tick_g);
+                    let ser_tick_lid = serde_json::to_string(&tick_lid).unwrap();
+                    syn::parse_quote! {
+                        __tick_dfirs.push((
+                            #ser_tick_lid,
+                            Some(__current_cluster_id),
+                            #tick_dfir_expr
+                        ));
+                    }
+                })
+                .collect::<Vec<syn::Stmt>>();
+
             let ser_lid = serde_json::to_string(&lid).unwrap();
             let extra_stmts_per_cluster =
                 extra_stmts_cluster.get(&lid).cloned().unwrap_or_default();
@@ -633,6 +666,9 @@ fn compile_sim_graph_trybuild(
                         {
                             #(#extra_stmts_per_cluster)*
                             let #self_id_ident = __current_cluster_id;
+
+                            #(#tick_dfir_stmts)*
+
                             #dfir_expr
                         }
                     ));
@@ -641,7 +677,7 @@ fn compile_sim_graph_trybuild(
         })
         .collect::<Vec<syn::Stmt>>();
 
-    let tick_dfir_exprs = tick_graphs
+    let process_tick_dfir_exprs = process_tick_graphs
         .into_iter()
         .map(|(lid, g)| {
             let dfir_expr = dfir_into_code(&g);
@@ -666,7 +702,7 @@ fn compile_sim_graph_trybuild(
         ) -> (
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
-            ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
+            ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
         ) {
             macro_rules! println {
                 ($($arg:tt)*) => ({
@@ -712,11 +748,11 @@ fn compile_sim_graph_trybuild(
                 };
             }
 
-            let mut __hydro_hooks: ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
-            #(#extra_stmts)*
+            let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
+            #(#extra_stmts_global)*
 
             let mut __async_dfirs = vec![#(#process_dfir_exprs),*];
-            let mut __tick_dfirs = vec![#(#tick_dfir_exprs),*];
+            let mut __tick_dfirs = vec![#(#process_tick_dfir_exprs),*];
             #(#cluster_dfir_stmts)*
             (__async_dfirs, __tick_dfirs, __hydro_hooks)
         }
@@ -731,7 +767,7 @@ fn compile_sim_graph_trybuild(
         ) -> (
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
-            ::std::collections::HashMap<&'static str, ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
+            ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
         ) {
             hydro_lang::runtime_support::colored::control::set_override(should_color);
             __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __println_handler, __eprintln_handler)
