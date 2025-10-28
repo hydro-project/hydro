@@ -4,36 +4,66 @@
  * work well for content-centric websites.
  */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400..1000;1,200..1000&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap");
 
 body {
-  font-family: 'Open Sans', sans-serif;
+  font-family: 'Nunito', sans-serif;
+  font-size: 18px;
+  line-height: 150%;
+}
+
+a {
+  font-weight: 600;
 }
 
 /* You can override the default Infima variables here. */
 :root {
-  --ifm-color-primary: #0096ff;
-  --ifm-color-primary-dark: #0087e6;
-  --ifm-color-primary-darker: #007fd9;
-  --ifm-color-primary-darkest: #0069b3;
-  --ifm-color-primary-light: #1aa0ff;
-  --ifm-color-primary-lighter: #26a6ff;
-  --ifm-color-primary-lightest: #4db5ff;
-  --ifm-code-font-size: 95%;
+  --ifm-color-primary: #18abc9;
+  --ifm-color-primary-dark: #169ab5;
+  --ifm-color-primary-darker: #1491ab;
+  --ifm-color-primary-darkest: #11788d;
+  --ifm-color-primary-light: #1abcdd;
+  --ifm-color-primary-lighter: #1fc3e4;
+  --ifm-color-primary-lightest: #3dcbe8;
+
+  --ifm-code-font-size: 80%;
+  --ifm-font-family-monospace: "JetBrains Mono", monospace;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #47b3ff;
-  --ifm-color-primary-dark: #26a6ff;
-  --ifm-color-primary-darker: #169fff;
-  --ifm-color-primary-darkest: #0086e4;
-  --ifm-color-primary-light: #68c0ff;
-  --ifm-color-primary-lighter: #78c7ff;
-  --ifm-color-primary-lightest: #a9dbff;
+  --ifm-color-primary: #0dbce7;
+  --ifm-color-primary-dark: #0dbce7;
+  --ifm-color-primary-darker: #0cb3db;
+  --ifm-color-primary-darkest: #0ba0c4;
+  --ifm-color-primary-light: #1ac8f2;
+  --ifm-color-primary-lighter: #26caf3;
+  --ifm-color-primary-lightest: #48d3f5;
+  --ifm-background-color: #232425 !important;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+p code {
+  font-weight: 400;
+}
+
+pre {
+  font-size: 85%;
+}
+
+.theme-admonition {
+  font-size: 16px;
+  line-height: 150%;
+}
+
+.theme-admonition p {
+  margin-bottom: 10px;
+}
+
+.theme-admonition pre {
+  font-size: 90%;
 }
 
 [data-theme="dark"] .logo-light {
@@ -56,8 +86,16 @@ body {
   height: 2.9rem;
 }
 
-.navbar__link {
-  font-size: 1.1em;
+.menu__link {
+  font-size: 0.9em;
+}
+
+.menu__link--active {
+  font-weight: 700;
+}
+
+.table-of-contents {
+  line-height: 150%;
 }
 
 .crate-title {
