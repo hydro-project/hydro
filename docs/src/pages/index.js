@@ -39,7 +39,7 @@ export default function Home() {
               }}
             >
               <Link
-                to="/docs/hydro/quickstart/"
+                to="/docs/hydro/learn/quickstart/"
                 className="button button--primary button--lg"
                 style={{
                   margin: "10px",

@@ -1039,15 +1039,17 @@ impl HydroRoot {
         }
     }
 
-    pub fn input_metadata(&self) -> Vec<&HydroIrMetadata> {
+    pub fn input(&self) -> &HydroNode {
         match self {
             HydroRoot::ForEach { input, .. }
             | HydroRoot::SendExternal { input, .. }
             | HydroRoot::DestSink { input, .. }
-            | HydroRoot::CycleSink { input, .. } => {
-                vec![input.metadata()]
-            }
+            | HydroRoot::CycleSink { input, .. } => input,
         }
+    }
+
+    pub fn input_metadata(&self) -> &HydroIrMetadata {
+        self.input().metadata()
     }
 
     pub fn print_root(&self) -> String {
@@ -1962,7 +1964,18 @@ impl HydroNode {
             }
 
             HydroNode::Cast { inner, .. } => {
-                inner.emit_core(builders_or_callback, built_tees, next_stmt_id)
+                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(_) => {}
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                inner_ident
             }
 
             HydroNode::ObserveNonDet {
@@ -2079,11 +2092,33 @@ impl HydroNode {
             }
 
             HydroNode::BeginAtomic { inner, .. } => {
-                inner.emit_core(builders_or_callback, built_tees, next_stmt_id)
+                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(_) => {}
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                inner_ident
             }
 
             HydroNode::EndAtomic { inner, .. } => {
-                inner.emit_core(builders_or_callback, built_tees, next_stmt_id)
+                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(_) => {}
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                inner_ident
             }
 
             HydroNode::Source {
@@ -3294,7 +3329,7 @@ impl HydroNode {
         }
     }
 
-    pub fn input_metadata(&self) -> Vec<&HydroIrMetadata> {
+    pub fn input(&self) -> Vec<&HydroNode> {
         match self {
             HydroNode::Placeholder => {
                 panic!()
@@ -3302,8 +3337,9 @@ impl HydroNode {
             HydroNode::Source { .. }
             | HydroNode::SingletonSource { .. }
             | HydroNode::ExternalInput { .. }
-            | HydroNode::CycleSource { .. } // CycleSource and Tee should calculate input metadata in separate special ways
+            | HydroNode::CycleSource { .. }
             | HydroNode::Tee { .. } => {
+                // Tee should find its input in separate special ways
                 vec![]
             }
             HydroNode::Cast { inner, .. }
@@ -3313,21 +3349,21 @@ impl HydroNode {
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
             | HydroNode::Batch { inner, .. } => {
-                vec![inner.metadata()]
+                vec![inner]
             }
             HydroNode::Chain { first, second, .. } => {
-                vec![first.metadata(), second.metadata()]
+                vec![first, second]
             }
             HydroNode::ChainFirst { first, second, .. } => {
-                vec![first.metadata(), second.metadata()]
+                vec![first, second]
             }
             HydroNode::CrossProduct { left, right, .. }
             | HydroNode::CrossSingleton { left, right, .. }
             | HydroNode::Join { left, right, .. } => {
-                vec![left.metadata(), right.metadata()]
+                vec![left, right]
             }
             HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } => {
-                vec![pos.metadata(), neg.metadata()]
+                vec![pos, neg]
             }
             HydroNode::Map { input, .. }
             | HydroNode::FlatMap { input, .. }
@@ -3342,7 +3378,7 @@ impl HydroNode {
             | HydroNode::Counter { input, .. }
             | HydroNode::ResolveFutures { input, .. }
             | HydroNode::ResolveFuturesOrdered { input, .. } => {
-                vec![input.metadata()]
+                vec![input]
             }
             HydroNode::Fold { input, .. }
             | HydroNode::FoldKeyed { input, .. }
@@ -3351,20 +3387,29 @@ impl HydroNode {
             | HydroNode::Scan { input, .. } => {
                 // Skip persist before fold/reduce
                 if let HydroNode::Persist { inner, .. } = input.as_ref() {
-                    vec![inner.metadata()]
+                    vec![inner]
                 } else {
-                    vec![input.metadata()]
+                    vec![input]
                 }
             }
-            HydroNode::ReduceKeyedWatermark { input, watermark, .. } => {
+            HydroNode::ReduceKeyedWatermark {
+                input, watermark, ..
+            } => {
                 // Skip persist before fold/reduce
                 if let HydroNode::Persist { inner, .. } = input.as_ref() {
-                    vec![inner.metadata(), watermark.metadata()]
+                    vec![inner, watermark]
                 } else {
-                    vec![input.metadata(), watermark.metadata()]
+                    vec![input, watermark]
                 }
             }
         }
+    }
+
+    pub fn input_metadata(&self) -> Vec<&HydroIrMetadata> {
+        self.input()
+            .iter()
+            .map(|input_node| input_node.metadata())
+            .collect()
     }
 
     pub fn print_root(&self) -> String {
