@@ -86,8 +86,9 @@ impl<'a> SimFlow<'a> {
         let mut sim_emit = SimBuilder {
             process_graphs: BTreeMap::new(),
             cluster_graphs: BTreeMap::new(),
-            tick_dfirs: BTreeMap::new(),
-            extra_stmts: vec![],
+            process_tick_dfirs: BTreeMap::new(),
+            cluster_tick_dfirs: BTreeMap::new(),
+            extra_stmts_global: vec![],
             extra_stmts_cluster: BTreeMap::new(),
             next_hoff_id: 0,
         };
@@ -136,8 +137,21 @@ impl<'a> SimFlow<'a> {
             })
             .collect::<BTreeMap<_, _>>();
 
-        let tick_graphs = sim_emit
-            .tick_dfirs
+        let process_tick_graphs = sim_emit
+            .process_tick_dfirs
+            .into_iter()
+            .map(|(l, g)| {
+                let (mut flat_graph, _, _) = g.build();
+                eliminate_extra_unions_tees(&mut flat_graph);
+                (
+                    l,
+                    partition_graph(flat_graph).expect("Failed to partition (cycle detected)."),
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        let cluster_tick_graphs = sim_emit
+            .cluster_tick_dfirs
             .into_iter()
             .map(|(l, g)| {
                 let (mut flat_graph, _, _) = g.build();
@@ -153,8 +167,9 @@ impl<'a> SimFlow<'a> {
             process_graphs,
             cluster_graphs,
             self.cluster_max_sizes,
-            tick_graphs,
-            sim_emit.extra_stmts,
+            process_tick_graphs,
+            cluster_tick_graphs,
+            sim_emit.extra_stmts_global,
             sim_emit.extra_stmts_cluster,
         );
 

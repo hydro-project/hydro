@@ -61,7 +61,7 @@ type SimLoaded<'a> = libloading::Symbol<
     ) -> (
         Vec<(&'static str, Option<u32>, Dfir<'static>)>,
         Vec<(&'static str, Option<u32>, Dfir<'static>)>,
-        HashMap<&'static str, Vec<Box<dyn SimHook>>>,
+        HashMap<(&'static str, Option<u32>), Vec<Box<dyn SimHook>>>,
     ),
 >;
 
@@ -415,7 +415,7 @@ impl<'a> CompiledSimInstance<'a> {
                 .collect(),
             hooks: hooks
                 .into_iter()
-                .map(|(lid, hs)| (serde_json::from_str(lid).unwrap(), hs))
+                .map(|((lid, cid), hs)| ((serde_json::from_str(lid).unwrap(), cid), hs))
                 .collect(),
             log: if self.log {
                 if let Some(w) = log_override {
@@ -627,13 +627,16 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
         }
     }
 }
+
+type Hooks = HashMap<(LocationId, Option<u32>), Vec<Box<dyn SimHook>>>;
+
 /// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
 /// about scheduling ticks and choices for non-deterministic operators like batch.
 struct LaunchedSim<W: std::io::Write> {
     async_dfirs: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
     possibly_ready_ticks: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
     not_ready_ticks: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
-    hooks: HashMap<LocationId, Vec<Box<dyn SimHook>>>,
+    hooks: Hooks,
     log: LogKind<W>,
 }
 
@@ -668,11 +671,15 @@ impl<W: std::io::Write> LaunchedSim<W> {
                 let (ready, mut not_ready): (Vec<_>, Vec<_>) = self
                     .possibly_ready_ticks
                     .drain(..)
-                    .partition(|(name, _, _)| {
-                        self.hooks.get(name).unwrap().iter().any(|hook| {
-                            hook.current_decision().unwrap_or(false)
-                                || hook.can_make_nontrivial_decision()
-                        })
+                    .partition(|(name, cid, _)| {
+                        self.hooks
+                            .get(&(name.clone(), *cid))
+                            .unwrap()
+                            .iter()
+                            .any(|hook| {
+                                hook.current_decision().unwrap_or(false)
+                                    || hook.can_make_nontrivial_decision()
+                            })
                     });
 
                 self.possibly_ready_ticks = ready;
@@ -687,7 +694,19 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     match &mut self.log {
                         LogKind::Null => {}
                         LogKind::Stderr => {
-                            eprintln!("\n{}", "Running Tick".color(colored::Color::Magenta).bold())
+                            if let Some(cid) = &removed.1 {
+                                eprintln!(
+                                    "\n{}",
+                                    format!("Running Tick (Cluster Member {})", cid)
+                                        .color(colored::Color::Magenta)
+                                        .bold()
+                                )
+                            } else {
+                                eprintln!(
+                                    "\n{}",
+                                    "Running Tick".color(colored::Color::Magenta).bold()
+                                )
+                            }
                         }
                         LogKind::Custom(writer) => {
                             writeln!(
@@ -709,7 +728,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                             inserter: &mut asterisk_indenter,
                         });
 
-                    let hooks = self.hooks.get_mut(&removed.0).unwrap();
+                    let hooks = self.hooks.get_mut(&(removed.0.clone(), removed.1)).unwrap();
                     let mut remaining_decision_count = hooks.len();
                     let mut made_nontrivial_decision = false;
 
