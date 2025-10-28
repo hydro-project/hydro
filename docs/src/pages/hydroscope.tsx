@@ -18,6 +18,7 @@ export default function HydroscopePage() {
       try {
         // Import CSS first
         await import("@xyflow/react/dist/style.css");
+        await import("@hydro-project/hydroscope/style.css");
 
         // Then import the library
         const hydroscopeModule = await import("@hydro-project/hydroscope");
