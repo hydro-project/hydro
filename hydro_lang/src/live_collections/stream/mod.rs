@@ -1723,17 +1723,20 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbo
     where
         R: MinRetries<R2>,
     {
-        let tick = self.location.tick();
-        // Because the outputs are unordered, we can interleave batches from both streams.
-        let nondet_batch_interleaving = nondet!(/** output stream is NoOrder, can interleave */);
-        self.batch(&tick, nondet_batch_interleaving)
-            .weakest_ordering()
-            .chain(
-                other
-                    .batch(&tick, nondet_batch_interleaving)
-                    .weakest_ordering(),
-            )
-            .all_ticks()
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Chain {
+                first: Box::new(self.ir_node.into_inner()),
+                second: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    L,
+                    Unbounded,
+                    NoOrder,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
+            },
+        )
     }
 }
 
