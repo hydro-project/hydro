@@ -333,20 +333,17 @@ where
         backtrace: Option<&Backtrace>,
     ) -> Result<(), Self::Err> {
         // Extract tick information and type from location_kind if present
-        let tick_id = location_kind.and_then(|loc_kind| {
-            match loc_kind {
-                LocationId::Tick(tick, _) => Some(*tick),
-                _ => None,
-            }
+        let tick_id = location_kind.and_then(|loc_kind| match loc_kind {
+            LocationId::Tick(tick, _) => Some(*tick),
+            _ => None,
         });
         // serialize the location type to JSON-friendly string
-        let derived_location_type: Option<String> = location_kind.and_then(|loc_kind| {
-            match loc_kind.root() {
+        let derived_location_type: Option<String> =
+            location_kind.and_then(|loc_kind| match loc_kind.root() {
                 LocationId::Process(_) => Some("Process".to_string()),
                 LocationId::Cluster(_) => Some("Cluster".to_string()),
                 _ => None,
-            }
-        });
+            });
 
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
@@ -674,6 +671,9 @@ impl<W> HydroJson<W> {
     ) {
         use std::collections::{HashMap, HashSet};
 
+        // Define the key type once for UnionFind operations
+        slotmap::new_key_type! { struct NodeKey; }
+
         // Group nodes by (location_id, optional tick_id)
         let mut location_tick_nodes: HashMap<usize, HashMap<Option<usize>, Vec<String>>> =
             HashMap::new();
@@ -729,10 +729,8 @@ impl<W> HydroJson<W> {
                             let base_tick_key = format!("{}_tick_{}", location_key, tick_id);
 
                             // Build connected components for this (location, tick) using UnionFind
-                            let nodes_str: Vec<String> = tick_groups
-                                .get(&tick_id_opt)
-                                .cloned()
-                                .unwrap_or_default();
+                            let nodes_str: Vec<String> =
+                                tick_groups.get(&tick_id_opt).cloned().unwrap_or_default();
                             let mut node_nums: Vec<usize> = nodes_str
                                 .iter()
                                 .filter_map(|s| s.parse::<usize>().ok())
@@ -742,7 +740,6 @@ impl<W> HydroJson<W> {
                                 node_nums.iter().cloned().collect();
 
                             // Create a SlotMap to map node IDs to keys for UnionFind
-                            slotmap::new_key_type! { struct NodeKey; }
                             let mut node_map: SlotMap<NodeKey, usize> = SlotMap::with_key();
                             let mut node_to_key: HashMap<usize, NodeKey> = HashMap::new();
                             for &node_id in &node_nums {
@@ -751,7 +748,8 @@ impl<W> HydroJson<W> {
                             }
 
                             // Use UnionFind from dfir_lang to find connected components
-                            let mut uf = dfir_lang::union_find::UnionFind::with_capacity(node_nums.len());
+                            let mut uf =
+                                dfir_lang::union_find::UnionFind::with_capacity(node_map.len());
 
                             // Union nodes that are connected by edges
                             for edge in &self.edges {
@@ -761,14 +759,12 @@ impl<W> HydroJson<W> {
                                 let t = edge["target"]
                                     .as_str()
                                     .and_then(|v| v.parse::<usize>().ok());
-                                if let (Some(sid), Some(tid)) = (s, t) {
-                                    if nodes_set.contains(&sid) && nodes_set.contains(&tid) {
-                                        if let (Some(&s_key), Some(&t_key)) =
-                                            (node_to_key.get(&sid), node_to_key.get(&tid))
-                                        {
-                                            uf.union(s_key, t_key);
-                                        }
-                                    }
+                                if let (Some(sid), Some(tid)) = (s, t)
+                                    && nodes_set.contains(&sid) && nodes_set.contains(&tid)
+                                    && let (Some(&s_key), Some(&t_key)) =
+                                        (node_to_key.get(&sid), node_to_key.get(&tid))
+                                {
+                                    uf.union(s_key, t_key);
                                 }
                             }
 
@@ -783,8 +779,8 @@ impl<W> HydroJson<W> {
 
                             // Convert to vector and sort for determinism
                             let mut components: Vec<Vec<usize>> = component_map
-                                .into_iter()
-                                .map(|(_, mut nodes)| {
+                                .into_values()
+                                .map(|mut nodes| {
                                     nodes.sort_unstable();
                                     nodes
                                 })
@@ -808,7 +804,10 @@ impl<W> HydroJson<W> {
                                     "children": []
                                 }));
                                 for n in &components[0] {
-                                    node_assignments.insert(n.to_string(), serde_json::Value::String(base_tick_key.clone()));
+                                    node_assignments.insert(
+                                        n.to_string(),
+                                        serde_json::Value::String(base_tick_key.clone()),
+                                    );
                                 }
                             } else {
                                 // Multiple components: split into multiple Tick containers
@@ -820,7 +819,10 @@ impl<W> HydroJson<W> {
                                         "children": []
                                     }));
                                     for n in comp {
-                                        node_assignments.insert(n.to_string(), serde_json::Value::String(tick_key.clone()));
+                                        node_assignments.insert(
+                                            n.to_string(),
+                                            serde_json::Value::String(tick_key.clone()),
+                                        );
                                     }
                                 }
                             }
@@ -853,8 +855,10 @@ impl<W> HydroJson<W> {
                     // Assign all nodes directly to location
                     if let Some(nodes) = tick_groups.get(&None) {
                         for node_id in nodes {
-                            node_assignments
-                                .insert(node_id.clone(), serde_json::Value::String(location_key.clone()));
+                            node_assignments.insert(
+                                node_id.clone(),
+                                serde_json::Value::String(location_key.clone()),
+                            );
                         }
                     }
                 }

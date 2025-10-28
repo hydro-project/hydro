@@ -7,11 +7,11 @@ mod tests {
     #[cfg(test)]
     use hydro_build_utils::insta;
 
+    use crate::location::dynamic::LocationId;
     use crate::viz::json::HydroJson;
     use crate::viz::render::{
         HydroEdgeProp, HydroGraphWrite, HydroNodeType, HydroWriteConfig, NodeLabel,
     };
-    use crate::location::dynamic::LocationId;
 
     #[test]
     fn test_json_structure_with_semantic_tags() {
