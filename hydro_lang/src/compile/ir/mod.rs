@@ -1964,7 +1964,18 @@ impl HydroNode {
             }
 
             HydroNode::Cast { inner, .. } => {
-                inner.emit_core(builders_or_callback, built_tees, next_stmt_id)
+                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(_) => {}
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                inner_ident
             }
 
             HydroNode::ObserveNonDet {
@@ -2081,11 +2092,33 @@ impl HydroNode {
             }
 
             HydroNode::BeginAtomic { inner, .. } => {
-                inner.emit_core(builders_or_callback, built_tees, next_stmt_id)
+                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(_) => {}
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                inner_ident
             }
 
             HydroNode::EndAtomic { inner, .. } => {
-                inner.emit_core(builders_or_callback, built_tees, next_stmt_id)
+                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(_) => {}
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                inner_ident
             }
 
             HydroNode::Source {
