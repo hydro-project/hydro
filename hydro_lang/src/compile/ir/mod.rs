@@ -1039,15 +1039,17 @@ impl HydroRoot {
         }
     }
 
-    pub fn input_metadata(&self) -> Vec<&HydroIrMetadata> {
+    pub fn input(&self) -> &HydroNode {
         match self {
             HydroRoot::ForEach { input, .. }
             | HydroRoot::SendExternal { input, .. }
             | HydroRoot::DestSink { input, .. }
-            | HydroRoot::CycleSink { input, .. } => {
-                vec![input.metadata()]
-            }
+            | HydroRoot::CycleSink { input, .. } => input,
         }
+    }
+
+    pub fn input_metadata(&self) -> &HydroIrMetadata {
+        self.input().metadata()
     }
 
     pub fn print_root(&self) -> String {
