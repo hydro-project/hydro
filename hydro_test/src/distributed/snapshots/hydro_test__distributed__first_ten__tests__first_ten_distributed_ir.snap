@@ -43,7 +43,7 @@ expression: builder.finalize().ir()
                 f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | SendOverNetwork { n } }),
                 input: Source {
                     source: Iter(
-                        { use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; 0 .. 10 },
+                        stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < u32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; 0 .. 10 }),
                     ),
                     metadata: HydroIrMetadata {
                         location_kind: Process(
