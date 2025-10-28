@@ -535,72 +535,139 @@
 <a href=#535 id=535 data-nosnippet>535</a>                    );
 <a href=#536 id=536 data-nosnippet>536</a>                }
 <a href=#537 id=537 data-nosnippet>537</a>            }
-<a href=#538 id=538 data-nosnippet>538</a>            <span class="kw">_ </span>=&gt; {
-<a href=#539 id=539 data-nosnippet>539</a>                <span class="macro">panic!</span>(
-<a href=#540 id=540 data-nosnippet>540</a>                    <span class="string">"Simulations do not yet support network between {:?} and {:?}"</span>,
-<a href=#541 id=541 data-nosnippet>541</a>                    from, to
+<a href=#538 id=538 data-nosnippet>538</a>            (LocationId::Cluster(<span class="kw">_</span>), LocationId::Cluster(<span class="kw">_</span>)) =&gt; {
+<a href=#539 id=539 data-nosnippet>539</a>                <span class="kw">let </span>sink_writer = syn::Ident::new(
+<a href=#540 id=540 data-nosnippet>540</a>                    <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__cloned_{}"</span>, sink.to_token_stream()),
+<a href=#541 id=541 data-nosnippet>541</a>                    Span::call_site(),
 <a href=#542 id=542 data-nosnippet>542</a>                );
-<a href=#543 id=543 data-nosnippet>543</a>            }
-<a href=#544 id=544 data-nosnippet>544</a>        }
-<a href=#545 id=545 data-nosnippet>545</a>    }
+<a href=#543 id=543 data-nosnippet>543</a>                <span class="self">self</span>.extra_stmts_global.push(<span class="macro">syn::parse_quote!</span> {
+<a href=#544 id=544 data-nosnippet>544</a>                    <span class="kw">let </span>#sink: ::std::rc::Rc&lt;::std::cell::RefCell&lt;Vec&lt;__root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;(u32, __root_dfir_rs::bytes::Bytes)&gt;&gt;&gt;&gt; = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
+<a href=#545 id=545 data-nosnippet>545</a>                });
 <a href=#546 id=546 data-nosnippet>546</a>
-<a href=#547 id=547 data-nosnippet>547</a>    <span class="kw">fn </span>create_external_source(
-<a href=#548 id=548 data-nosnippet>548</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#549 id=549 data-nosnippet>549</a>        on: <span class="kw-2">&amp;</span>LocationId,
-<a href=#550 id=550 data-nosnippet>550</a>        source_expr: syn::Expr,
-<a href=#551 id=551 data-nosnippet>551</a>        out_ident: <span class="kw-2">&amp;</span>syn::Ident,
-<a href=#552 id=552 data-nosnippet>552</a>        deserialize: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;DebugExpr&gt;,
-<a href=#553 id=553 data-nosnippet>553</a>        tag_id: usize,
-<a href=#554 id=554 data-nosnippet>554</a>    ) {
-<a href=#555 id=555 data-nosnippet>555</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(deserialize_pipeline) = deserialize {
-<a href=#556 id=556 data-nosnippet>556</a>            <span class="self">self</span>.get_dfir_mut(on).add_dfir(
-<a href=#557 id=557 data-nosnippet>557</a>                <span class="macro">parse_quote!</span> {
-<a href=#558 id=558 data-nosnippet>558</a>                    #out_ident = source_stream(#source_expr) -&gt; map(|v| -&gt; ::std::result::Result&lt;<span class="kw">_</span>, ()&gt; { <span class="prelude-val">Ok</span>(v) }) -&gt; map(#deserialize_pipeline);
-<a href=#559 id=559 data-nosnippet>559</a>                },
-<a href=#560 id=560 data-nosnippet>560</a>                <span class="prelude-val">None</span>,
-<a href=#561 id=561 data-nosnippet>561</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"recv{}"</span>, tag_id)),
-<a href=#562 id=562 data-nosnippet>562</a>            );
-<a href=#563 id=563 data-nosnippet>563</a>        } <span class="kw">else </span>{
-<a href=#564 id=564 data-nosnippet>564</a>            <span class="self">self</span>.get_dfir_mut(on).add_dfir(
-<a href=#565 id=565 data-nosnippet>565</a>                <span class="macro">parse_quote!</span> {
-<a href=#566 id=566 data-nosnippet>566</a>                    #out_ident = source_stream(#source_expr);
-<a href=#567 id=567 data-nosnippet>567</a>                },
-<a href=#568 id=568 data-nosnippet>568</a>                <span class="prelude-val">None</span>,
-<a href=#569 id=569 data-nosnippet>569</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"recv{}"</span>, tag_id)),
-<a href=#570 id=570 data-nosnippet>570</a>            );
-<a href=#571 id=571 data-nosnippet>571</a>        }
-<a href=#572 id=572 data-nosnippet>572</a>    }
-<a href=#573 id=573 data-nosnippet>573</a>
-<a href=#574 id=574 data-nosnippet>574</a>    <span class="kw">fn </span>create_external_output(
-<a href=#575 id=575 data-nosnippet>575</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#576 id=576 data-nosnippet>576</a>        on: <span class="kw-2">&amp;</span>LocationId,
-<a href=#577 id=577 data-nosnippet>577</a>        sink_expr: syn::Expr,
-<a href=#578 id=578 data-nosnippet>578</a>        input_ident: <span class="kw-2">&amp;</span>syn::Ident,
-<a href=#579 id=579 data-nosnippet>579</a>        serialize: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;DebugExpr&gt;,
-<a href=#580 id=580 data-nosnippet>580</a>        tag_id: usize,
-<a href=#581 id=581 data-nosnippet>581</a>    ) {
-<a href=#582 id=582 data-nosnippet>582</a>        <span class="kw">let </span>grabbed_ident = syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__sink_{tag_id}"</span>), Span::call_site());
-<a href=#583 id=583 data-nosnippet>583</a>        <span class="self">self</span>.extra_stmts_global.push(<span class="macro">syn::parse_quote!</span> {
-<a href=#584 id=584 data-nosnippet>584</a>            <span class="kw">let </span>#grabbed_ident = #sink_expr;
-<a href=#585 id=585 data-nosnippet>585</a>        });
+<a href=#547 id=547 data-nosnippet>547</a>                <span class="self">self</span>.extra_stmts_global.push(<span class="macro">syn::parse_quote!</span> {
+<a href=#548 id=548 data-nosnippet>548</a>                    <span class="kw">let </span>#sink_writer = #sink.clone();
+<a href=#549 id=549 data-nosnippet>549</a>                });
+<a href=#550 id=550 data-nosnippet>550</a>
+<a href=#551 id=551 data-nosnippet>551</a>                <span class="self">self</span>.extra_stmts_cluster
+<a href=#552 id=552 data-nosnippet>552</a>                    .entry(from.clone())
+<a href=#553 id=553 data-nosnippet>553</a>                    .or_default()
+<a href=#554 id=554 data-nosnippet>554</a>                    .push(<span class="macro">syn::parse_quote!</span> {
+<a href=#555 id=555 data-nosnippet>555</a>                        <span class="kw">let </span>#sink = #sink.clone();
+<a href=#556 id=556 data-nosnippet>556</a>                    });
+<a href=#557 id=557 data-nosnippet>557</a>
+<a href=#558 id=558 data-nosnippet>558</a>                <span class="self">self</span>.extra_stmts_cluster
+<a href=#559 id=559 data-nosnippet>559</a>                    .entry(to.clone())
+<a href=#560 id=560 data-nosnippet>560</a>                    .or_default()
+<a href=#561 id=561 data-nosnippet>561</a>                    .push(<span class="macro">syn::parse_quote!</span> {
+<a href=#562 id=562 data-nosnippet>562</a>                        <span class="kw">let </span>#source = {
+<a href=#563 id=563 data-nosnippet>563</a>                            <span class="kw">let </span>(__sink, __source) = __root_dfir_rs::util::unbounded_channel::&lt;(u32, __root_dfir_rs::bytes::Bytes)&gt;();
+<a href=#564 id=564 data-nosnippet>564</a>                            #sink_writer.borrow_mut().push(__sink);
+<a href=#565 id=565 data-nosnippet>565</a>                            __source
+<a href=#566 id=566 data-nosnippet>566</a>                        };
+<a href=#567 id=567 data-nosnippet>567</a>                    });
+<a href=#568 id=568 data-nosnippet>568</a>
+<a href=#569 id=569 data-nosnippet>569</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_pipeline) = serialize {
+<a href=#570 id=570 data-nosnippet>570</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
+<a href=#571 id=571 data-nosnippet>571</a>                        <span class="macro">parse_quote!</span> {
+<a href=#572 id=572 data-nosnippet>572</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|(id, v)| (#sink.borrow())[id <span class="kw">as </span>usize].send((__current_cluster_id, v)).unwrap());
+<a href=#573 id=573 data-nosnippet>573</a>                        },
+<a href=#574 id=574 data-nosnippet>574</a>                        <span class="prelude-val">None</span>,
+<a href=#575 id=575 data-nosnippet>575</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
+<a href=#576 id=576 data-nosnippet>576</a>                    );
+<a href=#577 id=577 data-nosnippet>577</a>                } <span class="kw">else </span>{
+<a href=#578 id=578 data-nosnippet>578</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
+<a href=#579 id=579 data-nosnippet>579</a>                        <span class="macro">parse_quote!</span> {
+<a href=#580 id=580 data-nosnippet>580</a>                            #input_ident -&gt; for_each(|(id, v)| (#sink.borrow())[id <span class="kw">as </span>usize].send((__current_cluster_id, v)).unwrap());
+<a href=#581 id=581 data-nosnippet>581</a>                        },
+<a href=#582 id=582 data-nosnippet>582</a>                        <span class="prelude-val">None</span>,
+<a href=#583 id=583 data-nosnippet>583</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
+<a href=#584 id=584 data-nosnippet>584</a>                    );
+<a href=#585 id=585 data-nosnippet>585</a>                }
 <a href=#586 id=586 data-nosnippet>586</a>
-<a href=#587 id=587 data-nosnippet>587</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_pipeline) = serialize {
-<a href=#588 id=588 data-nosnippet>588</a>            <span class="self">self</span>.get_dfir_mut(on).add_dfir(
-<a href=#589 id=589 data-nosnippet>589</a>                <span class="macro">parse_quote!</span> {
-<a href=#590 id=590 data-nosnippet>590</a>                    #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|v| #grabbed_ident.send(v).unwrap());
-<a href=#591 id=591 data-nosnippet>591</a>                },
-<a href=#592 id=592 data-nosnippet>592</a>                <span class="prelude-val">None</span>,
-<a href=#593 id=593 data-nosnippet>593</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
-<a href=#594 id=594 data-nosnippet>594</a>            );
-<a href=#595 id=595 data-nosnippet>595</a>        } <span class="kw">else </span>{
-<a href=#596 id=596 data-nosnippet>596</a>            <span class="self">self</span>.get_dfir_mut(on).add_dfir(
-<a href=#597 id=597 data-nosnippet>597</a>                <span class="macro">parse_quote!</span> {
-<a href=#598 id=598 data-nosnippet>598</a>                    #input_ident -&gt; for_each(|v| #grabbed_ident.send(v).unwrap());
-<a href=#599 id=599 data-nosnippet>599</a>                },
-<a href=#600 id=600 data-nosnippet>600</a>                <span class="prelude-val">None</span>,
-<a href=#601 id=601 data-nosnippet>601</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
-<a href=#602 id=602 data-nosnippet>602</a>            );
-<a href=#603 id=603 data-nosnippet>603</a>        }
-<a href=#604 id=604 data-nosnippet>604</a>    }
-<a href=#605 id=605 data-nosnippet>605</a>}
+<a href=#587 id=587 data-nosnippet>587</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(deserialize_pipeline) = deserialize {
+<a href=#588 id=588 data-nosnippet>588</a>                    <span class="self">self</span>.get_dfir_mut(to).add_dfir(
+<a href=#589 id=589 data-nosnippet>589</a>                        <span class="macro">parse_quote!</span> {
+<a href=#590 id=590 data-nosnippet>590</a>                            #out_ident = source_stream(#source) -&gt; map(|v| -&gt; ::std::result::Result&lt;<span class="kw">_</span>, ()&gt; { <span class="prelude-val">Ok</span>(v) }) -&gt; map(#deserialize_pipeline);
+<a href=#591 id=591 data-nosnippet>591</a>                        },
+<a href=#592 id=592 data-nosnippet>592</a>                        <span class="prelude-val">None</span>,
+<a href=#593 id=593 data-nosnippet>593</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"recv{}"</span>, tag_id)),
+<a href=#594 id=594 data-nosnippet>594</a>                    );
+<a href=#595 id=595 data-nosnippet>595</a>                } <span class="kw">else </span>{
+<a href=#596 id=596 data-nosnippet>596</a>                    <span class="self">self</span>.get_dfir_mut(to).add_dfir(
+<a href=#597 id=597 data-nosnippet>597</a>                        <span class="macro">parse_quote!</span> {
+<a href=#598 id=598 data-nosnippet>598</a>                            #out_ident = source_stream(#source);
+<a href=#599 id=599 data-nosnippet>599</a>                        },
+<a href=#600 id=600 data-nosnippet>600</a>                        <span class="prelude-val">None</span>,
+<a href=#601 id=601 data-nosnippet>601</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"recv{}"</span>, tag_id)),
+<a href=#602 id=602 data-nosnippet>602</a>                    );
+<a href=#603 id=603 data-nosnippet>603</a>                }
+<a href=#604 id=604 data-nosnippet>604</a>            }
+<a href=#605 id=605 data-nosnippet>605</a>            <span class="kw">_ </span>=&gt; {
+<a href=#606 id=606 data-nosnippet>606</a>                <span class="macro">panic!</span>(
+<a href=#607 id=607 data-nosnippet>607</a>                    <span class="string">"Simulations do not yet support network between {:?} and {:?}"</span>,
+<a href=#608 id=608 data-nosnippet>608</a>                    from, to
+<a href=#609 id=609 data-nosnippet>609</a>                );
+<a href=#610 id=610 data-nosnippet>610</a>            }
+<a href=#611 id=611 data-nosnippet>611</a>        }
+<a href=#612 id=612 data-nosnippet>612</a>    }
+<a href=#613 id=613 data-nosnippet>613</a>
+<a href=#614 id=614 data-nosnippet>614</a>    <span class="kw">fn </span>create_external_source(
+<a href=#615 id=615 data-nosnippet>615</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#616 id=616 data-nosnippet>616</a>        on: <span class="kw-2">&amp;</span>LocationId,
+<a href=#617 id=617 data-nosnippet>617</a>        source_expr: syn::Expr,
+<a href=#618 id=618 data-nosnippet>618</a>        out_ident: <span class="kw-2">&amp;</span>syn::Ident,
+<a href=#619 id=619 data-nosnippet>619</a>        deserialize: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;DebugExpr&gt;,
+<a href=#620 id=620 data-nosnippet>620</a>        tag_id: usize,
+<a href=#621 id=621 data-nosnippet>621</a>    ) {
+<a href=#622 id=622 data-nosnippet>622</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(deserialize_pipeline) = deserialize {
+<a href=#623 id=623 data-nosnippet>623</a>            <span class="self">self</span>.get_dfir_mut(on).add_dfir(
+<a href=#624 id=624 data-nosnippet>624</a>                <span class="macro">parse_quote!</span> {
+<a href=#625 id=625 data-nosnippet>625</a>                    #out_ident = source_stream(#source_expr) -&gt; map(|v| -&gt; ::std::result::Result&lt;<span class="kw">_</span>, ()&gt; { <span class="prelude-val">Ok</span>(v) }) -&gt; map(#deserialize_pipeline);
+<a href=#626 id=626 data-nosnippet>626</a>                },
+<a href=#627 id=627 data-nosnippet>627</a>                <span class="prelude-val">None</span>,
+<a href=#628 id=628 data-nosnippet>628</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"recv{}"</span>, tag_id)),
+<a href=#629 id=629 data-nosnippet>629</a>            );
+<a href=#630 id=630 data-nosnippet>630</a>        } <span class="kw">else </span>{
+<a href=#631 id=631 data-nosnippet>631</a>            <span class="self">self</span>.get_dfir_mut(on).add_dfir(
+<a href=#632 id=632 data-nosnippet>632</a>                <span class="macro">parse_quote!</span> {
+<a href=#633 id=633 data-nosnippet>633</a>                    #out_ident = source_stream(#source_expr);
+<a href=#634 id=634 data-nosnippet>634</a>                },
+<a href=#635 id=635 data-nosnippet>635</a>                <span class="prelude-val">None</span>,
+<a href=#636 id=636 data-nosnippet>636</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"recv{}"</span>, tag_id)),
+<a href=#637 id=637 data-nosnippet>637</a>            );
+<a href=#638 id=638 data-nosnippet>638</a>        }
+<a href=#639 id=639 data-nosnippet>639</a>    }
+<a href=#640 id=640 data-nosnippet>640</a>
+<a href=#641 id=641 data-nosnippet>641</a>    <span class="kw">fn </span>create_external_output(
+<a href=#642 id=642 data-nosnippet>642</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#643 id=643 data-nosnippet>643</a>        on: <span class="kw-2">&amp;</span>LocationId,
+<a href=#644 id=644 data-nosnippet>644</a>        sink_expr: syn::Expr,
+<a href=#645 id=645 data-nosnippet>645</a>        input_ident: <span class="kw-2">&amp;</span>syn::Ident,
+<a href=#646 id=646 data-nosnippet>646</a>        serialize: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;DebugExpr&gt;,
+<a href=#647 id=647 data-nosnippet>647</a>        tag_id: usize,
+<a href=#648 id=648 data-nosnippet>648</a>    ) {
+<a href=#649 id=649 data-nosnippet>649</a>        <span class="kw">let </span>grabbed_ident = syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__sink_{tag_id}"</span>), Span::call_site());
+<a href=#650 id=650 data-nosnippet>650</a>        <span class="self">self</span>.extra_stmts_global.push(<span class="macro">syn::parse_quote!</span> {
+<a href=#651 id=651 data-nosnippet>651</a>            <span class="kw">let </span>#grabbed_ident = #sink_expr;
+<a href=#652 id=652 data-nosnippet>652</a>        });
+<a href=#653 id=653 data-nosnippet>653</a>
+<a href=#654 id=654 data-nosnippet>654</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_pipeline) = serialize {
+<a href=#655 id=655 data-nosnippet>655</a>            <span class="self">self</span>.get_dfir_mut(on).add_dfir(
+<a href=#656 id=656 data-nosnippet>656</a>                <span class="macro">parse_quote!</span> {
+<a href=#657 id=657 data-nosnippet>657</a>                    #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|v| #grabbed_ident.send(v).unwrap());
+<a href=#658 id=658 data-nosnippet>658</a>                },
+<a href=#659 id=659 data-nosnippet>659</a>                <span class="prelude-val">None</span>,
+<a href=#660 id=660 data-nosnippet>660</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
+<a href=#661 id=661 data-nosnippet>661</a>            );
+<a href=#662 id=662 data-nosnippet>662</a>        } <span class="kw">else </span>{
+<a href=#663 id=663 data-nosnippet>663</a>            <span class="self">self</span>.get_dfir_mut(on).add_dfir(
+<a href=#664 id=664 data-nosnippet>664</a>                <span class="macro">parse_quote!</span> {
+<a href=#665 id=665 data-nosnippet>665</a>                    #input_ident -&gt; for_each(|v| #grabbed_ident.send(v).unwrap());
+<a href=#666 id=666 data-nosnippet>666</a>                },
+<a href=#667 id=667 data-nosnippet>667</a>                <span class="prelude-val">None</span>,
+<a href=#668 id=668 data-nosnippet>668</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
+<a href=#669 id=669 data-nosnippet>669</a>            );
+<a href=#670 id=670 data-nosnippet>670</a>        }
+<a href=#671 id=671 data-nosnippet>671</a>    }
+<a href=#672 id=672 data-nosnippet>672</a>}
 </code></pre></div></section></main></body></html>
