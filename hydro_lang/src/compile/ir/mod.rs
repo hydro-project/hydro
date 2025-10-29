@@ -323,12 +323,30 @@ pub trait DfirBuilder {
         &mut self,
         in_ident: syn::Ident,
         in_location: &LocationId,
-        _in_kind: &CollectionKind,
+        in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         out_location: &LocationId,
         op_meta: &HydroIrOpMetadata,
     );
     fn yield_from_tick(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        out_location: &LocationId,
+    );
+
+    fn begin_atomic(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        out_location: &LocationId,
+        op_meta: &HydroIrOpMetadata,
+    );
+    fn end_atomic(
         &mut self,
         in_ident: syn::Ident,
         in_location: &LocationId,
@@ -409,6 +427,43 @@ impl DfirBuilder for BTreeMap<usize, FlatGraphBuilder> {
     }
 
     fn yield_from_tick(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        _in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        _out_location: &LocationId,
+    ) {
+        let builder = self.get_dfir_mut(in_location.root());
+        builder.add_dfir(
+            parse_quote! {
+                #out_ident = #in_ident;
+            },
+            None,
+            None,
+        );
+    }
+
+    fn begin_atomic(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        _in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        _out_location: &LocationId,
+        _op_meta: &HydroIrOpMetadata,
+    ) {
+        let builder = self.get_dfir_mut(in_location.root());
+        builder.add_dfir(
+            parse_quote! {
+                #out_ident = #in_ident;
+            },
+            None,
+            None,
+        );
+    }
+
+    fn end_atomic(
         &mut self,
         in_ident: syn::Ident,
         in_location: &LocationId,
@@ -2079,6 +2134,7 @@ impl HydroNode {
                             &inner.metadata().location_kind,
                             &inner.metadata().collection_kind,
                             &yield_ident,
+                            &out_location,
                         );
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {
@@ -2091,11 +2147,23 @@ impl HydroNode {
                 yield_ident
             }
 
-            HydroNode::BeginAtomic { inner, .. } => {
+            HydroNode::BeginAtomic { inner, metadata } => {
                 let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
+                let begin_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
                 match builders_or_callback {
-                    BuildersOrCallback::Builders(_) => {}
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        graph_builders.begin_atomic(
+                            inner_ident,
+                            &inner.metadata().location_kind,
+                            &inner.metadata().collection_kind,
+                            &begin_ident,
+                            &out_location,
+                            &metadata.op,
+                        );
+                    }
                     BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
@@ -2103,14 +2171,24 @@ impl HydroNode {
 
                 *next_stmt_id += 1;
 
-                inner_ident
+                begin_ident
             }
 
             HydroNode::EndAtomic { inner, .. } => {
                 let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
+                let end_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
                 match builders_or_callback {
-                    BuildersOrCallback::Builders(_) => {}
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        graph_builders.end_atomic(
+                            inner_ident,
+                            &inner.metadata().location_kind,
+                            &inner.metadata().collection_kind,
+                            &end_ident,
+                        );
+                    }
                     BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
@@ -2118,7 +2196,7 @@ impl HydroNode {
 
                 *next_stmt_id += 1;
 
-                inner_ident
+                end_ident
             }
 
             HydroNode::Source {
@@ -2854,6 +2932,7 @@ impl HydroNode {
                     BuildersOrCallback::Builders(graph_builders) => {
                         if matches!(self, HydroNode::Fold { .. })
                             && self.metadata().location_kind.is_top_level()
+                            && !(matches!(self.metadata().location_kind, LocationId::Atomic(_)))
                             && graph_builders.singleton_intermediates()
                         {
                             let acc: syn::Expr = parse_quote!({
