@@ -41,6 +41,7 @@ pub fn chat_server<'a, P>(
 
     current_members
         .snapshot(&tick, nondet_user_arrival_broadcast)
+        .filter(q!(|b| *b))
         .keys()
         .cross_product(
             in_stream
