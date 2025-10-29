@@ -1,22 +1,17 @@
 # Quickstart
-In this tutorial, we'll walk through the basics of Hydro by building a simple dataflow that prints out the first 10 natural numbers. We'll start with a single process, then pipeline the computation, and finally distribute it across a cluster.
+In this tutorial, we'll walk through the basics of Hydro by building a key-value store. We'll start with a single register, which holds a single value, and build up to a full store that partitions its keys across a cluster of machine. Along the way, we'll cover many core pieces of Hydro, such as live collections, batches and snapshots, and simulation testing.
 
 :::tip
 
-First you will need to install Rust. We recommend the conventional installation
-method, `rustup`, which allows you to easily manage and update Rust versions: [**Install Rust**](https://www.rust-lang.org/tools/install)
+Hydro is a Rust framework, so you will need to install Rust. We recommend using `rustup`, which allows you to easily manage and update Rust versions: [**Install Rust**](https://www.rust-lang.org/tools/install)
 
-The link in the previous line will take you to the Rust website that shows you how to
-install `rustup` and the Rust package manager `cargo` (and the
-internally-used `rustc` compiler). `cargo` is Rust's main development tool,
-used for building, running, and testing Rust code.
+Hydro code is written with standard Rust tools. You'll manage dependencies, run tests, and launch Hydro programs using [Cargo](https://doc.rust-lang.org/cargo/), the standard Rust package manager.
 
-We recommend using VS Code with the `rust-analyzer` extension (and NOT the
-`Rust` extension).
+We recommend using VS Code with the [**Rust Analyzer**](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) extension, which provides inline errors and code completion
 
 :::
 
-## Getting Started with Hydro
+## Creating a Hydro Project
 To get started with a new project, we'll use the Hydro template. The template comes with a simple distributed program.
 
 ```bash
@@ -34,3 +29,7 @@ After `cd`ing into the generated folder, we can run tests for the included sampl
 #shell-command-next-line
 cargo test
 ```
+
+Hydro projects are typically organized into two folders:
+- **`src/`** contains the main distributed logic and tests (like regular Rust)
+- **`examples/`** contains deployment scripts for launching to the cloud

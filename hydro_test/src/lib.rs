@@ -1,4 +1,4 @@
-stageleft::stageleft_no_entry_crate!();
+hydro_lang::setup!();
 
 pub mod cluster;
 pub mod distributed;
@@ -9,12 +9,4 @@ pub mod local;
 #[cfg(doctest)]
 mod docs {
     include_mdtests::include_mdtests!("docs/docs/hydro/**/*.md*");
-}
-
-#[cfg(test)]
-mod test_init {
-    #[ctor::ctor]
-    fn init() {
-        hydro_lang::compile::init_test();
-    }
 }

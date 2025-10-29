@@ -18,13 +18,18 @@ async fn main() {
     let vpc = Arc::new(RwLock::new(GcpNetwork::new(&gcp_project, None)));
 
     let flow = hydro_lang::compile::builder::FlowBuilder::new();
-    let p1 = flow.process();
-    let p2 = flow.process();
-    hydro_template::first_ten_distributed::first_ten_distributed(&p1, &p2);
+    let process = flow.process();
+    let external = flow.external::<()>();
+
+    let (in_port, input) = process.source_external_bincode(&external);
+    hydro_template::echo_capitalize(input)
+        .for_each(q!(|s| {
+            println!("Echoed capitalized: {}", s);
+        }));
 
     let _nodes = flow
         .with_process(
-            &p1,
+            &process,
             TrybuildHost::new(
                 deployment
                     .GcpComputeEngineHost()
@@ -37,21 +42,22 @@ async fn main() {
             )
             .rustflags(RELEASE_RUSTFLAGS),
         )
-        .with_process(
-            &p2,
-            TrybuildHost::new(
-                deployment
-                    .GcpComputeEngineHost()
-                    .project(gcp_project.clone())
-                    .machine_type("e2-micro")
-                    .image("debian-cloud/debian-11")
-                    .region("us-west1-a")
-                    .network(vpc.clone())
-                    .add(),
-            )
-            .rustflags(RELEASE_RUSTFLAGS),
-        )
+        .with_external(&external, deployment.Localhost())
         .deploy(&mut deployment);
 
-    deployment.run_ctrl_c().await.unwrap();
+    deployment.deploy().await.unwrap();
+
+    let mut external_in = nodes.connect(in_port).await;
+
+    deployment.start().await.unwrap();
+
+    for line in std::io::stdin().lines() {
+        let msg = msg.unwrap();
+        if msg.is_empty() {
+            break;
+        }
+        external_in.send(msg).await.unwrap();
+    }
+    external_in.send("hello".to_string()).await.unwrap();
+    external_in.send("world".to_string()).await.unwrap();
 }
