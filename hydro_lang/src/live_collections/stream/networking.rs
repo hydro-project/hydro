@@ -740,6 +740,48 @@ mod tests {
     }
 
     #[test]
+    fn sim_broadcast_bincode_o2m() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!(vec![123, 456]));
+
+        let out_port = input
+            .broadcast_bincode(&cluster, nondet!(/** test */))
+            .map(q!(|x| x + 1))
+            .send_bincode(&node)
+            .entries()
+            .send_bincode_external(&external);
+
+        let mut c_1_produced = false;
+        let mut c_2_produced = false;
+
+        flow.sim()
+            .with_cluster_size(&cluster, 2)
+            .exhaustive(async |mut compiled| {
+                let out_recv = compiled.connect(&out_port);
+                compiled.launch();
+
+                let all_out = out_recv.collect_sorted::<Vec<_>>().await;
+
+                // check that order is preserved
+                if all_out.contains(&(MemberId::from_raw(0), 124)) {
+                    assert!(all_out.contains(&(MemberId::from_raw(0), 457)));
+                    c_1_produced = true;
+                }
+
+                if all_out.contains(&(MemberId::from_raw(1), 124)) {
+                    assert!(all_out.contains(&(MemberId::from_raw(1), 457)));
+                    c_2_produced = true;
+                }
+            });
+
+        assert!(c_1_produced && c_2_produced); // in at least one execution each, the cluster member received both messages
+    }
+
+    #[test]
     fn sim_send_bincode_m2m() {
         let flow = FlowBuilder::new();
         let external = flow.external::<()>();

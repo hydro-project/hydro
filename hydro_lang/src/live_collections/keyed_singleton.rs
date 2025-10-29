@@ -30,9 +30,9 @@ use crate::nondet::{NonDet, nondet};
 /// A marker trait indicating which components of a [`KeyedSingleton`] may change.
 ///
 /// In addition to [`Bounded`] (all entries are fixed) and [`Unbounded`] (entries may be added /
-/// removed / changed), this also includes an additional variant [`BoundedValue`], which indicates
-/// that entries may be added over time, but once an entry is added it will never be removed and
-/// its value will never change.
+/// changed, but not removed), this also includes an additional variant [`BoundedValue`], which
+/// indicates that entries may be added over time, but once an entry is added it will never be
+/// removed and its value will never change.
 pub trait KeyedSingletonBound {
     /// The [`Boundedness`] of the [`Stream`] underlying the keyed singleton.
     type UnderlyingBound: Boundedness;
@@ -1286,12 +1286,14 @@ where
     }
 }
 
-#[cfg(feature = "deploy")]
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "deploy")]
     use std::collections::HashMap;
 
+    #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
+    #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
     use stageleft::q;
 
@@ -1299,6 +1301,7 @@ mod tests {
     use crate::location::Location;
     use crate::nondet::nondet;
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn key_count_bounded_value() {
         let mut deployment = Deployment::new();
@@ -1336,6 +1339,7 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), 2);
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn key_count_unbounded_value() {
         let mut deployment = Deployment::new();
@@ -1382,6 +1386,7 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), 3);
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn into_singleton_bounded_value() {
         let mut deployment = Deployment::new();
@@ -1425,6 +1430,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn into_singleton_unbounded_value() {
         let mut deployment = Deployment::new();
@@ -1484,5 +1490,37 @@ mod tests {
             external_out.next().await.unwrap(),
             vec![(1, 3), (2, 1), (3, 1)].into_iter().collect()
         );
+    }
+
+    #[test]
+    fn sim_unbounded_singleton_snapshot() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input
+            .into_keyed()
+            .fold(q!(|| 0), q!(|acc, _| *acc += 1))
+            .snapshot(&node.tick(), nondet!(/** test */))
+            .entries()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let count = flow.sim().exhaustive(async |mut instance| {
+            let input = instance.connect(&input_port);
+            let output = instance.connect(&out);
+
+            instance.launch();
+
+            input.send((1, 123)).unwrap();
+            input.send((1, 456)).unwrap();
+            input.send((2, 123)).unwrap();
+
+            let all = output.collect_sorted::<Vec<_>>().await;
+            assert_eq!(all.last().unwrap(), &(2, 1));
+        });
+
+        assert_eq!(count, 8);
     }
 }
