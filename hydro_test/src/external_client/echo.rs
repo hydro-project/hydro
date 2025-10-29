@@ -11,8 +11,12 @@ pub fn echo_server<'a, P>(
 ) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder> {
     let current_connections = track_membership(membership);
 
+    let tick = in_stream.location().tick();
     current_connections
+        .snapshot(&tick, nondet!(/** logging */))
+        .filter(q!(|b| *b))
         .key_count()
+        .latest()
         .sample_every(q!(Duration::from_secs(1)), nondet!(/** logging */))
         .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
         .for_each(q!(|count| {
