@@ -26,6 +26,10 @@ pub struct SimFlow<'a> {
     pub(crate) clusters: HashMap<usize, SimNode>,
     pub(crate) externals: HashMap<usize, SimExternal>,
 
+    /// A mapping from external "keys", which are used for looking up connections, to the IDs
+    /// of the external channels created in the simulation.
+    pub(crate) external_registered: Rc<RefCell<HashMap<usize, usize>>>,
+
     pub(crate) cluster_max_sizes: HashMap<LocationId, usize>,
 
     /// Lists all the processes that were created in the flow, same ID as `processes`
@@ -190,6 +194,7 @@ impl<'a> SimFlow<'a> {
             _path: out,
             lib,
             external_ports,
+            external_registered: self.external_registered.take(),
         }
     }
 }
