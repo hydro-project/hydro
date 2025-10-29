@@ -2935,6 +2935,8 @@ impl HydroNode {
                             && !(matches!(self.metadata().location_kind, LocationId::Atomic(_)))
                             && graph_builders.singleton_intermediates()
                         {
+                            let builder = graph_builders.get_dfir_mut(&out_location);
+
                             let acc: syn::Expr = parse_quote!({
                                 let mut __inner = #acc;
                                 move |__state, __value| {
@@ -2943,12 +2945,37 @@ impl HydroNode {
                                 }
                             });
 
-                            let builder = graph_builders.get_dfir_mut(&out_location);
                             builder.add_dfir(
                                 parse_quote! {
                                     source_iter([(#init)()]) -> [0]#fold_ident;
                                     #input_ident -> scan::<#lifetime>(#init, #acc) -> [1]#fold_ident;
                                     #fold_ident = chain();
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                        } else if matches!(self, HydroNode::FoldKeyed { .. })
+                            && self.metadata().location_kind.is_top_level()
+                            && !(matches!(self.metadata().location_kind, LocationId::Atomic(_)))
+                            && graph_builders.singleton_intermediates()
+                        {
+                            let builder = graph_builders.get_dfir_mut(&out_location);
+
+                            let acc: syn::Expr = parse_quote!({
+                                let mut __init = #init;
+                                let mut __inner = #acc;
+                                move |__state, (__key, __value)| {
+                                    // TODO(shadaj): we can avoid the clone when the entry exists
+                                    let __state = __state.entry(__key.clone()).or_insert_with(|| (__init)());
+                                    __inner(__state, __value);
+                                    Some((__key, __state.clone()))
+                                }
+                            });
+
+                            builder.add_dfir(
+                                parse_quote! {
+                                    source_iter([(#init)()]) -> [0]#fold_ident;
+                                    #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
                                 },
                                 None,
                                 Some(&next_stmt_id.to_string()),
@@ -2972,6 +2999,75 @@ impl HydroNode {
                 *next_stmt_id += 1;
 
                 fold_ident
+            }
+
+            HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } => {
+                let operator: syn::Ident = if matches!(self, HydroNode::Reduce { .. }) {
+                    parse_quote!(reduce)
+                } else {
+                    parse_quote!(reduce_keyed)
+                };
+
+                let (HydroNode::Reduce { input, .. } | HydroNode::ReduceKeyed { input, .. }) = self
+                else {
+                    unreachable!()
+                };
+
+                let (input, lifetime) =
+                    if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
+                        debug_assert!(!input.metadata().location_kind.is_top_level());
+                        (input, quote!('static))
+                    } else if input.metadata().location_kind.is_top_level() {
+                        (input, quote!('static))
+                    } else {
+                        (input, quote!('tick))
+                    };
+
+                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let (HydroNode::Reduce { f, .. } | HydroNode::ReduceKeyed { f, .. }) = &*self
+                else {
+                    unreachable!()
+                };
+
+                let reduce_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        if matches!(self, HydroNode::Reduce { .. })
+                            && self.metadata().location_kind.is_top_level()
+                            && !(matches!(self.metadata().location_kind, LocationId::Atomic(_)))
+                            && graph_builders.singleton_intermediates()
+                        {
+                            todo!(
+                                "Reduce with optional intermediates is not yet supported in simulator"
+                            );
+                        } else if matches!(self, HydroNode::ReduceKeyed { .. })
+                            && self.metadata().location_kind.is_top_level()
+                            && !(matches!(self.metadata().location_kind, LocationId::Atomic(_)))
+                            && graph_builders.singleton_intermediates()
+                        {
+                            todo!();
+                        } else {
+                            let builder = graph_builders.get_dfir_mut(&out_location);
+                            builder.add_dfir(
+                                parse_quote! {
+                                    #reduce_ident = #input_ident -> #operator::<#lifetime>(#f);
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                        }
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                reduce_ident
             }
 
             HydroNode::ReduceKeyedWatermark {
@@ -3064,55 +3160,6 @@ impl HydroNode {
                 *next_stmt_id += 1;
 
                 fold_ident
-            }
-
-            HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } => {
-                let operator: syn::Ident = if matches!(self, HydroNode::Reduce { .. }) {
-                    parse_quote!(reduce)
-                } else {
-                    parse_quote!(reduce_keyed)
-                };
-
-                let (HydroNode::Reduce { f, input, .. } | HydroNode::ReduceKeyed { f, input, .. }) =
-                    self
-                else {
-                    unreachable!()
-                };
-
-                let (input, lifetime) =
-                    if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
-                        debug_assert!(!input.metadata().location_kind.is_top_level());
-                        (input, quote!('static))
-                    } else if input.metadata().location_kind.is_top_level() {
-                        (input, quote!('static))
-                    } else {
-                        (input, quote!('tick))
-                    };
-
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
-
-                let reduce_ident =
-                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
-
-                match builders_or_callback {
-                    BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.get_dfir_mut(&out_location);
-                        builder.add_dfir(
-                            parse_quote! {
-                                #reduce_ident = #input_ident -> #operator::<#lifetime>(#f);
-                            },
-                            None,
-                            Some(&next_stmt_id.to_string()),
-                        );
-                    }
-                    BuildersOrCallback::Callback(_, node_callback) => {
-                        node_callback(self, next_stmt_id);
-                    }
-                }
-
-                *next_stmt_id += 1;
-
-                reduce_ident
             }
 
             HydroNode::Network {
