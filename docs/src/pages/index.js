@@ -52,7 +52,7 @@ export default function Home() {
               </Link>
 
               <Link
-                to="/docs/hydro/"
+                to="/docs/hydro/reference/"
                 className="button button--outline button--secondary button--lg"
                 style={{
                   margin: "10px",
