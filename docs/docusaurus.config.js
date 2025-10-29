@@ -123,6 +123,11 @@ const config = {
       colorMode: {
         respectPrefersColorScheme: true,
       },
+      docs: {
+        sidebar: {
+          autoCollapseCategories: true,
+        },
+      },
       navbar: {
         title: "Hydro",
         logo: {
@@ -131,12 +136,18 @@ const config = {
         },
         items: [
           {
+            to: "docs/hydro/learn/quickstart",
+            activeBasePath: "docs/hydro/learn",
+            position: "left",
+            label: "Learn",
+          },
+          {
             type: "dropdown",
-            label: "Docs",
+            label: "Reference",
             items: [
               {
-                type: "docSidebar",
-                sidebarId: "hydroSidebar",
+                to: "docs/hydro/reference",
+                activeBasePath: "docs/hydro/reference",
                 label: "Hydro",
               },
               {
@@ -173,22 +184,17 @@ const config = {
             className: "header-discord-link",
             "aria-label": "Discord server",
           },
-          {
-            href: "/askai",
-            label: "AI Assistant",
-            position: "right",
-          },
         ],
       },
       footer: {
         style: "dark",
         links: [
           {
-            title: "Docs",
+            title: "Reference",
             items: [
               {
                 label: "Hydro",
-                to: "/docs/hydro/",
+                to: "/docs/hydro/reference/",
               },
               {
                 label: "DFIR",
