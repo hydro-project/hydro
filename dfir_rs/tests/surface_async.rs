@@ -5,7 +5,6 @@
 use std::collections::{BTreeSet, HashSet};
 use std::error::Error;
 use std::net::{Ipv4Addr, SocketAddr};
-use std::time::Duration;
 
 use bytes::Bytes;
 use dfir_rs::scheduled::graph::Dfir;
@@ -16,6 +15,7 @@ use tokio::net::{TcpListener, TcpStream, UdpSocket};
 use tokio::task::LocalSet;
 use tokio_util::codec::{BytesCodec, FramedWrite, LinesCodec};
 use tracing::Instrument;
+use web_time::Duration;
 
 #[multiplatform_test(dfir, env_tracing)]
 pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {

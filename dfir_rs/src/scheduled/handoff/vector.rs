@@ -64,7 +64,7 @@ impl<T> CanReceive<Vec<T>> for VecHandoff<T> {
 }
 
 impl<T> HandoffMeta for VecHandoff<T> {
-    fn is_bottom(&self) -> bool {
-        (*self.input).borrow_mut().is_empty()
+    fn len(&self) -> usize {
+        (*self.input).borrow().len()
     }
 }

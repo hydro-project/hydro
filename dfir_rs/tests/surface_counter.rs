@@ -1,9 +1,8 @@
-use std::time::Duration;
-
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::iter_batches_stream;
 use multiplatform_test::multiplatform_test;
+use web_time::Duration;
 
 fn fib(n: u64) -> u64 {
     match n {
