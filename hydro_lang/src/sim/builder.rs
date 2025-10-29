@@ -386,6 +386,85 @@ impl DfirBuilder for SimBuilder {
                         None,
                     );
                 }
+                CollectionKind::KeyedSingleton { .. } => {
+                    debug_assert!(in_location.is_top_level());
+
+                    let hoff_id = self.next_hoff_id;
+                    self.next_hoff_id += 1;
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                    });
+                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::<_, ::std::collections::VecDeque<_>>::default()));
+                    });
+                    self.add_hook(
+                        in_location,
+                        out_location,
+                        syn::parse_quote! (
+                            Box::new(hydro_lang::sim::runtime::KeyedSingletonHook::<_, _>::new(
+                                #buffered_ident.clone(),
+                                #hoff_send_ident,
+                                (#batch_location, #line, #caret),
+                                {
+                                    trait NotDebug {
+                                        fn format_debug(&self) -> Option<String> {
+                                            None
+                                        }
+                                    }
+
+                                    impl<T> NotDebug for T {}
+                                    struct IsDebug<T>(std::marker::PhantomData<T>);
+                                    impl<T: std::fmt::Debug> IsDebug<T> {
+                                        fn format_debug(v: &T) -> Option<String> {
+                                            Some(format!("{:?}", v))
+                                        }
+                                    }
+                                    IsDebug::format_debug
+                                },
+                                {
+                                    trait NotDebug {
+                                        fn format_debug(&self) -> Option<String> {
+                                            None
+                                        }
+                                    }
+
+                                    impl<T> NotDebug for T {}
+                                    struct IsDebug<T>(std::marker::PhantomData<T>);
+                                    impl<T: std::fmt::Debug> IsDebug<T> {
+                                        fn format_debug(v: &T) -> Option<String> {
+                                            Some(format!("{:?}", v))
+                                        }
+                                    }
+                                    IsDebug::format_debug
+                                },
+                            ))
+                        ),
+                    );
+
+                    self.get_dfir_mut(in_location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|(k, v)| #buffered_ident.borrow_mut().entry(k).or_default().push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(out_location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
                 _ => {
                     eprintln!("{:?}", op_meta.backtrace.elements());
                     todo!("batch not implemented for kind {:?}", in_kind)
