@@ -382,7 +382,10 @@ impl<'a> Dfir<'a> {
 
                 tracing::info!("Running subgraph.");
                 sg_data.last_tick_run_in = Some(self.context.current_tick);
-                Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs)).await;
+
+                let sg_fut =
+                    Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs));
+                let () = sg_fut.await;
             };
 
             let sg_data = &self.subgraphs[sg_id];
