@@ -1907,7 +1907,7 @@
 <a href=#1907 id=1907 data-nosnippet>1907</a>    {
 <a href=#1908 id=1908 data-nosnippet>1908</a>        keys.keys()
 <a href=#1909 id=1909 data-nosnippet>1909</a>            .weaken_retries()
-<a href=#1910 id=1910 data-nosnippet>1910</a>            .assume_ordering::&lt;TotalOrder&gt;(
+<a href=#1910 id=1910 data-nosnippet>1910</a>            .assume_ordering_trusted::&lt;TotalOrder&gt;(
 <a href=#1911 id=1911 data-nosnippet>1911</a>                <span class="macro">nondet!</span>(<span class="doccomment">/** keyed stream does not depend on ordering of keys */</span>),
 <a href=#1912 id=1912 data-nosnippet>1912</a>            )
 <a href=#1913 id=1913 data-nosnippet>1913</a>            .cross_product_nested_loop(<span class="self">self</span>)
