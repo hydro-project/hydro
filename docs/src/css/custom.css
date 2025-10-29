@@ -34,7 +34,7 @@ a {
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #0dbce7;
+  --ifm-color-primary: #0d93b4;
   --ifm-color-primary-dark: #0dbce7;
   --ifm-color-primary-darker: #0cb3db;
   --ifm-color-primary-darkest: #0ba0c4;
@@ -99,7 +99,7 @@ pre {
 
 .navbar__items > .navbar__link:hover {
   background: #ededed;
-  color: initial;
+  color: var(--ifm-navbar-link-color);
 }
 
 [data-theme="dark"] .navbar__items > .navbar__link:hover {
@@ -150,7 +150,7 @@ pre {
 }
 
 .navbar__items > .dropdown:hover > .navbar__link {
-  color: initial;
+  color: var(--ifm-navbar-link-color);
 }
 
 .navbar__items > .dropdown:has(.dropdown__link--active) {
