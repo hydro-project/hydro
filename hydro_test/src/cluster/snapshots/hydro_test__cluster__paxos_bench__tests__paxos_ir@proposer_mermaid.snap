@@ -27,7 +27,7 @@ linkStyle default stroke:#aaa
 17v1["<div style=text-align:center>(17v1)</div> <code><br>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        &amp;[hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::paxos::Proposer,<br>        &gt;],<br>    &gt;({<br>        let underlying_memberids__free = unsafe {<br>            ::std::mem::transmute::&lt;<br>                _,<br>                &amp;[hydro_lang::__staged::location::MemberId&lt;<br>                    hydro_test::__staged::cluster::paxos::Proposer,<br>                &gt;],<br>            &gt;(__hydro_lang_cluster_ids_0)<br>        };<br>        underlying_memberids__free<br>    }),<br>)</code>"]:::otherClass
 18v1["<div style=text-align:center>(18v1)</div> <code><br>map({<br>    |id| (*id, MembershipEvent::Joined)<br>})</code>"]:::otherClass
 19v1["<div style=text-align:center>(19v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
-20v1["<div style=text-align:center>(20v1)</div> <code><br>filter_map({<br>    let f__free = {<br>        |v| if v { Some(()) } else { None }<br>    };<br>    {<br>        let orig = f__free;<br>        move |(k, v)| orig(v).map(|o| (k, o))<br>    }<br>})</code>"]:::otherClass
+20v1["<div style=text-align:center>(20v1)</div> <code><br>filter({<br>    let f__free = {<br>        |b| *b<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
 21v1["<div style=text-align:center>(21v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
 22v1["<div style=text-align:center>(22v1)</div> <code><br>map({<br>    let CLUSTER_SELF_ID__free = hydro_lang::location::MemberId::&lt;<br>        hydro_test::__staged::cluster::paxos::Proposer,<br>    &gt;::from_raw(__hydro_lang_cluster_self_id_0);<br>    move |num| Ballot {<br>        num,<br>        proposer_id: CLUSTER_SELF_ID__free,<br>    }<br>})</code>"]:::otherClass
 23v1["<div style=text-align:center>(23v1)</div> <code><br>tee()</code>"]:::otherClass
@@ -51,7 +51,7 @@ linkStyle default stroke:#aaa
 41v1["<div style=text-align:center>(41v1)</div> <code><br>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        &amp;[hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::paxos::Acceptor,<br>        &gt;],<br>    &gt;({<br>        let underlying_memberids__free = unsafe {<br>            ::std::mem::transmute::&lt;<br>                _,<br>                &amp;[hydro_lang::__staged::location::MemberId&lt;<br>                    hydro_test::__staged::cluster::paxos::Acceptor,<br>                &gt;],<br>            &gt;(__hydro_lang_cluster_ids_1)<br>        };<br>        underlying_memberids__free<br>    }),<br>)</code>"]:::otherClass
 42v1["<div style=text-align:center>(42v1)</div> <code><br>map({<br>    |id| (*id, MembershipEvent::Joined)<br>})</code>"]:::otherClass
 43v1["<div style=text-align:center>(43v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
-44v1["<div style=text-align:center>(44v1)</div> <code><br>filter_map({<br>    let f__free = {<br>        |v| if v { Some(()) } else { None }<br>    };<br>    {<br>        let orig = f__free;<br>        move |(k, v)| orig(v).map(|o| (k, o))<br>    }<br>})</code>"]:::otherClass
+44v1["<div style=text-align:center>(44v1)</div> <code><br>filter({<br>    let f__free = {<br>        |b| *b<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
 45v1["<div style=text-align:center>(45v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
 46v1["<div style=text-align:center>(46v1)</div> <code><br>fold::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || None<br>    },<br>    {<br>        |latest, _| {<br>            *latest = Some(Instant::now());<br>        }<br>    },<br>)</code>"]:::otherClass
 47v1["<div style=text-align:center>(47v1)</div> <code><br>filter_map({<br>    let duration__free = {<br>        let i_am_leader_check_timeout__free = 10u64;<br>        Duration::from_secs(i_am_leader_check_timeout__free)<br>    };<br>    move |latest_received| {<br>        if let Some(latest_received) = latest_received {<br>            if Instant::now().duration_since(latest_received) &gt; duration__free {<br>                Some(())<br>            } else {<br>                None<br>            }<br>        } else {<br>            Some(())<br>        }<br>    }<br>})</code>"]:::otherClass
@@ -117,7 +117,7 @@ linkStyle default stroke:#aaa
 108v1["<div style=text-align:center>(108v1)</div> <code><br>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        &amp;[hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::paxos_bench::Client,<br>        &gt;],<br>    &gt;({<br>        let underlying_memberids__free = unsafe {<br>            ::std::mem::transmute::&lt;<br>                _,<br>                &amp;[hydro_lang::__staged::location::MemberId&lt;<br>                    hydro_test::__staged::cluster::paxos_bench::Client,<br>                &gt;],<br>            &gt;(__hydro_lang_cluster_ids_2)<br>        };<br>        underlying_memberids__free<br>    }),<br>)</code>"]:::otherClass
 109v1["<div style=text-align:center>(109v1)</div> <code><br>map({<br>    |id| (*id, MembershipEvent::Joined)<br>})</code>"]:::otherClass
 110v1["<div style=text-align:center>(110v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
-111v1["<div style=text-align:center>(111v1)</div> <code><br>filter_map({<br>    let f__free = {<br>        |v| if v { Some(()) } else { None }<br>    };<br>    {<br>        let orig = f__free;<br>        move |(k, v)| orig(v).map(|o| (k, o))<br>    }<br>})</code>"]:::otherClass
+111v1["<div style=text-align:center>(111v1)</div> <code><br>filter({<br>    let f__free = {<br>        |b| *b<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
 112v1["<div style=text-align:center>(112v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
 113v1["<div style=text-align:center>(113v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
 114v1["<div style=text-align:center>(114v1)</div> <code><br>map({<br>    |_| ()<br>})</code>"]:::otherClass
@@ -169,7 +169,7 @@ linkStyle default stroke:#aaa
 162v1["<div style=text-align:center>(162v1)</div> <code><br>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        &amp;[hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::paxos::Acceptor,<br>        &gt;],<br>    &gt;({<br>        let underlying_memberids__free = unsafe {<br>            ::std::mem::transmute::&lt;<br>                _,<br>                &amp;[hydro_lang::__staged::location::MemberId&lt;<br>                    hydro_test::__staged::cluster::paxos::Acceptor,<br>                &gt;],<br>            &gt;(__hydro_lang_cluster_ids_1)<br>        };<br>        underlying_memberids__free<br>    }),<br>)</code>"]:::otherClass
 163v1["<div style=text-align:center>(163v1)</div> <code><br>map({<br>    |id| (*id, MembershipEvent::Joined)<br>})</code>"]:::otherClass
 164v1["<div style=text-align:center>(164v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
-165v1["<div style=text-align:center>(165v1)</div> <code><br>filter_map({<br>    let f__free = {<br>        |v| if v { Some(()) } else { None }<br>    };<br>    {<br>        let orig = f__free;<br>        move |(k, v)| orig(v).map(|o| (k, o))<br>    }<br>})</code>"]:::otherClass
+165v1["<div style=text-align:center>(165v1)</div> <code><br>filter({<br>    let f__free = {<br>        |b| *b<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
 166v1["<div style=text-align:center>(166v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
 167v1["<div style=text-align:center>(167v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 168v1["<div style=text-align:center>(168v1)</div> <code><br>map({<br>    |((slot, payload), ballot)| ((slot, ballot), Some(payload))<br>})</code>"]:::otherClass
@@ -228,7 +228,7 @@ linkStyle default stroke:#aaa
 221v1["<div style=text-align:center>(221v1)</div> <code><br>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        &amp;[hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::kv_replica::Replica,<br>        &gt;],<br>    &gt;({<br>        let underlying_memberids__free = unsafe {<br>            ::std::mem::transmute::&lt;<br>                _,<br>                &amp;[hydro_lang::__staged::location::MemberId&lt;<br>                    hydro_test::__staged::cluster::kv_replica::Replica,<br>                &gt;],<br>            &gt;(__hydro_lang_cluster_ids_4)<br>        };<br>        underlying_memberids__free<br>    }),<br>)</code>"]:::otherClass
 222v1["<div style=text-align:center>(222v1)</div> <code><br>map({<br>    |id| (*id, MembershipEvent::Joined)<br>})</code>"]:::otherClass
 223v1["<div style=text-align:center>(223v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
-224v1["<div style=text-align:center>(224v1)</div> <code><br>filter_map({<br>    let f__free = {<br>        |v| if v { Some(()) } else { None }<br>    };<br>    {<br>        let orig = f__free;<br>        move |(k, v)| orig(v).map(|o| (k, o))<br>    }<br>})</code>"]:::otherClass
+224v1["<div style=text-align:center>(224v1)</div> <code><br>filter({<br>    let f__free = {<br>        |b| *b<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
 225v1["<div style=text-align:center>(225v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
 226v1["<div style=text-align:center>(226v1)</div> <code><br>join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 227v1["<div style=text-align:center>(227v1)</div> <code><br>map({<br>    |(key, (meta, resp))| (key, (meta, resp))<br>})</code>"]:::otherClass
@@ -764,8 +764,8 @@ subgraph var_stream_221 ["var <tt>stream_221</tt>"]
     style var_stream_221 fill:transparent
     110v1
 end
-subgraph var_stream_222 ["var <tt>stream_222</tt>"]
-    style var_stream_222 fill:transparent
+subgraph var_stream_223 ["var <tt>stream_223</tt>"]
+    style var_stream_223 fill:transparent
     111v1
 end
 subgraph var_stream_226 ["var <tt>stream_226</tt>"]
@@ -984,8 +984,8 @@ subgraph var_stream_331 ["var <tt>stream_331</tt>"]
     style var_stream_331 fill:transparent
     164v1
 end
-subgraph var_stream_332 ["var <tt>stream_332</tt>"]
-    style var_stream_332 fill:transparent
+subgraph var_stream_333 ["var <tt>stream_333</tt>"]
+    style var_stream_333 fill:transparent
     165v1
 end
 subgraph var_stream_336 ["var <tt>stream_336</tt>"]
@@ -1007,10 +1007,6 @@ end
 subgraph var_stream_348 ["var <tt>stream_348</tt>"]
     style var_stream_348 fill:transparent
     169v1
-end
-subgraph var_stream_35 ["var <tt>stream_35</tt>"]
-    style var_stream_35 fill:transparent
-    20v1
 end
 subgraph var_stream_350 ["var <tt>stream_350</tt>"]
     style var_stream_350 fill:transparent
@@ -1036,6 +1032,10 @@ end
 subgraph var_stream_358 ["var <tt>stream_358</tt>"]
     style var_stream_358 fill:transparent
     176v1
+end
+subgraph var_stream_36 ["var <tt>stream_36</tt>"]
+    style var_stream_36 fill:transparent
+    20v1
 end
 subgraph var_stream_360 ["var <tt>stream_360</tt>"]
     style var_stream_360 fill:transparent
@@ -1234,8 +1234,8 @@ subgraph var_stream_477 ["var <tt>stream_477</tt>"]
     style var_stream_477 fill:transparent
     223v1
 end
-subgraph var_stream_478 ["var <tt>stream_478</tt>"]
-    style var_stream_478 fill:transparent
+subgraph var_stream_479 ["var <tt>stream_479</tt>"]
+    style var_stream_479 fill:transparent
     224v1
 end
 subgraph var_stream_48 ["var <tt>stream_48</tt>"]
@@ -1323,8 +1323,8 @@ subgraph var_stream_75 ["var <tt>stream_75</tt>"]
     style var_stream_75 fill:transparent
     43v1
 end
-subgraph var_stream_76 ["var <tt>stream_76</tt>"]
-    style var_stream_76 fill:transparent
+subgraph var_stream_77 ["var <tt>stream_77</tt>"]
+    style var_stream_77 fill:transparent
     44v1
 end
 subgraph var_stream_8 ["var <tt>stream_8</tt>"]
