@@ -77,7 +77,7 @@ impl<'a> SimFlow<'a> {
     /// Because no fuzzer is involved, you can run exhaustive tests with `cargo test`.
     ///
     /// Returns the number of distinct executions explored.
-    pub fn exhaustive(self, thunk: impl AsyncFn(CompiledSimInstance) + RefUnwindSafe) -> usize {
+    pub fn exhaustive(self, thunk: impl AsyncFnMut(CompiledSimInstance) + RefUnwindSafe) -> usize {
         self.compiled().exhaustive(thunk)
     }
 

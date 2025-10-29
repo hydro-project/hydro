@@ -212,7 +212,7 @@ expression: built.ir()
                                                                             },
                                                                         },
                                                                     },
-                                                                    trusted: false,
+                                                                    trusted: true,
                                                                     metadata: HydroIrMetadata {
                                                                         location_kind: Tick(
                                                                             1,
@@ -857,7 +857,7 @@ expression: built.ir()
                                                                             },
                                                                         },
                                                                     },
-                                                                    trusted: false,
+                                                                    trusted: true,
                                                                     metadata: HydroIrMetadata {
                                                                         location_kind: Tick(
                                                                             3,
