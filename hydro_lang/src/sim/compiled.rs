@@ -258,7 +258,7 @@ impl CompiledSim {
     /// Returns the number of distinct executions explored.
     pub fn exhaustive<'a>(
         &'a self,
-        thunk: impl AsyncFn(CompiledSimInstance) + RefUnwindSafe,
+        mut thunk: impl AsyncFnMut(CompiledSimInstance) + RefUnwindSafe,
     ) -> usize {
         if std::env::var("BOLERO_FUZZER").is_ok() {
             eprintln!(

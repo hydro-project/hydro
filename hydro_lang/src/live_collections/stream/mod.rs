@@ -1907,7 +1907,7 @@ where
     {
         keys.keys()
             .weaken_retries()
-            .assume_ordering::<TotalOrder>(
+            .assume_ordering_trusted::<TotalOrder>(
                 nondet!(/** keyed stream does not depend on ordering of keys */),
             )
             .cross_product_nested_loop(self)
