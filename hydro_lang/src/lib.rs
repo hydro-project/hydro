@@ -47,6 +47,22 @@ pub mod prelude {
     pub use crate::live_collections::stream::Stream;
     pub use crate::location::{Cluster, External, Location as _, Process, Tick};
     pub use crate::nondet::{NonDet, nondet};
+
+    /// A macro to set up a Hydro crate.
+    #[macro_export]
+    macro_rules! setup {
+        () => {
+            stageleft::stageleft_no_entry_crate!();
+
+            #[cfg(test)]
+            mod test_init {
+                #[ctor::ctor]
+                fn init() {
+                    $crate::compile::init_test();
+                }
+            }
+        }
+    }
 }
 
 #[cfg(feature = "dfir_context")]
