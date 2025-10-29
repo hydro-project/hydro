@@ -289,3 +289,113 @@ where
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use stageleft::q;
+
+    use crate::location::Location;
+    use crate::nondet::nondet;
+    use crate::prelude::FlowBuilder;
+
+    #[test]
+    fn sim_atomic_stream() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_write, write_req) = node.source_external_bincode(&external);
+        let (input_read, read_req) = node.source_external_bincode::<_, (), _, _>(&external);
+
+        let tick = node.tick();
+        let atomic_write = write_req.atomic(&tick);
+        let current_state = atomic_write.clone().fold(
+            q!(|| 0),
+            q!(|state: &mut i32, v: i32| {
+                *state += v;
+            }),
+        );
+
+        let write_ack = atomic_write.end_atomic().send_bincode_external(&external);
+        let read_response = read_req
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(current_state.snapshot_atomic(nondet!(/** test */)))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let sim_compiled = flow.sim().compiled();
+        let instances = sim_compiled.exhaustive(async |mut compiled| {
+            let write_send = compiled.connect(&input_write);
+            let read_send = compiled.connect(&input_read);
+            let mut write_ack_recv = compiled.connect(&write_ack);
+            let mut read_response_recv = compiled.connect(&read_response);
+            compiled.launch();
+
+            write_send.send(1).unwrap();
+            write_ack_recv.assert_yields([1]).await;
+            read_send.send(()).unwrap();
+            assert!(read_response_recv.next().await.is_some_and(|(_, v)| v >= 1));
+        });
+
+        assert_eq!(instances, 1);
+
+        let instances_read_before_write = sim_compiled.exhaustive(async |mut compiled| {
+            let write_send = compiled.connect(&input_write);
+            let read_send = compiled.connect(&input_read);
+            let mut write_ack_recv = compiled.connect(&write_ack);
+            let mut read_response_recv = compiled.connect(&read_response);
+            compiled.launch();
+
+            write_send.send(1).unwrap();
+            read_send.send(()).unwrap();
+            write_ack_recv.assert_yields([1]).await;
+            let _ = read_response_recv.next().await;
+        });
+
+        assert_eq!(instances_read_before_write, 3); // read before write, write before read, both in same tick
+    }
+
+    #[test]
+    #[should_panic]
+    fn sim_non_atomic_stream() {
+        // shows that atomic is necessary
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_write, write_req) = node.source_external_bincode(&external);
+        let (input_read, read_req) = node.source_external_bincode::<_, (), _, _>(&external);
+
+        let current_state = write_req.clone().fold(
+            q!(|| 0),
+            q!(|state: &mut i32, v: i32| {
+                *state += v;
+            }),
+        );
+
+        let write_ack = write_req.send_bincode_external(&external);
+
+        let tick = node.tick();
+        let read_response = read_req
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(current_state.snapshot(&tick, nondet!(/** test */)))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let write_send = compiled.connect(&input_write);
+            let read_send = compiled.connect(&input_read);
+            let mut write_ack_recv = compiled.connect(&write_ack);
+            let mut read_response_recv = compiled.connect(&read_response);
+            compiled.launch();
+
+            write_send.send(1).unwrap();
+            write_ack_recv.assert_yields([1]).await;
+            read_send.send(()).unwrap();
+
+            if let Some((_, v)) = read_response_recv.next().await {
+                assert_eq!(v, 1);
+            }
+        });
+    }
+}

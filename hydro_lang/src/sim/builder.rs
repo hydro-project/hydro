@@ -81,7 +81,7 @@ impl DfirBuilder for SimBuilder {
         match location {
             LocationId::Process(_) => self.process_graphs.entry(location.clone()).or_default(),
             LocationId::Cluster(_) => self.cluster_graphs.entry(location.clone()).or_default(),
-            LocationId::Atomic(_) => todo!("SimBuilder does not support atomic locations"),
+            LocationId::Atomic(tick) => self.get_dfir_mut(tick.as_ref()),
             LocationId::Tick(_, l) => match l.root() {
                 LocationId::Process(_) => {
                     self.process_tick_dfirs.entry(location.clone()).or_default()
@@ -104,201 +104,214 @@ impl DfirBuilder for SimBuilder {
         op_meta: &HydroIrOpMetadata,
     ) {
         if let LocationId::Atomic(_) = in_location {
-            todo!("Simulator does not yet support `batch_atomic`");
-        }
+            let builder = self.get_dfir_mut(in_location);
+            builder.add_dfir(
+                parse_quote! {
+                    #out_ident = #in_ident;
+                },
+                None,
+                None,
+            );
+        } else {
+            let out_location = if let LocationId::Atomic(tick) = out_location {
+                tick.as_ref()
+            } else {
+                out_location
+            };
 
-        let (batch_location, line, caret) = op_meta
-            .backtrace
-            .elements()
-            .first()
-            .map(|e| {
-                if let Some(filename) = &e.filename
-                    && let Some(lineno) = e.lineno
-                    && let Some(colno) = e.colno
-                {
-                    let line = std::fs::read_to_string(filename)
-                        .ok()
-                        .and_then(|s| {
-                            s.lines()
-                                .nth(lineno.saturating_sub(1).try_into().unwrap())
-                                .map(|s| s.to_string())
-                        })
-                        .unwrap_or_default();
-
-                    let relative_path = (|| {
-                        std::path::Path::new(filename)
-                            .strip_prefix(std::env::current_dir().ok()?)
+            let (batch_location, line, caret) = op_meta
+                .backtrace
+                .elements()
+                .first()
+                .map(|e| {
+                    if let Some(filename) = &e.filename
+                        && let Some(lineno) = e.lineno
+                        && let Some(colno) = e.colno
+                    {
+                        let line = std::fs::read_to_string(filename)
                             .ok()
-                    })();
+                            .and_then(|s| {
+                                s.lines()
+                                    .nth(lineno.saturating_sub(1).try_into().unwrap())
+                                    .map(|s| s.to_string())
+                            })
+                            .unwrap_or_default();
 
-                    let filename_display = relative_path
-                        .map(|p| p.display().to_string())
-                        .unwrap_or_else(|| filename.clone());
+                        let relative_path = (|| {
+                            std::path::Path::new(filename)
+                                .strip_prefix(std::env::current_dir().ok()?)
+                                .ok()
+                        })();
 
-                    (
-                        format!("{}:{}:{}", filename_display, lineno, colno),
-                        line,
-                        format!("{:>1$}", "", (colno - 1).try_into().unwrap()),
-                    )
-                } else {
-                    (
-                        "unknown location".to_string(),
-                        "".to_string(),
-                        "".to_string(),
-                    )
+                        let filename_display = relative_path
+                            .map(|p| p.display().to_string())
+                            .unwrap_or_else(|| filename.clone());
+
+                        (
+                            format!("{}:{}:{}", filename_display, lineno, colno),
+                            line,
+                            format!("{:>1$}", "", (colno - 1).try_into().unwrap()),
+                        )
+                    } else {
+                        (
+                            "unknown location".to_string(),
+                            "".to_string(),
+                            "".to_string(),
+                        )
+                    }
+                })
+                .unwrap_or((
+                    "unknown location".to_string(),
+                    "".to_string(),
+                    "".to_string(),
+                ));
+
+            match in_kind {
+                CollectionKind::Stream {
+                    order,
+                    retry: StreamRetry::ExactlyOnce,
+                    ..
+                } => {
+                    debug_assert!(in_location.is_top_level());
+
+                    let order_ty: syn::Type = match order {
+                        StreamOrder::TotalOrder => {
+                            parse_quote! { hydro_lang::live_collections::stream::TotalOrder }
+                        }
+                        StreamOrder::NoOrder => {
+                            parse_quote! { hydro_lang::live_collections::stream::NoOrder }
+                        }
+                    };
+
+                    let hoff_id = self.next_hoff_id;
+                    self.next_hoff_id += 1;
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                    });
+                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                    });
+                    self.add_hook(
+                        in_location,
+                        out_location,
+                        syn::parse_quote!(
+                            Box::new(hydro_lang::sim::runtime::StreamHook::<_, #order_ty> {
+                                input: #buffered_ident.clone(),
+                                to_release: None,
+                                output: #hoff_send_ident,
+                                batch_location: (#batch_location, #line, #caret),
+                                format_item_debug: {
+                                    trait NotDebug {
+                                        fn format_debug(&self) -> Option<String> {
+                                            None
+                                        }
+                                    }
+
+                                    impl<T> NotDebug for T {}
+                                    struct IsDebug<T>(std::marker::PhantomData<T>);
+                                    impl<T: std::fmt::Debug> IsDebug<T> {
+                                        fn format_debug(v: &T) -> Option<String> {
+                                            Some(format!("{:?}", v))
+                                        }
+                                    }
+                                    IsDebug::format_debug
+                                },
+                                _order: std::marker::PhantomData,
+                            })
+                        ),
+                    );
+
+                    self.get_dfir_mut(in_location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(out_location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
                 }
-            })
-            .unwrap_or((
-                "unknown location".to_string(),
-                "".to_string(),
-                "".to_string(),
-            ));
+                CollectionKind::Singleton { .. } => {
+                    debug_assert!(in_location.is_top_level());
 
-        match in_kind {
-            CollectionKind::Stream {
-                order,
-                retry: StreamRetry::ExactlyOnce,
-                ..
-            } => {
-                debug_assert!(in_location.is_top_level());
+                    let hoff_id = self.next_hoff_id;
+                    self.next_hoff_id += 1;
 
-                let order_ty: syn::Type = match order {
-                    StreamOrder::TotalOrder => {
-                        parse_quote! { hydro_lang::live_collections::stream::TotalOrder }
-                    }
-                    StreamOrder::NoOrder => {
-                        parse_quote! { hydro_lang::live_collections::stream::NoOrder }
-                    }
-                };
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
 
-                let hoff_id = self.next_hoff_id;
-                self.next_hoff_id += 1;
-
-                let buffered_ident =
-                    syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                let hoff_send_ident =
-                    syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                let hoff_recv_ident =
-                    syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-
-                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                    let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
-                });
-                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                    let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-                });
-                self.add_hook(
-                    in_location,
-                    out_location,
-                    syn::parse_quote!(
-                        Box::new(hydro_lang::sim::runtime::StreamHook::<_, #order_ty> {
-                            input: #buffered_ident.clone(),
-                            to_release: None,
-                            output: #hoff_send_ident,
-                            batch_location: (#batch_location, #line, #caret),
-                            format_item_debug: {
-                                trait NotDebug {
-                                    fn format_debug(&self) -> Option<String> {
-                                        None
+                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                    });
+                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                    });
+                    self.add_hook(
+                        in_location,
+                        out_location,
+                        syn::parse_quote! (
+                            Box::new(hydro_lang::sim::runtime::SingletonHook::<_>::new(
+                                #buffered_ident.clone(),
+                                #hoff_send_ident,
+                                (#batch_location, #line, #caret),
+                                {
+                                    trait NotDebug {
+                                        fn format_debug(&self) -> Option<String> {
+                                            None
+                                        }
                                     }
-                                }
 
-                                impl<T> NotDebug for T {}
-                                struct IsDebug<T>(std::marker::PhantomData<T>);
-                                impl<T: std::fmt::Debug> IsDebug<T> {
-                                    fn format_debug(v: &T) -> Option<String> {
-                                        Some(format!("{:?}", v))
+                                    impl<T> NotDebug for T {}
+                                    struct IsDebug<T>(std::marker::PhantomData<T>);
+                                    impl<T: std::fmt::Debug> IsDebug<T> {
+                                        fn format_debug(v: &T) -> Option<String> {
+                                            Some(format!("{:?}", v))
+                                        }
                                     }
-                                }
-                                IsDebug::format_debug
-                            },
-                            _order: std::marker::PhantomData,
-                        })
-                    ),
-                );
+                                    IsDebug::format_debug
+                                },
+                            ))
+                        ),
+                    );
 
-                self.get_dfir_mut(in_location).add_dfir(
-                    parse_quote! {
-                        #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
-                    },
-                    None,
-                    None,
-                );
+                    self.get_dfir_mut(in_location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                        },
+                        None,
+                        None,
+                    );
 
-                self.get_dfir_mut(out_location).add_dfir(
-                    parse_quote! {
-                        #out_ident = source_stream(#hoff_recv_ident);
-                    },
-                    None,
-                    None,
-                );
-            }
-            CollectionKind::Singleton { .. } => {
-                debug_assert!(in_location.is_top_level());
-
-                let hoff_id = self.next_hoff_id;
-                self.next_hoff_id += 1;
-
-                let buffered_ident =
-                    syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                let hoff_send_ident =
-                    syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                let hoff_recv_ident =
-                    syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-
-                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                    let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
-                });
-                self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                    let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-                });
-                self.add_hook(
-                    in_location,
-                    out_location,
-                    syn::parse_quote! (
-                        Box::new(hydro_lang::sim::runtime::SingletonHook::<_>::new(
-                            #buffered_ident.clone(),
-                            #hoff_send_ident,
-                            (#batch_location, #line, #caret),
-                            {
-                                trait NotDebug {
-                                    fn format_debug(&self) -> Option<String> {
-                                        None
-                                    }
-                                }
-
-                                impl<T> NotDebug for T {}
-                                struct IsDebug<T>(std::marker::PhantomData<T>);
-                                impl<T: std::fmt::Debug> IsDebug<T> {
-                                    fn format_debug(v: &T) -> Option<String> {
-                                        Some(format!("{:?}", v))
-                                    }
-                                }
-                                IsDebug::format_debug
-                            },
-                        ))
-                    ),
-                );
-
-                self.get_dfir_mut(in_location).add_dfir(
-                    parse_quote! {
-                        #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
-                    },
-                    None,
-                    None,
-                );
-
-                self.get_dfir_mut(out_location).add_dfir(
-                    parse_quote! {
-                        #out_ident = source_stream(#hoff_recv_ident);
-                    },
-                    None,
-                    None,
-                );
-            }
-            _ => {
-                eprintln!("{:?}", op_meta.backtrace.elements());
-                todo!("batch not implemented for kind {:?}", in_kind)
+                    self.get_dfir_mut(out_location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
+                _ => {
+                    eprintln!("{:?}", op_meta.backtrace.elements());
+                    todo!("batch not implemented for kind {:?}", in_kind)
+                }
             }
         }
     }
@@ -309,44 +322,79 @@ impl DfirBuilder for SimBuilder {
         in_location: &LocationId,
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
+        out_location: &LocationId,
     ) {
         match in_kind {
             CollectionKind::Stream { .. } => {
-                if let LocationId::Tick(_, outer) = in_location {
-                    debug_assert!(outer.is_top_level());
-
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
-
-                    let hoff_send_ident =
-                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                    let hoff_recv_ident =
-                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-
-                    self.add_extra_stmt_internal(outer, syn::parse_quote! {
-                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
-                    });
-
-                    self.get_dfir_mut(in_location).add_dfir(
-                        parse_quote! {
-                            #in_ident -> for_each(|v| #hoff_send_ident.send(v).unwrap());
-                        },
-                        None,
-                        None,
-                    );
-
-                    self.get_dfir_mut(outer).add_dfir(
-                        parse_quote! {
-                            #out_ident = source_stream(#hoff_recv_ident);
-                        },
-                        None,
-                        None,
-                    );
-                } else {
-                    panic!()
+                debug_assert!(out_location.is_top_level());
+                if let LocationId::Atomic(_) = out_location {
+                    todo!("atomic yield is not yet supported");
                 }
+
+                let hoff_id = self.next_hoff_id;
+                self.next_hoff_id += 1;
+
+                let hoff_send_ident =
+                    syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                let hoff_recv_ident =
+                    syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                self.add_extra_stmt_internal(out_location, syn::parse_quote! {
+                    let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                });
+
+                self.get_dfir_mut(in_location).add_dfir(
+                    parse_quote! {
+                        #in_ident -> for_each(|v| #hoff_send_ident.send(v).unwrap());
+                    },
+                    None,
+                    None,
+                );
+
+                self.get_dfir_mut(out_location).add_dfir(
+                    parse_quote! {
+                        #out_ident = source_stream(#hoff_recv_ident);
+                    },
+                    None,
+                    None,
+                );
             }
             _ => todo!(),
+        }
+    }
+
+    fn begin_atomic(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+        out_location: &LocationId,
+        op_meta: &HydroIrOpMetadata,
+    ) {
+        self.batch(
+            in_ident,
+            in_location,
+            in_kind,
+            out_ident,
+            out_location,
+            op_meta,
+        );
+    }
+
+    fn end_atomic(
+        &mut self,
+        in_ident: syn::Ident,
+        in_location: &LocationId,
+        in_kind: &CollectionKind,
+        out_ident: &syn::Ident,
+    ) {
+        if let LocationId::Atomic(tick) = in_location
+            && let LocationId::Tick(_, outer) = tick.as_ref()
+        {
+            self.yield_from_tick(in_ident, in_location, in_kind, out_ident, outer.as_ref());
+        } else {
+            unreachable!()
         }
     }
 
