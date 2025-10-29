@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::num::ParseFloatError;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
 
 use bytes::Bytes;
 use clap::{Parser, Subcommand, command};
@@ -14,6 +13,7 @@ use dfir_lang::graph::{WriteConfig, WriteGraphType};
 use futures::Stream;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::StreamExt;
+use web_time::{Duration, Instant};
 
 use crate::protocol::NodeId;
 use crate::server::run_server;

@@ -1,7 +1,6 @@
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
 
 use bincode::options;
 use bytes::{BufMut, Bytes, BytesMut};
@@ -18,6 +17,7 @@ use serde::Serialize;
 use serde::de::DeserializeSeed;
 use tokio::task;
 use tokio_stream::StreamExt;
+use web_time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::Topology;
 use crate::buffer_pool::BufferPool;
@@ -96,8 +96,8 @@ pub fn run_server<RX>(
             });
 
             let relatively_recent_timestamp: &'static _ = &*Box::leak(Box::new(std::sync::atomic::AtomicU64::new(
-                std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
+                SystemTime::now()
+                .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_millis() as u64)));
 
@@ -109,8 +109,8 @@ pub fn run_server<RX>(
 
                     loop {
                         interval.tick().await;
-                        relatively_recent_timestamp.store(std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
+                        relatively_recent_timestamp.store(SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
                             .unwrap()
                             .as_millis() as u64,
                             Ordering::Relaxed);

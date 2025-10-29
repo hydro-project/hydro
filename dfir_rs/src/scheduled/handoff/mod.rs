@@ -27,17 +27,21 @@ pub trait CanReceive<T> {
 
 /// A handle onto the metadata part of a [Handoff], with no element type.
 pub trait HandoffMeta: Any {
-    // TODO(justin): more fine-grained info here.
-    /// Return if the handoff is empty.
-    fn is_bottom(&self) -> bool;
+    /// Return if the handoff has no items ready to be read.
+    fn is_empty(&self) -> bool {
+        0 == self.len()
+    }
+
+    /// Return the number of items ready to be read out of the handoff.
+    fn len(&self) -> usize;
 }
 
 impl<H> HandoffMeta for Rc<RefCell<H>>
 where
     H: HandoffMeta,
 {
-    fn is_bottom(&self) -> bool {
-        self.borrow().is_bottom()
+    fn len(&self) -> usize {
+        self.borrow().len()
     }
 }
 
