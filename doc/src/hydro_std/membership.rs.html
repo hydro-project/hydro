@@ -6,17 +6,15 @@
 <a href=#6 id=6 data-nosnippet>6</a>
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">pub fn </span>track_membership&lt;<span class="lifetime">'a</span>, K: Hash + Eq, L: Location&lt;<span class="lifetime">'a</span>&gt;&gt;(
 <a href=#8 id=8 data-nosnippet>8</a>    membership: KeyedStream&lt;K, MembershipEvent, L, Unbounded&gt;,
-<a href=#9 id=9 data-nosnippet>9</a>) -&gt; KeyedSingleton&lt;K, (), L, Unbounded&gt; {
-<a href=#10 id=10 data-nosnippet>10</a>    membership
-<a href=#11 id=11 data-nosnippet>11</a>        .fold(
-<a href=#12 id=12 data-nosnippet>12</a>            <span class="macro">q!</span>(|| <span class="bool-val">false</span>),
-<a href=#13 id=13 data-nosnippet>13</a>            <span class="macro">q!</span>(|present, event| {
-<a href=#14 id=14 data-nosnippet>14</a>                <span class="kw">match </span>event {
-<a href=#15 id=15 data-nosnippet>15</a>                    MembershipEvent::Joined =&gt; <span class="kw-2">*</span>present = <span class="bool-val">true</span>,
-<a href=#16 id=16 data-nosnippet>16</a>                    MembershipEvent::Left =&gt; <span class="kw-2">*</span>present = <span class="bool-val">false</span>,
-<a href=#17 id=17 data-nosnippet>17</a>                }
-<a href=#18 id=18 data-nosnippet>18</a>            }),
-<a href=#19 id=19 data-nosnippet>19</a>        )
-<a href=#20 id=20 data-nosnippet>20</a>        .filter_map(<span class="macro">q!</span>(|v| <span class="kw">if </span>v { <span class="prelude-val">Some</span>(()) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}))
-<a href=#21 id=21 data-nosnippet>21</a>}
+<a href=#9 id=9 data-nosnippet>9</a>) -&gt; KeyedSingleton&lt;K, bool, L, Unbounded&gt; {
+<a href=#10 id=10 data-nosnippet>10</a>    membership.fold(
+<a href=#11 id=11 data-nosnippet>11</a>        <span class="macro">q!</span>(|| <span class="bool-val">false</span>),
+<a href=#12 id=12 data-nosnippet>12</a>        <span class="macro">q!</span>(|present, event| {
+<a href=#13 id=13 data-nosnippet>13</a>            <span class="kw">match </span>event {
+<a href=#14 id=14 data-nosnippet>14</a>                MembershipEvent::Joined =&gt; <span class="kw-2">*</span>present = <span class="bool-val">true</span>,
+<a href=#15 id=15 data-nosnippet>15</a>                MembershipEvent::Left =&gt; <span class="kw-2">*</span>present = <span class="bool-val">false</span>,
+<a href=#16 id=16 data-nosnippet>16</a>            }
+<a href=#17 id=17 data-nosnippet>17</a>        }),
+<a href=#18 id=18 data-nosnippet>18</a>    )
+<a href=#19 id=19 data-nosnippet>19</a>}
 </code></pre></div></section></main></body></html>
