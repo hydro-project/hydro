@@ -18,6 +18,7 @@ use web_time::SystemTime;
 use super::context::Context;
 use super::handoff::handoff_list::PortList;
 use super::handoff::{Handoff, HandoffMeta, TeeingHandoff};
+use super::instrument::{Instrument, Metrics};
 use super::port::{RECV, RecvCtx, RecvPort, SEND, SendCtx, SendPort};
 use super::reactor::Reactor;
 use super::state::StateHandle;
@@ -385,6 +386,7 @@ impl<'a> Dfir<'a> {
 
                 let sg_fut =
                     Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs));
+                let sg_fut = Instrument::new(sg_fut, &mut sg_data.metrics);
                 let () = sg_fut.await;
             };
 
@@ -1140,6 +1142,8 @@ pub(super) struct SubgraphData<'a> {
     loop_id: Option<LoopId>,
     /// The loop depth of the subgraph.
     loop_depth: usize,
+
+    metrics: Metrics,
 }
 impl<'a> SubgraphData<'a> {
     #[expect(clippy::too_many_arguments, reason = "internal use")]
@@ -1166,6 +1170,7 @@ impl<'a> SubgraphData<'a> {
             is_lazy,
             loop_id,
             loop_depth,
+            metrics: Default::default(),
         }
     }
 }
