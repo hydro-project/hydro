@@ -298,7 +298,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
                             (slot % num_proxy_leaders) as u32,
                         ),
                         slot,
-                        ballot,
+                        ballot: ballot.clone(),
                         value: payload.clone(),
                     },
                 ));
@@ -335,7 +335,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     );
 
     let pl_failed_p2b_to_proposer = fails
-        .map(q!(|(_, ballot)| (ballot.proposer_id, ballot)))
+        .map(q!(|(_, ballot)| (ballot.proposer_id.clone(), ballot)))
         .inspect(q!(|(_, ballot)| println!("Failed P2b: {:?}", ballot)))
         .demux_bincode(proposers)
         .values();
