@@ -57,7 +57,7 @@ impl GraphConfig {
 /// Controls how graphs are encoded and opened in web browsers.
 #[derive(Debug, Clone)]
 pub struct VisualizerConfig {
-    /// Base URL for the visualizer (default: <https://hydro.run/docs/hydroscope>)
+    /// Base URL for the visualizer (default: <https://hydro.run/hydroscope>)
     pub base_url: String,
     /// Whether to enable compression for small graphs
     pub enable_compression: bool,
