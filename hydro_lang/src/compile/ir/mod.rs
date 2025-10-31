@@ -304,6 +304,7 @@ pub enum HydroSource {
     ExternalNetwork(),
     Iter(DebugExpr),
     Spin(),
+    ClusterMembers(LocationId),
 }
 
 #[cfg(feature = "build")]
@@ -2239,6 +2240,15 @@ impl HydroNode {
                                 #source_ident = spin();
                             }
                         }
+
+                        HydroSource::ClusterMembers(location_id) => {
+                            debug_assert!(metadata.location_kind.is_top_level());
+                            let location_id = location_id.raw_id();
+
+                            parse_quote! {
+                                #source_ident = source_stream(docker_cluster_membership_stream(#location_id));
+                            }
+                        }
                     };
 
                     match builders_or_callback {
@@ -3291,7 +3301,9 @@ impl HydroNode {
             HydroNode::Cast { .. } | HydroNode::ObserveNonDet { .. } => {}
             HydroNode::Source { source, .. } => match source {
                 HydroSource::Stream(expr) | HydroSource::Iter(expr) => transform(expr),
-                HydroSource::ExternalNetwork() | HydroSource::Spin() => {}
+                HydroSource::ExternalNetwork()
+                | HydroSource::Spin()
+                | HydroSource::ClusterMembers(_) => {} // TODO: what goes here?
             },
             HydroNode::SingletonSource { value, .. } => {
                 transform(value);

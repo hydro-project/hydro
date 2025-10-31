@@ -232,7 +232,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
         });
 
         let mut compiled = build_inner(self.ir.get_mut());
-        self.cluster_id_stmts(&mut extra_stmts, &());
+        self.cluster_id_stmts(&mut extra_stmts, &()); // TODO: this should not just dump a bunch of garbage into the header of the dfir programs emitted.
         let mut meta = D::Meta::default();
 
         let (mut processes, mut clusters, mut externals) = (

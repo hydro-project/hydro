@@ -84,6 +84,74 @@ pub(crate) fn check_matching_location<'a, L: Location<'a>>(l1: &L, l2: &L) {
     assert_eq!(Location::id(l1), Location::id(l2), "locations do not match");
 }
 
+/// TODO:
+pub fn docker_membership_stream(
+    location_id: usize,
+) -> impl FuturesStream<Item = (String, MembershipEvent)> + Unpin {
+    use bollard::{Docker, container::ListContainersOptions, system::EventsOptions};
+    use futures::stream::{StreamExt, once};
+    let docker = Docker::connect_with_local_defaults()
+        .unwrap()
+        .with_timeout(Duration::from_secs(1));
+
+    let mut filters = std::collections::HashMap::new();
+    filters.insert("type".to_string(), vec!["container".to_string()]);
+    filters.insert(
+        "event".to_string(),
+        vec!["start".to_string(), "die".to_string()],
+    );
+    let event_options = Some(EventsOptions {
+        filters,
+        ..Default::default()
+    });
+
+    let events = docker.events(event_options).filter_map(move |event| {
+        std::future::ready(event.ok().and_then(|e| {
+            let name = e
+                .actor
+                .and_then(|a| a.attributes.and_then(|attrs| attrs.get("name").cloned()))?;
+
+            if name.contains(format!("loc-{location_id}-").as_str()) {
+                match e.action.as_deref() {
+                    Some("start") => Some((name.clone(), MembershipEvent::Joined)),
+                    Some("die") => Some((name, MembershipEvent::Left)),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }))
+    });
+
+    let initial = once(async move {
+        let mut filters = std::collections::HashMap::new();
+        filters.insert("name".to_string(), vec![format!("loc-{location_id}-")]);
+        let options = Some(ListContainersOptions {
+            // all: true,
+            filters,
+            ..Default::default()
+        });
+        docker
+            .list_containers(options)
+            .await
+            .unwrap()
+            .into_iter()
+            .filter_map(|c| {
+                c.names
+                    .and_then(|names| names.first().map(|n| n.trim_start_matches('/').to_string()))
+            })
+            .map(|name| (name, MembershipEvent::Joined))
+            .collect::<Vec<_>>()
+    })
+    .flat_map(futures::stream::iter);
+
+    Box::pin(
+        initial
+            .chain(events)
+            .inspect(|v| eprintln!("docker membership event: {:?}", v)),
+    )
+}
+
 #[expect(missing_docs, reason = "TODO")]
 #[expect(
     private_bounds,
@@ -207,7 +275,23 @@ pub trait Location<'a>: dynamic::DynLocation {
         };
 
         self.source_iter(q!(underlying_memberids))
-            .map(q!(|id| (*id, MembershipEvent::Joined)))
+            .map(q!(|id| (id.to_owned(), MembershipEvent::Joined)))
+            .into_keyed()
+    }
+
+    fn source_cluster_members_docker<C: 'a>(
+        &self,
+        cluster: &Cluster<'a, C>,
+    ) -> KeyedStream<MemberId<C>, MembershipEvent, Self, Unbounded>
+    where
+        Self: Sized + NoTick,
+    {
+        let location = cluster.id;
+        self.source_stream(q!(self::docker_membership_stream(location)))
+            .map(q!(|(container_name, e)| (
+                MemberId::from_container_name(container_name),
+                e
+            )))
             .into_keyed()
     }
 

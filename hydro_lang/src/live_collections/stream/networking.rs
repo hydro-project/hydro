@@ -42,7 +42,7 @@ fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr 
         parse_quote! {
             ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_>, #t_type), _>(
                 |(id, data)| {
-                    (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
+                    (id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
             )
         }
@@ -68,7 +68,7 @@ fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type)
         parse_quote! {
             |res| {
                 let (id, b) = res.unwrap();
-                (#root::location::MemberId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                (id as #root::location::MemberId::<#c_type>, #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
             }
         }
     } else {
@@ -187,6 +187,25 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         let current_members = ids
             .snapshot(&join_tick, nondet_membership)
             .filter(q!(|b| *b));
+
+        self.batch(&join_tick, nondet_membership)
+            .repeat_with_keys(current_members)
+            .all_ticks()
+            .demux_bincode(other)
+    }
+
+    /// TODO:
+    pub fn broadcast_bincode_docker<L2: 'a>(
+        self,
+        other: &Cluster<'a, L2>,
+        nondet_membership: NonDet,
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+    {
+        let ids = track_membership(self.location.source_cluster_members_docker(other));
+        let join_tick = self.location.tick();
+        let current_members = ids.snapshot(&join_tick, nondet_membership);
 
         self.batch(&join_tick, nondet_membership)
             .repeat_with_keys(current_members)
@@ -367,7 +386,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
             .batch(&join_tick, nondet_membership)
             .cross_singleton(current_members)
             .map(q!(|(data, members)| (
-                members[data.0 % members.len()],
+                members[data.0 % members.len()].clone(),
                 data.1
             )))
             .all_ticks()

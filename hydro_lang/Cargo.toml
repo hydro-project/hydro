@@ -12,7 +12,7 @@ license = { workspace = true }
 workspace = true
 
 [features]
-default = []
+default = ["deploy"]
 viz = [
     "build",
     "dep:auto_impl",
@@ -29,6 +29,8 @@ deploy = [
     "deploy_integration",
     "dep:hydro_deploy",
     "dep:nameof",
+    "dep:bollard",
+    "dep:tar",
 ]
 sim = [
     "trybuild",
@@ -43,7 +45,7 @@ sim = [
     "dep:serde_json",
     "dfir_rs/meta", # affects layout of DFIR, thus the ABI
 ]
-deploy_integration = ["dep:hydro_deploy_integration"]
+deploy_integration = ["dep:hydro_deploy_integration", "dep:bollard"]
 build = ["dep:dfir_lang", "dep:backtrace", "dep:ctor"]
 trybuild = ["build", "dep:toml", "dep:prettyplease", "dep:stageleft_tool", "dep:trybuild-internals-api", "dep:sha2"]
 runtime_measure = ["dep:chrono", "dep:procfs"]
@@ -54,9 +56,11 @@ dfir_context = ["dep:dfir_rs"]
 all-features = true
 
 [dependencies]
+anyhow = "1.0.100"
 backtrace = { version = "0.3", optional = true }
 bytes = { version = "1.1.0", features = ["serde"] }
 bincode = "1.3.1"
+bollard = { version = "0.17", optional = true }
 clap = { version = "4.0", features = ["derive"], optional = true }
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0", optional = true }
 hydro_deploy_integration = { path = "../hydro_deploy/hydro_deploy_integration", version = "^0.14.0", optional = true }
@@ -65,12 +69,14 @@ dfir_lang = { path = "../dfir_lang", version = "^0.14.0", optional = true }
 futures = "0.3.0"
 match_box = "0.0.2"
 nameof = { version = "1.0.0", optional = true }
+nanoid = "0.4.0"
 prettyplease = { version = "0.2.0", features = ["verbatim"], optional = true }
 proc-macro-crate = "3.3"
 proc-macro2 = "1.0.95"
 quote = "1.0.35"
 sealed = "0.6.0"
 serde = { version = "1.0.197", features = ["derive"] }
+sinktools = { path = "../sinktools", version = "^0.0.1" }
 sha2 = { version = "0.10.0", optional = true }
 stageleft.workspace = true
 stageleft_tool = { workspace = true, optional = true }
@@ -80,6 +86,7 @@ syn = { version = "2.0.46", features = [
     "visit-mut",
     "visit",
 ] }
+tar = { version = "0.4", optional = true }
 tokio = "1.29.0"
 tokio-util = { version = "0.7.5", features = [ "codec" ] }
 tokio-stream = { version = "0.1.3", default-features = false, features = [
