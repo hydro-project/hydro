@@ -35,7 +35,7 @@ General-purpose subpackages:
 ### Formatting
 Formatting uses nightly Rust for the latest features:
 ```bash
-cargo +nightly fmt --all
+cargo +nightly fmt
 ```
 
 ### Linting
