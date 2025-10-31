@@ -43,16 +43,6 @@ cargo +nightly fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-### Workspace Lints
-- `impl_trait_overcaptures` - warn
-- `missing_unsafe_on_extern` - deny
-- `unsafe_attr_outside_unsafe` - deny
-- `unused_qualifications` - warn
-- `allow_attributes` - warn
-- `allow_attributes_without_reason` - warn
-- `explicit_into_iter_loop` - warn
-- `upper_case_acronyms` - warn
-
 ## Testing
 
 ### Running Tests
