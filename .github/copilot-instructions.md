@@ -131,16 +131,16 @@ Some parts require Python 3.10 or later.
 
 ```bash
 # Format code
-cargo +nightly fmt --all
+cargo +nightly fmt
 
 # Run clippy
-cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy --all-targets -- -D warnings
 
 # Run tests with nextest
-cargo nextest run --workspace --all-targets --no-fail-fast
+cargo nextest run --all-targets --no-fail-fast
 
 # Build docs
-cargo +nightly doc --no-deps --all-features
+RUSTUP_TOOLCHAIN="nightly" RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo doc --no-deps --all-features
 
 # Check all targets without default features
 cargo check --all-targets --no-default-features
