@@ -70,13 +70,21 @@ where
 }
 
 impl<T> HandoffMeta for TeeingHandoff<T> {
-    /// If this output's buffer is empty, return true.
-    fn is_bottom(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.internal.borrow().readers[self.read_from]
             .1
             .contents
             .iter()
             .all(Vec::is_empty)
+    }
+
+    fn len(&self) -> usize {
+        self.internal.borrow().readers[self.read_from]
+            .1
+            .contents
+            .iter()
+            .map(Vec::len)
+            .sum()
     }
 }
 
