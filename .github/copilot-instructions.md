@@ -90,14 +90,6 @@ The repository uses squash+merge, so individual commits are for code review evol
 
 ## Development Workflow
 
-### Feature Branches
-Create feature branches off main:
-```bash
-git fetch origin
-git checkout -b feature/$FEATURE_NAME origin/main
-git push origin HEAD
-```
-
 ### Pull Request Checklist
 1. Run `./precheck.bash` locally before submitting
 2. Ensure all tests pass
