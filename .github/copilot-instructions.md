@@ -102,7 +102,7 @@ git push origin HEAD
 1. Run `./precheck.bash` locally before submitting
 2. Ensure all tests pass
 3. Update snapshot tests if needed (review changes carefully)
-4. Follow conventional commit format for PR title
+4. Follow conventional commit format for PR title and body
 5. Write descriptive PR body for changelog generation
 
 ## Special Considerations
