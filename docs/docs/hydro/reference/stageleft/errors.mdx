@@ -1,0 +1,21 @@
+# Quoting Errors
+Quoting relies on advanced features of Rust, and can sometimes emit strange type errors. This page covers the current limitations and workarounds for common quoting errors.
+
+:::note
+
+The Hydro team is also working with members of the Rust langauge team to explore upstreaming the quoting features into Rust itself. While this effort is in the early days, we hope that upstreaming will eliminate these edge cases.
+
+:::
+
+
+## References to Local Functions
+Currently, code inside a `q!` macro must use `self::` paths when invoking a local function. For example, in this code invoking `foo` will not compile but `self::foo` works as expected:
+
+```rust
+fn foo() {}
+
+fn uses_foo_quoted() {
+  q!(|| foo()) // compiler error
+  q!(|| self::foo()) // works!
+}
+```
