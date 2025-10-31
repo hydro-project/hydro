@@ -19,16 +19,15 @@ General-purpose subpackages:
 - `stageleft` - Framework for staged programming in Rust
 - `lattices` - Abstract algebra library for lattice types
 - `variadics` - Emulates variadic generics using tuple lists
-- `pusherator` - Push-based iterators library
 - `multiplatform_test` - Convenience macro for multi-platform tests
 
 ## Rust Configuration
 
-- **Toolchain**: Rust 1.90.0 (specified in `rust-toolchain.toml`)
+- **Toolchain**: Stable Rust 1.90.0 (specified in `rust-toolchain.toml`)
 - **Edition**: 2024
 - **Required components**: rustfmt, clippy, rust-src
 - **Targets**: wasm32-unknown-unknown, x86_64-unknown-linux-musl
-- Development uses the pinned toolchain version (1.90.0) which is automatically detected by cargo
+- Development uses the pinned stable toolchain version which is automatically detected by cargo
 
 ## Code Style and Linting
 
