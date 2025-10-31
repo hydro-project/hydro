@@ -1021,10 +1021,7 @@ impl HydroNode {
                     HydroSource::Iter(expr) => format!("source_iter({})", expr),
                     HydroSource::Spin() => "spin()".to_string(),
                     HydroSource::ClusterMembers(location_id) => {
-                        format!(
-                            "source_stream(docker_membership_stream({}))",
-                            location_id.raw_id()
-                        )
+                        format!("source_stream(docker_membership_stream({:?}))", location_id)
                     }
                 };
                 build_source_node(structure, metadata, label)

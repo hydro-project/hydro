@@ -12,7 +12,7 @@ license = { workspace = true }
 workspace = true
 
 [features]
-default = []
+default = ["deploy"]
 viz = [
     "build",
     "dep:auto_impl",

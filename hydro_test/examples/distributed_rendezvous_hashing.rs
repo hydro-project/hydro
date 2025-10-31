@@ -1,10 +1,7 @@
 use dfir_rs::tokio_stream::StreamExt;
 use futures::SinkExt;
 use hydro_lang::deploy::{DockerDeploy, DockerNetwork};
-use hydro_test::distributed::{
-    distributed_echo::distributed_clustered_echo,
-    rendezvous_hashing::{Command, distributed_rendezvous_partitioning},
-};
+use hydro_test::distributed::rendezvous_hashing::{Command, distributed_rendezvous_partitioning};
 // use hydro_lang::{compile::deploy_provider::Deploy, location::NetworkHint};
 
 #[tokio::main]
