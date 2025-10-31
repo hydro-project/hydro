@@ -23,15 +23,17 @@ General-purpose subpackages:
 
 ## Rust Configuration
 
-- **Toolchain**: Stable Rust 1.90.0 (specified in `rust-toolchain.toml`)
-- **Edition**: 2024
+- **Primary Toolchain**: Rust 1.90.0 stable (specified in `rust-toolchain.toml`)
+- **Edition**: 2024 (experimental edition requiring Rust 1.90.0+)
 - **Required components**: rustfmt, clippy, rust-src
 - **Targets**: wasm32-unknown-unknown, x86_64-unknown-linux-musl
-- Development uses the pinned stable toolchain version which is automatically detected by cargo
+- **Nightly Toolchain**: Used for formatting, documentation builds, and WASM tests
+- The primary toolchain is automatically detected by cargo via `rust-toolchain.toml`
 
 ## Code Style and Linting
 
 ### Formatting
+Formatting uses nightly Rust for the latest features:
 ```bash
 cargo +nightly fmt --all
 ```
@@ -127,7 +129,8 @@ git push origin HEAD
 - Special build configuration for website_playground package
 
 ### Documentation
-- Docs built with nightly Rust: `cargo +nightly doc --no-deps --all-features`
+Documentation builds use nightly Rust:
+- Docs built with: `cargo +nightly doc --no-deps --all-features`
 - Use `RUSTDOCFLAGS="--cfg docsrs -Dwarnings"` for strict doc builds
 - Documentation available at [hydro.run](https://hydro.run/)
 
