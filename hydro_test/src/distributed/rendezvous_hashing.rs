@@ -15,8 +15,8 @@ pub struct C2 {}
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum Command {
-    PUT(String, String),
-    GET(String),
+    Put(String, String),
+    Get(String),
 }
 
 fn hash<Tag>(key: &str, node: &MemberId<Tag>) -> u64 {
@@ -26,6 +26,7 @@ fn hash<Tag>(key: &str, node: &MemberId<Tag>) -> u64 {
     hasher.finish()
 }
 
+#[expect(clippy::type_complexity, reason = "example code")]
 pub fn distributed_rendezvous_partitioning<'a>(
     external: &External<'a, ()>,
     p1: &Process<'a, P1>,
@@ -40,8 +41,8 @@ pub fn distributed_rendezvous_partitioning<'a>(
     let req = rx
         .map(q!(|n| {
             match n.clone() {
-                Command::PUT(k, _) => (k.clone(), n),
-                Command::GET(k) => (k, n),
+                Command::Put(k, _) => (k.clone(), n),
+                Command::Get(k) => (k, n),
             }
         }))
         .inspect(q!(|v| println!("req: {v:?}")));
@@ -50,9 +51,9 @@ pub fn distributed_rendezvous_partitioning<'a>(
 
     let members = track_membership(p1.source_cluster_members_docker(c2))
         .snapshot(&tick, nondet!(/** */))
-        .map_with_key(q!(|(id, v)| ()))
+        .map(q!(|_| ()))
         .entries()
-        .map(q!(|(k, v)| k))
+        .map(q!(|(k, _)| k))
         .inspect(q!(|v| println!("members: {v:?}")))
         .assume_ordering(nondet!(/** */))
         .collect_vec();
@@ -88,12 +89,12 @@ pub fn distributed_rendezvous_partitioning<'a>(
     // );
 
     let stream = max_hash_member.all_ticks().inspect(q!(|v| println!("stream: {v:?}"))) // ????
-        .map(q!(|(key, command, node_id, hash)| (node_id, (command)))).into_keyed().demux_bincode(&c2);
+        .map(q!(|(_, command, node_id, _)| (node_id, (command)))).into_keyed().demux_bincode(c2);
 
     let gets = stream
         .clone()
         .filter_map(q!(|v| {
-            if let Command::GET(v) = v {
+            if let Command::Get(v) = v {
                 Some((v, ()))
             } else {
                 None
@@ -104,7 +105,7 @@ pub fn distributed_rendezvous_partitioning<'a>(
     let puts = stream
         .clone()
         .filter_map(q!(|v| {
-            if let Command::PUT(k, v) = v {
+            if let Command::Put(k, v) = v {
                 Some((k, v))
             } else {
                 None
@@ -123,12 +124,12 @@ pub fn distributed_rendezvous_partitioning<'a>(
         .snapshot(&new_tick, nondet!(/** */))
         .entries()
         .join(gets.batch(&new_tick, nondet!(/** */)))
-        .map(q!(|(k, (v1, v2))| { (k, v1) }))
+        .map(q!(|(k, (v1, _))| { (k, v1) }))
         .all_ticks();
 
     let rx = ret.send_bincode(p3).entries();
 
-    let rx = rx.send_bincode_external(&external);
+    let rx = rx.send_bincode_external(external);
 
     // .send_bincode_external(external);
 

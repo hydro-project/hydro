@@ -56,14 +56,14 @@ async fn main() {
 
     for i in 0..10 {
         external_sink
-            .send(Command::PUT(format!("hello{i}"), format!("{i}")))
+            .send(Command::Put(format!("hello{i}"), format!("{i}")))
             .await
             .unwrap();
     }
 
     for i in 0..10 {
         external_sink
-            .send(Command::GET(format!("hello{i}")))
+            .send(Command::Get(format!("hello{i}")))
             .await
             .unwrap();
     }

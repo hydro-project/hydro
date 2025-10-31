@@ -169,6 +169,10 @@ impl<Tag> Display for MemberId<Tag> {
 }
 
 impl<Tag> PartialOrd for MemberId<Tag> {
+    #[expect(
+        clippy::non_canonical_partial_ord_impl,
+        reason = "The implementation _is_ non-canonical."
+    )]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match (self, other) {
             (
@@ -195,26 +199,8 @@ impl<Tag> PartialOrd for MemberId<Tag> {
 
 impl<Tag> Ord for MemberId<Tag> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match (self, other) {
-            (
-                MemberId::Regular { raw_id, _phantom },
-                MemberId::Regular {
-                    raw_id: other_raw_id,
-                    _phantom: _other_phantom,
-                },
-            ) => raw_id.cmp(other_raw_id),
-            (
-                MemberId::Docker {
-                    container_name,
-                    _phantom,
-                },
-                MemberId::Docker {
-                    container_name: other_container_name,
-                    _phantom: _other_phantom,
-                },
-            ) => container_name.cmp(other_container_name),
-            _ => panic!(),
-        }
+        self.partial_cmp(other)
+            .expect("Can't compare different kinds of member ids")
     }
 }
 

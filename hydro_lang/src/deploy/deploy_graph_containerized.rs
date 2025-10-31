@@ -93,7 +93,7 @@ impl Node for DockerDeployProcess {
         _env: &mut Self::InstantiateEnv,
         meta: &mut Self::Meta,
         graph: DfirGraph,
-        extra_stmts: Vec<syn::Stmt>,
+        _extra_stmts: Vec<syn::Stmt>,
     ) {
         // basically the same as
         // create_trybuild_service
@@ -192,7 +192,7 @@ impl Node for DockerDeployCluster {
         _env: &mut Self::InstantiateEnv,
         meta: &mut Self::Meta,
         graph: DfirGraph,
-        extra_stmts: Vec<syn::Stmt>,
+        _extra_stmts: Vec<syn::Stmt>,
     ) {
         // basically the same as
         // create_trybuild_service
@@ -492,7 +492,6 @@ impl DockerDeploy {
             friendly_name,
             compilation_options,
             config,
-            network: self.network.clone(),
             count,
         };
 
@@ -508,7 +507,7 @@ impl DockerDeploy {
 
     /// Create docker images.
     pub async fn provision(&self, nodes: &DeployResult<'_, Self>) -> Result<(), anyhow::Error> {
-        for (location_id, name, process) in nodes.get_all_processes() {
+        for (_, _, process) in nodes.get_all_processes() {
             let mut rust_crate = process.rust_crate.borrow_mut().take().unwrap().rustflags(
                 process
                     .compilation_options
@@ -619,7 +618,7 @@ impl DockerDeploy {
             }
         }
 
-        for (location_id, name, cluster) in nodes.get_all_clusters() {
+        for (_, _, cluster) in nodes.get_all_clusters() {
             let mut rust_crate = cluster.rust_crate.borrow_mut().take().unwrap().rustflags(
                 cluster
                     .compilation_options
@@ -751,7 +750,7 @@ impl DockerDeploy {
             }
         };
 
-        for (location_id, name, process) in nodes.get_all_processes() {
+        for (_, _, process) in nodes.get_all_processes() {
             // let docker_container_name: String = get_docker_container_name(&process.name, 0);
             let docker_container_name = process.name.clone(); // For single processes, the container name is the same as the image name.
 
@@ -809,9 +808,7 @@ impl DockerDeploy {
                 .await?;
         }
 
-        let clusters = self.docker_clusters.clone();
-
-        for (location_id, name, cluster) in nodes.get_all_clusters() {
+        for (_, _, cluster) in nodes.get_all_clusters() {
             for num in 0..cluster.count {
                 let docker_container_name = get_docker_container_name(&cluster.name, num);
 
@@ -880,7 +877,7 @@ impl DockerDeploy {
 
         let container_names = nodes
             .get_all_processes()
-            .filter_map(|(location, name, process)| process.docker_container_name.borrow().clone());
+            .filter_map(|(_, _, process)| process.docker_container_name.borrow().clone());
 
         for container_name in container_names {
             docker
@@ -890,7 +887,7 @@ impl DockerDeploy {
 
         let container_names = nodes
             .get_all_clusters()
-            .flat_map(|(location, name, cluster)| cluster.docker_container_name.borrow().clone());
+            .flat_map(|(_, _, cluster)| cluster.docker_container_name.borrow().clone());
 
         for container_name in container_names {
             docker
@@ -1179,13 +1176,11 @@ fn get_docker_image_name(name_hint: &str, friendly_name: &str, location: usize) 
             .to_ascii_lowercase()
             .replace(".", "-")
             .replace("_", "-")
-            .replace("-", "-")
             .replace("::", "-"),
         friendly_name
             .to_ascii_lowercase()
             .replace(".", "-")
             .replace("_", "-")
-            .replace("-", "-")
             .replace("::", "-"),
         nanoid::nanoid!(6, &CONTAINER_ALPHABET)
     )
@@ -1195,6 +1190,7 @@ fn get_docker_container_name(image_name: &str, instance: usize) -> String {
     format!("{image_name}-{instance}")
 }
 
+/// TODO:
 #[derive(Clone)]
 pub struct DockerDeployProcessSpec {
     friendly_name: String,
@@ -1225,12 +1221,12 @@ impl<'a> ProcessSpec<'a, DockerDeploy> for DockerDeployProcessSpec {
     }
 }
 
+/// TODO:
 #[derive(Clone)]
 pub struct DockerDeployClusterSpec {
     friendly_name: String,
     compilation_options: Option<String>,
     config: Vec<String>,
-    network: DockerNetwork,
     count: usize,
 }
 
@@ -1256,12 +1252,13 @@ impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
     }
 }
 
+/// TODO:
 pub struct DockerDeployExternalSpec {
     name: String,
 }
 
 impl<'a> ExternalSpec<'a, DockerDeploy> for DockerDeployExternalSpec {
-    fn build(self, id: usize, name_hint: &str) -> <DockerDeploy as Deploy<'a>>::External {
+    fn build(self, _id: usize, _name_hint: &str) -> <DockerDeploy as Deploy<'a>>::External {
         DockerDeployExternal {
             name: self.name,
             next_port: Rc::new(RefCell::new(10000)),
