@@ -1,9 +1,8 @@
-use std::time::Duration;
-
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::collect_ready_async;
 use multiplatform_test::multiplatform_test;
+use web_time::Duration;
 
 /// Tests that everything is initially zero.
 #[multiplatform_test(dfir)]
@@ -138,7 +137,10 @@ async fn test_multiple_ticks() {
     df.run_tick().await;
 
     let metrics_after_tick2 = df.metrics();
-    assert_eq!(2, metrics_after_tick2.subgraph_metrics(sg_id).total_run_count);
+    assert_eq!(
+        2,
+        metrics_after_tick2.subgraph_metrics(sg_id).total_run_count
+    );
     assert_eq!(2, df.current_tick().0);
 
     let output: Vec<_> = collect_ready_async(&mut output_recv).await;
