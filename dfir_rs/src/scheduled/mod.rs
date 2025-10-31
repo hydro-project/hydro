@@ -10,7 +10,7 @@ pub mod graph;
 pub mod graph_ext;
 pub mod handoff;
 pub mod input;
-pub mod instrument;
+pub mod metrics;
 pub mod net;
 pub mod port;
 pub mod reactor;
