@@ -119,10 +119,10 @@ git push origin HEAD
 - Special build configuration for website_playground package
 
 ### Documentation
-Documentation builds use nightly Rust:
-- Docs built with: `cargo +nightly doc --no-deps --all-features`
-- Use `RUSTDOCFLAGS="--cfg docsrs -Dwarnings"` for strict doc builds
-- Documentation available at [hydro.run](https://hydro.run/)
+Build documentation with nightly Rust and the `docsrs` cfg:
+```bash
+RUSTUP_TOOLCHAIN="nightly" RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo doc --no-deps --all-features
+```
 
 ## Common Commands
 
