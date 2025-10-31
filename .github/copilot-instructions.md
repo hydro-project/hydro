@@ -124,9 +124,6 @@ Documentation builds use nightly Rust:
 - Use `RUSTDOCFLAGS="--cfg docsrs -Dwarnings"` for strict doc builds
 - Documentation available at [hydro.run](https://hydro.run/)
 
-## Python Requirements
-Some parts require Python 3.10 or later.
-
 ## Common Commands
 
 ```bash
