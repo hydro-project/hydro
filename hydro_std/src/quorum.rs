@@ -195,12 +195,12 @@ mod tests {
             let out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send.send((1, Ok::<(), ()>(()))).unwrap();
-            in_send.send((1, Ok(()))).unwrap();
-            in_send.send((1, Ok(()))).unwrap();
-            in_send.send((2, Ok(()))).unwrap();
-            in_send.send((2, Ok(()))).unwrap();
-            in_send.send((2, Ok(()))).unwrap();
+            in_send.send((1, Ok::<(), ()>(())));
+            in_send.send((1, Ok(())));
+            in_send.send((1, Ok(())));
+            in_send.send((2, Ok(())));
+            in_send.send((2, Ok(())));
+            in_send.send((2, Ok(())));
 
             assert_eq!(
                 out_recv.collect::<Vec<_>>().await,
@@ -233,8 +233,8 @@ mod tests {
             let error_recv = compiled.connect(&error_port);
             compiled.launch();
 
-            in_send.send((1, Ok::<(), ()>(()))).unwrap();
-            in_send.send((1, Ok(()))).unwrap();
+            in_send.send((1, Ok::<(), ()>(())));
+            in_send.send((1, Ok(())));
 
             success_recv.assert_yields_only_unordered([1]).await;
             error_recv.assert_no_more().await;
@@ -247,9 +247,9 @@ mod tests {
             let error_recv = compiled.connect(&error_port);
             compiled.launch();
 
-            in_send.send((2, Ok::<(), ()>(()))).unwrap();
-            in_send.send((2, Ok(()))).unwrap();
-            in_send.send((2, Err(()))).unwrap();
+            in_send.send((2, Ok::<(), ()>(())));
+            in_send.send((2, Ok(())));
+            in_send.send((2, Err(())));
 
             success_recv.assert_yields_only_unordered([2]).await;
             error_recv.assert_yields_only([(2, ())]).await;
@@ -262,9 +262,9 @@ mod tests {
             let error_recv = compiled.connect(&error_port);
             compiled.launch();
 
-            in_send.send((3, Ok::<(), ()>(()))).unwrap();
-            in_send.send((3, Err(()))).unwrap();
-            in_send.send((3, Err(()))).unwrap();
+            in_send.send((3, Ok::<(), ()>(())));
+            in_send.send((3, Err(())));
+            in_send.send((3, Err(())));
 
             success_recv.assert_no_more().await;
             error_recv.assert_yields_only([(3, ()), (3, ())]).await;
@@ -277,9 +277,9 @@ mod tests {
             let error_recv = compiled.connect(&error_port);
             compiled.launch();
 
-            in_send.send((4, Ok::<(), ()>(()))).unwrap();
-            in_send.send((4, Ok(()))).unwrap();
-            in_send.send((4, Ok(()))).unwrap(); // This should be ignored after quorum
+            in_send.send((4, Ok::<(), ()>(())));
+            in_send.send((4, Ok(())));
+            in_send.send((4, Ok(()))); // This should be ignored after quorum
 
             success_recv.assert_yields_only_unordered([4]).await;
             error_recv.assert_no_more().await;
@@ -292,9 +292,9 @@ mod tests {
             let error_recv = compiled.connect(&error_port);
             compiled.launch();
 
-            in_send.send((5, Err::<(), ()>(()))).unwrap();
-            in_send.send((5, Err(()))).unwrap();
-            in_send.send((5, Err(()))).unwrap();
+            in_send.send((5, Err::<(), ()>(())));
+            in_send.send((5, Err(())));
+            in_send.send((5, Err(())));
 
             success_recv.assert_no_more().await;
             error_recv
@@ -309,9 +309,9 @@ mod tests {
             let error_recv = compiled.connect(&error_port);
             compiled.launch();
 
-            in_send.send((6, Err::<(), ()>(()))).unwrap();
-            in_send.send((6, Ok(()))).unwrap();
-            in_send.send((6, Ok(()))).unwrap();
+            in_send.send((6, Err::<(), ()>(())));
+            in_send.send((6, Ok(())));
+            in_send.send((6, Ok(())));
 
             success_recv.assert_yields_only_unordered([6]).await;
             error_recv.assert_yields_only([(6, ())]).await;
@@ -335,16 +335,16 @@ mod tests {
             compiled.launch();
 
             // When min == max, we need exactly that many responses
-            in_send.send((1, Ok::<(), ()>(()))).unwrap();
-            in_send.send((1, Ok(()))).unwrap();
+            in_send.send((1, Ok::<(), ()>(())));
+            in_send.send((1, Ok(())));
 
             // This key gets exactly 2 responses (1 success, 1 error) - should not reach quorum
-            in_send.send((2, Ok(()))).unwrap();
-            in_send.send((2, Err(()))).unwrap();
+            in_send.send((2, Ok(())));
+            in_send.send((2, Err(())));
 
             // This key gets 2 successes - should reach quorum
-            in_send.send((3, Ok(()))).unwrap();
-            in_send.send((3, Ok(()))).unwrap();
+            in_send.send((3, Ok(())));
+            in_send.send((3, Ok(())));
 
             // Only keys 1 and 3 should reach quorum (both have 2 successes)
             success_recv.assert_yields_only_unordered([1, 3]).await;
@@ -368,9 +368,9 @@ mod tests {
             compiled.launch();
 
             // With min=max=1, any single success should immediately reach quorum
-            in_send.send((1, Ok::<(), ()>(()))).unwrap();
-            in_send.send((2, Err(()))).unwrap();
-            in_send.send((3, Ok(()))).unwrap();
+            in_send.send((1, Ok::<(), ()>(())));
+            in_send.send((2, Err(())));
+            in_send.send((3, Ok(())));
 
             // Keys 1 and 3 should reach quorum immediately
             success_recv.assert_yields_only_unordered([1, 3]).await;
@@ -416,18 +416,18 @@ mod tests {
             compiled.launch();
 
             // Key 1: First reaches quorum with 2 successes
-            in_send.send((1, Ok::<(), ()>(()))).unwrap();
-            in_send.send((1, Ok(()))).unwrap();
+            in_send.send((1, Ok::<(), ()>(())));
+            in_send.send((1, Ok(())));
 
             // Key 1: Additional responses after quorum - should not trigger quorum again
-            in_send.send((1, Ok(()))).unwrap();
-            in_send.send((1, Ok(()))).unwrap();
+            in_send.send((1, Ok(())));
+            in_send.send((1, Ok(())));
 
             // Key 2: Reaches quorum later with mixed responses
-            in_send.send((2, Err(()))).unwrap();
-            in_send.send((2, Ok(()))).unwrap();
-            in_send.send((2, Ok(()))).unwrap();
-            in_send.send((2, Err(()))).unwrap(); // Additional error after quorum
+            in_send.send((2, Err(())));
+            in_send.send((2, Ok(())));
+            in_send.send((2, Ok(())));
+            in_send.send((2, Err(()))); // Additional error after quorum
 
             // Each key should appear exactly once, even though they received
             // additional responses after reaching quorum
