@@ -28,7 +28,7 @@ General-purpose subpackages:
 - **Edition**: 2024
 - **Required components**: rustfmt, clippy, rust-src
 - **Targets**: wasm32-unknown-unknown, x86_64-unknown-linux-musl
-- Build on latest stable releases, but develop on pinned nightly version
+- Development uses the pinned toolchain version (1.90.0) which is automatically detected by cargo
 
 ## Code Style and Linting
 
