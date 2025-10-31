@@ -3,9 +3,9 @@
 use std::iter::FusedIterator;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use std::time::{Duration, Instant};
 
 use pin_project_lite::pin_project;
+use web_time::{Duration, Instant};
 
 use super::graph::Dfir;
 use super::{HandoffId, SubgraphId};

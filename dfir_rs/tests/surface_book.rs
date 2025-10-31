@@ -1,6 +1,5 @@
 use dfir_rs::assert_graphvis_snapshots;
 use multiplatform_test::multiplatform_test;
-use tokio::time::Instant;
 
 #[multiplatform_test]
 fn test_surface_flows_1() {
@@ -16,9 +15,8 @@ fn test_surface_flows_1() {
 
 #[dfir_rs::test]
 async fn test_source_interval() {
-    use std::time::Duration;
-
     use dfir_rs::dfir_syntax;
+    use web_time::{Duration, Instant};
 
     let mut hf = dfir_syntax! {
         source_interval(Duration::from_secs(1))

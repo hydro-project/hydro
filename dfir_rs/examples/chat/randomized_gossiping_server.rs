@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::net::SocketAddr;
-use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use dfir_macro::dfir_syntax;
@@ -9,6 +8,7 @@ use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
+use web_time::Duration;
 
 use crate::Role::{
     Client, GossipingServer1, GossipingServer2, GossipingServer3, GossipingServer4,
