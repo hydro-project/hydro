@@ -38,3 +38,6 @@ jobs:
 
       - name: Build Website
         run: bash build_docs.bash x86_64-linux-gnu-ubuntu-20.04
+
+      - name: Check README Links
+        run: bash scripts/check_readme_links.sh
