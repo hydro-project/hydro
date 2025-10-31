@@ -29,7 +29,7 @@ pub trait CanReceive<T> {
 pub trait HandoffMeta: Any {
     /// Return if the handoff has no items ready to be read.
     fn is_empty(&self) -> bool {
-        self.len() <= 0
+        0 == self.len()
     }
 
     /// Return the number of items ready to be read out of the handoff.
