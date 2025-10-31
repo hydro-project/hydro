@@ -1182,7 +1182,7 @@ mod tests {
             compiled.launch();
             assert_eq!(out_recv.next().await.unwrap(), 0);
 
-            in_send.send(123).unwrap();
+            in_send.send(123);
 
             assert_eq!(out_recv.next().await.unwrap(), 123);
         });

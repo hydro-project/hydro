@@ -25,7 +25,7 @@ fn sim_crash_in_output() {
         let mut out_recv = compiled.connect(&out_port);
         compiled.launch();
 
-        in_send.send(bolero::any::<Vec<u8>>().into()).unwrap();
+        in_send.send(bolero::any::<Vec<u8>>().into());
 
         let x = out_recv.next().await.unwrap();
         if !x.is_empty() && x[0] == 42 && x.len() > 1 && x[1] == 43 && x.len() > 2 && x[2] == 44 {
@@ -54,7 +54,7 @@ fn sim_crash_in_output_with_filter() {
         let mut out_recv = compiled.connect(&out_port);
         compiled.launch();
 
-        in_send.send(bolero::any::<Vec<u8>>().into()).unwrap();
+        in_send.send(bolero::any::<Vec<u8>>().into());
 
         if let Some(x) = out_recv.next().await
             && x.len() > 2
@@ -85,9 +85,9 @@ fn sim_batch_preserves_order_fuzzed() {
         let mut out_recv = compiled.connect(&out_port);
         compiled.launch();
 
-        in_send.send(1).unwrap();
-        in_send.send(2).unwrap();
-        in_send.send(3).unwrap();
+        in_send.send(1);
+        in_send.send(2);
+        in_send.send(3);
 
         assert_eq!(out_recv.next().await.unwrap(), 1);
         assert_eq!(out_recv.next().await.unwrap(), 2);
@@ -128,13 +128,13 @@ fn sim_crash_with_fuzzed_batching() {
         compiled.launch();
 
         for _ in 0..1000 {
-            in_send.send(456).unwrap(); // the fuzzer should put these some batches
+            in_send.send(456); // the fuzzer should put these some batches
         }
 
-        in_send.send(100).unwrap();
-        in_send.send(23).unwrap(); // the fuzzer must put these in one batch
+        in_send.send(100);
+        in_send.send(23); // the fuzzer must put these in one batch
 
-        in_send.send(99).unwrap(); // the fuzzer must put this in a later batch
+        in_send.send(99); // the fuzzer must put this in a later batch
 
         while let Some(out) = out_recv.next().await {
             if out == 456 {
@@ -173,13 +173,13 @@ fn trace_for_fuzzed_batching() {
             let schedule = compiled.schedule_with_logger(&mut log_out);
             let rest = async move {
                 for _ in 0..1000 {
-                    in_send.send(456).unwrap(); // the fuzzer should put these some batches
+                    in_send.send(456); // the fuzzer should put these some batches
                 }
 
-                in_send.send(100).unwrap();
-                in_send.send(23).unwrap(); // the fuzzer must put these in one batch
+                in_send.send(100);
+                in_send.send(23); // the fuzzer must put these in one batch
 
-                in_send.send(99).unwrap(); // the fuzzer must put this in a later batch
+                in_send.send(99); // the fuzzer must put this in a later batch
 
                 while let Some(out) = out_recv.next().await {
                     if out == 456 {
