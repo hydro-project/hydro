@@ -17,6 +17,7 @@ ctor = "0.2"
 hydro_deploy = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
 hydro_lang = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}", features = [
     "deploy",
+    "sim",
     "viz",
 ] }
 tokio = { version = "1.29.0", features = ["full"] }

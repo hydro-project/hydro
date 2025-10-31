@@ -1513,9 +1513,9 @@ mod tests {
 
             instance.launch();
 
-            input.send((1, 123)).unwrap();
-            input.send((1, 456)).unwrap();
-            input.send((2, 123)).unwrap();
+            input.send((1, 123));
+            input.send((1, 456));
+            input.send((2, 123));
 
             let all = output.collect_sorted::<Vec<_>>().await;
             assert_eq!(all.last().unwrap(), &(2, 1));

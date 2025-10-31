@@ -1,0 +1,21 @@
+# Simulation Testing
+Hydro comes with a built-in deterministic simulation environment that lets you test your application in various distributed scenarios and guard against concurrency bugs and race conditions. Tests written with the simulator are run against various distributed schedules to test possible concurrent executions.
+
+In many cases, the Hydro simulator can perform **exhaustive** checks, which ensure that your application will behave correctly in _all_ possible distributed executions. For particularly complex tests where there are too many scenarios to check, the Hydro simulator can use [coverage-guided fuzzing](https://en.wikipedia.org/wiki/Fuzzing) to _intellgently_ explore the space of executions and find bugs.
+
+Writing a simulation test involves three steps:
+1. Defining your Hydro application, with regular Hydro APIs
+2. Creating external inputs / outputs that you will use in the test
+3. Writing a test that sends inputs and makes assertions about the output
+
+## Hydro Feature Support
+The simulator uses the exact same Hydro code you will run in production, and requires no changes. The simulator supports the vast majority of Hydro APIs, with some limitations around non-deterministic observations and timing. The following table highlights areas of support
+
+| Feature                       | Support Level       | Notes                                      |
+|-------------------------------|---------------------|--------------------------------------------|
+| Ordered Transformations              | Full                | `map`, `filter`, `fold`, `scan`, etc. across all live collections     |
+| Networking                    | Full                | Simulated networking is supported for both `Process` and `Cluster` locations         |
+| Batching / Snapshotting             | Partial             | Supported on all live collections except `Optional` |
+| Unordered Reductions                        | Partial             | Built-in operators like `count` are supported, but not arbitrary `{fold/reduce}_commutative` |
+| Non-Deterministic Observations | Limited             | `assume_ordering::<TotalOrder>` and `assume_retries::<ExactlyOnce>` are not supported |
+

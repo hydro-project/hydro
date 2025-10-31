@@ -66,6 +66,10 @@ const config = {
           editUrl: "https://github.com/hydro-project/hydro/tree/main/docs/",
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
+          admonitions: {
+            keywords: ["learn"],
+            extendDefaults: true,
+          }
         },
         // blog: {
         //   showReadingTime: true,

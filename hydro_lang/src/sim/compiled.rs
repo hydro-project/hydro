@@ -2,6 +2,7 @@
 
 use core::fmt;
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 use std::path::Path;
@@ -445,7 +446,7 @@ impl<'a, T, O: Ordering, R: Retries> SimReceiver<'a, T, O, R> {
     /// Asserts that the stream has ended and no more messages can possibly arrive.
     pub async fn assert_no_more(mut self)
     where
-        T: std::fmt::Debug,
+        T: Debug,
     {
         if let Some(next) = self.0.next().await {
             panic!("Stream yielded unexpected message: {:?}", next);
@@ -468,11 +469,11 @@ impl<'a, T> SimReceiver<'a, T, TotalOrder, ExactlyOnce> {
 
     /// Asserts that the stream yields exactly the expected sequence of messages, in order.
     /// This does not check that the stream ends, use [`Self::assert_yields_only`] for that.
-    pub async fn assert_yields(&mut self, expected: impl IntoIterator<Item = T>)
+    pub async fn assert_yields<T2: Debug>(&mut self, expected: impl IntoIterator<Item = T2>)
     where
-        T: std::fmt::Debug + PartialEq,
+        T: Debug + PartialEq<T2>,
     {
-        let mut expected: VecDeque<T> = expected.into_iter().collect();
+        let mut expected: VecDeque<T2> = expected.into_iter().collect();
 
         while !expected.is_empty() {
             if let Some(next) = self.next().await {
@@ -485,9 +486,9 @@ impl<'a, T> SimReceiver<'a, T, TotalOrder, ExactlyOnce> {
 
     /// Asserts that the stream yields only the expected sequence of messages, in order,
     /// and then ends.
-    pub async fn assert_yields_only(mut self, expected: impl IntoIterator<Item = T>)
+    pub async fn assert_yields_only<T2: Debug>(mut self, expected: impl IntoIterator<Item = T2>)
     where
-        T: std::fmt::Debug + PartialEq,
+        T: Debug + PartialEq<T2>,
     {
         self.assert_yields(expected).await;
         self.assert_no_more().await;
@@ -508,15 +509,17 @@ impl<'a, T> SimReceiver<'a, T, NoOrder, ExactlyOnce> {
 
     /// Asserts that the stream yields exactly the expected sequence of messages, in some order.
     /// This does not check that the stream ends, use [`Self::assert_yields_only_unordered`] for that.
-    pub async fn assert_yields_unordered(&mut self, expected: impl IntoIterator<Item = T>)
-    where
-        T: std::fmt::Debug + PartialEq,
+    pub async fn assert_yields_unordered<T2: Debug>(
+        &mut self,
+        expected: impl IntoIterator<Item = T2>,
+    ) where
+        T: Debug + PartialEq<T2>,
     {
-        let mut expected: Vec<T> = expected.into_iter().collect();
+        let mut expected: Vec<T2> = expected.into_iter().collect();
 
         while !expected.is_empty() {
             if let Some(next) = self.0.next().await {
-                let idx = expected.iter().enumerate().find(|(_, e)| *e == &next);
+                let idx = expected.iter().enumerate().find(|(_, e)| &next == *e);
                 if let Some((i, _)) = idx {
                     expected.swap_remove(i);
                 } else {
@@ -530,9 +533,11 @@ impl<'a, T> SimReceiver<'a, T, NoOrder, ExactlyOnce> {
 
     /// Asserts that the stream yields only the expected sequence of messages, in some order,
     /// and then ends.
-    pub async fn assert_yields_only_unordered(mut self, expected: impl IntoIterator<Item = T>)
-    where
-        T: std::fmt::Debug + PartialEq,
+    pub async fn assert_yields_only_unordered<T2: Debug>(
+        mut self,
+        expected: impl IntoIterator<Item = T2>,
+    ) where
+        T: Debug + PartialEq<T2>,
     {
         self.assert_yields_unordered(expected).await;
         self.assert_no_more().await;
@@ -566,20 +571,16 @@ pub struct SimSender<T, O: Ordering, R: Retries>(
 impl<T> SimSender<T, TotalOrder, ExactlyOnce> {
     /// Sends a message to the external bincode sink. The message will be asynchronously processed
     /// as part of the simulation.
-    pub fn send(&self, t: T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>> {
-        (self.0)(t)
+    pub fn send(&self, t: T) {
+        (self.0)(t).unwrap()
     }
 
     /// Sends several messages to the external bincode sink. The messages will be asynchronously
     /// processed as part of the simulation.
-    pub fn send_many<I: IntoIterator<Item = T>>(
-        &self,
-        iter: I,
-    ) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>> {
+    pub fn send_many<I: IntoIterator<Item = T>>(&self, iter: I) {
         for t in iter {
-            (self.0)(t)?;
+            (self.0)(t).unwrap();
         }
-        Ok(())
     }
 }
 
