@@ -906,10 +906,10 @@ mod tests {
             let out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send.send(1).unwrap();
-            in_send.send(2).unwrap();
-            in_send.send(3).unwrap();
-            in_send.send(4).unwrap();
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
+            in_send.send(4);
 
             out_recv
                 .assert_yields_only([(0, 1), (1, 2), (2, 3), (3, 4)])
@@ -942,10 +942,10 @@ mod tests {
             let mut out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send.send(1).unwrap();
-            in_send.send(2).unwrap();
-            in_send.send(3).unwrap();
-            in_send.send(4).unwrap();
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
+            in_send.send(4);
 
             let mut next_expected = 0;
             for i in 1..=4 {

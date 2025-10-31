@@ -608,9 +608,9 @@ mod tests {
             let out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send.send(()).unwrap();
-            in_send.send(()).unwrap();
-            in_send.send(()).unwrap();
+            in_send.send(());
+            in_send.send(());
+            in_send.send(());
 
             let received = out_recv.collect::<Vec<_>>().await;
             assert!(received.into_iter().sum::<usize>() == 3);

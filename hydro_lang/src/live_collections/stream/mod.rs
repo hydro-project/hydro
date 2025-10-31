@@ -3134,9 +3134,9 @@ mod tests {
             let mut out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send.send(()).unwrap();
-            in_send.send(()).unwrap();
-            in_send.send(()).unwrap();
+            in_send.send(());
+            in_send.send(());
+            in_send.send(());
 
             assert_eq!(out_recv.next().await.unwrap(), 3); // fails with nondet batching
         });
@@ -3161,9 +3161,9 @@ mod tests {
             let out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send.send(1).unwrap();
-            in_send.send(2).unwrap();
-            in_send.send(3).unwrap();
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
 
             out_recv.assert_yields_only([1, 2, 3]).await;
         });
