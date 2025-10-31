@@ -27,6 +27,7 @@ echo "Checking README links against local website build..."
 echo
 
 # Extract all hydro.run URLs from README
+# Pattern matches URLs until we hit a quote, paren, or whitespace delimiter
 urls=$(grep -o 'https://hydro.run[^")]*' "$README_FILE" | sort -u)
 
 if [ -z "$urls" ]; then
@@ -59,7 +60,8 @@ while IFS= read -r url; do
         # Path ends with slash, it's a directory/page
         file_to_check="$BUILD_DIR${path}index.html"
     else
-        # Path without trailing slash, check both with and without index.html
+        # Path without trailing slash - try multiple patterns to handle different URL conventions
+        # Docusaurus can serve /docs/hydro from either /docs/hydro/index.html or /docs/hydro.html
         if [ -f "$BUILD_DIR${path}/index.html" ]; then
             file_to_check="$BUILD_DIR${path}/index.html"
         elif [ -f "$BUILD_DIR${path}.html" ]; then
@@ -67,6 +69,7 @@ while IFS= read -r url; do
         elif [ -f "$BUILD_DIR${path}" ]; then
             file_to_check="$BUILD_DIR${path}"
         else
+            # Default to index.html pattern (will fail validation if not found)
             file_to_check="$BUILD_DIR${path}/index.html"
         fi
     fi
