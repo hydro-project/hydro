@@ -23,18 +23,16 @@ use crate::staging_util::get_this_crate;
 // same as the one in `hydro_std`, but internal use only
 fn track_membership<'a, C, L: Location<'a> + NoTick>(
     membership: KeyedStream<MemberId<C>, MembershipEvent, L, Unbounded>,
-) -> KeyedSingleton<MemberId<C>, (), L, Unbounded> {
-    membership
-        .fold(
-            q!(|| false),
-            q!(|present, event| {
-                match event {
-                    MembershipEvent::Joined => *present = true,
-                    MembershipEvent::Left => *present = false,
-                }
-            }),
-        )
-        .filter_map(q!(|v| if v { Some(()) } else { None }))
+) -> KeyedSingleton<MemberId<C>, bool, L, Unbounded> {
+    membership.fold(
+        q!(|| false),
+        q!(|present, event| {
+            match event {
+                MembershipEvent::Joined => *present = true,
+                MembershipEvent::Left => *present = false,
+            }
+        }),
+    )
 }
 
 fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr {
@@ -42,7 +40,7 @@ fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr 
 
     if is_demux {
         parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::location::MemberId<_>, #t_type), _>(
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_>, #t_type), _>(
                 |(id, data)| {
                     (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
@@ -186,7 +184,9 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     {
         let ids = track_membership(self.location.source_cluster_members(other));
         let join_tick = self.location.tick();
-        let current_members = ids.snapshot(&join_tick, nondet_membership);
+        let current_members = ids
+            .snapshot(&join_tick, nondet_membership)
+            .filter(q!(|b| *b));
 
         self.batch(&join_tick, nondet_membership)
             .repeat_with_keys(current_members)
@@ -358,6 +358,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
         let join_tick = self.location.tick();
         let current_members = ids
             .snapshot(&join_tick, nondet_membership)
+            .filter(q!(|b| *b))
             .keys()
             .assume_ordering(nondet_membership)
             .collect_vec();
@@ -510,7 +511,9 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     {
         let ids = track_membership(self.location.source_cluster_members(other));
         let join_tick = self.location.tick();
-        let current_members = ids.snapshot(&join_tick, nondet_membership);
+        let current_members = ids
+            .snapshot(&join_tick, nondet_membership)
+            .filter(q!(|b| *b));
 
         self.batch(&join_tick, nondet_membership)
             .repeat_with_keys(current_members)
@@ -573,5 +576,250 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         T: Serialize + DeserializeOwned,
     {
         self.into_keyed().demux_bincode(other)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use stageleft::q;
+
+    use crate::location::{Location, MemberId};
+    use crate::nondet::nondet;
+    use crate::prelude::FlowBuilder;
+
+    #[test]
+    fn sim_send_bincode_o2o() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode(&external);
+
+        let out_port = input
+            .send_bincode(&node2)
+            .batch(&node2.tick(), nondet!(/** test */))
+            .count()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let instances = flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send(()).unwrap();
+            in_send.send(()).unwrap();
+            in_send.send(()).unwrap();
+
+            let received = out_recv.collect::<Vec<_>>().await;
+            assert!(received.into_iter().sum::<usize>() == 3);
+        });
+
+        assert_eq!(instances, 4); // 2^{3 - 1}
+    }
+
+    #[test]
+    fn sim_send_bincode_m2o() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let input = cluster.source_iter(q!(vec![1]));
+
+        let out_port = input
+            .send_bincode(&node)
+            .entries()
+            .batch(&node.tick(), nondet!(/** test */))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let instances =
+            flow.sim()
+                .with_cluster_size(&cluster, 4)
+                .exhaustive(async |mut compiled| {
+                    let out_recv = compiled.connect(&out_port);
+                    compiled.launch();
+
+                    out_recv
+                        .assert_yields_only_unordered(vec![
+                            (MemberId::from_raw(0), 1),
+                            (MemberId::from_raw(1), 1),
+                            (MemberId::from_raw(2), 1),
+                            (MemberId::from_raw(3), 1),
+                        ])
+                        .await
+                });
+
+        assert_eq!(instances, 75); // ∑ (k=1 to 4) S(4,k) × k! = 75
+    }
+
+    #[test]
+    fn sim_send_bincode_multiple_m2o() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let cluster1 = flow.cluster::<()>();
+        let cluster2 = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let out_port_1 = cluster1
+            .source_iter(q!(vec![1]))
+            .send_bincode(&node)
+            .entries()
+            .send_bincode_external(&external);
+
+        let out_port_2 = cluster2
+            .source_iter(q!(vec![2]))
+            .send_bincode(&node)
+            .entries()
+            .send_bincode_external(&external);
+
+        let instances = flow
+            .sim()
+            .with_cluster_size(&cluster1, 3)
+            .with_cluster_size(&cluster2, 4)
+            .exhaustive(async |mut compiled| {
+                let out_recv_1 = compiled.connect(&out_port_1);
+                let out_recv_2 = compiled.connect(&out_port_2);
+                compiled.launch();
+
+                out_recv_1
+                    .assert_yields_only_unordered(vec![
+                        (MemberId::from_raw(0), 1),
+                        (MemberId::from_raw(1), 1),
+                        (MemberId::from_raw(2), 1),
+                    ])
+                    .await;
+
+                out_recv_2
+                    .assert_yields_only_unordered(vec![
+                        (MemberId::from_raw(0), 2),
+                        (MemberId::from_raw(1), 2),
+                        (MemberId::from_raw(2), 2),
+                        (MemberId::from_raw(3), 2),
+                    ])
+                    .await;
+            });
+
+        assert_eq!(instances, 1);
+    }
+
+    #[test]
+    fn sim_send_bincode_o2m() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!(vec![
+            (MemberId::from_raw(0), 123),
+            (MemberId::from_raw(1), 456),
+        ]));
+
+        let out_port = input
+            .demux_bincode(&cluster)
+            .map(q!(|x| x + 1))
+            .send_bincode(&node)
+            .entries()
+            .send_bincode_external(&external);
+
+        flow.sim()
+            .with_cluster_size(&cluster, 4)
+            .exhaustive(async |mut compiled| {
+                let out_recv = compiled.connect(&out_port);
+                compiled.launch();
+
+                out_recv
+                    .assert_yields_only_unordered(vec![
+                        (MemberId::from_raw(0), 124),
+                        (MemberId::from_raw(1), 457),
+                    ])
+                    .await
+            });
+    }
+
+    #[test]
+    fn sim_broadcast_bincode_o2m() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!(vec![123, 456]));
+
+        let out_port = input
+            .broadcast_bincode(&cluster, nondet!(/** test */))
+            .map(q!(|x| x + 1))
+            .send_bincode(&node)
+            .entries()
+            .send_bincode_external(&external);
+
+        let mut c_1_produced = false;
+        let mut c_2_produced = false;
+
+        flow.sim()
+            .with_cluster_size(&cluster, 2)
+            .exhaustive(async |mut compiled| {
+                let out_recv = compiled.connect(&out_port);
+                compiled.launch();
+
+                let all_out = out_recv.collect_sorted::<Vec<_>>().await;
+
+                // check that order is preserved
+                if all_out.contains(&(MemberId::from_raw(0), 124)) {
+                    assert!(all_out.contains(&(MemberId::from_raw(0), 457)));
+                    c_1_produced = true;
+                }
+
+                if all_out.contains(&(MemberId::from_raw(1), 124)) {
+                    assert!(all_out.contains(&(MemberId::from_raw(1), 457)));
+                    c_2_produced = true;
+                }
+            });
+
+        assert!(c_1_produced && c_2_produced); // in at least one execution each, the cluster member received both messages
+    }
+
+    #[test]
+    fn sim_send_bincode_m2m() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!(vec![
+            (MemberId::from_raw(0), 123),
+            (MemberId::from_raw(1), 456),
+        ]));
+
+        let out_port = input
+            .demux_bincode(&cluster)
+            .map(q!(|x| x + 1))
+            .flat_map_ordered(q!(|x| vec![
+                (MemberId::from_raw(0), x),
+                (MemberId::from_raw(1), x),
+            ]))
+            .demux_bincode(&cluster)
+            .entries()
+            .send_bincode(&node)
+            .entries()
+            .send_bincode_external(&external);
+
+        flow.sim()
+            .with_cluster_size(&cluster, 4)
+            .exhaustive(async |mut compiled| {
+                let out_recv = compiled.connect(&out_port);
+                compiled.launch();
+
+                out_recv
+                    .assert_yields_only_unordered(vec![
+                        (MemberId::from_raw(0), (MemberId::from_raw(0), 124)),
+                        (MemberId::from_raw(0), (MemberId::from_raw(1), 457)),
+                        (MemberId::from_raw(1), (MemberId::from_raw(0), 124)),
+                        (MemberId::from_raw(1), (MemberId::from_raw(1), 457)),
+                    ])
+                    .await
+            });
     }
 }

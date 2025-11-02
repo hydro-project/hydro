@@ -39,7 +39,7 @@ export default function Home() {
               }}
             >
               <Link
-                to="/docs/hydro/quickstart/"
+                to="/docs/hydro/learn/quickstart/"
                 className="button button--primary button--lg"
                 style={{
                   margin: "10px",
@@ -52,7 +52,7 @@ export default function Home() {
               </Link>
 
               <Link
-                to="/docs/hydro/"
+                to="/docs/hydro/reference/"
                 className="button button--outline button--secondary button--lg"
                 style={{
                   margin: "10px",
@@ -78,7 +78,8 @@ export default function Home() {
             <div className={styles["inDevPanel"]}>
               <b>In Preview (<a href={"https://github.com/hydro-project/hydro/pull/2158"}>#2158</a>)</b>
               <p style={{
-                fontSize: "0.9em",
+                fontSize: "0.95em",
+                marginTop: "5px",
                 marginBottom: 0,
               }}>Hydro offers built-in <b>deterministic simulation testing</b>, which lets you simulate distributed programs on your laptop and use cutting-edge fuzzers to quickly find complex edge-cases.</p>
             </div>
@@ -149,6 +150,7 @@ export default function Home() {
               <b>Coming Soon (<a href={"https://github.com/hydro-project/hydro/issues/1890"}>#1890</a>)</b>
               <p style={{
                 fontSize: "0.9em",
+                marginTop: "5px",
                 marginBottom: 0,
               }}>We are developing an io-uring backend for DFIR that enables even higher network performance and zero-copy I/O, all without any changes to your high-level Hydro logic.</p>
             </div>

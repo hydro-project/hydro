@@ -217,24 +217,41 @@ impl<'a> BuiltFlow<'a> {
     /// Creates a simulation for this builder, which can be used to run deterministic simulations
     /// of the Hydro program.
     pub fn sim(mut self) -> SimFlow<'a> {
-        use std::cell::RefCell;
+        use std::cell::{Cell, RefCell};
         use std::rc::Rc;
 
         use crate::sim::graph::SimExternal;
 
         let external_ports = Rc::new(RefCell::new((vec![], 0)));
+
+        let global_port_counter = Rc::new(Cell::new(0));
         let processes = self
             .process_id_name
             .iter()
-            .map(|id| (id.0, SimNode {}))
+            .map(|id| {
+                (
+                    id.0,
+                    SimNode {
+                        port_counter: global_port_counter.clone(),
+                    },
+                )
+            })
             .collect();
 
         let clusters = self
             .cluster_id_name
             .iter()
-            .map(|id| (id.0, SimNode {}))
+            .map(|id| {
+                (
+                    id.0,
+                    SimNode {
+                        port_counter: global_port_counter.clone(),
+                    },
+                )
+            })
             .collect();
 
+        let all_external_registered = Rc::new(RefCell::new(HashMap::new()));
         let externals = self
             .external_id_name
             .iter()
@@ -243,7 +260,7 @@ impl<'a> BuiltFlow<'a> {
                     id.0,
                     SimExternal {
                         external_ports: external_ports.clone(),
-                        registered: RefCell::new(HashMap::new()),
+                        registered: all_external_registered.clone(),
                     },
                 )
             })
@@ -254,7 +271,9 @@ impl<'a> BuiltFlow<'a> {
             external_ports,
             processes,
             clusters,
+            cluster_max_sizes: HashMap::new(),
             externals,
+            external_registered: all_external_registered.clone(),
             _process_id_name: std::mem::take(&mut self.process_id_name),
             _external_id_name: std::mem::take(&mut self.external_id_name),
             _cluster_id_name: std::mem::take(&mut self.cluster_id_name),

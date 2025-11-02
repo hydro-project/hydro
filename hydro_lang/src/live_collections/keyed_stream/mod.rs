@@ -2061,15 +2061,19 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
+    #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
     use stageleft::q;
 
     use crate::compile::builder::FlowBuilder;
+    #[cfg(feature = "deploy")]
     use crate::live_collections::stream::ExactlyOnce;
     use crate::location::Location;
     use crate::nondet::nondet;
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn reduce_watermark_filter() {
         let mut deployment = Deployment::new();
@@ -2109,6 +2113,7 @@ mod tests {
         assert_eq!(out.next().await.unwrap(), (2, 204));
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn reduce_watermark_garbage_collect() {
         let mut deployment = Deployment::new();
@@ -2169,5 +2174,70 @@ mod tests {
         tick_send.send(()).await.unwrap();
 
         assert_eq!(out_recv.next().await.unwrap(), (3, 103));
+    }
+
+    #[test]
+    #[should_panic]
+    fn sim_batch_nondet_size() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!([(1, 1), (1, 2), (2, 3)])).into_keyed();
+
+        let tick = node.tick();
+        let out_port = input
+            .batch(&tick, nondet!(/** test */))
+            .fold(q!(|| vec![]), q!(|acc, v| acc.push(v)))
+            .entries()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            out_recv
+                .assert_yields_only_unordered([(1, vec![1, 2])])
+                .await;
+        });
+    }
+
+    #[test]
+    fn sim_batch_preserves_group_order() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!([(1, 1), (1, 2), (2, 3)])).into_keyed();
+
+        let tick = node.tick();
+        let out_port = input
+            .batch(&tick, nondet!(/** test */))
+            .all_ticks()
+            .fold_early_stop(
+                q!(|| 0),
+                q!(|acc, v| {
+                    *acc = std::cmp::max(v, *acc);
+                    *acc >= 2
+                }),
+            )
+            .entries()
+            .send_bincode_external(&external);
+
+        let instances = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            out_recv
+                .assert_yields_only_unordered([(1, 2), (2, 3)])
+                .await;
+        });
+
+        assert_eq!(instances, 8);
+        // - three cases: all three in a separate tick (pick where (2, 3) is)
+        // - two cases: (1, 1) and (1, 2) together, (2, 3) before or after
+        // - two cases: (1, 1) and (1, 2) separate, (2, 3) grouped with one of them
+        // - one case: all three together
     }
 }

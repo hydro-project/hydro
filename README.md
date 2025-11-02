@@ -6,14 +6,14 @@
     <a href="https://docs.rs/hydro_lang/"><img src="https://img.shields.io/badge/docs.rs-Hydro-blue?style=flat-square&logo=read-the-docs&logoColor=white" alt="Docs.rs"></a>
 </p>
 
-Hydro is a high-level distributed programming framework for Rust. Hydro can help you quickly write scalable distributed services that are correct by construction. Much like Rust helps with memory safety, Hydro helps with [**distributed safety**](https://hydro.run/docs/hydro/correctness).
+Hydro is a high-level distributed programming framework for Rust. Hydro can help you quickly write scalable distributed services that are correct by construction. Much like Rust helps with memory safety, Hydro helps with [**distributed safety**](https://hydro.run/docs/hydro/reference/correctness).
 
 Hydro integrates naturally with standard Rust constructs and IDEs, providing types and programming constructs for ensuring distributed safety. Under the covers, Hydro is powered by the Dataflow Intermediate Representation (DFIR), a compiler and low-level runtime for stream processing. DFIR enables automatic vectorization and efficient scheduling without restricting your application logic.
 
 <b>Get started today at <a href="https://hydro.run">hydro.run</a>!</b>
 
 # Learn More
-- **Docs**: There are docs for the [high-level Hydro framework](https://hydro.run/docs/hydro/) and the low-level dataflow IR, [DFIR](https://hydro.run/docs/dfir), as well as the [Hydro Deploy](https://hydro.run/docs/deploy) framework for launching Hydro programs.
+- **Docs**: There are docs for the [high-level Hydro framework](https://hydro.run/docs/hydro/reference/) and the low-level dataflow IR, [DFIR](https://hydro.run/docs/dfir), as well as the [Hydro Deploy](https://hydro.run/docs/hydro/reference/deploy/) framework for launching Hydro programs.
 
 - **Research Papers**: Our [research publications](https://hydro.run/research) are available on the project website. Some notable selections:
     - The original Hydro vision paper from CIDR 2021: [New Directions in Cloud Programming](https://hydro.run/papers/new-directions.pdf)

@@ -49,6 +49,18 @@ impl<Tag> Clone for MemberId<Tag> {
 
 impl<Tag> Copy for MemberId<Tag> {}
 
+impl<Tag> PartialOrd for MemberId<Tag> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<Tag> Ord for MemberId<Tag> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.raw_id.cmp(&other.raw_id)
+    }
+}
+
 impl<Tag> Serialize for MemberId<Tag> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

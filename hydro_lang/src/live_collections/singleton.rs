@@ -1058,15 +1058,19 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
+    #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
     use stageleft::q;
 
     use crate::compile::builder::FlowBuilder;
+    #[cfg(feature = "deploy")]
     use crate::live_collections::stream::ExactlyOnce;
     use crate::location::Location;
     use crate::nondet::nondet;
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn tick_cycle_cardinality() {
         let mut deployment = Deployment::new();

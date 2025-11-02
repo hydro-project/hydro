@@ -1723,17 +1723,20 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbo
     where
         R: MinRetries<R2>,
     {
-        let tick = self.location.tick();
-        // Because the outputs are unordered, we can interleave batches from both streams.
-        let nondet_batch_interleaving = nondet!(/** output stream is NoOrder, can interleave */);
-        self.batch(&tick, nondet_batch_interleaving)
-            .weakest_ordering()
-            .chain(
-                other
-                    .batch(&tick, nondet_batch_interleaving)
-                    .weakest_ordering(),
-            )
-            .all_ticks()
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Chain {
+                first: Box::new(self.ir_node.into_inner()),
+                second: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    L,
+                    Unbounded,
+                    NoOrder,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
+            },
+        )
     }
 }
 
@@ -1904,7 +1907,7 @@ where
     {
         keys.keys()
             .weaken_retries()
-            .assume_ordering::<TotalOrder>(
+            .assume_ordering_trusted::<TotalOrder>(
                 nondet!(/** keyed stream does not depend on ordering of keys */),
             )
             .cross_product_nested_loop(self)
@@ -2831,26 +2834,36 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
+    #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
+    #[cfg(feature = "deploy")]
     use serde::{Deserialize, Serialize};
+    #[cfg(feature = "deploy")]
     use stageleft::q;
 
     use crate::compile::builder::FlowBuilder;
-    use crate::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
+    #[cfg(feature = "deploy")]
+    use crate::live_collections::stream::ExactlyOnce;
+    use crate::live_collections::stream::{NoOrder, TotalOrder};
     use crate::location::Location;
     use crate::nondet::nondet;
 
     mod backtrace_chained_ops;
 
+    #[cfg(feature = "deploy")]
     struct P1 {}
+    #[cfg(feature = "deploy")]
     struct P2 {}
 
+    #[cfg(feature = "deploy")]
     #[derive(Serialize, Deserialize, Debug)]
     struct SendOverNetwork {
         n: u32,
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn first_ten_distributed() {
         let mut deployment = Deployment::new();
@@ -2883,6 +2896,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn first_cardinality() {
         let mut deployment = Deployment::new();
@@ -2916,6 +2930,7 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), 1);
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn unbounded_reduce_remembers_state() {
         let mut deployment = Deployment::new();
@@ -2949,6 +2964,7 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), 3);
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn atomic_fold_replays_each_tick() {
         let mut deployment = Deployment::new();
@@ -2991,6 +3007,7 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), (2, 6));
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn unbounded_scan_remembers_state() {
         let mut deployment = Deployment::new();
@@ -3029,6 +3046,7 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), 3);
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn unbounded_enumerate_remembers_state() {
         let mut deployment = Deployment::new();
@@ -3059,6 +3077,7 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), (1, 2));
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn unbounded_unique_remembers_state() {
         let mut deployment = Deployment::new();
