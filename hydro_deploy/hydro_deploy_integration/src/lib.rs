@@ -23,6 +23,7 @@ use tokio_stream::wrappers::TcpListenerStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 pub mod multi_connection;
+pub mod single_connection;
 
 pub type InitConfig = (HashMap<String, ServerBindConfig>, Option<String>);
 

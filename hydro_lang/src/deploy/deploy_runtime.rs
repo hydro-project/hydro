@@ -114,19 +114,3 @@ pub fn deploy_m2m(
         },
     )
 }
-
-pub fn deploy_e2o(
-    env: RuntimeData<&DeployPorts<HydroMeta>>,
-    _e1_port: &str,
-    p2_port: &str,
-) -> syn::Expr {
-    q!(env.port(p2_port).connect::<ConnectedDirect>().into_source()).splice_untyped_ctx(&())
-}
-
-pub fn deploy_o2e(
-    env: RuntimeData<&DeployPorts<HydroMeta>>,
-    p1_port: &str,
-    _e2_port: &str,
-) -> syn::Expr {
-    q!(env.port(p1_port).connect::<ConnectedDirect>().into_sink()).splice_untyped_ctx(&())
-}

@@ -240,6 +240,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             to_external_id: other.id,
             to_key: external_key,
             to_many: false,
+            unpaired: true,
             serialize_fn: serialize_pipeline.map(|e| e.into()),
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(self.ir_node.into_inner()),
