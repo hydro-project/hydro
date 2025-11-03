@@ -7,57 +7,42 @@ expression: built.ir()
         ident: Ident {
             sym: cycle_0,
         },
-        input: Map {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , u32 > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | virtual_id | virtual_id + 1 }),
+        input: FilterMap {
+            f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , core :: option :: Option < u32 > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let num_clients_per_node__free = 100usize ; move | virtual_id | { if virtual_id < num_clients_per_node__free as u32 { Some (virtual_id + 1) } else { None } } }),
             input: Tee {
-                inner: <tee 0>: Cast {
-                    inner: ChainFirst {
-                        first: DeferTick {
-                            input: CycleSource {
-                                ident: Ident {
-                                    sym: cycle_0,
-                                },
-                                metadata: HydroIrMetadata {
-                                    location_kind: Tick(
-                                        0,
-                                        Cluster(
-                                            2,
-                                        ),
-                                    ),
-                                    collection_kind: Singleton {
-                                        bound: Bounded,
-                                        element_type: u32,
-                                    },
-                                },
-                            },
+                inner: <tee 0>: ChainFirst {
+                    first: Batch {
+                        inner: Source {
+                            source: Iter(
+                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; 0u32 } ; [e__free] },
+                            ),
                             metadata: HydroIrMetadata {
-                                location_kind: Tick(
-                                    0,
-                                    Cluster(
-                                        2,
-                                    ),
+                                location_kind: Cluster(
+                                    2,
                                 ),
                                 collection_kind: Optional {
-                                    bound: Bounded,
+                                    bound: Unbounded,
                                     element_type: u32,
                                 },
                             },
                         },
-                        second: Cast {
-                            inner: SingletonSource {
-                                value: { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; 0u32 },
-                                metadata: HydroIrMetadata {
-                                    location_kind: Tick(
-                                        0,
-                                        Cluster(
-                                            2,
-                                        ),
-                                    ),
-                                    collection_kind: Singleton {
-                                        bound: Bounded,
-                                        element_type: u32,
-                                    },
-                                },
+                        metadata: HydroIrMetadata {
+                            location_kind: Tick(
+                                0,
+                                Cluster(
+                                    2,
+                                ),
+                            ),
+                            collection_kind: Optional {
+                                bound: Bounded,
+                                element_type: u32,
+                            },
+                        },
+                    },
+                    second: DeferTick {
+                        input: CycleSource {
+                            ident: Ident {
+                                sym: cycle_0,
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
@@ -92,7 +77,7 @@ expression: built.ir()
                                 2,
                             ),
                         ),
-                        collection_kind: Singleton {
+                        collection_kind: Optional {
                             bound: Bounded,
                             element_type: u32,
                         },
@@ -105,7 +90,7 @@ expression: built.ir()
                             2,
                         ),
                     ),
-                    collection_kind: Singleton {
+                    collection_kind: Optional {
                         bound: Bounded,
                         element_type: u32,
                     },
@@ -118,7 +103,7 @@ expression: built.ir()
                         2,
                     ),
                 ),
-                collection_kind: Singleton {
+                collection_kind: Optional {
                     bound: Bounded,
                     element_type: u32,
                 },
@@ -9660,23 +9645,8 @@ expression: built.ir()
                             f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , (u32 , core :: option :: Option < u32 >) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | virtual_id | (virtual_id , None) }),
                             input: Tee {
                                 inner: <tee 46>: Cast {
-                                    inner: Filter {
-                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < u32 , bool > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let num_clients_per_node__free = 100usize ; move | virtual_id | * virtual_id < num_clients_per_node__free as u32 }),
-                                        input: Tee {
-                                            inner: <tee 0>,
-                                            metadata: HydroIrMetadata {
-                                                location_kind: Tick(
-                                                    0,
-                                                    Cluster(
-                                                        2,
-                                                    ),
-                                                ),
-                                                collection_kind: Singleton {
-                                                    bound: Bounded,
-                                                    element_type: u32,
-                                                },
-                                            },
-                                        },
+                                    inner: Tee {
+                                        inner: <tee 0>,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
                                                 0,

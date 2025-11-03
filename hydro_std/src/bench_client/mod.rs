@@ -70,21 +70,22 @@ where
     let client_tick = clients.tick();
 
     // Set up an initial set of payloads on the first tick
-    let (new_virtual_client_complete_cycle, new_virtual_client) =
-        client_tick.cycle_with_initial(client_tick.singleton(q!(0u32)));
-    new_virtual_client_complete_cycle.complete_next_tick(
-        new_virtual_client
-            .clone()
-            .map(q!(|virtual_id| virtual_id + 1)),
-    );
+    let initial_virtual_client = client_tick.optional_first_tick(q!(0u32));
+    let (next_virtual_client_complete_cycle, next_virtual_client) = client_tick.cycle();
+    let new_virtual_client = initial_virtual_client.or(next_virtual_client);
+    next_virtual_client_complete_cycle.complete_next_tick(new_virtual_client.clone().filter_map(
+        q!(move |virtual_id| {
+            if virtual_id < num_clients_per_node as u32 {
+                Some(virtual_id + 1)
+            } else {
+                None
+            }
+        }),
+    ));
 
-    let bounded_virtual_client = new_virtual_client
-        .filter(q!(
-            move |virtual_id| *virtual_id < num_clients_per_node as u32
-        ))
-        .into_stream();
+    let new_virtual_client_stream = new_virtual_client.into_stream();
 
-    let c_new_payloads_on_start = bounded_virtual_client
+    let c_new_payloads_on_start = new_virtual_client_stream
         .clone()
         .map(q!(|virtual_id| (virtual_id, None)));
 
@@ -119,7 +120,7 @@ where
     let (c_timers_complete_cycle, c_timers) =
         client_tick.cycle::<Stream<(u32, Instant), _, _, NoOrder>>();
     let c_new_timers_when_leader_elected =
-        bounded_virtual_client.map(q!(|virtual_id| (virtual_id, Instant::now())));
+        new_virtual_client_stream.map(q!(|virtual_id| (virtual_id, Instant::now())));
     let c_updated_timers = c_received_quorum_payloads
         .clone()
         .map(q!(|(key, _payload)| (key, Instant::now())));
