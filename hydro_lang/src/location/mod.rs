@@ -17,7 +17,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::time::Duration;
 
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use futures::stream::Stream as FuturesStream;
 use proc_macro2::Span;
 use serde::de::DeserializeOwned;
@@ -216,44 +216,17 @@ pub trait Location<'a>: dynamic::DynLocation {
         from: &External<L>,
     ) -> (
         ExternalBytesPort,
-        Stream<std::io::Result<BytesMut>, Self, Unbounded, TotalOrder, ExactlyOnce>,
+        Stream<BytesMut, Self, Unbounded, TotalOrder, ExactlyOnce>,
     )
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = {
-            let mut flow_state = from.flow_state.borrow_mut();
-            let id = flow_state.next_external_out;
-            flow_state.next_external_out += 1;
-            id
-        };
+        let (port, stream, sink) =
+            self.bind_single_client::<_, Bytes, LengthDelimitedCodec>(from, NetworkHint::Auto);
 
-        (
-            ExternalBytesPort {
-                process_id: from.id,
-                port_id: next_external_port_id,
-                _phantom: Default::default(),
-            },
-            Stream::new(
-                self.clone(),
-                HydroNode::ExternalInput {
-                    from_external_id: from.id,
-                    from_key: next_external_port_id,
-                    from_many: false,
-                    codec_type: quote_type::<LengthDelimitedCodec>().into(),
-                    port_hint: NetworkHint::Auto,
-                    instantiate_fn: DebugInstantiate::Building,
-                    deserialize_fn: None,
-                    metadata: self.new_node_metadata(Stream::<
-                        std::io::Result<BytesMut>,
-                        Self,
-                        Unbounded,
-                        TotalOrder,
-                        ExactlyOnce,
-                    >::collection_kind()),
-                },
-            ),
-        )
+        sink.complete(self.source_iter(q!([])));
+
+        (port, stream)
     }
 
     #[expect(clippy::type_complexity, reason = "stream markers")]
@@ -268,6 +241,73 @@ pub trait Location<'a>: dynamic::DynLocation {
         Self: Sized + NoTick,
         T: Serialize + DeserializeOwned,
     {
+        let (port, stream, sink) = self.bind_single_client_bincode::<_, T, ()>(from);
+        sink.complete(self.source_iter(q!([])));
+
+        (
+            ExternalBincodeSink {
+                process_id: from.id,
+                port_id: port.port_id,
+                _phantom: PhantomData,
+            },
+            stream.weaken_ordering().weaken_retries(),
+        )
+    }
+
+    /// Establishes a server on this location to receive a bidirectional connection from a single
+    /// client, identified by the given `External` handle. Returns a port handle for the external
+    /// process to connect to, a stream of incoming messages, and a handle to send outgoing
+    /// messages.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use hydro_deploy::Deployment;
+    /// # use futures::{SinkExt, StreamExt};
+    /// # tokio_test::block_on(async {
+    /// # use bytes::Bytes;
+    /// # use hydro_lang::location::NetworkHint;
+    /// # use tokio_util::codec::LengthDelimitedCodec;
+    /// # let flow = FlowBuilder::new();
+    /// let node = flow.process::<()>();
+    /// let external = flow.external::<()>();
+    /// let (port, incoming, outgoing) =
+    ///     node.bind_single_client::<_, Bytes, LengthDelimitedCodec>(&external, NetworkHint::Auto);
+    /// outgoing.complete(incoming.map(q!(|data /* : Bytes */| {
+    ///     let mut resp: Vec<u8> = data.into();
+    ///     resp.push(42);
+    ///     resp.into() // : Bytes
+    /// })));
+    ///
+    /// # let mut deployment = Deployment::new();
+    /// let nodes = flow // ... with_process and with_external
+    /// #     .with_process(&node, deployment.Localhost())
+    /// #     .with_external(&external, deployment.Localhost())
+    /// #     .deploy(&mut deployment);
+    ///
+    /// deployment.deploy().await.unwrap();
+    /// deployment.start().await.unwrap();
+    ///
+    /// let (mut external_out, mut external_in) = nodes.connect(port).await;
+    /// external_in.send(vec![1, 2, 3].into()).await.unwrap();
+    /// assert_eq!(
+    ///     external_out.next().await.unwrap().unwrap(),
+    ///     vec![1, 2, 3, 42]
+    /// );
+    /// # });
+    /// ```
+    fn bind_single_client<L, T, Codec: Encoder<T> + Decoder>(
+        &self,
+        from: &External<L>,
+        port_hint: NetworkHint,
+    ) -> (
+        ExternalBytesPort<NotMany>,
+        Stream<<Codec as Decoder>::Item, Self, Unbounded, TotalOrder, ExactlyOnce>,
+        ForwardHandle<'a, Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>>,
+    )
+    where
+        Self: Sized + NoTick,
+    {
         let next_external_port_id = {
             let mut flow_state = from.flow_state.borrow_mut();
             let id = flow_state.next_external_out;
@@ -275,29 +315,137 @@ pub trait Location<'a>: dynamic::DynLocation {
             id
         };
 
+        let (fwd_ref, to_sink) =
+            self.forward_ref::<Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>>();
+        let mut flow_state_borrow = self.flow_state().borrow_mut();
+
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
+            to_external_id: from.id,
+            to_key: next_external_port_id,
+            to_many: false,
+            unpaired: false,
+            serialize_fn: None,
+            instantiate_fn: DebugInstantiate::Building,
+            input: Box::new(to_sink.ir_node.into_inner()),
+            op_metadata: HydroIrOpMetadata::new(),
+        });
+
+        let raw_stream: Stream<
+            Result<<Codec as Decoder>::Item, <Codec as Decoder>::Error>,
+            Self,
+            Unbounded,
+            TotalOrder,
+            ExactlyOnce,
+        > = Stream::new(
+            self.clone(),
+            HydroNode::ExternalInput {
+                from_external_id: from.id,
+                from_key: next_external_port_id,
+                from_many: false,
+                codec_type: quote_type::<Codec>().into(),
+                port_hint,
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: None,
+                metadata: self.new_node_metadata(Stream::<
+                    Result<<Codec as Decoder>::Item, <Codec as Decoder>::Error>,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        );
+
         (
-            ExternalBincodeSink {
+            ExternalBytesPort {
                 process_id: from.id,
                 port_id: next_external_port_id,
                 _phantom: PhantomData,
             },
-            Stream::new(
-                self.clone(),
-                HydroNode::ExternalInput {
-                    from_external_id: from.id,
-                    from_key: next_external_port_id,
-                    from_many: false,
-                    codec_type: quote_type::<LengthDelimitedCodec>().into(),
-                    port_hint: NetworkHint::Auto,
-                    instantiate_fn: DebugInstantiate::Building,
-                    deserialize_fn: Some(
-                        crate::live_collections::stream::networking::deserialize_bincode::<T>(None)
-                            .into(),
-                    ),
-                    metadata: self
-                        .new_node_metadata(Stream::<T, Self, Unbounded, O, R>::collection_kind()),
-                },
-            ),
+            raw_stream.flatten_ordered(),
+            fwd_ref,
+        )
+    }
+
+    fn bind_single_client_bincode<L, InT: DeserializeOwned, OutT: Serialize>(
+        &self,
+        from: &External<L>,
+    ) -> (
+        ExternalBincodeBidi<InT, OutT, NotMany>,
+        Stream<InT, Self, Unbounded, TotalOrder, ExactlyOnce>,
+        ForwardHandle<'a, Stream<OutT, Self, Unbounded, TotalOrder, ExactlyOnce>>,
+    )
+    where
+        Self: Sized + NoTick,
+    {
+        let next_external_port_id = {
+            let mut flow_state = from.flow_state.borrow_mut();
+            let id = flow_state.next_external_out;
+            flow_state.next_external_out += 1;
+            id
+        };
+
+        let (fwd_ref, to_sink) =
+            self.forward_ref::<Stream<OutT, Self, Unbounded, TotalOrder, ExactlyOnce>>();
+        let mut flow_state_borrow = self.flow_state().borrow_mut();
+
+        let root = get_this_crate();
+
+        let out_t_type = quote_type::<OutT>();
+        let ser_fn: syn::Expr = syn::parse_quote! {
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#out_t_type, _>(
+                |b| #root::runtime_support::bincode::serialize(&b).unwrap().into()
+            )
+        };
+
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
+            to_external_id: from.id,
+            to_key: next_external_port_id,
+            to_many: false,
+            unpaired: false,
+            serialize_fn: Some(ser_fn.into()),
+            instantiate_fn: DebugInstantiate::Building,
+            input: Box::new(to_sink.ir_node.into_inner()),
+            op_metadata: HydroIrOpMetadata::new(),
+        });
+
+        let in_t_type = quote_type::<InT>();
+
+        let deser_fn: syn::Expr = syn::parse_quote! {
+            |res| {
+                let b = res.unwrap();
+                #root::runtime_support::bincode::deserialize::<#in_t_type>(&b).unwrap()
+            }
+        };
+
+        let raw_stream: Stream<InT, Self, Unbounded, TotalOrder, ExactlyOnce> = Stream::new(
+            self.clone(),
+            HydroNode::ExternalInput {
+                from_external_id: from.id,
+                from_key: next_external_port_id,
+                from_many: false,
+                codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                port_hint: NetworkHint::Auto,
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: Some(deser_fn.into()),
+                metadata: self.new_node_metadata(Stream::<
+                    InT,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        );
+
+        (
+            ExternalBincodeBidi {
+                process_id: from.id,
+                port_id: next_external_port_id,
+                _phantom: PhantomData,
+            },
+            raw_stream,
+            fwd_ref,
         )
     }
 
@@ -330,6 +478,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             to_external_id: from.id,
             to_key: next_external_port_id,
             to_many: true,
+            unpaired: false,
             serialize_fn: None,
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(to_sink.entries().ir_node.into_inner()),
@@ -449,6 +598,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             to_external_id: from.id,
             to_key: next_external_port_id,
             to_many: true,
+            unpaired: false,
             serialize_fn: Some(ser_fn.into()),
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(to_sink.entries().ir_node.into_inner()),
@@ -740,9 +890,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let (in_port, input) = first_node.source_external_bytes(&external);
-        let out = input
-            .map(q!(|r| r.unwrap()))
-            .send_bincode_external(&external);
+        let out = input.send_bincode_external(&external);
 
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
@@ -865,6 +1013,37 @@ mod tests {
             ]
             .into_iter()
             .collect()
+        );
+    }
+
+    #[tokio::test]
+    async fn single_client_external_bytes() {
+        let mut deployment = Deployment::new();
+        let flow = FlowBuilder::new();
+        let first_node = flow.process::<()>();
+        let external = flow.external::<()>();
+        let (port, input, complete_sink) = first_node
+            .bind_single_client::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
+        complete_sink.complete(input.map(q!(|data| {
+            let mut resp: Vec<u8> = data.into();
+            resp.push(42);
+            resp.into() // : Bytes
+        })));
+
+        let nodes = flow
+            .with_process(&first_node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+        deployment.start().await.unwrap();
+
+        let (mut external_out, mut external_in) = nodes.connect(port).await;
+
+        external_in.send(vec![1, 2, 3].into()).await.unwrap();
+        assert_eq!(
+            external_out.next().await.unwrap().unwrap(),
+            vec![1, 2, 3, 42]
         );
     }
 

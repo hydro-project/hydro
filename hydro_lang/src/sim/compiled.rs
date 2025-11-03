@@ -381,13 +381,13 @@ impl<'a> CompiledSimInstance<'a> {
     }
 
     fn schedule_with_maybe_logger<W: std::io::Write>(
-        self,
+        mut self,
         log_override: Option<W>,
     ) -> impl use<W> + Future<Output = ()> {
-        if !self.remaining_ports.is_empty() {
-            panic!(
-                "Cannot launch DFIR because some of the inputs / outputs have not been connected."
-            )
+        for remaining in self.remaining_ports {
+            let (sender, receiver) = dfir_rs::util::unbounded_channel::<Bytes>();
+            self.output_ports.insert(remaining, sender);
+            self.input_ports.insert(remaining, receiver);
         }
 
         let (async_dfirs, tick_dfirs, hooks) = unsafe {
