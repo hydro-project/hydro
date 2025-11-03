@@ -331,9 +331,9 @@ mod tests {
             let mut read_response_recv = compiled.connect(&read_response);
             compiled.launch();
 
-            write_send.send(1).unwrap();
+            write_send.send(1);
             write_ack_recv.assert_yields([1]).await;
-            read_send.send(()).unwrap();
+            read_send.send(());
             assert!(read_response_recv.next().await.is_some_and(|(_, v)| v >= 1));
         });
 
@@ -346,8 +346,8 @@ mod tests {
             let mut read_response_recv = compiled.connect(&read_response);
             compiled.launch();
 
-            write_send.send(1).unwrap();
-            read_send.send(()).unwrap();
+            write_send.send(1);
+            read_send.send(());
             write_ack_recv.assert_yields([1]).await;
             let _ = read_response_recv.next().await;
         });
@@ -389,9 +389,9 @@ mod tests {
             let mut read_response_recv = compiled.connect(&read_response);
             compiled.launch();
 
-            write_send.send(1).unwrap();
+            write_send.send(1);
             write_ack_recv.assert_yields([1]).await;
-            read_send.send(()).unwrap();
+            read_send.send(());
 
             if let Some((_, v)) = read_response_recv.next().await {
                 assert_eq!(v, 1);
