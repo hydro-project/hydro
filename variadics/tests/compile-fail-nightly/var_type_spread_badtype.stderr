@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `f64: VariadicExt` is not satisfied
- --> tests/compile-fail/var_type_spread_badtype.rs:5:17
+ --> tests/compile-fail-nightly/var_type_spread_badtype.rs:5:17
   |
 5 |     fn check(_: List) {}
   |                 ^^^^ the trait `VariadicExt` is not implemented for `f64`

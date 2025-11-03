@@ -26,10 +26,10 @@ use syn::parse_quote;
 use tokio::sync::RwLock;
 
 use super::deploy_runtime::*;
-use super::trybuild::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
 use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
+use crate::compile::trybuild::generate::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
 use crate::location::NetworkHint;
 use crate::staging_util::get_this_crate;
 
@@ -1056,7 +1056,7 @@ fn create_trybuild_service(
 ) -> RustCrate {
     let mut ret = RustCrate::new(dir, trybuild.host)
         .target_dir(target_dir)
-        .bin(bin_name)
+        .example(bin_name)
         .no_default_features();
 
     if let Some(display_name) = trybuild.display_name {

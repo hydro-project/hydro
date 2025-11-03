@@ -1,4 +1,4 @@
-error: no rules expected the token `"three"`
+error: no rules expected `"three"`
  --> tests/compile-fail/var_expr_missing_comma.rs:4:30
   |
 4 |     let _ = var_expr!(1, 2.0 "three", false);

@@ -35,11 +35,8 @@ where
         .values();
 
     // collect votes from participant.
-    let coordinator_tick = coordinator.tick();
     let (c_all_vote_yes, _) = collect_quorum(
-        c_votes
-            .map(q!(|kv| (kv, Ok::<(), ()>(()))))
-            .atomic(&coordinator_tick),
+        c_votes.map(q!(|kv| (kv, Ok::<(), ()>(())))),
         num_participants,
         num_participants,
     );
@@ -47,9 +44,7 @@ where
     // TODO: Coordinator log
 
     // broadcast commit transactions to participants.
-    let p_commit = c_all_vote_yes
-        .end_atomic()
-        .broadcast_bincode(participants, nondet!(/** TODO */));
+    let p_commit = c_all_vote_yes.broadcast_bincode(participants, nondet!(/** TODO */));
     // TODO: Participants log
 
     let c_commits = p_commit
@@ -58,13 +53,11 @@ where
         .ir_node_named("c_commits")
         .values();
     let (c_all_commit, _) = collect_quorum(
-        c_commits
-            .map(q!(|kv| (kv, Ok::<(), ()>(()))))
-            .atomic(&coordinator_tick),
+        c_commits.map(q!(|kv| (kv, Ok::<(), ()>(())))),
         num_participants,
         num_participants,
     );
     // TODO: Coordinator log
 
-    c_all_commit.end_atomic()
+    c_all_commit
 }

@@ -96,6 +96,14 @@ jobs:
           sed -i '/          const data = window.BENCHMARK_DATA;/a\
                     data.entries.Benchmark = data.entries.Benchmark.slice(-365)' "$WWW_DIR/bench/index.html"
 
+      - name: Upload benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark
+          path: |
+            ${{ env.WWW_DIR }}/bench
+            ${{ env.WWW_DIR }}/criterion
+
       - name: Push to gh-pages
         # Do not deploy PRs, only benchmark main branch.
         if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}

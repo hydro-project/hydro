@@ -43,15 +43,16 @@ pub const FILTER_MAP: OperatorConstraints = OperatorConstraints {
                    ..
                },
                _| {
+        let func = &arguments[0];
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #input.filter_map(#arguments);
+                let #ident = #input.filter_map(#func);
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::filter_map::FilterMap::new(#arguments, #output);
+                let #ident = #root::sinktools::filter_map(#func, #output);
             }
         };
         Ok(OperatorWriteOutput {

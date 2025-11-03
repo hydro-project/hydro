@@ -11,6 +11,9 @@ use super::deploy::{DeployFlow, DeployResult};
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use super::ir::HydroRoot;
 use crate::location::{Cluster, External, Process};
+#[cfg(feature = "sim")]
+#[cfg(stageleft_runtime)]
+use crate::sim::flow::SimFlow;
 use crate::staging_util::Invariant;
 
 pub(crate) type FlowState = Rc<RefCell<FlowStateInner>>;
@@ -68,7 +71,7 @@ pub struct FlowBuilder<'a> {
 
 impl Drop for FlowBuilder<'_> {
     fn drop(&mut self) {
-        if !self.finalized {
+        if !self.finalized && !std::thread::panicking() {
             panic!(
                 "Dropped FlowBuilder without finalizing, you may have forgotten to call `with_default_optimize`, `optimize_with`, or `finalize`."
             );
@@ -257,6 +260,13 @@ impl<'a> FlowBuilder<'a> {
         env: &mut D::InstantiateEnv,
     ) -> DeployResult<'a, D> {
         self.with_default_optimize().deploy(env)
+    }
+
+    #[cfg(feature = "sim")]
+    /// Creates a simulation for this builder, which can be used to run deterministic simulations
+    /// of the Hydro program.
+    pub fn sim(self) -> SimFlow<'a> {
+        self.finalize().sim()
     }
 }
 

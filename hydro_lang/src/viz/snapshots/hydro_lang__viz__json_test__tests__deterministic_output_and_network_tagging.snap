@@ -1,0 +1,201 @@
+---
+source: hydro_lang/src/viz/json_test.rs
+expression: output1
+---
+{
+  "nodes": [
+    {
+      "data": {
+        "backtrace": [],
+        "locationId": 0,
+        "locationType": "Process"
+      },
+      "fullLabel": "a [hydro operator]",
+      "id": "0",
+      "label": "a",
+      "nodeType": "Source",
+      "shortLabel": "a"
+    },
+    {
+      "data": {
+        "backtrace": [],
+        "locationId": 1,
+        "locationType": "Process"
+      },
+      "fullLabel": "b [hydro operator]",
+      "id": "1",
+      "label": "b",
+      "nodeType": "Transform",
+      "shortLabel": "b"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e0",
+      "semanticTags": [
+        "Network",
+        "Stream"
+      ],
+      "source": "0",
+      "target": "1"
+    }
+  ],
+  "hierarchyChoices": [
+    {
+      "children": [],
+      "id": "location",
+      "name": "Location"
+    }
+  ],
+  "nodeAssignments": {
+    "location": {
+      "0": "loc_0",
+      "1": "loc_1"
+    }
+  },
+  "selectedHierarchy": "location",
+  "edgeStyleConfig": {
+    "note": "Edge styles are now computed per-edge using the unified edge style system. This config is provided for reference and compatibility.",
+    "semanticMappings": {
+      "BoundednessGroup": {
+        "Bounded": {
+          "halo": "none"
+        },
+        "Unbounded": {
+          "halo": "light-blue"
+        }
+      },
+      "CollectionGroup": {
+        "Optional": {
+          "arrowhead": "diamond-open",
+          "color": "#6b7280"
+        },
+        "Singleton": {
+          "arrowhead": "circle-filled",
+          "color": "#000000"
+        },
+        "Stream": {
+          "arrowhead": "triangle-filled",
+          "color": "#2563eb"
+        }
+      },
+      "KeyednessGroup": {
+        "Keyed": {
+          "line-style": "hash-marks"
+        },
+        "NotKeyed": {
+          "line-style": "single"
+        }
+      },
+      "NetworkGroup": {
+        "Local": {
+          "animation": "static",
+          "line-pattern": "solid"
+        },
+        "Network": {
+          "animation": "animated",
+          "line-pattern": "dashed"
+        }
+      },
+      "OrderingGroup": {
+        "NoOrder": {
+          "waviness": "wavy"
+        },
+        "TotalOrder": {
+          "waviness": "straight"
+        }
+      }
+    },
+    "semanticPriorities": [
+      [
+        "Unbounded",
+        "Bounded"
+      ],
+      [
+        "NoOrder",
+        "TotalOrder"
+      ],
+      [
+        "Keyed",
+        "NotKeyed"
+      ],
+      [
+        "Network",
+        "Local"
+      ]
+    ]
+  },
+  "nodeTypeConfig": {
+    "defaultType": "Transform",
+    "types": [
+      {
+        "colorIndex": 0,
+        "id": "Aggregation",
+        "label": "Aggregation"
+      },
+      {
+        "colorIndex": 1,
+        "id": "Join",
+        "label": "Join"
+      },
+      {
+        "colorIndex": 2,
+        "id": "Network",
+        "label": "Network"
+      },
+      {
+        "colorIndex": 3,
+        "id": "Sink",
+        "label": "Sink"
+      },
+      {
+        "colorIndex": 4,
+        "id": "Source",
+        "label": "Source"
+      },
+      {
+        "colorIndex": 5,
+        "id": "Tee",
+        "label": "Tee"
+      },
+      {
+        "colorIndex": 6,
+        "id": "Transform",
+        "label": "Transform"
+      }
+    ]
+  },
+  "legend": {
+    "items": [
+      {
+        "label": "Aggregation",
+        "type": "Aggregation"
+      },
+      {
+        "label": "Join",
+        "type": "Join"
+      },
+      {
+        "label": "Network",
+        "type": "Network"
+      },
+      {
+        "label": "Sink",
+        "type": "Sink"
+      },
+      {
+        "label": "Source",
+        "type": "Source"
+      },
+      {
+        "label": "Tee",
+        "type": "Tee"
+      },
+      {
+        "label": "Transform",
+        "type": "Transform"
+      }
+    ],
+    "title": "Node Types"
+  }
+}

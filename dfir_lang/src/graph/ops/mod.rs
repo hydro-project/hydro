@@ -175,7 +175,7 @@ pub fn identity_write_iterator_fn(
         let output = &outputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_output<Push: #root::pusherator::Pusherator<Item = Item>, Item>(push: Push) -> impl #root::pusherator::Pusherator<Item = Item> { push }
+                fn check_output<Push: #root::futures::sink::Sink<Item>, Item>(push: Push) -> impl #root::futures::sink::Sink<Item> { push }
                 check_output::<_, #generic_type>(#output)
             };
         }
@@ -215,15 +215,15 @@ pub fn null_write_iterator_fn(
     if is_pull {
         quote_spanned! {op_span=>
             #(
-                #inputs.for_each(std::mem::drop);
+                #inputs.for_each(::std::mem::drop);
             )*
-            let #ident = std::iter::empty::<#iter_type>();
+            let #ident = ::std::iter::empty::<#iter_type>();
         }
     } else {
         quote_spanned! {op_span=>
             #[allow(clippy::let_unit_value)]
             let _ = (#(#outputs),*);
-            let #ident = #root::pusherator::null::Null::<#iter_type>::new();
+            let #ident = #root::sinktools::for_each::ForEach::new::<#iter_type>(::std::mem::drop::<#iter_type>);
         }
     }
 }

@@ -8,7 +8,6 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
-use syn::parse_quote;
 use tokio::time::Instant;
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
@@ -16,7 +15,9 @@ use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
-use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
+use crate::compile::ir::{
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, StreamOrder, StreamRetry, TeeNode,
+};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
@@ -33,6 +34,8 @@ pub mod networking;
 pub trait Ordering:
     MinOrder<Self, Min = Self> + MinOrder<TotalOrder, Min = Self> + MinOrder<NoOrder, Min = NoOrder>
 {
+    /// The [`StreamOrder`] corresponding to this type.
+    const ORDERING_KIND: StreamOrder;
 }
 
 /// Marks the stream as being totally ordered, which means that there are
@@ -41,7 +44,9 @@ pub trait Ordering:
 pub enum TotalOrder {}
 
 #[sealed::sealed]
-impl Ordering for TotalOrder {}
+impl Ordering for TotalOrder {
+    const ORDERING_KIND: StreamOrder = StreamOrder::TotalOrder;
+}
 
 /// Marks the stream as having no order, which means that the order of
 /// elements may be affected by non-determinism.
@@ -51,7 +56,9 @@ impl Ordering for TotalOrder {}
 pub enum NoOrder {}
 
 #[sealed::sealed]
-impl Ordering for NoOrder {}
+impl Ordering for NoOrder {
+    const ORDERING_KIND: StreamOrder = StreamOrder::NoOrder;
+}
 
 /// Helper trait for determining the weakest of two orderings.
 #[sealed::sealed]
@@ -87,6 +94,8 @@ pub trait Retries:
     + MinRetries<ExactlyOnce, Min = Self>
     + MinRetries<AtLeastOnce, Min = AtLeastOnce>
 {
+    /// The [`StreamRetry`] corresponding to this type.
+    const RETRIES_KIND: StreamRetry;
 }
 
 /// Marks the stream as having deterministic message cardinality, with no
@@ -94,14 +103,18 @@ pub trait Retries:
 pub enum ExactlyOnce {}
 
 #[sealed::sealed]
-impl Retries for ExactlyOnce {}
+impl Retries for ExactlyOnce {
+    const RETRIES_KIND: StreamRetry = StreamRetry::ExactlyOnce;
+}
 
 /// Marks the stream as having non-deterministic message cardinality, which
 /// means that duplicates may occur, but messages will not be dropped.
 pub enum AtLeastOnce {}
 
 #[sealed::sealed]
-impl Retries for AtLeastOnce {}
+impl Retries for AtLeastOnce {
+    const RETRIES_KIND: StreamRetry = StreamRetry::AtLeastOnce;
+}
 
 /// Helper trait for determining the weakest of two retry guarantees.
 #[sealed::sealed]
@@ -225,7 +238,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -248,7 +261,6 @@ where
             .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -264,12 +276,9 @@ where
     fn create_source(ident: syn::Ident, location: L) -> Self {
         Stream::new(
             location.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::CycleSource {
-                    ident,
-                    metadata: location.new_node_metadata::<T>(),
-                }),
-                metadata: location.new_node_metadata::<T>(),
+            HydroNode::CycleSource {
+                ident,
+                metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -286,17 +295,12 @@ where
             expected_location,
             "locations do not match"
         );
-        let metadata = self.location.new_node_metadata::<T>();
         self.location
             .flow_state()
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
                 ident,
-                input: Box::new(HydroNode::Unpersist {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    metadata: metadata.clone(),
-                }),
-                out_location: Location::id(&self.location),
+                input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -312,7 +316,7 @@ where
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
                 inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
             };
         }
 
@@ -337,10 +341,27 @@ where
     L: Location<'a>,
 {
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
+        debug_assert_eq!(ir_node.metadata().location_kind, Location::id(&location));
+        debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
+
         Stream {
             location,
             ir_node: RefCell::new(ir_node),
             _phantom: PhantomData,
+        }
+    }
+
+    /// Returns the [`Location`] where this stream is being materialized.
+    pub fn location(&self) -> &L {
+        &self.location
+    }
+
+    pub(crate) fn collection_kind() -> CollectionKind {
+        CollectionKind::Stream {
+            bound: B::BOUND_KIND,
+            order: O::ORDERING_KIND,
+            retry: R::RETRIES_KIND,
+            element_type: stageleft::quote_type::<T>().into(),
         }
     }
 
@@ -371,7 +392,9 @@ where
             HydroNode::Map {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<U, L, B, O, R>::collection_kind()),
             },
         )
     }
@@ -409,7 +432,9 @@ where
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<U, L, B, O, R>::collection_kind()),
             },
         )
     }
@@ -452,7 +477,9 @@ where
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<U, L, B, NoOrder, R>::collection_kind()),
             },
         )
     }
@@ -537,7 +564,7 @@ where
     /// # }
     /// # }));
     /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<T, L, B, O, R>
+    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
     where
         F: Fn(&T) -> bool + 'a,
     {
@@ -547,7 +574,7 @@ where
             HydroNode::Filter {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -579,7 +606,9 @@ where
             HydroNode::FilterMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<U, L, B, O, R>::collection_kind()),
             },
         )
     }
@@ -620,7 +649,9 @@ where
             HydroNode::CrossSingleton {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, O2)>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<(T, O2), L, B, O, R>::collection_kind()),
             },
         )
     }
@@ -736,7 +767,9 @@ where
             HydroNode::CrossProduct {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, T2)>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<(T, T2), L, B, NoOrder, R>::collection_kind()),
             },
         )
     }
@@ -765,7 +798,9 @@ where
             self.location.clone(),
             HydroNode::Unique {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<T, L, B, O, ExactlyOnce>::collection_kind()),
             },
         )
     }
@@ -793,10 +828,7 @@ where
     /// # }
     /// # }));
     /// ```
-    pub fn filter_not_in<O2: Ordering>(
-        self,
-        other: Stream<T, L, Bounded, O2, R>,
-    ) -> Stream<T, L, Bounded, O, R>
+    pub fn filter_not_in<O2: Ordering>(self, other: Stream<T, L, Bounded, O2, R>) -> Self
     where
         T: Eq + Hash,
     {
@@ -807,7 +839,9 @@ where
             HydroNode::Difference {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<T, L, Bounded, O, R>::collection_kind()),
             },
         )
     }
@@ -830,37 +864,20 @@ where
     /// # }
     /// # }));
     /// ```
-    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<T, L, B, O, R>
+    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
     where
         F: Fn(&T) + 'a,
     {
         let f = f.splice_fn1_borrow_ctx(&self.location).into();
 
-        if L::is_top_level() {
-            Stream::new(
-                self.location.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::Inspect {
-                        f,
-                        input: Box::new(HydroNode::Unpersist {
-                            inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
-                        }),
-                        metadata: self.location.new_node_metadata::<T>(),
-                    }),
-                    metadata: self.location.new_node_metadata::<T>(),
-                },
-            )
-        } else {
-            Stream::new(
-                self.location.clone(),
-                HydroNode::Inspect {
-                    f,
-                    input: Box::new(self.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<T>(),
-                },
-            )
-        }
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Inspect {
+                f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
+            },
+        )
     }
 
     /// An operator which allows you to "name" a `HydroNode`.
@@ -883,7 +900,61 @@ where
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
-        Stream::new(self.location, self.ir_node.into_inner())
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            Stream::new(self.location, self.ir_node.into_inner())
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
+            // We can always weaken the ordering guarantee
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                },
+            )
+        } else {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    // only for internal APIs that have been carefully vetted to ensure that the non-determinism
+    // is not observable
+    fn assume_ordering_trusted<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            Stream::new(self.location, self.ir_node.into_inner())
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
+            // We can always weaken the ordering guarantee
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                },
+            )
+        } else {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: true,
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                },
+            )
+        }
     }
 
     /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
@@ -909,7 +980,61 @@ where
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
-        Stream::new(self.location, self.ir_node.into_inner())
+        if R::RETRIES_KIND == R2::RETRIES_KIND {
+            Stream::new(self.location, self.ir_node.into_inner())
+        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
+            // We can always weaken the retries guarantee
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
+                },
+            )
+        } else {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    // only for internal APIs that have been carefully vetted to ensure that the non-determinism
+    // is not observable
+    fn assume_retries_trusted<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
+        if R::RETRIES_KIND == R2::RETRIES_KIND {
+            Stream::new(self.location, self.ir_node.into_inner())
+        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
+            // We can always weaken the retries guarantee
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
+                },
+            )
+        } else {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: true,
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
+                },
+            )
+        }
     }
 
     /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
@@ -1046,6 +1171,28 @@ where
             .reduce(comb)
     }
 
+    // only for internal APIs that have been carefully vetted, will eventually be removed once we
+    // have algebraic verification of these properties
+    fn reduce_commutative_idempotent_trusted<F>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L>,
+    ) -> Optional<T, L, B>
+    where
+        F: Fn(&mut T, T) + 'a,
+    {
+        let nondet = nondet!(/** the combinator function is commutative and idempotent */);
+
+        let ordered = if B::BOUNDED {
+            self.assume_ordering_trusted(nondet)
+        } else {
+            self.assume_ordering(nondet) // if unbounded, ordering affects intermediate states
+        };
+
+        ordered
+            .assume_retries_trusted(nondet) // retries never affect intermediate states
+            .reduce(comb)
+    }
+
     /// Computes the maximum element in the stream as an [`Optional`], which
     /// will be empty until the first element in the input arrives.
     ///
@@ -1067,61 +1214,11 @@ where
     where
         T: Ord,
     {
-        self.reduce_commutative_idempotent(q!(|curr, new| {
+        self.reduce_commutative_idempotent_trusted(q!(|curr, new| {
             if new > *curr {
                 *curr = new;
             }
         }))
-    }
-
-    /// Computes the maximum element in the stream as an [`Optional`], where the
-    /// maximum is determined according to the `key` function. The [`Optional`] will
-    /// be empty until the first element in the input arrives.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch.max_by_key(q!(|x| -x)).all_ticks()
-    /// # }, |mut stream| async move {
-    /// // 1
-    /// # assert_eq!(stream.next().await.unwrap(), 1);
-    /// # }));
-    /// ```
-    pub fn max_by_key<K, F>(self, key: impl IntoQuotedMut<'a, F, L> + Copy) -> Optional<T, L, B>
-    where
-        K: Ord,
-        F: Fn(&T) -> K + 'a,
-    {
-        let f = key.splice_fn1_borrow_ctx(&self.location);
-
-        let wrapped: syn::Expr = parse_quote!({
-            let key_fn = #f;
-            move |curr, new| {
-                if key_fn(&new) > key_fn(&*curr) {
-                    *curr = new;
-                }
-            }
-        });
-
-        let mut core = HydroNode::Reduce {
-            f: wrapped.into(),
-            input: Box::new(self.ir_node.into_inner()),
-            metadata: self.location.new_node_metadata::<T>(),
-        };
-
-        if L::is_top_level() {
-            core = HydroNode::Persist {
-                inner: Box::new(core),
-                metadata: self.location.new_node_metadata::<T>(),
-            };
-        }
-
-        Optional::new(self.location, core)
     }
 
     /// Computes the minimum element in the stream as an [`Optional`], which
@@ -1145,7 +1242,7 @@ where
     where
         T: Ord,
     {
-        self.reduce_commutative_idempotent(q!(|curr, new| {
+        self.reduce_commutative_idempotent_trusted(q!(|curr, new| {
             if new < *curr {
                 *curr = new;
             }
@@ -1240,7 +1337,10 @@ where
     /// # }));
     /// ```
     pub fn count(self) -> Singleton<usize, L, B> {
-        self.fold_commutative(q!(|| 0usize), q!(|count, _| *count += 1))
+        self.assume_ordering_trusted(nondet!(
+            /// Order does not affect eventual count, and also does not affect intermediate states.
+        ))
+        .fold(q!(|| 0usize), q!(|count, _| *count += 1))
     }
 }
 
@@ -1365,7 +1465,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce>
 where
     L: Location<'a>,
 {
-    /// Returns a stream with the current count tupled with each element in the input stream.
+    /// Maps each element `x` of the stream to `(i, x)`, where `i` is the index of the element.
     ///
     /// # Example
     /// ```rust
@@ -1383,31 +1483,19 @@ where
     /// # }));
     /// ```
     pub fn enumerate(self) -> Stream<(usize, T), L, B, TotalOrder, ExactlyOnce> {
-        if L::is_top_level() {
-            Stream::new(
-                self.location.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::Enumerate {
-                        is_static: true,
-                        input: Box::new(HydroNode::Unpersist {
-                            inner: Box::new(self.ir_node.into_inner()),
-                            metadata: self.location.new_node_metadata::<T>(),
-                        }),
-                        metadata: self.location.new_node_metadata::<(usize, T)>(),
-                    }),
-                    metadata: self.location.new_node_metadata::<(usize, T)>(),
-                },
-            )
-        } else {
-            Stream::new(
-                self.location.clone(),
-                HydroNode::Enumerate {
-                    is_static: false,
-                    input: Box::new(self.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<(usize, T)>(),
-                },
-            )
-        }
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Enumerate {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Stream::<
+                    (usize, T),
+                    L,
+                    B,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
     }
 
     /// Combines elements of the stream into a [`Singleton`], by starting with an intitial value,
@@ -1441,22 +1529,14 @@ where
         let init = init.splice_fn0_ctx(&self.location).into();
         let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
-        let mut core = HydroNode::Fold {
+        let core = HydroNode::Fold {
             init,
             acc: comb,
             input: Box::new(self.ir_node.into_inner()),
-            metadata: self.location.new_node_metadata::<A>(),
+            metadata: self
+                .location
+                .new_node_metadata(Singleton::<A, L, B>::collection_kind()),
         };
-
-        if L::is_top_level() {
-            // top-level (possibly unbounded) singletons are represented as
-            // a stream which produces all values from all ticks every tick,
-            // so Unpersist will always give the lastest aggregation
-            core = HydroNode::Persist {
-                inner: Box::new(core),
-                metadata: self.location.new_node_metadata::<A>(),
-            };
-        }
 
         Singleton::new(self.location, core)
     }
@@ -1561,30 +1641,17 @@ where
         let init = init.splice_fn0_ctx(&self.location).into();
         let f = f.splice_fn2_borrow_mut_ctx(&self.location).into();
 
-        if L::is_top_level() {
-            Stream::new(
-                self.location.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::Scan {
-                        init,
-                        acc: f,
-                        input: Box::new(self.ir_node.into_inner()),
-                        metadata: self.location.new_node_metadata::<U>(),
-                    }),
-                    metadata: self.location.new_node_metadata::<U>(),
-                },
-            )
-        } else {
-            Stream::new(
-                self.location.clone(),
-                HydroNode::Scan {
-                    init,
-                    acc: f,
-                    input: Box::new(self.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<U>(),
-                },
-            )
-        }
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Scan {
+                init,
+                acc: f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(
+                    Stream::<U, L, B, TotalOrder, ExactlyOnce>::collection_kind(),
+                ),
+            },
+        )
     }
 
     /// Combines elements of the stream into an [`Optional`], by starting with the first element in the stream,
@@ -1616,26 +1683,19 @@ where
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> Optional<T, L, B> {
         let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
-        let mut core = HydroNode::Reduce {
+        let core = HydroNode::Reduce {
             f,
             input: Box::new(self.ir_node.into_inner()),
-            metadata: self.location.new_node_metadata::<T>(),
+            metadata: self
+                .location
+                .new_node_metadata(Optional::<T, L, B>::collection_kind()),
         };
-
-        if L::is_top_level() {
-            core = HydroNode::Persist {
-                inner: Box::new(core),
-                metadata: self.location.new_node_metadata::<T>(),
-            };
-        }
 
         Optional::new(self.location, core)
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O: Ordering, R: Retries>
-    Stream<T, L, Unbounded, O, R>
-{
+impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbounded, O, R> {
     /// Produces a new stream that interleaves the elements of the two input streams.
     /// The result has [`NoOrder`] because the order of interleaving is not guaranteed.
     ///
@@ -1663,17 +1723,20 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O: Ordering, R: Retries>
     where
         R: MinRetries<R2>,
     {
-        let tick = self.location.tick();
-        // Because the outputs are unordered, we can interleave batches from both streams.
-        let nondet_batch_interleaving = nondet!(/** output stream is NoOrder, can interleave */);
-        self.batch(&tick, nondet_batch_interleaving)
-            .weakest_ordering()
-            .chain(
-                other
-                    .batch(&tick, nondet_batch_interleaving)
-                    .weakest_ordering(),
-            )
-            .all_ticks()
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Chain {
+                first: Box::new(self.ir_node.into_inner()),
+                second: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    L,
+                    Unbounded,
+                    NoOrder,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
+            },
+        )
     }
 }
 
@@ -1712,7 +1775,9 @@ where
             self.location.clone(),
             HydroNode::Sort {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<T, L, Bounded, TotalOrder, R>::collection_kind()),
             },
         )
     }
@@ -1757,7 +1822,13 @@ where
             HydroNode::Chain {
                 first: Box::new(self.ir_node.into_inner()),
                 second: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    L,
+                    Bounded,
+                    <O as MinOrder<O2>>::Min,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
             },
         )
     }
@@ -1780,7 +1851,13 @@ where
             HydroNode::CrossProduct {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(T, T2)>(),
+                metadata: self.location.new_node_metadata(Stream::<
+                    (T, T2),
+                    L,
+                    Bounded,
+                    <O2 as MinOrder<O>>::Min,
+                    R,
+                >::collection_kind()),
             },
         )
     }
@@ -1828,9 +1905,13 @@ where
         K: Clone,
         T: Clone,
     {
-        keys.keys().weaken_retries().cross_product_nested_loop(self).into_keyed().assume_ordering(
-            nondet!(/** keyed stream does not depend on ordering of keys, cross_product_nested_loop preserves order of values */)
-        )
+        keys.keys()
+            .weaken_retries()
+            .assume_ordering_trusted::<TotalOrder>(
+                nondet!(/** keyed stream does not depend on ordering of keys */),
+            )
+            .cross_product_nested_loop(self)
+            .into_keyed()
     }
 }
 
@@ -1872,7 +1953,13 @@ where
             HydroNode::Join {
                 left: Box::new(self.ir_node.into_inner()),
                 right: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, (V1, V2))>(),
+                metadata: self.location.new_node_metadata(Stream::<
+                    (K, (V1, V2)),
+                    L,
+                    B,
+                    NoOrder,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
             },
         )
     }
@@ -1914,7 +2001,9 @@ where
             HydroNode::AntiJoin {
                 pos: Box::new(self.ir_node.into_inner()),
                 neg: Box::new(n.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V1)>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<(K, V1), L, B, O, R>::collection_kind()),
             },
         )
     }
@@ -1948,10 +2037,15 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// ```
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
-        KeyedStream {
-            underlying: self.weakest_ordering(),
-            _phantom_order: Default::default(),
-        }
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedStream::<K, V, L, B, O, R>::collection_kind()),
+            },
+        )
     }
 }
 
@@ -2039,7 +2133,13 @@ where
             HydroNode::ReduceKeyed {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<(K, V)>(),
+                metadata: self.location.new_node_metadata(Stream::<
+                    (K, V),
+                    Tick<L>,
+                    Bounded,
+                    NoOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         )
     }
@@ -2326,12 +2426,15 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch(self, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
+    pub fn batch_atomic(self, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
         Stream::new(
             self.location.clone().tick,
-            HydroNode::Unpersist {
+            HydroNode::Batch {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .tick
+                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
             },
         )
     }
@@ -2339,18 +2442,23 @@ where
     /// Yields the elements of this stream back into a top-level, asynchronous execution context.
     /// See [`Stream::atomic`] for more details.
     pub fn end_atomic(self) -> Stream<T, L, B, O, R> {
-        Stream::new(self.location.tick.l, self.ir_node.into_inner())
-    }
-
-    /// Gets the [`Tick`] inside which this stream is synchronously processed. See [`Stream::atomic`].
-    pub fn atomic_source(&self) -> Tick<L> {
-        self.location.tick.clone()
+        Stream::new(
+            self.location.tick.l.clone(),
+            HydroNode::EndAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .tick
+                    .l
+                    .new_node_metadata(Stream::<T, L, B, O, R>::collection_kind()),
+            },
+        )
     }
 }
 
 impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
 where
-    L: Location<'a> + NoTick + NoAtomic,
+    L: Location<'a>,
 {
     /// Shifts this stream into an atomic context, which guarantees that any downstream logic
     /// will all be executed synchronously before any outputs are yielded (in [`Stream::end_atomic`]).
@@ -2361,46 +2469,13 @@ where
     /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
     /// [`Tick`] will introduce asynchrony.
     pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, O, R> {
-        Stream::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
-    }
-
-    /// Consumes a stream of `Future<T>`, produces a new stream of the resulting `T` outputs.
-    /// Future outputs are produced as available, regardless of input arrival order.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use std::collections::HashSet;
-    /// # use futures::StreamExt;
-    /// # use hydro_lang::prelude::*;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
-    ///     .map(q!(|x| async move {
-    ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    ///         x
-    ///     }))
-    ///     .resolve_futures()
-    /// #   },
-    /// #   |mut stream| async move {
-    /// // 1, 2, 3, 4, 5, 6, 7, 8, 9 (in any order)
-    /// #       let mut output = HashSet::new();
-    /// #       for _ in 1..10 {
-    /// #           output.insert(stream.next().await.unwrap());
-    /// #       }
-    /// #       assert_eq!(
-    /// #           output,
-    /// #           HashSet::<i32>::from_iter(1..10)
-    /// #       );
-    /// #   },
-    /// # ));
-    pub fn resolve_futures<T2>(self) -> Stream<T2, L, B, NoOrder, R>
-    where
-        T: Future<Output = T2>,
-    {
+        let out_location = Atomic { tick: tick.clone() };
         Stream::new(
-            self.location.clone(),
-            HydroNode::ResolveFutures {
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T2>(),
+            out_location.clone(),
+            HydroNode::BeginAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: out_location
+                    .new_node_metadata(Stream::<T, Atomic<L>, B, O, R>::collection_kind()),
             },
         )
     }
@@ -2412,8 +2487,16 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
-        self.atomic(tick).batch(nondet)
+    pub fn batch(self, tick: &Tick<L>, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
+        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        Stream::new(
+            tick.clone(),
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: tick
+                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
+            },
+        )
     }
 
     /// Given a time interval, returns a stream corresponding to samples taken from the
@@ -2428,7 +2511,10 @@ where
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
         nondet: NonDet,
-    ) -> Stream<T, L, Unbounded, O, AtLeastOnce> {
+    ) -> Stream<T, L, Unbounded, O, AtLeastOnce>
+    where
+        L: NoTick + NoAtomic,
+    {
         let samples = self.location.source_interval(interval, nondet);
 
         let tick = self.location.tick();
@@ -2451,7 +2537,10 @@ where
         self,
         duration: impl QuotedWithContext<'a, std::time::Duration, Tick<L>> + Copy + 'a,
         nondet: NonDet,
-    ) -> Optional<(), L, Unbounded> {
+    ) -> Optional<(), L, Unbounded>
+    where
+        L: NoTick + NoAtomic,
+    {
         let tick = self.location.tick();
 
         let latest_received = self.assume_retries(nondet).fold_commutative(
@@ -2483,6 +2572,46 @@ where
     L: Location<'a> + NoTick + NoAtomic,
     F: Future<Output = T>,
 {
+    /// Consumes a stream of `Future<T>`, produces a new stream of the resulting `T` outputs.
+    /// Future outputs are produced as available, regardless of input arrival order.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// # use futures::StreamExt;
+    /// # use hydro_lang::prelude::*;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
+    ///     .map(q!(|x| async move {
+    ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///         x
+    ///     }))
+    ///     .resolve_futures()
+    /// #   },
+    /// #   |mut stream| async move {
+    /// // 1, 2, 3, 4, 5, 6, 7, 8, 9 (in any order)
+    /// #       let mut output = HashSet::new();
+    /// #       for _ in 1..10 {
+    /// #           output.insert(stream.next().await.unwrap());
+    /// #       }
+    /// #       assert_eq!(
+    /// #           output,
+    /// #           HashSet::<i32>::from_iter(1..10)
+    /// #       );
+    /// #   },
+    /// # ));
+    pub fn resolve_futures(self) -> Stream<T, L, B, NoOrder, R> {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::ResolveFutures {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<T, L, B, NoOrder, R>::collection_kind()),
+            },
+        )
+    }
+
     /// Consumes a stream of `Future<T>`, produces a new stream of the resulting `T` outputs.
     /// Future outputs are produced in the same order as the input stream.
     ///
@@ -2516,7 +2645,9 @@ where
             self.location.clone(),
             HydroNode::ResolveFuturesOrdered {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<T, L, B, O, R>::collection_kind()),
             },
         )
     }
@@ -2534,15 +2665,11 @@ where
     /// [`Stream::assume_retries`] with an explanation for why this is the case.
     pub fn for_each<F: Fn(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) {
         let f = f.splice_fn1_ctx(&self.location).into();
-        let metadata = self.location.new_node_metadata::<T>();
         self.location
             .flow_state()
             .borrow_mut()
             .push_root(HydroRoot::ForEach {
-                input: Box::new(HydroNode::Unpersist {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    metadata: metadata.clone(),
-                }),
+                input: Box::new(self.ir_node.into_inner()),
                 f,
                 op_metadata: HydroIrOpMetadata::new(),
             });
@@ -2577,9 +2704,12 @@ where
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, O, R> {
         Stream::new(
             self.location.outer().clone(),
-            HydroNode::Persist {
+            HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .outer()
+                    .new_node_metadata(Stream::<T, L, Unbounded, O, R>::collection_kind()),
             },
         )
     }
@@ -2591,13 +2721,16 @@ where
     /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
     /// stream's [`Tick`] context.
     pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded, O, R> {
+        let out_location = Atomic {
+            tick: self.location.clone(),
+        };
+
         Stream::new(
-            Atomic {
-                tick: self.location.clone(),
-            },
-            HydroNode::Persist {
+            out_location.clone(),
+            HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: out_location
+                    .new_node_metadata(Stream::<T, Atomic<L>, Unbounded, O, R>::collection_kind()),
             },
         )
     }
@@ -2643,18 +2776,57 @@ where
             self.location.clone(),
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
             },
         )
     }
 
-    #[expect(missing_docs, reason = "TODO")]
+    /// Shifts the elements in `self` to the **next tick**, so that the returned stream at tick `T`
+    /// always has the elements of `self` at tick `T - 1`.
+    ///
+    /// At tick `0`, the output stream is empty, since there is no previous tick.
+    ///
+    /// This operator enables stateful iterative processing with ticks, by sending data from one
+    /// tick to the next. For example, you can use it to compare inputs across consecutive batches.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![1, 2, 3, 4]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![0, 3, 4, 5, 6]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick(); // appears on the second tick
+    /// let changes_across_ticks = batch_first_tick.chain(batch_second_tick);
+    ///
+    /// changes_across_ticks.clone().filter_not_in(
+    ///     changes_across_ticks.defer_tick() // the elements from the previous tick
+    /// ).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [1, 2, 3, 4 /* first tick */, 0, 5, 6 /* second tick */]
+    /// # for w in vec![1, 2, 3, 4, 0, 5, 6] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn defer_tick(self) -> Stream<T, Tick<L>, Bounded, O, R> {
         Stream::new(
             self.location.clone(),
             HydroNode::DeferTick {
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
             },
         )
     }
@@ -2662,24 +2834,36 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
+    #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
+    #[cfg(feature = "deploy")]
     use serde::{Deserialize, Serialize};
+    #[cfg(feature = "deploy")]
     use stageleft::q;
 
     use crate::compile::builder::FlowBuilder;
+    #[cfg(feature = "deploy")]
+    use crate::live_collections::stream::ExactlyOnce;
+    use crate::live_collections::stream::{NoOrder, TotalOrder};
     use crate::location::Location;
+    use crate::nondet::nondet;
 
     mod backtrace_chained_ops;
 
+    #[cfg(feature = "deploy")]
     struct P1 {}
+    #[cfg(feature = "deploy")]
     struct P2 {}
 
+    #[cfg(feature = "deploy")]
     #[derive(Serialize, Deserialize, Debug)]
     struct SendOverNetwork {
         n: u32,
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn first_ten_distributed() {
         let mut deployment = Deployment::new();
@@ -2703,7 +2887,7 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_out = nodes.connect_source_bincode(out_port).await;
+        let mut external_out = nodes.connect(out_port).await;
 
         deployment.start().await.unwrap();
 
@@ -2712,6 +2896,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn first_cardinality() {
         let mut deployment = Deployment::new();
@@ -2738,13 +2923,91 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_out = nodes.connect_source_bincode(count).await;
+        let mut external_out = nodes.connect(count).await;
 
         deployment.start().await.unwrap();
 
         assert_eq!(external_out.next().await.unwrap(), 1);
     }
 
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn unbounded_reduce_remembers_state() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input
+            .reduce(q!(|acc, v| *acc += v))
+            .sample_eager(nondet!(/** test */))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 1);
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 3);
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn atomic_fold_replays_each_tick() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
+        let tick = node.tick();
+
+        let out = input
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(
+                node.source_iter(q!(vec![1, 2, 3]))
+                    .atomic(&tick)
+                    .fold(q!(|| 0), q!(|acc, v| *acc += v))
+                    .snapshot_atomic(nondet!(/** test */)),
+            )
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (1, 6));
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (2, 6));
+    }
+
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn unbounded_scan_remembers_state() {
         let mut deployment = Deployment::new();
@@ -2771,8 +3034,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in = nodes.connect_sink_bincode(input_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -2781,5 +3044,247 @@ mod tests {
 
         external_in.send(2).await.unwrap();
         assert_eq!(external_out.next().await.unwrap(), 3);
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn unbounded_enumerate_remembers_state() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) = node.source_external_bincode(&external);
+        let out = input.enumerate().send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (0, 1));
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (1, 2));
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn unbounded_unique_remembers_state() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
+        let out = input.unique().send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 1);
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 2);
+
+        external_in.send(1).await.unwrap();
+        external_in.send(3).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 3);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sim_batch_nondet_size() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, TotalOrder, _>(&external);
+
+        let tick = node.tick();
+        let out_port = input
+            .batch(&tick, nondet!(/** test */))
+            .count()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let mut out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send(());
+            in_send.send(());
+            in_send.send(());
+
+            assert_eq!(out_recv.next().await.unwrap(), 3); // fails with nondet batching
+        });
+    }
+
+    #[test]
+    fn sim_batch_preserves_order() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode(&external);
+
+        let tick = node.tick();
+        let out_port = input
+            .batch(&tick, nondet!(/** test */))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
+
+            out_recv.assert_yields_only([1, 2, 3]).await;
+        });
+    }
+
+    #[test]
+    #[should_panic]
+    fn sim_batch_unordered_shuffles() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+
+        let tick = node.tick();
+        let batch = input.batch(&tick, nondet!(/** test */));
+        let out_port = batch
+            .clone()
+            .min()
+            .zip(batch.max())
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send_many_unordered([1, 2, 3]).unwrap();
+
+            if out_recv.collect::<Vec<_>>().await == vec![(1, 3), (2, 2)] {
+                panic!("saw both (1, 3) and (2, 2), so batching must have shuffled the order");
+            }
+        });
+    }
+
+    #[test]
+    fn sim_batch_unordered_shuffles_count() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+
+        let tick = node.tick();
+        let batch = input.batch(&tick, nondet!(/** test */));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        let instance_count = flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+            out_recv.assert_yields_only_unordered([1, 2, 3, 4]).await;
+        });
+
+        assert_eq!(
+            instance_count,
+            75 // ∑ (k=1 to 4) S(4,k) × k! = 75
+        )
+    }
+
+    #[test]
+    #[ignore = "assume_ordering not yet supported on bounded collections"]
+    fn sim_observe_order_batched_count() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+
+        let tick = node.tick();
+        let batch = input.batch(&tick, nondet!(/** test */));
+        let out_port = batch
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let instance_count = flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+            let _ = out_recv.collect::<Vec<_>>().await;
+        });
+
+        assert_eq!(
+            instance_count,
+            192 // 4! * 2^{4 - 1}
+        )
+    }
+
+    #[test]
+    fn sim_unordered_count_instance_count() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+
+        let tick = node.tick();
+        let out_port = input
+            .count()
+            .snapshot(&tick, nondet!(/** test */))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let instance_count = flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+            assert!(out_recv.collect::<Vec<_>>().await.last().unwrap() == &4);
+        });
+
+        assert_eq!(
+            instance_count,
+            16 // 2^4, { 0, 1, 2, 3 } can be a snapshot and 4 is always included
+        )
     }
 }

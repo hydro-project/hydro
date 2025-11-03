@@ -69,9 +69,9 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut roots_send = nodes.connect_sink_bincode(roots_send).await;
-        let mut edges_send = nodes.connect_sink_bincode(edges_send).await;
-        let out_recv = nodes.connect_source_bincode(out_recv).await;
+        let mut roots_send = nodes.connect(roots_send).await;
+        let mut edges_send = nodes.connect(edges_send).await;
+        let out_recv = nodes.connect(out_recv).await;
 
         deployment.start().await.unwrap();
 

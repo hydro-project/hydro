@@ -12,8 +12,7 @@ use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
 use futures::sink::Buffer;
 use futures::stream::{FuturesUnordered, SplitSink, SplitStream};
-use futures::{Future, Sink, SinkExt, Stream, StreamExt, ready, stream};
-use pin_project_lite::pin_project;
+use futures::{Future, Sink, SinkExt, Stream, StreamExt, stream};
 use serde::{Deserialize, Serialize};
 use tempfile::TempDir;
 use tokio::io;
@@ -567,7 +566,7 @@ impl ConnectedSink for ConnectedDirect {
     }
 }
 
-pub type BufferedDrain<S, I> = DemuxDrain<I, Buffer<S, I>>;
+pub type BufferedDrain<S, I> = sinktools::demux_map::DemuxMap<u32, Pin<Box<Buffer<S, I>>>>;
 
 pub struct ConnectedDemux<T: ConnectedSink>
 where
@@ -575,58 +574,6 @@ where
 {
     pub keys: Vec<u32>,
     sink: Option<BufferedDrain<T::Sink, T::Input>>,
-}
-
-trait DrainableSink<T>: Sink<T, Error = io::Error> + Send + Sync {}
-
-impl<T, S: Sink<T, Error = io::Error> + Send + Sync + ?Sized> DrainableSink<T> for S {}
-
-pin_project! {
-    pub struct DemuxDrain<T, S: DrainableSink<T>> {
-        marker: PhantomData<T>,
-        #[pin]
-        sinks: HashMap<u32, Pin<Box<S>>>,
-    }
-}
-
-impl<T, S: Sink<T, Error = io::Error> + Send + Sync> Sink<(u32, T)> for DemuxDrain<T, S> {
-    type Error = io::Error;
-
-    fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        for sink in self.project().sinks.values_mut() {
-            ready!(Sink::poll_ready(sink.as_mut(), _cx))?;
-        }
-
-        Poll::Ready(Ok(()))
-    }
-
-    fn start_send(self: Pin<&mut Self>, item: (u32, T)) -> Result<(), Self::Error> {
-        Sink::start_send(
-            self.project()
-                .sinks
-                .get_mut()
-                .get_mut(&item.0)
-                .unwrap_or_else(|| panic!("No sink in this demux for key {}", item.0))
-                .as_mut(),
-            item.1,
-        )
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        for sink in self.project().sinks.values_mut() {
-            ready!(Sink::poll_flush(sink.as_mut(), _cx))?;
-        }
-
-        Poll::Ready(Ok(()))
-    }
-
-    fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        for sink in self.project().sinks.values_mut() {
-            ready!(Sink::poll_close(sink.as_mut(), _cx))?;
-        }
-
-        Poll::Ready(Ok(()))
-    }
 }
 
 #[async_trait]
@@ -650,10 +597,7 @@ where
                     );
                 }
 
-                let demuxer = DemuxDrain {
-                    marker: PhantomData,
-                    sinks: connected_demux,
-                };
+                let demuxer = sinktools::demux_map(connected_demux);
 
                 ConnectedDemux {
                     keys,
@@ -675,10 +619,7 @@ where
                     );
                 }
 
-                let demuxer = DemuxDrain {
-                    marker: PhantomData,
-                    sinks: connected_demux,
-                };
+                let demuxer = sinktools::demux_map(connected_demux);
 
                 ConnectedDemux {
                     keys,

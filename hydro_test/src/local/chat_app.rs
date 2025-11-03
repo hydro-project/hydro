@@ -74,9 +74,9 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut users_send = nodes.connect_sink_bincode(users_send).await;
-        let mut messages_send = nodes.connect_sink_bincode(messages_send).await;
-        let mut out_recv = nodes.connect_source_bincode(out_recv).await;
+        let mut users_send = nodes.connect(users_send).await;
+        let mut messages_send = nodes.connect(messages_send).await;
+        let mut out_recv = nodes.connect(out_recv).await;
 
         deployment.start().await.unwrap();
 
@@ -139,9 +139,9 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut users_send = nodes.connect_sink_bincode(users_send).await;
-        let mut messages_send = nodes.connect_sink_bincode(messages_send).await;
-        let mut out_recv = nodes.connect_source_bincode(out_recv).await;
+        let mut users_send = nodes.connect(users_send).await;
+        let mut messages_send = nodes.connect(messages_send).await;
+        let mut out_recv = nodes.connect(out_recv).await;
 
         deployment.start().await.unwrap();
 

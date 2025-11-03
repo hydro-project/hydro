@@ -202,25 +202,25 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     let print_tick = aggregator.tick();
     let client_members = aggregator.source_cluster_members(clients);
     let client_count = track_membership(client_members)
-        .key_count()
-        .snapshot(&print_tick, nondet_client_count);
+        .snapshot(&print_tick, nondet_client_count)
+        .filter(q!(|b| *b))
+        .key_count();
 
     let keyed_throughputs = results
         .throughput
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
         .send_bincode(aggregator);
 
-    let latest_throughputs = keyed_throughputs
-        .reduce_idempotent(q!(|combined, new| {
-            *combined = new;
-        }))
-        // Remove throughputs from clients that have yet to actually record process
-        .filter(q!(|throughputs| throughputs.sample_mean() > 0.0));
+    let latest_throughputs = keyed_throughputs.reduce_idempotent(q!(|combined, new| {
+        *combined = new;
+    }));
 
     let clients_with_throughputs_count = latest_throughputs
         .clone()
-        .key_count()
-        .snapshot(&print_tick, nondet_client_count);
+        .snapshot(&print_tick, nondet_client_count)
+        // Remove throughputs from clients that have yet to actually record process
+        .filter(q!(|throughputs| throughputs.sample_mean() > 0.0))
+        .key_count();
 
     let waiting_for_clients = client_count
         .clone()

@@ -17,7 +17,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::time::Duration;
 
-use bytes::{Bytes, BytesMut};
+use bytes::BytesMut;
 use futures::stream::Stream as FuturesStream;
 use proc_macro2::Span;
 use serde::de::DeserializeOwned;
@@ -33,13 +33,15 @@ use crate::forward_handle::{CycleCollection, ForwardHandle};
 use crate::live_collections::boundedness::Unbounded;
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
-use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
+use crate::live_collections::stream::{
+    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
+};
 use crate::location::cluster::ClusterIds;
 use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
-    ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many,
+    ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many, NotMany,
 };
-use crate::nondet::{NonDet, nondet};
+use crate::nondet::NonDet;
 use crate::staging_util::get_this_crate;
 
 pub mod dynamic;
@@ -92,6 +94,19 @@ pub trait Location<'a>: dynamic::DynLocation {
 
     fn root(&self) -> Self::Root;
 
+    fn try_tick(&self) -> Option<Tick<Self>> {
+        if Self::is_top_level() {
+            let next_id = self.flow_state().borrow_mut().next_clock_id;
+            self.flow_state().borrow_mut().next_clock_id += 1;
+            Some(Tick {
+                id: next_id,
+                l: self.clone(),
+            })
+        } else {
+            None
+        }
+    }
+
     fn id(&self) -> LocationId {
         dynamic::DynLocation::id(self)
     }
@@ -114,12 +129,15 @@ pub trait Location<'a>: dynamic::DynLocation {
     {
         Stream::new(
             self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::Source {
-                    source: HydroSource::Spin(),
-                    metadata: self.new_node_metadata::<()>(),
-                }),
-                metadata: self.new_node_metadata::<()>(),
+            HydroNode::Source {
+                source: HydroSource::Spin(),
+                metadata: self.new_node_metadata(Stream::<
+                    (),
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         )
     }
@@ -136,12 +154,15 @@ pub trait Location<'a>: dynamic::DynLocation {
 
         Stream::new(
             self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::Source {
-                    source: HydroSource::Stream(e.into()),
-                    metadata: self.new_node_metadata::<T>(),
-                }),
-                metadata: self.new_node_metadata::<T>(),
+            HydroNode::Source {
+                source: HydroSource::Stream(e.into()),
+                metadata: self.new_node_metadata(Stream::<
+                    T,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         )
     }
@@ -156,16 +177,19 @@ pub trait Location<'a>: dynamic::DynLocation {
     {
         // TODO(shadaj): we mark this as unbounded because we do not yet have a representation
         // for bounded top-level streams, and this is the only way to generate one
-        let e = e.splice_untyped_ctx(self);
+        let e = e.splice_typed_ctx(self);
 
         Stream::new(
             self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::Source {
-                    source: HydroSource::Iter(e.into()),
-                    metadata: self.new_node_metadata::<T>(),
-                }),
-                metadata: self.new_node_metadata::<T>(),
+            HydroNode::Source {
+                source: HydroSource::Iter(e.into()),
+                metadata: self.new_node_metadata(Stream::<
+                    T,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         )
     }
@@ -212,29 +236,33 @@ pub trait Location<'a>: dynamic::DynLocation {
             },
             Stream::new(
                 self.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::ExternalInput {
-                        from_external_id: from.id,
-                        from_key: next_external_port_id,
-                        from_many: false,
-                        codec_type: quote_type::<LengthDelimitedCodec>().into(),
-                        port_hint: NetworkHint::Auto,
-                        instantiate_fn: DebugInstantiate::Building,
-                        deserialize_fn: None,
-                        metadata: self.new_node_metadata::<std::io::Result<BytesMut>>(),
-                    }),
-                    metadata: self.new_node_metadata::<std::io::Result<BytesMut>>(),
+                HydroNode::ExternalInput {
+                    from_external_id: from.id,
+                    from_key: next_external_port_id,
+                    from_many: false,
+                    codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                    port_hint: NetworkHint::Auto,
+                    instantiate_fn: DebugInstantiate::Building,
+                    deserialize_fn: None,
+                    metadata: self.new_node_metadata(Stream::<
+                        std::io::Result<BytesMut>,
+                        Self,
+                        Unbounded,
+                        TotalOrder,
+                        ExactlyOnce,
+                    >::collection_kind()),
                 },
             ),
         )
     }
 
-    fn source_external_bincode<L, T>(
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    fn source_external_bincode<L, T, O: Ordering, R: Retries>(
         &self,
         from: &External<L>,
     ) -> (
-        ExternalBincodeSink<T>,
-        Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>,
+        ExternalBincodeSink<T, NotMany, O, R>,
+        Stream<T, Self, Unbounded, O, R>,
     )
     where
         Self: Sized + NoTick,
@@ -255,23 +283,19 @@ pub trait Location<'a>: dynamic::DynLocation {
             },
             Stream::new(
                 self.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::ExternalInput {
-                        from_external_id: from.id,
-                        from_key: next_external_port_id,
-                        from_many: false,
-                        codec_type: quote_type::<LengthDelimitedCodec>().into(),
-                        port_hint: NetworkHint::Auto,
-                        instantiate_fn: DebugInstantiate::Building,
-                        deserialize_fn: Some(
-                            crate::live_collections::stream::networking::deserialize_bincode::<T>(
-                                None,
-                            )
+                HydroNode::ExternalInput {
+                    from_external_id: from.id,
+                    from_key: next_external_port_id,
+                    from_many: false,
+                    codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                    port_hint: NetworkHint::Auto,
+                    instantiate_fn: DebugInstantiate::Building,
+                    deserialize_fn: Some(
+                        crate::live_collections::stream::networking::deserialize_bincode::<T>(None)
                             .into(),
-                        ),
-                        metadata: self.new_node_metadata::<T>(),
-                    }),
-                    metadata: self.new_node_metadata::<T>(),
+                    ),
+                    metadata: self
+                        .new_node_metadata(Stream::<T, Self, Unbounded, O, R>::collection_kind()),
                 },
             ),
         )
@@ -308,10 +332,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             to_many: true,
             serialize_fn: None,
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(HydroNode::Unpersist {
-                inner: Box::new(to_sink.entries().ir_node.into_inner()),
-                metadata: self.new_node_metadata::<(u64, T)>(),
-            }),
+            input: Box::new(to_sink.entries().ir_node.into_inner()),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
@@ -319,24 +340,25 @@ pub trait Location<'a>: dynamic::DynLocation {
             Result<(u64, <Codec as Decoder>::Item), <Codec as Decoder>::Error>,
             Self,
             Unbounded,
-            NoOrder,
+            TotalOrder,
             ExactlyOnce,
         > = Stream::new(
             self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::ExternalInput {
-                    from_external_id: from.id,
-                    from_key: next_external_port_id,
-                    from_many: true,
-                    codec_type: quote_type::<Codec>().into(),
-                    port_hint,
-                    instantiate_fn: DebugInstantiate::Building,
-                    deserialize_fn: None,
-                    metadata: self
-                        .new_node_metadata::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(),
-                }),
-                metadata: self
-                    .new_node_metadata::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(),
+            HydroNode::ExternalInput {
+                from_external_id: from.id,
+                from_key: next_external_port_id,
+                from_many: true,
+                codec_type: quote_type::<Codec>().into(),
+                port_hint,
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: None,
+                metadata: self.new_node_metadata(Stream::<
+                    Result<(u64, <Codec as Decoder>::Item), <Codec as Decoder>::Error>,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         );
 
@@ -348,17 +370,27 @@ pub trait Location<'a>: dynamic::DynLocation {
             Span::call_site(),
         );
         let membership_stream_expr: syn::Expr = parse_quote!(#membership_stream_ident);
-        let raw_membership_stream: Stream<(u64, bool), Self, Unbounded, TotalOrder, ExactlyOnce> =
-            Stream::new(
-                self.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::Source {
-                        source: HydroSource::Stream(membership_stream_expr.into()),
-                        metadata: self.new_node_metadata::<(u64, bool)>(),
-                    }),
-                    metadata: self.new_node_metadata::<(u64, bool)>(),
-                },
-            );
+        let raw_membership_stream: KeyedStream<
+            u64,
+            bool,
+            Self,
+            Unbounded,
+            TotalOrder,
+            ExactlyOnce,
+        > = KeyedStream::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Stream(membership_stream_expr.into()),
+                metadata: self.new_node_metadata(KeyedStream::<
+                    u64,
+                    bool,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        );
 
         (
             ExternalBytesPort {
@@ -368,22 +400,14 @@ pub trait Location<'a>: dynamic::DynLocation {
             },
             raw_stream
                 .flatten_ordered() // TODO(shadaj): this silently drops framing errors, decide on right defaults
-                .into_keyed()
-                .assume_ordering::<TotalOrder>(
-                    nondet!(/** order of messages is deterministic within each key due to TCP */)
-                ),
-            raw_membership_stream
-                .into_keyed()
-                .assume_ordering::<TotalOrder>(
-                    nondet!(/** membership events are ordered within each key */),
-                )
-                .map(q!(|join| {
-                    if join {
-                        MembershipEvent::Joined
-                    } else {
-                        MembershipEvent::Left
-                    }
-                })),
+                .into_keyed(),
+            raw_membership_stream.map(q!(|join| {
+                if join {
+                    MembershipEvent::Joined
+                } else {
+                    MembershipEvent::Left
+                }
+            })),
             fwd_ref,
         )
     }
@@ -427,10 +451,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             to_many: true,
             serialize_fn: Some(ser_fn.into()),
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(HydroNode::Unpersist {
-                inner: Box::new(to_sink.entries().ir_node.into_inner()),
-                metadata: self.new_node_metadata::<(u64, Bytes)>(),
-            }),
+            input: Box::new(to_sink.entries().ir_node.into_inner()),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
@@ -443,10 +464,10 @@ pub trait Location<'a>: dynamic::DynLocation {
             }
         };
 
-        let raw_stream: Stream<(u64, InT), Self, Unbounded, NoOrder, ExactlyOnce> = Stream::new(
-            self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::ExternalInput {
+        let raw_stream: KeyedStream<u64, InT, Self, Unbounded, TotalOrder, ExactlyOnce> =
+            KeyedStream::new(
+                self.clone(),
+                HydroNode::ExternalInput {
                     from_external_id: from.id,
                     from_key: next_external_port_id,
                     from_many: true,
@@ -454,11 +475,16 @@ pub trait Location<'a>: dynamic::DynLocation {
                     port_hint: NetworkHint::Auto,
                     instantiate_fn: DebugInstantiate::Building,
                     deserialize_fn: Some(deser_fn.into()),
-                    metadata: self.new_node_metadata::<(u64, InT)>(),
-                }),
-                metadata: self.new_node_metadata::<(u64, InT)>(),
-            },
-        );
+                    metadata: self.new_node_metadata(KeyedStream::<
+                        u64,
+                        InT,
+                        Self,
+                        Unbounded,
+                        TotalOrder,
+                        ExactlyOnce,
+                    >::collection_kind()),
+                },
+            );
 
         let membership_stream_ident = syn::Ident::new(
             &format!(
@@ -468,17 +494,27 @@ pub trait Location<'a>: dynamic::DynLocation {
             Span::call_site(),
         );
         let membership_stream_expr: syn::Expr = parse_quote!(#membership_stream_ident);
-        let raw_membership_stream: Stream<(u64, bool), Self, Unbounded, NoOrder, ExactlyOnce> =
-            Stream::new(
-                self.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::Source {
-                        source: HydroSource::Stream(membership_stream_expr.into()),
-                        metadata: self.new_node_metadata::<(u64, bool)>(),
-                    }),
-                    metadata: self.new_node_metadata::<(u64, bool)>(),
-                },
-            );
+        let raw_membership_stream: KeyedStream<
+            u64,
+            bool,
+            Self,
+            Unbounded,
+            TotalOrder,
+            ExactlyOnce,
+        > = KeyedStream::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Stream(membership_stream_expr.into()),
+                metadata: self.new_node_metadata(KeyedStream::<
+                    u64,
+                    bool,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        );
 
         (
             ExternalBincodeBidi {
@@ -486,50 +522,49 @@ pub trait Location<'a>: dynamic::DynLocation {
                 port_id: next_external_port_id,
                 _phantom: PhantomData,
             },
-            raw_stream.into_keyed().assume_ordering::<TotalOrder>(
-                nondet!(/** order of messages is deterministic within each key due to TCP */),
-            ),
-            raw_membership_stream
-                .into_keyed()
-                .assume_ordering::<TotalOrder>(
-                    nondet!(/** membership events are ordered within each key */),
-                )
-                .map(q!(|join| {
-                    if join {
-                        MembershipEvent::Joined
-                    } else {
-                        MembershipEvent::Left
-                    }
-                })),
+            raw_stream,
+            raw_membership_stream.map(q!(|join| {
+                if join {
+                    MembershipEvent::Joined
+                } else {
+                    MembershipEvent::Left
+                }
+            })),
             fwd_ref,
         )
     }
 
+    /// Constructs a [`Singleton`] materialized at this location with the given static value.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!(5));
+    /// # singleton.all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 5
+    /// # assert_eq!(stream.next().await.unwrap(), 5);
+    /// # }));
+    /// ```
     fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, Self>) -> Singleton<T, Self, Unbounded>
     where
         T: Clone,
-        Self: Sized + NoTick,
+        Self: Sized,
     {
         // TODO(shadaj): we mark this as unbounded because we do not yet have a representation
         // for bounded top-level singletons, and this is the only way to generate one
 
-        let e_arr = q!([e]);
-        let e = e_arr.splice_untyped_ctx(self);
+        let e = e.splice_untyped_ctx(self);
 
-        // we do a double persist here because if the singleton shows up on every tick,
-        // we first persist the source so that we store that value and then persist again
-        // so that it grows every tick
         Singleton::new(
             self.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::Persist {
-                    inner: Box::new(HydroNode::Source {
-                        source: HydroSource::Iter(e.into()),
-                        metadata: self.new_node_metadata::<T>(),
-                    }),
-                    metadata: self.new_node_metadata::<T>(),
-                }),
-                metadata: self.new_node_metadata::<T>(),
+            HydroNode::SingletonSource {
+                value: e.into(),
+                metadata: self
+                    .new_node_metadata(Singleton::<T, Self, Unbounded>::collection_kind()),
             },
         )
     }
@@ -600,6 +635,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     }
 }
 
+#[cfg(feature = "deploy")]
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -610,7 +646,90 @@ mod tests {
     use tokio_util::codec::LengthDelimitedCodec;
 
     use crate::compile::builder::FlowBuilder;
+    use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
     use crate::location::{Location, NetworkHint};
+    use crate::nondet::nondet;
+
+    #[tokio::test]
+    async fn top_level_singleton_replay_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (in_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
+        let singleton = node.singleton(q!(123));
+        let tick = node.tick();
+        let out = input
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(singleton.clone().snapshot(&tick, nondet!(/** test */)))
+            .cross_singleton(
+                singleton
+                    .snapshot(&tick, nondet!(/** test */))
+                    .into_stream()
+                    .count(),
+            )
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(in_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), ((1, 123), 1));
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), ((2, 123), 1));
+    }
+
+    #[tokio::test]
+    async fn tick_singleton_replay_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (in_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
+        let tick = node.tick();
+        let singleton = tick.singleton(q!(123));
+        let out = input
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(singleton.clone())
+            .cross_singleton(singleton.into_stream().count())
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(in_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), ((1, 123), 1));
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), ((2, 123), 1));
+    }
 
     #[tokio::test]
     async fn external_bytes() {
@@ -632,8 +751,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in = nodes.connect_sink_bytes(in_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in = nodes.connect(in_port).await.1;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -664,7 +783,7 @@ mod tests {
 
         let (_, mut external_in_1) = nodes.connect_bincode(in_port.clone()).await;
         let (_, mut external_in_2) = nodes.connect_bincode(in_port).await;
-        let external_out = nodes.connect_source_bincode(out).await;
+        let external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -700,7 +819,7 @@ mod tests {
         // intentionally skipped to test stream waking logic
         let (_, mut _external_in_1) = nodes.connect_bincode(in_port.clone()).await;
         let (_, mut external_in_2) = nodes.connect_bincode(in_port).await;
-        let mut external_out = nodes.connect_source_bincode(out).await;
+        let mut external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -729,9 +848,9 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_in_1 = nodes.connect_sink_bytes(in_port.clone()).await;
-        let mut external_in_2 = nodes.connect_sink_bytes(in_port).await;
-        let external_out = nodes.connect_source_bincode(out).await;
+        let mut external_in_1 = nodes.connect(in_port.clone()).await.1;
+        let mut external_in_2 = nodes.connect(in_port).await.1;
+        let external_out = nodes.connect(out).await;
 
         deployment.start().await.unwrap();
 
@@ -769,8 +888,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let (mut external_out_1, mut external_in_1) = nodes.connect_bytes(port.clone()).await;
-        let (mut external_out_2, mut external_in_2) = nodes.connect_bytes(port).await;
+        let (mut external_out_1, mut external_in_1) = nodes.connect(port.clone()).await;
+        let (mut external_out_2, mut external_in_2) = nodes.connect(port).await;
 
         deployment.start().await.unwrap();
 

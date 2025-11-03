@@ -5,149 +5,337 @@ expression: built.ir()
 [
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) | { println ! ("pi: {} ({} trials)" , 4.0 * inside as f64 / total as f64 , total) ; } }),
-        input: Map {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < ((u64 , u64) , ()) , (u64 , u64) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _signal) | d }),
-            input: CrossSingleton {
-                left: Reduce {
-                    f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , (u64 , u64) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , (inside_batch , total_batch) | { * inside += inside_batch ; * total += total_batch ; } }),
-                    input: Persist {
+        input: ObserveNonDet {
+            inner: Cast {
+                inner: YieldConcat {
+                    inner: Cast {
                         inner: Map {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: compute_pi :: Worker > , (u64 , u64)) , (u64 , u64) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                            input: Network {
-                                serialize_fn: Some(
-                                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
-                                ),
-                                instantiate_fn: <network instantiate>,
-                                deserialize_fn: Some(
-                                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: compute_pi :: Worker > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (u64 , u64) > (& b) . unwrap ()) },
-                                ),
-                                input: Fold {
-                                    init: stageleft :: runtime_support :: fn0_type_hint :: < (u64 , u64) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | | (0u64 , 0u64) }),
-                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , bool , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , sample_inside | { if sample_inside { * inside += 1 ; } * total += 1 ; } }),
-                                    input: Map {
-                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (x , y) | x * x + y * y < 1.0 }),
-                                        input: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , (f64 , f64) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | _ | rand :: random :: < (f64 , f64) > () }),
-                                            input: Map {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; | _ | () }),
-                                                input: FlatMap {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , std :: ops :: Range < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let batch_size__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; let batch_size__free = 8192usize ; batch_size__free } ; move | _ | 0 .. batch_size__free }),
-                                                    input: Source {
-                                                        source: Spin,
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < ((u64 , u64) , ()) , (u64 , u64) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _signal) | d }),
+                            input: CrossSingleton {
+                                left: Batch {
+                                    inner: Reduce {
+                                        f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , (u64 , u64) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , (inside_batch , total_batch) | { * inside += inside_batch ; * total += total_batch ; } }),
+                                        input: ObserveNonDet {
+                                            inner: Map {
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: compute_pi :: Worker > , (u64 , u64)) , (u64 , u64) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
+                                                input: Cast {
+                                                    inner: Cast {
+                                                        inner: Network {
+                                                            serialize_fn: Some(
+                                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                                                            ),
+                                                            instantiate_fn: <network instantiate>,
+                                                            deserialize_fn: Some(
+                                                                | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: compute_pi :: Worker > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (u64 , u64) > (& b) . unwrap ()) },
+                                                            ),
+                                                            input: YieldConcat {
+                                                                inner: Cast {
+                                                                    inner: Fold {
+                                                                        init: stageleft :: runtime_support :: fn0_type_hint :: < (u64 , u64) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | | (0u64 , 0u64) }),
+                                                                        acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , bool , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , sample_inside | { if sample_inside { * inside += 1 ; } * total += 1 ; } }),
+                                                                        input: Map {
+                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (x , y) | x * x + y * y < 1.0 }),
+                                                                            input: Map {
+                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , (f64 , f64) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | _ | rand :: random :: < (f64 , f64) > () }),
+                                                                                input: Batch {
+                                                                                    inner: Map {
+                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; | _ | () }),
+                                                                                        input: FlatMap {
+                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , std :: ops :: Range < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let batch_size__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; let batch_size__free = 8192usize ; batch_size__free } ; move | _ | 0 .. batch_size__free }),
+                                                                                            input: Source {
+                                                                                                source: Spin,
+                                                                                                metadata: HydroIrMetadata {
+                                                                                                    location_kind: Cluster(
+                                                                                                        0,
+                                                                                                    ),
+                                                                                                    collection_kind: Stream {
+                                                                                                        bound: Unbounded,
+                                                                                                        order: TotalOrder,
+                                                                                                        retry: ExactlyOnce,
+                                                                                                        element_type: (),
+                                                                                                    },
+                                                                                                },
+                                                                                            },
+                                                                                            metadata: HydroIrMetadata {
+                                                                                                location_kind: Cluster(
+                                                                                                    0,
+                                                                                                ),
+                                                                                                collection_kind: Stream {
+                                                                                                    bound: Unbounded,
+                                                                                                    order: TotalOrder,
+                                                                                                    retry: ExactlyOnce,
+                                                                                                    element_type: usize,
+                                                                                                },
+                                                                                            },
+                                                                                        },
+                                                                                        metadata: HydroIrMetadata {
+                                                                                            location_kind: Cluster(
+                                                                                                0,
+                                                                                            ),
+                                                                                            collection_kind: Stream {
+                                                                                                bound: Unbounded,
+                                                                                                order: TotalOrder,
+                                                                                                retry: ExactlyOnce,
+                                                                                                element_type: (),
+                                                                                            },
+                                                                                        },
+                                                                                    },
+                                                                                    metadata: HydroIrMetadata {
+                                                                                        location_kind: Tick(
+                                                                                            0,
+                                                                                            Cluster(
+                                                                                                0,
+                                                                                            ),
+                                                                                        ),
+                                                                                        collection_kind: Stream {
+                                                                                            bound: Bounded,
+                                                                                            order: TotalOrder,
+                                                                                            retry: ExactlyOnce,
+                                                                                            element_type: (),
+                                                                                        },
+                                                                                    },
+                                                                                },
+                                                                                metadata: HydroIrMetadata {
+                                                                                    location_kind: Tick(
+                                                                                        0,
+                                                                                        Cluster(
+                                                                                            0,
+                                                                                        ),
+                                                                                    ),
+                                                                                    collection_kind: Stream {
+                                                                                        bound: Bounded,
+                                                                                        order: TotalOrder,
+                                                                                        retry: ExactlyOnce,
+                                                                                        element_type: (f64 , f64),
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                            metadata: HydroIrMetadata {
+                                                                                location_kind: Tick(
+                                                                                    0,
+                                                                                    Cluster(
+                                                                                        0,
+                                                                                    ),
+                                                                                ),
+                                                                                collection_kind: Stream {
+                                                                                    bound: Bounded,
+                                                                                    order: TotalOrder,
+                                                                                    retry: ExactlyOnce,
+                                                                                    element_type: bool,
+                                                                                },
+                                                                            },
+                                                                        },
+                                                                        metadata: HydroIrMetadata {
+                                                                            location_kind: Tick(
+                                                                                0,
+                                                                                Cluster(
+                                                                                    0,
+                                                                                ),
+                                                                            ),
+                                                                            collection_kind: Singleton {
+                                                                                bound: Bounded,
+                                                                                element_type: (u64 , u64),
+                                                                            },
+                                                                        },
+                                                                    },
+                                                                    metadata: HydroIrMetadata {
+                                                                        location_kind: Tick(
+                                                                            0,
+                                                                            Cluster(
+                                                                                0,
+                                                                            ),
+                                                                        ),
+                                                                        collection_kind: Stream {
+                                                                            bound: Bounded,
+                                                                            order: TotalOrder,
+                                                                            retry: ExactlyOnce,
+                                                                            element_type: (u64 , u64),
+                                                                        },
+                                                                    },
+                                                                },
+                                                                metadata: HydroIrMetadata {
+                                                                    location_kind: Cluster(
+                                                                        0,
+                                                                    ),
+                                                                    collection_kind: Stream {
+                                                                        bound: Unbounded,
+                                                                        order: TotalOrder,
+                                                                        retry: ExactlyOnce,
+                                                                        element_type: (u64 , u64),
+                                                                    },
+                                                                },
+                                                            },
+                                                            metadata: HydroIrMetadata {
+                                                                location_kind: Process(
+                                                                    1,
+                                                                ),
+                                                                collection_kind: Stream {
+                                                                    bound: Unbounded,
+                                                                    order: TotalOrder,
+                                                                    retry: ExactlyOnce,
+                                                                    element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: compute_pi :: Worker > , (u64 , u64)),
+                                                                },
+                                                            },
+                                                        },
                                                         metadata: HydroIrMetadata {
-                                                            location_kind: Cluster(
-                                                                0,
+                                                            location_kind: Process(
+                                                                1,
                                                             ),
-                                                            output_type: Some(
-                                                                (),
-                                                            ),
+                                                            collection_kind: KeyedStream {
+                                                                bound: Unbounded,
+                                                                value_order: TotalOrder,
+                                                                value_retry: ExactlyOnce,
+                                                                key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: compute_pi :: Worker >,
+                                                                value_type: (u64 , u64),
+                                                            },
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
-                                                        location_kind: Cluster(
-                                                            0,
+                                                        location_kind: Process(
+                                                            1,
                                                         ),
-                                                        output_type: Some(
-                                                            usize,
-                                                        ),
+                                                        collection_kind: Stream {
+                                                            bound: Unbounded,
+                                                            order: NoOrder,
+                                                            retry: ExactlyOnce,
+                                                            element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: compute_pi :: Worker > , (u64 , u64)),
+                                                        },
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
-                                                    location_kind: Cluster(
-                                                        0,
+                                                    location_kind: Process(
+                                                        1,
                                                     ),
-                                                    output_type: Some(
-                                                        (),
-                                                    ),
+                                                    collection_kind: Stream {
+                                                        bound: Unbounded,
+                                                        order: NoOrder,
+                                                        retry: ExactlyOnce,
+                                                        element_type: (u64 , u64),
+                                                    },
                                                 },
                                             },
+                                            trusted: false,
                                             metadata: HydroIrMetadata {
-                                                location_kind: Tick(
-                                                    0,
-                                                    Cluster(
-                                                        0,
-                                                    ),
+                                                location_kind: Process(
+                                                    1,
                                                 ),
-                                                output_type: Some(
-                                                    (f64 , f64),
-                                                ),
+                                                collection_kind: Stream {
+                                                    bound: Unbounded,
+                                                    order: TotalOrder,
+                                                    retry: ExactlyOnce,
+                                                    element_type: (u64 , u64),
+                                                },
                                             },
                                         },
                                         metadata: HydroIrMetadata {
-                                            location_kind: Tick(
-                                                0,
-                                                Cluster(
-                                                    0,
-                                                ),
+                                            location_kind: Process(
+                                                1,
                                             ),
-                                            output_type: Some(
-                                                bool,
-                                            ),
+                                            collection_kind: Optional {
+                                                bound: Unbounded,
+                                                element_type: (u64 , u64),
+                                            },
                                         },
                                     },
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
-                                            0,
-                                            Cluster(
-                                                0,
+                                            1,
+                                            Process(
+                                                1,
                                             ),
                                         ),
-                                        output_type: Some(
-                                            (u64 , u64),
+                                        collection_kind: Optional {
+                                            bound: Bounded,
+                                            element_type: (u64 , u64),
+                                        },
+                                    },
+                                },
+                                right: Map {
+                                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
+                                    input: Reduce {
+                                        f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
+                                        input: Batch {
+                                            inner: Source {
+                                                source: Stream(
+                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; Duration :: from_secs (1) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                ),
+                                                metadata: HydroIrMetadata {
+                                                    location_kind: Process(
+                                                        1,
+                                                    ),
+                                                    collection_kind: Stream {
+                                                        bound: Unbounded,
+                                                        order: TotalOrder,
+                                                        retry: ExactlyOnce,
+                                                        element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                    },
+                                                },
+                                            },
+                                            metadata: HydroIrMetadata {
+                                                location_kind: Tick(
+                                                    1,
+                                                    Process(
+                                                        1,
+                                                    ),
+                                                ),
+                                                collection_kind: Stream {
+                                                    bound: Bounded,
+                                                    order: TotalOrder,
+                                                    retry: ExactlyOnce,
+                                                    element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                },
+                                            },
+                                        },
+                                        metadata: HydroIrMetadata {
+                                            location_kind: Tick(
+                                                1,
+                                                Process(
+                                                    1,
+                                                ),
+                                            ),
+                                            collection_kind: Optional {
+                                                bound: Bounded,
+                                                element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                            },
+                                        },
+                                    },
+                                    metadata: HydroIrMetadata {
+                                        location_kind: Tick(
+                                            1,
+                                            Process(
+                                                1,
+                                            ),
                                         ),
+                                        collection_kind: Optional {
+                                            bound: Bounded,
+                                            element_type: (),
+                                        },
                                     },
                                 },
                                 metadata: HydroIrMetadata {
-                                    location_kind: Process(
+                                    location_kind: Tick(
                                         1,
+                                        Process(
+                                            1,
+                                        ),
                                     ),
-                                    output_type: Some(
-                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: compute_pi :: Worker > , (u64 , u64)),
-                                    ),
+                                    collection_kind: Optional {
+                                        bound: Bounded,
+                                        element_type: ((u64 , u64) , ()),
+                                    },
                                 },
                             },
                             metadata: HydroIrMetadata {
-                                location_kind: Process(
+                                location_kind: Tick(
                                     1,
+                                    Process(
+                                        1,
+                                    ),
                                 ),
-                                output_type: Some(
-                                    (u64 , u64),
-                                ),
-                            },
-                        },
-                        metadata: HydroIrMetadata {
-                            location_kind: Process(
-                                1,
-                            ),
-                            output_type: Some(
-                                (u64 , u64),
-                            ),
-                        },
-                    },
-                    metadata: HydroIrMetadata {
-                        location_kind: Process(
-                            1,
-                        ),
-                        output_type: Some(
-                            (u64 , u64),
-                        ),
-                    },
-                },
-                right: Map {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
-                    input: Reduce {
-                        f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
-                        input: Source {
-                            source: Stream(
-                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; Duration :: from_secs (1) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                            ),
-                            metadata: HydroIrMetadata {
-                                location_kind: Process(
-                                    1,
-                                ),
-                                output_type: Some(
-                                    hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
-                                ),
+                                collection_kind: Optional {
+                                    bound: Bounded,
+                                    element_type: (u64 , u64),
+                                },
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -157,45 +345,49 @@ expression: built.ir()
                                     1,
                                 ),
                             ),
-                            output_type: Some(
-                                hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
-                            ),
+                            collection_kind: Stream {
+                                bound: Bounded,
+                                order: TotalOrder,
+                                retry: ExactlyOnce,
+                                element_type: (u64 , u64),
+                            },
                         },
                     },
                     metadata: HydroIrMetadata {
-                        location_kind: Tick(
+                        location_kind: Process(
                             1,
-                            Process(
-                                1,
-                            ),
                         ),
-                        output_type: Some(
-                            (),
-                        ),
+                        collection_kind: Stream {
+                            bound: Unbounded,
+                            order: TotalOrder,
+                            retry: ExactlyOnce,
+                            element_type: (u64 , u64),
+                        },
                     },
                 },
                 metadata: HydroIrMetadata {
-                    location_kind: Tick(
+                    location_kind: Process(
                         1,
-                        Process(
-                            1,
-                        ),
                     ),
-                    output_type: Some(
-                        ((u64 , u64) , ()),
-                    ),
+                    collection_kind: Stream {
+                        bound: Unbounded,
+                        order: TotalOrder,
+                        retry: AtLeastOnce,
+                        element_type: (u64 , u64),
+                    },
                 },
             },
+            trusted: false,
             metadata: HydroIrMetadata {
-                location_kind: Tick(
+                location_kind: Process(
                     1,
-                    Process(
-                        1,
-                    ),
                 ),
-                output_type: Some(
-                    (u64 , u64),
-                ),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: (u64 , u64),
+                },
             },
         },
         op_metadata: HydroIrOpMetadata,

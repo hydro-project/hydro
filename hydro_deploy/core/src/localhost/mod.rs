@@ -1,5 +1,5 @@
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::{Result, bail};
 use async_process::{Command, Stdio};
@@ -16,7 +16,11 @@ use crate::{
 
 pub mod launched_binary;
 pub use launched_binary::*;
+
+#[cfg(any(target_os = "macos", target_family = "windows"))]
 mod samply;
+
+static LOCAL_LIBDIR: OnceLock<String> = OnceLock::new();
 
 #[derive(Debug)]
 pub struct LocalhostHost {
@@ -143,7 +147,7 @@ impl LaunchedHost for LaunchedLocalhost {
         tracing: Option<TracingOptions>,
     ) -> Result<Box<dyn LaunchedBinary>> {
         let (maybe_perf_outfile, mut command) = if let Some(tracing) = tracing.as_ref() {
-            if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+            if cfg!(any(target_os = "macos", target_family = "windows")) {
                 // samply
                 ProgressTracker::println(
                     format!("[{id} tracing] Profiling binary with `samply`.",),
@@ -183,7 +187,7 @@ impl LaunchedHost for LaunchedLocalhost {
                 (Some(perf_outfile), command)
             } else {
                 bail!(
-                    "Unknown OS for perf/dtrace tracing: {}",
+                    "Unknown OS for samply/perf tracing: {}",
                     std::env::consts::OS
                 );
             }
@@ -192,6 +196,51 @@ impl LaunchedHost for LaunchedLocalhost {
             command.args(args);
             (None, command)
         };
+
+        // from cargo (https://github.com/rust-lang/cargo/blob/master/crates/cargo-util/src/paths.rs#L38)
+        let dylib_path_var = if cfg!(windows) {
+            "PATH"
+        } else if cfg!(target_os = "macos") {
+            "DYLD_FALLBACK_LIBRARY_PATH"
+        } else if cfg!(target_os = "aix") {
+            "LIBPATH"
+        } else {
+            "LD_LIBRARY_PATH"
+        };
+
+        let local_libdir = LOCAL_LIBDIR.get_or_init(|| {
+            std::process::Command::new("rustc")
+                .arg("--print")
+                .arg("target-libdir")
+                .output()
+                .map(|output| String::from_utf8(output.stdout).unwrap().trim().to_string())
+                .unwrap()
+        });
+
+        command.env(
+            dylib_path_var,
+            std::env::var_os(dylib_path_var).map_or_else(
+                || {
+                    std::env::join_paths(
+                        [
+                            binary.shared_library_path.as_ref(),
+                            Some(&std::path::PathBuf::from(local_libdir)),
+                        ]
+                        .into_iter()
+                        .flatten(),
+                    )
+                    .unwrap()
+                },
+                |paths| {
+                    let mut paths = std::env::split_paths(&paths).collect::<Vec<_>>();
+                    paths.insert(0, std::path::PathBuf::from(local_libdir));
+                    if let Some(shared_path) = &binary.shared_library_path {
+                        paths.insert(0, shared_path.to_path_buf());
+                    }
+                    std::env::join_paths(paths).unwrap()
+                },
+            ),
+        );
 
         command
             .stdin(Stdio::piped())

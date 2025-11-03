@@ -1,0 +1,75 @@
+---
+sidebar_position: 3
+---
+import CodeBlock from '@theme/CodeBlock';
+import firstTenClusterSrc from '!!raw-loader!../../../../../template/hydro/src/first_ten_cluster.rs';
+import firstTenClusterExample from '!!raw-loader!../../../../../template/hydro/examples/first_ten_cluster.rs';
+import { getLines, highlightLines, extractOutput } from '../../../../src/util';
+
+# Scaling with Clusters
+So far, we have looked at distributed systems where each process is running a different piece of the compute graph -- **compute parallelism**. However, we can also use Hydro to run the same computation on multiple processes -- achieving **data parallelism** (e.g. partitioning). This is done by creating a **cluster** of processes that all run the same subgraph of code.
+
+## Dataflow with Clusters
+Just like we use the `Process` type to represent a virtual handle to a single node, we can use the **`Cluster`** type to represent a handle to a **set of nodes** (with size unknown at compile-time).
+
+A `Stream` located on a `Cluster` can be thought of as [SPMD](https://en.wikipedia.org/wiki/Single_program,_multiple_data)-style programming, where each cluster member executes the same operators but on different streams of data.
+
+To start, we set up a new module in `src/first_ten_cluster.rs` with a dataflow program that takes in a `Process` for a leader and `Cluster` for a set of workers.
+
+<CodeBlock language="rust" title="src/first_ten_cluster.rs">{getLines(firstTenClusterSrc, 1, 6)}</CodeBlock>
+
+We start by materializing a stream of numbers on the `leader`, as before. But rather than sending the stream to a single process, we will instead _distribute_ the data to each member of the cluster using `round_robin_bincode`. This API partitions (shards) data across a `cluster` in a round-robin fashion by using the order of elements to determine which cluster member each element is sent to.
+
+Just like Rust guarantees memory safety, Hydro includes guardrails to avoid non-determinism due to networking and asynchrony. In this case, Hydro points out that the cluster members may asynchronously change, which would result in non-determinism of which member each message is sent to. Just like you wrap low-level code in Rust with `unsafe`, we use the `nondet!(...)` macro to explain why this non-determinism is tolerated. In this case, it does not matter _which_ member processes each element.
+
+:::info
+
+There are a [variety of APIs](pathname:///rustdoc/hydro_lang/live_collections/struct.Stream#impl-Stream<T,+Process<'a,+L>,+B,+O,+R>) for sending data to and receiving data from clusters. For example, we `broadcast_bincode` to send copies to all members (e.g. for replication), or use `send_bincode` if we have a custom partitioning algorithm.
+
+:::
+
+<CodeBlock language="rust" title="src/first_ten_cluster.rs">{getLines(firstTenClusterSrc, 7, 12)}</CodeBlock>
+
+On each cluster member, we will then do some work to transform the data (using `map`) and log the transformed values locally (using `inspect`, which is useful for debugging).
+
+<CodeBlock language="rust" title="src/first_ten_cluster.rs">{getLines(firstTenClusterSrc, 13, 14)}</CodeBlock>
+
+Finally, we will send the data back to the leader. To identify each sender, `send_bincode` emits a keyed stream with `MemberId` keys. Here, we do not care about the sender, so we use `.values()` to interleave just the data.
+
+<CodeBlock language="rust" title="src/first_ten_cluster.rs">{getLines(firstTenClusterSrc, 15, 16)}</CodeBlock>
+
+## Deploying Clusters
+Deployment scripts are similar to before, except that when provisioning a cluster we provide a *list* of deployment hosts rather than a single one. In our example, we'll launch 4 nodes for the cluster by creating a `Vec` of 4 localhost instances.
+
+<CodeBlock language="rust" title="examples/first_ten_cluster.rs">{highlightLines(firstTenClusterExample, [14])}</CodeBlock>
+
+We can then launch the program:
+```bash
+#shell-command-next-line
+cargo run --example first_ten_cluster
+#highlight-next-line
+[hydro_template::first_ten_cluster::Worker (cluster 1) / 0] 0
+[hydro_template::first_ten_cluster::Worker (cluster 1) / 2] 4
+[hydro_template::first_ten_cluster::Worker (cluster 1) / 2] 12
+#highlight-next-line
+[hydro_template::first_ten_cluster::Worker (cluster 1) / 0] 8
+[hydro_template::first_ten_cluster::Worker (cluster 1) / 3] 6
+[hydro_template::first_ten_cluster::Worker (cluster 1) / 1] 2
+[hydro_template::first_ten_cluster::Worker (cluster 1) / 1] 10
+[hydro_template::first_ten_cluster::Worker (cluster 1) / 1] 18
+[hydro_template::first_ten_cluster::Leader (process 0)] 0
+#highlight-next-line
+[hydro_template::first_ten_cluster::Worker (cluster 1) / 0] 16
+[hydro_template::first_ten_cluster::Worker (cluster 1) / 3] 14
+[hydro_template::first_ten_cluster::Leader (process 0)] 8
+[hydro_template::first_ten_cluster::Leader (process 0)] 16
+[hydro_template::first_ten_cluster::Leader (process 0)] 2
+[hydro_template::first_ten_cluster::Leader (process 0)] 10
+[hydro_template::first_ten_cluster::Leader (process 0)] 18
+[hydro_template::first_ten_cluster::Leader (process 0)] 4
+[hydro_template::first_ten_cluster::Leader (process 0)] 12
+[hydro_template::first_ten_cluster::Leader (process 0)] 6
+[hydro_template::first_ten_cluster::Leader (process 0)] 14
+```
+
+You'll notice the round-robin distribution in action here, as each cluster log is tagged with the ID of the member (e.g. `/ 0`). In our deployment, we are sending the even numbers round-robin across 4 members of the cluster, numbered `0` through `3`.  Hence cluster member `0` receives values `0`, `8`, `16` (corresponding to the highlighted lines),  member `1`  receives values `2`, `10`, `18`, and so on.

@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/**
   pull_request:
   schedule:
     - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
@@ -32,23 +31,63 @@ jobs:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@v5.3.1
 
-  test:
-    name: All tests, lints, and checks
+  lint:
+    name: All lints and compilation checks
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
-    timeout-minutes: 45
+    timeout-minutes: 90
     needs: pre_job
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         rust_release: [latest-nightly, latest-stable]
         exclude:
           # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
           # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
           # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
           - rust_release: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
-          - os: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'windows-latest' }}
+          - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'windows-latest' }}
+          - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'macos-latest' }}
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install rust channel and set it as default
+        if: ${{ matrix.rust_release == 'latest-nightly' }}
+        run: |
+          rustup toolchain add nightly && \
+          rustup default nightly
+
+      - if: matrix.rust_release == 'latest-stable' && matrix.os == 'ubuntu-latest'
+        uses: ./.github/actions/use-sccache
+      
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo check --all-targets
+      - run: cargo check --all-targets --no-default-features
+
+      - run: rustup component add --toolchain nightly rustfmt
+      - run: cargo +nightly fmt --all -- --check
+
+  test:
+    name: All tests
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
+    timeout-minutes: 90
+    needs: pre_job
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        rust_release: [latest-nightly, latest-stable]
+        exclude:
+          # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
+          # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
+          # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
+          - rust_release: ${{ (((github.event_name != 'pull_request' && github.event_name != 'push') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'latest-nightly' }}
+          - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'windows-latest' }}
+          - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'macos-latest' }}
 
     steps:
       - name: Checkout sources
@@ -63,9 +102,7 @@ jobs:
       - if: matrix.rust_release == 'latest-stable' && matrix.os == 'ubuntu-latest'
         uses: ./.github/actions/use-sccache
 
-      - uses: ./.github/actions/install-nexttest
-        with:
-          os: ${{ matrix.os }}
+      - uses: taiki-e/install-action@nextest
 
       - name: Run cargo nextest on all targets
         id: nextest
@@ -73,19 +110,13 @@ jobs:
         env:
           INSTA_UPDATE: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && 'always' || '' }}
           INSTA_FORCE_PASS: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && '1' || '' }}
-        run: cargo nextest run --no-fail-fast --features hydro_lang/deploy --all-targets
+        run: cargo nextest run --no-fail-fast --all-targets
 
       - name: Run doctests
         id: doctests
         continue-on-error: ${{ matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
         # Not supported by nextest: https://github.com/nextest-rs/nextest/issues/16
-        run: cargo test --no-fail-fast --features hydro_lang/deploy --doc
-
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo check --all-targets
-      - run: cargo check --all-targets --no-default-features
-
-      - run: cargo fmt --all -- --check
+        run: cargo test --no-fail-fast --doc
 
       # Nightly snapshot update logic
       - name: Check for snapshot changes (nightly only)

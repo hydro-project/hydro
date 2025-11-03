@@ -18,6 +18,8 @@ stageleft::stageleft_no_entry_crate!();
 #[cfg_attr(docsrs, doc(cfg(feature = "runtime_support")))]
 #[doc(hidden)]
 pub mod runtime_support {
+    #[cfg(feature = "sim")]
+    pub use colored;
     pub use {bincode, dfir_rs, stageleft, tokio};
     pub mod resource_measurement;
 }
@@ -64,6 +66,10 @@ pub mod location;
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod deploy;
 
+#[cfg(feature = "sim")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sim")))]
+pub mod sim;
+
 pub mod forward_handle;
 
 pub mod compile;
@@ -73,7 +79,7 @@ mod manual_expr;
 #[cfg(feature = "viz")]
 #[cfg_attr(docsrs, doc(cfg(feature = "viz")))]
 #[expect(missing_docs, reason = "TODO")]
-pub mod graph;
+pub mod viz;
 
 mod staging_util;
 
@@ -94,6 +100,6 @@ fn init_rewrites() {
 mod test_init {
     #[ctor::ctor]
     fn init() {
-        crate::deploy::init_test();
+        crate::compile::init_test();
     }
 }

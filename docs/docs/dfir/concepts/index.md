@@ -38,7 +38,7 @@ which send and receive flows of data to each other.
 > In the [Hydro Project](https://hydro.run), higher-level frameworks are being built on top of DFIR to generate
 > distributed code in the form of multiple processes.
 > Meanwhile, you can use DFIR to write your own distributed code, by writing individual processes that work together,
-> and deploying them manually or with a tool like [Hydroplane](https://github.com/hydro-project/hydroplane). See the [Hydro Ecosystem](../ecosystem) for more on this.
+> and deploying them manually or with a tool like [Hydroplane](https://github.com/hydro-project/hydroplane). See the [Hydro Ecosystem](../ecosystem.md) for more on this.
 
 ### So how might a human write distributed systems with DFIR?
 As an illustration of how you can work at the DFIR layer, consider the

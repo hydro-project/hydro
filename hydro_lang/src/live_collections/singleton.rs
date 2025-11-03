@@ -10,15 +10,15 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::optional::Optional;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::compile::ir::{HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
+use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
-use crate::location::tick::{Atomic, DeferTick, NoAtomic};
+use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
-use crate::nondet::NonDet;
+use crate::nondet::{NonDet, nondet};
 
 /// A single Rust value that can asynchronously change over time.
 ///
@@ -50,15 +50,6 @@ where
     }
 }
 
-impl<'a, T, L> DeferTick for Singleton<T, Tick<L>, Bounded>
-where
-    L: Location<'a>,
-{
-    fn defer_tick(self) -> Self {
-        Singleton::defer_tick(self)
-    }
-}
-
 impl<'a, T, L> CycleCollectionWithInitial<'a, TickCycle> for Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
@@ -71,9 +62,10 @@ where
             HydroNode::DeferTick {
                 input: Box::new(HydroNode::CycleSource {
                     ident,
-                    metadata: location.new_node_metadata::<T>(),
+                    metadata: location.new_node_metadata(Self::collection_kind()),
                 }),
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location
+                    .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),
             },
         );
 
@@ -97,7 +89,6 @@ where
             .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -114,7 +105,7 @@ where
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                metadata: location.new_node_metadata::<T>(),
+                metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -136,7 +127,6 @@ where
             .push_root(HydroRoot::CycleSink {
                 ident,
                 input: Box::new(self.ir_node.into_inner()),
-                out_location: Location::id(&self.location),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -151,12 +141,9 @@ where
     fn create_source(ident: syn::Ident, location: L) -> Self {
         Singleton::new(
             location.clone(),
-            HydroNode::Persist {
-                inner: Box::new(HydroNode::CycleSource {
-                    ident,
-                    metadata: location.new_node_metadata::<T>(),
-                }),
-                metadata: location.new_node_metadata::<T>(),
+            HydroNode::CycleSource {
+                ident,
+                metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
     }
@@ -172,17 +159,12 @@ where
             expected_location,
             "locations do not match"
         );
-        let metadata = self.location.new_node_metadata::<T>();
         self.location
             .flow_state()
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
                 ident,
-                input: Box::new(HydroNode::Unpersist {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    metadata: metadata.clone(),
-                }),
-                out_location: Location::id(&self.location),
+                input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -198,7 +180,7 @@ where
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
                 inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
             };
         }
 
@@ -218,15 +200,53 @@ where
     }
 }
 
+#[cfg(stageleft_runtime)]
+fn zip_inside_tick<'a, T, L: Location<'a>, B: Boundedness, O>(
+    me: Singleton<T, Tick<L>, B>,
+    other: O,
+) -> <Singleton<T, Tick<L>, B> as ZipResult<'a, O>>::Out
+where
+    Singleton<T, Tick<L>, B>: ZipResult<'a, O, Location = Tick<L>>,
+{
+    check_matching_location(
+        &me.location,
+        &Singleton::<T, Tick<L>, B>::other_location(&other),
+    );
+
+    Singleton::<T, Tick<L>, B>::make(
+        me.location.clone(),
+        HydroNode::CrossSingleton {
+            left: Box::new(me.ir_node.into_inner()),
+            right: Box::new(Singleton::<T, Tick<L>, B>::other_ir_node(other)),
+            metadata: me.location.new_node_metadata(CollectionKind::Singleton {
+                bound: B::BOUND_KIND,
+                element_type: stageleft::quote_type::<
+                    <Singleton<T, Tick<L>, B> as ZipResult<'a, O>>::ElementType,
+                >()
+                .into(),
+            }),
+        },
+    )
+}
+
 impl<'a, T, L, B: Boundedness> Singleton<T, L, B>
 where
     L: Location<'a>,
 {
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
+        debug_assert_eq!(ir_node.metadata().location_kind, Location::id(&location));
+        debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
         Singleton {
             location,
             ir_node: RefCell::new(ir_node),
             _phantom: PhantomData,
+        }
+    }
+
+    pub(crate) fn collection_kind() -> CollectionKind {
+        CollectionKind::Singleton {
+            bound: B::BOUND_KIND,
+            element_type: stageleft::quote_type::<T>().into(),
         }
     }
 
@@ -256,7 +276,9 @@ where
             HydroNode::Map {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Singleton::<U, L, B>::collection_kind()),
             },
         )
     }
@@ -300,7 +322,9 @@ where
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self.location.new_node_metadata(
+                    Stream::<U, L, B, TotalOrder, ExactlyOnce>::collection_kind(),
+                ),
             },
         )
     }
@@ -345,7 +369,9 @@ where
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<U, L, B, NoOrder, ExactlyOnce>::collection_kind()),
             },
         )
     }
@@ -446,7 +472,9 @@ where
             HydroNode::Filter {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Optional::<T, L, B>::collection_kind()),
             },
         )
     }
@@ -482,7 +510,9 @@ where
             HydroNode::FilterMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Optional::<U, L, B>::collection_kind()),
             },
         )
     }
@@ -518,42 +548,33 @@ where
     {
         check_matching_location(&self.location, &Self::other_location(&other));
 
-        if L::is_top_level() {
-            let left_ir_node = self.ir_node.into_inner();
-            let left_ir_node_metadata = left_ir_node.metadata().clone();
-            let right_ir_node = Self::other_ir_node(other);
-            let right_ir_node_metadata = right_ir_node.metadata().clone();
-
-            Self::make(
-                self.location.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(HydroNode::CrossSingleton {
-                        left: Box::new(HydroNode::Unpersist {
-                            inner: Box::new(left_ir_node),
-                            metadata: left_ir_node_metadata,
-                        }),
-                        right: Box::new(HydroNode::Unpersist {
-                            inner: Box::new(right_ir_node),
-                            metadata: right_ir_node_metadata,
-                        }),
-                        metadata: self
-                            .location
-                            .new_node_metadata::<<Self as ZipResult<'a, O>>::ElementType>(),
-                    }),
-                    metadata: self
-                        .location
-                        .new_node_metadata::<<Self as ZipResult<'a, O>>::ElementType>(),
-                },
+        if L::is_top_level()
+            && let Some(tick) = self.location.try_tick()
+        {
+            let out = zip_inside_tick(
+                self.snapshot(&tick, nondet!(/** eventually stabilizes */)),
+                Optional::<<Self as ZipResult<'a, O>>::OtherType, L, B>::new(
+                    Self::other_location(&other),
+                    Self::other_ir_node(other),
+                )
+                .snapshot(&tick, nondet!(/** eventually stabilizes */)),
             )
+            .latest();
+
+            Self::make(out.location, out.ir_node.into_inner())
         } else {
             Self::make(
                 self.location.clone(),
                 HydroNode::CrossSingleton {
                     left: Box::new(self.ir_node.into_inner()),
                     right: Box::new(Self::other_ir_node(other)),
-                    metadata: self
-                        .location
-                        .new_node_metadata::<<Self as ZipResult<'a, O>>::ElementType>(),
+                    metadata: self.location.new_node_metadata(CollectionKind::Optional {
+                        bound: B::BOUND_KIND,
+                        element_type: stageleft::quote_type::<
+                            <Self as ZipResult<'a, O>>::ElementType,
+                        >()
+                        .into(),
+                    }),
                 },
             )
         }
@@ -665,26 +686,39 @@ where
     /// Because this picks a snapshot of a singleton whose value is continuously changing,
     /// the output singleton has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
-    pub fn snapshot(self, _nondet: NonDet) -> Singleton<T, Tick<L>, Bounded> {
+    pub fn snapshot_atomic(self, _nondet: NonDet) -> Singleton<T, Tick<L>, Bounded> {
         Singleton::new(
             self.location.clone().tick,
-            HydroNode::Unpersist {
+            HydroNode::Batch {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .tick
+                    .new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind()),
             },
         )
     }
 
     /// Returns this singleton back into a top-level, asynchronous execution context where updates
     /// to the value will be asynchronously propagated.
-    pub fn end_atomic(self) -> Optional<T, L, B> {
-        Optional::new(self.location.tick.l, self.ir_node.into_inner())
+    pub fn end_atomic(self) -> Singleton<T, L, B> {
+        Singleton::new(
+            self.location.tick.l.clone(),
+            HydroNode::EndAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .tick
+                    .l
+                    .new_node_metadata(Singleton::<T, L, B>::collection_kind()),
+            },
+        )
     }
 }
 
 impl<'a, T, L, B: Boundedness> Singleton<T, L, B>
 where
-    L: Location<'a> + NoTick + NoAtomic,
+    L: Location<'a>,
 {
     /// Shifts this singleton into an atomic context, which guarantees that any downstream logic
     /// will observe the same version of the value and will be executed synchronously before any
@@ -698,7 +732,15 @@ where
     /// be atomically processed. Snapshotting an singleton into the _same_ [`Tick`] will preserve the
     /// synchronous execution, and all such snapshots in the same [`Tick`] will have the same value.
     pub fn atomic(self, tick: &Tick<L>) -> Singleton<T, Atomic<L>, B> {
-        Singleton::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
+        let out_location = Atomic { tick: tick.clone() };
+        Singleton::new(
+            out_location.clone(),
+            HydroNode::BeginAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: out_location
+                    .new_node_metadata(Singleton::<T, Atomic<L>, B>::collection_kind()),
+            },
+        )
     }
 
     /// Given a tick, returns a singleton value corresponding to a snapshot of the singleton
@@ -709,11 +751,16 @@ where
     /// Because this picks a snapshot of a singleton whose value is continuously changing,
     /// the output singleton has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
-    pub fn snapshot(self, tick: &Tick<L>, nondet: NonDet) -> Singleton<T, Tick<L>, Bounded>
-    where
-        L: NoTick,
-    {
-        self.atomic(tick).snapshot(nondet)
+    pub fn snapshot(self, tick: &Tick<L>, _nondet: NonDet) -> Singleton<T, Tick<L>, Bounded> {
+        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        Singleton::new(
+            tick.clone(),
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: tick
+                    .new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind()),
+            },
+        )
     }
 
     /// Eagerly samples the singleton as fast as possible, returning a stream of snapshots
@@ -723,7 +770,10 @@ where
     /// At runtime, the singleton will be arbitrarily sampled as fast as possible, but due
     /// to non-deterministic batching and arrival of inputs, the output stream is
     /// non-deterministic.
-    pub fn sample_eager(self, nondet: NonDet) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce> {
+    pub fn sample_eager(self, nondet: NonDet) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce>
+    where
+        L: NoTick,
+    {
         let tick = self.location.tick();
         self.snapshot(&tick, nondet).all_ticks().weakest_retries()
     }
@@ -741,7 +791,10 @@ where
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
         nondet: NonDet,
-    ) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce> {
+    ) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce>
+    where
+        L: NoTick + NoAtomic,
+    {
         let samples = self.location.source_interval(interval, nondet);
         let tick = self.location.tick();
 
@@ -840,9 +893,12 @@ where
     pub fn latest(self) -> Singleton<T, L, Unbounded> {
         Singleton::new(
             self.location.outer().clone(),
-            HydroNode::Persist {
+            HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self
+                    .location
+                    .outer()
+                    .new_node_metadata(Singleton::<T, L, Unbounded>::collection_kind()),
             },
         )
     }
@@ -854,24 +910,15 @@ where
     /// is emitted in an [`Atomic`] context that will process elements synchronously with the input
     /// singleton's [`Tick`] context.
     pub fn latest_atomic(self) -> Singleton<T, Atomic<L>, Unbounded> {
+        let out_location = Atomic {
+            tick: self.location.clone(),
+        };
         Singleton::new(
-            Atomic {
-                tick: self.location.clone(),
-            },
-            HydroNode::Persist {
+            out_location.clone(),
+            HydroNode::YieldConcat {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
-            },
-        )
-    }
-
-    #[expect(missing_docs, reason = "TODO")]
-    pub fn defer_tick(self) -> Singleton<T, Tick<L>, Bounded> {
-        Singleton::new(
-            self.location.clone(),
-            HydroNode::DeferTick {
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: out_location
+                    .new_node_metadata(Singleton::<T, Atomic<L>, Unbounded>::collection_kind()),
             },
         )
     }
@@ -883,7 +930,13 @@ where
             self.location.clone(),
             HydroNode::Persist {
                 inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<T>(),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    Tick<L>,
+                    Bounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
             },
         )
     }
@@ -910,7 +963,19 @@ where
     /// # }));
     /// ```
     pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
-        Stream::new(self.location, self.ir_node.into_inner())
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    Tick<L>,
+                    Bounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
     }
 }
 
@@ -925,6 +990,8 @@ pub trait ZipResult<'a, Other> {
     type Out;
     /// The type of the tupled output value.
     type ElementType;
+    /// The type of the other collection's value.
+    type OtherType;
     /// The location where the tupled result will be materialized.
     type Location: Location<'a>;
 
@@ -944,6 +1011,7 @@ where
 {
     type Out = Singleton<(T, U), L, B>;
     type ElementType = (T, U);
+    type OtherType = U;
     type Location = L;
 
     fn other_location(other: &Singleton<U, L, B>) -> L {
@@ -955,7 +1023,13 @@ where
     }
 
     fn make(location: L, ir_node: HydroNode) -> Self::Out {
-        Singleton::new(location, ir_node)
+        Singleton::new(
+            location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(ir_node),
+                metadata: location.new_node_metadata(Self::Out::collection_kind()),
+            },
+        )
     }
 }
 
@@ -966,6 +1040,7 @@ where
 {
     type Out = Optional<(T, U), L, B>;
     type ElementType = (T, U);
+    type OtherType = U;
     type Location = L;
 
     fn other_location(other: &Optional<U, L, B>) -> L {
@@ -983,14 +1058,19 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
+    #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
     use stageleft::q;
 
     use crate::compile::builder::FlowBuilder;
+    #[cfg(feature = "deploy")]
+    use crate::live_collections::stream::ExactlyOnce;
     use crate::location::Location;
     use crate::nondet::nondet;
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn tick_cycle_cardinality() {
         let mut deployment = Deployment::new();
@@ -999,7 +1079,7 @@ mod tests {
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (input_send, input) = node.source_external_bincode(&external);
+        let (input_send, input) = node.source_external_bincode::<_, _, _, ExactlyOnce>(&external);
 
         let node_tick = node.tick();
         let (complete_cycle, singleton) = node_tick.cycle_with_initial(node_tick.singleton(q!(0)));
@@ -1019,8 +1099,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut tick_trigger = nodes.connect_sink_bincode(input_send).await;
-        let mut external_out = nodes.connect_source_bincode(counts).await;
+        let mut tick_trigger = nodes.connect(input_send).await;
+        let mut external_out = nodes.connect(counts).await;
 
         deployment.start().await.unwrap();
 
@@ -1031,5 +1111,191 @@ mod tests {
         tick_trigger.send(()).await.unwrap();
 
         assert_eq!(external_out.next().await.unwrap(), 1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sim_fold_intermediate_states() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let mut out_recv = compiled.connect(&out_port);
+            compiled.launch();
+            assert_eq!(out_recv.next().await.unwrap(), 10);
+        });
+    }
+
+    #[test]
+    fn sim_fold_intermediate_state_count() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        let instance_count = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            let out = out_recv.collect::<Vec<_>>().await;
+            assert_eq!(out.last(), Some(&10));
+        });
+
+        assert_eq!(
+            instance_count,
+            16 // 2^4 possible subsets of intermediates (including initial state)
+        )
+    }
+
+    #[test]
+    fn sim_fold_no_repeat_initial() {
+        // check that we don't repeat the initial state of the fold in autonomous decisions
+
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (in_port, input) = node.source_external_bincode(&external);
+        let folded = input.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&in_port);
+            let mut out_recv = compiled.connect(&out_port);
+            compiled.launch();
+            assert_eq!(out_recv.next().await.unwrap(), 0);
+
+            in_send.send(123);
+
+            assert_eq!(out_recv.next().await.unwrap(), 123);
+        });
+    }
+
+    #[test]
+    #[should_panic]
+    fn sim_fold_repeats_snapshots() {
+        // when the tick is driven by a snapshot AND something else, the snapshot can
+        // "stutter" and repeat the same state multiple times
+
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.clone().fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = source_iter
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let mut out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            if out_recv.next().await.unwrap() == (1, 3) && out_recv.next().await.unwrap() == (2, 3)
+            {
+                panic!("repeated snapshot");
+            }
+        });
+    }
+
+    #[test]
+    fn sim_fold_repeats_snapshots_count() {
+        // check the number of instances
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2]));
+        let folded = source_iter.clone().fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = source_iter
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        let count = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            let _ = out_recv.collect::<Vec<_>>().await;
+        });
+
+        assert_eq!(count, 52);
+        // don't have a combinatorial explanation for this number yet, but checked via logs
+    }
+
+    #[test]
+    fn sim_top_level_singleton_exhaustive() {
+        // ensures that top-level singletons have only one snapshot
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let singleton = node.singleton(q!(1));
+        let tick = node.tick();
+        let batch = singleton.snapshot(&tick, nondet!(/** test */));
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        let count = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            let _ = out_recv.collect::<Vec<_>>().await;
+        });
+
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn sim_top_level_singleton_join_count() {
+        // if a tick consumes a static snapshot and a stream batch, only the batch require space
+        // exploration
+
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let tick = node.tick();
+        let batch = source_iter
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(
+                node.singleton(q!(123))
+                    .snapshot(&tick, nondet!(/** test */)),
+            );
+        let out_port = batch.all_ticks().send_bincode_external(&external);
+
+        let instance_count = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            let _ = out_recv.collect::<Vec<_>>().await;
+        });
+
+        assert_eq!(
+            instance_count,
+            16 // 2^4 ways to split up (including a possibly empty first batch)
+        )
     }
 }

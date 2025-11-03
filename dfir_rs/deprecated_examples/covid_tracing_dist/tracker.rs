@@ -1,14 +1,14 @@
 use dfir_rs::compiled::pull::SymmetricHashJoin;
 use dfir_rs::lang::collections::Iter;
-use dfir_rs::pusherator::{InputBuild, IteratorToPusherator, PusheratorBuild};
 use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::scheduled::graph_ext::GraphExt;
 use dfir_rs::scheduled::handoff::VecHandoff;
 use dfir_rs::scheduled::net::Message;
 use dfir_rs::tokio::net::TcpStream;
 use dfir_rs::var_expr;
+use pusherator::{InputBuild, IteratorToPusherator, PusheratorBuild};
 
-use crate::{Decode, Encode, Opts, CONTACTS_ADDR, DIAGNOSES_ADDR};
+use crate::{CONTACTS_ADDR, DIAGNOSES_ADDR, Decode, Encode, Opts};
 
 pub(crate) async fn run_tracker(opts: Opts) {
     let mut df = Dfir::new();

@@ -219,7 +219,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
         ),
     );
 
-    a_log_complete_cycle.complete(a_log.snapshot(nondet!(
+    a_log_complete_cycle.complete(a_log.snapshot_atomic(nondet!(
         /// We will always write payloads to the log before acknowledging them to the proposers,
         /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
         /// election will include the committed value.
@@ -514,26 +514,34 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
     Stream<(Option<usize>, P), Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder>,
 ) {
-    let (quorums, fails) = collect_quorum_with_response(
-        a_to_proposers_p1b.atomic(proposer_tick),
-        quorum_size,
-        num_quorum_participants,
-    );
+    let (quorums, fails) =
+        collect_quorum_with_response(a_to_proposers_p1b, quorum_size, num_quorum_participants);
 
     let p_received_quorum_of_p1bs = quorums
         .into_keyed()
         .assume_ordering::<TotalOrder>(nondet!(
             /// We use `flatten_unordered` later
         ))
-        .fold(
+        .fold_early_stop(
             q!(|| vec![]),
-            q!(|logs, log| {
+            q!(move |logs, log| {
                 logs.push(log);
+                logs.len() >= quorum_size
             }),
         )
-        .snapshot(nondet!(/** see above */))
-        .entries()
-        .max_by_key(q!(|t| t.0))
+        .get_max_key()
+        .snapshot(
+            proposer_tick,
+            nondet!(
+                /// If the max_by_key result is stale in this snapshot, we might be delayed in
+                /// realizing that we are the leader. This does not result in any safety issues.
+                /// In the meantime, ballots that acceptors rejected might be fed back into the max
+                /// ballot calculation, and change `p_ballot`. By using an async snapshot, we might
+                /// miss a chance to become the leader for a short period of time (until the rejected
+                /// ballots are processed). This is fine, if there is a higher ballot somewhere out
+                /// there, we should not be the leader anyways.
+            ),
+        )
         .zip(p_ballot.clone())
         .filter_map(q!(
             move |((quorum_ballot, quorum_accepted), my_ballot)| if quorum_ballot == my_ballot {
@@ -552,7 +560,7 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
         p_is_leader,
         // we used an unordered accumulator, so flattened has no order
         p_received_quorum_of_p1bs.flatten_unordered(),
-        fails.end_atomic().map(q!(|(_, ballot)| ballot)),
+        fails.map(q!(|(_, ballot)| ballot)),
     )
 }
 
@@ -721,33 +729,30 @@ fn sequence_payload<'a, P: PaxosPayload>(
     );
 
     // TOOD: only persist if we are the leader
-    let (quorums, fails) =
-        collect_quorum(a_to_proposers_p2b.atomic(proposer_tick), f + 1, 2 * f + 1);
+    let (quorums, fails) = collect_quorum(a_to_proposers_p2b, f + 1, 2 * f + 1);
 
     let p_to_replicas = join_responses(
-        proposer_tick,
         quorums.map(q!(|k| (k, ()))),
-        payloads_to_send.batch(nondet!(
+        payloads_to_send.batch_atomic(nondet!(
             /// The metadata will always be generated before we get a quorum
-            /// because `payloads_to_send` is used to send the payloads to acceptors.
+            /// because our batch of `payloads_to_send` is at least after
+            /// what we sent to the acceptors.
         )),
     );
 
     (
-        p_to_replicas
-            .end_atomic()
-            .map(q!(|((slot, _ballot), (value, _))| (slot, value))),
+        p_to_replicas.map(q!(|((slot, _ballot), (value, _))| (slot, value))),
         a_log,
-        fails.end_atomic().map(q!(|(_, ballot)| ballot)),
+        fails.map(q!(|(_, ballot)| ballot)),
     )
 }
 
 // Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
-pub fn index_payloads<'a, P: PaxosPayload>(
-    proposer_tick: &Tick<Cluster<'a, Proposer>>,
-    p_max_slot: Optional<usize, Tick<Cluster<'a, Proposer>>, Bounded>,
-    c_to_proposers: Stream<P, Tick<Cluster<'a, Proposer>>, Bounded>,
-) -> Stream<(usize, P), Tick<Cluster<'a, Proposer>>, Bounded> {
+pub fn index_payloads<'a, L: Location<'a>, P: PaxosPayload>(
+    proposer_tick: &Tick<L>,
+    p_max_slot: Optional<usize, Tick<L>, Bounded>,
+    c_to_proposers: Stream<P, Tick<L>, Bounded>,
+) -> Stream<(usize, P), Tick<L>, Bounded> {
     let (p_next_slot_complete_cycle, p_next_slot) =
         proposer_tick.cycle_with_initial::<Singleton<usize, _, _>>(proposer_tick.singleton(q!(0)));
     let p_next_slot_after_reconciling_p1bs = p_max_slot.map(q!(|max_slot| max_slot + 1));
@@ -836,7 +841,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             }),
         );
     let a_log_snapshot = a_log
-        .snapshot(nondet!(
+        .snapshot_atomic(nondet!(
             /// We need to know the current state of the log for p1b
             /// TODO(shadaj): this isn't a justification for correctness
         ))
@@ -872,4 +877,89 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             .latest_atomic(),
         a_to_proposers_p2b,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use hydro_lang::prelude::*;
+
+    use super::index_payloads;
+
+    #[test]
+    fn proposer_indexes_payloads() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+        let tick = node.tick();
+
+        let (input_port, input_payloads) = node.source_external_bincode(&external);
+        let indexed = index_payloads(
+            &tick,
+            tick.none(),
+            input_payloads.batch(&tick, nondet!(/** test */)),
+        );
+
+        let out_port = indexed.all_ticks().send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&input_port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
+            in_send.send(4);
+
+            out_recv
+                .assert_yields_only([(0, 1), (1, 2), (2, 3), (3, 4)])
+                .await;
+        });
+    }
+
+    #[test]
+    fn proposer_indexes_payloads_jumps_on_new_max() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+        let tick = node.tick();
+
+        let (input_port, input_payloads) = node.source_external_bincode(&external);
+        let release_new_base = node
+            .source_iter(q!([123]))
+            .batch(&tick, nondet!(/** test */))
+            .first();
+        let indexed = index_payloads(
+            &tick,
+            release_new_base,
+            input_payloads.batch(&tick, nondet!(/** test */)),
+        );
+
+        let out_port = indexed.all_ticks().send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&input_port);
+            let mut out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
+            in_send.send(4);
+
+            let mut next_expected = 0;
+            for i in 1..=4 {
+                let (next_slot, v) = out_recv.next().await.unwrap();
+                assert_eq!(v, i);
+
+                if next_expected < 123 {
+                    assert!(next_slot == next_expected || next_slot == 124);
+                } else {
+                    assert!(next_slot == next_expected);
+                }
+
+                next_expected = next_slot + 1;
+            }
+        });
+    }
 }

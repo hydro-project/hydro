@@ -45,7 +45,7 @@ pub const UNZIP: OperatorConstraints = OperatorConstraints {
         let output0 = &outputs[0];
         let output1 = &outputs[1];
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::pusherator::unzip::Unzip::new(#output0, #output1);
+            let #ident = #root::sinktools::unzip(#output0, #output1);
         };
         Ok(OperatorWriteOutput {
             write_iterator,

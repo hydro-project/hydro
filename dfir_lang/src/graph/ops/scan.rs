@@ -69,6 +69,7 @@ pub const SCAN: OperatorConstraints = OperatorConstraints {
                    ident,
                    is_pull,
                    inputs,
+                   outputs,
                    arguments,
                    singleton_output_ident,
                    ..
@@ -164,10 +165,11 @@ pub const SCAN: OperatorConstraints = OperatorConstraints {
                 });
             }
         } else {
+            let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::filter_map::FilterMap::new(|#iterator_item_ident| {
+                let #ident = #root::sinktools::filter_map(|#iterator_item_ident| {
                     #filter_map_body
-                });
+                }, #output);
             }
         };
 

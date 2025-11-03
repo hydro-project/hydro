@@ -55,11 +55,8 @@ pub fn paxos_bench<'a>(
         // Get the latest checkpoint sequence per replica
         let checkpoint_tick = acceptors.tick();
         let a_checkpoint = {
-            // TODO(shadaj): once we can reduce keyed over unbounded streams, this should be safe
             let a_checkpoint_largest_seqs = replica_checkpoint
                 .broadcast_bincode(&acceptors, nondet!(/** TODO */))
-                .entries()
-                .into_keyed()
                 .reduce_commutative(q!(|curr_seq, seq| {
                     if seq > *curr_seq {
                         *curr_seq = seq;
@@ -102,13 +99,7 @@ pub fn paxos_bench<'a>(
             .values();
 
         // we only mark a transaction as committed when all replicas have applied it
-        collect_quorum::<_, _, _, ()>(
-            c_received_payloads.atomic(&clients.tick()),
-            f + 1,
-            num_replicas,
-        )
-        .0
-        .end_atomic()
+        collect_quorum::<_, _, _, ()>(c_received_payloads, f + 1, num_replicas).0
     };
 
     let bench_results = bench_client(

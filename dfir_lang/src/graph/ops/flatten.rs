@@ -49,7 +49,7 @@ pub const FLATTEN: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::flatten::Flatten::new(#output);
+                let #ident = #root::sinktools::flatten::Flatten::new(#output);
             }
         };
         Ok(OperatorWriteOutput {

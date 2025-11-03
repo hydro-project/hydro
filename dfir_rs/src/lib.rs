@@ -26,8 +26,8 @@ pub mod util;
 pub use dfir_lang as lang;
 pub use variadics::{self, var_args, var_expr, var_type};
 pub use {
-    bincode, bytes, futures, itertools, lattices, pusherator, rustc_hash, serde, serde_json, tokio,
-    tokio_stream, tokio_util, tracing, web_time,
+    bincode, bytes, futures, itertools, lattices, pin_project_lite, rustc_hash, serde, serde_json,
+    sinktools, tokio, tokio_stream, tokio_util, tracing, web_time,
 };
 
 /// `#[macro_use]` automagically brings the declarative macro export to the crate-level.
@@ -38,10 +38,7 @@ pub use dfir_macro::{
     DemuxEnum, dfir_main as main, dfir_parser, dfir_syntax, dfir_syntax_noemit, dfir_test as test,
     monotonic_fn, morphism,
 };
-
-// TODO(mingwei): Use the [nightly "never" type `!`](https://doc.rust-lang.org/std/primitive.never.html)
-/// Stand-in for the [nightly "never" type `!`](https://doc.rust-lang.org/std/primitive.never.html)
-pub type Never = std::convert::Infallible;
+pub use futures::never::Never;
 
 #[cfg(doctest)]
 mod booktest {
