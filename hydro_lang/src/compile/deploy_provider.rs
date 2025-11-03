@@ -111,12 +111,16 @@ pub trait Deploy<'a> {
     ) -> syn::Expr;
     fn e2o_many_sink(shared_handle: String) -> syn::Expr;
 
+    #[expect(clippy::too_many_arguments, reason = "necessary for code generation")]
     fn e2o_source(
         compile_env: &Self::CompileEnv,
+        extra_stmts: &mut Vec<syn::Stmt>,
         p1: &Self::External,
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
+        codec_type: &syn::Type,
+        shared_handle: String,
     ) -> syn::Expr;
     fn e2o_connect(
         p1: &Self::External,
@@ -133,13 +137,8 @@ pub trait Deploy<'a> {
         p1_port: &Self::Port,
         p2: &Self::External,
         p2_port: &Self::Port,
+        shared_handle: String,
     ) -> syn::Expr;
-    fn o2e_connect(
-        p1: &Self::Process,
-        p1_port: &Self::Port,
-        p2: &Self::External,
-        p2_port: &Self::Port,
-    ) -> Box<dyn FnOnce()>;
 
     fn cluster_ids(
         env: &Self::CompileEnv,
