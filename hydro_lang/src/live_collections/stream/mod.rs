@@ -165,7 +165,7 @@ impl MinRetries<AtLeastOnce> for AtLeastOnce {
 pub struct Stream<
     Type,
     Loc,
-    Bound: Boundedness,
+    Bound: Boundedness = Unbounded,
     Order: Ordering = TotalOrder,
     Retry: Retries = ExactlyOnce,
 > {
