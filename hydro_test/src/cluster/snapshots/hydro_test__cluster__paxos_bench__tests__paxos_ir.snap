@@ -3,6 +3,114 @@ source: hydro_test/src/cluster/paxos_bench.rs
 expression: built.ir()
 ---
 [
+    CycleSink {
+        ident: Ident {
+            sym: cycle_0,
+        },
+        input: FilterMap {
+            f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , core :: option :: Option < u32 > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let num_clients_per_node__free = 100usize ; move | virtual_id | { if virtual_id < num_clients_per_node__free as u32 { Some (virtual_id + 1) } else { None } } }),
+            input: Tee {
+                inner: <tee 0>: ChainFirst {
+                    first: Batch {
+                        inner: Source {
+                            source: Iter(
+                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; 0u32 } ; [e__free] },
+                            ),
+                            metadata: HydroIrMetadata {
+                                location_kind: Cluster(
+                                    2,
+                                ),
+                                collection_kind: Optional {
+                                    bound: Unbounded,
+                                    element_type: u32,
+                                },
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_kind: Tick(
+                                0,
+                                Cluster(
+                                    2,
+                                ),
+                            ),
+                            collection_kind: Optional {
+                                bound: Bounded,
+                                element_type: u32,
+                            },
+                        },
+                    },
+                    second: DeferTick {
+                        input: CycleSource {
+                            ident: Ident {
+                                sym: cycle_0,
+                            },
+                            metadata: HydroIrMetadata {
+                                location_kind: Tick(
+                                    0,
+                                    Cluster(
+                                        2,
+                                    ),
+                                ),
+                                collection_kind: Optional {
+                                    bound: Bounded,
+                                    element_type: u32,
+                                },
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_kind: Tick(
+                                0,
+                                Cluster(
+                                    2,
+                                ),
+                            ),
+                            collection_kind: Optional {
+                                bound: Bounded,
+                                element_type: u32,
+                            },
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_kind: Tick(
+                            0,
+                            Cluster(
+                                2,
+                            ),
+                        ),
+                        collection_kind: Optional {
+                            bound: Bounded,
+                            element_type: u32,
+                        },
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_kind: Tick(
+                        0,
+                        Cluster(
+                            2,
+                        ),
+                    ),
+                    collection_kind: Optional {
+                        bound: Bounded,
+                        element_type: u32,
+                    },
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_kind: Tick(
+                    0,
+                    Cluster(
+                        2,
+                    ),
+                ),
+                collection_kind: Optional {
+                    bound: Bounded,
+                    element_type: u32,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < & str , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | s | println ! ("{}" , s) }),
         input: Source {
@@ -45,14 +153,14 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_7,
+            sym: cycle_8,
         },
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , u32) , u32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_raw (__hydro_lang_cluster_self_id_0) ; move | (received_max_ballot , ballot_num) | { if received_max_ballot > (Ballot { num : ballot_num , proposer_id : CLUSTER_SELF_ID__free , }) { received_max_ballot . num + 1 } else { ballot_num } } }),
             input: Cast {
                 inner: CrossSingleton {
                     left: Tee {
-                        inner: <tee 0>: Batch {
+                        inner: <tee 1>: Batch {
                             inner: Cast {
                                 inner: YieldConcat {
                                     inner: ChainFirst {
@@ -65,7 +173,7 @@ expression: built.ir()
                                                             first: Chain {
                                                                 first: CycleSource {
                                                                     ident: Ident {
-                                                                        sym: cycle_4,
+                                                                        sym: cycle_5,
                                                                     },
                                                                     metadata: HydroIrMetadata {
                                                                         location_kind: Cluster(
@@ -81,7 +189,7 @@ expression: built.ir()
                                                                 },
                                                                 second: CycleSource {
                                                                     ident: Ident {
-                                                                        sym: cycle_2,
+                                                                        sym: cycle_3,
                                                                     },
                                                                     metadata: HydroIrMetadata {
                                                                         location_kind: Cluster(
@@ -109,7 +217,7 @@ expression: built.ir()
                                                             },
                                                             second: CycleSource {
                                                                 ident: Ident {
-                                                                    sym: cycle_5,
+                                                                    sym: cycle_6,
                                                                 },
                                                                 metadata: HydroIrMetadata {
                                                                     location_kind: Cluster(
@@ -281,12 +389,12 @@ expression: built.ir()
                         },
                     },
                     right: Tee {
-                        inner: <tee 1>: Cast {
+                        inner: <tee 2>: Cast {
                             inner: ChainFirst {
                                 first: DeferTick {
                                     input: CycleSource {
                                         ident: Ident {
-                                            sym: cycle_7,
+                                            sym: cycle_8,
                                         },
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
@@ -425,10 +533,10 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_5,
+            sym: cycle_6,
         },
         input: Tee {
-            inner: <tee 2>: Map {
+            inner: <tee 3>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
                 input: Cast {
                     inner: Cast {
@@ -628,10 +736,10 @@ expression: built.ir()
                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , ()) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
                                                                             input: CrossSingleton {
                                                                                 left: Tee {
-                                                                                    inner: <tee 3>: Map {
+                                                                                    inner: <tee 4>: Map {
                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_raw (__hydro_lang_cluster_self_id_0) ; move | num | Ballot { num , proposer_id : CLUSTER_SELF_ID__free } }),
                                                                                         input: Tee {
-                                                                                            inner: <tee 1>,
+                                                                                            inner: <tee 2>,
                                                                                             metadata: HydroIrMetadata {
                                                                                                 location_kind: Tick(
                                                                                                     1,
@@ -674,9 +782,9 @@ expression: built.ir()
                                                                                 right: Map {
                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
                                                                                     input: Tee {
-                                                                                        inner: <tee 4>: CycleSource {
+                                                                                        inner: <tee 5>: CycleSource {
                                                                                             ident: Ident {
-                                                                                                sym: cycle_6,
+                                                                                                sym: cycle_7,
                                                                                             },
                                                                                             metadata: HydroIrMetadata {
                                                                                                 location_kind: Tick(
@@ -1017,7 +1125,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_9,
+            sym: cycle_10,
         },
         input: Difference {
             pos: Map {
@@ -1027,17 +1135,17 @@ expression: built.ir()
                         inner: Filter {
                             f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , (usize , usize)) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < (usize , usize) , bool > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; let min__free = 2usize ; move | (success , _error) | success >= & min__free }) ; { let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) } }),
                             input: Tee {
-                                inner: <tee 5>: FoldKeyed {
+                                inner: <tee 6>: FoldKeyed {
                                     init: stageleft :: runtime_support :: fn0_type_hint :: < (usize , usize) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | | (0 , 0) }),
                                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (usize , usize) , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot > , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | accum , value | { if value . is_ok () { accum . 0 += 1 ; } else { accum . 1 += 1 ; } } }),
                                     input: ObserveNonDet {
                                         inner: Cast {
                                             inner: Tee {
-                                                inner: <tee 6>: Chain {
+                                                inner: <tee 7>: Chain {
                                                     first: DeferTick {
                                                         input: CycleSource {
                                                             ident: Ident {
-                                                                sym: cycle_8,
+                                                                sym: cycle_9,
                                                             },
                                                             metadata: HydroIrMetadata {
                                                                 location_kind: Tick(
@@ -1071,7 +1179,7 @@ expression: built.ir()
                                                     },
                                                     second: Batch {
                                                         inner: Tee {
-                                                            inner: <tee 7>: Inspect {
+                                                            inner: <tee 8>: Inspect {
                                                                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | p1b | println ! ("Proposer received P1b: {:?}" , p1b) }),
                                                                 input: Map {
                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) , (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
@@ -1092,7 +1200,7 @@ expression: built.ir()
                                                                                             input: CrossSingleton {
                                                                                                 left: CrossSingleton {
                                                                                                     left: Tee {
-                                                                                                        inner: <tee 8>: Batch {
+                                                                                                        inner: <tee 9>: Batch {
                                                                                                             inner: Map {
                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
                                                                                                                 input: Cast {
@@ -1273,7 +1381,7 @@ expression: built.ir()
                                                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , ()) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
                                                                                                                                                             input: CrossSingleton {
                                                                                                                                                                 left: Tee {
-                                                                                                                                                                    inner: <tee 3>,
+                                                                                                                                                                    inner: <tee 4>,
                                                                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                                                                         location_kind: Tick(
                                                                                                                                                                             1,
@@ -1306,7 +1414,7 @@ expression: built.ir()
                                                                                                                                                                                                         input: ObserveNonDet {
                                                                                                                                                                                                             inner: ObserveNonDet {
                                                                                                                                                                                                                 inner: Tee {
-                                                                                                                                                                                                                    inner: <tee 2>,
+                                                                                                                                                                                                                    inner: <tee 3>,
                                                                                                                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                                                                                                                         location_kind: Cluster(
                                                                                                                                                                                                                             0,
@@ -1415,7 +1523,7 @@ expression: built.ir()
                                                                                                                                                                                                         input: Map {
                                                                                                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                                                                                                                                                                             input: Tee {
-                                                                                                                                                                                                                inner: <tee 4>,
+                                                                                                                                                                                                                inner: <tee 5>,
                                                                                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                                                                                     location_kind: Tick(
                                                                                                                                                                                                                         1,
@@ -1870,7 +1978,7 @@ expression: built.ir()
                                                                                                     },
                                                                                                     right: Cast {
                                                                                                         inner: Tee {
-                                                                                                            inner: <tee 9>: Cast {
+                                                                                                            inner: <tee 10>: Cast {
                                                                                                                 inner: ChainFirst {
                                                                                                                     first: Reduce {
                                                                                                                         f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
@@ -1879,7 +1987,7 @@ expression: built.ir()
                                                                                                                                 inner: Inspect {
                                                                                                                                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | p1a | println ! ("Acceptor received P1a: {:?}" , p1a) }),
                                                                                                                                     input: Tee {
-                                                                                                                                        inner: <tee 8>,
+                                                                                                                                        inner: <tee 9>,
                                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                                             location_kind: Tick(
                                                                                                                                                 2,
@@ -2053,7 +2161,7 @@ expression: built.ir()
                                                                                                 right: Cast {
                                                                                                     inner: CycleSource {
                                                                                                         ident: Ident {
-                                                                                                            sym: cycle_3,
+                                                                                                            sym: cycle_4,
                                                                                                         },
                                                                                                         metadata: HydroIrMetadata {
                                                                                                             location_kind: Tick(
@@ -2376,14 +2484,14 @@ expression: built.ir()
                 },
             },
             neg: Tee {
-                inner: <tee 10>: Map {
+                inner: <tee 11>: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , (usize , usize)) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
                     input: Cast {
                         inner: Cast {
                             inner: Filter {
                                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , (usize , usize)) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < (usize , usize) , bool > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; let max__free = 3usize ; move | (success , error) | (success + error) >= max__free }) ; { let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) } }),
                                 input: Tee {
-                                    inner: <tee 5>,
+                                    inner: <tee 6>,
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
                                             8,
@@ -2492,11 +2600,11 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_8,
+            sym: cycle_9,
         },
         input: AntiJoin {
             pos: Tee {
-                inner: <tee 6>,
+                inner: <tee 7>,
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
                         8,
@@ -2513,7 +2621,7 @@ expression: built.ir()
                 },
             },
             neg: Tee {
-                inner: <tee 10>,
+                inner: <tee 11>,
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
                         8,
@@ -2548,16 +2656,16 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_6,
+            sym: cycle_7,
         },
         input: Tee {
-            inner: <tee 11>: Map {
+            inner: <tee 12>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (() , ()) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _signal) | d }),
                 input: CrossSingleton {
                     left: Map {
                         f: stageleft :: runtime_support :: fn1_type_hint :: < std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) > , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | _ | () }),
                         input: Tee {
-                            inner: <tee 12>: FilterMap {
+                            inner: <tee 13>: FilterMap {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: cluster :: paxos :: Ballot , std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) >) , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) > > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; move | ((quorum_ballot , quorum_accepted) , my_ballot) | if quorum_ballot == my_ballot { Some (quorum_accepted) } else { None } }),
                                 input: CrossSingleton {
                                     left: Batch {
@@ -2580,7 +2688,7 @@ expression: built.ir()
                                                                                     input: AntiJoin {
                                                                                         pos: AntiJoin {
                                                                                             pos: Tee {
-                                                                                                inner: <tee 6>,
+                                                                                                inner: <tee 7>,
                                                                                                 metadata: HydroIrMetadata {
                                                                                                     location_kind: Tick(
                                                                                                         8,
@@ -2603,7 +2711,7 @@ expression: built.ir()
                                                                                                         inner: Filter {
                                                                                                             f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , (usize , usize)) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < (usize , usize) , bool > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; let min__free = 2usize ; move | (success , _error) | success < & min__free }) ; { let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) } }),
                                                                                                             input: Tee {
-                                                                                                                inner: <tee 5>,
+                                                                                                                inner: <tee 6>,
                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                     location_kind: Tick(
                                                                                                                         8,
@@ -2696,7 +2804,7 @@ expression: built.ir()
                                                                                         neg: DeferTick {
                                                                                             input: CycleSource {
                                                                                                 ident: Ident {
-                                                                                                    sym: cycle_9,
+                                                                                                    sym: cycle_10,
                                                                                                 },
                                                                                                 metadata: HydroIrMetadata {
                                                                                                     location_kind: Tick(
@@ -2896,7 +3004,7 @@ expression: built.ir()
                                     },
                                     right: Cast {
                                         inner: Tee {
-                                            inner: <tee 3>,
+                                            inner: <tee 4>,
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
                                                     1,
@@ -2978,14 +3086,14 @@ expression: built.ir()
                     right: Map {
                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
                         input: Tee {
-                            inner: <tee 13>: Map {
+                            inner: <tee 14>: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | _ | () }),
                                 input: Filter {
                                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (received_max_ballot , cur_ballot) | * received_max_ballot <= * cur_ballot }),
                                     input: Cast {
                                         inner: CrossSingleton {
                                             left: Tee {
-                                                inner: <tee 0>,
+                                                inner: <tee 1>,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
                                                         1,
@@ -3000,7 +3108,7 @@ expression: built.ir()
                                                 },
                                             },
                                             right: Tee {
-                                                inner: <tee 3>,
+                                                inner: <tee 4>,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
                                                         1,
@@ -3135,14 +3243,14 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_4,
+            sym: cycle_5,
         },
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (_ , ballot) | ballot }),
             input: FilterMap {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >) , core :: option :: Option < (hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | (key , res) | match res { Ok (_) => None , Err (e) => Some ((key , e)) , } }),
                 input: Tee {
-                    inner: <tee 7>,
+                    inner: <tee 8>,
                     metadata: HydroIrMetadata {
                         location_kind: Cluster(
                             0,
@@ -3183,17 +3291,17 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_10,
+            sym: cycle_11,
         },
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , ()) , hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | (d , _signal) | d }),
             input: CrossSingleton {
                 left: Tee {
-                    inner: <tee 14>: Chain {
+                    inner: <tee 15>: Chain {
                         first: DeferTick {
                             input: CycleSource {
                                 ident: Ident {
-                                    sym: cycle_10,
+                                    sym: cycle_11,
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
@@ -3230,7 +3338,7 @@ expression: built.ir()
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , u32) , hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos_bench :: Client > :: from_raw (__hydro_lang_cluster_self_id_2) ; move | (key , value) | KvPayload { key , value : (CLUSTER_SELF_ID__free , value) } }),
                                 input: CycleSource {
                                     ident: Ident {
-                                        sym: cycle_0,
+                                        sym: cycle_1,
                                     },
                                     metadata: HydroIrMetadata {
                                         location_kind: Cluster(
@@ -3312,7 +3420,7 @@ expression: built.ir()
                                     input: Map {
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ | () }),
                                         input: Tee {
-                                            inner: <tee 15>: Batch {
+                                            inner: <tee 16>: Batch {
                                                 inner: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | ballot | ballot . proposer_id }),
                                                     input: Reduce {
@@ -3498,7 +3606,7 @@ expression: built.ir()
                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , ()) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
                                                                                                             input: CrossSingleton {
                                                                                                                 left: Tee {
-                                                                                                                    inner: <tee 3>,
+                                                                                                                    inner: <tee 4>,
                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                         location_kind: Tick(
                                                                                                                             1,
@@ -3515,11 +3623,11 @@ expression: built.ir()
                                                                                                                 right: Map {
                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
                                                                                                                     input: Tee {
-                                                                                                                        inner: <tee 16>: Map {
+                                                                                                                        inner: <tee 17>: Map {
                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (() , ()) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _signal) | d }),
                                                                                                                             input: CrossSingleton {
                                                                                                                                 left: Tee {
-                                                                                                                                    inner: <tee 11>,
+                                                                                                                                    inner: <tee 12>,
                                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                                         location_kind: Tick(
                                                                                                                                             1,
@@ -3545,7 +3653,7 @@ expression: built.ir()
                                                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                                                                                                                         input: DeferTick {
                                                                                                                                                             input: Tee {
-                                                                                                                                                                inner: <tee 11>,
+                                                                                                                                                                inner: <tee 12>,
                                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                                     location_kind: Tick(
                                                                                                                                                                         1,
@@ -4108,18 +4216,18 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_11,
+            sym: cycle_12,
         },
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , usize) , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (num_payloads , base_slot) | base_slot + num_payloads }),
             input: Cast {
                 inner: CrossSingleton {
                     left: Tee {
-                        inner: <tee 17>: Fold {
+                        inner: <tee 18>: Fold {
                             init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | 0usize }),
                             acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , (usize , hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) >) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | count , _ | * count += 1 }),
                             input: Tee {
-                                inner: <tee 18>: Map {
+                                inner: <tee 19>: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) >) , usize) , (usize , hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | ((index , payload) , base_slot) | (base_slot + index , payload) }),
                                     input: CrossSingleton {
                                         left: Enumerate {
@@ -4146,7 +4254,7 @@ expression: built.ir()
                                                                                     input: YieldConcat {
                                                                                         inner: CrossSingleton {
                                                                                             left: Tee {
-                                                                                                inner: <tee 14>,
+                                                                                                inner: <tee 15>,
                                                                                                 metadata: HydroIrMetadata {
                                                                                                     location_kind: Tick(
                                                                                                         10,
@@ -4163,7 +4271,7 @@ expression: built.ir()
                                                                                                 },
                                                                                             },
                                                                                             right: Tee {
-                                                                                                inner: <tee 15>,
+                                                                                                inner: <tee 16>,
                                                                                                 metadata: HydroIrMetadata {
                                                                                                     location_kind: Tick(
                                                                                                         10,
@@ -4309,7 +4417,7 @@ expression: built.ir()
                                                     right: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _u | () }),
                                                         input: Tee {
-                                                            inner: <tee 11>,
+                                                            inner: <tee 12>,
                                                             metadata: HydroIrMetadata {
                                                                 location_kind: Tick(
                                                                     1,
@@ -4383,12 +4491,12 @@ expression: built.ir()
                                         },
                                         right: Cast {
                                             inner: Tee {
-                                                inner: <tee 19>: Cast {
+                                                inner: <tee 20>: Cast {
                                                     inner: ChainFirst {
                                                         first: Map {
                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < usize , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | max_slot | max_slot + 1 }),
                                                             input: Tee {
-                                                                inner: <tee 20>: Reduce {
+                                                                inner: <tee 21>: Reduce {
                                                                     f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
                                                                     input: ObserveNonDet {
                                                                         inner: Map {
@@ -4396,7 +4504,7 @@ expression: built.ir()
                                                                             input: Cast {
                                                                                 inner: Cast {
                                                                                     inner: Tee {
-                                                                                        inner: <tee 21>: Map {
+                                                                                        inner: <tee 22>: Map {
                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >)) , (usize , (usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , (usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (count , entry) | (count , entry . unwrap ()) }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
                                                                                             input: FoldKeyed {
                                                                                                 init: stageleft :: runtime_support :: fn0_type_hint :: < (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | | (0 , None) }),
@@ -4408,10 +4516,10 @@ expression: built.ir()
                                                                                                             input: Map {
                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (_checkpoint , log) | log }),
                                                                                                                 input: Tee {
-                                                                                                                    inner: <tee 22>: FlatMap {
+                                                                                                                    inner: <tee 23>: FlatMap {
                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) > , std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | v }),
                                                                                                                         input: Tee {
-                                                                                                                            inner: <tee 12>,
+                                                                                                                            inner: <tee 13>,
                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                 location_kind: Tick(
                                                                                                                                     1,
@@ -4667,7 +4775,7 @@ expression: built.ir()
                                                                     first: DeferTick {
                                                                         input: CycleSource {
                                                                             ident: Ident {
-                                                                                sym: cycle_11,
+                                                                                sym: cycle_12,
                                                                             },
                                                                             metadata: HydroIrMetadata {
                                                                                 location_kind: Tick(
@@ -4887,7 +4995,7 @@ expression: built.ir()
                         },
                     },
                     right: Tee {
-                        inner: <tee 19>,
+                        inner: <tee 20>,
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
                                 1,
@@ -4944,26 +5052,26 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_13,
+            sym: cycle_14,
         },
         input: Difference {
             pos: Tee {
-                inner: <tee 23>: FilterMap {
+                inner: <tee 24>: FilterMap {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (usize , usize)) , core :: option :: Option < (usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; let min__free = 2usize ; move | (key , (success , _error)) | if success >= min__free { Some (key) } else { None } }),
                     input: Cast {
                         inner: Cast {
                             inner: Tee {
-                                inner: <tee 24>: FoldKeyed {
+                                inner: <tee 25>: FoldKeyed {
                                     init: stageleft :: runtime_support :: fn0_type_hint :: < (usize , usize) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | | (0 , 0) }),
                                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (usize , usize) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot > , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | accum , value | { if value . is_ok () { accum . 0 += 1 ; } else { accum . 1 += 1 ; } } }),
                                     input: ObserveNonDet {
                                         inner: Cast {
                                             inner: Tee {
-                                                inner: <tee 25>: Chain {
+                                                inner: <tee 26>: Chain {
                                                     first: DeferTick {
                                                         input: CycleSource {
                                                             ident: Ident {
-                                                                sym: cycle_12,
+                                                                sym: cycle_13,
                                                             },
                                                             metadata: HydroIrMetadata {
                                                                 location_kind: Tick(
@@ -4997,7 +5105,7 @@ expression: built.ir()
                                                     },
                                                     second: Batch {
                                                         inner: Tee {
-                                                            inner: <tee 26>: Map {
+                                                            inner: <tee 27>: Map {
                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
                                                                 input: Cast {
                                                                     inner: Cast {
@@ -5015,7 +5123,7 @@ expression: built.ir()
                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: P2a < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (p2a , max_ballot) | (p2a . sender , ((p2a . slot , p2a . ballot) , if p2a . ballot == max_ballot { Ok (()) } else { Err (max_ballot) })) }),
                                                                                         input: CrossSingleton {
                                                                                             left: Tee {
-                                                                                                inner: <tee 27>: Batch {
+                                                                                                inner: <tee 28>: Batch {
                                                                                                     inner: Map {
                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: P2a < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , hydro_test :: __staged :: cluster :: paxos :: Proposer >) , hydro_test :: __staged :: cluster :: paxos :: P2a < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
                                                                                                         input: Cast {
@@ -5192,7 +5300,7 @@ expression: built.ir()
                                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >) , hydro_test :: __staged :: cluster :: paxos :: P2a < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_raw (__hydro_lang_cluster_self_id_0) ; move | ((slot , ballot) , value) | P2a { sender : CLUSTER_SELF_ID__free , ballot , slot , value } }),
                                                                                                                                         input: EndAtomic {
                                                                                                                                             inner: Tee {
-                                                                                                                                                inner: <tee 28>: YieldConcat {
+                                                                                                                                                inner: <tee 29>: YieldConcat {
                                                                                                                                                     inner: Map {
                                                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >) , ()) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | (d , _signal) | d }),
                                                                                                                                                         input: CrossSingleton {
@@ -5201,7 +5309,7 @@ expression: built.ir()
                                                                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) >) , hydro_test :: __staged :: cluster :: paxos :: Ballot) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | ((slot , payload) , ballot) | ((slot , ballot) , Some (payload)) }),
                                                                                                                                                                     input: CrossSingleton {
                                                                                                                                                                         left: Tee {
-                                                                                                                                                                            inner: <tee 18>,
+                                                                                                                                                                            inner: <tee 19>,
                                                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                                                 location_kind: Tick(
                                                                                                                                                                                     1,
@@ -5219,7 +5327,7 @@ expression: built.ir()
                                                                                                                                                                         },
                                                                                                                                                                         right: Cast {
                                                                                                                                                                             inner: Tee {
-                                                                                                                                                                                inner: <tee 3>,
+                                                                                                                                                                                inner: <tee 4>,
                                                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                                                     location_kind: Tick(
                                                                                                                                                                                         1,
@@ -5284,7 +5392,7 @@ expression: built.ir()
                                                                                                                                                                                 left: Cast {
                                                                                                                                                                                     inner: Cast {
                                                                                                                                                                                         inner: Tee {
-                                                                                                                                                                                            inner: <tee 21>,
+                                                                                                                                                                                            inner: <tee 22>,
                                                                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                                                                 location_kind: Tick(
                                                                                                                                                                                                     1,
@@ -5332,7 +5440,7 @@ expression: built.ir()
                                                                                                                                                                                 },
                                                                                                                                                                                 right: Cast {
                                                                                                                                                                                     inner: Tee {
-                                                                                                                                                                                        inner: <tee 3>,
+                                                                                                                                                                                        inner: <tee 4>,
                                                                                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                                                                                             location_kind: Tick(
                                                                                                                                                                                                 1,
@@ -5376,7 +5484,7 @@ expression: built.ir()
                                                                                                                                                                             },
                                                                                                                                                                             right: Cast {
                                                                                                                                                                                 inner: Tee {
-                                                                                                                                                                                    inner: <tee 29>: Cast {
+                                                                                                                                                                                    inner: <tee 30>: Cast {
                                                                                                                                                                                         inner: ChainFirst {
                                                                                                                                                                                             first: Map {
                                                                                                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
@@ -5386,7 +5494,7 @@ expression: built.ir()
                                                                                                                                                                                                         inner: FilterMap {
                                                                                                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , core :: option :: Option < usize > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (checkpoint , _log) | checkpoint }),
                                                                                                                                                                                                             input: Tee {
-                                                                                                                                                                                                                inner: <tee 22>,
+                                                                                                                                                                                                                inner: <tee 23>,
                                                                                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                                                                                     location_kind: Tick(
                                                                                                                                                                                                                         1,
@@ -5580,7 +5688,7 @@ expression: built.ir()
                                                                                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , core :: option :: Option < usize >) , std :: ops :: Range < usize > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (max_slot , checkpoint) | { if let Some (checkpoint) = checkpoint { (checkpoint + 1) .. max_slot } else { 0 .. max_slot } } }),
                                                                                                                                                                                     input: CrossSingleton {
                                                                                                                                                                                         left: Tee {
-                                                                                                                                                                                            inner: <tee 20>,
+                                                                                                                                                                                            inner: <tee 21>,
                                                                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                                                                 location_kind: Tick(
                                                                                                                                                                                                     1,
@@ -5596,7 +5704,7 @@ expression: built.ir()
                                                                                                                                                                                         },
                                                                                                                                                                                         right: Cast {
                                                                                                                                                                                             inner: Tee {
-                                                                                                                                                                                                inner: <tee 29>,
+                                                                                                                                                                                                inner: <tee 30>,
                                                                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                                                                     location_kind: Tick(
                                                                                                                                                                                                         1,
@@ -5656,7 +5764,7 @@ expression: built.ir()
                                                                                                                                                                                     input: Cast {
                                                                                                                                                                                         inner: Cast {
                                                                                                                                                                                             inner: Tee {
-                                                                                                                                                                                                inner: <tee 21>,
+                                                                                                                                                                                                inner: <tee 22>,
                                                                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                                                                     location_kind: Tick(
                                                                                                                                                                                                         1,
@@ -5734,7 +5842,7 @@ expression: built.ir()
                                                                                                                                                                             },
                                                                                                                                                                             right: Cast {
                                                                                                                                                                                 inner: Tee {
-                                                                                                                                                                                    inner: <tee 3>,
+                                                                                                                                                                                    inner: <tee 4>,
                                                                                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                                                                                         location_kind: Tick(
                                                                                                                                                                                             1,
@@ -5824,7 +5932,7 @@ expression: built.ir()
                                                                                                                                                             right: Map {
                                                                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _u | () }),
                                                                                                                                                                 input: Tee {
-                                                                                                                                                                    inner: <tee 11>,
+                                                                                                                                                                    inner: <tee 12>,
                                                                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                                                                         location_kind: Tick(
                                                                                                                                                                             1,
@@ -6079,7 +6187,7 @@ expression: built.ir()
                                                                                             },
                                                                                             right: Cast {
                                                                                                 inner: Tee {
-                                                                                                    inner: <tee 9>,
+                                                                                                    inner: <tee 10>,
                                                                                                     metadata: HydroIrMetadata {
                                                                                                         location_kind: Tick(
                                                                                                             2,
@@ -6390,14 +6498,14 @@ expression: built.ir()
                 },
             },
             neg: Tee {
-                inner: <tee 30>: Map {
+                inner: <tee 31>: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (usize , usize)) , (usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
                     input: Cast {
                         inner: Cast {
                             inner: Filter {
                                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (usize , usize)) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < (usize , usize) , bool > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; let max__free = 3usize ; move | (success , error) | (success + error) >= max__free }) ; { let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) } }),
                                 input: Tee {
-                                    inner: <tee 24>,
+                                    inner: <tee 25>,
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
                                             12,
@@ -6506,11 +6614,11 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_12,
+            sym: cycle_13,
         },
         input: AntiJoin {
             pos: Tee {
-                inner: <tee 25>,
+                inner: <tee 26>,
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
                         12,
@@ -6527,7 +6635,7 @@ expression: built.ir()
                 },
             },
             neg: Tee {
-                inner: <tee 30>,
+                inner: <tee 31>,
                 metadata: HydroIrMetadata {
                     location_kind: Tick(
                         12,
@@ -6562,15 +6670,15 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_14,
+            sym: cycle_15,
         },
         input: AntiJoin {
             pos: Tee {
-                inner: <tee 31>: Chain {
+                inner: <tee 32>: Chain {
                     first: DeferTick {
                         input: CycleSource {
                             ident: Ident {
-                                sym: cycle_14,
+                                sym: cycle_15,
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
@@ -6604,7 +6712,7 @@ expression: built.ir()
                     },
                     second: Batch {
                         inner: Tee {
-                            inner: <tee 28>,
+                            inner: <tee 29>,
                             metadata: HydroIrMetadata {
                                 location_kind: Atomic(
                                     Tick(
@@ -6670,13 +6778,13 @@ expression: built.ir()
             neg: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , ()) , (usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: request_response :: * ; | (key , _) | key }),
                 input: Tee {
-                    inner: <tee 32>: Batch {
+                    inner: <tee 33>: Batch {
                         inner: Map {
                             f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | k | (k , ()) }),
                             input: YieldConcat {
                                 inner: Difference {
                                     pos: Tee {
-                                        inner: <tee 23>,
+                                        inner: <tee 24>,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
                                                 12,
@@ -6695,7 +6803,7 @@ expression: built.ir()
                                     neg: DeferTick {
                                         input: CycleSource {
                                             ident: Ident {
-                                                sym: cycle_13,
+                                                sym: cycle_14,
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
@@ -6830,7 +6938,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_3,
+            sym: cycle_4,
         },
         input: Batch {
             inner: YieldConcat {
@@ -6841,10 +6949,10 @@ expression: built.ir()
                                 first: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                     input: Tee {
-                                        inner: <tee 33>: Batch {
+                                        inner: <tee 34>: Batch {
                                             inner: CycleSource {
                                                 ident: Ident {
-                                                    sym: cycle_1,
+                                                    sym: cycle_2,
                                                 },
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Cluster(
@@ -6968,7 +7076,7 @@ expression: built.ir()
                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: P2a < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < (usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (p2a , max_ballot) | if p2a . ballot >= max_ballot { Some ((p2a . slot , LogValue { ballot : p2a . ballot , value : p2a . value , })) } else { None } }),
                                                                 input: CrossSingleton {
                                                                     left: Tee {
-                                                                        inner: <tee 27>,
+                                                                        inner: <tee 28>,
                                                                         metadata: HydroIrMetadata {
                                                                             location_kind: Tick(
                                                                                 2,
@@ -6986,7 +7094,7 @@ expression: built.ir()
                                                                     },
                                                                     right: Cast {
                                                                         inner: Tee {
-                                                                            inner: <tee 9>,
+                                                                            inner: <tee 10>,
                                                                             metadata: HydroIrMetadata {
                                                                                 location_kind: Tick(
                                                                                     2,
@@ -7098,7 +7206,7 @@ expression: built.ir()
                                                     },
                                                 },
                                                 watermark: Tee {
-                                                    inner: <tee 33>,
+                                                    inner: <tee 34>,
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Tick(
                                                             2,
@@ -7260,14 +7368,14 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_2,
+            sym: cycle_3,
         },
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (_ , ballot) | ballot }),
             input: FilterMap {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >) , core :: option :: Option < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | (key , res) | match res { Ok (_) => None , Err (e) => Some ((key , e)) , } }),
                 input: Tee {
-                    inner: <tee 26>,
+                    inner: <tee 27>,
                     metadata: HydroIrMetadata {
                         location_kind: Cluster(
                             0,
@@ -7308,7 +7416,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_15,
+            sym: cycle_16,
         },
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , usize) , hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | (sorted_payload , _) | { sorted_payload } }),
@@ -7316,7 +7424,7 @@ expression: built.ir()
                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , usize) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | (sorted_payload , highest_seq) | sorted_payload . seq > * highest_seq }),
                 input: CrossSingleton {
                     left: Tee {
-                        inner: <tee 34>: Sort {
+                        inner: <tee 35>: Sort {
                             input: Chain {
                                 first: Batch {
                                     inner: Map {
@@ -7500,7 +7608,7 @@ expression: built.ir()
                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > , ())) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > , ())) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: request_response :: * ; | (key , (meta , resp)) | (key , (meta , resp)) }),
                                                                                     input: Join {
                                                                                         left: Tee {
-                                                                                            inner: <tee 31>,
+                                                                                            inner: <tee 32>,
                                                                                             metadata: HydroIrMetadata {
                                                                                                 location_kind: Tick(
                                                                                                     1,
@@ -7517,7 +7625,7 @@ expression: built.ir()
                                                                                             },
                                                                                         },
                                                                                         right: Tee {
-                                                                                            inner: <tee 32>,
+                                                                                            inner: <tee 33>,
                                                                                             metadata: HydroIrMetadata {
                                                                                                 location_kind: Tick(
                                                                                                     1,
@@ -7725,7 +7833,7 @@ expression: built.ir()
                                 second: DeferTick {
                                     input: CycleSource {
                                         ident: Ident {
-                                            sym: cycle_15,
+                                            sym: cycle_16,
                                         },
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
@@ -7804,12 +7912,12 @@ expression: built.ir()
                     },
                     right: Cast {
                         inner: Tee {
-                            inner: <tee 35>: Fold {
+                            inner: <tee 36>: Fold {
                                 init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | | 0 }),
                                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , (hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , usize) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | new_next_slot , (sorted_payload , next_slot) | { if sorted_payload . seq == std :: cmp :: max (* new_next_slot , next_slot) { * new_next_slot = sorted_payload . seq + 1 ; } } }),
                                 input: CrossSingleton {
                                     left: Tee {
-                                        inner: <tee 34>,
+                                        inner: <tee 35>,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
                                                 14,
@@ -7827,12 +7935,12 @@ expression: built.ir()
                                     },
                                     right: Cast {
                                         inner: Tee {
-                                            inner: <tee 36>: Cast {
+                                            inner: <tee 37>: Cast {
                                                 inner: ChainFirst {
                                                     first: DeferTick {
                                                         input: CycleSource {
                                                             ident: Ident {
-                                                                sym: cycle_16,
+                                                                sym: cycle_17,
                                                             },
                                                             metadata: HydroIrMetadata {
                                                                 location_kind: Tick(
@@ -8044,23 +8152,23 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_16,
+            sym: cycle_17,
         },
         input: Tee {
-            inner: <tee 37>: Map {
+            inner: <tee 38>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , usize) , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; | (_kv_store , next_slot) | next_slot }),
                 input: Fold {
                     init: stageleft :: runtime_support :: fn0_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , usize) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; | | (HashMap :: new () , 0) }),
                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , usize) , hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; | (kv_store , next_slot) , payload | { if let Some (kv) = payload . kv { kv_store . insert (kv . key , kv . value) ; } * next_slot = payload . seq + 1 ; } }),
                     input: Persist {
                         inner: Tee {
-                            inner: <tee 38>: Map {
+                            inner: <tee 39>: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , usize) , hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | (sorted_payload , _) | { sorted_payload } }),
                                 input: Filter {
                                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , usize) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | (sorted_payload , highest_seq) | sorted_payload . seq < * highest_seq }),
                                     input: CrossSingleton {
                                         left: Tee {
-                                            inner: <tee 34>,
+                                            inner: <tee 35>,
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
                                                     14,
@@ -8078,7 +8186,7 @@ expression: built.ir()
                                         },
                                         right: Cast {
                                             inner: Tee {
-                                                inner: <tee 35>,
+                                                inner: <tee 36>,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
                                                         14,
@@ -8223,10 +8331,10 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_17,
+            sym: cycle_18,
         },
         input: Tee {
-            inner: <tee 39>: FilterMap {
+            inner: <tee 40>: FilterMap {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , usize) , core :: option :: Option < usize > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; let checkpoint_frequency__free = 1000usize ; move | (max_checkpointed_seq , next_slot) | if max_checkpointed_seq . map (| m | next_slot - m >= checkpoint_frequency__free) . unwrap_or (true) { Some (next_slot) } else { None } }),
                 input: Cast {
                     inner: CrossSingleton {
@@ -8241,7 +8349,7 @@ expression: built.ir()
                                                 inner: DeferTick {
                                                     input: CycleSource {
                                                         ident: Ident {
-                                                            sym: cycle_17,
+                                                            sym: cycle_18,
                                                         },
                                                         metadata: HydroIrMetadata {
                                                             location_kind: Tick(
@@ -8387,7 +8495,7 @@ expression: built.ir()
                                 first: DeferTick {
                                     input: Cast {
                                         inner: Tee {
-                                            inner: <tee 37>,
+                                            inner: <tee 38>,
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
                                                     14,
@@ -8538,7 +8646,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_1,
+            sym: cycle_2,
         },
         input: YieldConcat {
             inner: Reduce {
@@ -8552,7 +8660,7 @@ expression: built.ir()
                                 left: Cast {
                                     inner: Cast {
                                         inner: Tee {
-                                            inner: <tee 40>: Batch {
+                                            inner: <tee 41>: Batch {
                                                 inner: ReduceKeyed {
                                                     f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; | curr_seq , seq | { if seq > * curr_seq { * curr_seq = seq ; } } }),
                                                     input: Cast {
@@ -8727,7 +8835,7 @@ expression: built.ir()
                                                                             inner: YieldConcat {
                                                                                 inner: Cast {
                                                                                     inner: Tee {
-                                                                                        inner: <tee 39>,
+                                                                                        inner: <tee 40>,
                                                                                         metadata: HydroIrMetadata {
                                                                                             location_kind: Tick(
                                                                                                 14,
@@ -8933,7 +9041,7 @@ expression: built.ir()
                                                 inner: Cast {
                                                     inner: Cast {
                                                         inner: Tee {
-                                                            inner: <tee 40>,
+                                                            inner: <tee 41>,
                                                             metadata: HydroIrMetadata {
                                                                 location_kind: Tick(
                                                                     15,
@@ -9122,15 +9230,15 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_18,
+            sym: cycle_19,
         },
         input: AntiJoin {
             pos: Tee {
-                inner: <tee 41>: Chain {
+                inner: <tee 42>: Chain {
                     first: DeferTick {
                         input: CycleSource {
                             ident: Ident {
-                                sym: cycle_18,
+                                sym: cycle_19,
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
@@ -9164,7 +9272,7 @@ expression: built.ir()
                     },
                     second: Batch {
                         inner: Tee {
-                            inner: <tee 42>: Map {
+                            inner: <tee 43>: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , ((u32 , u32) , core :: result :: Result < () , () >)) , ((u32 , u32) , core :: result :: Result < () , () >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
                                 input: Cast {
                                     inner: Cast {
@@ -9183,7 +9291,7 @@ expression: built.ir()
                                                         inner: FilterMap {
                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; | payload | payload . kv }),
                                                             input: Tee {
-                                                                inner: <tee 38>,
+                                                                inner: <tee 39>,
                                                                 metadata: HydroIrMetadata {
                                                                     location_kind: Tick(
                                                                         14,
@@ -9358,18 +9466,18 @@ expression: built.ir()
                 },
             },
             neg: Tee {
-                inner: <tee 43>: FilterMap {
+                inner: <tee 44>: FilterMap {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , u32) , (usize , usize)) , core :: option :: Option < (u32 , u32) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; let min__free = 2usize ; move | (key , (success , _error)) | if success >= min__free { Some (key) } else { None } }),
                     input: Cast {
                         inner: Cast {
                             inner: Tee {
-                                inner: <tee 44>: FoldKeyed {
+                                inner: <tee 45>: FoldKeyed {
                                     init: stageleft :: runtime_support :: fn0_type_hint :: < (usize , usize) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | | (0 , 0) }),
                                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (usize , usize) , core :: result :: Result < () , () > , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | accum , value | { if value . is_ok () { accum . 0 += 1 ; } else { accum . 1 += 1 ; } } }),
                                     input: ObserveNonDet {
                                         inner: Cast {
                                             inner: Tee {
-                                                inner: <tee 41>,
+                                                inner: <tee 42>,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
                                                         17,
@@ -9526,28 +9634,29 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_0,
+            sym: cycle_1,
         },
         input: ObserveNonDet {
             inner: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , core :: option :: Option < u32 >) , (u32 , u32) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; move | (virtual_id , payload) | { let value = if let Some (payload) = payload { payload + 1 } else { 0 } ; (virtual_id , value) } }),
                 input: YieldConcat {
                     inner: Chain {
-                        first: FlatMap {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , std :: iter :: Map < std :: ops :: Range < u32 > , _ > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let num_clients_per_node__free = 100usize ; move | _ | (0 .. num_clients_per_node__free as u32) . map (move | virtual_id | { (virtual_id , None) }) }),
+                        first: Map {
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , (u32 , core :: option :: Option < u32 >) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | virtual_id | (virtual_id , None) }),
                             input: Tee {
-                                inner: <tee 45>: Batch {
-                                    inner: Source {
-                                        source: Iter(
-                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; () } ; [e__free] },
-                                        ),
+                                inner: <tee 46>: Cast {
+                                    inner: Tee {
+                                        inner: <tee 0>,
                                         metadata: HydroIrMetadata {
-                                            location_kind: Cluster(
-                                                2,
+                                            location_kind: Tick(
+                                                0,
+                                                Cluster(
+                                                    2,
+                                                ),
                                             ),
                                             collection_kind: Optional {
-                                                bound: Unbounded,
-                                                element_type: (),
+                                                bound: Bounded,
+                                                element_type: u32,
                                             },
                                         },
                                     },
@@ -9558,9 +9667,11 @@ expression: built.ir()
                                                 2,
                                             ),
                                         ),
-                                        collection_kind: Optional {
+                                        collection_kind: Stream {
                                             bound: Bounded,
-                                            element_type: (),
+                                            order: TotalOrder,
+                                            retry: ExactlyOnce,
+                                            element_type: u32,
                                         },
                                     },
                                 },
@@ -9571,9 +9682,11 @@ expression: built.ir()
                                             2,
                                         ),
                                     ),
-                                    collection_kind: Optional {
+                                    collection_kind: Stream {
                                         bound: Bounded,
-                                        element_type: (),
+                                        order: TotalOrder,
+                                        retry: ExactlyOnce,
+                                        element_type: u32,
                                     },
                                 },
                             },
@@ -9593,12 +9706,12 @@ expression: built.ir()
                             },
                         },
                         second: Tee {
-                            inner: <tee 46>: Map {
+                            inner: <tee 47>: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , u32) , (u32 , core :: option :: Option < u32 >) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (virtual_id , payload) | (virtual_id , Some (payload)) }),
                                 input: Batch {
                                     inner: YieldConcat {
                                         inner: Tee {
-                                            inner: <tee 43>,
+                                            inner: <tee 44>,
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
                                                     17,
@@ -9727,7 +9840,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_19,
+            sym: cycle_20,
         },
         input: Cast {
             inner: Cast {
@@ -9738,10 +9851,10 @@ expression: built.ir()
                             inner: Chain {
                                 first: Chain {
                                     first: Tee {
-                                        inner: <tee 47>: DeferTick {
+                                        inner: <tee 48>: DeferTick {
                                             input: CycleSource {
                                                 ident: Ident {
-                                                    sym: cycle_19,
+                                                    sym: cycle_20,
                                                 },
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
@@ -9754,7 +9867,7 @@ expression: built.ir()
                                                         bound: Bounded,
                                                         order: NoOrder,
                                                         retry: ExactlyOnce,
-                                                        element_type: (usize , std :: time :: Instant),
+                                                        element_type: (u32 , std :: time :: Instant),
                                                     },
                                                 },
                                             },
@@ -9769,7 +9882,7 @@ expression: built.ir()
                                                     bound: Bounded,
                                                     order: NoOrder,
                                                     retry: ExactlyOnce,
-                                                    element_type: (usize , std :: time :: Instant),
+                                                    element_type: (u32 , std :: time :: Instant),
                                                 },
                                             },
                                         },
@@ -9784,29 +9897,14 @@ expression: built.ir()
                                                 bound: Bounded,
                                                 order: NoOrder,
                                                 retry: ExactlyOnce,
-                                                element_type: (usize , std :: time :: Instant),
+                                                element_type: (u32 , std :: time :: Instant),
                                             },
                                         },
                                     },
-                                    second: FlatMap {
-                                        f: stageleft :: runtime_support :: fn1_type_hint :: < std :: time :: Instant , std :: iter :: Map < std :: ops :: Range < usize > , _ > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let num_clients_per_node__free = 100usize ; move | now | (0 .. num_clients_per_node__free) . map (move | virtual_id | (virtual_id , now)) }),
-                                        input: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , std :: time :: Instant > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | _ | Instant :: now () }),
-                                            input: Tee {
-                                                inner: <tee 45>,
-                                                metadata: HydroIrMetadata {
-                                                    location_kind: Tick(
-                                                        0,
-                                                        Cluster(
-                                                            2,
-                                                        ),
-                                                    ),
-                                                    collection_kind: Optional {
-                                                        bound: Bounded,
-                                                        element_type: (),
-                                                    },
-                                                },
-                                            },
+                                    second: Map {
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , (u32 , std :: time :: Instant) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | virtual_id | (virtual_id , Instant :: now ()) }),
+                                        input: Tee {
+                                            inner: <tee 46>,
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
                                                     0,
@@ -9814,9 +9912,11 @@ expression: built.ir()
                                                         2,
                                                     ),
                                                 ),
-                                                collection_kind: Optional {
+                                                collection_kind: Stream {
                                                     bound: Bounded,
-                                                    element_type: std :: time :: Instant,
+                                                    order: TotalOrder,
+                                                    retry: ExactlyOnce,
+                                                    element_type: u32,
                                                 },
                                             },
                                         },
@@ -9831,7 +9931,7 @@ expression: built.ir()
                                                 bound: Bounded,
                                                 order: TotalOrder,
                                                 retry: ExactlyOnce,
-                                                element_type: (usize , std :: time :: Instant),
+                                                element_type: (u32 , std :: time :: Instant),
                                             },
                                         },
                                     },
@@ -9846,15 +9946,15 @@ expression: built.ir()
                                             bound: Bounded,
                                             order: NoOrder,
                                             retry: ExactlyOnce,
-                                            element_type: (usize , std :: time :: Instant),
+                                            element_type: (u32 , std :: time :: Instant),
                                         },
                                     },
                                 },
                                 second: Tee {
-                                    inner: <tee 48>: Map {
-                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , core :: option :: Option < u32 >) , (usize , std :: time :: Instant) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (key , _payload) | (key as usize , Instant :: now ()) }),
+                                    inner: <tee 49>: Map {
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , core :: option :: Option < u32 >) , (u32 , std :: time :: Instant) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (key , _payload) | (key , Instant :: now ()) }),
                                         input: Tee {
-                                            inner: <tee 46>,
+                                            inner: <tee 47>,
                                             metadata: HydroIrMetadata {
                                                 location_kind: Tick(
                                                     0,
@@ -9881,7 +9981,7 @@ expression: built.ir()
                                                 bound: Bounded,
                                                 order: NoOrder,
                                                 retry: ExactlyOnce,
-                                                element_type: (usize , std :: time :: Instant),
+                                                element_type: (u32 , std :: time :: Instant),
                                             },
                                         },
                                     },
@@ -9896,7 +9996,7 @@ expression: built.ir()
                                             bound: Bounded,
                                             order: NoOrder,
                                             retry: ExactlyOnce,
-                                            element_type: (usize , std :: time :: Instant),
+                                            element_type: (u32 , std :: time :: Instant),
                                         },
                                     },
                                 },
@@ -9911,7 +10011,7 @@ expression: built.ir()
                                         bound: Bounded,
                                         order: NoOrder,
                                         retry: ExactlyOnce,
-                                        element_type: (usize , std :: time :: Instant),
+                                        element_type: (u32 , std :: time :: Instant),
                                     },
                                 },
                             },
@@ -9926,7 +10026,7 @@ expression: built.ir()
                                     bound: Bounded,
                                     value_order: NoOrder,
                                     value_retry: ExactlyOnce,
-                                    key_type: usize,
+                                    key_type: u32,
                                     value_type: std :: time :: Instant,
                                 },
                             },
@@ -9943,7 +10043,7 @@ expression: built.ir()
                                 bound: Bounded,
                                 value_order: TotalOrder,
                                 value_retry: ExactlyOnce,
-                                key_type: usize,
+                                key_type: u32,
                                 value_type: std :: time :: Instant,
                             },
                         },
@@ -9957,7 +10057,7 @@ expression: built.ir()
                         ),
                         collection_kind: KeyedSingleton {
                             bound: Bounded,
-                            key_type: usize,
+                            key_type: u32,
                             value_type: std :: time :: Instant,
                         },
                     },
@@ -9973,7 +10073,7 @@ expression: built.ir()
                         bound: Bounded,
                         value_order: TotalOrder,
                         value_retry: ExactlyOnce,
-                        key_type: usize,
+                        key_type: u32,
                         value_type: std :: time :: Instant,
                     },
                 },
@@ -9989,7 +10089,7 @@ expression: built.ir()
                     bound: Bounded,
                     order: NoOrder,
                     retry: ExactlyOnce,
-                    element_type: (usize , std :: time :: Instant),
+                    element_type: (u32 , std :: time :: Instant),
                 },
             },
         },
@@ -10007,12 +10107,12 @@ expression: built.ir()
                                 inner: YieldConcat {
                                     inner: Cast {
                                         inner: Tee {
-                                            inner: <tee 49>: FilterMap {
+                                            inner: <tee 50>: FilterMap {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , usize) , core :: option :: Option < usize > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (num_clients , num_clients_with_throughput) | { if num_clients > num_clients_with_throughput { Some (num_clients - num_clients_with_throughput) } else { None } } }),
                                                 input: Cast {
                                                     inner: CrossSingleton {
                                                         left: Tee {
-                                                            inner: <tee 50>: Fold {
+                                                            inner: <tee 51>: Fold {
                                                                 init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | 0usize }),
                                                                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , bool) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | count , _ | * count += 1 }),
                                                                 input: ObserveNonDet {
@@ -10190,7 +10290,7 @@ expression: built.ir()
                                                                             f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , bool > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | throughputs | throughputs . sample_mean () > 0.0 }) ; { let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) } }),
                                                                             input: Batch {
                                                                                 inner: Tee {
-                                                                                    inner: <tee 51>: ReduceKeyed {
+                                                                                    inner: <tee 52>: ReduceKeyed {
                                                                                         f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | combined , new | { * combined = new ; } }),
                                                                                         input: ObserveNonDet {
                                                                                             inner: Cast {
@@ -10227,7 +10327,7 @@ expression: built.ir()
                                                                                                                                                                 acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , (u32 , core :: option :: Option < u32 >) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | count , _ | * count += 1 }),
                                                                                                                                                                 input: ObserveNonDet {
                                                                                                                                                                     inner: Tee {
-                                                                                                                                                                        inner: <tee 46>,
+                                                                                                                                                                        inner: <tee 47>,
                                                                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                                                                             location_kind: Tick(
                                                                                                                                                                                 0,
@@ -10283,7 +10383,7 @@ expression: built.ir()
                                                                                                                                                                                 input: Map {
                                                                                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _ | () }),
                                                                                                                                                                                     input: Tee {
-                                                                                                                                                                                        inner: <tee 52>: Reduce {
+                                                                                                                                                                                        inner: <tee 53>: Reduce {
                                                                                                                                                                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
                                                                                                                                                                                             input: Batch {
                                                                                                                                                                                                 inner: Source {
@@ -10511,7 +10611,7 @@ expression: built.ir()
                                                                                                                                                     input: Map {
                                                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , (usize , bool) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | _ | (0 , true) }),
                                                                                                                                                         input: Tee {
-                                                                                                                                                            inner: <tee 52>,
+                                                                                                                                                            inner: <tee 53>,
                                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                                 location_kind: Tick(
                                                                                                                                                                     0,
@@ -11151,7 +11251,7 @@ expression: built.ir()
                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage) , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (_ , v) | v }),
                                                                         input: Batch {
                                                                             inner: Tee {
-                                                                                inner: <tee 51>,
+                                                                                inner: <tee 52>,
                                                                                 metadata: HydroIrMetadata {
                                                                                     location_kind: Process(
                                                                                         3,
@@ -11388,7 +11488,7 @@ expression: built.ir()
                             },
                             right: Cast {
                                 inner: Tee {
-                                    inner: <tee 50>,
+                                    inner: <tee 51>,
                                     metadata: HydroIrMetadata {
                                         location_kind: Tick(
                                             18,
@@ -11441,7 +11541,7 @@ expression: built.ir()
                                             input: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ | () }),
                                                 input: Tee {
-                                                    inner: <tee 49>,
+                                                    inner: <tee 50>,
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Tick(
                                                             18,
@@ -11672,26 +11772,9 @@ expression: built.ir()
                                                                                                                             input: ObserveNonDet {
                                                                                                                                 inner: YieldConcat {
                                                                                                                                     inner: Map {
-                                                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , (std :: time :: Instant , std :: time :: Instant)) , core :: time :: Duration > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (_virtual_id , (prev_time , curr_time)) | curr_time . duration_since (prev_time) }),
+                                                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , (std :: time :: Instant , std :: time :: Instant)) , core :: time :: Duration > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (_virtual_id , (prev_time , curr_time)) | curr_time . duration_since (prev_time) }),
                                                                                                                                         input: Join {
                                                                                                                                             left: Tee {
-                                                                                                                                                inner: <tee 47>,
-                                                                                                                                                metadata: HydroIrMetadata {
-                                                                                                                                                    location_kind: Tick(
-                                                                                                                                                        0,
-                                                                                                                                                        Cluster(
-                                                                                                                                                            2,
-                                                                                                                                                        ),
-                                                                                                                                                    ),
-                                                                                                                                                    collection_kind: Stream {
-                                                                                                                                                        bound: Bounded,
-                                                                                                                                                        order: NoOrder,
-                                                                                                                                                        retry: ExactlyOnce,
-                                                                                                                                                        element_type: (usize , std :: time :: Instant),
-                                                                                                                                                    },
-                                                                                                                                                },
-                                                                                                                                            },
-                                                                                                                                            right: Tee {
                                                                                                                                                 inner: <tee 48>,
                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                     location_kind: Tick(
@@ -11704,7 +11787,24 @@ expression: built.ir()
                                                                                                                                                         bound: Bounded,
                                                                                                                                                         order: NoOrder,
                                                                                                                                                         retry: ExactlyOnce,
-                                                                                                                                                        element_type: (usize , std :: time :: Instant),
+                                                                                                                                                        element_type: (u32 , std :: time :: Instant),
+                                                                                                                                                    },
+                                                                                                                                                },
+                                                                                                                                            },
+                                                                                                                                            right: Tee {
+                                                                                                                                                inner: <tee 49>,
+                                                                                                                                                metadata: HydroIrMetadata {
+                                                                                                                                                    location_kind: Tick(
+                                                                                                                                                        0,
+                                                                                                                                                        Cluster(
+                                                                                                                                                            2,
+                                                                                                                                                        ),
+                                                                                                                                                    ),
+                                                                                                                                                    collection_kind: Stream {
+                                                                                                                                                        bound: Bounded,
+                                                                                                                                                        order: NoOrder,
+                                                                                                                                                        retry: ExactlyOnce,
+                                                                                                                                                        element_type: (u32 , std :: time :: Instant),
                                                                                                                                                     },
                                                                                                                                                 },
                                                                                                                                             },
@@ -11719,7 +11819,7 @@ expression: built.ir()
                                                                                                                                                     bound: Bounded,
                                                                                                                                                     order: NoOrder,
                                                                                                                                                     retry: ExactlyOnce,
-                                                                                                                                                    element_type: (usize , (std :: time :: Instant , std :: time :: Instant)),
+                                                                                                                                                    element_type: (u32 , (std :: time :: Instant , std :: time :: Instant)),
                                                                                                                                                 },
                                                                                                                                             },
                                                                                                                                         },
@@ -12222,7 +12322,7 @@ expression: built.ir()
                                             input: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ | () }),
                                                 input: Tee {
-                                                    inner: <tee 49>,
+                                                    inner: <tee 50>,
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Tick(
                                                             18,
