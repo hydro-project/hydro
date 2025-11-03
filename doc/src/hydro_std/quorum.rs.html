@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_std/src/quorum.rs`."><title>quorum.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydro_std" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (bd3ac0330 2025-11-01)" data-channel="nightly" data-search-js="search-5c29b3b5.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_std/</div>quorum.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::hash::Hash;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_std/src/quorum.rs`."><title>quorum.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydro_std" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (b15a874aa 2025-11-02)" data-channel="nightly" data-search-js="search-5c29b3b5.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_std/</div>quorum.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::hash::Hash;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::live_collections::stream::{NoOrder, Ordering};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>hydro_lang::location::{Location, NoTick};
@@ -195,12 +195,12 @@
 <a href=#195 id=195 data-nosnippet>195</a>            <span class="kw">let </span>out_recv = compiled.connect(<span class="kw-2">&amp;</span>out_port);
 <a href=#196 id=196 data-nosnippet>196</a>            compiled.launch();
 <a href=#197 id=197 data-nosnippet>197</a>
-<a href=#198 id=198 data-nosnippet>198</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(()))).unwrap();
-<a href=#199 id=199 data-nosnippet>199</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#200 id=200 data-nosnippet>200</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#201 id=201 data-nosnippet>201</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#202 id=202 data-nosnippet>202</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#203 id=203 data-nosnippet>203</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#198 id=198 data-nosnippet>198</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#199 id=199 data-nosnippet>199</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#200 id=200 data-nosnippet>200</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#201 id=201 data-nosnippet>201</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#202 id=202 data-nosnippet>202</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#203 id=203 data-nosnippet>203</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#204 id=204 data-nosnippet>204</a>
 <a href=#205 id=205 data-nosnippet>205</a>            <span class="macro">assert_eq!</span>(
 <a href=#206 id=206 data-nosnippet>206</a>                out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>,
@@ -233,8 +233,8 @@
 <a href=#233 id=233 data-nosnippet>233</a>            <span class="kw">let </span>error_recv = compiled.connect(<span class="kw-2">&amp;</span>error_port);
 <a href=#234 id=234 data-nosnippet>234</a>            compiled.launch();
 <a href=#235 id=235 data-nosnippet>235</a>
-<a href=#236 id=236 data-nosnippet>236</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(()))).unwrap();
-<a href=#237 id=237 data-nosnippet>237</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#236 id=236 data-nosnippet>236</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#237 id=237 data-nosnippet>237</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#238 id=238 data-nosnippet>238</a>
 <a href=#239 id=239 data-nosnippet>239</a>            success_recv.assert_yields_only_unordered([<span class="number">1</span>]).<span class="kw">await</span>;
 <a href=#240 id=240 data-nosnippet>240</a>            error_recv.assert_no_more().<span class="kw">await</span>;
@@ -247,9 +247,9 @@
 <a href=#247 id=247 data-nosnippet>247</a>            <span class="kw">let </span>error_recv = compiled.connect(<span class="kw-2">&amp;</span>error_port);
 <a href=#248 id=248 data-nosnippet>248</a>            compiled.launch();
 <a href=#249 id=249 data-nosnippet>249</a>
-<a href=#250 id=250 data-nosnippet>250</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(()))).unwrap();
-<a href=#251 id=251 data-nosnippet>251</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#252 id=252 data-nosnippet>252</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(()))).unwrap();
+<a href=#250 id=250 data-nosnippet>250</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#251 id=251 data-nosnippet>251</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#252 id=252 data-nosnippet>252</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(())));
 <a href=#253 id=253 data-nosnippet>253</a>
 <a href=#254 id=254 data-nosnippet>254</a>            success_recv.assert_yields_only_unordered([<span class="number">2</span>]).<span class="kw">await</span>;
 <a href=#255 id=255 data-nosnippet>255</a>            error_recv.assert_yields_only([(<span class="number">2</span>, ())]).<span class="kw">await</span>;
@@ -262,9 +262,9 @@
 <a href=#262 id=262 data-nosnippet>262</a>            <span class="kw">let </span>error_recv = compiled.connect(<span class="kw-2">&amp;</span>error_port);
 <a href=#263 id=263 data-nosnippet>263</a>            compiled.launch();
 <a href=#264 id=264 data-nosnippet>264</a>
-<a href=#265 id=265 data-nosnippet>265</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(()))).unwrap();
-<a href=#266 id=266 data-nosnippet>266</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Err</span>(()))).unwrap();
-<a href=#267 id=267 data-nosnippet>267</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Err</span>(()))).unwrap();
+<a href=#265 id=265 data-nosnippet>265</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#266 id=266 data-nosnippet>266</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Err</span>(())));
+<a href=#267 id=267 data-nosnippet>267</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Err</span>(())));
 <a href=#268 id=268 data-nosnippet>268</a>
 <a href=#269 id=269 data-nosnippet>269</a>            success_recv.assert_no_more().<span class="kw">await</span>;
 <a href=#270 id=270 data-nosnippet>270</a>            error_recv.assert_yields_only([(<span class="number">3</span>, ()), (<span class="number">3</span>, ())]).<span class="kw">await</span>;
@@ -277,9 +277,9 @@
 <a href=#277 id=277 data-nosnippet>277</a>            <span class="kw">let </span>error_recv = compiled.connect(<span class="kw-2">&amp;</span>error_port);
 <a href=#278 id=278 data-nosnippet>278</a>            compiled.launch();
 <a href=#279 id=279 data-nosnippet>279</a>
-<a href=#280 id=280 data-nosnippet>280</a>            in_send.send((<span class="number">4</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(()))).unwrap();
-<a href=#281 id=281 data-nosnippet>281</a>            in_send.send((<span class="number">4</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#282 id=282 data-nosnippet>282</a>            in_send.send((<span class="number">4</span>, <span class="prelude-val">Ok</span>(()))).unwrap(); <span class="comment">// This should be ignored after quorum
+<a href=#280 id=280 data-nosnippet>280</a>            in_send.send((<span class="number">4</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#281 id=281 data-nosnippet>281</a>            in_send.send((<span class="number">4</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#282 id=282 data-nosnippet>282</a>            in_send.send((<span class="number">4</span>, <span class="prelude-val">Ok</span>(()))); <span class="comment">// This should be ignored after quorum
 <a href=#283 id=283 data-nosnippet>283</a>
 <a href=#284 id=284 data-nosnippet>284</a>            </span>success_recv.assert_yields_only_unordered([<span class="number">4</span>]).<span class="kw">await</span>;
 <a href=#285 id=285 data-nosnippet>285</a>            error_recv.assert_no_more().<span class="kw">await</span>;
@@ -292,9 +292,9 @@
 <a href=#292 id=292 data-nosnippet>292</a>            <span class="kw">let </span>error_recv = compiled.connect(<span class="kw-2">&amp;</span>error_port);
 <a href=#293 id=293 data-nosnippet>293</a>            compiled.launch();
 <a href=#294 id=294 data-nosnippet>294</a>
-<a href=#295 id=295 data-nosnippet>295</a>            in_send.send((<span class="number">5</span>, <span class="prelude-val">Err</span>::&lt;(), ()&gt;(()))).unwrap();
-<a href=#296 id=296 data-nosnippet>296</a>            in_send.send((<span class="number">5</span>, <span class="prelude-val">Err</span>(()))).unwrap();
-<a href=#297 id=297 data-nosnippet>297</a>            in_send.send((<span class="number">5</span>, <span class="prelude-val">Err</span>(()))).unwrap();
+<a href=#295 id=295 data-nosnippet>295</a>            in_send.send((<span class="number">5</span>, <span class="prelude-val">Err</span>::&lt;(), ()&gt;(())));
+<a href=#296 id=296 data-nosnippet>296</a>            in_send.send((<span class="number">5</span>, <span class="prelude-val">Err</span>(())));
+<a href=#297 id=297 data-nosnippet>297</a>            in_send.send((<span class="number">5</span>, <span class="prelude-val">Err</span>(())));
 <a href=#298 id=298 data-nosnippet>298</a>
 <a href=#299 id=299 data-nosnippet>299</a>            success_recv.assert_no_more().<span class="kw">await</span>;
 <a href=#300 id=300 data-nosnippet>300</a>            error_recv
@@ -309,9 +309,9 @@
 <a href=#309 id=309 data-nosnippet>309</a>            <span class="kw">let </span>error_recv = compiled.connect(<span class="kw-2">&amp;</span>error_port);
 <a href=#310 id=310 data-nosnippet>310</a>            compiled.launch();
 <a href=#311 id=311 data-nosnippet>311</a>
-<a href=#312 id=312 data-nosnippet>312</a>            in_send.send((<span class="number">6</span>, <span class="prelude-val">Err</span>::&lt;(), ()&gt;(()))).unwrap();
-<a href=#313 id=313 data-nosnippet>313</a>            in_send.send((<span class="number">6</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#314 id=314 data-nosnippet>314</a>            in_send.send((<span class="number">6</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#312 id=312 data-nosnippet>312</a>            in_send.send((<span class="number">6</span>, <span class="prelude-val">Err</span>::&lt;(), ()&gt;(())));
+<a href=#313 id=313 data-nosnippet>313</a>            in_send.send((<span class="number">6</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#314 id=314 data-nosnippet>314</a>            in_send.send((<span class="number">6</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#315 id=315 data-nosnippet>315</a>
 <a href=#316 id=316 data-nosnippet>316</a>            success_recv.assert_yields_only_unordered([<span class="number">6</span>]).<span class="kw">await</span>;
 <a href=#317 id=317 data-nosnippet>317</a>            error_recv.assert_yields_only([(<span class="number">6</span>, ())]).<span class="kw">await</span>;
@@ -335,16 +335,16 @@
 <a href=#335 id=335 data-nosnippet>335</a>            compiled.launch();
 <a href=#336 id=336 data-nosnippet>336</a>
 <a href=#337 id=337 data-nosnippet>337</a>            <span class="comment">// When min == max, we need exactly that many responses
-<a href=#338 id=338 data-nosnippet>338</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(()))).unwrap();
-<a href=#339 id=339 data-nosnippet>339</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#338 id=338 data-nosnippet>338</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#339 id=339 data-nosnippet>339</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#340 id=340 data-nosnippet>340</a>
 <a href=#341 id=341 data-nosnippet>341</a>            <span class="comment">// This key gets exactly 2 responses (1 success, 1 error) - should not reach quorum
-<a href=#342 id=342 data-nosnippet>342</a>            </span>in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#343 id=343 data-nosnippet>343</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(()))).unwrap();
+<a href=#342 id=342 data-nosnippet>342</a>            </span>in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#343 id=343 data-nosnippet>343</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(())));
 <a href=#344 id=344 data-nosnippet>344</a>
 <a href=#345 id=345 data-nosnippet>345</a>            <span class="comment">// This key gets 2 successes - should reach quorum
-<a href=#346 id=346 data-nosnippet>346</a>            </span>in_send.send((<span class="number">3</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#347 id=347 data-nosnippet>347</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#346 id=346 data-nosnippet>346</a>            </span>in_send.send((<span class="number">3</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#347 id=347 data-nosnippet>347</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#348 id=348 data-nosnippet>348</a>
 <a href=#349 id=349 data-nosnippet>349</a>            <span class="comment">// Only keys 1 and 3 should reach quorum (both have 2 successes)
 <a href=#350 id=350 data-nosnippet>350</a>            </span>success_recv.assert_yields_only_unordered([<span class="number">1</span>, <span class="number">3</span>]).<span class="kw">await</span>;
@@ -368,9 +368,9 @@
 <a href=#368 id=368 data-nosnippet>368</a>            compiled.launch();
 <a href=#369 id=369 data-nosnippet>369</a>
 <a href=#370 id=370 data-nosnippet>370</a>            <span class="comment">// With min=max=1, any single success should immediately reach quorum
-<a href=#371 id=371 data-nosnippet>371</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(()))).unwrap();
-<a href=#372 id=372 data-nosnippet>372</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(()))).unwrap();
-<a href=#373 id=373 data-nosnippet>373</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#371 id=371 data-nosnippet>371</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#372 id=372 data-nosnippet>372</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(())));
+<a href=#373 id=373 data-nosnippet>373</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#374 id=374 data-nosnippet>374</a>
 <a href=#375 id=375 data-nosnippet>375</a>            <span class="comment">// Keys 1 and 3 should reach quorum immediately
 <a href=#376 id=376 data-nosnippet>376</a>            </span>success_recv.assert_yields_only_unordered([<span class="number">1</span>, <span class="number">3</span>]).<span class="kw">await</span>;
@@ -416,18 +416,18 @@
 <a href=#416 id=416 data-nosnippet>416</a>            compiled.launch();
 <a href=#417 id=417 data-nosnippet>417</a>
 <a href=#418 id=418 data-nosnippet>418</a>            <span class="comment">// Key 1: First reaches quorum with 2 successes
-<a href=#419 id=419 data-nosnippet>419</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(()))).unwrap();
-<a href=#420 id=420 data-nosnippet>420</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#419 id=419 data-nosnippet>419</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#420 id=420 data-nosnippet>420</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#421 id=421 data-nosnippet>421</a>
 <a href=#422 id=422 data-nosnippet>422</a>            <span class="comment">// Key 1: Additional responses after quorum - should not trigger quorum again
-<a href=#423 id=423 data-nosnippet>423</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#424 id=424 data-nosnippet>424</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
+<a href=#423 id=423 data-nosnippet>423</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#424 id=424 data-nosnippet>424</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#425 id=425 data-nosnippet>425</a>
 <a href=#426 id=426 data-nosnippet>426</a>            <span class="comment">// Key 2: Reaches quorum later with mixed responses
-<a href=#427 id=427 data-nosnippet>427</a>            </span>in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(()))).unwrap();
-<a href=#428 id=428 data-nosnippet>428</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#429 id=429 data-nosnippet>429</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(()))).unwrap();
-<a href=#430 id=430 data-nosnippet>430</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(()))).unwrap(); <span class="comment">// Additional error after quorum
+<a href=#427 id=427 data-nosnippet>427</a>            </span>in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(())));
+<a href=#428 id=428 data-nosnippet>428</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#429 id=429 data-nosnippet>429</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(())));
+<a href=#430 id=430 data-nosnippet>430</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(()))); <span class="comment">// Additional error after quorum
 <a href=#431 id=431 data-nosnippet>431</a>
 <a href=#432 id=432 data-nosnippet>432</a>            // Each key should appear exactly once, even though they received
 <a href=#433 id=433 data-nosnippet>433</a>            // additional responses after reaching quorum
