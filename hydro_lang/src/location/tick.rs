@@ -294,6 +294,7 @@ where
 mod tests {
     use stageleft::q;
 
+    use crate::live_collections::sliced::sliced;
     use crate::location::Location;
     use crate::nondet::nondet;
     use crate::prelude::FlowBuilder;
@@ -375,12 +376,13 @@ mod tests {
 
         let write_ack = write_req.send_bincode_external(&external);
 
-        let tick = node.tick();
-        let read_response = read_req
-            .batch(&tick, nondet!(/** test */))
-            .cross_singleton(current_state.snapshot(&tick, nondet!(/** test */)))
-            .all_ticks()
-            .send_bincode_external(&external);
+        let read_response = sliced!(|
+            use(nondet!(/** test */)) read_req as batch_of_req,
+            use(nondet!(/** test */)) current_state as latest_singleton
+        | {
+            batch_of_req.cross_singleton(latest_singleton)
+        })
+        .send_bincode_external(&external);
 
         flow.sim().exhaustive(async |mut compiled| {
             let write_send = compiled.connect(&input_write);
