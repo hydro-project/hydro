@@ -13,8 +13,26 @@ body {
   line-height: 150%;
 }
 
+@media (max-width: 1000px) {
+  body {
+    font-size: 17px;
+  }
+}
+
 a {
   font-weight: 600;
+}
+
+a code {
+  font-weight: 600 !important;
+}
+
+a strong {
+  font-weight: 800;
+}
+
+strong code {
+  font-weight: 800 !important;
 }
 
 /* You can override the default Infima variables here. */
@@ -27,7 +45,7 @@ a {
   --ifm-color-primary-lighter: #1fc3e4;
   --ifm-color-primary-lightest: #3dcbe8;
 
-  --ifm-code-font-size: 80%;
+  --ifm-code-font-size: 0.82em;
   --ifm-font-family-monospace: "JetBrains Mono", monospace;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
@@ -47,14 +65,15 @@ a {
 
 p code {
   font-weight: 400;
+  vertical-align: inherit;
 }
 
 pre {
-  font-size: 85%;
+  font-size: 0.85em;
 }
 
 .theme-admonition {
-  font-size: 16px;
+  font-size: 0.9em;
   line-height: 150%;
 }
 
@@ -63,7 +82,7 @@ pre {
 }
 
 .theme-admonition pre {
-  font-size: 90%;
+  font-size: 0.9em;
 }
 
 [data-theme="dark"] .logo-light {
@@ -173,7 +192,7 @@ pre {
   font-family: inherit;
   font-size: inherit;
   font-weight: 900;
-  color: rgb(96, 96, 96);
+  color: #525252;
   margin-bottom: 0;
 }
 
@@ -191,6 +210,10 @@ pre {
 }
 
 .menu__link--active {
+  font-weight: 700;
+}
+
+.breadcrumbs__link {
   font-weight: 700;
 }
 
@@ -234,6 +257,15 @@ pre {
 
 .header-discord-link:hover::before {
   background-color: var(--ifm-navbar-link-hover-color);
+}
+
+.DocSearch-Button {
+  border-radius: 15px !important;
+}
+
+.DocSearch-Modal {
+  border-radius: 15px !important;
+  overflow: hidden;
 }
 
 .token.nondet {
