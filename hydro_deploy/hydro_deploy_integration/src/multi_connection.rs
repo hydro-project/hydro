@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::io;
-use std::marker::PhantomData;
 use std::ops::DerefMut;
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
@@ -46,7 +45,6 @@ impl<
                         poll_cursor: 0,
                         new_sink_sender,
                         membership_sender,
-                        _phantom: Default::default(),
                     },
                     BoundServer::TcpPort(listener, _) => MultiConnectionSource {
                         #[cfg(unix)]
@@ -59,7 +57,6 @@ impl<
                         poll_cursor: 0,
                         new_sink_sender,
                         membership_sender,
-                        _phantom: Default::default(),
                     },
                     _ => panic!("MultiConnection only supports UnixSocket and TcpPort"),
                 };
@@ -67,7 +64,6 @@ impl<
                 let sink = MultiConnectionSink::<O, C> {
                     connection_sinks: HashMap::new(),
                     new_sink_receiver,
-                    _phantom: Default::default(),
                 };
 
                 ConnectedMultiConnection {
@@ -98,13 +94,11 @@ pub struct MultiConnectionSource<I, O, C: Decoder<Item = I> + Encoder<O>> {
     poll_cursor: usize,
     new_sink_sender: mpsc::UnboundedSender<(u64, DynEncodedSink<O, C>)>,
     membership_sender: mpsc::UnboundedSender<(u64, bool)>,
-    _phantom: PhantomData<(Box<O>, Box<C>)>,
 }
 
 pub struct MultiConnectionSink<O, C: Encoder<O>> {
     connection_sinks: HashMap<u64, DynEncodedSink<O, C>>,
     new_sink_receiver: mpsc::UnboundedReceiver<(u64, DynEncodedSink<O, C>)>,
-    _phantom: PhantomData<(Box<O>, Box<C>)>,
 }
 
 impl<

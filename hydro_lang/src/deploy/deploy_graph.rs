@@ -335,18 +335,44 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn e2o_source(
         _compile_env: &Self::CompileEnv,
+        extra_stmts: &mut Vec<syn::Stmt>,
         _p1: &Self::External,
-        p1_port: &Self::Port,
+        _p1_port: &Self::Port,
         _p2: &Self::Process,
         p2_port: &Self::Port,
+        codec_type: &syn::Type,
+        shared_handle: String,
     ) -> syn::Expr {
-        let p1_port = p1_port.as_str();
-        let p2_port = p2_port.as_str();
-        deploy_e2o(
-            RuntimeData::new("__hydro_lang_trybuild_cli"),
-            p1_port,
-            p2_port,
-        )
+        let connect_ident = syn::Ident::new(
+            &format!("__hydro_deploy_{}_connect", &shared_handle),
+            Span::call_site(),
+        );
+        let source_ident = syn::Ident::new(
+            &format!("__hydro_deploy_{}_source", &shared_handle),
+            Span::call_site(),
+        );
+        let sink_ident = syn::Ident::new(
+            &format!("__hydro_deploy_{}_sink", &shared_handle),
+            Span::call_site(),
+        );
+
+        let root = get_this_crate();
+
+        extra_stmts.push(syn::parse_quote! {
+            let #connect_ident = __hydro_lang_trybuild_cli
+                .port(#p2_port)
+                .connect::<#root::runtime_support::dfir_rs::util::deploy::single_connection::ConnectedSingleConnection<_, _, #codec_type>>();
+        });
+
+        extra_stmts.push(syn::parse_quote! {
+            let #source_ident = #connect_ident.source;
+        });
+
+        extra_stmts.push(syn::parse_quote! {
+            let #sink_ident = #connect_ident.sink;
+        });
+
+        parse_quote!(#source_ident)
     }
 
     fn e2o_connect(
@@ -354,7 +380,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
-        many: bool,
+        _many: bool,
         server_hint: NetworkHint,
     ) -> Box<dyn FnOnce()> {
         let p1 = p1.clone();
@@ -365,17 +391,10 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = if many {
-                self_underlying
-                    .try_read()
-                    .unwrap()
-                    .declare_many_client(self_underlying)
-            } else {
-                self_underlying
-                    .try_read()
-                    .unwrap()
-                    .declare_client(self_underlying)
-            };
+            let source_port = self_underlying
+                .try_read()
+                .unwrap()
+                .declare_many_client(self_underlying);
 
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
@@ -399,51 +418,16 @@ impl<'a> Deploy<'a> for HydroDeploy {
     fn o2e_sink(
         _compile_env: &Self::CompileEnv,
         _p1: &Self::Process,
-        p1_port: &Self::Port,
+        _p1_port: &Self::Port,
         _p2: &Self::External,
-        p2_port: &Self::Port,
+        _p2_port: &Self::Port,
+        shared_handle: String,
     ) -> syn::Expr {
-        let p1_port = p1_port.as_str();
-        let p2_port = p2_port.as_str();
-        deploy_o2e(
-            RuntimeData::new("__hydro_lang_trybuild_cli"),
-            p1_port,
-            p2_port,
-        )
-    }
-
-    fn o2e_connect(
-        p1: &Self::Process,
-        p1_port: &Self::Port,
-        p2: &Self::External,
-        p2_port: &Self::Port,
-    ) -> Box<dyn FnOnce()> {
-        let p1 = p1.clone();
-        let p1_port = p1_port.clone();
-        let p2 = p2.clone();
-        let p2_port = p2_port.clone();
-
-        Box::new(move || {
-            let self_underlying_borrow = p1.underlying.borrow();
-            let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying
-                .try_read()
-                .unwrap()
-                .get_port(p1_port.clone(), self_underlying);
-
-            let other_underlying_borrow = p2.underlying.borrow();
-            let other_underlying = other_underlying_borrow.as_ref().unwrap();
-            let recipient_port = other_underlying
-                .try_read()
-                .unwrap()
-                .declare_client(other_underlying);
-
-            source_port.send_to(&recipient_port);
-
-            p2.client_ports
-                .borrow_mut()
-                .insert(p2_port.clone(), recipient_port);
-        })
+        let sink_ident = syn::Ident::new(
+            &format!("__hydro_deploy_{}_sink", &shared_handle),
+            Span::call_site(),
+        );
+        parse_quote!(#sink_ident)
     }
 
     fn cluster_ids(
@@ -661,7 +645,12 @@ pub struct DeployExternal {
 
 impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
     fn register(&self, key: usize, port: <HydroDeploy as Deploy>::Port) {
-        self.allocated_ports.borrow_mut().insert(key, port);
+        assert!(
+            self.allocated_ports
+                .borrow_mut()
+                .insert(key, port.clone())
+                .is_none_or(|old| old == port)
+        );
     }
 
     fn raw_port(&self, key: usize) -> <HydroDeploy as Deploy<'_>>::ExternalRawPort {
