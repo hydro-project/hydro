@@ -633,6 +633,7 @@ pub enum HydroRoot {
         to_external_id: usize,
         to_key: usize,
         to_many: bool,
+        unpaired: bool,
         serialize_fn: Option<DebugExpr>,
         instantiate_fn: DebugInstantiate,
         input: Box<HydroNode>,
@@ -663,6 +664,7 @@ impl HydroRoot {
     ) where
         D: Deploy<'a>,
     {
+        let refcell_extra_stmts = RefCell::new(extra_stmts);
         self.transform_bottom_up(
             &mut |l| {
                 if let HydroRoot::SendExternal {
@@ -670,6 +672,7 @@ impl HydroRoot {
                     to_external_id,
                     to_key,
                     to_many,
+                    unpaired,
                     instantiate_fn,
                     ..
                 } = l
@@ -704,14 +707,46 @@ impl HydroRoot {
                                         let sink_port = D::allocate_process_port(&from_node);
                                         let source_port = D::allocate_external_port(&to_node);
 
-                                        to_node.register(*to_key, source_port.clone());
+                                        if *unpaired {
+                                            use stageleft::quote_type;
+                                            use tokio_util::codec::LengthDelimitedCodec;
+
+                                            to_node.register(*to_key, source_port.clone());
+
+                                            let _ = D::e2o_source(
+                                                compile_env,
+                                                refcell_extra_stmts.borrow_mut().entry(*process_id).or_default(),
+                                                &to_node, &source_port,
+                                                &from_node, &sink_port,
+                                                &quote_type::<LengthDelimitedCodec>(),
+                                                format!("{}_{}", *to_external_id, *to_key)
+                                            );
+                                        }
 
                                         (
                                             (
-                                                D::o2e_sink(compile_env, &from_node, &sink_port, &to_node, &source_port),
+                                                D::o2e_sink(
+                                                    compile_env,
+                                                    &from_node,
+                                                    &sink_port,
+                                                    &to_node,
+                                                    &source_port,
+                                                    format!("{}_{}", *to_external_id, *to_key)
+                                                ),
                                                 parse_quote!(DUMMY),
                                             ),
-                                            D::o2e_connect(&from_node, &sink_port, &to_node, &source_port),
+                                            if *unpaired {
+                                                D::e2o_connect(
+                                                    &to_node,
+                                                    &source_port,
+                                                    &from_node,
+                                                    &sink_port,
+                                                    *to_many,
+                                                    NetworkHint::Auto,
+                                                )
+                                            } else {
+                                                Box::new(|| {}) as Box<dyn FnOnce()>
+                                            },
                                         )
                                     }
                                 }
@@ -800,13 +835,20 @@ impl HydroRoot {
                                             if *from_many {
                                                 D::e2o_many_source(
                                                     compile_env,
-                                                    extra_stmts.entry(*process_id).or_default(),
+                                                    refcell_extra_stmts.borrow_mut().entry(*process_id).or_default(),
                                                     &to_node, &source_port,
                                                     codec_type.0.as_ref(),
                                                     format!("{}_{}", *from_external_id, *from_key)
                                                 )
                                             } else {
-                                                D::e2o_source(compile_env, &from_node, &sink_port, &to_node, &source_port)
+                                                D::e2o_source(
+                                                    compile_env,
+                                                    refcell_extra_stmts.borrow_mut().entry(*process_id).or_default(),
+                                                    &from_node, &sink_port,
+                                                    &to_node, &source_port,
+                                                    codec_type.0.as_ref(),
+                                                    format!("{}_{}", *from_external_id, *from_key)
+                                                )
                                             },
                                         ),
                                         D::e2o_connect(&from_node, &sink_port, &to_node, &source_port, *from_many, *port_hint),
@@ -909,6 +951,7 @@ impl HydroRoot {
                 to_external_id,
                 to_key,
                 to_many,
+                unpaired,
                 serialize_fn,
                 instantiate_fn,
                 input,
@@ -917,6 +960,7 @@ impl HydroRoot {
                 to_external_id: *to_external_id,
                 to_key: *to_key,
                 to_many: *to_many,
+                unpaired: *unpaired,
                 serialize_fn: serialize_fn.clone(),
                 instantiate_fn: instantiate_fn.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
