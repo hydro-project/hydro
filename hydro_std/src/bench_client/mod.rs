@@ -244,13 +244,15 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
             num_clients_not_responded
         )));
 
-    let combined_throughputs = latest_throughputs
-        .snapshot(&aggregator.tick(), nondet_sampling)
-        .values()
-        .reduce_commutative(q!(|combined, new| {
-            combined.add(new);
-        }))
-        .latest();
+    let combined_throughputs = sliced!(|
+        let latest_throughput_snapshot = use(latest_throughputs, nondet_sampling);
+    | {
+        latest_throughput_snapshot
+            .values()
+            .reduce_commutative(q!(|combined, new| {
+                combined.add(new);
+            }))
+    });
 
     combined_throughputs
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
@@ -284,18 +286,22 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
         }))
         .send_bincode(aggregator);
 
-    let combined_latencies = keyed_latencies
+    let most_recent_histograms = keyed_latencies
         .map(q!(|histogram| histogram.histogram.borrow().clone()))
         .reduce_idempotent(q!(|combined, new| {
             // get the most recent histogram for each client
             *combined = new;
-        }))
-        .snapshot(&aggregator.tick(), nondet_sampling)
-        .values()
-        .reduce_commutative(q!(|combined, new| {
-            combined.add(new).unwrap();
-        }))
-        .latest();
+        }));
+
+    let combined_latencies = sliced!(|
+        let latencies = use(most_recent_histograms, nondet_sampling);
+    | {
+        latencies
+            .values()
+            .reduce_commutative(q!(|combined, new| {
+                combined.add(new).unwrap();
+            }))
+    });
 
     combined_latencies
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)

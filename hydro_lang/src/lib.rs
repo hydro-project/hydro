@@ -44,6 +44,7 @@ pub mod prelude {
     pub use crate::live_collections::keyed_stream::KeyedStream;
     pub use crate::live_collections::optional::Optional;
     pub use crate::live_collections::singleton::Singleton;
+    pub use crate::live_collections::sliced::sliced;
     pub use crate::live_collections::stream::Stream;
     pub use crate::location::{Cluster, External, Location as _, Process, Tick};
     pub use crate::nondet::{NonDet, nondet};
