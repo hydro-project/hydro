@@ -87,41 +87,41 @@ pub fn http_counter_server<'a, P>(
         .into_keyed()
         .fold_commutative(q!(|| 0i32), q!(|acc, _| *acc += 1));
 
-    let lookup_result = get_stream
-        .batch(&increment_lookup_tick, nondet!(/** batch get requests */))
-        .get_from(
-            counters.snapshot_atomic(nondet!(/** intentional non-determinism for get timing */)),
-        );
-    let get_responses = lookup_result
-        .clone()
-        .map(q!(|(key, maybe_count)| {
-            if let Some(count) = maybe_count {
-                format!(
-                    "HTTP/1.1 200 OK\r\n\
+    let lookup_result = sliced!(|
+        use(get_stream, nondet!(/** batch get requests */)) as batch_get_requests,
+        use::atomic(counters, nondet!(/** intentional non-determinism for get timing */)) as cur_counters
+    | {
+        batch_get_requests.get_from(
+            cur_counters
+        )
+        .into_keyed_stream()
+    });
+    let get_responses = lookup_result.clone().map(q!(|(key, maybe_count)| {
+        if let Some(count) = maybe_count {
+            format!(
+                "HTTP/1.1 200 OK\r\n\
                     Content-Type: application/json\r\n\
                     Content-Length: {}\r\n\
                     Connection: close\r\n\
                     \r\n\
                     {{\"key\": {}, \"count\": {}}}",
-                    format!("{{\"key\": {}, \"count\": {}}}", key, count).len(),
-                    key,
-                    count
-                )
-            } else {
-                format!(
-                    "HTTP/1.1 200 OK\r\n\
+                format!("{{\"key\": {}, \"count\": {}}}", key, count).len(),
+                key,
+                count
+            )
+        } else {
+            format!(
+                "HTTP/1.1 200 OK\r\n\
                         Content-Type: application/json\r\n\
                         Content-Length: {}\r\n\
                         Connection: close\r\n\
                         \r\n\
                         {{\"key\": {}, \"count\": 0}}",
-                    format!("{{\"key\": {}, \"count\": 0}}", key).len(),
-                    key
-                )
-            }
-        }))
-        .into_keyed_stream()
-        .all_ticks();
+                format!("{{\"key\": {}, \"count\": 0}}", key).len(),
+                key
+            )
+        }
+    }));
 
     // Handle increment responses (just acknowledge)
     let increment_responses = increment_stream

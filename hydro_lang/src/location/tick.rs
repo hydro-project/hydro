@@ -103,6 +103,15 @@ where
     }
 }
 
+impl<'a, L> Tick<Atomic<L>>
+where
+    L: Location<'a>,
+{
+    pub fn as_regular_tick(&self) -> Tick<L> {
+        self.l.tick.clone()
+    }
+}
+
 impl<'a, L> Tick<L>
 where
     L: Location<'a>,
@@ -294,6 +303,7 @@ where
 mod tests {
     use stageleft::q;
 
+    use crate::live_collections::sliced::sliced;
     use crate::location::Location;
     use crate::nondet::nondet;
     use crate::prelude::FlowBuilder;
@@ -317,11 +327,13 @@ mod tests {
         );
 
         let write_ack = atomic_write.end_atomic().send_bincode_external(&external);
-        let read_response = read_req
-            .batch(&tick, nondet!(/** test */))
-            .cross_singleton(current_state.snapshot_atomic(nondet!(/** test */)))
-            .all_ticks()
-            .send_bincode_external(&external);
+        let read_response = sliced!(|
+            use(read_req, nondet!(/** test */)) as batch_of_req,
+            use::atomic(current_state, nondet!(/** test */)) as latest_singleton
+        | {
+            batch_of_req.cross_singleton(latest_singleton)
+        })
+        .send_bincode_external(&external);
 
         let sim_compiled = flow.sim().compiled();
         let instances = sim_compiled.exhaustive(async |mut compiled| {
@@ -375,12 +387,13 @@ mod tests {
 
         let write_ack = write_req.send_bincode_external(&external);
 
-        let tick = node.tick();
-        let read_response = read_req
-            .batch(&tick, nondet!(/** test */))
-            .cross_singleton(current_state.snapshot(&tick, nondet!(/** test */)))
-            .all_ticks()
-            .send_bincode_external(&external);
+        let read_response = sliced!(|
+            use(read_req, nondet!(/** test */)) as batch_of_req,
+            use(current_state, nondet!(/** test */)) as latest_singleton
+        | {
+            batch_of_req.cross_singleton(latest_singleton)
+        })
+        .send_bincode_external(&external);
 
         flow.sim().exhaustive(async |mut compiled| {
             let write_send = compiled.connect(&input_write);

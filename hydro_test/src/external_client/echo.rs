@@ -9,19 +9,16 @@ pub fn echo_server<'a, P>(
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder>,
     membership: KeyedStream<u64, MembershipEvent, Process<'a, P>, Unbounded, TotalOrder>,
 ) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder> {
-    let current_connections = track_membership(membership);
-
-    let tick = in_stream.location().tick();
-    current_connections
-        .snapshot(&tick, nondet!(/** logging */))
-        .filter(q!(|b| *b))
-        .key_count()
-        .latest()
-        .sample_every(q!(Duration::from_secs(1)), nondet!(/** logging */))
-        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
-        .for_each(q!(|count| {
-            println!("Current connections: {}", count);
-        }));
+    sliced!(|
+        use(track_membership(membership), nondet!(/** logging */)) as conns
+    | {
+        conns.filter(q!(|b| *b)).key_count()
+    })
+    .sample_every(q!(Duration::from_secs(1)), nondet!(/** logging */))
+    .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
+    .for_each(q!(|count| {
+        println!("Current connections: {}", count);
+    }));
 
     in_stream.inspect_with_key(q!(|(id, t)| println!(
         "...received request {} from client #{}, echoing back...",
