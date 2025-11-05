@@ -250,6 +250,11 @@ where
         }
     }
 
+    /// Returns the [`Location`] where this singleton is being materialized.
+    pub fn location(&self) -> &L {
+        &self.location
+    }
+
     /// Transforms the singleton value by applying a function `f` to it,
     /// continuously as the input is updated.
     ///
