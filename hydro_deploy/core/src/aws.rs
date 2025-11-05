@@ -1,5 +1,4 @@
 use std::any::Any;
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -86,8 +85,7 @@ impl AwsNetwork {
                 .terraform
                 .resource
                 .get("aws_vpc")
-                .unwrap_or(&HashMap::new())
-                .contains_key(existing)
+                .is_some_and(|map| map.contains_key(existing))
             {
                 format!("aws_vpc.{existing}")
             } else {
@@ -276,6 +274,164 @@ impl AwsNetwork {
     }
 }
 
+/// Represents a IAM role, IAM policy attachments, and instance profile for one or multiple EC2 instances.
+#[derive(Debug)]
+pub struct AwsEc2IamInstanceProfile {
+    pub region: String,
+    pub existing_instance_profile_key_or_name: Option<String>,
+    pub policy_arns: Vec<String>,
+    id: String,
+}
+
+impl AwsEc2IamInstanceProfile {
+    /// Creates an new instance. If `existing_instance_profile_name` is `Some`, that will be used as the instance
+    /// profile name, and that instance profile should already exist in the AWS account.
+    pub fn new(region: impl Into<String>, existing_instance_profile_name: Option<String>) -> Self {
+        Self {
+            region: region.into(),
+            existing_instance_profile_key_or_name: existing_instance_profile_name,
+            policy_arns: Default::default(),
+            id: nanoid!(8, &TERRAFORM_ALPHABET),
+        }
+    }
+
+    /// Permits the given ARN.
+    pub fn add_policy_arn(mut self, policy_arn: impl Into<String>) -> Self {
+        if self.existing_instance_profile_key_or_name.is_some() {
+            panic!("Adding an ARN to an existing instance profile is not supported.");
+        }
+        self.policy_arns.push(policy_arn.into());
+        self
+    }
+
+    /// Enables running and emitting telemetry via the CloudWatch agent.
+    pub fn add_cloudwatch_agent_server_policy_arn(self) -> Self {
+        self.add_policy_arn("arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy")
+    }
+
+    fn collect_resources(&mut self, resource_batch: &mut ResourceBatch) -> String {
+        const RESOURCE_AWS_IAM_ROLE: &str = "aws_iam_role";
+        const RESOURCE_AWS_IAM_ROLE_POLICY_ATTACHMENT: &str = "aws_iam_role_policy_attachment";
+        const RESOURCE_AWS_IAM_INSTANCE_PROFILE: &str = "aws_iam_instance_profile";
+
+        resource_batch
+            .terraform
+            .terraform
+            .required_providers
+            .insert(
+                "aws".to_string(),
+                TerraformProvider {
+                    source: "hashicorp/aws".to_string(),
+                    version: "5.0.0".to_string(),
+                },
+            );
+
+        resource_batch.terraform.provider.insert(
+            "aws".to_string(),
+            json!({
+                "region": self.region
+            }),
+        );
+
+        let instance_profile_key = format!("hydro-instance-profile-{}", self.id);
+
+        if let Some(existing) = self.existing_instance_profile_key_or_name.as_ref() {
+            if resource_batch
+                .terraform
+                .resource
+                .get(RESOURCE_AWS_IAM_INSTANCE_PROFILE)
+                .is_some_and(|map| map.contains_key(existing))
+            {
+                // `existing` is a key.
+                format!("{RESOURCE_AWS_IAM_INSTANCE_PROFILE}.{existing}")
+            } else {
+                // `existing` is a name of an existing resource, supplied when constructed.
+                resource_batch
+                    .terraform
+                    .data
+                    .entry(RESOURCE_AWS_IAM_INSTANCE_PROFILE.to_string())
+                    .or_default()
+                    .insert(
+                        instance_profile_key.clone(),
+                        json!({
+                            "id": existing,
+                        }),
+                    );
+
+                format!("data.{RESOURCE_AWS_IAM_INSTANCE_PROFILE}.{instance_profile_key}")
+            }
+        } else {
+            // Create the role (permissions set after).
+            let iam_role_key = format!("{instance_profile_key}-iam-role");
+            resource_batch
+                .terraform
+                .resource
+                .entry(RESOURCE_AWS_IAM_ROLE.to_string())
+                .or_default()
+                .insert(
+                    iam_role_key.clone(),
+                    json!({
+                        "name": format!("hydro-iam-role-{}", self.id),
+                        "assume_role_policy": serde_json::to_string(&json!({
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Action": "sts:AssumeRole",
+                                    "Effect": "Allow",
+                                    "Principal": {
+                                        "Service": "ec2.amazonaws.com"
+                                    }
+                                }
+                            ]
+                        })).unwrap()
+                    }),
+                );
+
+            // Attach permissions
+            for (i, policy_arn) in self.policy_arns.iter().enumerate() {
+                let policy_attachment_key = format!("{iam_role_key}-policy-attachment-{i}");
+                resource_batch
+                    .terraform
+                    .resource
+                    .entry(RESOURCE_AWS_IAM_ROLE_POLICY_ATTACHMENT.to_string())
+                    .or_default()
+                    .insert(
+                        policy_attachment_key,
+                        json!({
+                            "policy_arn": policy_arn,
+                            "role": format!("${{{RESOURCE_AWS_IAM_ROLE}.{iam_role_key}.name}}"),
+                        }),
+                    );
+            }
+
+            // Create instance profile. This is what attaches to EC2 instances.
+            resource_batch
+                .terraform
+                .resource
+                .entry(RESOURCE_AWS_IAM_INSTANCE_PROFILE.to_string())
+                .or_default()
+                .insert(
+                    instance_profile_key.clone(),
+                    json!({
+                        "name": format!("hydro-instance-profile-{}", self.id),
+                        "role": format!("${{{RESOURCE_AWS_IAM_ROLE}.{iam_role_key}.name}}"),
+                    }),
+                );
+
+            // Set key
+            self.existing_instance_profile_key_or_name = Some(instance_profile_key.clone());
+
+            format!("{RESOURCE_AWS_IAM_INSTANCE_PROFILE}.{instance_profile_key}")
+        }
+    }
+}
+
+/// Represents an IAM role, policy attachment, and instance profile.
+///
+pub struct AwsCloudwatch {
+    pub existing: Option<String>,
+}
+
 pub struct AwsEc2Host {
     /// ID from [`crate::Deployment::add_host`].
     id: usize,
@@ -285,6 +441,7 @@ pub struct AwsEc2Host {
     target_type: HostTargetType,
     ami: String,
     network: Arc<RwLock<AwsNetwork>>,
+    iam_instance_profile: Option<Arc<RwLock<AwsEc2IamInstanceProfile>>>,
     user: Option<String>,
     display_name: Option<String>,
     pub launched: OnceLock<Arc<LaunchedEc2Instance>>,
@@ -309,6 +466,7 @@ impl AwsEc2Host {
         target_type: HostTargetType,
         ami: impl Into<String>,
         network: Arc<RwLock<AwsNetwork>>,
+        iam_instance_profile: Option<Arc<RwLock<AwsEc2IamInstanceProfile>>>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Self {
@@ -319,6 +477,7 @@ impl AwsEc2Host {
             target_type,
             ami: ami.into(),
             network,
+            iam_instance_profile,
             user,
             display_name,
             launched: OnceLock::new(),
@@ -367,6 +526,11 @@ impl Host for AwsEc2Host {
             .try_write()
             .unwrap()
             .collect_resources(resource_batch);
+
+        let iam_instance_profile = self
+            .iam_instance_profile
+            .as_deref()
+            .map(|irip| irip.try_write().unwrap().collect_resources(resource_batch));
 
         // Add additional providers
         resource_batch
@@ -451,7 +615,6 @@ impl Host for AwsEc2Host {
 
         let network_id = self.network.try_read().unwrap().id.clone();
         let vpc_ref = format!("${{{}.id}}", vpc_path);
-        let subnet_ref = format!("${{aws_subnet.hydro-vpc-network-{}-subnet.id}}", network_id);
         let default_sg_ref = format!(
             "${{aws_security_group.hydro-vpc-network-{}-default-sg.id}}",
             network_id
@@ -509,6 +672,9 @@ impl Host for AwsEc2Host {
         }
         drop(external_ports);
 
+        let subnet_ref = format!("${{aws_subnet.hydro-vpc-network-{}-subnet.id}}", network_id);
+        let iam_instance_profile_ref = iam_instance_profile.map(|key| format!("${{{key}.name}}"));
+
         // Create EC2 instance
         resource_batch
             .terraform
@@ -524,6 +690,7 @@ impl Host for AwsEc2Host {
                     "vpc_security_group_ids": security_groups,
                     "subnet_id": subnet_ref,
                     "associate_public_ip_address": true,
+                    "iam_instance_profile": iam_instance_profile_ref, // May be `None`.
                     "tags": {
                         "Name": instance_name
                     }
