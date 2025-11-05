@@ -25,7 +25,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         process.bidi_external_many_bytes::<_, _, LinesCodec>(&external, NetworkHint::Auto);
 
     output_ref.complete(hydro_test::external_client::chat::chat_server(
-        &process,
         input,
         membership,
         nondet!(/** test */),
