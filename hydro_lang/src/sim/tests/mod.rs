@@ -1,6 +1,7 @@
 use bytes::Bytes;
 use stageleft::q;
 
+use crate::live_collections::sliced::sliced;
 use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
 use crate::location::{External, Location, Process};
 use crate::nondet::nondet;
@@ -112,6 +113,19 @@ fn fuzzed_batching_program<'a>(
     (port, out_port)
 }
 
+fn fuzzed_batching_program_sliced<'a>(
+    external: External<'a, ()>,
+    node: Process<'a>,
+) -> (ExternalBincodeSink<i32>, ExternalBincodeStream<i32>) {
+    let (port, input) = node.source_external_bincode(&external);
+
+    let out_port = sliced! {
+        let batch = use(input, nondet!(/** test */));
+        batch.fold(q!(|| 0), q!(|acc, v| *acc += v)).into_stream()
+    }.send_bincode_external(&external);
+    (port, out_port)
+}
+
 #[test]
 #[should_panic]
 fn sim_crash_with_fuzzed_batching() {
@@ -155,6 +169,62 @@ fn trace_for_fuzzed_batching() {
     let node = flow.process::<()>();
 
     let (port, out_port) = fuzzed_batching_program(external, node);
+
+    let repro_bytes = std::fs::read(
+        "./src/sim/tests/sim-failures/hydro_lang__sim__tests__sim_crash_with_fuzzed_batching.bin",
+    )
+    .unwrap();
+
+    let mut log_out = Vec::new();
+    colored::control::set_override(false);
+
+    flow.sim()
+        .compiled()
+        .fuzz_repro(repro_bytes, async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let mut out_recv = compiled.connect(&out_port);
+
+            let schedule = compiled.schedule_with_logger(&mut log_out);
+            let rest = async move {
+                for _ in 0..1000 {
+                    in_send.send(456); // the fuzzer should put these some batches
+                }
+
+                in_send.send(100);
+                in_send.send(23); // the fuzzer must put these in one batch
+
+                in_send.send(99); // the fuzzer must put this in a later batch
+
+                while let Some(out) = out_recv.next().await {
+                    if out == 456 {
+                        // make sure exhaustive can't catch the bug by using trivial (size 1) batches
+                        return;
+                    } else if out == 123 {
+                        // don't actually panic so that we can get the trace
+                        return;
+                    }
+                }
+            };
+
+            tokio::select! {
+                biased;
+                _ = rest => {},
+                _ = schedule => {},
+            };
+        });
+
+    let log_str = String::from_utf8(log_out).unwrap();
+    hydro_build_utils::assert_snapshot!(log_str);
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
+fn trace_for_fuzzed_batching_sliced() {
+    let flow = FlowBuilder::new();
+    let external = flow.external::<()>();
+    let node = flow.process::<()>();
+
+    let (port, out_port) = fuzzed_batching_program_sliced(external, node);
 
     let repro_bytes = std::fs::read(
         "./src/sim/tests/sim-failures/hydro_lang__sim__tests__sim_crash_with_fuzzed_batching.bin",
