@@ -11,7 +11,7 @@ use anyhow::Result;
 use futures::{FutureExt, StreamExt, TryStreamExt};
 use tokio::sync::RwLock;
 
-use super::aws::AwsNetwork;
+use super::aws::{AwsEc2IamInstanceProfile, AwsNetwork};
 use super::gcp::GcpNetwork;
 use super::{
     CustomService, GcpComputeEngineHost, Host, LocalhostHost, ResourcePool, ResourceResult,
@@ -225,8 +225,8 @@ impl Deployment {
 /// Buildstructor methods.
 #[buildstructor::buildstructor]
 impl Deployment {
-    #[builder(entry = "GcpComputeEngineHost", exit = "add")]
-    pub fn add_gcp_compute_engine_host(
+    #[builder(entry = "GcpComputeEngineHost", exit = "add", visibility = "pub")]
+    fn add_gcp_compute_engine_host(
         &mut self,
         project: String,
         machine_type: String,
@@ -250,8 +250,8 @@ impl Deployment {
         })
     }
 
-    #[builder(entry = "AzureHost", exit = "add")]
-    pub fn add_azure_host(
+    #[builder(entry = "AzureHost", exit = "add", visibility = "pub")]
+    fn add_azure_host(
         &mut self,
         project: String,
         os_type: String, // linux or windows
@@ -263,18 +263,28 @@ impl Deployment {
         self.add_host(|id| AzureHost::new(id, project, os_type, machine_size, image, region, user))
     }
 
-    #[builder(entry = "AwsEc2Host", exit = "add")]
-    pub fn add_aws_ec2_host(
+    #[builder(entry = "AwsEc2Host", exit = "add", visibility = "pub")]
+    fn add_aws_ec2_host(
         &mut self,
         region: String,
         instance_type: String,
         ami: String,
         network: Arc<RwLock<AwsNetwork>>,
+        iam_instance_profile: Option<Arc<RwLock<AwsEc2IamInstanceProfile>>>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Arc<AwsEc2Host> {
         self.add_host(|id| {
-            AwsEc2Host::new(id, region, instance_type, ami, network, user, display_name)
+            AwsEc2Host::new(
+                id,
+                region,
+                instance_type,
+                ami,
+                network,
+                iam_instance_profile,
+                user,
+                display_name,
+            )
         })
     }
 }
