@@ -1,0 +1,33 @@
+[package]
+name = "hydro_test_template"
+publish = false
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+path = "../template/hydro/src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+hydro_lang = { path = "../hydro_lang", version = "^0.14.0" }
+hydro_std = { path = "../hydro_std", version = "^0.14.0" }
+stageleft.workspace = true
+
+[build-dependencies]
+stageleft_tool.workspace = true
+
+[dev-dependencies]
+ctor = "0.2"
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0" }
+hydro_lang = { path = "../hydro_lang", version = "^0.14.0", features = [
+    "deploy",
+    "sim",
+    "viz",
+] }
+tokio = { version = "1.29.0", features = ["full"] }
+tokio-util = { version = "0.7.5", features = [ "codec" ] }
+tokio-test = "0.4.4"
+futures = "0.3.0"
+example_test = { path = "../example_test", version = "^0.0.0" }

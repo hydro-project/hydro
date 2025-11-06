@@ -512,8 +512,20 @@ pub(super) fn create_sim_graph_trybuild(
     );
 
     let inlined_staged = if is_test {
+        let raw_toml_manifest = toml::from_str::<toml::Value>(
+            &fs::read_to_string(path!(source_dir / "Cargo.toml")).unwrap(),
+        )
+        .unwrap();
+
+        let maybe_custom_lib_path = raw_toml_manifest
+            .get("lib")
+            .and_then(|lib| lib.get("path"))
+            .and_then(|path| path.as_str());
+
         let gen_staged = stageleft_tool::gen_staged_trybuild(
-            &path!(source_dir / "src" / "lib.rs"),
+            &maybe_custom_lib_path.map(|s| path!(source_dir / s)).unwrap_or_else(|| {
+                path!(source_dir / "src" / "lib.rs")
+            }),
             &path!(source_dir / "Cargo.toml"),
             crate_name.clone(),
             Some("hydro___test".to_string()),

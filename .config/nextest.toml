@@ -19,6 +19,10 @@ filter = 'binary(kvs_replicated)'
 test-group = 'serial-integration'
 
 [[profile.default.overrides]]
+filter = 'binary(echo_local)'
+test-group = 'serial-integration'
+
+[[profile.default.overrides]]
 filter = 'package(hydro_lang)'
 test-group = 'hydro-trybuild-group'
 
@@ -28,4 +32,8 @@ test-group = 'hydro-trybuild-group'
 
 [[profile.default.overrides]]
 filter = 'package(hydro_test)'
+test-group = 'hydro-trybuild-group'
+
+[[profile.default.overrides]]
+filter = 'package(hydro_test_template)'
 test-group = 'hydro-trybuild-group'
