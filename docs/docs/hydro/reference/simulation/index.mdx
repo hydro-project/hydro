@@ -1,7 +1,7 @@
 # Simulation Testing
 Hydro comes with a built-in deterministic simulation environment that lets you test your application in various distributed scenarios and guard against concurrency bugs and race conditions. Tests written with the simulator are run against various distributed schedules to test possible concurrent executions.
 
-In many cases, the Hydro simulator can perform **exhaustive** checks, which ensure that your application will behave correctly in _all_ possible distributed executions. For particularly complex tests where there are too many scenarios to check, the Hydro simulator can use [coverage-guided fuzzing](https://en.wikipedia.org/wiki/Fuzzing) to _intellgently_ explore the space of executions and find bugs.
+In many cases, the Hydro simulator can perform **exhaustive** checks, which ensure that your application will behave correctly in _all_ possible distributed executions. For particularly complex tests where there are too many scenarios to check, the Hydro simulator can use [coverage-guided fuzzing](https://en.wikipedia.org/wiki/Fuzzing) to _intelligently_ explore the space of executions and find bugs.
 
 Writing a simulation test involves three steps:
 1. Defining your Hydro application, with regular Hydro APIs
