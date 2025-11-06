@@ -3,6 +3,7 @@
 # See "Adding new crates" and "Moving crates" addendum sections in `RELEASING.md`
 members = [
     "benches",
+    "copy_span",
     "dfir_lang",
     "dfir_macro",
     "dfir_rs",
