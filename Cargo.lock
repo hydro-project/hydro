@@ -2290,6 +2290,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "hydro_test_template"
+version = "0.0.0"
+dependencies = [
+ "ctor 0.2.9",
+ "example_test",
+ "futures",
+ "hydro_deploy",
+ "hydro_lang",
+ "hydro_std",
+ "stageleft",
+ "stageleft_tool",
+ "tokio",
+ "tokio-test",
+ "tokio-util",
+]
+
+[[package]]
 name = "hyper"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4744,9 +4761,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stageleft"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b92cb4d28ec3c2b3aba8ee05487f10c3aa00d7a369a3fe9d4d89e8719f28ca4f"
+checksum = "101469d4cf8d54ac88b735ecd1dcc5e11da859e191a1dd0e28e71a298ffae1b9"
 dependencies = [
  "ctor 0.4.3",
  "proc-macro-crate 3.3.0",
@@ -4758,9 +4775,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e05624677c37d2abebe0c3e50fa7722f99936d26de2a8a23ac5d2a397be596c0"
+checksum = "e1dc19da279ba29d00ae49363841037bd7c933130d0c4476899e1d7f8f04dab5"
 dependencies = [
  "proc-macro-crate 3.3.0",
  "proc-macro2",
@@ -4771,9 +4788,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da14207006ed0031a24197e0a2d3bc84b2a7ecf3a2ca70b70f1886cf1a37b464"
+checksum = "977b4e22d5233ef274f43a02d9946dd4ee66c1957eac8a5f031450ab97bfa834"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.3.0",
