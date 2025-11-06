@@ -334,6 +334,100 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, TotalOrder> {
     }
 }
 
+impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, NoOrder> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.input.borrow().values().all(|q| q.is_empty())
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        mut force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        self.to_release = Some(vec![]);
+        let nonempty_key_count = current_input.values().filter(|q| !q.is_empty()).count();
+
+        let mut remaining_nonempty_keys = nonempty_key_count;
+        for (key, queue) in current_input.iter_mut() {
+            if queue.is_empty() {
+                continue;
+            }
+
+            remaining_nonempty_keys -= 1;
+
+            let mut min_index = 0;
+            while !queue.is_empty() {
+                let must_release = force_nontrivial && remaining_nonempty_keys == 0;
+                if !must_release && produce().generate(driver).unwrap() {
+                    break;
+                }
+
+                let idx = (min_index..queue.len()).generate(driver).unwrap();
+                let item = queue.remove(idx).unwrap();
+                self.to_release.as_mut().unwrap().push((key.clone(), item));
+                force_nontrivial = false;
+
+                min_index = idx;
+                // Next time, only consider items at or after this index. The reason this is safe is
+                // because batching a `NoOrder` stream results in batches with a `NoOrder` guarantee.
+                // Therefore, simulating different order of elements _within_ a batch is redundant.
+
+                if min_index == queue.len() {
+                    break;
+                }
+            }
+        }
+
+        !self.to_release.as_ref().unwrap().is_empty()
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            let (batch_location, line, caret_indent) = self.batch_location;
+            let note_str = if to_release.is_empty() {
+                "^ releasing no items".to_string()
+            } else {
+                format!(
+                    "^ releasing unordered items: {:?}",
+                    TruncatedVecDebug(
+                        RefCell::new(Some(to_release.iter())),
+                        8,
+                        self.format_item_debug
+                    )
+                )
+            };
+
+            let _ = writeln!(
+                log_writer,
+                "{} {}",
+                "-->".color(colored::Color::Blue),
+                batch_location
+            );
+
+            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+            let _ = writeln!(
+                log_writer,
+                " {}{}{}",
+                "|".color(colored::Color::Blue),
+                caret_indent,
+                note_str.color(colored::Color::Green)
+            );
+
+            for item in to_release {
+                self.output.send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
 pub struct SingletonHook<T> {
     input: Rc<RefCell<VecDeque<T>>>,
     to_release: Option<(T, bool)>, // (data, is new)
