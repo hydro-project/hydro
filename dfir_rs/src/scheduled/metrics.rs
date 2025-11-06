@@ -2,56 +2,117 @@
 
 use std::iter::FusedIterator;
 use std::pin::Pin;
+use std::rc::Rc;
 use std::task::{Context, Poll};
 
 use pin_project_lite::pin_project;
 use web_time::{Duration, Instant};
 
-use super::graph::Dfir;
-use super::{HandoffId, SubgraphId};
+use super::{HandoffId, HandoffTag, SubgraphId, SubgraphTag};
+use crate::util::slot_vec::SecondarySlotVec;
 
-/// A view into the runtime metrics of a DFIR instance.
-pub struct DfirMetrics<'dfir, 'sg> {
-    pub(super) dfir: &'dfir Dfir<'sg>,
+#[derive(Default, Clone)]
+pub(super) struct DfirMetricsState {
+    pub(super) subgraph_metrics: SecondarySlotVec<SubgraphTag, SubgraphMetrics>,
+    pub(super) handoff_metrics: SecondarySlotVec<HandoffTag, HandoffMetrics>,
 }
-impl DfirMetrics<'_, '_> {
+
+/// A snapshot of DFIR runtime metrics accumulated since runtime creation.
+#[derive(Clone)]
+pub struct DfirMetrics {
+    pub(super) state: Rc<DfirMetricsState>,
+}
+
+impl DfirMetrics {
     /// Returns an iterator over all subgraph IDs.
     pub fn subgraph_ids(
         &self,
-    ) -> impl '_ + DoubleEndedIterator<Item = SubgraphId> + ExactSizeIterator + FusedIterator + Clone
-    {
-        self.dfir.subgraphs.keys()
+    ) -> impl '_ + DoubleEndedIterator<Item = SubgraphId> + FusedIterator + Clone {
+        self.state.subgraph_metrics.keys()
     }
 
     /// Gets the metrics for a particular subgraph.
     pub fn subgraph_metrics(&self, sg_id: SubgraphId) -> &SubgraphMetrics {
-        &self.dfir.subgraphs[sg_id].metrics
+        &self.state.subgraph_metrics[sg_id]
     }
 
     /// Returns an iterator over all handoff IDs.
     pub fn handoff_ids(
         &self,
-    ) -> impl '_ + DoubleEndedIterator<Item = HandoffId> + ExactSizeIterator + FusedIterator + Clone
-    {
-        self.dfir.handoffs.keys()
+    ) -> impl '_ + DoubleEndedIterator<Item = HandoffId> + FusedIterator + Clone {
+        self.state.handoff_metrics.keys()
     }
 
     /// Gets the metrics for a particular handoff.
     pub fn handoff_metrics(&self, handoff_id: HandoffId) -> &HandoffMetrics {
-        &self.dfir.handoffs[handoff_id].metrics
+        &self.state.handoff_metrics[handoff_id]
+    }
+
+    /// Subtracts `prev` from `self` to create runtime metrics across a span of time.
+    pub fn delta(&self, prev: &Self) -> DfirMetricsDelta {
+        DfirMetricsDelta {
+            curr: self.state.clone(),
+            prev: prev.state.clone(),
+        }
+    }
+}
+
+/// DFIR runtime metrics across a span of time.
+pub struct DfirMetricsDelta {
+    curr: Rc<DfirMetricsState>,
+    prev: Rc<DfirMetricsState>,
+}
+impl DfirMetricsDelta {
+    /// Returns an iterator over all subgraph IDs.
+    pub fn subgraph_ids(
+        &self,
+    ) -> impl '_ + DoubleEndedIterator<Item = SubgraphId> + FusedIterator + Clone {
+        self.curr.subgraph_metrics.keys()
+    }
+
+    /// Gets the metrics for a particular subgraph.
+    pub fn subgraph_metrics(&self, sg_id: SubgraphId) -> SubgraphMetrics {
+        let curr = &self.curr.subgraph_metrics[sg_id];
+        let prev = &self.prev.subgraph_metrics[sg_id];
+        SubgraphMetrics {
+            total_run_count: curr.total_run_count - prev.total_run_count,
+            total_poll_duration: curr.total_poll_duration - prev.total_poll_duration,
+            total_poll_count: curr.total_poll_count - prev.total_poll_count,
+            total_idle_duration: curr.total_idle_duration - prev.total_idle_duration,
+            total_idle_count: curr.total_idle_count - prev.total_idle_count,
+        }
+    }
+
+    /// Returns an iterator over all handoff IDs.
+    pub fn handoff_ids(
+        &self,
+    ) -> impl '_ + DoubleEndedIterator<Item = HandoffId> + FusedIterator + Clone {
+        self.curr.handoff_metrics.keys()
+    }
+
+    /// Gets the metrics for a particular handoff.
+    pub fn handoff_metrics(&self, handoff_id: HandoffId) -> HandoffMetrics {
+        let curr = &self.curr.handoff_metrics[handoff_id];
+        let prev = &self.prev.handoff_metrics[handoff_id];
+        HandoffMetrics {
+            curr_items_count: curr.curr_items_count,
+            total_items_count: curr.total_items_count - prev.total_items_count,
+        }
     }
 }
 
 /// Per-handoff metrics.
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 #[non_exhaustive] // May add more metrics later.
 pub struct HandoffMetrics {
+    /// Current items in the handoff.
+    pub curr_items_count: usize,
     /// Total items read out of this handoff.
     pub total_items_count: usize,
 }
 
 /// Per-subgraph metrics.
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 #[non_exhaustive] // May add more metrics later.
 pub struct SubgraphMetrics {
     /// Number of times the subgraph has run.
@@ -67,6 +128,7 @@ pub struct SubgraphMetrics {
 }
 
 pin_project! {
+    /// Helper struct which instruments a future to track polling times.
     pub(crate) struct InstrumentSubgraph<'a, Fut> {
         #[pin]
         future: Fut,
