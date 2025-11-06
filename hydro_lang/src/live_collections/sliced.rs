@@ -398,8 +398,10 @@ impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Slicable<'a, L>
     }
 }
 
-impl<'a, T, L: Location<'a>> Unslicable for super::Stream<T, Tick<L>, Bounded> {
-    type Unsliced = super::Stream<T, L, Unbounded>;
+impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Unslicable
+    for super::Stream<T, Tick<L>, Bounded, O, R>
+{
+    type Unsliced = super::Stream<T, L, Unbounded, O, R>;
 
     fn unslice(self) -> Self::Unsliced {
         self.all_ticks()
