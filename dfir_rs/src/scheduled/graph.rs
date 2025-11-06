@@ -1042,7 +1042,7 @@ impl<'a> Dfir<'a> {
 
     /// Returns DFIR runtime metrics for the period of time since `prev`.
     pub fn metrics_delta(&self, prev: DfirMetrics) -> DfirMetricsDelta {
-        self.metrics().delta(&prev)
+        self.metrics().delta(prev)
     }
 }
 

@@ -49,10 +49,10 @@ impl DfirMetrics {
     }
 
     /// Subtracts `prev` from `self` to create runtime metrics across a span of time.
-    pub fn delta(&self, prev: &Self) -> DfirMetricsDelta {
+    pub fn delta(self, prev: Self) -> DfirMetricsDelta {
         DfirMetricsDelta {
-            curr: self.state.clone(),
-            prev: prev.state.clone(),
+            curr: self.state,
+            prev: prev.state,
         }
     }
 }
