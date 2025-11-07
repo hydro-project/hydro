@@ -651,6 +651,53 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         )
     }
 
+    /// Generates a keyed stream that maps each value `v` to a tuple `(v, x)`,
+    /// where `v` is the value of `other`, a bounded [`super::singleton::Singleton`] or
+    /// [`Optional`]. If `other` is an empty [`Optional`], no values will be produced.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let batch = process
+    ///   .source_iter(q!(vec![(1, 123), (1, 456), (2, 123)]))
+    ///   .into_keyed()
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let count = batch.clone().entries().count(); // `count()` returns a singleton
+    /// batch.cross_singleton(count).all_ticks().entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [(123, 3), (456, 3)], 2: [(123, 3)] }
+    /// # for w in vec![(1, (123, 3)), (1, (456, 3)), (2, (123, 3))] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn cross_singleton<O2>(
+        self,
+        other: impl Into<Optional<O2, L, Bounded>>,
+    ) -> KeyedStream<K, (V, O2), L, B, O, R>
+    where
+        O2: Clone,
+    {
+        let other: Optional<O2, L, Bounded> = other.into();
+        check_matching_location(&self.location, &other.location);
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::CrossSingleton {
+                left: Box::new(self.ir_node.into_inner()),
+                right: Box::new(other.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<((K, V), O2), L, B, O, R>::collection_kind()),
+            },
+        )
+        .map(q!(|((k, v), o2)| (k, (v, o2))))
+        .into_keyed()
+    }
+
     /// For each value `v` in each group, transform `v` using `f` and then treat the
     /// result as an [`Iterator`] to produce values one by one within the same group.
     /// The implementation for [`Iterator`] for the output type `I` must produce items
