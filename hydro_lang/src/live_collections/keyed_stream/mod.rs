@@ -2240,4 +2240,38 @@ mod tests {
         // - two cases: (1, 1) and (1, 2) separate, (2, 3) grouped with one of them
         // - one case: all three together
     }
+
+    #[test]
+    fn sim_batch_unordered_shuffles() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let input = node
+            .source_iter(q!([(1, 1), (1, 2), (2, 3)]))
+            .into_keyed()
+            .weakest_ordering();
+
+        let tick = node.tick();
+        let out_port = input
+            .batch(&tick, nondet!(/** test */))
+            .all_ticks()
+            .entries()
+            .send_bincode_external(&external);
+
+        let instances = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            out_recv
+                .assert_yields_only_unordered([(1, 1), (1, 2), (2, 3)])
+                .await;
+        });
+
+        assert_eq!(instances, 13);
+        // - 6 (3 * 2) cases: all three in a separate tick (pick where (2, 3) is), and order of (1, 1), (1, 2)
+        // - two cases: (1, 1) and (1, 2) together, (2, 3) before or after (order of (1, 1), (1, 2) doesn't matter because batched is still unordered)
+        // - 4 (2 * 2) cases: (1, 1) and (1, 2) separate, (2, 3) grouped with one of them, and order of (1, 1), (1, 2)
+        // - one case: all three together (order of (1, 1), (1, 2) doesn't matter because batched is still unordered)
+    }
 }
