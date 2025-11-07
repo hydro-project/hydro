@@ -51,3 +51,8 @@ pub struct TracingOptions {
 ///
 /// Uses `apt` to install `linux-perf` and `binutils`, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
 pub const DEBIAN_PERF_SETUP_COMMAND: &str = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
+
+/// A command to run on Amazon Linux 2 (AL2) systems to set up `perf` for tracing.
+///
+/// Uses `yum` to install `perf`, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
+pub const AL2_PERF_SETUP_COMMAND: &str = "sudo sh -c 'yum install -y perf && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";

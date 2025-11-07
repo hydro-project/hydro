@@ -25,7 +25,7 @@ struct Args {
     gcp: Option<String>,
 
     /// use AWS, make sure credentials are set up
-    #[arg(short, long, action = ArgAction::SetTrue)]
+    #[arg(long, action = ArgAction::SetTrue)]
     aws: bool,
 
     #[clap(flatten)]

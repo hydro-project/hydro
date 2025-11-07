@@ -766,6 +766,7 @@ impl Host for AwsEc2Host {
         let subnet_ref = format!("${{aws_subnet.hydro-vpc-network-{}-subnet.id}}", network_id);
         let iam_instance_profile_ref = iam_instance_profile.map(|key| format!("${{{key}.name}}"));
         // Write the CloudWatch Agent config file.
+        // TODO(mingwei): INCLUDE THE EC2 INSTANCE NAME AS A GLOBAL DIMENSION and also the HYDRO EXECUTION INSTANCE
         let cloudwatch_agent_config = cloudwatch_log_group.map(|cwlg| {
             json!({
                 "logs": {
@@ -780,7 +781,20 @@ impl Host for AwsEc2Host {
                             ]
                         }
                     }
-                }
+                },
+                // "metrics": {
+                //     "append_dimensions": {
+                //         // "InstanceId": "${aws:InstanceId}",
+                //         // "AutoScalingGroupName": "${aws:AutoScalingGroupName}",
+                //         // "Environment": "production",
+                //         // "Service": "hydro"
+                //     },
+                //     "metrics_collected": {
+                //         "emf": {
+                //             "aggregation_interval": 10
+                //         }
+                //     }
+                // }
             })
             .to_string()
         });
@@ -799,6 +813,8 @@ touch /tmp/hydro-1
 
 mkdir -p /var/log/hydro/
 chmod +777 /var/log/hydro
+touch /var/log/hydro/metrics.log
+chmod +666 /var/log/hydro/metrics.log
 
 # Install the CloudWatch Agent
 yum install -y amazon-cloudwatch-agent

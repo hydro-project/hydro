@@ -206,6 +206,10 @@ impl<'a> Dfir<'a> {
         self.context.current_stratum
     }
 
+    pub fn can_start_tick(&self) -> bool {
+        self.context.can_start_tick
+    }
+
     /// Runs the dataflow until the next tick begins.
     ///
     /// Returns `true` if any work was done.

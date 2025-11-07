@@ -28,6 +28,7 @@ macro_rules! launch {
 }
 
 pub use crate::launch;
+use crate::scheduled::metrics::DfirMetrics;
 
 pub async fn launch_flow(flow: Dfir<'_>) {
     let read_stop = async {
@@ -48,7 +49,7 @@ pub async fn launch_flow(flow: Dfir<'_>) {
 
     let local_set = tokio::task::LocalSet::new();
     let flow = local_set.run_until(async move {
-        use tokio::fs::File;
+        use tokio::fs::OpenOptions;
         use tokio::io::{AsyncWriteExt, BufWriter};
 
         let mut flow = flow;
@@ -56,41 +57,56 @@ pub async fn launch_flow(flow: Dfir<'_>) {
 
         // TODO!!! MAKE THIS GENERIC.
 
-        loop {
-            // Run any work which is immediately available.
-            flow.run_available().await;
-            // When no work is available, emit metrics, then yield until more events occur.
-            {
-                // Create an output file write to `/var/log/hydro.log`
-                let file = match File::create("/var/log/hydro/metrics.log").await {
-                    Ok(file) => file,
-                    Err(e) => {
-                        eprintln!("Failed to create metrics file: {}", e);
-                        flow.recv_events_async().await; // TODO disgusting control flow.
-                        continue;
-                    }
-                };
-                let mut writer = BufWriter::new(file);
+        for i in 0.. {
+            let _work_done = flow.run_tick().await;
 
-                // Get updated metrics.
-                metrics = flow.metrics_delta(metrics);
-                // Emit metrics.
-                // TODO(mingwei)!!! MAKE THIS GENERIC.
-                let ts = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis();
+            // Metrics
+            if 0 == i % 100 {
+                metrics = do_metrics(&flow, metrics).await;
+            }
 
-                // Handoffs
-                for handoff_id in metrics.handoff_ids() {
-                    let handoff_metrics = metrics.handoff_metrics(handoff_id);
+            while !flow.can_start_tick() {
+                let _ = flow.recv_events_async().await;
+            }
+        }
+
+        async fn do_metrics(flow: &Dfir<'_>, mut metrics: DfirMetrics) -> DfirMetrics {
+            // Create an output file write to `/var/log/hydro.log`
+            let file_result = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(false)
+                .append(true)
+                .open("/var/log/hydro/metrics.log")
+                .await;
+            let file = match file_result {
+                Ok(file) => file,
+                Err(e) => {
+                    eprintln!("Failed to create metrics file: {}", e);
+                    return metrics;
+                }
+            };
+            let mut writer = BufWriter::new(file);
+
+            // Get updated metrics.
+            metrics = flow.metrics_delta(metrics);
+            // Emit metrics.
+            // TODO(mingwei)!!! MAKE THIS GENERIC.
+            let ts = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis();
+
+            // Handoffs
+            for handoff_id in metrics.handoff_ids() {
+                if let Some(handoff_metrics) = metrics.handoff_metrics(handoff_id) {
                     let emf = json!({
                         "_aws": {
                             "Timestamp": ts,
                             "CloudWatchMetrics": [
                                 {
                                     "Namespace": "Hydro/HandoffMetrics",
-                                    "Dimensions": [["HandoffId"]],
+                                    "Dimensions": [[], ["HandoffId"]],
                                     "Metrics": [
                                         {"Name": "CurrItemsCount", "Unit": "Count"},
                                         {"Name": "TotalItemsCount", "Unit": "Count"},
@@ -106,17 +122,18 @@ pub async fn launch_flow(flow: Dfir<'_>) {
                     writer.write_all(emf.as_bytes()).await.unwrap();
                     writer.write_u8(b'\n').await.unwrap();
                 }
+            }
 
-                // Subgraphs
-                for sg_id in metrics.subgraph_ids() {
-                    let sg_metrics = metrics.subgraph_metrics(sg_id);
+            // Subgraphs
+            for sg_id in metrics.subgraph_ids() {
+                if let Some(sg_metrics) = metrics.subgraph_metrics(sg_id) {
                     let emf = json!({
                         "_aws": {
                             "Timestamp": ts,
                             "CloudWatchMetrics": [
                                 {
                                     "Namespace": "Hydro/SubgraphMetrics",
-                                    "Dimensions": [["SubgraphId"]],
+                                    "Dimensions": [[], ["SubgraphId"]],
                                     "Metrics": [
                                         {"Name": "TotalRunCount", "Unit": "Count"},
                                         {"Name": "TotalPollDuration", "Unit": "Microseconds"},
@@ -138,36 +155,38 @@ pub async fn launch_flow(flow: Dfir<'_>) {
                     writer.write_all(emf.as_bytes()).await.unwrap();
                     writer.write_u8(b'\n').await.unwrap();
                 }
-
-                // Tokio RuntimeMetrics
-                {
-                    let rt_metrics = tokio::runtime::Handle::current().metrics();
-                    let emf = json!({
-                        "_aws": {
-                            "Timestamp": ts,
-                            "CloudWatchMetrics": [
-                                {
-                                    "Namespace": "Hydro/TokioRuntimeMetrics",
-                                    "Dimensions": [[]],
-                                    "Metrics": [
-                                        // TODO(mingwei): for example for now
-                                        {"Name": "NumAliveTasks", "Unit": "Count"},
-                                        {"Name": "GlobalQueueDepth", "Unit": "Count"},
-                                    ]
-                                }
-                            ]
-                        },
-                        "NumAliveTasks": rt_metrics.num_alive_tasks(),
-                        "GlobalQueueDepth": rt_metrics.global_queue_depth(),
-                    })
-                    .to_string();
-                    writer.write_all(emf.as_bytes()).await.unwrap();
-                    writer.write_u8(b'\n').await.unwrap();
-                }
-
-                writer.flush().await.unwrap();
             }
-            flow.recv_events_async().await;
+
+            // Tokio RuntimeMetrics
+            {
+                let rt_metrics = tokio::runtime::Handle::current().metrics();
+                let emf = json!({
+                    "_aws": {
+                        "Timestamp": ts,
+                        "CloudWatchMetrics": [
+                            {
+                                "Namespace": "Hydro/TokioRuntimeMetrics",
+                                "Dimensions": [[]],
+                                "Metrics": [
+                                    // TODO(mingwei): for example for now
+                                    {"Name": "NumAliveTasks", "Unit": "Count"},
+                                    {"Name": "GlobalQueueDepth", "Unit": "Count"},
+                                ]
+                            }
+                        ]
+                    },
+                    "NumAliveTasks": rt_metrics.num_alive_tasks(),
+                    "GlobalQueueDepth": rt_metrics.global_queue_depth(),
+                })
+                .to_string();
+                writer.write_all(emf.as_bytes()).await.unwrap();
+                writer.write_u8(b'\n').await.unwrap();
+            }
+
+            writer.flush().await.unwrap();
+            writer.shutdown().await.unwrap();
+
+            metrics
         }
     });
 

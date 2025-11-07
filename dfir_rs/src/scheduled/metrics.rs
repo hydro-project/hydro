@@ -34,18 +34,20 @@ impl DfirMetrics {
 
     /// Gets the metrics for a particular subgraph.
     pub fn subgraph_metrics(&self, sg_id: SubgraphId) -> Option<SubgraphMetrics> {
-        let curr = &self.curr.subgraph_metrics.get(sg_id)?;
-        self.prev
-            .as_ref()
-            .and_then(|prev| prev.subgraph_metrics.get(sg_id))
-            .map(|prev| SubgraphMetrics {
-                total_run_count: curr.total_run_count - prev.total_run_count,
-                total_poll_duration: curr.total_poll_duration - prev.total_poll_duration,
-                total_poll_count: curr.total_poll_count - prev.total_poll_count,
-                total_idle_duration: curr.total_idle_duration - prev.total_idle_duration,
-                total_idle_count: curr.total_idle_count - prev.total_idle_count,
-            })
-            .unwrap_or_else(|| curr.clone())
+        let curr = self.curr.subgraph_metrics.get(sg_id)?;
+        Some(
+            self.prev
+                .as_ref()
+                .and_then(|prev| prev.subgraph_metrics.get(sg_id))
+                .map(|prev| SubgraphMetrics {
+                    total_run_count: curr.total_run_count - prev.total_run_count,
+                    total_poll_duration: curr.total_poll_duration - prev.total_poll_duration,
+                    total_poll_count: curr.total_poll_count - prev.total_poll_count,
+                    total_idle_duration: curr.total_idle_duration - prev.total_idle_duration,
+                    total_idle_count: curr.total_idle_count - prev.total_idle_count,
+                })
+                .unwrap_or_else(|| curr.clone()),
+        )
     }
 
     /// Returns an iterator over all handoff IDs.
@@ -57,15 +59,17 @@ impl DfirMetrics {
 
     /// Gets the metrics for a particular handoff.
     pub fn handoff_metrics(&self, handoff_id: HandoffId) -> Option<HandoffMetrics> {
-        let curr = &self.curr.handoff_metrics.get(handoff_id)?;
-        self.prev
-            .as_ref()
-            .and_then(|prev| prev.handoff_metrics.get(handoff_id))
-            .map(|prev| HandoffMetrics {
-                curr_items_count: curr.curr_items_count, // No delta.
-                total_items_count: curr.total_items_count - prev.total_items_count,
-            })
-            .unwrap_or_else(|| curr.clone())
+        let curr = self.curr.handoff_metrics.get(handoff_id)?;
+        Some(
+            self.prev
+                .as_ref()
+                .and_then(|prev| prev.handoff_metrics.get(handoff_id))
+                .map(|prev| HandoffMetrics {
+                    curr_items_count: curr.curr_items_count, // No delta.
+                    total_items_count: curr.total_items_count - prev.total_items_count,
+                })
+                .unwrap_or_else(|| curr.clone()),
+        )
     }
 }
 
