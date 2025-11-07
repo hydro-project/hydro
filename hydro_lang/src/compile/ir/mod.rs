@@ -3008,11 +3008,13 @@ impl HydroNode {
                             let acc: syn::Expr = parse_quote!({
                                 let mut __init = #init;
                                 let mut __inner = #acc;
-                                move |__state, (__key, __value)| {
+                                move |__state, __kv: (_, _)| {
                                     // TODO(shadaj): we can avoid the clone when the entry exists
-                                    let __state = __state.entry(__key.clone()).or_insert_with(|| (__init)());
-                                    __inner(__state, __value);
-                                    Some((__key, __state.clone()))
+                                    let __state = __state
+                                        .entry(::std::clone::Clone::clone(&__kv.0))
+                                        .or_insert_with(|| (__init)());
+                                    __inner(__state, __kv.1);
+                                    Some((__kv.0, ::std::clone::Clone::clone(&*__state)))
                                 }
                             });
 
