@@ -14,6 +14,7 @@ members = [
     "hydro_lang",
     "hydro_std",
     "hydro_test",
+    "hydro_test_template",
     "include_mdtests",
     "lattices_macro",
     "lattices",
@@ -68,5 +69,5 @@ uninlined_format_args = "allow"
 upper_case_acronyms = "warn"
 
 [workspace.dependencies]
-stageleft = "0.10.0"
-stageleft_tool = "0.10.0"
+stageleft = "0.10.1"
+stageleft_tool = "0.10.1"
