@@ -6,7 +6,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use nanoid::nanoid;
 use serde_json::json;
-use tokio::sync::RwLock;
 
 use super::terraform::{TERRAFORM_ALPHABET, TerraformOutput, TerraformProvider};
 use super::{ClientStrategy, Host, HostTargetType, LaunchedHost, ResourceBatch, ResourceResult};
@@ -284,8 +283,8 @@ pub struct AwsEc2IamInstanceProfile {
 }
 
 impl AwsEc2IamInstanceProfile {
-    /// Creates an new instance. If `existing_instance_profile_name` is `Some`, that will be used as the instance
-    /// profile name, and that instance profile should already exist in the AWS account.
+    /// Creates a new instance. If `existing_instance_profile_name` is `Some`, that will be used as the instance
+    /// profile name which must already exist in the AWS account.
     pub fn new(region: impl Into<String>, existing_instance_profile_name: Option<String>) -> Self {
         Self {
             region: region.into(),
@@ -310,9 +309,9 @@ impl AwsEc2IamInstanceProfile {
     }
 
     fn collect_resources(&mut self, resource_batch: &mut ResourceBatch) -> String {
-        const RESOURCE_AWS_IAM_ROLE: &str = "aws_iam_role";
-        const RESOURCE_AWS_IAM_ROLE_POLICY_ATTACHMENT: &str = "aws_iam_role_policy_attachment";
         const RESOURCE_AWS_IAM_INSTANCE_PROFILE: &str = "aws_iam_instance_profile";
+        const RESOURCE_AWS_IAM_ROLE_POLICY_ATTACHMENT: &str = "aws_iam_role_policy_attachment";
+        const RESOURCE_AWS_IAM_ROLE: &str = "aws_iam_role";
 
         resource_batch
             .terraform
@@ -372,7 +371,7 @@ impl AwsEc2IamInstanceProfile {
                     iam_role_key.clone(),
                     json!({
                         "name": format!("hydro-iam-role-{}", self.id),
-                        "assume_role_policy": serde_json::to_string(&json!({
+                        "assume_role_policy": json!({
                             "Version": "2012-10-17",
                             "Statement": [
                                 {
@@ -383,7 +382,7 @@ impl AwsEc2IamInstanceProfile {
                                     }
                                 }
                             ]
-                        })).unwrap()
+                        }).to_string(),
                     }),
                 );
 
@@ -426,10 +425,98 @@ impl AwsEc2IamInstanceProfile {
     }
 }
 
-/// Represents an IAM role, policy attachment, and instance profile.
-///
-pub struct AwsCloudwatch {
-    pub existing: Option<String>,
+/// Represents a CloudWatch log group.
+#[derive(Debug)]
+pub struct AwsCloudwatchLogGroup {
+    pub region: String,
+    pub existing_cloudwatch_log_group_key_or_name: Option<String>,
+    id: String,
+}
+
+impl AwsCloudwatchLogGroup {
+    /// Creates a new instance. If `existing_cloudwatch_log_group_name` is `Some`, that will be used as the CloudWatch
+    /// log group name which must already exist in the AWS account and region.
+    pub fn new(
+        region: impl Into<String>,
+        existing_cloudwatch_log_group_name: Option<String>,
+    ) -> Self {
+        Self {
+            region: region.into(),
+            existing_cloudwatch_log_group_key_or_name: existing_cloudwatch_log_group_name,
+            id: nanoid!(8, &TERRAFORM_ALPHABET),
+        }
+    }
+
+    fn collect_resources(&mut self, resource_batch: &mut ResourceBatch) -> String {
+        const RESOURCE_AWS_CLOUDWATCH_LOG_GROUP: &str = "aws_cloudwatch_log_group";
+
+        resource_batch
+            .terraform
+            .terraform
+            .required_providers
+            .insert(
+                "aws".to_string(),
+                TerraformProvider {
+                    source: "hashicorp/aws".to_string(),
+                    version: "5.0.0".to_string(),
+                },
+            );
+
+        resource_batch.terraform.provider.insert(
+            "aws".to_string(),
+            json!({
+                "region": self.region
+            }),
+        );
+
+        let cloudwatch_log_group_key = format!("hydro-cloudwatch-log-group-{}", self.id);
+
+        if let Some(existing) = self.existing_cloudwatch_log_group_key_or_name.as_ref() {
+            if resource_batch
+                .terraform
+                .resource
+                .get(RESOURCE_AWS_CLOUDWATCH_LOG_GROUP)
+                .is_some_and(|map| map.contains_key(existing))
+            {
+                // `existing` is a key.
+                format!("{RESOURCE_AWS_CLOUDWATCH_LOG_GROUP}.{existing}")
+            } else {
+                // `existing` is a name of an existing resource, supplied when constructed.
+                resource_batch
+                    .terraform
+                    .data
+                    .entry(RESOURCE_AWS_CLOUDWATCH_LOG_GROUP.to_string())
+                    .or_default()
+                    .insert(
+                        cloudwatch_log_group_key.clone(),
+                        json!({
+                            "id": existing,
+                        }),
+                    );
+
+                format!("data.{RESOURCE_AWS_CLOUDWATCH_LOG_GROUP}.{cloudwatch_log_group_key}")
+            }
+        } else {
+            // Create the log group.
+            resource_batch
+                .terraform
+                .resource
+                .entry(RESOURCE_AWS_CLOUDWATCH_LOG_GROUP.to_string())
+                .or_default()
+                .insert(
+                    cloudwatch_log_group_key.clone(),
+                    json!({
+                        "name": format!("hydro-cloudwatch-log-group-{}", self.id),
+                        "retention_in_days": 1,
+                    }),
+                );
+
+            // Set key
+            self.existing_cloudwatch_log_group_key_or_name = Some(cloudwatch_log_group_key.clone());
+
+            format!("{RESOURCE_AWS_CLOUDWATCH_LOG_GROUP}.{cloudwatch_log_group_key}")
+        }
+    }
 }
 
 pub struct AwsEc2Host {
@@ -439,8 +526,9 @@ pub struct AwsEc2Host {
     region: String,
     instance_type: String,
     ami: String,
-    network: Arc<RwLock<AwsNetwork>>,
-    iam_instance_profile: Option<Arc<RwLock<AwsEc2IamInstanceProfile>>>,
+    network: Arc<Mutex<AwsNetwork>>,
+    iam_instance_profile: Option<Arc<Mutex<AwsEc2IamInstanceProfile>>>,
+    cloudwatch_log_group: Option<Arc<Mutex<AwsCloudwatchLogGroup>>>,
     user: Option<String>,
     display_name: Option<String>,
     pub launched: OnceLock<Arc<LaunchedEc2Instance>>,
@@ -462,8 +550,9 @@ impl AwsEc2Host {
         region: impl Into<String>,
         instance_type: impl Into<String>,
         ami: impl Into<String>,
-        network: Arc<RwLock<AwsNetwork>>,
-        iam_instance_profile: Option<Arc<RwLock<AwsEc2IamInstanceProfile>>>,
+        network: Arc<Mutex<AwsNetwork>>,
+        iam_instance_profile: Option<Arc<Mutex<AwsEc2IamInstanceProfile>>>,
+        cloudwatch_log_group: Option<Arc<Mutex<AwsCloudwatchLogGroup>>>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Self {
@@ -474,6 +563,7 @@ impl AwsEc2Host {
             ami: ami.into(),
             network,
             iam_instance_profile,
+            cloudwatch_log_group,
             user,
             display_name,
             launched: OnceLock::new(),
@@ -519,14 +609,19 @@ impl Host for AwsEc2Host {
 
         let vpc_path = self
             .network
-            .try_write()
+            .lock()
             .unwrap()
             .collect_resources(resource_batch);
 
         let iam_instance_profile = self
             .iam_instance_profile
             .as_deref()
-            .map(|irip| irip.try_write().unwrap().collect_resources(resource_batch));
+            .map(|irip| irip.lock().unwrap().collect_resources(resource_batch));
+
+        let cloudwatch_log_group = self
+            .cloudwatch_log_group
+            .as_deref()
+            .map(|cwlg| cwlg.lock().unwrap().collect_resources(resource_batch));
 
         // Add additional providers
         resource_batch
@@ -609,7 +704,7 @@ impl Host for AwsEc2Host {
             instance_name.push_str(&display_name);
         }
 
-        let network_id = self.network.try_read().unwrap().id.clone();
+        let network_id = self.network.lock().unwrap().id.clone();
         let vpc_ref = format!("${{{}.id}}", vpc_path);
         let default_sg_ref = format!(
             "${{aws_security_group.hydro-vpc-network-{}-default-sg.id}}",
@@ -670,6 +765,60 @@ impl Host for AwsEc2Host {
 
         let subnet_ref = format!("${{aws_subnet.hydro-vpc-network-{}-subnet.id}}", network_id);
         let iam_instance_profile_ref = iam_instance_profile.map(|key| format!("${{{key}.name}}"));
+        // Write the CloudWatch Agent config file.
+        let cloudwatch_agent_config = cloudwatch_log_group.map(|cwlg| {
+            json!({
+                "logs": {
+                    "logs_collected": {
+                        "files": {
+                            "collect_list": [
+                                {
+                                    "file_path": "/var/log/hydro/metrics.log",
+                                    "log_group_name": format!("${{{cwlg}.name}}"),
+                                    "log_stream_name": "{{instance_id}}"
+                                }
+                            ]
+                        }
+                    }
+                }
+            })
+            .to_string()
+        });
+
+        let user_data_script = cloudwatch_agent_config.map(|cwa_config| {
+            let cwa_config_esc = cwa_config
+                .replace("\\", "\\\\") // escape backslashes
+                .replace("\"", "\\\"") // escape quotes
+                .replace("\n", "\\n"); // escape newlines
+            format!(
+                r##"
+#!/bin/bash
+set -euxo pipefail
+
+touch /tmp/hydro-1
+
+mkdir -p /var/log/hydro/
+chmod +777 /var/log/hydro
+
+# Install the CloudWatch Agent
+yum install -y amazon-cloudwatch-agent
+
+touch /tmp/hydro-2
+
+mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+echo -e "{cwa_config_esc}" | tee /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+touch /tmp/hydro-3
+
+# Start or restart the agent
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config -m ec2 \
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+    -s
+
+touch /tmp/hydro-4"##
+            )
+        });
 
         // Create EC2 instance
         resource_batch
@@ -687,6 +836,7 @@ impl Host for AwsEc2Host {
                     "subnet_id": subnet_ref,
                     "associate_public_ip_address": true,
                     "iam_instance_profile": iam_instance_profile_ref, // May be `None`.
+                    "user_data": user_data_script, // May be `None`.
                     "tags": {
                         "Name": instance_name
                     }

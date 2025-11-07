@@ -19,7 +19,6 @@ use web_time::SystemTime;
 use super::context::Context;
 use super::handoff::handoff_list::PortList;
 use super::handoff::{Handoff, HandoffMeta, TeeingHandoff};
-use super::metrics::DfirMetricsDelta;
 use super::metrics::{DfirMetrics, DfirMetricsState, InstrumentSubgraph};
 use super::port::{RECV, RecvCtx, RecvPort, SEND, SendCtx, SendPort};
 use super::reactor::Reactor;
@@ -298,8 +297,11 @@ impl<'a> Dfir<'a> {
             // times without the next subgraph draining the handoff.
             // (*) - usually... always true for Hydro-generated DFIR at least.
             for &handoff_id in sg_data.preds.iter() {
+                let handoff_metrics = metrics
+                    .handoff_metrics
+                    .get_or_insert_with(handoff_id, Default::default); // TODO(mingwei): pre-allocate?
                 let handoff_data = &mut self.handoffs[handoff_id];
-                metrics.handoff_metrics[handoff_id].total_items_count += handoff_data.handoff.len();
+                handoff_metrics.total_items_count += handoff_data.handoff.len();
             }
 
             // Run the subgraph (and do bookkeeping).
@@ -403,7 +405,9 @@ impl<'a> Dfir<'a> {
                 tracing::info!("Running subgraph.");
                 sg_data.last_tick_run_in = Some(self.context.current_tick);
 
-                let sg_metrics = &mut metrics.subgraph_metrics[sg_id];
+                let sg_metrics = &mut metrics
+                    .subgraph_metrics
+                    .get_or_insert_with(sg_id, Default::default); // TODO(mingwei): pre-allocate?
                 let sg_fut =
                     Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs));
                 let sg_fut = InstrumentSubgraph::new(sg_fut, sg_metrics);
@@ -1033,16 +1037,20 @@ impl<'a> Dfir<'a> {
         loop_id
     }
 
-    /// Returns a snapshot of DFIR runtime metrics accumulated since runtime creation.
+    /// Returns DFIR runtime metrics accumulated since runtime creation.
     pub fn metrics(&self) -> DfirMetrics {
         DfirMetrics {
-            state: Rc::clone(&self.metrics),
+            curr: Rc::clone(&self.metrics),
+            prev: None,
         }
     }
 
     /// Returns DFIR runtime metrics for the period of time since `prev`.
-    pub fn metrics_delta(&self, prev: DfirMetrics) -> DfirMetricsDelta {
-        self.metrics().delta(prev)
+    pub fn metrics_delta(&self, prev: DfirMetrics) -> DfirMetrics {
+        DfirMetrics {
+            curr: Rc::clone(&self.metrics),
+            prev: Some(prev.curr),
+        }
     }
 }
 

@@ -17,52 +17,14 @@ pub(super) struct DfirMetricsState {
     pub(super) handoff_metrics: SecondarySlotVec<HandoffTag, HandoffMetrics>,
 }
 
-/// A snapshot of DFIR runtime metrics accumulated since runtime creation.
+/// DFIR runtime metrics accumulated across a time, possibly since runtime creation.
 #[derive(Clone)]
 pub struct DfirMetrics {
-    pub(super) state: Rc<DfirMetricsState>,
+    pub(super) curr: Rc<DfirMetricsState>,
+    /// `None` for "since creation".
+    pub(super) prev: Option<Rc<DfirMetricsState>>,
 }
-
 impl DfirMetrics {
-    /// Returns an iterator over all subgraph IDs.
-    pub fn subgraph_ids(
-        &self,
-    ) -> impl '_ + DoubleEndedIterator<Item = SubgraphId> + FusedIterator + Clone {
-        self.state.subgraph_metrics.keys()
-    }
-
-    /// Gets the metrics for a particular subgraph.
-    pub fn subgraph_metrics(&self, sg_id: SubgraphId) -> &SubgraphMetrics {
-        &self.state.subgraph_metrics[sg_id]
-    }
-
-    /// Returns an iterator over all handoff IDs.
-    pub fn handoff_ids(
-        &self,
-    ) -> impl '_ + DoubleEndedIterator<Item = HandoffId> + FusedIterator + Clone {
-        self.state.handoff_metrics.keys()
-    }
-
-    /// Gets the metrics for a particular handoff.
-    pub fn handoff_metrics(&self, handoff_id: HandoffId) -> &HandoffMetrics {
-        &self.state.handoff_metrics[handoff_id]
-    }
-
-    /// Subtracts `prev` from `self` to create runtime metrics across a span of time.
-    pub fn delta(self, prev: Self) -> DfirMetricsDelta {
-        DfirMetricsDelta {
-            curr: self.state,
-            prev: prev.state,
-        }
-    }
-}
-
-/// DFIR runtime metrics across a span of time.
-pub struct DfirMetricsDelta {
-    curr: Rc<DfirMetricsState>,
-    prev: Rc<DfirMetricsState>,
-}
-impl DfirMetricsDelta {
     /// Returns an iterator over all subgraph IDs.
     pub fn subgraph_ids(
         &self,
@@ -71,16 +33,19 @@ impl DfirMetricsDelta {
     }
 
     /// Gets the metrics for a particular subgraph.
-    pub fn subgraph_metrics(&self, sg_id: SubgraphId) -> SubgraphMetrics {
-        let curr = &self.curr.subgraph_metrics[sg_id];
-        let prev = &self.prev.subgraph_metrics[sg_id];
-        SubgraphMetrics {
-            total_run_count: curr.total_run_count - prev.total_run_count,
-            total_poll_duration: curr.total_poll_duration - prev.total_poll_duration,
-            total_poll_count: curr.total_poll_count - prev.total_poll_count,
-            total_idle_duration: curr.total_idle_duration - prev.total_idle_duration,
-            total_idle_count: curr.total_idle_count - prev.total_idle_count,
-        }
+    pub fn subgraph_metrics(&self, sg_id: SubgraphId) -> Option<SubgraphMetrics> {
+        let curr = &self.curr.subgraph_metrics.get(sg_id)?;
+        self.prev
+            .as_ref()
+            .and_then(|prev| prev.subgraph_metrics.get(sg_id))
+            .map(|prev| SubgraphMetrics {
+                total_run_count: curr.total_run_count - prev.total_run_count,
+                total_poll_duration: curr.total_poll_duration - prev.total_poll_duration,
+                total_poll_count: curr.total_poll_count - prev.total_poll_count,
+                total_idle_duration: curr.total_idle_duration - prev.total_idle_duration,
+                total_idle_count: curr.total_idle_count - prev.total_idle_count,
+            })
+            .unwrap_or_else(|| curr.clone())
     }
 
     /// Returns an iterator over all handoff IDs.
@@ -91,13 +56,16 @@ impl DfirMetricsDelta {
     }
 
     /// Gets the metrics for a particular handoff.
-    pub fn handoff_metrics(&self, handoff_id: HandoffId) -> HandoffMetrics {
-        let curr = &self.curr.handoff_metrics[handoff_id];
-        let prev = &self.prev.handoff_metrics[handoff_id];
-        HandoffMetrics {
-            curr_items_count: curr.curr_items_count,
-            total_items_count: curr.total_items_count - prev.total_items_count,
-        }
+    pub fn handoff_metrics(&self, handoff_id: HandoffId) -> Option<HandoffMetrics> {
+        let curr = &self.curr.handoff_metrics.get(handoff_id)?;
+        self.prev
+            .as_ref()
+            .and_then(|prev| prev.handoff_metrics.get(handoff_id))
+            .map(|prev| HandoffMetrics {
+                curr_items_count: curr.curr_items_count, // No delta.
+                total_items_count: curr.total_items_count - prev.total_items_count,
+            })
+            .unwrap_or_else(|| curr.clone())
     }
 }
 
