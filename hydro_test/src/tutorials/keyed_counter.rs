@@ -21,16 +21,21 @@ pub fn keyed_counter_service<'a, L: Location<'a> + NoTick, O: Ordering>(
         .value_counts();
     let increment_ack = increment_request_processing.end_atomic();
 
+    let requests_regrouped = get_requests
+        .entries()
+        .map(q!(|(cid, key)| (key, cid)))
+        .into_keyed();
+
     let get_response = sliced! {
-        let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
+        let request_batch = use(requests_regrouped, nondet!(/** we never observe batch boundaries */));
         let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
 
-        count_snapshot.get_many_if_present(request_batch.entries().map(q!(|(cid, key)| (key, cid))).into_keyed())
+        count_snapshot.get_many_if_present(request_batch)
             .entries()
             .map(q!(|(key, (count, client))| (client, (key, count))))
-    };
+    }.into_keyed();
 
-    (increment_ack, get_response.into_keyed())
+    (increment_ack, get_response)
 }
 
 #[cfg(test)]
