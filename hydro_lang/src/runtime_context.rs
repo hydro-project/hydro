@@ -38,7 +38,7 @@ mod tests {
     use stageleft::q;
 
     use super::RUNTIME_CONTEXT;
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
 
     struct P1 {}
