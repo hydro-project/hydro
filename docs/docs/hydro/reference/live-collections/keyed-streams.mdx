@@ -82,7 +82,7 @@ important_events.entries()
 # }));
 ```
 
-Keyed streams are most commonly used when dealing with network requests originating from external clients or a cluster of machines. When receiving data, you will receive a `KeyedStream<ID, Value, ...>`, which helps capture the determinism properties for _each_ siyrce and the non-determinism _across_ siyrce. Similarly, when sending data, you will want to emit a `KeyedStream<ID, Value, ...>` to capture the independent streams of outputs going to each destination. For more on these network APIs, see [Locations / Clusters / Networking](../locations/clusters.md#networking).
+Keyed streams are most commonly used when dealing with network requests originating from external clients or a cluster of machines. When receiving data, you will receive a `KeyedStream<ID, Value, ...>`, which helps capture the determinism properties for _each_ source and the non-determinism _across_ source. Similarly, when sending data, you will want to emit a `KeyedStream<ID, Value, ...>` to capture the independent streams of outputs going to each destination. For more on these network APIs, see [Locations / Clusters / Networking](../locations/clusters.md#networking).
 
 ## Flattening Operations
 Keyed streams provide two methods to convert back to regular streams. The `.entries()` method returns a stream of `(K, V)` tuples, while `.values()` returns a stream of just the values, discarding keys. Note that both of these APIs return a stream with `NoOrder` ordering, because they interleave elements across key groups in non-deterministic order. This means that downstream logic must tolerate this unknown interleaving of elements appropriately.
