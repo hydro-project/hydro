@@ -281,6 +281,11 @@ where
         }
     }
 
+    /// Returns the [`Location`] where this optional is being materialized.
+    pub fn location(&self) -> &L {
+        &self.location
+    }
+
     /// Transforms the optional value by applying a function `f` to it,
     /// continuously as the input is updated.
     ///
