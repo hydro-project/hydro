@@ -1,0 +1,112 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
+
+use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::location::MemberId;
+use hydro_lang::prelude::*;
+
+pub struct CounterServer;
+pub struct CounterShard;
+
+pub fn sharded_counter_service<'a>(
+    leader: &Process<'a, CounterServer>,
+    shard_servers: &Cluster<'a, CounterShard>,
+    increment_requests: KeyedStream<u32, String, Process<'a, CounterServer>>,
+    get_requests: KeyedStream<u32, String, Process<'a, CounterServer>>,
+) -> (
+    KeyedStream<u32, String, Process<'a, CounterServer>, Unbounded, NoOrder>,
+    KeyedStream<u32, (String, usize), Process<'a, CounterServer>, Unbounded, NoOrder>,
+) {
+    let sharded_increment_requests = increment_requests
+        .entries()
+        .map(q!(|(client, key)| {
+            let mut hasher = DefaultHasher::new();
+            key.hash(&mut hasher);
+            (
+                MemberId::from_raw(hasher.finish() as u32 % 5),
+                (client, key),
+            )
+        }))
+        .into_keyed()
+        .demux_bincode(&shard_servers)
+        .into_keyed();
+
+    let sharded_get_requests = get_requests
+        .entries()
+        .map(q!(|(client, key)| {
+            let mut hasher = DefaultHasher::new();
+            key.hash(&mut hasher);
+            (
+                MemberId::from_raw(hasher.finish() as u32 % 5),
+                (client, key),
+            )
+        }))
+        .into_keyed()
+        .demux_bincode(&shard_servers)
+        .into_keyed();
+
+    let (sharded_increment_ack, sharded_get_response) = super::keyed_counter::keyed_counter_service(
+        sharded_increment_requests,
+        sharded_get_requests,
+    );
+
+    let increment_ack = sharded_increment_ack
+        .entries()
+        .send_bincode(&leader)
+        .values()
+        .into_keyed();
+
+    let get_response = sharded_get_response
+        .entries()
+        .send_bincode(&leader)
+        .values()
+        .into_keyed();
+
+    (increment_ack, get_response)
+}
+
+#[cfg(test)]
+mod tests {
+    use hydro_lang::prelude::*;
+
+    use super::*;
+
+    #[test]
+    fn test_counter_read_after_write() {
+        let flow = FlowBuilder::new();
+        let process = flow.process();
+        let shards = flow.cluster();
+        let external = flow.external::<()>();
+
+        let (inc_in_port, inc_requests) = process.source_external_bincode(&external);
+        let inc_requests = inc_requests.into_keyed();
+
+        let (get_in_port, get_requests) = process.source_external_bincode(&external);
+        let get_requests = get_requests.into_keyed();
+
+        let (inc_acks, get_responses) =
+            sharded_counter_service(&process, &shards, inc_requests, get_requests);
+
+        let inc_out_port = inc_acks.entries().send_bincode_external(&external);
+        let get_out_port = get_responses.entries().send_bincode_external(&external);
+
+        flow.sim()
+            .with_cluster_size(&shards, 5)
+            .exhaustive(async |mut instance| {
+                let inc_in_port = instance.connect(&inc_in_port);
+                let get_in_port = instance.connect(&get_in_port);
+                let mut inc_out_port = instance.connect(&inc_out_port);
+                let get_out_port = instance.connect(&get_out_port);
+
+                instance.launch();
+
+                inc_in_port.send((1, "abc".to_string()));
+                inc_out_port
+                    .assert_yields_unordered([(1, "abc".to_string())])
+                    .await;
+                get_in_port.send((1, "abc".to_string()));
+                get_out_port
+                    .assert_yields_only_unordered([(1, ("abc".to_string(), 1))])
+                    .await;
+            });
+    }
+}
