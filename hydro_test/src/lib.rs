@@ -5,6 +5,7 @@ pub mod cluster;
 pub mod distributed;
 pub mod external_client;
 pub mod local;
+pub mod tutorials;
 
 #[doc(hidden)]
 #[cfg(doctest)]
