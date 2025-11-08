@@ -3775,12 +3775,12 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        assert_eq!(size_of::<HydroNode>(), 264);
+        assert_eq!(size_of::<HydroNode>(), 272);
     }
 
     #[test]
     fn hydro_root_size() {
-        assert_eq!(size_of::<HydroRoot>(), 160);
+        assert_eq!(size_of::<HydroRoot>(), 168);
     }
 
     #[test]
