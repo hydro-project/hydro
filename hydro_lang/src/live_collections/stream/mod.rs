@@ -614,7 +614,8 @@ where
     }
 
     /// Generates a stream that maps each input element `i` to a tuple `(i, x)`,
-    /// where `x` is the final value of `other`, a bounded [`Singleton`].
+    /// where `x` is the final value of `other`, a bounded [`Singleton`] or [`Optional`].
+    /// If `other` is an empty [`Optional`], no values will be produced.
     ///
     /// # Example
     /// ```rust
