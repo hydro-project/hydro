@@ -35,3 +35,5 @@ pub use singleton::Singleton;
 pub mod stream;
 #[doc(inline)]
 pub use stream::Stream;
+
+pub mod sliced;
