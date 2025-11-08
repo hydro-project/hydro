@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["boundedness","keyed_singleton","keyed_stream","optional","singleton","stream"],"struct":["KeyedSingleton","KeyedStream","Optional","Singleton","Stream"]};
+window.SIDEBAR_ITEMS = {"mod":["boundedness","keyed_singleton","keyed_stream","optional","singleton","sliced","stream"],"struct":["KeyedSingleton","KeyedStream","Optional","Singleton","Stream"]};
