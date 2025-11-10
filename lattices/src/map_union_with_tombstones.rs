@@ -1,4 +1,47 @@
 //! Module containing the [`MapUnionWithTombstones`] lattice and aliases for different datastructures.
+//!
+//! # Choosing a Tombstone Implementation
+//!
+//! This module provides several specialized tombstone storage implementations optimized for different key types:
+//!
+//! ## For Integer Keys (u64)
+//! Use [`MapUnionWithTombstonesRoaring`] with [`crate::tombstone::RoaringTombstoneSet`]:
+//! - Extremely space-efficient bitmap compression
+//! - Fast O(1) lookups and efficient bitmap OR operations during merge
+//! - Works with u64 keys (other integer types can be cast to u64)
+//! - Example: `MapUnionWithTombstonesRoaring::new_from(HashMap::from([(1u64, value)]), RoaringTombstoneSet::new())`
+//!
+//! ## For String Keys
+//! Use [`MapUnionWithTombstonesFstString`] with [`crate::tombstone::FstTombstoneSet<String>`]:
+//! - Compressed finite state transducer storage
+//! - Zero false positives (collision-free)
+//! - Efficient union operations for merging
+//! - Maintains sorted order
+//! - Example: `MapUnionWithTombstonesFstString::new_from(HashMap::from([("key".to_string(), value)]), FstTombstoneSet::new())`
+//!
+//! ## For Byte Array Keys
+//! Use [`MapUnionWithTombstonesFstBytes`] with [`crate::tombstone::FstTombstoneSet<Vec<u8>>`]:
+//! - Same benefits as FST for strings
+//! - Works with arbitrary byte sequences
+//! - Example: `MapUnionWithTombstonesFstBytes::new_from(HashMap::from([(vec![1, 2, 3], value)]), FstTombstoneSet::new())`
+//!
+//! ## For Other Types
+//! Use the generic [`MapUnionWithTombstones`] with [`HashSet`] for tombstones:
+//! - Works with any `Hash + Eq` key type
+//! - No compression, but simple and flexible
+//! - Example: `MapUnionHashMapWithTombstoneHashSet::new_from([(custom_key, value)], [])`
+//!
+//! Alternatively, you can hash to 64-bit integers and follow instructions for that case above,
+//! understanding there's a tiny risk of hash collision which could result in keys being
+//! tombstoned (deleted) incorrectly.
+//!
+//! ## Performance Characteristics
+//!
+//! | Implementation | Space Efficiency | Merge Speed | Lookup Speed | False Positives |
+//! |----------------|------------------|-------------|--------------|-----------------|
+//! | RoaringBitmap  | Excellent        | Excellent   | Excellent    | None            |
+//! | FST            | Very Good        | Good        | Very Good    | None            |
+//! | HashSet        | Poor             | Good        | Excellent    | None            |
 
 use std::cmp::Ordering::{self, *};
 use std::collections::{HashMap, HashSet};
@@ -8,6 +51,7 @@ use cc_traits::{Get, Iter, Len, Remove};
 
 use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
 use crate::collections::{EmptyMap, EmptySet, SingletonMap, SingletonSet};
+use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet};
 use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
 /// Map-union-with-tombstones compound lattice.
@@ -335,6 +379,168 @@ pub type MapUnionWithTombstonesSingletonMapOnly<K, Val> =
 pub type MapUnionWithTombstonesTombstoneSingletonSetOnly<K, Val> =
     MapUnionWithTombstones<EmptyMap<K, Val>, SingletonSet<K>>;
 
+/// [`crate::tombstone::RoaringTombstoneSet`]-backed tombstone set with [`HashMap`] for the main map.
+/// Provides space-efficient tombstone storage for u64 integer keys.
+pub type MapUnionWithTombstonesRoaring<Val> =
+    MapUnionWithTombstones<HashMap<u64, Val>, RoaringTombstoneSet>;
+
+/// FST-backed tombstone set with [`HashMap`] for the main map.
+/// Provides space-efficient, collision-free tombstone storage for String keys.
+pub type MapUnionWithTombstonesFstString<Val> =
+    MapUnionWithTombstones<HashMap<String, Val>, FstTombstoneSet<String>>;
+
+/// FST-backed tombstone set with [`HashMap`] for the main map.
+/// Provides space-efficient, collision-free tombstone storage for Vec<u8> keys.
+pub type MapUnionWithTombstonesFstBytes<Val> =
+    MapUnionWithTombstones<HashMap<Vec<u8>, Val>, FstTombstoneSet<Vec<u8>>>;
+
+// Specialized merge implementation for RoaringTombstoneSet with HashMap<u64, Val>
+// This is highly efficient because:
+// 1. We can OR the roaring bitmaps directly (very fast)
+// 2. We can use the bitmap's efficient contains() for lookups
+impl<Val, ValOther> Merge<MapUnionWithTombstones<HashMap<u64, ValOther>, RoaringTombstoneSet>>
+    for MapUnionWithTombstones<HashMap<u64, Val>, RoaringTombstoneSet>
+where
+    Val: Merge<ValOther> + LatticeFrom<ValOther>,
+    ValOther: IsBot,
+{
+    fn merge(
+        &mut self,
+        other: MapUnionWithTombstones<HashMap<u64, ValOther>, RoaringTombstoneSet>,
+    ) -> bool {
+        let mut changed = false;
+
+        // OR the roaring bitmaps together - O(n) where n is bitmap size, very fast!
+        let old_tombstones_len = self.tombstones.len();
+        self.tombstones.bitmap = &self.tombstones.bitmap | &other.tombstones.bitmap;
+        if old_tombstones_len != self.tombstones.len() {
+            changed = true;
+        }
+
+        // Merge the maps, filtering out tombstoned keys
+        let iter: Vec<_> = other
+            .map
+            .into_iter()
+            .filter(|(k_other, val_other)| {
+                !val_other.is_bot() && !self.tombstones.contains(k_other)
+            })
+            .filter_map(|(k_other, val_other)| match self.map.get_mut(&k_other) {
+                Some(val_self) => {
+                    changed |= val_self.merge(val_other);
+                    None
+                }
+                None => {
+                    changed = true;
+                    Some((k_other, Val::lattice_from(val_other)))
+                }
+            })
+            .collect();
+        self.map.extend(iter);
+
+        // Remove any keys from the map that are now tombstoned
+        self.map.retain(|k, _| !self.tombstones.contains(k));
+
+        changed
+    }
+}
+
+// Specialized merge implementation for FstTombstoneSet<String> with HashMap<String, Val>
+impl<Val, ValOther>
+    Merge<MapUnionWithTombstones<HashMap<String, ValOther>, FstTombstoneSet<String>>>
+    for MapUnionWithTombstones<HashMap<String, Val>, FstTombstoneSet<String>>
+where
+    Val: Merge<ValOther> + LatticeFrom<ValOther>,
+    ValOther: IsBot,
+{
+    fn merge(
+        &mut self,
+        other: MapUnionWithTombstones<HashMap<String, ValOther>, FstTombstoneSet<String>>,
+    ) -> bool {
+        let mut changed = false;
+
+        // Union the FSTs together - efficient compressed set union
+        let old_tombstones_len = self.tombstones.len();
+        self.tombstones = self.tombstones.union(&other.tombstones);
+        if old_tombstones_len != self.tombstones.len() {
+            changed = true;
+        }
+
+        // Merge the maps, filtering out tombstoned keys
+        let iter: Vec<_> = other
+            .map
+            .into_iter()
+            .filter(|(k_other, val_other)| {
+                !val_other.is_bot() && !self.tombstones.contains(k_other.as_bytes())
+            })
+            .filter_map(|(k_other, val_other)| match self.map.get_mut(&k_other) {
+                Some(val_self) => {
+                    changed |= val_self.merge(val_other);
+                    None
+                }
+                None => {
+                    changed = true;
+                    Some((k_other, Val::lattice_from(val_other)))
+                }
+            })
+            .collect();
+        self.map.extend(iter);
+
+        // Remove any keys from the map that are now tombstoned
+        self.map
+            .retain(|k, _| !self.tombstones.contains(k.as_bytes()));
+
+        changed
+    }
+}
+
+// Specialized merge implementation for FstTombstoneSet<Vec<u8>> with HashMap<Vec<u8>, Val>
+impl<Val, ValOther>
+    Merge<MapUnionWithTombstones<HashMap<Vec<u8>, ValOther>, FstTombstoneSet<Vec<u8>>>>
+    for MapUnionWithTombstones<HashMap<Vec<u8>, Val>, FstTombstoneSet<Vec<u8>>>
+where
+    Val: Merge<ValOther> + LatticeFrom<ValOther>,
+    ValOther: IsBot,
+{
+    fn merge(
+        &mut self,
+        other: MapUnionWithTombstones<HashMap<Vec<u8>, ValOther>, FstTombstoneSet<Vec<u8>>>,
+    ) -> bool {
+        let mut changed = false;
+
+        // Union the FSTs together - efficient compressed set union
+        let old_tombstones_len = self.tombstones.len();
+        self.tombstones = self.tombstones.union(&other.tombstones);
+        if old_tombstones_len != self.tombstones.len() {
+            changed = true;
+        }
+
+        // Merge the maps, filtering out tombstoned keys
+        let iter: Vec<_> = other
+            .map
+            .into_iter()
+            .filter(|(k_other, val_other)| {
+                !val_other.is_bot() && !self.tombstones.contains(k_other)
+            })
+            .filter_map(|(k_other, val_other)| match self.map.get_mut(&k_other) {
+                Some(val_self) => {
+                    changed |= val_self.merge(val_other);
+                    None
+                }
+                None => {
+                    changed = true;
+                    Some((k_other, Val::lattice_from(val_other)))
+                }
+            })
+            .collect();
+        self.map.extend(iter);
+
+        // Remove any keys from the map that are now tombstoned
+        self.map.retain(|k, _| !self.tombstones.contains(k));
+
+        changed
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -433,5 +639,118 @@ mod test {
         assert_eq!(map_empty, map_a_bot);
         assert_eq!(map_empty, map_b_bot);
         assert_eq!(map_a_bot, map_b_bot);
+    }
+
+    #[test]
+    fn roaring_u64_basic() {
+        let mut x = MapUnionWithTombstonesRoaring::new_from(
+            HashMap::from([(1u64, SetUnionHashSet::new_from([10])), (2, SetUnionHashSet::new_from([20]))]),
+            RoaringTombstoneSet::new(),
+        );
+        let mut y = MapUnionWithTombstonesRoaring::new_from(
+            HashMap::from([(2u64, SetUnionHashSet::new_from([21])), (3, SetUnionHashSet::new_from([30]))]),
+            RoaringTombstoneSet::new(),
+        );
+
+        // Add tombstone for key 2
+        y.as_reveal_mut().1.insert(2);
+
+        x.merge(y);
+
+        // Should have keys 1 and 3, but not 2 (tombstoned)
+        assert!(!x.as_reveal_ref().0.contains_key(&2));
+        assert!(x.as_reveal_ref().0.contains_key(&1));
+        assert!(x.as_reveal_ref().0.contains_key(&3));
+        assert!(x.as_reveal_ref().1.contains(&2));
+    }
+
+    #[test]
+    fn fst_string_basic() {
+        let mut x = MapUnionWithTombstonesFstString::new_from(
+            HashMap::from([
+                ("apple".to_string(), SetUnionHashSet::new_from([1])),
+                ("banana".to_string(), SetUnionHashSet::new_from([2])),
+            ]),
+            FstTombstoneSet::new(),
+        );
+        let mut y = MapUnionWithTombstonesFstString::new_from(
+            HashMap::from([
+                ("banana".to_string(), SetUnionHashSet::new_from([3])),
+                ("cherry".to_string(), SetUnionHashSet::new_from([4])),
+            ]),
+            FstTombstoneSet::new(),
+        );
+
+        // Add tombstone for "banana"
+        y.as_reveal_mut().1.extend(vec!["banana".to_string()]);
+
+        x.merge(y);
+
+        // Should have "apple" and "cherry", but not "banana" (tombstoned)
+        assert!(!x.as_reveal_ref().0.contains_key("banana"));
+        assert!(x.as_reveal_ref().0.contains_key("apple"));
+        assert!(x.as_reveal_ref().0.contains_key("cherry"));
+        assert!(x.as_reveal_ref().1.contains(b"banana"));
+    }
+
+    #[test]
+    fn fst_bytes_basic() {
+        let mut x = MapUnionWithTombstonesFstBytes::new_from(
+            HashMap::from([
+                (vec![1, 2], SetUnionHashSet::new_from([10])),
+                (vec![3, 4], SetUnionHashSet::new_from([20])),
+            ]),
+            FstTombstoneSet::new(),
+        );
+        let mut y = MapUnionWithTombstonesFstBytes::new_from(
+            HashMap::from([
+                (vec![3, 4], SetUnionHashSet::new_from([21])),
+                (vec![5, 6], SetUnionHashSet::new_from([30])),
+            ]),
+            FstTombstoneSet::new(),
+        );
+
+        // Add tombstone for [3, 4]
+        y.as_reveal_mut().1.extend(vec![vec![3, 4]]);
+
+        x.merge(y);
+
+        // Should have [1,2] and [5,6], but not [3,4] (tombstoned)
+        assert!(!x.as_reveal_ref().0.contains_key(&vec![3, 4]));
+        assert!(x.as_reveal_ref().0.contains_key(&vec![1, 2]));
+        assert!(x.as_reveal_ref().0.contains_key(&vec![5, 6]));
+        assert!(x.as_reveal_ref().1.contains(&[3, 4]));
+    }
+
+    #[test]
+    fn roaring_merge_efficiency() {
+        // Test that merging roaring bitmaps works correctly
+        let mut x = MapUnionWithTombstonesRoaring::new_from(
+            HashMap::from([
+                (1u64, SetUnionHashSet::new_from([1])),
+                (2, SetUnionHashSet::new_from([2])),
+            ]),
+            RoaringTombstoneSet::from_iter(vec![10u64, 20]),
+        );
+
+        let y = MapUnionWithTombstonesRoaring::new_from(
+            HashMap::from([(3u64, SetUnionHashSet::new_from([3]))]),
+            RoaringTombstoneSet::from_iter(vec![30u64, 2]),
+        );
+
+        x.merge(y);
+
+        // Should have all tombstones
+        assert!(x.as_reveal_ref().1.contains(&10));
+        assert!(x.as_reveal_ref().1.contains(&20));
+        assert!(x.as_reveal_ref().1.contains(&30));
+        assert!(x.as_reveal_ref().1.contains(&2));
+
+        // Should not have key 2 in the map
+        assert!(!x.as_reveal_ref().0.contains_key(&2));
+
+        // Should have keys 1 and 3
+        assert!(x.as_reveal_ref().0.contains_key(&1));
+        assert!(x.as_reveal_ref().0.contains_key(&3));
     }
 }
