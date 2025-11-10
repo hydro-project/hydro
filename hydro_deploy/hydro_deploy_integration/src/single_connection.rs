@@ -32,6 +32,7 @@ impl<
                 let (new_stream_sender, new_stream_receiver) = mpsc::unbounded_channel();
                 let (new_sink_sender, new_sink_receiver) = mpsc::unbounded_channel();
 
+                #[cfg_attr(not(unix), expect(unused_variables, reason = "dir is only used on non-Unix"))]
                 let dir = match *bound_server {
                     BoundServer::UnixSocket(listener, dir) => {
                         tokio::spawn(async move {
