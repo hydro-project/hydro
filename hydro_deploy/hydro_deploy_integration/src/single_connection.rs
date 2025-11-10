@@ -1,5 +1,7 @@
 use std::ops::DerefMut;
 use std::pin::Pin;
+#[cfg(unix)]
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use futures::{Sink, SinkExt, Stream, StreamExt, ready};
@@ -76,18 +78,32 @@ impl<
                             }
                         });
 
-                        None
+                        #[cfg(unix)]
+                        {
+                            None
+                        }
+
+                        #[cfg(not(unix))]
+                        {
+                            None::<()>
+                        }
                     }
                     _ => panic!("SingleConnection only supports UnixSocket and TcpPort"),
                 };
 
+                #[cfg(unix)]
+                let dir_holder_arc = dir.map(Arc::new);
+
                 let source = SingleConnectionSource {
                     new_stream_receiver,
-                    _dir_holder: dir,
+                    #[cfg(unix)]
+                    _dir_holder: dir_holder_arc.clone(),
                     active_stream: None,
                 };
 
                 let sink = SingleConnectionSink::<O, C> {
+                    #[cfg(unix)]
+                    _dir_holder: dir_holder_arc,
                     connection_sink: None,
                     new_sink_receiver,
                 };
@@ -106,12 +122,14 @@ type DynEncodedSink<O, C> = Pin<Box<dyn Sink<O, Error = <C as Encoder<O>>::Error
 pub struct SingleConnectionSource<I, C: Decoder<Item = I>> {
     new_stream_receiver: mpsc::UnboundedReceiver<DynDecodedStream<I, C>>,
     #[cfg(unix)]
-    _dir_holder: Option<TempDir>, // keeps the folder containing the socket alive
+    _dir_holder: Option<Arc<TempDir>>, // keeps the folder containing the socket alive
     /// The active stream for the single connection, if taken
     active_stream: Option<DynDecodedStream<I, C>>,
 }
 
 pub struct SingleConnectionSink<O, C: Encoder<O>> {
+    #[cfg(unix)]
+    _dir_holder: Option<Arc<TempDir>>, // keeps the folder containing the socket alive
     connection_sink: Option<DynEncodedSink<O, C>>,
     new_sink_receiver: mpsc::UnboundedReceiver<DynEncodedSink<O, C>>,
 }
