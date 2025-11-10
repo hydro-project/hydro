@@ -3,6 +3,33 @@
 //! This module provides specialized tombstone storage implementations that can be used
 //! with both [`crate::set_union_with_tombstones::SetUnionWithTombstones`] and
 //! [`crate::map_union_with_tombstones::MapUnionWithTombstones`].
+//!
+//! # Available Implementations
+//!
+//! ## [`RoaringTombstoneSet`]
+//! - **Best for:** u64 integer keys
+//! - **Space efficiency:** Excellent (bitmap compression)
+//! - **Merge speed:** Excellent (O(n) bitmap OR)
+//! - **Lookup speed:** Excellent (O(1))
+//! - **False positives:** None
+//!
+//! ## [`FstTombstoneSet<String>`] and [`FstTombstoneSet<Vec<u8>>`]
+//! - **Best for:** String or byte array keys
+//! - **Space efficiency:** Very good (FST compression)
+//! - **Merge speed:** Good (FST union operation)
+//! - **Lookup speed:** Very good (logarithmic)
+//! - **False positives:** None (collision-free)
+//!
+//! # Performance Considerations
+//!
+//! - **RoaringBitmap:** Optimized for dense integer sets. Very fast for all operations.
+//! - **FST:** The `extend()` operation rebuilds the entire FST, so batch your insertions.
+//!   Use `from_iter()` when possible for better performance.
+//!
+//! # Thread Safety
+//!
+//! Both implementations are `Send` and `Sync` when their contained types are.
+//! They do not use interior mutability.
 
 use fst::{IntoStreamer, Set as FstSet, SetBuilder, Streamer};
 use roaring::RoaringTreemap;
@@ -13,7 +40,7 @@ use crate::cc_traits::Len;
 /// This provides space-efficient bitmap compression for integer tombstones.
 #[derive(Default, Clone, Debug)]
 pub struct RoaringTombstoneSet {
-    pub(crate) bitmap: RoaringTreemap,
+    bitmap: RoaringTreemap,
 }
 
 impl RoaringTombstoneSet {
@@ -32,6 +59,12 @@ impl RoaringTombstoneSet {
     /// Insert an item into the tombstone set.
     pub fn insert(&mut self, item: u64) -> bool {
         self.bitmap.insert(item)
+    }
+
+    /// Union this tombstone set with another, modifying self in place.
+    /// This is an efficient O(n) operation where n is the size of the bitmaps.
+    pub fn union_with(&mut self, other: &Self) {
+        self.bitmap = &self.bitmap | &other.bitmap;
     }
 }
 
@@ -68,10 +101,15 @@ impl FromIterator<u64> for RoaringTombstoneSet {
 /// This provides space-efficient storage with zero false positives for any type
 /// that can be serialized to bytes (strings, serialized structs, etc.).
 /// FST maintains keys in sorted order and supports efficient set operations.
+///
+/// ## Performance Notes
+/// - The `extend()` operation rebuilds the entire FST, so batch your insertions when possible
+/// - Union operations are efficient and create a new compressed FST
+/// - Lookups are very fast (logarithmic in the number of keys)
 #[derive(Clone, Debug)]
 pub struct FstTombstoneSet<Item> {
-    pub(crate) fst: FstSet<Vec<u8>>,
-    pub(crate) _phantom: std::marker::PhantomData<Item>,
+    fst: FstSet<Vec<u8>>,
+    _phantom: std::marker::PhantomData<Item>,
 }
 
 impl<Item> Default for FstTombstoneSet<Item> {
@@ -118,9 +156,19 @@ impl<Item> FstTombstoneSet<Item> {
         let mut builder = SetBuilder::memory();
         let mut stream = union_stream.into_stream();
         while let Some(key) = stream.next() {
-            builder.insert(key).unwrap();
+            // Union stream produces sorted keys, so insert should not fail
+            builder
+                .insert(key)
+                .expect("union stream keys are sorted, insert should not fail");
         }
-        Self::from_fst(FstSet::new(builder.into_inner().unwrap()).unwrap())
+        Self::from_fst(
+            FstSet::new(
+                builder
+                    .into_inner()
+                    .expect("memory builder should not fail"),
+            )
+            .expect("FST construction from valid builder should not fail"),
+        )
     }
 }
 
@@ -149,9 +197,18 @@ impl Extend<Vec<u8>> for FstTombstoneSet<Vec<u8>> {
 
         let mut builder = SetBuilder::memory();
         for key in keys {
-            builder.insert(key).unwrap();
+            // FST builder insert only fails if keys are not sorted, which we ensure above
+            builder
+                .insert(key)
+                .expect("keys are sorted, insert should not fail");
         }
-        self.fst = FstSet::new(builder.into_inner().unwrap()).unwrap();
+        // Memory builder and FST construction should not fail for valid sorted keys
+        self.fst = FstSet::new(
+            builder
+                .into_inner()
+                .expect("memory builder should not fail"),
+        )
+        .expect("FST construction from valid builder should not fail");
     }
 }
 
@@ -165,9 +222,18 @@ impl Extend<String> for FstTombstoneSet<String> {
 
         let mut builder = SetBuilder::memory();
         for key in keys {
-            builder.insert(key).unwrap();
+            // FST builder insert only fails if keys are not sorted, which we ensure above
+            builder
+                .insert(key)
+                .expect("keys are sorted, insert should not fail");
         }
-        self.fst = FstSet::new(builder.into_inner().unwrap()).unwrap();
+        // Memory builder and FST construction should not fail for valid sorted keys
+        self.fst = FstSet::new(
+            builder
+                .into_inner()
+                .expect("memory builder should not fail"),
+        )
+        .expect("FST construction from valid builder should not fail");
     }
 }
 
@@ -179,9 +245,19 @@ impl FromIterator<Vec<u8>> for FstTombstoneSet<Vec<u8>> {
 
         let mut builder = SetBuilder::memory();
         for key in keys {
-            builder.insert(key).unwrap();
+            // FST builder insert only fails if keys are not sorted, which we ensure above
+            builder
+                .insert(key)
+                .expect("keys are sorted, insert should not fail");
         }
-        Self::from_fst(FstSet::new(builder.into_inner().unwrap()).unwrap())
+        Self::from_fst(
+            FstSet::new(
+                builder
+                    .into_inner()
+                    .expect("memory builder should not fail"),
+            )
+            .expect("FST construction from valid builder should not fail"),
+        )
     }
 }
 
@@ -193,8 +269,18 @@ impl FromIterator<String> for FstTombstoneSet<String> {
 
         let mut builder = SetBuilder::memory();
         for key in keys {
-            builder.insert(key).unwrap();
+            // FST builder insert only fails if keys are not sorted, which we ensure above
+            builder
+                .insert(key)
+                .expect("keys are sorted, insert should not fail");
         }
-        Self::from_fst(FstSet::new(builder.into_inner().unwrap()).unwrap())
+        Self::from_fst(
+            FstSet::new(
+                builder
+                    .into_inner()
+                    .expect("memory builder should not fail"),
+            )
+            .expect("FST construction from valid builder should not fail"),
+        )
     }
 }

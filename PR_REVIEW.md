@@ -1,0 +1,181 @@
+# PR Review: Add RoaringBitmap and FST Tombstone Storage
+
+## Overview
+This PR adds efficient tombstone storage implementations for `SetUnionWithTombstones` and `MapUnionWithTombstones` using RoaringBitmap (for integers) and FST (for strings/bytes).
+
+## Files Changed
+- `lattices/Cargo.toml` - Added dependencies: `roaring = "0.10"`, `fst = "0.4"`
+- `lattices/src/lib.rs` - Added `pub mod tombstone;`
+- `lattices/src/tombstone.rs` - **NEW** Shared tombstone implementations
+- `lattices/src/set_union_with_tombstones.rs` - Enhanced with specialized implementations
+- `lattices/src/map_union_with_tombstones.rs` - Enhanced with specialized implementations
+
+---
+
+## Issues Found
+
+### 🔴 CRITICAL
+
+#### 1. Public API Exposure in `tombstone.rs`
+**Location:** `lattices/src/tombstone.rs:18, 75`
+```rust
+pub(crate) bitmap: RoaringTreemap,
+pub(crate) fst: FstSet<Vec<u8>>,
+```
+**Issue:** These fields are marked `pub(crate)` which allows internal access but breaks encapsulation. The specialized merge implementations directly access `.bitmap` field.
+
+**In merge implementations:**
+```rust
+self.tombstones.bitmap = &self.tombstones.bitmap | &other.tombstones.bitmap;
+```
+
+**Recommendation:** 
+- Make fields fully private
+- Add public methods for operations needed by merge:
+  ```rust
+  pub fn union_with(&mut self, other: &Self) {
+      self.bitmap = &self.bitmap | &other.bitmap;
+  }
+  ```
+
+---
+
+### 🟡 MEDIUM
+
+#### 2. Missing `cc_traits::Get` Implementation
+**Location:** `lattices/src/tombstone.rs`
+
+**Issue:** The generic merge implementation in `set_union_with_tombstones.rs` requires:
+```rust
+TombstoneSetSelf: Extend<Item> + Len + for<'a> Get<&'a Item>
+```
+
+But `RoaringTombstoneSet` and `FstTombstoneSet` don't implement `Get<&u64>` or `Get<&String>`. They only have a `contains()` method.
+
+**Impact:** The specialized implementations work, but if someone tries to use these types with the generic implementation, they'll get a compile error.
+
+**Recommendation:** Either:
+- Implement the `Get` trait properly
+- Document that these types are only meant for use with specialized implementations
+- Add a compile-time check/test
+
+#### 3. Inconsistent Error Handling
+**Location:** `lattices/src/tombstone.rs:149, 161, 175, 189`
+
+**Issue:** Multiple `.unwrap()` calls without error handling:
+```rust
+builder.insert(key).unwrap();
+self.fst = FstSet::new(builder.into_inner().unwrap()).unwrap();
+```
+
+**Recommendation:** 
+- Document why these can't fail (FST builder errors are rare)
+- Or use `expect()` with descriptive messages
+- Consider returning `Result` if failures are possible
+
+#### 4. Performance: Unnecessary Allocations in FST Extend
+**Location:** `lattices/src/tombstone.rs:140-152`
+
+**Issue:** The `Extend` implementation for `FstTombstoneSet` rebuilds the entire FST on every extend:
+```rust
+fn extend<T: IntoIterator<Item = Vec<u8>>>(&mut self, iter: T) {
+    let mut keys: Vec<_> = self.fst.stream().into_strs().unwrap();  // Allocates
+    keys.extend(...);  // More allocation
+    keys.sort();  // O(n log n)
+    keys.dedup();
+    // Rebuild entire FST
+}
+```
+
+**Recommendation:**
+- Document that `extend()` is expensive and users should batch insertions
+- Consider adding a `from_iter` constructor that's more efficient
+- Add a note in module docs about performance characteristics
+
+---
+
+### 🟢 MINOR
+
+#### 5. Missing Documentation
+**Location:** `lattices/src/tombstone.rs`
+
+**Issue:** The module has minimal documentation. Missing:
+- Module-level docs explaining when to use each type
+- Performance characteristics
+- Thread safety notes
+- Examples
+
+**Recommendation:** Add comprehensive module docs similar to what we added to `set_union_with_tombstones.rs`
+
+#### 6. Test Coverage Gaps
+**Current tests:**
+- ✅ Basic operations
+- ✅ Merge efficiency
+- ✅ Lattice properties (idempotency, commutativity)
+- ❌ Large datasets (performance validation)
+- ❌ Edge cases (empty FST union, single-element bitmaps)
+- ❌ Error conditions (if any)
+
+**Recommendation:** Add tests for:
+- Very large tombstone sets (1M+ items)
+- Empty set operations
+- Single-element operations
+
+#### 7. Type Alias Naming Inconsistency
+**Location:** `lattices/src/set_union_with_tombstones.rs:393-401`
+
+**Issue:** Type aliases are verbose:
+```rust
+pub type SetUnionWithTombstonesRoaring = ...
+pub type SetUnionWithTombstonesFstString = ...
+pub type SetUnionWithTombstonesFstBytes = ...
+```
+
+**Observation:** These are consistent with existing naming (`SetUnionWithTombstonesHashSet`), so this is actually fine. No action needed.
+
+#### 8. Dependency Versions
+**Location:** `lattices/Cargo.toml`
+
+**Issue:** Using loose version constraints:
+```toml
+roaring = "0.10"
+fst = "0.4"
+```
+
+**Recommendation:** Consider if these should be more specific (e.g., `"0.10.6"`) or if loose is intentional for flexibility.
+
+---
+
+## Positive Observations ✅
+
+1. **Excellent Documentation** - Module-level docs with performance tables and examples
+2. **Good Test Coverage** - 11 tests for sets, 8 for maps
+3. **Code Reuse** - Shared `tombstone.rs` module eliminates duplication
+4. **Type Safety** - Specialized implementations prevent misuse
+5. **Performance** - Bitmap OR and FST union are very efficient
+6. **Backwards Compatible** - Existing code continues to work
+
+---
+
+## Recommendations Summary
+
+### Must Fix Before Merge:
+1. ✅ Fix `pub(crate)` field access - add proper methods
+2. ✅ Add error handling or document why unwraps are safe
+
+### Should Fix:
+3. Add `Get` trait implementation or document limitation
+4. Add module-level docs to `tombstone.rs`
+5. Document FST `extend()` performance characteristics
+
+### Nice to Have:
+6. Add more edge case tests
+7. Consider tighter dependency versions
+
+---
+
+## Conclusion
+
+This is a **high-quality PR** with excellent documentation and test coverage. The main issues are around encapsulation (field access) and error handling. Once those are addressed, this is ready to merge.
+
+**Estimated time to fix critical issues:** 30 minutes

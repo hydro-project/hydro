@@ -145,7 +145,7 @@ impl Merge<SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>>
         let old_tombstones_len = self.tombstones.len();
 
         // OR the roaring bitmaps together - O(n) where n is bitmap size, very fast!
-        self.tombstones.bitmap = &self.tombstones.bitmap | &other.tombstones.bitmap;
+        self.tombstones.union_with(&other.tombstones);
 
         // Merge other.set into self.set, filtering out tombstoned items
         self.set.extend(
