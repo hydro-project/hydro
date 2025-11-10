@@ -18,7 +18,7 @@ use trybuild_internals_api::{Runner, dependencies, features, path};
 #[cfg(feature = "deploy")]
 use super::rewriters::UseTestModeStaged;
 
-pub const HYDRO_RUNTIME_FEATURES: &[&str] = &["deploy_integration", "runtime_measure"];
+pub const HYDRO_RUNTIME_FEATURES: &[&str] = &["deploy_integration", "runtime_measure", "runtime_mimalloc"];
 
 pub(crate) static IS_TEST: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
@@ -180,6 +180,9 @@ pub fn compile_graph_trybuild(
         use hydro_lang::prelude::*;
         use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
         pub use #trybuild_crate_name_ident::__staged;
+
+        #[global_allocator]
+        static GLOBAL: hydro_lang::runtime_support::mimalloc::MiMalloc = hydro_lang::runtime_support::mimalloc::MiMalloc;
 
         #[allow(unused)]
         fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::__staged::deploy::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
