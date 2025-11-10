@@ -13,12 +13,13 @@
 //! - **Lookup speed:** Excellent (O(1))
 //! - **False positives:** None
 //!
-//! ## [`FstTombstoneSet<String>`] and [`FstTombstoneSet<Vec<u8>>`]
-//! - **Best for:** String or byte array keys
+//! ## [`FstTombstoneSet<String>`]
+//! - **Best for:** String keys (UTF-8 text)
 //! - **Space efficiency:** Very good (FST compression)
 //! - **Merge speed:** Good (FST union operation)
 //! - **Lookup speed:** Very good (logarithmic)
 //! - **False positives:** None (collision-free)
+//! - **Note:** For arbitrary byte sequences, encode them as hex or base64 strings first
 //!
 //! # Performance Considerations
 //!
@@ -172,43 +173,9 @@ impl<Item> FstTombstoneSet<Item> {
     }
 }
 
-impl Len for FstTombstoneSet<Vec<u8>> {
-    fn len(&self) -> usize {
-        self.fst.len()
-    }
-}
-
 impl Len for FstTombstoneSet<String> {
     fn len(&self) -> usize {
         self.fst.len()
-    }
-}
-
-// For Vec<u8> items
-impl Extend<Vec<u8>> for FstTombstoneSet<Vec<u8>> {
-    fn extend<T: IntoIterator<Item = Vec<u8>>>(&mut self, iter: T) {
-        let mut keys: Vec<_> = self.fst.stream().into_strs().unwrap();
-        keys.extend(
-            iter.into_iter()
-                .map(|v| String::from_utf8_lossy(&v).into_owned()),
-        );
-        keys.sort();
-        keys.dedup();
-
-        let mut builder = SetBuilder::memory();
-        for key in keys {
-            // FST builder insert only fails if keys are not sorted, which we ensure above
-            builder
-                .insert(key)
-                .expect("keys are sorted, insert should not fail");
-        }
-        // Memory builder and FST construction should not fail for valid sorted keys
-        self.fst = FstSet::new(
-            builder
-                .into_inner()
-                .expect("memory builder should not fail"),
-        )
-        .expect("FST construction from valid builder should not fail");
     }
 }
 
@@ -234,30 +201,6 @@ impl Extend<String> for FstTombstoneSet<String> {
                 .expect("memory builder should not fail"),
         )
         .expect("FST construction from valid builder should not fail");
-    }
-}
-
-impl FromIterator<Vec<u8>> for FstTombstoneSet<Vec<u8>> {
-    fn from_iter<T: IntoIterator<Item = Vec<u8>>>(iter: T) -> Self {
-        let mut keys: Vec<_> = iter.into_iter().collect();
-        keys.sort();
-        keys.dedup();
-
-        let mut builder = SetBuilder::memory();
-        for key in keys {
-            // FST builder insert only fails if keys are not sorted, which we ensure above
-            builder
-                .insert(key)
-                .expect("keys are sorted, insert should not fail");
-        }
-        Self::from_fst(
-            FstSet::new(
-                builder
-                    .into_inner()
-                    .expect("memory builder should not fail"),
-            )
-            .expect("FST construction from valid builder should not fail"),
-        )
     }
 }
 

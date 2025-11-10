@@ -19,12 +19,7 @@
 //! - Maintains sorted order
 //! - Example: `SetUnionWithTombstonesFstString::new_from(HashSet::from(["a".to_string()]), FstTombstoneSet::new())`
 //!
-//! ## For Byte Array Keys
-//! Use [`SetUnionWithTombstonesFstBytes`] with [`FstTombstoneSet<Vec<u8>>`]:
-//! - Same benefits as FST for strings
-//! - Works with arbitrary byte sequences
-//! - Example: `SetUnionWithTombstonesFstBytes::new_from(HashSet::from([vec![1, 2, 3]]), FstTombstoneSet::new())`
-//!
+
 //! ## For Other Types
 //! Use the generic [`SetUnionWithTombstones`] with [`HashSet`] for both sets:
 //! - Works with any `Hash + Eq` type
@@ -191,39 +186,6 @@ impl Merge<SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>>
         // Remove any items from self.set that are now tombstoned
         self.set
             .retain(|item| !self.tombstones.contains(item.as_bytes()));
-
-        // Check if anything changed
-        old_set_len != self.set.len() || old_tombstones_len < self.tombstones.len()
-    }
-}
-
-// Specialized merge implementation for FstTombstoneSet with HashSet<Vec<u8>>
-// This is efficient because:
-// 1. We can union the FSTs directly (compressed set operation)
-// 2. FST provides fast membership testing with zero false positives
-impl Merge<SetUnionWithTombstones<HashSet<Vec<u8>>, FstTombstoneSet<Vec<u8>>>>
-    for SetUnionWithTombstones<HashSet<Vec<u8>>, FstTombstoneSet<Vec<u8>>>
-{
-    fn merge(
-        &mut self,
-        other: SetUnionWithTombstones<HashSet<Vec<u8>>, FstTombstoneSet<Vec<u8>>>,
-    ) -> bool {
-        let old_set_len = self.set.len();
-        let old_tombstones_len = self.tombstones.len();
-
-        // Union the FSTs together - efficient compressed set union
-        self.tombstones = self.tombstones.union(&other.tombstones);
-
-        // Merge other.set into self.set, filtering out tombstoned items
-        self.set.extend(
-            other
-                .set
-                .into_iter()
-                .filter(|item| !self.tombstones.contains(item)),
-        );
-
-        // Remove any items from self.set that are now tombstoned
-        self.set.retain(|item| !self.tombstones.contains(item));
 
         // Check if anything changed
         old_set_len != self.set.len() || old_tombstones_len < self.tombstones.len()
@@ -422,10 +384,7 @@ pub type SetUnionWithTombstonesRoaring = SetUnionWithTombstones<HashSet<u64>, Ro
 pub type SetUnionWithTombstonesFstString =
     SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>;
 
-/// FST-backed tombstone set with [`std::collections::HashSet`] for the main set.
-/// Provides space-efficient, collision-free tombstone storage for Vec<u8> keys.
-pub type SetUnionWithTombstonesFstBytes =
-    SetUnionWithTombstones<HashSet<Vec<u8>>, FstTombstoneSet<Vec<u8>>>;
+
 
 #[cfg(test)]
 mod test {
@@ -571,29 +530,6 @@ mod test {
         assert!(x.as_reveal_ref().0.contains("cherry"));
         assert!(x.as_reveal_ref().0.contains("date"));
         assert!(x.as_reveal_ref().1.contains(b"banana"));
-    }
-
-    #[test]
-    fn fst_bytes_basic() {
-        let mut x = SetUnionWithTombstonesFstBytes::new_from(
-            HashSet::from([vec![1, 2, 3], vec![4, 5, 6]]),
-            FstTombstoneSet::new(),
-        );
-        let mut y = SetUnionWithTombstonesFstBytes::new_from(
-            HashSet::from([vec![4, 5, 6], vec![7, 8, 9]]),
-            FstTombstoneSet::new(),
-        );
-
-        // Add tombstone for [4, 5, 6]
-        y.as_reveal_mut().1.extend(vec![vec![4, 5, 6]]);
-
-        x.merge(y);
-
-        // Should have [1,2,3] and [7,8,9] but not [4,5,6]
-        assert!(!x.as_reveal_ref().0.contains(&vec![4, 5, 6]));
-        assert!(x.as_reveal_ref().0.contains(&vec![1, 2, 3]));
-        assert!(x.as_reveal_ref().0.contains(&vec![7, 8, 9]));
-        assert!(x.as_reveal_ref().1.contains(&[4, 5, 6]));
     }
 
     #[test]

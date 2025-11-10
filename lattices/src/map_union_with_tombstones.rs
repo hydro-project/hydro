@@ -19,12 +19,7 @@
 //! - Maintains sorted order
 //! - Example: `MapUnionWithTombstonesFstString::new_from(HashMap::from([("key".to_string(), value)]), FstTombstoneSet::new())`
 //!
-//! ## For Byte Array Keys
-//! Use [`MapUnionWithTombstonesFstBytes`] with [`crate::tombstone::FstTombstoneSet<Vec<u8>>`]:
-//! - Same benefits as FST for strings
-//! - Works with arbitrary byte sequences
-//! - Example: `MapUnionWithTombstonesFstBytes::new_from(HashMap::from([(vec![1, 2, 3], value)]), FstTombstoneSet::new())`
-//!
+
 //! ## For Other Types
 //! Use the generic [`MapUnionWithTombstones`] with [`HashSet`] for tombstones:
 //! - Works with any `Hash + Eq` key type
@@ -389,11 +384,6 @@ pub type MapUnionWithTombstonesRoaring<Val> =
 pub type MapUnionWithTombstonesFstString<Val> =
     MapUnionWithTombstones<HashMap<String, Val>, FstTombstoneSet<String>>;
 
-/// FST-backed tombstone set with [`HashMap`] for the main map.
-/// Provides space-efficient, collision-free tombstone storage for Vec<u8> keys.
-pub type MapUnionWithTombstonesFstBytes<Val> =
-    MapUnionWithTombstones<HashMap<Vec<u8>, Val>, FstTombstoneSet<Vec<u8>>>;
-
 // Specialized merge implementation for RoaringTombstoneSet with HashMap<u64, Val>
 // This is highly efficient because:
 // 1. We can OR the roaring bitmaps directly (very fast)
@@ -488,54 +478,6 @@ where
         // Remove any keys from the map that are now tombstoned
         self.map
             .retain(|k, _| !self.tombstones.contains(k.as_bytes()));
-
-        changed
-    }
-}
-
-// Specialized merge implementation for FstTombstoneSet<Vec<u8>> with HashMap<Vec<u8>, Val>
-impl<Val, ValOther>
-    Merge<MapUnionWithTombstones<HashMap<Vec<u8>, ValOther>, FstTombstoneSet<Vec<u8>>>>
-    for MapUnionWithTombstones<HashMap<Vec<u8>, Val>, FstTombstoneSet<Vec<u8>>>
-where
-    Val: Merge<ValOther> + LatticeFrom<ValOther>,
-    ValOther: IsBot,
-{
-    fn merge(
-        &mut self,
-        other: MapUnionWithTombstones<HashMap<Vec<u8>, ValOther>, FstTombstoneSet<Vec<u8>>>,
-    ) -> bool {
-        let mut changed = false;
-
-        // Union the FSTs together - efficient compressed set union
-        let old_tombstones_len = self.tombstones.len();
-        self.tombstones = self.tombstones.union(&other.tombstones);
-        if old_tombstones_len != self.tombstones.len() {
-            changed = true;
-        }
-
-        // Merge the maps, filtering out tombstoned keys
-        let iter: Vec<_> = other
-            .map
-            .into_iter()
-            .filter(|(k_other, val_other)| {
-                !val_other.is_bot() && !self.tombstones.contains(k_other)
-            })
-            .filter_map(|(k_other, val_other)| match self.map.get_mut(&k_other) {
-                Some(val_self) => {
-                    changed |= val_self.merge(val_other);
-                    None
-                }
-                None => {
-                    changed = true;
-                    Some((k_other, Val::lattice_from(val_other)))
-                }
-            })
-            .collect();
-        self.map.extend(iter);
-
-        // Remove any keys from the map that are now tombstoned
-        self.map.retain(|k, _| !self.tombstones.contains(k));
 
         changed
     }
@@ -697,35 +639,6 @@ mod test {
         assert!(x.as_reveal_ref().0.contains_key("apple"));
         assert!(x.as_reveal_ref().0.contains_key("cherry"));
         assert!(x.as_reveal_ref().1.contains(b"banana"));
-    }
-
-    #[test]
-    fn fst_bytes_basic() {
-        let mut x = MapUnionWithTombstonesFstBytes::new_from(
-            HashMap::from([
-                (vec![1, 2], SetUnionHashSet::new_from([10])),
-                (vec![3, 4], SetUnionHashSet::new_from([20])),
-            ]),
-            FstTombstoneSet::new(),
-        );
-        let mut y = MapUnionWithTombstonesFstBytes::new_from(
-            HashMap::from([
-                (vec![3, 4], SetUnionHashSet::new_from([21])),
-                (vec![5, 6], SetUnionHashSet::new_from([30])),
-            ]),
-            FstTombstoneSet::new(),
-        );
-
-        // Add tombstone for [3, 4]
-        y.as_reveal_mut().1.extend(vec![vec![3, 4]]);
-
-        x.merge(y);
-
-        // Should have [1,2] and [5,6], but not [3,4] (tombstoned)
-        assert!(!x.as_reveal_ref().0.contains_key(&vec![3, 4]));
-        assert!(x.as_reveal_ref().0.contains_key(&vec![1, 2]));
-        assert!(x.as_reveal_ref().0.contains_key(&vec![5, 6]));
-        assert!(x.as_reveal_ref().1.contains(&[3, 4]));
     }
 
     #[test]
