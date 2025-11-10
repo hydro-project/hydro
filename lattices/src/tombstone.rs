@@ -140,7 +140,10 @@ impl Len for FstTombstoneSet<String> {
 impl Extend<Vec<u8>> for FstTombstoneSet<Vec<u8>> {
     fn extend<T: IntoIterator<Item = Vec<u8>>>(&mut self, iter: T) {
         let mut keys: Vec<_> = self.fst.stream().into_strs().unwrap();
-        keys.extend(iter.into_iter().map(|v| String::from_utf8_lossy(&v).into_owned()));
+        keys.extend(
+            iter.into_iter()
+                .map(|v| String::from_utf8_lossy(&v).into_owned()),
+        );
         keys.sort();
         keys.dedup();
 

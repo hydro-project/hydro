@@ -644,11 +644,17 @@ mod test {
     #[test]
     fn roaring_u64_basic() {
         let mut x = MapUnionWithTombstonesRoaring::new_from(
-            HashMap::from([(1u64, SetUnionHashSet::new_from([10])), (2, SetUnionHashSet::new_from([20]))]),
+            HashMap::from([
+                (1u64, SetUnionHashSet::new_from([10])),
+                (2, SetUnionHashSet::new_from([20])),
+            ]),
             RoaringTombstoneSet::new(),
         );
         let mut y = MapUnionWithTombstonesRoaring::new_from(
-            HashMap::from([(2u64, SetUnionHashSet::new_from([21])), (3, SetUnionHashSet::new_from([30]))]),
+            HashMap::from([
+                (2u64, SetUnionHashSet::new_from([21])),
+                (3, SetUnionHashSet::new_from([30])),
+            ]),
             RoaringTombstoneSet::new(),
         );
 
