@@ -282,6 +282,7 @@ pub struct AwsEc2Host {
 
     region: String,
     instance_type: String,
+    target_type: HostTargetType,
     ami: String,
     network: Arc<RwLock<AwsNetwork>>,
     user: Option<String>,
@@ -304,6 +305,7 @@ impl AwsEc2Host {
         id: usize,
         region: impl Into<String>,
         instance_type: impl Into<String>,
+        target_type: HostTargetType,
         ami: impl Into<String>,
         network: Arc<RwLock<AwsNetwork>>,
         user: Option<String>,
@@ -313,6 +315,7 @@ impl AwsEc2Host {
             id,
             region: region.into(),
             instance_type: instance_type.into(),
+            target_type,
             ami: ami.into(),
             network,
             user,
@@ -326,7 +329,7 @@ impl AwsEc2Host {
 #[async_trait]
 impl Host for AwsEc2Host {
     fn target_type(&self) -> HostTargetType {
-        HostTargetType::Linux
+        self.target_type
     }
 
     fn request_port_base(&self, bind_type: &BaseServerStrategy) {

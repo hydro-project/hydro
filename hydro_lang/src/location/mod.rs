@@ -207,7 +207,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         };
 
         self.source_iter(q!(underlying_memberids))
-            .map(q!(|id| (*id, MembershipEvent::Joined)))
+            .map(q!(|id| (id.clone(), MembershipEvent::Joined)))
             .into_keyed()
     }
 

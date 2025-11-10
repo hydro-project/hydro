@@ -174,6 +174,7 @@ pub struct GcpComputeEngineHost {
     project: String,
     machine_type: String,
     image: String,
+    target_type: HostTargetType,
     region: String,
     network: Arc<RwLock<GcpNetwork>>,
     user: Option<String>,
@@ -198,6 +199,7 @@ impl GcpComputeEngineHost {
         project: impl Into<String>,
         machine_type: impl Into<String>,
         image: impl Into<String>,
+        target_type: HostTargetType,
         region: impl Into<String>,
         network: Arc<RwLock<GcpNetwork>>,
         user: Option<String>,
@@ -208,6 +210,7 @@ impl GcpComputeEngineHost {
             project: project.into(),
             machine_type: machine_type.into(),
             image: image.into(),
+            target_type,
             region: region.into(),
             network,
             user,
@@ -221,7 +224,7 @@ impl GcpComputeEngineHost {
 #[async_trait]
 impl Host for GcpComputeEngineHost {
     fn target_type(&self) -> HostTargetType {
-        HostTargetType::Linux
+        self.target_type
     }
 
     fn request_port_base(&self, bind_type: &BaseServerStrategy) {
