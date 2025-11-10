@@ -50,6 +50,7 @@ pub struct AzureHost {
     os_type: String, // linux or windows
     machine_size: String,
     image: Option<HashMap<String, String>>,
+    target_type: HostTargetType,
     region: String,
     user: Option<String>,
     pub launched: OnceLock<Arc<LaunchedVirtualMachine>>, // TODO(mingwei): fix pub
@@ -63,6 +64,7 @@ impl AzureHost {
         os_type: String, // linux or windows
         machine_size: String,
         image: Option<HashMap<String, String>>,
+        target_type: HostTargetType,
         region: String,
         user: Option<String>,
     ) -> Self {
@@ -72,6 +74,7 @@ impl AzureHost {
             os_type,
             machine_size,
             image,
+            target_type,
             region,
             user,
             launched: OnceLock::new(),
@@ -89,7 +92,7 @@ impl Debug for AzureHost {
 #[async_trait]
 impl Host for AzureHost {
     fn target_type(&self) -> HostTargetType {
-        HostTargetType::Linux
+        self.target_type
     }
 
     fn request_port_base(&self, bind_type: &BaseServerStrategy) {
