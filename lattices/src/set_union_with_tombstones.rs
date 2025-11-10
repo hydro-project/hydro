@@ -2,9 +2,9 @@
 
 use std::cmp::Ordering::{self, *};
 use std::collections::{BTreeSet, HashSet};
-use std::hash::{Hash, Hasher};
 
 use cc_traits::{Collection, Get, Remove};
+use fst::{IntoStreamer, Set as FstSet, SetBuilder, Streamer};
 use roaring::RoaringTreemap;
 
 use crate::cc_traits::{Iter, Len, Set};
@@ -91,56 +91,97 @@ where
     }
 }
 
-// Specialized merge implementation for RoaringTombstoneSet with HashSet
-// This is more efficient because we can OR the roaring bitmaps directly,
-// and we iterate through the smaller set to check against tombstones.
-impl<Item>
-    Merge<SetUnionWithTombstones<HashSet<Item>, RoaringTombstoneSet<Item>>>
-    for SetUnionWithTombstones<HashSet<Item>, RoaringTombstoneSet<Item>>
-where
-    Item: Hash + Eq + Clone,
+// Specialized merge implementation for RoaringTombstoneSet with HashSet<u64>
+// This is highly efficient because:
+// 1. We can OR the roaring bitmaps directly (very fast)
+// 2. We can use the bitmap's efficient contains() for lookups
+impl Merge<SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>>
+    for SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>
 {
-    fn merge(&mut self, other: SetUnionWithTombstones<HashSet<Item>, RoaringTombstoneSet<Item>>) -> bool {
+    fn merge(&mut self, other: SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>) -> bool {
         let old_set_len = self.set.len();
         let old_tombstones_len = self.tombstones.len();
 
-        // OR the roaring bitmaps together first - this is the key efficiency win!
+        // OR the roaring bitmaps together - O(n) where n is bitmap size, very fast!
         self.tombstones.bitmap = &self.tombstones.bitmap | &other.tombstones.bitmap;
 
-        // Now merge the sets, removing any items that are in the combined tombstones
-        // Determine which set is smaller to iterate through for tombstone checking
-        if self.set.len() <= other.set.len() {
-            // Self is smaller: iterate through self, check against combined tombstones, remove matches
-            let to_remove: Vec<_> = self.set.iter()
-                .filter(|item| self.tombstones.contains(item))
-                .cloned()
-                .collect();
-            for item in to_remove {
-                self.set.remove(&item);
-            }
-            
-            // Add items from other that aren't in combined tombstones
-            self.set.extend(
-                other.set.into_iter()
-                    .filter(|item| !self.tombstones.contains(item))
-            );
-        } else {
-            // Other is smaller: add items from other that aren't in combined tombstones
-            // Then check self for items in combined tombstones
-            self.set.extend(
-                other.set.into_iter()
-                    .filter(|item| !self.tombstones.contains(item))
-            );
-            
-            // Remove items from self that are in combined tombstones
-            let to_remove: Vec<_> = self.set.iter()
-                .filter(|item| self.tombstones.contains(item))
-                .cloned()
-                .collect();
-            for item in to_remove {
-                self.set.remove(&item);
-            }
-        }
+        // Merge other.set into self.set, filtering out tombstoned items
+        self.set.extend(
+            other
+                .set
+                .into_iter()
+                .filter(|item| !self.tombstones.contains(item)),
+        );
+
+        // Remove any items from self.set that are now tombstoned
+        self.set.retain(|item| !self.tombstones.contains(item));
+
+        // Check if anything changed
+        old_set_len != self.set.len() || old_tombstones_len < self.tombstones.len()
+    }
+}
+
+// Specialized merge implementation for FstTombstoneSet with HashSet<String>
+// This is efficient because:
+// 1. We can union the FSTs directly (compressed set operation)
+// 2. FST provides fast membership testing with zero false positives
+impl Merge<SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>>
+    for SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>
+{
+    fn merge(
+        &mut self,
+        other: SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>,
+    ) -> bool {
+        let old_set_len = self.set.len();
+        let old_tombstones_len = self.tombstones.len();
+
+        // Union the FSTs together - efficient compressed set union
+        self.tombstones = self.tombstones.union(&other.tombstones);
+
+        // Merge other.set into self.set, filtering out tombstoned items
+        self.set.extend(
+            other
+                .set
+                .into_iter()
+                .filter(|item| !self.tombstones.contains(item.as_bytes())),
+        );
+
+        // Remove any items from self.set that are now tombstoned
+        self.set
+            .retain(|item| !self.tombstones.contains(item.as_bytes()));
+
+        // Check if anything changed
+        old_set_len != self.set.len() || old_tombstones_len < self.tombstones.len()
+    }
+}
+
+// Specialized merge implementation for FstTombstoneSet with HashSet<Vec<u8>>
+// This is efficient because:
+// 1. We can union the FSTs directly (compressed set operation)
+// 2. FST provides fast membership testing with zero false positives
+impl Merge<SetUnionWithTombstones<HashSet<Vec<u8>>, FstTombstoneSet<Vec<u8>>>>
+    for SetUnionWithTombstones<HashSet<Vec<u8>>, FstTombstoneSet<Vec<u8>>>
+{
+    fn merge(
+        &mut self,
+        other: SetUnionWithTombstones<HashSet<Vec<u8>>, FstTombstoneSet<Vec<u8>>>,
+    ) -> bool {
+        let old_set_len = self.set.len();
+        let old_tombstones_len = self.tombstones.len();
+
+        // Union the FSTs together - efficient compressed set union
+        self.tombstones = self.tombstones.union(&other.tombstones);
+
+        // Merge other.set into self.set, filtering out tombstoned items
+        self.set.extend(
+            other
+                .set
+                .into_iter()
+                .filter(|item| !self.tombstones.contains(item)),
+        );
+
+        // Remove any items from self.set that are now tombstoned
+        self.set.retain(|item| !self.tombstones.contains(item));
 
         // Check if anything changed
         old_set_len != self.set.len() || old_tombstones_len < self.tombstones.len()
@@ -304,64 +345,190 @@ impl<Set, TombstoneSet> IsTop for SetUnionWithTombstones<Set, TombstoneSet> {
     }
 }
 
-/// A tombstone set backed by [`RoaringTreemap`] that stores hashes of items.
-/// This provides space-efficient storage for tombstones of any hashable type.
-/// 
-/// Note: This uses hashing, so there's a theoretical possibility of hash collisions,
-/// though this is extremely unlikely with 64-bit hashes.
+/// A tombstone set backed by [`RoaringTreemap`] for u64 integer keys.
+/// This provides space-efficient bitmap compression for integer tombstones.
 #[derive(Default, Clone, Debug)]
-pub struct RoaringTombstoneSet<Item> {
+pub struct RoaringTombstoneSet {
     bitmap: RoaringTreemap,
-    _phantom: std::marker::PhantomData<Item>,
 }
 
-impl<Item> RoaringTombstoneSet<Item> {
+impl RoaringTombstoneSet {
     /// Create a new empty `RoaringTombstoneSet`.
     pub fn new() -> Self {
         Self {
             bitmap: RoaringTreemap::new(),
+        }
+    }
+
+    /// Check if an item is in the tombstone set.
+    pub fn contains(&self, item: &u64) -> bool {
+        self.bitmap.contains(*item)
+    }
+
+    /// Insert an item into the tombstone set.
+    pub fn insert(&mut self, item: u64) -> bool {
+        self.bitmap.insert(item)
+    }
+}
+
+impl Extend<u64> for RoaringTombstoneSet {
+    fn extend<T: IntoIterator<Item = u64>>(&mut self, iter: T) {
+        self.bitmap.extend(iter);
+    }
+}
+
+impl Len for RoaringTombstoneSet {
+    fn len(&self) -> usize {
+        self.bitmap.len() as usize
+    }
+}
+
+impl IntoIterator for RoaringTombstoneSet {
+    type Item = u64;
+    type IntoIter = roaring::treemap::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.bitmap.into_iter()
+    }
+}
+
+impl FromIterator<u64> for RoaringTombstoneSet {
+    fn from_iter<T: IntoIterator<Item = u64>>(iter: T) -> Self {
+        Self {
+            bitmap: RoaringTreemap::from_iter(iter),
+        }
+    }
+}
+
+/// A tombstone set backed by FST (Finite State Transducer) for byte string keys.
+/// This provides space-efficient storage with zero false positives for any type
+/// that can be serialized to bytes (strings, serialized structs, etc.).
+/// FST maintains keys in sorted order and supports efficient set operations.
+#[derive(Clone, Debug)]
+pub struct FstTombstoneSet<Item> {
+    fst: FstSet<Vec<u8>>,
+    _phantom: std::marker::PhantomData<Item>,
+}
+
+impl<Item> Default for FstTombstoneSet<Item> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Item> FstTombstoneSet<Item> {
+    /// Create a new empty `FstTombstoneSet`.
+    pub fn new() -> Self {
+        Self {
+            fst: FstSet::default(),
             _phantom: std::marker::PhantomData,
         }
     }
 
-    /// Hash an item to u64 for storage in the bitmap.
-    fn hash_item(item: &Item) -> u64
-    where
-        Item: Hash,
-    {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        item.hash(&mut hasher);
-        hasher.finish()
-    }
-    
-    /// Check if an item is in the tombstone set.
-    pub fn contains(&self, item: &Item) -> bool
-    where
-        Item: Hash,
-    {
-        self.bitmap.contains(Self::hash_item(item))
-    }
-    
-    /// Insert an item into the tombstone set.
-    pub fn insert(&mut self, item: &Item) -> bool
-    where
-        Item: Hash,
-    {
-        self.bitmap.insert(Self::hash_item(item))
-    }
-}
-
-impl<Item: Hash> Extend<Item> for RoaringTombstoneSet<Item> {
-    fn extend<T: IntoIterator<Item = Item>>(&mut self, iter: T) {
-        for item in iter {
-            self.bitmap.insert(Self::hash_item(&item));
+    /// Create from an existing FST set.
+    fn from_fst(fst: FstSet<Vec<u8>>) -> Self {
+        Self {
+            fst,
+            _phantom: std::marker::PhantomData,
         }
     }
+
+    /// Check if an item is in the tombstone set.
+    pub fn contains(&self, item: &[u8]) -> bool {
+        self.fst.contains(item)
+    }
+
+    /// Get the number of items in the set.
+    pub fn len(&self) -> usize {
+        self.fst.len()
+    }
+
+    /// Check if the set is empty.
+    pub fn is_empty(&self) -> bool {
+        self.fst.is_empty()
+    }
+
+    /// Union this FST with another, returning a new FST.
+    pub fn union(&self, other: &Self) -> Self {
+        let union_stream = self.fst.op().add(&other.fst).union();
+        let mut builder = SetBuilder::memory();
+        let mut stream = union_stream.into_stream();
+        while let Some(key) = stream.next() {
+            builder.insert(key).unwrap();
+        }
+        Self::from_fst(FstSet::new(builder.into_inner().unwrap()).unwrap())
+    }
 }
 
-impl<Item> Len for RoaringTombstoneSet<Item> {
+impl Len for FstTombstoneSet<Vec<u8>> {
     fn len(&self) -> usize {
-        self.bitmap.len() as usize
+        self.fst.len()
+    }
+}
+
+impl Len for FstTombstoneSet<String> {
+    fn len(&self) -> usize {
+        self.fst.len()
+    }
+}
+
+// For Vec<u8> items
+impl Extend<Vec<u8>> for FstTombstoneSet<Vec<u8>> {
+    fn extend<T: IntoIterator<Item = Vec<u8>>>(&mut self, iter: T) {
+        let mut keys: Vec<_> = self.fst.stream().into_strs().unwrap();
+        keys.extend(iter.into_iter().map(|v| String::from_utf8_lossy(&v).into_owned()));
+        keys.sort();
+        keys.dedup();
+
+        let mut builder = SetBuilder::memory();
+        for key in keys {
+            builder.insert(key).unwrap();
+        }
+        self.fst = FstSet::new(builder.into_inner().unwrap()).unwrap();
+    }
+}
+
+// For String items
+impl Extend<String> for FstTombstoneSet<String> {
+    fn extend<T: IntoIterator<Item = String>>(&mut self, iter: T) {
+        let mut keys: Vec<_> = self.fst.stream().into_strs().unwrap();
+        keys.extend(iter);
+        keys.sort();
+        keys.dedup();
+
+        let mut builder = SetBuilder::memory();
+        for key in keys {
+            builder.insert(key).unwrap();
+        }
+        self.fst = FstSet::new(builder.into_inner().unwrap()).unwrap();
+    }
+}
+
+impl FromIterator<Vec<u8>> for FstTombstoneSet<Vec<u8>> {
+    fn from_iter<T: IntoIterator<Item = Vec<u8>>>(iter: T) -> Self {
+        let mut keys: Vec<_> = iter.into_iter().collect();
+        keys.sort();
+        keys.dedup();
+
+        let mut builder = SetBuilder::memory();
+        for key in keys {
+            builder.insert(key).unwrap();
+        }
+        Self::from_fst(FstSet::new(builder.into_inner().unwrap()).unwrap())
+    }
+}
+
+impl FromIterator<String> for FstTombstoneSet<String> {
+    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
+        let mut keys: Vec<_> = iter.into_iter().collect();
+        keys.sort();
+        keys.dedup();
+
+        let mut builder = SetBuilder::memory();
+        for key in keys {
+            builder.insert(key).unwrap();
+        }
+        Self::from_fst(FstSet::new(builder.into_inner().unwrap()).unwrap())
     }
 }
 
@@ -392,9 +559,16 @@ pub type SetUnionWithTombstonesTombstoneOnlySet<Item> =
     SetUnionWithTombstones<EmptySet<Item>, SingletonSet<Item>>;
 
 /// [`RoaringTreemap`]-backed tombstone set with [`std::collections::HashSet`] for the main set.
-/// Provides space-efficient tombstone storage for any hashable type.
-pub type SetUnionWithTombstonesRoaring<Item> =
-    SetUnionWithTombstones<HashSet<Item>, RoaringTombstoneSet<Item>>;
+/// Provides space-efficient tombstone storage for u64 integer keys.
+pub type SetUnionWithTombstonesRoaring = SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>;
+
+/// FST-backed tombstone set with [`std::collections::HashSet`] for the main set.
+/// Provides space-efficient, collision-free tombstone storage for String keys.
+pub type SetUnionWithTombstonesFstString = SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>;
+
+/// FST-backed tombstone set with [`std::collections::HashSet`] for the main set.
+/// Provides space-efficient, collision-free tombstone storage for Vec<u8> keys.
+pub type SetUnionWithTombstonesFstBytes = SetUnionWithTombstones<HashSet<Vec<u8>>, FstTombstoneSet<Vec<u8>>>;
 
 #[cfg(test)]
 mod test {
@@ -458,19 +632,19 @@ mod test {
     #[test]
     fn roaring_basic() {
         let mut x = SetUnionWithTombstonesRoaring::new_from(
-            HashSet::from([1, 2, 3]), 
-            RoaringTombstoneSet::new()
+            HashSet::from([1, 2, 3]),
+            RoaringTombstoneSet::new(),
         );
         let mut y = SetUnionWithTombstonesRoaring::new_from(
-            HashSet::from([2, 3, 4]), 
-            RoaringTombstoneSet::new()
+            HashSet::from([2, 3, 4]),
+            RoaringTombstoneSet::new(),
         );
-        
+
         // Add tombstone for 2
-        y.as_reveal_mut().1.insert(&2);
-        
+        y.as_reveal_mut().1.insert(2);
+
         x.merge(y);
-        
+
         // Should have 1, 3, 4 (2 is tombstoned)
         assert!(!x.as_reveal_ref().0.contains(&2));
         assert!(x.as_reveal_ref().0.contains(&1));
@@ -483,34 +657,118 @@ mod test {
     fn roaring_merge_efficiency() {
         // Test that merging roaring bitmaps works correctly
         let mut x = SetUnionWithTombstonesRoaring::new_from(
-            HashSet::from([1, 2, 3, 4, 5]), 
-            RoaringTombstoneSet::new()
+            HashSet::from([1, 2, 3, 4, 5]),
+            RoaringTombstoneSet::new(),
         );
-        x.as_reveal_mut().1.insert(&10);
-        x.as_reveal_mut().1.insert(&20);
-        
+        x.as_reveal_mut().1.insert(10);
+        x.as_reveal_mut().1.insert(20);
+
         let mut y = SetUnionWithTombstonesRoaring::new_from(
-            HashSet::from([6, 7, 8]), 
-            RoaringTombstoneSet::new()
+            HashSet::from([6, 7, 8]),
+            RoaringTombstoneSet::new(),
         );
-        y.as_reveal_mut().1.insert(&30);
-        y.as_reveal_mut().1.insert(&2); // Tombstone for 2
-        
+        y.as_reveal_mut().1.insert(30);
+        y.as_reveal_mut().1.insert(2); // Tombstone for 2
+
         x.merge(y);
-        
+
         // Should have all tombstones
         assert!(x.as_reveal_ref().1.contains(&10));
         assert!(x.as_reveal_ref().1.contains(&20));
         assert!(x.as_reveal_ref().1.contains(&30));
         assert!(x.as_reveal_ref().1.contains(&2));
-        
+
         // Should not have 2 in the set
         assert!(!x.as_reveal_ref().0.contains(&2));
-        
+
         // Should have all other items
         assert!(x.as_reveal_ref().0.contains(&1));
         assert!(x.as_reveal_ref().0.contains(&3));
         assert!(x.as_reveal_ref().0.contains(&6));
         assert!(x.as_reveal_ref().0.contains(&7));
+    }
+
+    #[test]
+    fn fst_string_basic() {
+        let mut x = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from(["apple".to_string(), "banana".to_string(), "cherry".to_string()]),
+            FstTombstoneSet::new(),
+        );
+        let mut y = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from(["banana".to_string(), "date".to_string()]),
+            FstTombstoneSet::new(),
+        );
+
+        // Add tombstone for "banana"
+        y.as_reveal_mut().1.extend(vec!["banana".to_string()]);
+
+        x.merge(y);
+
+        // Should have apple, cherry, date (banana is tombstoned)
+        assert!(!x.as_reveal_ref().0.contains("banana"));
+        assert!(x.as_reveal_ref().0.contains("apple"));
+        assert!(x.as_reveal_ref().0.contains("cherry"));
+        assert!(x.as_reveal_ref().0.contains("date"));
+        assert!(x.as_reveal_ref().1.contains(b"banana"));
+    }
+
+    #[test]
+    fn fst_bytes_basic() {
+        let mut x = SetUnionWithTombstonesFstBytes::new_from(
+            HashSet::from([vec![1, 2, 3], vec![4, 5, 6]]),
+            FstTombstoneSet::new(),
+        );
+        let mut y = SetUnionWithTombstonesFstBytes::new_from(
+            HashSet::from([vec![4, 5, 6], vec![7, 8, 9]]),
+            FstTombstoneSet::new(),
+        );
+
+        // Add tombstone for [4, 5, 6]
+        y.as_reveal_mut().1.extend(vec![vec![4, 5, 6]]);
+
+        x.merge(y);
+
+        // Should have [1,2,3] and [7,8,9] but not [4,5,6]
+        assert!(!x.as_reveal_ref().0.contains(&vec![4, 5, 6]));
+        assert!(x.as_reveal_ref().0.contains(&vec![1, 2, 3]));
+        assert!(x.as_reveal_ref().0.contains(&vec![7, 8, 9]));
+        assert!(x.as_reveal_ref().1.contains(&[4, 5, 6]));
+    }
+
+    #[test]
+    fn fst_merge_efficiency() {
+        // Test that FST union works correctly with multiple tombstones
+        let mut x = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from([
+                "a".to_string(),
+                "b".to_string(),
+                "c".to_string(),
+                "d".to_string(),
+            ]),
+            FstTombstoneSet::from_iter(vec!["x".to_string(), "y".to_string()]),
+        );
+
+        let y = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from(["e".to_string(), "f".to_string()]),
+            FstTombstoneSet::from_iter(vec!["z".to_string(), "b".to_string()]),
+        );
+
+        x.merge(y);
+
+        // Should have all tombstones
+        assert!(x.as_reveal_ref().1.contains(b"x"));
+        assert!(x.as_reveal_ref().1.contains(b"y"));
+        assert!(x.as_reveal_ref().1.contains(b"z"));
+        assert!(x.as_reveal_ref().1.contains(b"b"));
+
+        // Should not have "b" in the set
+        assert!(!x.as_reveal_ref().0.contains("b"));
+
+        // Should have all other items
+        assert!(x.as_reveal_ref().0.contains("a"));
+        assert!(x.as_reveal_ref().0.contains("c"));
+        assert!(x.as_reveal_ref().0.contains("d"));
+        assert!(x.as_reveal_ref().0.contains("e"));
+        assert!(x.as_reveal_ref().0.contains("f"));
     }
 }
