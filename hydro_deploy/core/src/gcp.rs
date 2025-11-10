@@ -193,7 +193,7 @@ impl Debug for GcpComputeEngineHost {
 }
 
 impl GcpComputeEngineHost {
-    #[expect(clippy::too_many_arguments, reason = "Mainly for internal use.")]
+    #[expect(clippy::too_many_arguments, reason = "used via builder pattern")]
     pub fn new(
         id: usize,
         project: impl Into<String>,

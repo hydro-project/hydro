@@ -301,6 +301,7 @@ impl Debug for AwsEc2Host {
 }
 
 impl AwsEc2Host {
+    #[expect(clippy::too_many_arguments, reason = "used via builder pattern")]
     pub fn new(
         id: usize,
         region: impl Into<String>,
