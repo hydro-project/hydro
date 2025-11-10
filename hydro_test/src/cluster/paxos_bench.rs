@@ -25,7 +25,7 @@ pub fn paxos_bench<'a>(
         let payloads = c_to_proposers.map(q!(move |(key, value)| KvPayload {
             key,
             // we use our ID as part of the value and use that so the replica only notifies us
-            value: (CLUSTER_SELF_ID, value)
+            value: (CLUSTER_SELF_ID.clone(), value)
         }));
 
         let acceptors = paxos.log_stores().clone();

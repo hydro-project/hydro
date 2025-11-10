@@ -143,7 +143,7 @@ where
 
         QuoteTokens {
             prelude: None,
-            expr: Some(quote! { #root::location::MemberId::<#c_type>::from_raw(#ident) }),
+            expr: Some(quote! { #root::location::MemberId::<#c_type>::from_raw_id(#ident) }),
         }
     }
 }
@@ -177,12 +177,12 @@ mod tests {
         let external = flow.external::<()>();
 
         let out_port = cluster1
-            .source_iter(q!(vec![CLUSTER_SELF_ID.raw_id]))
+            .source_iter(q!(vec![CLUSTER_SELF_ID.get_raw_id()]))
             .send_bincode(&node)
             .values()
             .interleave(
                 cluster2
-                    .source_iter(q!(vec![CLUSTER_SELF_ID.raw_id]))
+                    .source_iter(q!(vec![CLUSTER_SELF_ID.get_raw_id()]))
                     .send_bincode(&node)
                     .values(),
             )
@@ -215,7 +215,7 @@ mod tests {
             .all_ticks()
             .send_bincode(&node)
             .entries()
-            .map(q!(|(id, v)| (id.raw_id, v)))
+            .map(q!(|(id, v)| (id.get_raw_id(), v)))
             .send_bincode_external(&external);
 
         let count = flow
@@ -255,7 +255,7 @@ mod tests {
         let out_port = node
             .source_cluster_members(&cluster)
             .entries()
-            .map(q!(|(id, v)| (id.raw_id, v)))
+            .map(q!(|(id, v)| (id.get_raw_id(), v)))
             .send_bincode_external(&external);
 
         flow.sim()

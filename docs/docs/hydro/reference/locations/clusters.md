@@ -26,7 +26,7 @@ let numbers = workers.source_iter(q!(vec![1, 2, 3, 4]));
 ```
 
 ## Networking
-When sending a live collection from a cluster to another location, **each** member of the cluster will send its local collection. On the receiver side, these collections will be joined together into a **keyed stream** of with `ID` keys and groups of  `Data` values where the ID uniquely identifies which member of the cluster the data came from. For example, you can send a stream from the worker cluster to another process using the `send_bincode` method:
+When sending a live collection from a cluster to another location, **each** member of the cluster will send its local collection. On the receiver side, these collections will be joined together into a **keyed stream** of with `ID` keys and groups of `Data` values where the ID uniquely identifies which member of the cluster the data came from. For example, you can send a stream from the worker cluster to another process using the `send_bincode` method:
 
 ```rust
 # use hydro_lang::prelude::*;
@@ -83,7 +83,7 @@ In the reverse direction, when sending a stream _to_ a cluster, the sender must 
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
 let on_worker: Stream<_, Cluster<_>, _> = numbers
-    .map(q!(|x| (hydro_lang::location::MemberId::from_raw(x), x)))
+    .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
     .demux_bincode(&workers);
 on_worker.send_bincode(&p2)
 # .entries()
@@ -160,8 +160,8 @@ use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 let workers: Cluster<()> = flow.cluster::<()>();
 let self_id_stream = workers.source_iter(q!([CLUSTER_SELF_ID]));
 self_id_stream
-    .filter(q!(|x| x.raw_id % 2 == 0))
-    .map(q!(|x| format!("hello from {}", x.raw_id)))
+    .filter(q!(|x| x.get_raw_id() % 2 == 0))
+    .map(q!(|x| format!("hello from {}", x.get_raw_id())))
     .send_bincode(&process)
     .values()
 // if there are 4 members in the cluster, we should receive 2 elements
