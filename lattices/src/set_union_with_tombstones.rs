@@ -30,8 +30,9 @@
 //! - Works with any `Hash + Eq` type
 //! - No compression, but simple and flexible
 //! - Example: `SetUnionWithTombstonesHashSet::new_from([custom_type], [])`
-//! Or, you can hash to 64-bit integers and follow instructions for that case above, 
-//! understanding there's a tiny risk of hash collision which could result in data being 
+//!
+//! Alternatively, you can hash to 64-bit integers and follow instructions for that case above,
+//! understanding there's a tiny risk of hash collision which could result in data being
 //! tombstoned (deleted) incorrectly.
 //!
 //! ## Performance Characteristics
@@ -61,7 +62,7 @@ use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 /// Merging set-union lattices is done by unioning the keys of both the (set and tombstone) sets,
 /// and then performing `set` = `set` - `tombstones`, to preserve the above invariant.
 ///
-/// This implementation with two separate sets means that the actual set implementation can be decided 
+/// This implementation with two separate sets means that the actual set implementation can be decided
 /// for both the regular set and the tombstone set. This enables efficient storage strategies like using
 /// [`RoaringTreemap`] for tombstones (see [`SetUnionWithTombstonesRoaring`]), which provides space-efficient
 /// bitmap compression for the tombstone set while keeping the main set flexible.
@@ -518,7 +519,10 @@ impl Len for FstTombstoneSet<String> {
 impl Extend<Vec<u8>> for FstTombstoneSet<Vec<u8>> {
     fn extend<T: IntoIterator<Item = Vec<u8>>>(&mut self, iter: T) {
         let mut keys: Vec<_> = self.fst.stream().into_strs().unwrap();
-        keys.extend(iter.into_iter().map(|v| String::from_utf8_lossy(&v).into_owned()));
+        keys.extend(
+            iter.into_iter()
+                .map(|v| String::from_utf8_lossy(&v).into_owned()),
+        );
         keys.sort();
         keys.dedup();
 
@@ -606,11 +610,13 @@ pub type SetUnionWithTombstonesRoaring = SetUnionWithTombstones<HashSet<u64>, Ro
 
 /// FST-backed tombstone set with [`std::collections::HashSet`] for the main set.
 /// Provides space-efficient, collision-free tombstone storage for String keys.
-pub type SetUnionWithTombstonesFstString = SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>;
+pub type SetUnionWithTombstonesFstString =
+    SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>;
 
 /// FST-backed tombstone set with [`std::collections::HashSet`] for the main set.
 /// Provides space-efficient, collision-free tombstone storage for Vec<u8> keys.
-pub type SetUnionWithTombstonesFstBytes = SetUnionWithTombstones<HashSet<Vec<u8>>, FstTombstoneSet<Vec<u8>>>;
+pub type SetUnionWithTombstonesFstBytes =
+    SetUnionWithTombstones<HashSet<Vec<u8>>, FstTombstoneSet<Vec<u8>>>;
 
 #[cfg(test)]
 mod test {
@@ -733,7 +739,11 @@ mod test {
     #[test]
     fn fst_string_basic() {
         let mut x = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from(["apple".to_string(), "banana".to_string(), "cherry".to_string()]),
+            HashSet::from([
+                "apple".to_string(),
+                "banana".to_string(),
+                "cherry".to_string(),
+            ]),
             FstTombstoneSet::new(),
         );
         let mut y = SetUnionWithTombstonesFstString::new_from(
@@ -817,9 +827,10 @@ mod test {
     #[test]
     fn roaring_empty_merge() {
         // Test merging empty sets
-        let mut x = SetUnionWithTombstonesRoaring::new_from(HashSet::new(), RoaringTombstoneSet::new());
+        let mut x =
+            SetUnionWithTombstonesRoaring::new_from(HashSet::new(), RoaringTombstoneSet::new());
         let y = SetUnionWithTombstonesRoaring::new_from(HashSet::new(), RoaringTombstoneSet::new());
-        
+
         assert!(!x.merge(y)); // Should return false (no change)
         assert!(x.as_reveal_ref().0.is_empty());
         assert_eq!(x.as_reveal_ref().1.len(), 0);
@@ -840,12 +851,15 @@ mod test {
 
         x.merge(y);
         let first_result = x.clone();
-        
+
         x.merge(z);
-        
+
         // Should be identical after second merge
         assert_eq!(x.as_reveal_ref().0, first_result.as_reveal_ref().0);
-        assert_eq!(x.as_reveal_ref().1.len(), first_result.as_reveal_ref().1.len());
+        assert_eq!(
+            x.as_reveal_ref().1.len(),
+            first_result.as_reveal_ref().1.len()
+        );
     }
 
     #[test]
@@ -862,7 +876,7 @@ mod test {
 
         let mut x1 = a.clone();
         let mut x2 = b.clone();
-        
+
         x1.merge(b.clone());
         x2.merge(a.clone());
 
