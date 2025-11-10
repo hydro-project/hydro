@@ -15,7 +15,7 @@ use hydro_deploy::custom_service::CustomClientPort;
 use hydro_deploy::rust_crate::RustCrateService;
 use hydro_deploy::rust_crate::ports::{DemuxSink, RustCrateSink, RustCrateSource, TaggedSource};
 use hydro_deploy::rust_crate::tracing_options::TracingOptions;
-use hydro_deploy::{CustomService, Deployment, Host, RustCrate, TracingResults};
+use hydro_deploy::{CustomService, Deployment, Host, HostTargetType, RustCrate, TracingResults};
 use hydro_deploy_integration::{ConnectedSink, ConnectedSource};
 use nameof::name_of;
 use proc_macro2::Span;
@@ -1043,6 +1043,7 @@ fn create_trybuild_service(
     features: &Option<Vec<String>>,
     bin_name: &str,
 ) -> RustCrate {
+    let target_type = trybuild.host.target_type();
     let mut ret = RustCrate::new(dir, trybuild.host)
         .target_dir(target_dir)
         .example(bin_name)
@@ -1083,6 +1084,10 @@ fn create_trybuild_service(
             )
             .chain(trybuild.features),
     );
+
+    if target_type != HostTargetType::Local {
+        ret = ret.features(["hydro___feature_runtime_mimalloc".to_string()]);
+    }
 
     for (key, value) in trybuild.build_envs {
         ret = ret.build_env(key, value);
