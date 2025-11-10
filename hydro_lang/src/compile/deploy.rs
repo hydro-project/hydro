@@ -139,7 +139,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Useful for generating Mermaid diagrams of the DFIR.
     pub fn preview_compile(&self) -> CompiledFlow<'a, ()> {
         CompiledFlow {
-            dfir: build_inner(unsafe {
+            dfir: build_inner::<D>(unsafe {
                 // SAFETY: `build_inner` does not mutate the IR, &mut is required
                 // only because the shared traversal logic requires it
                 &mut *self.ir.get()
@@ -150,7 +150,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
     pub fn compile_no_network(mut self) -> CompiledFlow<'a, D::GraphId> {
         CompiledFlow {
-            dfir: build_inner(self.ir.get_mut()),
+            dfir: build_inner::<D>(self.ir.get_mut()),
             _phantom: PhantomData,
         }
     }
@@ -172,7 +172,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         });
 
         CompiledFlow {
-            dfir: build_inner(self.ir.get_mut()),
+            dfir: build_inner::<D>(self.ir.get_mut()),
             _phantom: PhantomData,
         }
     }
@@ -231,8 +231,8 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
             );
         });
 
-        let mut compiled = build_inner(self.ir.get_mut());
-        self.cluster_id_stmts(&mut extra_stmts, &());
+        let mut compiled = build_inner::<D>(self.ir.get_mut());
+        self.cluster_id_stmts(&mut extra_stmts, &()); // TODO: this should not just dump a bunch of garbage into the header of the dfir programs emitted.
         let mut meta = D::Meta::default();
 
         let (mut processes, mut clusters, mut externals) = (

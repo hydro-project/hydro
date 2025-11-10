@@ -8,6 +8,7 @@ use dfir_lang::graph::DfirGraph;
 use proc_macro2::Span;
 use quote::quote;
 use sha2::{Digest, Sha256};
+use stageleft::{QuotedWithContext, q};
 use syn::visit_mut::VisitMut;
 use tempfile::TempPath;
 use trybuild_internals_api::{cargo, dependencies, path};
@@ -17,7 +18,9 @@ use crate::compile::trybuild::generate::{
     CONCURRENT_TEST_LOCK, IS_TEST, TrybuildConfig, create_trybuild, write_atomic,
 };
 use crate::compile::trybuild::rewriters::UseTestModeStaged;
+use crate::location::cluster::ClusterIds;
 use crate::location::dynamic::LocationId;
+use crate::location::{MemberId, MembershipEvent};
 
 #[derive(Clone)]
 pub struct SimNode {
@@ -343,17 +346,38 @@ impl<'a> Deploy<'a> for SimDeploy {
     fn cluster_ids(
         _env: &Self::CompileEnv,
         _of_cluster: usize,
-    ) -> impl stageleft::QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a {
+    ) -> impl QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a {
         todo!();
         stageleft::q!(todo!())
     }
 
     #[expect(unreachable_code, reason = "todo!() is unreachable")]
-    fn cluster_self_id(
-        _env: &Self::CompileEnv,
-    ) -> impl stageleft::QuotedWithContext<'a, u32, ()> + Copy + 'a {
+    fn cluster_self_id(_env: &Self::CompileEnv) -> impl QuotedWithContext<'a, u32, ()> + Copy + 'a {
         todo!();
         stageleft::q!(todo!())
+    }
+
+    fn cluster_membership_stream(
+        location_id: &LocationId,
+    ) -> impl QuotedWithContext<
+        'a,
+        Box<dyn futures::Stream<Item = (MemberId<()>, MembershipEvent)> + Unpin>,
+        (),
+    > {
+        let cluster_ids = ClusterIds {
+            id: location_id.raw_id(),
+            _phantom: Default::default(),
+        };
+
+        q!(Box::new(futures::stream::iter(
+            cluster_ids
+                .iter()
+                .cloned()
+                .map(|member_id| (member_id, MembershipEvent::Joined))
+        ))
+            as Box<
+                dyn futures::Stream<Item = (MemberId<()>, MembershipEvent)> + Unpin,
+            >)
     }
 }
 

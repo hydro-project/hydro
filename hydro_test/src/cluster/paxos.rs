@@ -33,7 +33,7 @@ pub struct PaxosConfig {
 pub trait PaxosPayload: Serialize + DeserializeOwned + PartialEq + Eq + Clone + Debug {}
 impl<T: Serialize + DeserializeOwned + PartialEq + Eq + Clone + Debug> PaxosPayload for T {}
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Hash)]
 pub struct Ballot {
     pub num: u32,
     pub proposer_id: MemberId<Proposer>,
@@ -43,7 +43,7 @@ impl Ord for Ballot {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.num
             .cmp(&other.num)
-            .then_with(|| self.proposer_id.raw_id.cmp(&other.proposer_id.raw_id))
+            .then_with(|| self.proposer_id.cmp(&other.proposer_id))
     }
 }
 
@@ -357,7 +357,7 @@ fn p_ballot_calc<'a>(
             if received_max_ballot
                 > (Ballot {
                     num: ballot_num,
-                    proposer_id: CLUSTER_SELF_ID,
+                    proposer_id: CLUSTER_SELF_ID.clone(),
                 })
             {
                 received_max_ballot.num + 1
@@ -369,7 +369,7 @@ fn p_ballot_calc<'a>(
 
     let p_ballot = p_ballot_num.map(q!(move |num| Ballot {
         num,
-        proposer_id: CLUSTER_SELF_ID
+        proposer_id: CLUSTER_SELF_ID.clone()
     }));
 
     let p_has_largest_ballot = p_received_max_ballot
@@ -436,7 +436,8 @@ fn p_leader_heartbeat<'a>(
         proposers
             .source_interval_delayed(
                 q!(Duration::from_secs(
-                    (CLUSTER_SELF_ID.raw_id * i_am_leader_check_timeout_delay_multiplier as u32)
+                    (CLUSTER_SELF_ID.get_raw_id()
+                        * i_am_leader_check_timeout_delay_multiplier as u32)
                         .into()
                 )),
                 q!(Duration::from_secs(i_am_leader_check_timeout)),
@@ -479,9 +480,9 @@ fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
             .cross_singleton(a_max_ballot)
             .cross_singleton(a_log)
             .map(q!(|((ballot, max_ballot), log)| (
-                ballot.proposer_id,
+                ballot.proposer_id.clone(),
                 (
-                    ballot,
+                    ballot.clone(),
                     if ballot == max_ballot {
                         Ok(log)
                     } else {
@@ -717,7 +718,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
             .clone()
             .end_atomic()
             .map(q!(move |((slot, ballot), value)| P2a {
-                sender: CLUSTER_SELF_ID,
+                sender: CLUSTER_SELF_ID.clone(),
                 ballot,
                 slot,
                 value
@@ -858,7 +859,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
         .map(q!(|(p2a, max_ballot)| (
             p2a.sender,
             (
-                (p2a.slot, p2a.ballot),
+                (p2a.slot, p2a.ballot.clone()),
                 if p2a.ballot == max_ballot {
                     Ok(())
                 } else {
