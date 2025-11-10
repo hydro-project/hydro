@@ -13,6 +13,10 @@ pub async fn run(flow: Dfir<'_>) {
     dfir_rs::util::deploy::launch_flow(flow).await;
 }
 
+pub async fn run_containerized(flow: Dfir<'_>) {
+    dfir_rs::util::deploy::launch_flow_containerized(flow).await;
+}
+
 #[cfg(feature = "runtime_measure")]
 pub async fn run(flow: Dfir<'_>) {
     // Make sure to print CPU even if we crash

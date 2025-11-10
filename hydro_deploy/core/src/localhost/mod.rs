@@ -125,7 +125,7 @@ struct LaunchedLocalhost;
 
 #[async_trait]
 impl LaunchedHost for LaunchedLocalhost {
-    fn base_server_config(&self, bind_type: &BaseServerStrategy) -> ServerBindConfig {
+    fn base_server_config(&self, bind_type: &BaseServerStrategy) -> ServerBindConfig<u32> {
         match bind_type {
             BaseServerStrategy::UnixSocket => ServerBindConfig::UnixSocket,
             BaseServerStrategy::InternalTcpPort(port) => {

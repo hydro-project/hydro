@@ -163,7 +163,7 @@ mod tests {
     use stageleft::q;
 
     use super::CLUSTER_SELF_ID;
-    use crate::location::{Location, MembershipEvent};
+    use crate::location::{Location, MemberId, MembershipEvent};
     use crate::nondet::nondet;
     use crate::prelude::FlowBuilder;
 
@@ -177,12 +177,12 @@ mod tests {
         let external = flow.external::<()>();
 
         let out_port = cluster1
-            .source_iter(q!(vec![CLUSTER_SELF_ID.raw_id]))
+            .source_iter(q!(vec![CLUSTER_SELF_ID]))
             .send_bincode(&node)
             .values()
             .interleave(
                 cluster2
-                    .source_iter(q!(vec![CLUSTER_SELF_ID.raw_id]))
+                    .source_iter(q!(vec![CLUSTER_SELF_ID]))
                     .send_bincode(&node)
                     .values(),
             )
@@ -196,7 +196,7 @@ mod tests {
                 compiled.launch();
 
                 out_recv
-                    .assert_yields_only_unordered(vec![0, 1, 2, 0, 1, 2, 3])
+                    .assert_yields_only_unordered([0, 1, 2, 0, 1, 2, 3].map(MemberId::from_raw))
                     .await
             });
     }
@@ -215,7 +215,7 @@ mod tests {
             .all_ticks()
             .send_bincode(&node)
             .entries()
-            .map(q!(|(id, v)| (id.raw_id, v)))
+            .map(q!(|(id, v)| (id, v)))
             .send_bincode_external(&external);
 
         let count = flow
@@ -227,7 +227,7 @@ mod tests {
 
                 let grouped = out_recv.collect_sorted::<Vec<_>>().await.into_iter().fold(
                     HashMap::new(),
-                    |mut acc: HashMap<u32, usize>, (id, v)| {
+                    |mut acc: HashMap<MemberId<()>, usize>, (id, v)| {
                         *acc.entry(id).or_default() += v;
                         acc
                     },
@@ -255,7 +255,7 @@ mod tests {
         let out_port = node
             .source_cluster_members(&cluster)
             .entries()
-            .map(q!(|(id, v)| (id.raw_id, v)))
+            .map(q!(|(id, v)| (id, v)))
             .send_bincode_external(&external);
 
         flow.sim()
@@ -266,8 +266,8 @@ mod tests {
 
                 out_recv
                     .assert_yields_only_unordered(vec![
-                        (0, MembershipEvent::Joined),
-                        (1, MembershipEvent::Joined),
+                        (MemberId::from_raw(0), MembershipEvent::Joined),
+                        (MemberId::from_raw(1), MembershipEvent::Joined),
                     ])
                     .await;
             });

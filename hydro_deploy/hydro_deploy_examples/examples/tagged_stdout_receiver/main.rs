@@ -6,7 +6,7 @@ async fn main() {
     let ports = dfir_rs::util::deploy::init::<()>().await;
     let echo_recv = ports
         .port("echo")
-        .connect::<ConnectedTagged<ConnectedDirect>>()
+        .connect::<ConnectedTagged<u32, ConnectedDirect>>()
         .into_source();
 
     let df = dfir_syntax! {

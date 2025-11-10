@@ -44,6 +44,13 @@ pub mod demux_map;
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use demux_map::demux_map;
 
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub mod demux_map_lazy;
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub use demux_map_lazy::demux_map_lazy;
+
 #[cfg(feature = "variadics")]
 #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
 pub mod demux_var;
@@ -179,6 +186,24 @@ pub trait SinkBuild {
         Si: Sink<ItemVal> + Unpin,
     {
         self.send_to(demux_map(sinks))
+    }
+
+    /// Sends each item into one sink depending on the key, lazily creating sinks on first use.
+    ///
+    /// This requires sinks `Si` to be `Unpin`. If your sinks are not `Unpin`, first wrap them in `Box::pin` to make them `Unpin`.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    fn demux_map_lazy<Key, ItemVal, Si, Func>(
+        self,
+        func: Func,
+    ) -> Self::Output<demux_map_lazy::LazyDemuxSink<Key, Si, Func>>
+    where
+        Self: Sized + SinkBuild<Item = (Key, ItemVal)>,
+        Key: Eq + core::hash::Hash + core::fmt::Debug + Unpin + Clone,
+        Si: Sink<ItemVal> + Unpin,
+        Func: FnMut(Key) -> Si + Unpin,
+    {
+        self.send_to(demux_map_lazy(func))
     }
 
     /// Sends each item into one sink depending on the index, where the sinks are a variadic.

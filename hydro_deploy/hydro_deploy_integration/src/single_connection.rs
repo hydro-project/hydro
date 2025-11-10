@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::ops::DerefMut;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -19,12 +21,13 @@ pub struct ConnectedSingleConnection<I, O, C: Decoder<Item = I> + Encoder<O>> {
 }
 
 impl<
+    MemberId: Clone + Debug + Eq + Hash,
     I: 'static,
     O: Send + Sync + 'static,
     C: Decoder<Item = I> + Encoder<O> + Send + Sync + Default + 'static,
-> Connected for ConnectedSingleConnection<I, O, C>
+> Connected<MemberId> for ConnectedSingleConnection<I, O, C>
 {
-    fn from_defn(pipe: Connection) -> Self {
+    fn from_defn(pipe: Connection<MemberId>) -> Self {
         match pipe {
             Connection::AsServer(AcceptedServer::MultiConnection(bound_server)) => {
                 let (new_stream_sender, new_stream_receiver) = mpsc::unbounded_channel();

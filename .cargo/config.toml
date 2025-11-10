@@ -16,8 +16,14 @@ linker = "rust-lld"
 [target.x86_64-apple-darwin]
 linker = "rust-lld"
 
+#[target.x86_64-unknown-linux-musl]
+#linker = "rust-lld"
+
 [target.x86_64-unknown-linux-musl]
-linker = "rust-lld"
+linker = "x86_64-linux-musl-ld"
+
+[target.x86_64-unknown-linux-gnu] # Adjust target as needed
+rustflags = ["-Clinker-features=-lld"]
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"

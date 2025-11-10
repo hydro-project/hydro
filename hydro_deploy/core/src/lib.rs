@@ -108,9 +108,9 @@ pub trait LaunchedBinary: Send + Sync {
 pub trait LaunchedHost: Send + Sync {
     /// Given a pre-selected network type, computes concrete information needed for a service
     /// to listen to network connections (such as the IP address to bind to).
-    fn base_server_config(&self, strategy: &BaseServerStrategy) -> ServerBindConfig;
+    fn base_server_config(&self, strategy: &BaseServerStrategy) -> ServerBindConfig<u32>;
 
-    fn server_config(&self, strategy: &ServerStrategy) -> ServerBindConfig {
+    fn server_config(&self, strategy: &ServerStrategy) -> ServerBindConfig<u32> {
         match strategy {
             ServerStrategy::Direct(b) => self.base_server_config(b),
             ServerStrategy::Many(b) => {
@@ -283,12 +283,12 @@ pub trait Service: Send + Sync {
 
 pub trait ServiceBuilder {
     type Service: Service + 'static;
-    fn build(self, id: usize) -> Self::Service;
+    fn build(self, id: usize, on: Arc<dyn Host>) -> Self::Service;
 }
 
 impl<S: Service + 'static, T: FnOnce(usize) -> S> ServiceBuilder for T {
     type Service = S;
-    fn build(self, id: usize) -> Self::Service {
+    fn build(self, id: usize, _on: Arc<dyn Host>) -> Self::Service {
         self(id)
     }
 }

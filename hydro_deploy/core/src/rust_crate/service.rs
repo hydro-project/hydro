@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -41,48 +40,22 @@ pub struct RustCrateService {
     /// A map of port names to config for how other services can connect to this one.
     /// Only valid after `ready` has been called, only contains ports that are configured
     /// in `server_ports`.
-    pub(super) server_defns: Arc<RwLock<HashMap<String, ServerPort>>>,
+    pub(super) server_defns: Arc<RwLock<HashMap<String, ServerPort<u32>>>>,
 
     launched_binary: Option<Box<dyn LaunchedBinary>>,
     started: bool,
 }
 
 impl RustCrateService {
-    #[expect(clippy::too_many_arguments, reason = "internal code")]
     pub fn new(
         id: usize,
-        src: PathBuf,
         on: Arc<dyn Host>,
-        bin: Option<String>,
-        example: Option<String>,
-        profile: Option<String>,
-        rustflags: Option<String>,
-        target_dir: Option<PathBuf>,
-        build_env: Vec<(String, String)>,
-        no_default_features: bool,
+        build_params: BuildParams,
         tracing: Option<TracingOptions>,
-        features: Option<Vec<String>>,
-        config: Option<String>,
         args: Option<Vec<String>>,
         display_id: Option<String>,
         external_ports: Vec<u16>,
     ) -> Self {
-        let target_type = on.target_type();
-
-        let build_params = BuildParams::new(
-            src,
-            bin,
-            example,
-            profile,
-            rustflags,
-            target_dir,
-            build_env,
-            no_default_features,
-            target_type,
-            features,
-            config,
-        );
-
         Self {
             id,
             on,
@@ -251,7 +224,8 @@ impl Service for RustCrateService {
                 }
 
                 let formatted_bind_config =
-                    serde_json::to_string::<InitConfig>(&(bind_config, self.meta.clone())).unwrap();
+                    serde_json::to_string::<InitConfig<u32>>(&(bind_config, self.meta.clone()))
+                        .unwrap();
 
                 // request stdout before sending config so we don't miss the "ready" response
                 let stdout_receiver = binary.deploy_stdout();

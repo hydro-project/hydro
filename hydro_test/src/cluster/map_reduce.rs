@@ -2,12 +2,20 @@ use hydro_lang::prelude::*;
 
 pub struct Leader {}
 pub struct Worker {}
+pub struct Reducer {}
 
-pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'a, Worker>) {
-    let process = flow.process();
+pub fn map_reduce<'a>(
+    flow: &FlowBuilder<'a>,
+) -> (
+    Process<'a, Leader>,
+    Cluster<'a, Worker>,
+    Process<'a, Reducer>,
+) {
+    let leader = flow.process::<Leader>();
+    let reducer = flow.process::<Reducer>();
     let cluster = flow.cluster();
 
-    let words = process
+    let words = leader
         .source_iter(q!(vec!["abc", "abc", "xyz", "abc"]))
         .map(q!(|s| s.to_string()));
 
@@ -28,7 +36,7 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
             string, count
         )))
         .all_ticks()
-        .send_bincode(&process)
+        .send_bincode(&reducer)
         .values();
 
     let reduced = batches
@@ -36,13 +44,13 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
         .reduce_commutative(q!(|total, count| *total += count));
 
     reduced
-        .snapshot(&process.tick(), nondet!(/** intentional output */))
+        .snapshot(&reducer.tick(), nondet!(/** intentional output */))
         .entries()
         .all_ticks()
         .assume_ordering(nondet!(/** unordered logs across keys are okay */))
         .for_each(q!(|(string, count)| println!("{}: {}", string, count)));
 
-    (process, cluster)
+    (leader, cluster, reducer)
 }
 
 #[cfg(test)]

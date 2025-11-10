@@ -282,7 +282,7 @@ where
 
 #[async_trait]
 impl<T: LaunchedSshHost> LaunchedHost for T {
-    fn base_server_config(&self, bind_type: &BaseServerStrategy) -> ServerBindConfig {
+    fn base_server_config(&self, bind_type: &BaseServerStrategy) -> ServerBindConfig<u32> {
         match bind_type {
             BaseServerStrategy::UnixSocket => ServerBindConfig::UnixSocket,
             BaseServerStrategy::InternalTcpPort(hint) => {

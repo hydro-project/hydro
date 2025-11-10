@@ -38,7 +38,7 @@ async fn main() {
 
     let to_peer = ports
         .port("to_peer")
-        .connect::<dfir_rs::util::deploy::ConnectedDemux<dfir_rs::util::deploy::ConnectedDirect>>()
+        .connect::<dfir_rs::util::deploy::ConnectedDemux<u32, dfir_rs::util::deploy::ConnectedDirect>>()
         .into_sink();
 
     let number_of_nodes: u32 = std::env::args().nth(1).unwrap().parse().unwrap();

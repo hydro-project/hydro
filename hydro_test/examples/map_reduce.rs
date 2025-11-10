@@ -50,7 +50,7 @@ async fn main() {
     };
 
     let builder = hydro_lang::compile::builder::FlowBuilder::new();
-    let (leader, cluster) = hydro_test::cluster::map_reduce::map_reduce(&builder);
+    let (leader, cluster, reducer) = hydro_test::cluster::map_reduce::map_reduce(&builder);
 
     // Extract the IR for graph visualization
     let built = builder.finalize();
@@ -76,6 +76,10 @@ async fn main() {
         .with_cluster(
             &cluster,
             (0..2).map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+        )
+        .with_process(
+            &reducer,
+            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
         )
         .deploy(&mut deployment);
 

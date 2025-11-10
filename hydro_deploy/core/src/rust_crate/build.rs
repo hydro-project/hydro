@@ -34,7 +34,7 @@ pub struct BuildParams {
     /// `--features` flags, will be comma-delimited.
     features: Option<Vec<String>>,
     /// `--config` flag
-    config: Option<String>,
+    config: Vec<String>,
 }
 impl BuildParams {
     /// Creates a new `BuildParams` and canonicalizes the `src` path.
@@ -50,7 +50,7 @@ impl BuildParams {
         no_default_features: bool,
         target_type: HostTargetType,
         features: Option<Vec<String>>,
-        config: Option<String>,
+        config: Vec<String>,
     ) -> Self {
         // `fs::canonicalize` prepends windows paths with the `r"\\?\"`
         // https://stackoverflow.com/questions/21194530/what-does-mean-when-prepended-to-a-file-path
@@ -132,11 +132,19 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.args(["--features", &features.join(",")]);
                     }
 
-                    if let Some(config) = params.config.as_ref() {
+                    for config in &params.config {
                         command.args(["--config", config]);
                     }
 
-                    command.arg("--message-format=json-diagnostic-rendered-ansi");
+                    // if let Some(lto) = params.lto.as_ref() {
+                    //     command.args([
+                    //         "--config".to_string(),
+                    //         format!(r#"profile.debug.lto="{lto}""#),
+                    //     ]);
+                    // }
+
+                    // command.arg("--message-format=json-diagnostic-rendered-ansi");
+                    command.arg("--message-format=json");
 
                     if let Some(target_dir) = params.target_dir.as_ref() {
                         command.args(["--target-dir", target_dir.to_str().unwrap()]);
@@ -233,11 +241,11 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     }
                                 }
 
-                                ProgressTracker::println(msg.message.to_string());
+                                // ProgressTracker::println(msg.message.to_string());
                                 diagnostics.push(msg.message);
                             }
                             cargo_metadata::Message::TextLine(line) => {
-                                ProgressTracker::println(&line);
+                                // ProgressTracker::println(&line);
                                 text_lines.push(line);
                             }
                             cargo_metadata::Message::BuildFinished(_) => {}

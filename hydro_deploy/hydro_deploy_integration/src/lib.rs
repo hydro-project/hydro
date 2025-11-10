@@ -1,5 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -22,20 +24,21 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio_stream::wrappers::TcpListenerStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
+pub mod hacks;
 pub mod multi_connection;
 pub mod single_connection;
 
-pub type InitConfig = (HashMap<String, ServerBindConfig>, Option<String>);
+pub type InitConfig<MemberId> = (HashMap<String, ServerBindConfig<MemberId>>, Option<String>);
 
 /// Contains runtime information passed by Hydro Deploy to a program,
 /// describing how to connect to other services and metadata about them.
-pub struct DeployPorts<T = Option<()>> {
-    pub ports: RefCell<HashMap<String, Connection>>,
+pub struct DeployPorts<MemberId: Eq + Hash, T = Option<()>> {
+    pub ports: RefCell<HashMap<String, Connection<MemberId>>>,
     pub meta: T,
 }
 
-impl<T> DeployPorts<T> {
-    pub fn port(&self, name: &str) -> Connection {
+impl<MemberId: Eq + Hash, T> DeployPorts<MemberId, T> {
+    pub fn port(&self, name: &str) -> Connection<MemberId> {
         self.ports
             .try_borrow_mut()
             .unwrap()
@@ -52,18 +55,18 @@ type UnixListener = std::convert::Infallible;
 
 /// Describes how to connect to a service which is listening on some port.
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum ServerPort {
+pub enum ServerPort<MemberId: Eq + Hash> {
     UnixSocket(PathBuf),
     TcpPort(SocketAddr),
-    Demux(HashMap<u32, ServerPort>),
-    Merge(Vec<ServerPort>),
-    Tagged(Box<ServerPort>, u32),
+    Demux(HashMap<MemberId, ServerPort<MemberId>>),
+    Merge(Vec<ServerPort<MemberId>>),
+    Tagged(Box<ServerPort<MemberId>>, MemberId),
     Null,
 }
 
-impl ServerPort {
+impl<MemberId: Eq + Hash + Clone + Send + Sync> ServerPort<MemberId> {
     #[async_recursion]
-    pub async fn connect(&self) -> ClientConnection {
+    pub async fn connect(&self) -> ClientConnection<MemberId> {
         match self {
             ServerPort::UnixSocket(path) => {
                 #[cfg(unix)]
@@ -92,7 +95,7 @@ impl ServerPort {
             ServerPort::Demux(bindings) => ClientConnection::Demux(
                 bindings
                     .iter()
-                    .map(|(k, v)| async move { (*k, v.connect().await) })
+                    .map(|(k, v)| async move { (k.clone(), v.connect().await) })
                     .collect::<FuturesUnordered<_>>()
                     .collect::<Vec<_>>()
                     .await
@@ -110,29 +113,29 @@ impl ServerPort {
                     .collect(),
             ),
             ServerPort::Tagged(port, tag) => {
-                ClientConnection::Tagged(Box::new(port.as_ref().connect().await), *tag)
+                ClientConnection::Tagged(Box::new(port.as_ref().connect().await), tag.clone())
             }
             ServerPort::Null => ClientConnection::Null,
         }
     }
 
-    pub async fn instantiate(&self) -> Connection {
+    pub async fn instantiate(&self) -> Connection<MemberId> {
         Connection::AsClient(self.connect().await)
     }
 }
 
 #[derive(Debug)]
-pub enum ClientConnection {
+pub enum ClientConnection<MemberId> {
     UnixSocket(UnixStream),
     TcpPort(TcpStream),
-    Demux(HashMap<u32, ClientConnection>),
-    Merge(Vec<ClientConnection>),
-    Tagged(Box<ClientConnection>, u32),
+    Demux(HashMap<MemberId, ClientConnection<MemberId>>),
+    Merge(Vec<ClientConnection<MemberId>>),
+    Tagged(Box<ClientConnection<MemberId>>, MemberId),
     Null,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum ServerBindConfig {
+pub enum ServerBindConfig<MemberId: Eq + Hash> {
     UnixSocket,
     TcpPort(
         /// The host the port should be bound on.
@@ -142,16 +145,16 @@ pub enum ServerBindConfig {
         /// If `None`, the port will be chosen automatically.
         Option<u16>,
     ),
-    Demux(HashMap<u32, ServerBindConfig>),
-    Merge(Vec<ServerBindConfig>),
-    Tagged(Box<ServerBindConfig>, u32),
-    MultiConnection(Box<ServerBindConfig>),
+    Demux(HashMap<MemberId, ServerBindConfig<MemberId>>),
+    Merge(Vec<ServerBindConfig<MemberId>>),
+    Tagged(Box<ServerBindConfig<MemberId>>, MemberId),
+    MultiConnection(Box<ServerBindConfig<MemberId>>),
     Null,
 }
 
-impl ServerBindConfig {
+impl<MemberId: Eq + Hash + Send + Sync + 'static> ServerBindConfig<MemberId> {
     #[async_recursion]
-    pub async fn bind(self) -> BoundServer {
+    pub async fn bind(self) -> BoundServer<MemberId> {
         match self {
             ServerBindConfig::UnixSocket => {
                 #[cfg(unix)]
@@ -198,13 +201,13 @@ impl ServerBindConfig {
 }
 
 #[derive(Debug)]
-pub enum Connection {
-    AsClient(ClientConnection),
-    AsServer(AcceptedServer),
+pub enum Connection<MemberId: Eq + Hash> {
+    AsClient(ClientConnection<MemberId>),
+    AsServer(AcceptedServer<MemberId>),
 }
 
-impl Connection {
-    pub fn connect<T: Connected>(self) -> T {
+impl<MemberId: Eq + Hash + Clone + Debug> Connection<MemberId> {
+    pub fn connect<T: Connected<MemberId>>(self) -> T {
         T::from_defn(self)
     }
 }
@@ -224,8 +227,8 @@ impl<T: Stream<Item = Result<BytesMut, io::Error>> + Sink<Bytes, Error = io::Err
 
 pub type DynStreamSink = Pin<Box<dyn StreamSink + Send + Sync>>;
 
-pub trait Connected: Send {
-    fn from_defn(pipe: Connection) -> Self;
+pub trait Connected<MemberId: Eq + Hash + Clone + Debug>: Send {
+    fn from_defn(pipe: Connection<MemberId>) -> Self;
 }
 
 pub trait ConnectedSink {
@@ -242,29 +245,31 @@ pub trait ConnectedSource {
 }
 
 #[derive(Debug)]
-pub enum BoundServer {
+pub enum BoundServer<MemberId> {
     UnixSocket(UnixListener, TempDir),
     TcpPort(TcpListenerStream, SocketAddr),
-    Demux(HashMap<u32, BoundServer>),
-    Merge(Vec<BoundServer>),
-    Tagged(Box<BoundServer>, u32),
-    MultiConnection(Box<BoundServer>),
+    Demux(HashMap<MemberId, BoundServer<MemberId>>),
+    Merge(Vec<BoundServer<MemberId>>),
+    Tagged(Box<BoundServer<MemberId>>, MemberId),
+    MultiConnection(Box<BoundServer<MemberId>>),
     Null,
 }
 
 #[derive(Debug)]
-pub enum AcceptedServer {
+pub enum AcceptedServer<MemberId: Eq + Hash> {
     UnixSocket(UnixStream, TempDir),
     TcpPort(TcpStream),
-    Demux(HashMap<u32, AcceptedServer>),
-    Merge(Vec<AcceptedServer>),
-    Tagged(Box<AcceptedServer>, u32),
-    MultiConnection(Box<BoundServer>),
+    Demux(HashMap<MemberId, AcceptedServer<MemberId>>),
+    Merge(Vec<AcceptedServer<MemberId>>),
+    Tagged(Box<AcceptedServer<MemberId>>, MemberId),
+    MultiConnection(Box<BoundServer<MemberId>>),
     Null,
 }
 
 #[async_recursion]
-pub async fn accept_bound(bound: BoundServer) -> AcceptedServer {
+pub async fn accept_bound<MemberId: Eq + Hash + Clone + Send>(
+    bound: BoundServer<MemberId>,
+) -> AcceptedServer<MemberId> {
     match bound {
         BoundServer::UnixSocket(listener, dir) => {
             #[cfg(unix)]
@@ -303,15 +308,15 @@ pub async fn accept_bound(bound: BoundServer) -> AcceptedServer {
                 .await,
         ),
         BoundServer::Tagged(underlying, id) => {
-            AcceptedServer::Tagged(Box::new(accept_bound(*underlying).await), id)
+            AcceptedServer::Tagged(Box::new(accept_bound(*underlying).await), id.clone())
         }
         BoundServer::MultiConnection(underlying) => AcceptedServer::MultiConnection(underlying),
         BoundServer::Null => AcceptedServer::Null,
     }
 }
 
-impl BoundServer {
-    pub fn server_port(&self) -> ServerPort {
+impl<MemberId: Eq + Hash + Clone> BoundServer<MemberId> {
+    pub fn server_port(&self) -> ServerPort<MemberId> {
         match self {
             BoundServer::UnixSocket(_, tempdir) => {
                 #[cfg(unix)]
@@ -332,7 +337,7 @@ impl BoundServer {
             BoundServer::Demux(bindings) => {
                 let mut demux = HashMap::new();
                 for (key, bind) in bindings {
-                    demux.insert(*key, bind.server_port());
+                    demux.insert(key.clone(), bind.server_port());
                 }
                 ServerPort::Demux(demux)
             }
@@ -346,7 +351,7 @@ impl BoundServer {
             }
 
             BoundServer::Tagged(underlying, id) => {
-                ServerPort::Tagged(Box::new(underlying.server_port()), *id)
+                ServerPort::Tagged(Box::new(underlying.server_port()), id.clone())
             }
 
             BoundServer::MultiConnection(underlying) => underlying.server_port(),
@@ -356,7 +361,7 @@ impl BoundServer {
     }
 }
 
-fn accept(bound: AcceptedServer) -> ConnectedDirect {
+fn accept<MemberId: Eq + Hash + Clone + Debug>(bound: AcceptedServer<MemberId>) -> ConnectedDirect {
     match bound {
         AcceptedServer::UnixSocket(stream, _dir) => {
             #[cfg(unix)]
@@ -403,7 +408,7 @@ fn accept(bound: AcceptedServer) -> ConnectedDirect {
             panic!("Cannot connect to a multi-connection pipe directly")
         }
         AcceptedServer::Null => {
-            ConnectedDirect::from_defn(Connection::AsClient(ClientConnection::Null))
+            ConnectedDirect::from_defn(Connection::AsClient(ClientConnection::<MemberId>::Null))
         }
     }
 }
@@ -471,8 +476,8 @@ impl ConnectedDirect {
     }
 }
 
-impl Connected for ConnectedDirect {
-    fn from_defn(pipe: Connection) -> Self {
+impl<MemberId: Eq + Hash + Clone + Debug> Connected<MemberId> for ConnectedDirect {
+    fn from_defn(pipe: Connection<MemberId>) -> Self {
         match pipe {
             Connection::AsClient(ClientConnection::UnixSocket(stream)) => {
                 #[cfg(unix)]
@@ -567,22 +572,24 @@ impl ConnectedSink for ConnectedDirect {
     }
 }
 
-pub type BufferedDrain<S, I> = sinktools::demux_map::DemuxMap<u32, Pin<Box<Buffer<S, I>>>>;
+pub type BufferedDrain<MemberId, S, I> =
+    sinktools::demux_map::DemuxMap<MemberId, Pin<Box<Buffer<S, I>>>>;
 
-pub struct ConnectedDemux<T: ConnectedSink>
+pub struct ConnectedDemux<MemberId, T: ConnectedSink>
 where
     <T as ConnectedSink>::Input: Sync,
 {
-    pub keys: Vec<u32>,
-    sink: Option<BufferedDrain<T::Sink, T::Input>>,
+    pub keys: Vec<MemberId>,
+    sink: Option<BufferedDrain<MemberId, T::Sink, T::Input>>,
 }
 
 #[async_trait]
-impl<T: Connected + ConnectedSink> Connected for ConnectedDemux<T>
+impl<MemberId: Eq + Hash + Clone + Debug + Send + Unpin, T: Connected<MemberId> + ConnectedSink>
+    Connected<MemberId> for ConnectedDemux<MemberId, T>
 where
     <T as ConnectedSink>::Input: 'static + Sync,
 {
-    fn from_defn(pipe: Connection) -> Self {
+    fn from_defn(pipe: Connection<MemberId>) -> Self {
         match pipe {
             Connection::AsClient(ClientConnection::Demux(demux)) => {
                 let mut connected_demux = HashMap::new();
@@ -632,12 +639,13 @@ where
     }
 }
 
-impl<T: ConnectedSink> ConnectedSink for ConnectedDemux<T>
+impl<MemberId: Eq + Hash + Debug + Unpin + Send + Sync, T: ConnectedSink> ConnectedSink
+    for ConnectedDemux<MemberId, T>
 where
     <T as ConnectedSink>::Input: 'static + Sync,
 {
-    type Input = (u32, T::Input);
-    type Sink = BufferedDrain<T::Sink, T::Input>;
+    type Input = (MemberId, T::Input);
+    type Sink = BufferedDrain<MemberId, T::Sink, T::Input>;
 
     fn into_sink(mut self) -> Self::Sink {
         self.sink.take().unwrap()
@@ -715,19 +723,26 @@ impl<T: Unpin, S: Stream<Item = T> + Send + Sync + ?Sized> Stream for MergeSourc
     }
 }
 
-pub struct TaggedSource<T: Unpin, S: Stream<Item = Result<T, io::Error>> + Send + Sync + ?Sized> {
+pub struct TaggedSource<
+    MemberId: Clone,
+    T: Unpin,
+    S: Stream<Item = Result<T, io::Error>> + Send + Sync + ?Sized,
+> {
     marker: PhantomData<T>,
-    id: u32,
+    id: MemberId,
     source: Pin<Box<S>>,
 }
 
-impl<T: Unpin, S: Stream<Item = Result<T, io::Error>> + Send + Sync + ?Sized> Stream
-    for TaggedSource<T, S>
+impl<
+    MemberId: Clone + Unpin,
+    T: Unpin,
+    S: Stream<Item = Result<T, io::Error>> + Send + Sync + ?Sized,
+> Stream for TaggedSource<MemberId, T, S>
 {
-    type Item = Result<(u32, T), io::Error>;
+    type Item = Result<(MemberId, T), io::Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let id = self.as_ref().id;
+        let id = self.as_ref().id.clone();
         let source = &mut self.get_mut().source;
         match source.as_mut().poll_next(cx) {
             Poll::Ready(Some(v)) => Poll::Ready(Some(v.map(|d| (id, d)))),
@@ -737,24 +752,27 @@ impl<T: Unpin, S: Stream<Item = Result<T, io::Error>> + Send + Sync + ?Sized> St
     }
 }
 
-type MergedMux<T> = MergeSource<
-    Result<(u32, <T as ConnectedSource>::Output), io::Error>,
-    TaggedSource<<T as ConnectedSource>::Output, <T as ConnectedSource>::Stream>,
+type MergedMux<MemberId, T> = MergeSource<
+    Result<(MemberId, <T as ConnectedSource>::Output), io::Error>,
+    TaggedSource<MemberId, <T as ConnectedSource>::Output, <T as ConnectedSource>::Stream>,
 >;
 
-pub struct ConnectedTagged<T: ConnectedSource>
+pub struct ConnectedTagged<MemberId: Clone + Unpin + Send + Sync, T: ConnectedSource>
 where
     <T as ConnectedSource>::Output: 'static + Sync + Unpin,
 {
-    source: MergedMux<T>,
+    source: MergedMux<MemberId, T>,
 }
 
 #[async_trait]
-impl<T: Connected + ConnectedSource> Connected for ConnectedTagged<T>
+impl<
+    MemberId: Clone + Unpin + Send + Sync + Eq + Hash + Debug,
+    T: Connected<MemberId> + ConnectedSource,
+> Connected<MemberId> for ConnectedTagged<MemberId, T>
 where
     <T as ConnectedSource>::Output: 'static + Sync + Unpin,
 {
-    fn from_defn(pipe: Connection) -> Self {
+    fn from_defn(pipe: Connection<MemberId>) -> Self {
         let sources = match pipe {
             Connection::AsClient(ClientConnection::Tagged(pipe, id)) => {
                 vec![(
@@ -824,12 +842,14 @@ where
     }
 }
 
-impl<T: ConnectedSource> ConnectedSource for ConnectedTagged<T>
+impl<MemberId: Clone + Unpin + Send + Sync, T: ConnectedSource> ConnectedSource
+    for ConnectedTagged<MemberId, T>
 where
     <T as ConnectedSource>::Output: 'static + Sync + Unpin,
 {
-    type Output = (u32, T::Output);
-    type Stream = MergeSource<Result<Self::Output, io::Error>, TaggedSource<T::Output, T::Stream>>;
+    type Output = (MemberId, T::Output);
+    type Stream =
+        MergeSource<Result<Self::Output, io::Error>, TaggedSource<MemberId, T::Output, T::Stream>>;
 
     fn into_source(self) -> Self::Stream {
         self.source

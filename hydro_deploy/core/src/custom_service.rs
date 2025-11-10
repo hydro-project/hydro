@@ -100,7 +100,7 @@ impl CustomClientPort {
         }
     }
 
-    pub async fn server_port(&self) -> ServerPort {
+    pub async fn server_port(&self) -> ServerPort<u32> {
         self.client_port
             .get()
             .unwrap()

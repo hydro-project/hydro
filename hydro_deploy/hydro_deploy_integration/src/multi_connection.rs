@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::io;
 use std::ops::DerefMut;
 use std::pin::Pin;
@@ -23,12 +25,13 @@ pub struct ConnectedMultiConnection<I, O, C: Decoder<Item = I> + Encoder<O>> {
 }
 
 impl<
+    MemberId: Debug + Clone + Eq + Hash,
     I: 'static,
     O: Send + Sync + 'static,
     C: Decoder<Item = I> + Encoder<O> + Send + Sync + Default + 'static,
-> Connected for ConnectedMultiConnection<I, O, C>
+> Connected<MemberId> for ConnectedMultiConnection<I, O, C>
 {
-    fn from_defn(pipe: Connection) -> Self {
+    fn from_defn(pipe: Connection<MemberId>) -> Self {
         match pipe {
             Connection::AsServer(AcceptedServer::MultiConnection(bound_server)) => {
                 let (new_sink_sender, new_sink_receiver) = mpsc::unbounded_channel();

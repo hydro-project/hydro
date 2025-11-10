@@ -43,7 +43,7 @@ pub trait RustCrateSource: Send + Sync {
 }
 
 pub trait RustCrateServer: DynClone + Debug + Send + Sync {
-    fn get_port(&self) -> ServerPort;
+    fn get_port(&self) -> ServerPort<u32>;
     fn launched_host(&self) -> Arc<dyn LaunchedHost>;
 }
 
@@ -185,7 +185,7 @@ impl RustCrateSink for DemuxSink {
 pub struct RustCratePortConfig {
     pub service: Weak<RwLock<RustCrateService>>,
     pub service_host: Arc<dyn Host>,
-    pub service_server_defns: Arc<RwLock<HashMap<String, ServerPort>>>,
+    pub service_server_defns: Arc<RwLock<HashMap<String, ServerPort<u32>>>>,
     pub network_hint: PortNetworkHint,
     pub port: String,
     pub merge: bool,
@@ -258,7 +258,7 @@ impl RustCrateSource for RustCratePortConfig {
 
 #[async_trait]
 impl RustCrateServer for RustCratePortConfig {
-    fn get_port(&self) -> ServerPort {
+    fn get_port(&self) -> ServerPort<u32> {
         // we are in `deployment.start()`, so no one should be writing
         let server_defns = self.service_server_defns.try_read().unwrap();
         server_defns.get(&self.port).unwrap().clone()
@@ -441,7 +441,7 @@ impl ServerConfig {
 }
 
 #[async_recursion]
-async fn forward_connection(conn: &ServerPort, target: &dyn LaunchedHost) -> ServerPort {
+async fn forward_connection(conn: &ServerPort<u32>, target: &dyn LaunchedHost) -> ServerPort<u32> {
     match conn {
         ServerPort::UnixSocket(_) => panic!("Expected a TCP port to be forwarded"),
         ServerPort::TcpPort(addr) => ServerPort::TcpPort(target.forward_port(addr).await.unwrap()),
@@ -470,8 +470,8 @@ impl ServerConfig {
     #[async_recursion]
     pub async fn load_instantiated(
         &self,
-        select: &(dyn Fn(ServerPort) -> ServerPort + Send + Sync),
-    ) -> ServerPort {
+        select: &(dyn Fn(ServerPort<u32>) -> ServerPort<u32> + Send + Sync),
+    ) -> ServerPort<u32> {
         match self {
             ServerConfig::Direct(server) => select(server.get_port()),
 
