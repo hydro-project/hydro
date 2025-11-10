@@ -16,7 +16,7 @@ linkStyle default stroke:#aaa
 6v1["<div style=text-align:center>(6v1)</div> <code><br>tee()</code>"]:::otherClass
 7v1["<div style=text-align:center>(7v1)</div> <code><br>inspect({<br>    |p1a| println!(&quot;Acceptor received P1a: {:?}&quot;, p1a)<br>})</code>"]:::otherClass
 8v1["<div style=text-align:center>(8v1)</div> <code><br>reduce::&lt;<br>    'static,<br>&gt;({<br>    |curr, new| {<br>        if new &gt; *curr {<br>            *curr = new;<br>        }<br>    }<br>})</code>"]:::otherClass
-9v1["<div style=text-align:center>(9v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        Ballot {<br>            num: 0,<br>            proposer_id: MemberId::from_raw(0),<br>        }<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
+9v1["<div style=text-align:center>(9v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        Ballot {<br>            num: 0,<br>            proposer_id: MemberId::from_raw_id(0),<br>        }<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
 10v1["<div style=text-align:center>(10v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
 11v1["<div style=text-align:center>(11v1)</div> <code><br>chain_first_n(1)</code>"]:::otherClass
 12v1["<div style=text-align:center>(12v1)</div> <code><br>tee()</code>"]:::otherClass

@@ -42,7 +42,7 @@ fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr 
         parse_quote! {
             ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_>, #t_type), _>(
                 |(id, data)| {
-                    (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
+                    (id.get_raw_id(), #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
             )
         }
@@ -68,7 +68,7 @@ fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type)
         parse_quote! {
             |res| {
                 let (id, b) = res.unwrap();
-                (#root::location::MemberId::<#c_type>::from_raw(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                (#root::location::MemberId::<#c_type>::from_raw_id(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
             }
         }
     } else {
@@ -275,7 +275,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// let workers: Cluster<()> = flow.cluster::<()>();
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers
-    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw(x), x)))
+    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
     ///     .demux_bincode(&workers);
     /// # on_worker.send_bincode(&p2).entries()
     /// // if there are 4 members in the cluster, each receives one element
@@ -368,7 +368,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
             .batch(&join_tick, nondet_membership)
             .cross_singleton(current_members)
             .map(q!(|(data, members)| (
-                members[data.0 % members.len()],
+                members[data.0 % members.len()].clone(),
                 data.1
             )))
             .all_ticks()
@@ -547,7 +547,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// let source: Cluster<Source> = flow.cluster::<Source>();
     /// let to_send: Stream<_, Cluster<_>, _> = source
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
-    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw(x), x)));
+    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)));
     /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
     /// let all_received = to_send.demux_bincode(&destination); // KeyedStream<MemberId<Source>, i32, ...>
     /// # all_received.entries().send_bincode(&p2).entries()
@@ -645,10 +645,10 @@ mod tests {
 
                     out_recv
                         .assert_yields_only_unordered(vec![
-                            (MemberId::from_raw(0), 1),
-                            (MemberId::from_raw(1), 1),
-                            (MemberId::from_raw(2), 1),
-                            (MemberId::from_raw(3), 1),
+                            (MemberId::from_raw_id(0), 1),
+                            (MemberId::from_raw_id(1), 1),
+                            (MemberId::from_raw_id(2), 1),
+                            (MemberId::from_raw_id(3), 1),
                         ])
                         .await
                 });
@@ -687,18 +687,18 @@ mod tests {
 
                 out_recv_1
                     .assert_yields_only_unordered(vec![
-                        (MemberId::from_raw(0), 1),
-                        (MemberId::from_raw(1), 1),
-                        (MemberId::from_raw(2), 1),
+                        (MemberId::from_raw_id(0), 1),
+                        (MemberId::from_raw_id(1), 1),
+                        (MemberId::from_raw_id(2), 1),
                     ])
                     .await;
 
                 out_recv_2
                     .assert_yields_only_unordered(vec![
-                        (MemberId::from_raw(0), 2),
-                        (MemberId::from_raw(1), 2),
-                        (MemberId::from_raw(2), 2),
-                        (MemberId::from_raw(3), 2),
+                        (MemberId::from_raw_id(0), 2),
+                        (MemberId::from_raw_id(1), 2),
+                        (MemberId::from_raw_id(2), 2),
+                        (MemberId::from_raw_id(3), 2),
                     ])
                     .await;
             });
@@ -714,8 +714,8 @@ mod tests {
         let node = flow.process::<()>();
 
         let input = node.source_iter(q!(vec![
-            (MemberId::from_raw(0), 123),
-            (MemberId::from_raw(1), 456),
+            (MemberId::from_raw_id(0), 123),
+            (MemberId::from_raw_id(1), 456),
         ]));
 
         let out_port = input
@@ -733,8 +733,8 @@ mod tests {
 
                 out_recv
                     .assert_yields_only_unordered(vec![
-                        (MemberId::from_raw(0), 124),
-                        (MemberId::from_raw(1), 457),
+                        (MemberId::from_raw_id(0), 124),
+                        (MemberId::from_raw_id(1), 457),
                     ])
                     .await
             });
@@ -768,13 +768,13 @@ mod tests {
                 let all_out = out_recv.collect_sorted::<Vec<_>>().await;
 
                 // check that order is preserved
-                if all_out.contains(&(MemberId::from_raw(0), 124)) {
-                    assert!(all_out.contains(&(MemberId::from_raw(0), 457)));
+                if all_out.contains(&(MemberId::from_raw_id(0), 124)) {
+                    assert!(all_out.contains(&(MemberId::from_raw_id(0), 457)));
                     c_1_produced = true;
                 }
 
-                if all_out.contains(&(MemberId::from_raw(1), 124)) {
-                    assert!(all_out.contains(&(MemberId::from_raw(1), 457)));
+                if all_out.contains(&(MemberId::from_raw_id(1), 124)) {
+                    assert!(all_out.contains(&(MemberId::from_raw_id(1), 457)));
                     c_2_produced = true;
                 }
             });
@@ -790,16 +790,16 @@ mod tests {
         let node = flow.process::<()>();
 
         let input = node.source_iter(q!(vec![
-            (MemberId::from_raw(0), 123),
-            (MemberId::from_raw(1), 456),
+            (MemberId::from_raw_id(0), 123),
+            (MemberId::from_raw_id(1), 456),
         ]));
 
         let out_port = input
             .demux_bincode(&cluster)
             .map(q!(|x| x + 1))
             .flat_map_ordered(q!(|x| vec![
-                (MemberId::from_raw(0), x),
-                (MemberId::from_raw(1), x),
+                (MemberId::from_raw_id(0), x),
+                (MemberId::from_raw_id(1), x),
             ]))
             .demux_bincode(&cluster)
             .entries()
@@ -815,10 +815,10 @@ mod tests {
 
                 out_recv
                     .assert_yields_only_unordered(vec![
-                        (MemberId::from_raw(0), (MemberId::from_raw(0), 124)),
-                        (MemberId::from_raw(0), (MemberId::from_raw(1), 457)),
-                        (MemberId::from_raw(1), (MemberId::from_raw(0), 124)),
-                        (MemberId::from_raw(1), (MemberId::from_raw(1), 457)),
+                        (MemberId::from_raw_id(0), (MemberId::from_raw_id(0), 124)),
+                        (MemberId::from_raw_id(0), (MemberId::from_raw_id(1), 457)),
+                        (MemberId::from_raw_id(1), (MemberId::from_raw_id(0), 124)),
+                        (MemberId::from_raw_id(1), (MemberId::from_raw_id(1), 457)),
                     ])
                     .await
             });

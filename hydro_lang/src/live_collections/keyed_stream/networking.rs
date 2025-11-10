@@ -33,7 +33,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// let workers: Cluster<()> = flow.cluster::<()>();
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers
-    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw(x), x)))
+    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
     ///     .into_keyed()
     ///     .demux_bincode(&workers);
     /// # on_worker.send_bincode(&p2).entries()
@@ -102,7 +102,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// let source: Cluster<Source> = flow.cluster::<Source>();
     /// let to_send: KeyedStream<_, _, Cluster<_>, _> = source
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
-    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw(x), x)))
+    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
     ///     .into_keyed();
     /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
     /// let all_received = to_send.demux_bincode(&destination); // KeyedStream<MemberId<Source>, i32, ...>

@@ -26,7 +26,7 @@ expression: built.ir()
                                                             ),
                                                             instantiate_fn: <network instantiate>,
                                                             deserialize_fn: Some(
-                                                                | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: compute_pi :: Worker > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (u64 , u64) > (& b) . unwrap ()) },
+                                                                | res | { let (id , b) = res . unwrap () ; (hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: compute_pi :: Worker > :: from_raw_id (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (u64 , u64) > (& b) . unwrap ()) },
                                                             ),
                                                             input: YieldConcat {
                                                                 inner: Cast {

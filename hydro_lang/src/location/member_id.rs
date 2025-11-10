@@ -4,87 +4,104 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 
-#[repr(transparent)]
-pub struct MemberId<Tag> {
-    pub raw_id: u32,
-    pub(crate) _phantom: PhantomData<Tag>,
+#[derive(Deserialize, Serialize)]
+pub enum MemberId<Tag> {
+    Legacy {
+        raw_id: u32,
+        _phantom: PhantomData<Tag>,
+    },
 }
 
 impl<Tag> MemberId<Tag> {
-    pub fn from_raw(id: u32) -> Self {
-        MemberId {
-            raw_id: id,
+    pub fn from_raw_id(raw_id: u32) -> Self {
+        MemberId::Legacy {
+            raw_id,
             _phantom: PhantomData,
+        }
+    }
+
+    pub fn get_raw_id(&self) -> u32 {
+        match self {
+            MemberId::Legacy { raw_id, .. } => *raw_id,
         }
     }
 }
 
 impl<Tag> Debug for MemberId<Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "MemberId::<{}>({})",
-            std::any::type_name::<Tag>(),
-            self.raw_id
-        )
+        match self {
+            MemberId::Legacy { raw_id, .. } => write!(
+                f,
+                "MemberId::<{}>({})",
+                std::any::type_name::<Tag>(),
+                raw_id
+            ),
+        }
     }
 }
 
 impl<Tag> Display for MemberId<Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "MemberId::<{}>({})",
-            std::any::type_name::<Tag>(),
-            self.raw_id
-        )
+        match self {
+            MemberId::Legacy { raw_id, .. } => {
+                write!(
+                    f,
+                    "MemberId::<{}>({})",
+                    std::any::type_name::<Tag>(),
+                    raw_id
+                )
+            }
+        }
     }
 }
-
-impl<Tag> Clone for MemberId<Tag> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<Tag> Copy for MemberId<Tag> {}
 
 impl<Tag> PartialOrd for MemberId<Tag> {
+    #[expect(
+        clippy::non_canonical_partial_ord_impl,
+        reason = "The implementation _is_ non-canonical."
+    )]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
+        match (self, other) {
+            (
+                MemberId::Legacy { raw_id, _phantom },
+                MemberId::Legacy {
+                    raw_id: other_raw_id,
+                    _phantom: _other_phantom,
+                },
+            ) => Some(raw_id.cmp(other_raw_id)),
+        }
     }
 }
 
 impl<Tag> Ord for MemberId<Tag> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.raw_id.cmp(&other.raw_id)
+        self.partial_cmp(other)
+            .expect("Can't compare different kinds of member ids")
     }
 }
 
-impl<Tag> Serialize for MemberId<Tag> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        self.raw_id.serialize(serializer)
-    }
-}
-
-impl<'de, Tag> Deserialize<'de> for MemberId<Tag> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::de::Deserializer<'de>,
-    {
-        u32::deserialize(deserializer).map(|id| MemberId {
-            raw_id: id,
-            _phantom: PhantomData,
-        })
+impl<Tag> Clone for MemberId<Tag> {
+    fn clone(&self) -> Self {
+        match self {
+            MemberId::Legacy { raw_id, .. } => MemberId::Legacy {
+                raw_id: *raw_id,
+                _phantom: PhantomData,
+            },
+        }
     }
 }
 
 impl<Tag> PartialEq for MemberId<Tag> {
     fn eq(&self, other: &Self) -> bool {
-        self.raw_id == other.raw_id
+        match (self, other) {
+            (
+                MemberId::Legacy { raw_id, _phantom },
+                MemberId::Legacy {
+                    raw_id: other_raw_id,
+                    _phantom: _other_phantom,
+                },
+            ) => raw_id == other_raw_id,
+        }
     }
 }
 
@@ -92,6 +109,8 @@ impl<Tag> Eq for MemberId<Tag> {}
 
 impl<Tag> Hash for MemberId<Tag> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.raw_id.hash(state)
+        match self {
+            MemberId::Legacy { raw_id, _phantom } => raw_id.hash(state),
+        }
     }
 }

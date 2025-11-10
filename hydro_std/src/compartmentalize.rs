@@ -43,6 +43,8 @@ pub trait DecoupleClusterStream<'a, T, C1, B, Order: Ordering> {
 
 impl<'a, T, C1, B: Boundedness, Order: Ordering> DecoupleClusterStream<'a, T, C1, B, Order>
     for Stream<T, Cluster<'a, C1>, B, Order>
+where
+    C1: 'a,
 {
     fn decouple_cluster<C2: 'a>(
         self,
@@ -53,7 +55,7 @@ impl<'a, T, C1, B: Boundedness, Order: Ordering> DecoupleClusterStream<'a, T, C1
     {
         let sent = self
             .map(q!(move |b| (
-                MemberId::from_raw(CLUSTER_SELF_ID.raw_id),
+                MemberId::from_raw_id(CLUSTER_SELF_ID.get_raw_id()),
                 b.clone()
             )))
             .demux_bincode(other)
