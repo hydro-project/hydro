@@ -117,13 +117,6 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.args(["--example", example]);
                     }
 
-                    match params.target_type {
-                        HostTargetType::Local => {}
-                        HostTargetType::Linux => {
-                            command.args(["--target", "x86_64-unknown-linux-musl"]);
-                        }
-                    }
-
                     if params.no_default_features {
                         command.arg("--no-default-features");
                     }
