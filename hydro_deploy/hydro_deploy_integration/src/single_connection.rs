@@ -33,7 +33,6 @@ impl<
                 let (new_sink_sender, new_sink_receiver) = mpsc::unbounded_channel();
 
                 let dir = match *bound_server {
-                    #[cfg(unix)]
                     BoundServer::UnixSocket(listener, dir) => {
                         tokio::spawn(async move {
                             tokio::task::yield_now().await;
@@ -78,7 +77,15 @@ impl<
                             }
                         });
 
-                        None
+                        #[cfg(unix)]
+                        {
+                            None
+                        }
+
+                        #[cfg(not(unix))]
+                        {
+                            None::<()>
+                        }
                     }
                     _ => panic!("SingleConnection only supports UnixSocket and TcpPort"),
                 };
