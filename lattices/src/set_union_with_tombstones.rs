@@ -1,4 +1,43 @@
 //! Module containing the [`SetUnionWithTombstones`] lattice and aliases for different datastructures.
+//!
+//! # Choosing a Tombstone Implementation
+//!
+//! This module provides several specialized tombstone storage implementations optimized for different key types:
+//!
+//! ## For Integer Keys (u64)
+//! Use [`SetUnionWithTombstonesRoaring`] with [`RoaringTombstoneSet`]:
+//! - Extremely space-efficient bitmap compression
+//! - Fast O(1) lookups and efficient bitmap OR operations during merge
+//! - Works with u64 keys (other integer types can be cast to u64)
+//! - Example: `SetUnionWithTombstonesRoaring::new_from(HashSet::from([1u64, 2, 3]), RoaringTombstoneSet::new())`
+//!
+//! ## For String Keys
+//! Use [`SetUnionWithTombstonesFstString`] with [`FstTombstoneSet<String>`]:
+//! - Compressed finite state transducer storage
+//! - Zero false positives (collision-free)
+//! - Efficient union operations for merging
+//! - Maintains sorted order
+//! - Example: `SetUnionWithTombstonesFstString::new_from(HashSet::from(["a".to_string()]), FstTombstoneSet::new())`
+//!
+//! ## For Byte Array Keys
+//! Use [`SetUnionWithTombstonesFstBytes`] with [`FstTombstoneSet<Vec<u8>>`]:
+//! - Same benefits as FST for strings
+//! - Works with arbitrary byte sequences
+//! - Example: `SetUnionWithTombstonesFstBytes::new_from(HashSet::from([vec![1, 2, 3]]), FstTombstoneSet::new())`
+//!
+//! ## For Other Types
+//! Use the generic [`SetUnionWithTombstones`] with [`HashSet`] for both sets:
+//! - Works with any `Hash + Eq` type
+//! - No compression, but simple and flexible
+//! - Example: `SetUnionWithTombstonesHashSet::new_from([custom_type], [])`
+//!
+//! ## Performance Characteristics
+//!
+//! | Implementation | Space Efficiency | Merge Speed | Lookup Speed | False Positives |
+//! |----------------|------------------|-------------|--------------|-----------------|
+//! | RoaringBitmap  | Excellent        | Excellent   | Excellent    | None            |
+//! | FST            | Very Good        | Good        | Very Good    | None            |
+//! | HashSet        | Poor             | Good        | Excellent    | None            |
 
 use std::cmp::Ordering::{self, *};
 use std::collections::{BTreeSet, HashSet};
