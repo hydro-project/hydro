@@ -30,6 +30,9 @@
 //! - Works with any `Hash + Eq` type
 //! - No compression, but simple and flexible
 //! - Example: `SetUnionWithTombstonesHashSet::new_from([custom_type], [])`
+//! Or, you can hash to 64-bit integers and follow instructions for that case above, 
+//! understanding there's a tiny risk of hash collision which could result in data being 
+//! tombstoned (deleted) incorrectly.
 //!
 //! ## Performance Characteristics
 //!
