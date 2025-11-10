@@ -2,8 +2,10 @@
 
 use std::cmp::Ordering::{self, *};
 use std::collections::{BTreeSet, HashSet};
+use std::hash::{Hash, Hasher};
 
 use cc_traits::{Collection, Get, Remove};
+use roaring::RoaringTreemap;
 
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, EmptySet, OptionSet, SingletonSet};
@@ -17,10 +19,13 @@ use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 /// Merging set-union lattices is done by unioning the keys of both the (set and tombstone) sets,
 /// and then performing `set` = `set` - `tombstones`, to preserve the above invariant.
 ///
-/// TODO: I think there is even one more layer of abstraction that can be made here.
-/// this 'SetUnionWithTombstones' can be turned into a kind of interface, because there are multiple underlying implementations.
-/// This implementation is two separate sets. Another implementation could be MapUnion<Key, WithTop<()>>, this would be less hash lookups, but maybe gives you less options for cool storage tricks.
-/// This implementation with two separate sets means that the actual set implementation can be decided for both the regular set and the tombstone set. Lots of opportunities there for cool storage tricks.
+/// This implementation with two separate sets means that the actual set implementation can be decided 
+/// for both the regular set and the tombstone set. This enables efficient storage strategies like using
+/// [`RoaringTreemap`] for tombstones (see [`SetUnionWithTombstonesRoaring`]), which provides space-efficient
+/// bitmap compression for the tombstone set while keeping the main set flexible.
+///
+/// Another possible implementation could be MapUnion<Key, WithTop<()>>, which would require fewer hash lookups
+/// but provides less flexibility for specialized storage optimizations.
 #[derive(Default, Clone, Debug)]
 pub struct SetUnionWithTombstones<Set, TombstoneSet> {
     set: Set,
@@ -83,6 +88,62 @@ where
 
         // if either there are new items in the real set, or the tombstone set increased
         old_set_len < self.set.len() || old_tombstones_len < self.tombstones.len()
+    }
+}
+
+// Specialized merge implementation for RoaringTombstoneSet with HashSet
+// This is more efficient because we can OR the roaring bitmaps directly,
+// and we iterate through the smaller set to check against tombstones.
+impl<Item>
+    Merge<SetUnionWithTombstones<HashSet<Item>, RoaringTombstoneSet<Item>>>
+    for SetUnionWithTombstones<HashSet<Item>, RoaringTombstoneSet<Item>>
+where
+    Item: Hash + Eq + Clone,
+{
+    fn merge(&mut self, other: SetUnionWithTombstones<HashSet<Item>, RoaringTombstoneSet<Item>>) -> bool {
+        let old_set_len = self.set.len();
+        let old_tombstones_len = self.tombstones.len();
+
+        // OR the roaring bitmaps together first - this is the key efficiency win!
+        self.tombstones.bitmap = &self.tombstones.bitmap | &other.tombstones.bitmap;
+
+        // Now merge the sets, removing any items that are in the combined tombstones
+        // Determine which set is smaller to iterate through for tombstone checking
+        if self.set.len() <= other.set.len() {
+            // Self is smaller: iterate through self, check against combined tombstones, remove matches
+            let to_remove: Vec<_> = self.set.iter()
+                .filter(|item| self.tombstones.contains(item))
+                .cloned()
+                .collect();
+            for item in to_remove {
+                self.set.remove(&item);
+            }
+            
+            // Add items from other that aren't in combined tombstones
+            self.set.extend(
+                other.set.into_iter()
+                    .filter(|item| !self.tombstones.contains(item))
+            );
+        } else {
+            // Other is smaller: add items from other that aren't in combined tombstones
+            // Then check self for items in combined tombstones
+            self.set.extend(
+                other.set.into_iter()
+                    .filter(|item| !self.tombstones.contains(item))
+            );
+            
+            // Remove items from self that are in combined tombstones
+            let to_remove: Vec<_> = self.set.iter()
+                .filter(|item| self.tombstones.contains(item))
+                .cloned()
+                .collect();
+            for item in to_remove {
+                self.set.remove(&item);
+            }
+        }
+
+        // Check if anything changed
+        old_set_len != self.set.len() || old_tombstones_len < self.tombstones.len()
     }
 }
 
@@ -243,6 +304,67 @@ impl<Set, TombstoneSet> IsTop for SetUnionWithTombstones<Set, TombstoneSet> {
     }
 }
 
+/// A tombstone set backed by [`RoaringTreemap`] that stores hashes of items.
+/// This provides space-efficient storage for tombstones of any hashable type.
+/// 
+/// Note: This uses hashing, so there's a theoretical possibility of hash collisions,
+/// though this is extremely unlikely with 64-bit hashes.
+#[derive(Default, Clone, Debug)]
+pub struct RoaringTombstoneSet<Item> {
+    bitmap: RoaringTreemap,
+    _phantom: std::marker::PhantomData<Item>,
+}
+
+impl<Item> RoaringTombstoneSet<Item> {
+    /// Create a new empty `RoaringTombstoneSet`.
+    pub fn new() -> Self {
+        Self {
+            bitmap: RoaringTreemap::new(),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Hash an item to u64 for storage in the bitmap.
+    fn hash_item(item: &Item) -> u64
+    where
+        Item: Hash,
+    {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        item.hash(&mut hasher);
+        hasher.finish()
+    }
+    
+    /// Check if an item is in the tombstone set.
+    pub fn contains(&self, item: &Item) -> bool
+    where
+        Item: Hash,
+    {
+        self.bitmap.contains(Self::hash_item(item))
+    }
+    
+    /// Insert an item into the tombstone set.
+    pub fn insert(&mut self, item: &Item) -> bool
+    where
+        Item: Hash,
+    {
+        self.bitmap.insert(Self::hash_item(item))
+    }
+}
+
+impl<Item: Hash> Extend<Item> for RoaringTombstoneSet<Item> {
+    fn extend<T: IntoIterator<Item = Item>>(&mut self, iter: T) {
+        for item in iter {
+            self.bitmap.insert(Self::hash_item(&item));
+        }
+    }
+}
+
+impl<Item> Len for RoaringTombstoneSet<Item> {
+    fn len(&self) -> usize {
+        self.bitmap.len() as usize
+    }
+}
+
 /// [`std::collections::HashSet`]-backed [`SetUnionWithTombstones`] lattice.
 pub type SetUnionWithTombstonesHashSet<Item> = SetUnionWithTombstones<HashSet<Item>, HashSet<Item>>;
 
@@ -268,6 +390,11 @@ pub type SetUnionWithTombstonesOptionSet<Item> =
 /// [`crate::collections::SingletonSet`]-backed [`SetUnionWithTombstones`] lattice.
 pub type SetUnionWithTombstonesTombstoneOnlySet<Item> =
     SetUnionWithTombstones<EmptySet<Item>, SingletonSet<Item>>;
+
+/// [`RoaringTreemap`]-backed tombstone set with [`std::collections::HashSet`] for the main set.
+/// Provides space-efficient tombstone storage for any hashable type.
+pub type SetUnionWithTombstonesRoaring<Item> =
+    SetUnionWithTombstones<HashSet<Item>, RoaringTombstoneSet<Item>>;
 
 #[cfg(test)]
 mod test {
@@ -326,5 +453,64 @@ mod test {
             SetUnionWithTombstonesHashSet::new_from([0], [1]),
             SetUnionWithTombstonesHashSet::new_from([1], [0]),
         ]);
+    }
+
+    #[test]
+    fn roaring_basic() {
+        let mut x = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([1, 2, 3]), 
+            RoaringTombstoneSet::new()
+        );
+        let mut y = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([2, 3, 4]), 
+            RoaringTombstoneSet::new()
+        );
+        
+        // Add tombstone for 2
+        y.as_reveal_mut().1.insert(&2);
+        
+        x.merge(y);
+        
+        // Should have 1, 3, 4 (2 is tombstoned)
+        assert!(!x.as_reveal_ref().0.contains(&2));
+        assert!(x.as_reveal_ref().0.contains(&1));
+        assert!(x.as_reveal_ref().0.contains(&3));
+        assert!(x.as_reveal_ref().0.contains(&4));
+        assert!(x.as_reveal_ref().1.contains(&2));
+    }
+
+    #[test]
+    fn roaring_merge_efficiency() {
+        // Test that merging roaring bitmaps works correctly
+        let mut x = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([1, 2, 3, 4, 5]), 
+            RoaringTombstoneSet::new()
+        );
+        x.as_reveal_mut().1.insert(&10);
+        x.as_reveal_mut().1.insert(&20);
+        
+        let mut y = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([6, 7, 8]), 
+            RoaringTombstoneSet::new()
+        );
+        y.as_reveal_mut().1.insert(&30);
+        y.as_reveal_mut().1.insert(&2); // Tombstone for 2
+        
+        x.merge(y);
+        
+        // Should have all tombstones
+        assert!(x.as_reveal_ref().1.contains(&10));
+        assert!(x.as_reveal_ref().1.contains(&20));
+        assert!(x.as_reveal_ref().1.contains(&30));
+        assert!(x.as_reveal_ref().1.contains(&2));
+        
+        // Should not have 2 in the set
+        assert!(!x.as_reveal_ref().0.contains(&2));
+        
+        // Should have all other items
+        assert!(x.as_reveal_ref().0.contains(&1));
+        assert!(x.as_reveal_ref().0.contains(&3));
+        assert!(x.as_reveal_ref().0.contains(&6));
+        assert!(x.as_reveal_ref().0.contains(&7));
     }
 }
