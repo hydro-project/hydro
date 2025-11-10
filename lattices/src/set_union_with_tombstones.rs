@@ -813,4 +813,61 @@ mod test {
         assert!(x.as_reveal_ref().0.contains("e"));
         assert!(x.as_reveal_ref().0.contains("f"));
     }
+
+    #[test]
+    fn roaring_empty_merge() {
+        // Test merging empty sets
+        let mut x = SetUnionWithTombstonesRoaring::new_from(HashSet::new(), RoaringTombstoneSet::new());
+        let y = SetUnionWithTombstonesRoaring::new_from(HashSet::new(), RoaringTombstoneSet::new());
+        
+        assert!(!x.merge(y)); // Should return false (no change)
+        assert!(x.as_reveal_ref().0.is_empty());
+        assert_eq!(x.as_reveal_ref().1.len(), 0);
+    }
+
+    #[test]
+    fn roaring_idempotency() {
+        // Test that merging the same data twice doesn't change the result
+        let mut x = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([1u64, 2, 3]),
+            RoaringTombstoneSet::new(),
+        );
+        let y = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([2u64, 3, 4]),
+            RoaringTombstoneSet::from_iter(vec![2u64]),
+        );
+        let z = y.clone();
+
+        x.merge(y);
+        let first_result = x.clone();
+        
+        x.merge(z);
+        
+        // Should be identical after second merge
+        assert_eq!(x.as_reveal_ref().0, first_result.as_reveal_ref().0);
+        assert_eq!(x.as_reveal_ref().1.len(), first_result.as_reveal_ref().1.len());
+    }
+
+    #[test]
+    fn fst_commutativity() {
+        // Test that merge order doesn't matter
+        let a = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from(["a".to_string(), "b".to_string()]),
+            FstTombstoneSet::from_iter(vec!["x".to_string()]),
+        );
+        let b = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from(["c".to_string(), "d".to_string()]),
+            FstTombstoneSet::from_iter(vec!["y".to_string()]),
+        );
+
+        let mut x1 = a.clone();
+        let mut x2 = b.clone();
+        
+        x1.merge(b.clone());
+        x2.merge(a.clone());
+
+        // Results should be the same regardless of merge order
+        assert_eq!(x1.as_reveal_ref().0, x2.as_reveal_ref().0);
+        assert_eq!(x1.as_reveal_ref().1.len(), x2.as_reveal_ref().1.len());
+    }
 }
