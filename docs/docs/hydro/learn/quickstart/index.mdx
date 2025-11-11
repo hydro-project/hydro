@@ -74,7 +74,7 @@ Finally, let us take a look at the function body:
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
 } showLineNumbers={7}>{getLines(highlightLines(libRsSrc, [10]), 7, 12)}</CodeBlock>
 
-To process incoming requests, you use the APIs available on live collections. This example uses `map`, which transforms each element of the incoming requests into a element of the outgoing responses. In Hydro, all values and closures passed to such APIs must be **quoted**. Quoting _captures_ the Rust code so that it can be run on a distributed node. To quote an expression, you wrap it with the `q!` macro.
+To process incoming requests, you use the APIs available on live collections. This example uses `Stream::map`, which transforms each element of the incoming requests into a element of the outgoing responses. In Hydro, all values and closures passed to such APIs must be **quoted**. Quoting _captures_ the Rust code so that it can be run on a distributed node. To quote an expression, you wrap it with the `q!` macro.
 
 :::caution
 
@@ -190,14 +190,14 @@ Hydro Deploy includes APIs for configuring resources on AWS, Azure, and GCP. Ins
 <TabItem value="gcp" label="GCP">
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/examples/echo_gcp.rs">examples/echo_gcp.rs</Link>
-} showLineNumbers={27}>{getLines(echoGcpSrc, 27, 39)}</CodeBlock>
+} showLineNumbers={27}>{getLines(echoGcpSrc, 27, 37)}</CodeBlock>
 </TabItem>
 </Tabs>
 
 
 When deploying to the cloud, the port is assigned automatically. You can retrieve it after deployment:
 
-<CodeBlock language="rust" showLineNumbers={45}>{getLines(echoGcpSrc, 45, 47)}</CodeBlock>
+<CodeBlock language="rust" showLineNumbers={43}>{getLines(echoGcpSrc, 43, 47)}</CodeBlock>
 
 Finally, to launch the echo server in the cloud, we run the deploy script. Hydro Deploy will automatically provision the necessary cloud resources, launch your application, and forward the server port to your local machine:
 <Tabs groupId="cloud">
@@ -219,10 +219,3 @@ For GCP deployment, you'll need to set up Google Cloud credentials and have the 
 ## Next Steps
 
 Congratulations! You've now written, tested, and deployed a simple Hydro program. In the next sections, you will expand your code into a stateful counter service with support for multiple clients. Along the way, you will learn how Hydro helps you avoid distributed bugs at compile-time and how to scale your application across clusters of machines.
-
-:::warning
-
-The next steps of this tutorial are currently under development. In the meantime, you may want to look at the [framework docs](../../reference/index.mdx).
-
-:::
-
