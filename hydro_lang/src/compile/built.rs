@@ -25,8 +25,10 @@ pub struct BuiltFlow<'a> {
     pub(super) _phantom: Invariant<'a>,
 }
 
-pub(crate) fn build_inner(ir: &mut Vec<HydroRoot>) -> BTreeMap<usize, DfirGraph> {
-    emit(ir)
+pub(crate) fn build_inner<'a, D: Deploy<'a>>(
+    ir: &mut Vec<HydroRoot>,
+) -> BTreeMap<usize, DfirGraph> {
+    emit::<D>(ir)
         .into_iter()
         .map(|(k, v)| {
             let (mut flat_graph, _, _) = v.build();

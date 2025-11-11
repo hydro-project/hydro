@@ -38,7 +38,8 @@ pub trait DecoupleClusterStream<'a, T, C1, B, Order: Ordering> {
         other: &Cluster<'a, C2>,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order>
     where
-        T: Clone + Serialize + DeserializeOwned;
+        T: Clone + Serialize + DeserializeOwned,
+        C1: 'a;
 }
 
 impl<'a, T, C1, B: Boundedness, Order: Ordering> DecoupleClusterStream<'a, T, C1, B, Order>
@@ -52,6 +53,7 @@ where
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order>
     where
         T: Clone + Serialize + DeserializeOwned,
+        C1: 'a,
     {
         let sent = self
             .map(q!(move |b| (
