@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/viz/json.rs`."><title>json.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (6647be936 2025-11-09)" data-channel="nightly" data-search-js="search-8e3fad08.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/viz/</div>json.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::{HashMap, HashSet};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/viz/json.rs`."><title>json.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (29a69716f 2025-11-10)" data-channel="nightly" data-search-js="search-8e3fad08.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/viz/</div>json.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::{HashMap, HashSet};
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>std::fmt::Write;
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>serde::Serialize;
@@ -579,7 +579,7 @@
 <a href=#579 id=579 data-nosnippet>579</a>        });
 <a href=#580 id=580 data-nosnippet>580</a>
 <a href=#581 id=581 data-nosnippet>581</a>        <span class="comment">// Determine the selected hierarchy (first one is default)
-<a href=#582 id=582 data-nosnippet>582</a>        </span><span class="kw">let </span>selected_hierarchy = <span class="macro">if !</span>hierarchy_choices.is_empty() {
+<a href=#582 id=582 data-nosnippet>582</a>        </span><span class="kw">let </span>selected_hierarchy = <span class="kw">if </span>!hierarchy_choices.is_empty() {
 <a href=#583 id=583 data-nosnippet>583</a>            hierarchy_choices[<span class="number">0</span>][<span class="string">"id"</span>].as_str().map(|s| s.to_string())
 <a href=#584 id=584 data-nosnippet>584</a>        } <span class="kw">else </span>{
 <a href=#585 id=585 data-nosnippet>585</a>            <span class="prelude-val">None
@@ -740,7 +740,7 @@
 <a href=#740 id=740 data-nosnippet>740</a>                    } <span class="kw">else </span>{
 <a href=#741 id=741 data-nosnippet>741</a>                        <span class="macro">format!</span>(<span class="string">"{}/{}"</span>, current_path, label)
 <a href=#742 id=742 data-nosnippet>742</a>                    };
-<a href=#743 id=743 data-nosnippet>743</a>                    <span class="macro">if !</span>hierarchy_map.contains_key(<span class="kw-2">&amp;</span>current_path) {
+<a href=#743 id=743 data-nosnippet>743</a>                    <span class="kw">if </span>!hierarchy_map.contains_key(<span class="kw-2">&amp;</span>current_path) {
 <a href=#744 id=744 data-nosnippet>744</a>                        hierarchy_map.insert(
 <a href=#745 id=745 data-nosnippet>745</a>                            current_path.clone(),
 <a href=#746 id=746 data-nosnippet>746</a>                            (label.clone(), depth, parent_path.clone()),
@@ -750,7 +750,7 @@
 <a href=#750 id=750 data-nosnippet>750</a>                    parent_path = <span class="prelude-val">Some</span>(current_path.clone());
 <a href=#751 id=751 data-nosnippet>751</a>                }
 <a href=#752 id=752 data-nosnippet>752</a>
-<a href=#753 id=753 data-nosnippet>753</a>                <span class="macro">if !</span>deepest_path.is_empty() {
+<a href=#753 id=753 data-nosnippet>753</a>                <span class="kw">if </span>!deepest_path.is_empty() {
 <a href=#754 id=754 data-nosnippet>754</a>                    path_to_node_assignments
 <a href=#755 id=755 data-nosnippet>755</a>                        .entry(deepest_path)
 <a href=#756 id=756 data-nosnippet>756</a>                        .or_default()
@@ -781,7 +781,7 @@
 <a href=#781 id=781 data-nosnippet>781</a>        }
 <a href=#782 id=782 data-nosnippet>782</a>
 <a href=#783 id=783 data-nosnippet>783</a>        <span class="comment">// If there are nodes without backtraces, create a root container for them
-<a href=#784 id=784 data-nosnippet>784</a>        </span><span class="macro">if !</span>nodes_without_backtrace.is_empty() {
+<a href=#784 id=784 data-nosnippet>784</a>        </span><span class="kw">if </span>!nodes_without_backtrace.is_empty() {
 <a href=#785 id=785 data-nosnippet>785</a>            hierarchy.push(<span class="macro">serde_json::json!</span>({
 <a href=#786 id=786 data-nosnippet>786</a>                <span class="string">"id"</span>: root_id.clone(),
 <a href=#787 id=787 data-nosnippet>787</a>                <span class="string">"name"</span>: <span class="string">"(no backtrace)"</span>,
@@ -985,7 +985,7 @@
 <a href=#985 id=985 data-nosnippet>985</a>                        .to_string();
 <a href=#986 id=986 data-nosnippet>986</a>
 <a href=#987 id=987 data-nosnippet>987</a>                    <span class="comment">// Record that this parent's ID should map to the child's ID
-<a href=#988 id=988 data-nosnippet>988</a>                    </span><span class="macro">if !</span>current_id.is_empty() &amp;&amp; !child_id.is_empty() {
+<a href=#988 id=988 data-nosnippet>988</a>                    </span><span class="kw">if </span>!current_id.is_empty() &amp;&amp; !child_id.is_empty() {
 <a href=#989 id=989 data-nosnippet>989</a>                        id_remapping.insert(current_id.clone(), child_id.clone());
 <a href=#990 id=990 data-nosnippet>990</a>                    }
 <a href=#991 id=991 data-nosnippet>991</a>
