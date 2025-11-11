@@ -59,9 +59,6 @@ use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 /// for both the regular set and the tombstone set. This enables efficient storage strategies like using
 /// [`crate::tombstone::RoaringTombstoneSet`] for tombstones (see [`SetUnionWithTombstonesRoaring`]), which provides space-efficient
 /// bitmap compression for the tombstone set while keeping the main set flexible.
-///
-/// Another possible implementation could be MapUnion<Key, WithTop<()>>, which would require fewer hash lookups
-/// but provides less flexibility for specialized storage optimizations.
 #[derive(Default, Clone, Debug)]
 pub struct SetUnionWithTombstones<Set, TombstoneSet> {
     set: Set,
