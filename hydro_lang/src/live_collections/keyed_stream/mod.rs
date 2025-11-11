@@ -51,7 +51,7 @@ pub struct KeyedStream<
     K,
     V,
     Loc,
-    Bound: Boundedness,
+    Bound: Boundedness = Unbounded,
     Order: Ordering = TotalOrder,
     Retry: Retries = ExactlyOnce,
 > {
@@ -256,6 +256,37 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.into_inner()),
                     trusted: false,
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    fn assume_ordering_trusted<O2: Ordering>(
+        self,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, V, L, B, O2, R> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            KeyedStream::new(self.location, self.ir_node.into_inner())
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
+            // We can always weaken the ordering guarantee
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
+                },
+            )
+        } else {
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: true,
                     metadata: self
                         .location
                         .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
@@ -1567,6 +1598,35 @@ where
     {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .reduce_watermark(other, comb)
+    }
+
+    /// Counts the number of elements in each group, producing a [`KeyedSingleton`] with the counts.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4), (1, 5)]))
+    ///     .into_keyed();
+    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// batch
+    ///     .value_counts()
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, 3), (2, 2)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 3));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 2));
+    /// # }));
+    /// ```
+    pub fn value_counts(self) -> KeyedSingleton<K, usize, L, B::WhenValueUnbounded> {
+        self.assume_ordering_trusted(
+            nondet!(/** ordering within each group affects neither result nor intermediates */),
+        )
+        .fold(q!(|| 0), q!(|acc, _| *acc += 1))
     }
 }
 
