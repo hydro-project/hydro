@@ -18,7 +18,6 @@
 //! - Efficient union operations for merging
 //! - Maintains sorted order
 //! - Example: `SetUnionWithTombstonesFstString::new_from(HashSet::from(["a".to_string()]), FstTombstoneSet::new())`
-//!
 
 //! ## For Other Types
 //! Use the generic [`SetUnionWithTombstones`] with [`HashSet`] for both sets:
@@ -58,7 +57,7 @@ use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 ///
 /// This implementation with two separate sets means that the actual set implementation can be decided
 /// for both the regular set and the tombstone set. This enables efficient storage strategies like using
-/// [`RoaringTreemap`] for tombstones (see [`SetUnionWithTombstonesRoaring`]), which provides space-efficient
+/// [`crate::tombstone::RoaringTombstoneSet`] for tombstones (see [`SetUnionWithTombstonesRoaring`]), which provides space-efficient
 /// bitmap compression for the tombstone set while keeping the main set flexible.
 ///
 /// Another possible implementation could be MapUnion<Key, WithTop<()>>, which would require fewer hash lookups
@@ -375,7 +374,7 @@ pub type SetUnionWithTombstonesOptionSet<Item> =
 pub type SetUnionWithTombstonesTombstoneOnlySet<Item> =
     SetUnionWithTombstones<EmptySet<Item>, SingletonSet<Item>>;
 
-/// [`RoaringTreemap`]-backed tombstone set with [`std::collections::HashSet`] for the main set.
+/// [`crate::tombstone::RoaringTombstoneSet`]-backed tombstone set with [`std::collections::HashSet`] for the main set.
 /// Provides space-efficient tombstone storage for u64 integer keys.
 pub type SetUnionWithTombstonesRoaring = SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>;
 
@@ -383,8 +382,6 @@ pub type SetUnionWithTombstonesRoaring = SetUnionWithTombstones<HashSet<u64>, Ro
 /// Provides space-efficient, collision-free tombstone storage for String keys.
 pub type SetUnionWithTombstonesFstString =
     SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>;
-
-
 
 #[cfg(test)]
 mod test {

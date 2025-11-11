@@ -1,0 +1,2511 @@
++ cargo +nightly fmt --all
++ cargo clippy --workspace --all-targets -- -D warnings
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling hydro_build_utils v0.0.1 (/Users/jmhwork/code/monorepo/hydro/hydro_build_utils)
+    Checking example_test v0.0.0 (/Users/jmhwork/code/monorepo/hydro/example_test)
+   Compiling include_mdtests v0.0.0 (/Users/jmhwork/code/monorepo/hydro/include_mdtests)
+   Compiling multiplatform_test v0.5.0 (/Users/jmhwork/code/monorepo/hydro/multiplatform_test)
+   Compiling stageleft_tool v0.10.2
+   Compiling stageleft_macro v0.10.2
+   Compiling copy_span v0.1.0 (/Users/jmhwork/code/monorepo/hydro/copy_span)
+   Compiling benches v0.0.0 (/Users/jmhwork/code/monorepo/hydro/benches)
+   Compiling website_playground v0.0.0 (/Users/jmhwork/code/monorepo/hydro/website_playground)
+   Compiling variadics v0.0.9 (/Users/jmhwork/code/monorepo/hydro/variadics)
+   Compiling lattices_macro v0.5.10 (/Users/jmhwork/code/monorepo/hydro/lattices_macro)
+   Compiling dfir_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_lang)
+   Compiling lattices v0.6.1 (/Users/jmhwork/code/monorepo/hydro/lattices)
+   Compiling dfir_rs v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_rs)
+   Compiling hydro_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_lang)
+   Compiling hydro_std v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_std)
+   Compiling hydro_test v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_test)
+    Checking stageleft v0.10.2
+   Compiling hydro_test_template v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_test_template)
+    Checking sinktools v0.0.1 (/Users/jmhwork/code/monorepo/hydro/sinktools)
+   Compiling variadics_macro v0.6.1 (/Users/jmhwork/code/monorepo/hydro/variadics_macro)
+    Checking hydro_deploy_integration v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/hydro_deploy_integration)
+    Checking hydro_deploy v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/core)
+   Compiling dfir_macro v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_macro)
+    Checking hydro_cli_examples v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/hydro_deploy_examples)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 11s
++ '[' true = false ']'
++ cargo check --all-targets --no-default-features
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Checking variadics v0.0.9 (/Users/jmhwork/code/monorepo/hydro/variadics)
+    Checking dfir_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_lang)
+    Checking example_test v0.0.0 (/Users/jmhwork/code/monorepo/hydro/example_test)
+    Checking hydro_build_utils v0.0.1 (/Users/jmhwork/code/monorepo/hydro/hydro_build_utils)
+   Compiling hydro_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_lang)
+   Compiling hydro_std v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_std)
+   Compiling hydro_test v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_test)
+   Compiling hydro_test_template v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_test_template)
+    Checking lattices_macro v0.5.10 (/Users/jmhwork/code/monorepo/hydro/lattices_macro)
+    Checking include_mdtests v0.0.0 (/Users/jmhwork/code/monorepo/hydro/include_mdtests)
+    Checking multiplatform_test v0.5.0 (/Users/jmhwork/code/monorepo/hydro/multiplatform_test)
+    Checking sinktools v0.0.1 (/Users/jmhwork/code/monorepo/hydro/sinktools)
+    Checking lattices v0.6.1 (/Users/jmhwork/code/monorepo/hydro/lattices)
+    Checking variadics_macro v0.6.1 (/Users/jmhwork/code/monorepo/hydro/variadics_macro)
+    Checking dfir_macro v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_macro)
+    Checking hydro_deploy_integration v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/hydro_deploy_integration)
+    Checking dfir_rs v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_rs)
+    Checking hydro_deploy v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/core)
+    Checking benches v0.0.0 (/Users/jmhwork/code/monorepo/hydro/benches)
+    Checking website_playground v0.0.0 (/Users/jmhwork/code/monorepo/hydro/website_playground)
+    Checking hydro_cli_examples v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/hydro_deploy_examples)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 00s
++ INSTA_FORCE_PASS=1
++ INSTA_UPDATE=always
++ TRYBUILD=overwrite
++ cargo nextest run --workspace --all-targets --no-fail-fast
+   Compiling hydro_deploy_integration v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/hydro_deploy_integration)
+   Compiling lattices v0.6.1 (/Users/jmhwork/code/monorepo/hydro/lattices)
+   Compiling stageleft_tool v0.10.2
+   Compiling stageleft v0.10.2
+   Compiling dfir_rs v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_rs)
+   Compiling hydro_deploy v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/core)
+   Compiling hydro_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_lang)
+   Compiling hydro_std v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_std)
+   Compiling hydro_test v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_test)
+   Compiling hydro_test_template v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_test_template)
+   Compiling website_playground v0.0.0 (/Users/jmhwork/code/monorepo/hydro/website_playground)
+   Compiling benches v0.0.0 (/Users/jmhwork/code/monorepo/hydro/benches)
+   Compiling hydro_cli_examples v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/hydro_deploy_examples)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 12s
+────────────
+ Nextest run ID 4bff51cc-43f7-4705-b16e-51a2cc3c0470 with nextest profile: default
+    Starting 681 tests across 134 binaries (6 tests skipped)
+        PASS [   1.565s] (  1/681) benches::bench/fan_in fan_in/loops
+        PASS [   1.697s] (  2/681) benches::bench/arithmetic arithmetic/iter-collect
+        PASS [   1.911s] (  3/681) benches::bench/fan_in fan_in/iters
+        PASS [   2.097s] (  4/681) benches::bench/arithmetic arithmetic/dfir_rs/compiled_no_cheating
+        PASS [   2.293s] (  5/681) benches::bench/arithmetic arithmetic/iter
+        PASS [   2.595s] (  6/681) benches::bench/arithmetic arithmetic/dfir_rs/surface
+        PASS [   3.311s] (  7/681) benches::bench/arithmetic arithmetic/pipeline
+        PASS [   3.461s] (  8/681) benches::bench/fan_in fan_in/timely
+        PASS [   3.874s] (  9/681) benches::bench/arithmetic arithmetic/timely
+        PASS [   3.918s] ( 10/681) benches::bench/arithmetic arithmetic/dfir_rs/compiled
+        PASS [   4.077s] ( 11/681) benches::bench/arithmetic arithmetic/raw
+        PASS [   4.418s] ( 12/681) benches::bench/fan_out fan_out/sol
+        PASS [   4.523s] ( 13/681) benches::bench/fan_out fan_out/dfir_rs/surface
+        PASS [   5.392s] ( 14/681) benches::bench/fan_in fan_in/dfir_rs/surface
+        PASS [   4.087s] ( 15/681) benches::bench/fork_join fork_join/dfir_rs
+        PASS [   4.474s] ( 16/681) benches::bench/fan_out fan_out/timely
+        PASS [   4.212s] ( 17/681) benches::bench/fork_join fork_join/dfir_rs/surface
+        PASS [   4.039s] ( 18/681) benches::bench/fork_join fork_join/raw
+        PASS [   4.057s] ( 19/681) benches::bench/fork_join fork_join/timely
+        PASS [   3.880s] ( 20/681) benches::bench/futures futures/delayed/done
+        PASS [   3.446s] ( 21/681) benches::bench/futures futures/delayed/initial
+        PASS [   3.465s] ( 22/681) benches::bench/futures futures/delayed/ready
+        PASS [   3.225s] ( 23/681) benches::bench/futures futures/delayed/waiting
+        PASS [   3.336s] ( 24/681) benches::bench/futures futures/immediately_available
+        PASS [   3.426s] ( 25/681) benches::bench/identity identity/dfir_rs
+        PASS [   3.480s] ( 26/681) benches::bench/identity identity/dfir_rs/compiled
+        PASS [   3.733s] ( 27/681) benches::bench/identity identity/dfir_rs/surface
+        PASS [   3.780s] ( 28/681) benches::bench/identity identity/iter
+        PASS [   3.665s] ( 29/681) benches::bench/identity identity/iter-collect
+        PASS [   3.599s] ( 30/681) benches::bench/identity identity/pipeline
+        PASS [   3.561s] ( 31/681) benches::bench/identity identity/raw
+        PASS [   3.777s] ( 32/681) benches::bench/join join/String/String/sol
+        PASS [   4.112s] ( 33/681) benches::bench/identity identity/timely
+        PASS [   3.869s] ( 34/681) benches::bench/join join/String/String/timely
+        PASS [   3.695s] ( 35/681) benches::bench/join join/usize/usize/sol
+        PASS [   3.688s] ( 36/681) benches::bench/join join/usize/usize/timely
+        PASS [   3.551s] ( 37/681) benches::bench/micro_ops micro/ops/anti_join
+        PASS [   3.578s] ( 38/681) benches::bench/micro_ops micro/ops/crossjoin
+        PASS [   3.494s] ( 39/681) benches::bench/micro_ops micro/ops/difference
+        PASS [   3.578s] ( 40/681) benches::bench/micro_ops micro/ops/flat_map
+        PASS [   3.567s] ( 41/681) benches::bench/micro_ops micro/ops/fold
+        PASS [   3.458s] ( 42/681) benches::bench/micro_ops micro/ops/group_by
+        PASS [   3.344s] ( 43/681) benches::bench/micro_ops micro/ops/identity
+        PASS [   3.345s] ( 44/681) benches::bench/micro_ops micro/ops/join
+        PASS [   3.463s] ( 45/681) benches::bench/micro_ops micro/ops/map
+        PASS [   3.291s] ( 46/681) benches::bench/micro_ops micro/ops/next_tick/big
+        PASS [   3.340s] ( 47/681) benches::bench/micro_ops micro/ops/next_tick/small
+        PASS [   3.405s] ( 48/681) benches::bench/micro_ops micro/ops/sort
+        PASS [   3.465s] ( 49/681) benches::bench/micro_ops micro/ops/tee
+        PASS [   3.479s] ( 50/681) benches::bench/micro_ops micro/ops/union
+        PASS [   3.589s] ( 51/681) benches::bench/micro_ops micro/ops/unique
+        PASS [   3.627s] ( 52/681) benches::bench/reachability reachability/dfir_rs
+        PASS [   3.625s] ( 53/681) benches::bench/reachability reachability/dfir_rs/scheduled
+        PASS [   3.703s] ( 54/681) benches::bench/reachability reachability/dfir_rs/surface
+        PASS [   3.718s] ( 55/681) benches::bench/reachability reachability/dfir_rs/surface_cheating
+        PASS [   3.653s] ( 56/681) benches::bench/reachability reachability/timely
+        PASS [   3.573s] ( 57/681) benches::bench/symmetric_hash_join symmetric_hash_join/match_keys_diff_values
+        PASS [   3.929s] ( 58/681) benches::bench/reachability reachability/differential
+        PASS [   3.568s] ( 59/681) benches::bench/symmetric_hash_join symmetric_hash_join/match_keys_same_values
+        PASS [   3.468s] ( 60/681) benches::bench/symmetric_hash_join symmetric_hash_join/no_match
+        PASS [   3.477s] ( 61/681) benches::bench/symmetric_hash_join symmetric_hash_join/zipf_keys_high_contention_unique_values
+        PASS [   3.448s] ( 62/681) benches::bench/symmetric_hash_join symmetric_hash_join/zipf_keys_low_contention_unique_values
+        PASS [   3.498s] ( 63/681) benches::bench/upcase concatting/iter
+        PASS [   3.500s] ( 64/681) benches::bench/upcase concatting/raw
+        PASS [   3.558s] ( 65/681) benches::bench/upcase concatting/timely
+        PASS [   3.464s] ( 66/681) benches::bench/upcase upcase_allocating/iter
+        PASS [   0.013s] ( 67/681) dfir_lang graph::graph_algorithms::test::test_scc_kosaraju
+        PASS [   0.012s] ( 68/681) dfir_lang graph::graph_algorithms::test::test_toposort
+        PASS [   0.015s] ( 69/681) dfir_lang graph::graph_algorithms::test::test_toposort_cycle
+        PASS [   0.014s] ( 70/681) dfir_lang parse::test::test_operator_to_pretty_string
+        PASS [   0.012s] ( 71/681) dfir_lang union_find::test::test_basic
+        PASS [   0.014s] ( 72/681) dfir_rs compiled::pull::symmetric_hash_join::tests::hash_join
+        PASS [   0.013s] ( 73/681) dfir_rs compiled::pull::symmetric_hash_join::tests::hash_join_subsequent_ticks_do_produce_even_if_nothing_is_changed
+        PASS [   0.013s] ( 74/681) dfir_rs scheduled::state::test::test_erasure
+        PASS [   0.013s] ( 75/681) dfir_rs util::multiset::test::basic
+        PASS [   0.016s] ( 76/681) dfir_rs util::simulation::tests::test_echo
+        PASS [   0.013s] ( 77/681) dfir_rs util::sparse_vec::test::basic
+        PASS [   0.013s] ( 78/681) dfir_rs util::sparse_vec::test::can_implement_default_on_types_that_dont_implement_default
+        PASS [   0.013s] ( 79/681) dfir_rs util::test::test_collect_ready
+        PASS [   3.485s] ( 80/681) benches::bench/upcase upcase_allocating/raw
+        PASS [   0.016s] ( 81/681) dfir_rs util::test::test_collect_ready_async
+        PASS [   0.013s] ( 82/681) dfir_rs util::unsync::mpsc::test::test_send_multiple_outstanding
+        PASS [   3.503s] ( 83/681) benches::bench/upcase upcase_allocating/timely
+        PASS [   0.013s] ( 84/681) dfir_rs util::unsync::mpsc::test::test_stream_sink_loop
+        PASS [   0.015s] ( 85/681) dfir_rs::groupby fold_keyed_monotonic_core
+        PASS [   0.014s] ( 86/681) dfir_rs::scheduled_teeing_handoff test_basic
+        PASS [   0.015s] ( 87/681) dfir_rs::scheduled_teeing_handoff test_scheduling
+        PASS [   0.624s] ( 88/681) dfir_rs util::unsync::mpsc::test::test_spsc_random
+        PASS [   0.014s] ( 89/681) dfir_rs::scheduled_teeing_handoff test_scheduling_drop
+        PASS [   0.013s] ( 90/681) dfir_rs::scheduled_teeing_handoff test_scheduling_tee_after
+        PASS [   0.013s] ( 91/681) dfir_rs::scheduled_test map_filter
+        PASS [   0.012s] ( 92/681) dfir_rs::scheduled_test test_basic_n_m
+        PASS [   0.011s] ( 93/681) dfir_rs::scheduled_test test_basic_variadic
+        PASS [   0.012s] ( 94/681) dfir_rs::scheduled_test test_cycle
+        PASS [   0.012s] ( 95/681) dfir_rs::scheduled_test test_input_channel
+        PASS [   0.013s] ( 96/681) dfir_rs::scheduled_test test_input_handle
+        PASS [   0.013s] ( 97/681) dfir_rs::scheduled_test test_input_handle_thread
+        PASS [   3.372s] ( 98/681) benches::bench/upcase upcase_in_place/iter
+        PASS [   0.217s] ( 99/681) dfir_rs::surface_async asynctest_dest_sink_bounded_channel
+        PASS [   2.899s] (100/681) benches::bench/upcase upcase_in_place/raw
+        PASS [   0.115s] (101/681) dfir_rs::surface_async asynctest_event_repeat_iter
+        PASS [   0.015s] (102/681) dfir_rs::surface_async asynctest_repeat_iter
+        PASS [   0.015s] (103/681) dfir_rs::surface_async asynctest_source_stream
+        PASS [   2.987s] (104/681) benches::bench/upcase upcase_in_place/timely
+        PASS [   0.218s] (105/681) dfir_rs::surface_async asynctest_tcp
+        PASS [   0.218s] (106/681) dfir_rs::surface_async asynctest_udp
+        PASS [   3.220s] (107/681) benches::bench/words_diamond dfir_rs_diamond
+        PASS [   1.019s] (108/681) dfir_rs::surface_async asynctest_dest_asyncwrite_duplex
+        PASS [   3.170s] (109/681) benches::bench/words_diamond hydroflo2_diamond_forloop
+        PASS [   1.136s] (110/681) dfir_rs::surface_async asynctest_check_state_yielding
+        PASS [   0.057s] (111/681) dfir_rs::surface_batch test_basic_2
+        PASS [   1.860s] (112/681) dfir_rs util::unsync::mpsc::test::test_mpsc_random
+        PASS [   0.017s] (113/681) dfir_rs::surface_codegen test_anti_join
+        PASS [   0.053s] (114/681) dfir_rs::surface_book test_surface_flows_1
+        PASS [   0.014s] (115/681) dfir_rs::surface_codegen test_anti_join_multiset_static
+        PASS [   0.014s] (116/681) dfir_rs::surface_codegen test_anti_join_multiset_tick_static
+        PASS [   0.015s] (117/681) dfir_rs::surface_codegen test_anti_join_static
+        PASS [   0.014s] (118/681) dfir_rs::surface_codegen test_anti_join_tick_static
+        PASS [   0.014s] (119/681) dfir_rs::surface_codegen test_assert_eq
+        PASS [   0.055s] (120/681) dfir_rs::surface_codegen test_basic_2
+        PASS [   3.205s] (121/681) benches::bench/words_diamond hydroflo2_diamond_iter_buffer_chain
+        PASS [   0.017s] (122/681) dfir_rs::surface_codegen test_basic_inspect_no_null
+        PASS [   0.013s] (123/681) dfir_rs::surface_codegen test_basic_inspect_null
+        PASS [   0.014s] (124/681) dfir_rs::surface_codegen test_basic_tee
+        PASS [   0.056s] (125/681) dfir_rs::surface_codegen test_basic_3
+        PASS [   1.016s] (126/681) dfir_rs::surface_async asynctest_dest_sink_duplex
+        PASS [   0.012s] (127/681) dfir_rs::surface_codegen test_channel_minimal
+        PASS [   0.013s] (128/681) dfir_rs::surface_codegen test_cross_join
+        PASS [   0.150s] (129/681) dfir_rs::surface_codegen test_assert_failures
+        PASS [   0.014s] (130/681) dfir_rs::surface_codegen test_cross_join_multiset
+        PASS [   0.014s] (131/681) dfir_rs::surface_codegen test_defer_tick
+        PASS [   0.054s] (132/681) dfir_rs::surface_codegen test_basic_union
+        PASS [   0.013s] (133/681) dfir_rs::surface_codegen test_iter_stream_batches
+        PASS [   0.015s] (134/681) dfir_rs::surface_codegen test_join_order
+        PASS [   0.059s] (135/681) dfir_rs::surface_codegen test_covid_tracing
+        PASS [   0.014s] (136/681) dfir_rs::surface_codegen test_large_diamond
+        PASS [   0.014s] (137/681) dfir_rs::surface_codegen test_multiset_join
+        PASS [   0.015s] (138/681) dfir_rs::surface_codegen test_sort_by_owned
+        PASS [   0.057s] (139/681) dfir_rs::surface_codegen test_recv_expr
+        PASS [   0.056s] (140/681) dfir_rs::surface_codegen test_sort
+        PASS [   0.058s] (141/681) dfir_rs::surface_codegen test_sort_by_key
+        PASS [   0.054s] (142/681) dfir_rs::surface_codegen test_surface_syntax_reachability_generated
+        PASS [   3.216s] (143/681) benches::bench/words_diamond hydroflo2_diamond_iter_buffer_one
+        PASS [   0.057s] (144/681) dfir_rs::surface_codegen test_transitive_closure
+        PASS [   0.014s] (145/681) dfir_rs::surface_context test_defered_tick_and_no_io_with_run_async
+        PASS [   0.056s] (146/681) dfir_rs::surface_context test_context_mut
+        PASS [   0.056s] (147/681) dfir_rs::surface_context test_context_ref
+        PASS [   0.058s] (148/681) dfir_rs::surface_cross_singleton test_basic
+        PASS [   0.057s] (149/681) dfir_rs::surface_cross_singleton test_union_defer_tick
+        PASS [   0.023s] (150/681) dfir_rs::surface_demux_enum test_demux_enum
+        PASS [   0.021s] (151/681) dfir_rs::surface_demux_enum test_demux_enum_generic
+        PASS [   0.018s] (152/681) dfir_rs::surface_demux_enum test_one_variant
+        PASS [   0.264s] (153/681) dfir_rs::surface_context test_context_current_tick_start_does_not_count_time_between_ticks_async
+        PASS [   0.015s] (154/681) dfir_rs::surface_demux_enum test_zero_variants
+        PASS [   0.017s] (155/681) dfir_rs::surface_difference_anti_join test_anti_join_multiset
+        PASS [   3.354s] (156/681) benches::bench/words_diamond hydroflo2_diamond_iter_clone_chain
+        PASS [   0.058s] (157/681) dfir_rs::surface_difference_anti_join test_diff_multiset_static
+        PASS [   0.059s] (158/681) dfir_rs::surface_difference_anti_join test_diff_multiset_static_tick
+        PASS [   0.054s] (159/681) dfir_rs::surface_difference_anti_join test_diff_multiset_tick_static
+        PASS [   0.060s] (160/681) dfir_rs::surface_difference_anti_join test_diff_multiset_timing
+        PASS [   0.056s] (161/681) dfir_rs::surface_difference_anti_join test_diff_static
+        PASS [   0.055s] (162/681) dfir_rs::surface_difference_anti_join test_diff_timing
+        PASS [   0.015s] (163/681) dfir_rs::surface_difference_anti_join test_difference
+        PASS [   0.338s] (164/681) dfir_rs::surface_counter test_stream
+        PASS [   0.015s] (165/681) dfir_rs::surface_difference_anti_join test_difference_loop_lifetimes
+        PASS [   0.017s] (166/681) dfir_rs::surface_difference_anti_join test_difference_multiset
+        PASS [   0.017s] (167/681) dfir_rs::surface_difference_anti_join test_difference_multiset_loop_lifetimes
+        PASS [   0.018s] (168/681) dfir_rs::surface_fold test_fold_flatten
+        PASS [   0.017s] (169/681) dfir_rs::surface_fold test_fold_inference
+        PASS [   0.016s] (170/681) dfir_rs::surface_fold test_fold_loop_lifetime
+        PASS [   3.322s] (171/681) benches::bench/words_diamond hydroflo2_diamond_iter_clone_interleave
+        PASS [   0.069s] (172/681) dfir_rs::surface_fold test_fold_sort
+        PASS [   0.065s] (173/681) dfir_rs::surface_fold test_fold_static_join
+        PASS [   0.071s] (174/681) dfir_rs::surface_fold test_fold_static
+        PASS [   0.016s] (175/681) dfir_rs::surface_fold_keyed test_fold_keyed_loop_lifetime
+        PASS [   1.019s] (176/681) dfir_rs::surface_async test_echo_tcp
+        PASS [   1.071s] (177/681) dfir_rs::surface_async test_echo
+        PASS [   0.060s] (178/681) dfir_rs::surface_fold test_fold_tick
+        PASS [   1.020s] (179/681) dfir_rs::surface_async test_echo_udp
+        PASS [   0.069s] (180/681) dfir_rs::surface_fold_keyed test_fold_keyed_infer_basic
+        PASS [   0.065s] (181/681) dfir_rs::surface_fold_keyed test_fold_keyed_static
+        PASS [   1.016s] (182/681) dfir_rs::surface_async test_futures_stream_sink
+        PASS [   0.066s] (183/681) dfir_rs::surface_fold_keyed test_fold_keyed_tick
+        PASS [   0.018s] (184/681) dfir_rs::surface_join replay_static
+        PASS [   0.079s] (185/681) dfir_rs::surface_forwardref test_forwardref_basic_backward
+        PASS [   0.074s] (186/681) dfir_rs::surface_forwardref test_forwardref_basic_forward
+        PASS [   0.081s] (187/681) dfir_rs::surface_forwardref test_forwardref_basic_middle
+        PASS [   0.081s] (188/681) dfir_rs::surface_join loop_lifetimes
+        PASS [   3.309s] (189/681) benches::bench/words_diamond hydroflo2_diamond_iter_tee_chain
+        PASS [   0.074s] (190/681) dfir_rs::surface_join static_static
+        PASS [   0.079s] (191/681) dfir_rs::surface_join static_tick
+        PASS [   0.074s] (192/681) dfir_rs::surface_join tick_static
+        PASS [   0.080s] (193/681) dfir_rs::surface_join tick_tick
+        PASS [   0.078s] (194/681) dfir_rs::surface_join_fused static_static_lhs_blocking_rhs_streaming
+        PASS [   0.076s] (195/681) dfir_rs::surface_join_fused static_static_lhs_streaming_rhs_blocking
+        PASS [   0.023s] (196/681) dfir_rs::surface_lattice_batch test_lattice_batch
+        PASS [   0.079s] (197/681) dfir_rs::surface_join_fused static_tick_lhs_blocking_rhs_streaming
+        PASS [   0.080s] (198/681) dfir_rs::surface_join_fused static_tick_lhs_streaming_rhs_blocking
+        PASS [   0.023s] (199/681) dfir_rs::surface_lattice_bimorphism test_ght_join_bimorphism
+        PASS [   0.080s] (200/681) dfir_rs::surface_join_fused tick_tick_lhs_blocking_rhs_streaming
+        PASS [   0.084s] (201/681) dfir_rs::surface_join_fused tick_tick_lhs_fold_rhs_reduce
+        PASS [   0.076s] (202/681) dfir_rs::surface_join_fused tick_tick_lhs_streaming_rhs_blocking
+        PASS [   0.080s] (203/681) dfir_rs::surface_lattice_bimorphism test_cartesian_product
+        PASS [   0.027s] (204/681) dfir_rs::surface_lattice_fold test_basic
+        PASS [   0.077s] (205/681) dfir_rs::surface_lattice_bimorphism test_cartesian_product_1401
+        PASS [   0.027s] (206/681) dfir_rs::surface_lattice_fold test_fold_loop
+        PASS [   0.079s] (207/681) dfir_rs::surface_lattice_bimorphism test_cartesian_product_tick_state
+        PASS [   0.024s] (208/681) dfir_rs::surface_lattice_fold test_lattice_fold_loop
+        PASS [   0.022s] (209/681) dfir_rs::surface_lattice_generalized_hash_trie test_basic
+        PASS [   0.022s] (210/681) dfir_rs::surface_lattice_generalized_hash_trie test_join
+        PASS [   0.022s] (211/681) dfir_rs::surface_lattice_join test_lattice_join_fused_join
+        PASS [   0.022s] (212/681) dfir_rs::surface_lattice_join test_lattice_join_fused_join_map_union
+        PASS [   0.084s] (213/681) dfir_rs::surface_lattice_bimorphism test_join
+        PASS [   0.084s] (214/681) dfir_rs::surface_lattice_bimorphism_persist_insertion test_cartesian_product_multi_tick
+        PASS [   0.085s] (215/681) dfir_rs::surface_lattice_bimorphism_persist_insertion test_cartesian_product_multi_tick_identity
+        PASS [   0.018s] (216/681) dfir_rs::surface_lattice_join test_lattice_join_fused_join_reducing_behavior
+        PASS [   0.019s] (217/681) dfir_rs::surface_lattice_reduce test_basic
+        PASS [   0.023s] (218/681) dfir_rs::surface_lattice_join test_lattice_join_fused_join_set_union
+        PASS [   0.084s] (219/681) dfir_rs::surface_lattice_bimorphism_persist_insertion test_cartesian_product_multi_tick_tee
+        PASS [   0.027s] (220/681) dfir_rs::surface_loop test_batches_basic
+        PASS [   0.032s] (221/681) dfir_rs::surface_loop test_state_codegen
+        PASS [   0.079s] (222/681) dfir_rs::surface_loop test_flo_nested
+        PASS [   0.028s] (223/681) dfir_rs::surface_multiset_delta test_chat_app_replay
+        PASS [   0.083s] (224/681) dfir_rs::surface_loop test_enumerate_loop
+        PASS [   0.082s] (225/681) dfir_rs::surface_loop test_flo_repeat_n
+        PASS [   0.089s] (226/681) dfir_rs::surface_loop test_flo_repeat_n_multiple_nested
+        PASS [   0.023s] (227/681) dfir_rs::surface_multiset_delta test_chat_app_replay_manual
+        PASS [   0.018s] (228/681) dfir_rs::surface_multiset_delta test_multiset_delta_2
+        PASS [   0.085s] (229/681) dfir_rs::surface_loop test_flo_syntax
+        PASS [   0.090s] (230/681) dfir_rs::surface_loop test_flo_repeat_n_nested
+        PASS [   0.018s] (231/681) dfir_rs::surface_multiset_delta test_persist_multiset_delta
+        PASS [   0.019s] (232/681) dfir_rs::surface_parser test_flo_syntax
+        PASS [   0.018s] (233/681) dfir_rs::surface_parser test_parser_basic
+        PASS [   0.120s] (234/681) dfir_rs::surface_loop test_flo_repeat_kmeans
+        PASS [   0.019s] (235/681) dfir_rs::surface_parser test_parser_forwardref_basic
+        PASS [   0.020s] (236/681) dfir_rs::surface_parser test_parser_forwardref_cycle_left
+        PASS [   3.376s] (237/681) benches::bench/words_diamond hydroflo2_diamond_iter_tee_interleave
+        PASS [   0.027s] (238/681) dfir_rs::surface_parser test_parser_forwardref_chain
+        PASS [   0.024s] (239/681) dfir_rs::surface_parser test_parser_forwardref_cycle_right
+        PASS [   0.110s] (240/681) dfir_rs::surface_loop test_write
+        PASS [   0.023s] (241/681) dfir_rs::surface_parser test_parser_forwardref_degen
+        PASS [   0.022s] (242/681) dfir_rs::surface_parser test_parser_forwardref_knot
+        PASS [   0.022s] (243/681) dfir_rs::surface_parser test_parser_forwardref_self_middle
+        PASS [   0.027s] (244/681) dfir_rs::surface_parser test_parser_forwardref_mutual
+        PASS [   0.025s] (245/681) dfir_rs::surface_parser test_parser_forwardref_tee
+        PASS [   0.072s] (246/681) dfir_rs::surface_multiset_delta test_multiset_delta
+        PASS [   0.029s] (247/681) dfir_rs::surface_parser test_parser_port_naked_basic
+        PASS [   0.028s] (248/681) dfir_rs::surface_parser test_parser_port_naked_knot
+        PASS [   0.028s] (249/681) dfir_rs::surface_partition test_partition_round
+        PASS [   0.036s] (250/681) dfir_rs::surface_partition test_partition_fizzbuzz
+        PASS [   0.047s] (251/681) dfir_rs::surface_parser test_parser_port_reassign
+        PASS [   0.035s] (252/681) dfir_rs::surface_persist test_persist_join
+        PASS [   0.051s] (253/681) dfir_rs::surface_persist test_persist_double_handoff
+        PASS [   0.084s] (254/681) dfir_rs::surface_parser test_parser_forwardref_union
+        PASS [   0.033s] (255/681) dfir_rs::surface_persist test_persist_single_subgraph
+        PASS [   0.091s] (256/681) dfir_rs::surface_persist test_persist_basic
+        PASS [   0.052s] (257/681) dfir_rs::surface_persist test_persist_single_handoff
+        PASS [   0.101s] (258/681) dfir_rs::surface_persist test_persist
+        PASS [   0.099s] (259/681) dfir_rs::surface_persist test_persist_mut
+        PASS [   0.023s] (260/681) dfir_rs::surface_reduce test_reduce_loop_lifetime
+        PASS [   0.107s] (261/681) dfir_rs::surface_persist test_persist_mut_keyed
+        PASS [   0.092s] (262/681) dfir_rs::surface_persist test_persist_replay_join
+        PASS [   0.105s] (263/681) dfir_rs::surface_persist test_persist_push
+        PASS [   0.116s] (264/681) dfir_rs::surface_persist test_persist_pull
+        PASS [   0.033s] (265/681) dfir_rs::surface_reduce_keyed test_reduce_keyed_loop_lifetime
+        PASS [   0.091s] (266/681) dfir_rs::surface_reduce test_reduce
+        PASS [   0.080s] (267/681) dfir_rs::surface_reduce test_reduce_static
+        PASS [   0.080s] (268/681) dfir_rs::surface_reduce test_reduce_sum
+        PASS [   0.083s] (269/681) dfir_rs::surface_reduce test_reduce_tick
+        PASS [   0.082s] (270/681) dfir_rs::surface_reduce_keyed test_reduce_keyed_infer_basic
+        PASS [   0.086s] (271/681) dfir_rs::surface_reduce_keyed test_reduce_keyed_static
+        PASS [   0.078s] (272/681) dfir_rs::surface_reduce_keyed test_reduce_keyed_tick
+        PASS [   0.016s] (273/681) dfir_rs::surface_scan test_scan_complex_accumulator
+        PASS [   0.017s] (274/681) dfir_rs::surface_scan test_scan_different_types
+        PASS [   0.016s] (275/681) dfir_rs::surface_scan test_scan_early_termination
+        PASS [   0.015s] (276/681) dfir_rs::surface_scan test_scan_empty_input
+        PASS [   0.014s] (277/681) dfir_rs::surface_scan test_scan_static_early_termination
+        PASS [   0.056s] (278/681) dfir_rs::surface_scan test_scan_push
+        PASS [   0.055s] (279/681) dfir_rs::surface_scan test_scan_static
+        PASS [   0.054s] (280/681) dfir_rs::surface_scan test_scan_tick
+        PASS [   0.058s] (281/681) dfir_rs::surface_scheduling test_issue_800_1050_persist
+        PASS [   0.058s] (282/681) dfir_rs::surface_scheduling test_issue_800_1050_fold_keyed
+        PASS [   0.053s] (283/681) dfir_rs::surface_scheduling test_issue_800_1050_reduce_keyed
+        PASS [   0.058s] (284/681) dfir_rs::surface_scheduling test_nospin_issue_961_complicated
+        PASS [   0.059s] (285/681) dfir_rs::surface_scheduling test_nospin_issue_961
+        PASS [   0.061s] (286/681) dfir_rs::surface_scheduling test_persist_stratum_run_available
+        PASS [   0.062s] (287/681) dfir_rs::surface_scheduling test_stratum_loop
+        PASS [   1.342s] (288/681) dfir_rs::surface_counter test_fib
+        PASS [   0.056s] (289/681) dfir_rs::surface_scheduling test_tick_loop
+        PASS [   0.055s] (290/681) dfir_rs::surface_singleton test_fold_cross
+        PASS [   0.053s] (291/681) dfir_rs::surface_singleton test_fold_singleton
+        PASS [   0.055s] (292/681) dfir_rs::surface_singleton test_fold_singleton_push
+        PASS [   0.059s] (293/681) dfir_rs::surface_singleton test_multi_tick
+        PASS [   0.013s] (294/681) dfir_rs::surface_singleton test_scheduling
+        PASS [   0.057s] (295/681) dfir_rs::surface_singleton test_reduce_singleton
+        PASS [   0.014s] (296/681) dfir_rs::surface_singleton test_state_tick
+        PASS [   0.263s] (297/681) dfir_rs::surface_scheduling test_persist_stratum_run_async
+        PASS [   0.056s] (298/681) dfir_rs::surface_singleton test_reduce_singleton_push
+        PASS [   0.016s] (299/681) dfir_rs::surface_state_scheduling test_fold_keyed_static
+        PASS [   0.014s] (300/681) dfir_rs::surface_state_scheduling test_fold_keyed_tick
+        PASS [   0.056s] (301/681) dfir_rs::surface_singleton test_state
+        PASS [   0.015s] (302/681) dfir_rs::surface_state_scheduling test_fold_static
+        PASS [   0.014s] (303/681) dfir_rs::surface_state_scheduling test_fold_tick
+        PASS [   0.014s] (304/681) dfir_rs::surface_state_scheduling test_reduce_static
+        PASS [   0.016s] (305/681) dfir_rs::surface_state_scheduling test_reduce_tick
+        PASS [   0.059s] (306/681) dfir_rs::surface_singleton test_state_unused
+        PASS [   0.014s] (307/681) dfir_rs::surface_state_scheduling test_repeat_iter
+        PASS [   0.017s] (308/681) dfir_rs::surface_state_scheduling test_resume_external_event
+        PASS [   0.057s] (309/681) dfir_rs::surface_stratum test_difference_a
+        PASS [   0.061s] (310/681) dfir_rs::surface_stratum test_defer_lazy
+        PASS [   0.055s] (311/681) dfir_rs::surface_stratum test_difference_b
+        PASS [   0.055s] (312/681) dfir_rs::surface_stratum test_subgraph_stratum_consolidation
+        PASS [   0.064s] (313/681) dfir_rs::surface_stratum test_surface_syntax_graph_unreachability
+        PASS [   0.064s] (314/681) dfir_rs::surface_stratum test_tick_loop_1
+        PASS [   0.062s] (315/681) dfir_rs::surface_stratum test_tick_loop_2
+        PASS [   0.061s] (316/681) dfir_rs::surface_stratum test_tick_loop_3
+        PASS [   0.025s] (317/681) dfir_rs::surface_unique test_loop_lifetime
+        PASS [   0.062s] (318/681) dfir_rs::surface_unique test_unique
+        PASS [   0.064s] (319/681) dfir_rs::surface_unique test_unique_static_pull
+        PASS [   0.070s] (320/681) dfir_rs::surface_unique test_unique_static_push
+        PASS [   0.056s] (321/681) dfir_rs::surface_unique test_unique_tick_pull
+        PASS [   0.017s] (322/681) dfir_rs::surface_warnings test_degenerate_tee
+        PASS [   0.014s] (323/681) dfir_rs::surface_warnings test_degenerate_union
+        PASS [   0.013s] (324/681) dfir_rs::surface_warnings test_empty_tee
+        PASS [   0.014s] (325/681) dfir_rs::surface_warnings test_empty_union
+        PASS [   0.015s] (326/681) dfir_rs::surface_warnings test_warped_diamond
+        PASS [   0.018s] (327/681) dfir_rs::surface_warnings test_warped_diamond_2
+        PASS [   0.056s] (328/681) dfir_rs::surface_unique test_unique_tick_push
+        PASS [   0.022s] (329/681) dfir_rs::surface_zip_unzip test_loop_lifetime
+        PASS [   0.023s] (330/681) dfir_rs::surface_zip_unzip test_unzip_basic
+        PASS [   0.024s] (331/681) dfir_rs::surface_zip_unzip test_zip_basic
+        PASS [   0.015s] (332/681) dfir_rs::surface_zip_unzip test_zip_longest_basic
+        PASS [   0.019s] (333/681) dfir_rs::surface_zip_unzip test_zip_loop
+        PASS [   2.033s] (334/681) dfir_rs::surface_resolve_futures multi_batch_test
+        PASS [   2.033s] (335/681) dfir_rs::surface_resolve_futures pusherator_ordered_test
+        PASS [   2.029s] (336/681) dfir_rs::surface_resolve_futures pusherator_test
+        PASS [   2.023s] (337/681) dfir_rs::surface_resolve_futures single_batch_test
+        PASS [   0.014s] (338/681) dfir_rs::example/hello_world test
+        PASS [   0.014s] (339/681) dfir_rs::example/kvs_bench protocol::test::test_bincode
+        PASS [   0.013s] (340/681) dfir_rs::example/kvs_bench protocol::test::test_delete
+        PASS [   2.020s] (341/681) dfir_rs::surface_resolve_futures_ordered multi_batch_test
+        PASS [   2.018s] (342/681) dfir_rs::surface_resolve_futures_ordered pusherator_test
+        PASS [   2.018s] (343/681) dfir_rs::surface_resolve_futures_ordered single_batch_test
+        PASS [   0.014s] (344/681) dfir_rs::example/kvs_bench protocol::test::test_get
+        PASS [   0.014s] (345/681) dfir_rs::example/kvs_bench protocol::test::test_gossip
+        PASS [   0.017s] (346/681) dfir_rs::example/kvs_bench protocol::test::test_json
+        PASS [   0.017s] (347/681) dfir_rs::example/kvs_bench protocol::test::test_put
+        PASS [   0.031s] (348/681) dfir_rs::example/shopping lattices::test::test_vec_prefix
+        PASS [   0.040s] (349/681) dfir_rs::example/shopping lattices::test::test_ssiv
+        PASS [   3.521s] (350/681) dfir_rs::surface_book test_source_interval
+        PASS [   8.355s] (351/681) dfir_rs::surface_compile_fail test_all
+        PASS [   7.828s] (352/681) dfir_rs::example/deadlock_detector test
+        PASS [  13.301s] (353/681) dfir_rs::example/three_clique test
+        PASS [   0.039s] (354/681) hydro_deploy util::test::broadcast_listeners_close_when_source_does
+        PASS [   0.022s] (355/681) hydro_deploy_integration tests::test_merge_source_fair_polling
+        PASS [   0.057s] (356/681) hydro_lang compile::ir::test::hydro_node_size
+        PASS [   0.037s] (357/681) hydro_lang compile::ir::test::hydro_root_size
+        PASS [   0.183s] (358/681) hydro_lang compile::ir::test::test_closure_no_pipe_at_start
+        PASS [   0.120s] (359/681) hydro_lang compile::ir::test::test_simplify_q_macro_actual_stageleft_call
+        PASS [   0.023s] (360/681) hydro_lang compile::ir::test::test_simplify_q_macro_basic
+        PASS [  18.650s] (361/681) dfir_rs::example/chat test
+        PASS [   0.081s] (362/681) lattices algebra::test::test_abelian_group
+        PASS [   0.053s] (363/681) lattices algebra::test::test_absorbing
+        PASS [   0.045s] (364/681) lattices algebra::test::test_additive_inverse_7
+        PASS [   0.070s] (365/681) lattices algebra::test::test_associativity
+        PASS [  18.913s] (366/681) dfir_rs::example/echo_serde_json test
+        PASS [   0.047s] (367/681) lattices algebra::test::test_bilinearity
+        PASS [   0.031s] (368/681) lattices algebra::test::test_commutative_monoid
+        PASS [   0.031s] (369/681) lattices algebra::test::test_commutative_ring
+        PASS [   0.028s] (370/681) lattices algebra::test::test_commutativity
+        PASS [   0.029s] (371/681) lattices algebra::test::test_distributive
+        PASS [   0.031s] (372/681) lattices algebra::test::test_field
+        PASS [   0.022s] (373/681) lattices algebra::test::test_get_single_function_properties
+        PASS [   0.021s] (374/681) lattices algebra::test::test_group
+        PASS [   0.029s] (375/681) lattices algebra::test::test_idempotency
+        PASS [   0.034s] (376/681) lattices algebra::test::test_identity
+        PASS [   0.031s] (377/681) lattices algebra::test::test_integral_domain
+        PASS [   0.027s] (378/681) lattices algebra::test::test_inverse
+        PASS [   0.029s] (379/681) lattices algebra::test::test_left_distributes
+        PASS [   0.027s] (380/681) lattices algebra::test::test_linearity
+        PASS [   0.030s] (381/681) lattices algebra::test::test_modulo_mu14
+        PASS [   0.031s] (382/681) lattices algebra::test::test_modulo_mu7
+        PASS [   0.024s] (383/681) lattices algebra::test::test_monoid
+        PASS [   0.026s] (384/681) lattices algebra::test::test_no_nonzero_zero_divisors
+        PASS [   0.028s] (385/681) lattices algebra::test::test_nonzero_inverse
+        PASS [   0.026s] (386/681) lattices algebra::test::test_right_distributes
+        PASS [   0.035s] (387/681) lattices algebra::test::test_ring
+        PASS [   0.036s] (388/681) lattices algebra::test::test_semigroup
+        PASS [   0.054s] (389/681) lattices algebra::test::test_semiring
+        PASS [   0.034s] (390/681) lattices conflict::test::consistency
+        PASS [   0.052s] (391/681) lattices conflict::test::consistency_withbot
+        PASS [   0.050s] (392/681) lattices dom_pair::test::consistency_with_ord_lhs
+        PASS [   0.521s] (393/681) lattices dom_pair::test::consistency_withtop
+        PASS [   0.616s] (394/681) lattices dom_pair::test::consistency
+        PASS [   0.042s] (395/681) lattices ght::test::tests::basic_test
+        PASS [   0.047s] (396/681) lattices ght::test::tests::clover_factorized_join
+        PASS [   0.040s] (397/681) lattices ght::test::tests::clover_generic_join
+        PASS [   0.034s] (398/681) lattices ght::test::tests::test_cartesian_bimorphism
+        PASS [   0.033s] (399/681) lattices ght::test::tests::test_colt_get
+        PASS [   0.045s] (400/681) lattices ght::test::tests::test_colt_little_get
+        PASS [   0.061s] (401/681) lattices ght::test::tests::test_contains
+        PASS [   0.030s] (402/681) lattices ght::test::tests::test_force
+        PASS [   0.022s] (403/681) lattices ght::test::tests::test_forest_macro
+        PASS [   0.029s] (404/681) lattices ght::test::tests::test_get
+        PASS [   0.037s] (405/681) lattices ght::test::tests::test_ght_node_type_macro
+        PASS [   0.042s] (406/681) lattices ght::test::tests::test_ght_with_tuple_macro
+        PASS [   0.030s] (407/681) lattices ght::test::tests::test_insert
+        PASS [   0.311s] (408/681) lattices ght::test::tests::test_colt_scale
+        PASS [   0.027s] (409/681) lattices ght::test::tests::test_iter
+        PASS [   0.028s] (410/681) lattices ght::test::tests::test_join_bimorphism
+        PASS [   0.030s] (411/681) lattices ght::test::tests::test_merge
+        PASS [   0.026s] (412/681) lattices ght::test::tests::test_prefix_iter
+        PASS [   0.040s] (413/681) lattices ght::test::tests::test_node_lattice
+        PASS [   0.030s] (414/681) lattices ght::test::tests::test_prefix_iter_complex
+        PASS [   0.029s] (415/681) lattices ght::test::tests::test_prefix_iter_leaf
+        PASS [   0.030s] (416/681) lattices ght::test::tests::test_recursive_iter
+        PASS [   1.676s] (417/681) lattices ght::test::tests::test_triangle_generic_join
+        PASS [  20.904s] (418/681) dfir_rs::example/kvs_bench test
+        PASS [   0.013s] (419/681) lattices map_union::test::test_collapes_bot
+        PASS [   0.016s] (420/681) lattices map_union::test::test_join_aka_keyed_cartesian_product
+        PASS [   0.011s] (421/681) lattices map_union::test::test_map_union
+        PASS [   0.031s] (422/681) lattices map_union_with_tombstones::test::consistency
+        PASS [   0.012s] (423/681) lattices map_union_with_tombstones::test::contrain1
+        PASS [   0.014s] (424/681) lattices map_union_with_tombstones::test::fst_string_basic
+        PASS [   0.012s] (425/681) lattices map_union_with_tombstones::test::roaring_merge_efficiency
+        PASS [   0.011s] (426/681) lattices map_union_with_tombstones::test::roaring_u64_basic
+        PASS [   0.011s] (427/681) lattices map_union_with_tombstones::test::test_collapses_bot
+        PASS [   0.011s] (428/681) lattices map_union_with_tombstones::test::test_map_union
+        PASS [   0.014s] (429/681) lattices ord::test::consistency_max_bool
+        PASS [   0.011s] (430/681) lattices ord::test::consistency_max_char
+        PASS [   0.011s] (431/681) lattices ord::test::consistency_max_i32
+        PASS [   0.011s] (432/681) lattices ord::test::consistency_min_bool
+        PASS [   0.012s] (433/681) lattices ord::test::consistency_min_char
+        PASS [   0.012s] (434/681) lattices ord::test::consistency_min_i32
+        PASS [   0.011s] (435/681) lattices ord::test::eq
+        PASS [   0.011s] (436/681) lattices ord::test::ordering
+        PASS [   0.265s] (437/681) lattices map_union::test::consistency_atomize
+        PASS [   0.040s] (438/681) lattices pair::test::consistency
+        PASS [   0.012s] (439/681) lattices pair::test::test_merge_direction
+        PASS [   0.013s] (440/681) lattices pair::test::test_pair_bimorphism
+        PASS [   0.013s] (441/681) lattices point::test::consistency_equal
+        PASS [   0.085s] (442/681) lattices pair::test::consistency_withtop
+        PASS [   0.012s] (443/681) lattices semiring_application::test::test_binary_trust
+        PASS [   0.012s] (444/681) lattices semiring_application::test::test_confidence_score
+        PASS [   0.011s] (445/681) lattices semiring_application::test::test_cost
+        PASS [   0.012s] (446/681) lattices semiring_application::test::test_fuzzy_logic
+        PASS [   0.013s] (447/681) lattices semiring_application::test::test_multiplicity
+        PASS [   0.012s] (448/681) lattices set_union::test::atomize
+        PASS [   0.015s] (449/681) lattices set_union::test::cartesian_product
+        PASS [   0.012s] (450/681) lattices set_union::test::consistency
+        PASS [   0.012s] (451/681) lattices set_union::test::test_set_union
+        PASS [   0.012s] (452/681) lattices set_union::test::test_singleton_example
+        PASS [   0.016s] (453/681) lattices set_union_with_tombstones::test::consistency
+        PASS [   0.013s] (454/681) lattices set_union_with_tombstones::test::delete_one
+        PASS [   0.016s] (455/681) lattices set_union_with_tombstones::test::fst_commutativity
+        PASS [   0.015s] (456/681) lattices set_union_with_tombstones::test::fst_merge_efficiency
+        PASS [   0.016s] (457/681) lattices set_union_with_tombstones::test::fst_string_basic
+        PASS [   2.251s] (458/681) lattices ght::test::tests::test_scale
+        PASS [   0.012s] (459/681) lattices set_union_with_tombstones::test::roaring_basic
+        PASS [   0.014s] (460/681) lattices set_union_with_tombstones::test::roaring_empty_merge
+        PASS [   0.260s] (461/681) lattices point::test::consistency_inequal
+        PASS [   0.012s] (462/681) lattices set_union_with_tombstones::test::roaring_idempotency
+        PASS [   0.012s] (463/681) lattices set_union_with_tombstones::test::roaring_merge_efficiency
+        PASS [   0.012s] (464/681) lattices set_union_with_tombstones::test::test_specific_cases
+        PASS [   0.013s] (465/681) lattices test::test_cartesian_power
+        PASS [   0.013s] (466/681) lattices test::test_cartesian_power_empty
+        PASS [   0.012s] (467/681) lattices test::test_cartesian_power_zero
+        PASS [   0.013s] (468/681) lattices union_find::test::test_basic
+        PASS [   0.015s] (469/681) lattices union_find::test::test_malformed
+        PASS [   0.013s] (470/681) lattices vec_union::test::basic
+        PASS [   0.028s] (471/681) lattices union_find::test::consistency_atomize
+        PASS [   0.011s] (472/681) lattices with_bot::test::atomize
+        PASS [   0.013s] (473/681) lattices with_bot::test::auto_derives
+        PASS [   0.012s] (474/681) lattices with_bot::test::consistency
+        PASS [   0.011s] (475/681) lattices with_bot::test::test_doubly_nested_singleton_example
+        PASS [   0.012s] (476/681) lattices with_bot::test::test_singly_nested_singleton_example
+        PASS [   0.013s] (477/681) lattices with_top::test::atomize
+        PASS [   0.012s] (478/681) lattices with_top::test::auto_derives
+        PASS [   0.012s] (479/681) lattices with_top::test::consistency
+        PASS [   0.011s] (480/681) lattices with_top::test::test_doubly_nested_singleton_example
+        PASS [   0.011s] (481/681) lattices with_top::test::test_singly_nested_singleton_example
+        PASS [   0.083s] (482/681) lattices vec_union::test::consistency
+        PASS [   0.083s] (483/681) lattices_macro test::derive_example
+        PASS [   0.079s] (484/681) lattices_macro test::derive_pair
+        PASS [   0.014s] (485/681) multiplatform_test tests::test_default_platforms
+        PASS [   0.012s] (486/681) multiplatform_test tests::test_host_platform
+        PASS [   0.013s] (487/681) multiplatform_test tests::test_host_wasm_platform
+        PASS [   0.012s] (488/681) multiplatform_test tests::test_invalid_attr_nocomma_platform
+        PASS [   0.073s] (489/681) lattices_macro test::derive_similar_fields
+        PASS [   0.012s] (490/681) multiplatform_test tests::test_invalid_attr_noident_platform
+        PASS [   0.012s] (491/681) multiplatform_test tests::test_unknown_platform
+        PASS [   0.012s] (492/681) multiplatform_test tests::test_wasm_platform
+        PASS [   0.015s] (493/681) multiplatform_test::test test_default
+        PASS [   0.015s] (494/681) multiplatform_test::test test_logging
+        PASS [   0.014s] (495/681) multiplatform_test::test test_tracing
+        PASS [   0.018s] (496/681) sinktools filter_map::tests::test_filter_map
+        PASS [   0.012s] (497/681) sinktools flatten::tests::test_flatten
+        PASS [   0.011s] (498/681) sinktools lazy::test::test_lazy_sink
+        PASS [   0.012s] (499/681) sinktools lazy::test::test_lazy_sink_fut_err
+        PASS [   0.013s] (500/681) sinktools lazy::test::test_lazy_sink_good
+        PASS [   0.014s] (501/681) sinktools lazy::test::test_lazy_sink_sink_err
+        PASS [   0.013s] (502/681) sinktools lazy::test::test_lazy_source
+        PASS [   0.014s] (503/681) sinktools lazy::test::test_lazy_source_err
+        PASS [   0.011s] (504/681) sinktools lazy::test::test_lazy_source_good
+        PASS [   0.015s] (505/681) sinktools::build test_forward_chaining
+        PASS [   0.014s] (506/681) sinktools::build test_forward_complex_pipeline
+        PASS [   0.012s] (507/681) sinktools::build test_forward_demux_map_basic
+        PASS [   0.013s] (508/681) sinktools::build test_forward_demux_var
+        PASS [   0.247s] (509/681) sinktools::build test_forward_demux_map_missing_key
+        PASS [   0.231s] (510/681) sinktools::build test_forward_demux_var_out_of_bounds
+        PASS [   0.014s] (511/681) sinktools::build test_forward_fanout
+        PASS [   0.013s] (512/681) sinktools::build test_forward_filter
+        PASS [   0.016s] (513/681) sinktools::build test_forward_filter_map
+        PASS [   0.015s] (514/681) sinktools::build test_forward_flat_map
+        PASS [   0.015s] (515/681) sinktools::build test_forward_flatten
+        PASS [   0.016s] (516/681) sinktools::build test_forward_inspect
+        PASS [   0.013s] (517/681) sinktools::build test_forward_map
+        PASS [   0.014s] (518/681) sinktools::build test_forward_unzip
+        PASS [   0.012s] (519/681) sinktools::build test_forward_vs_direct_equivalence
+        PASS [   0.018s] (520/681) sinktools::direct test_chained_adaptors
+        PASS [   0.012s] (521/681) sinktools::direct test_complex_chain
+        PASS [   0.012s] (522/681) sinktools::direct test_demux_map_basic
+        PASS [   0.012s] (523/681) sinktools::direct test_demux_var_adaptor
+        PASS [   0.742s] (524/681) lattices::compile_fail test_all
+        PASS [   0.012s] (525/681) sinktools::direct test_empty_inputs
+        PASS [   0.012s] (526/681) sinktools::direct test_error_handling
+        PASS [   0.012s] (527/681) sinktools::direct test_fanout
+        PASS [   0.012s] (528/681) sinktools::direct test_filter_adaptor
+        PASS [   0.012s] (529/681) sinktools::direct test_filter_all_filtered_out
+        PASS [   0.012s] (530/681) sinktools::direct test_filter_map_adaptor
+        PASS [   0.012s] (531/681) sinktools::direct test_filter_map_all_none
+        PASS [   0.014s] (532/681) sinktools::direct test_flat_map_adaptor
+        PASS [   0.011s] (533/681) sinktools::direct test_flat_map_empty_iterators
+        PASS [   0.257s] (534/681) sinktools::direct test_demux_map_missing_key
+        PASS [   0.011s] (535/681) sinktools::direct test_flatten_adaptor
+        PASS [   0.242s] (536/681) sinktools::direct test_demux_var_out_of_bounds
+        PASS [   0.011s] (537/681) sinktools::direct test_for_each_adaptor
+        PASS [   0.011s] (538/681) sinktools::direct test_inspect_adaptor
+        PASS [   0.010s] (539/681) sinktools::direct test_map_adaptor
+        PASS [   0.011s] (540/681) sinktools::direct test_send_iter
+        PASS [   0.011s] (541/681) sinktools::direct test_send_iter_empty
+        PASS [   0.010s] (542/681) sinktools::direct test_unzip_adaptor
+        PASS [   0.013s] (543/681) variadics clone_var_test
+        PASS [   0.012s] (544/681) variadics test::test_as_mut_var
+        PASS [   0.011s] (545/681) variadics test::test_as_ref_var
+        PASS [   0.011s] (546/681) variadics test::test_basic_expr
+        PASS [   0.012s] (547/681) variadics test::test_homogenous_get
+        PASS [   0.013s] (548/681) variadics test::test_into_vec
+        PASS [   0.011s] (549/681) variadics test::test_iter_any
+        PASS [   0.012s] (550/681) variadics test_eq_ref_vec
+        PASS [   0.012s] (551/681) variadics variadic_collections::test::test_collections
+        PASS [   0.405s] (552/681) variadics::compile_fail test_all
+        PASS [  22.261s] (553/681) hydro_deploy rust_crate::tests::test_crate_panic
+        PASS [  29.364s] (554/681) dfir_rs::example/echo_server test
+        PASS [  29.623s] (555/681) dfir_rs::example/vector_clock test_vector_clock
+        PASS [  30.347s] (556/681) dfir_rs::example/lamport_clock test
+        PASS [  33.301s] (557/681) dfir_rs::example/chat test_gossip
+        PASS [  32.926s] (558/681) dfir_rs::example/kvs_mut test
+        PASS [  33.276s] (559/681) dfir_rs::example/rga test
+        PASS [  27.404s] (560/681) dfir_rs::example/kvs test
+        PASS [  22.945s] (561/681) hydro_lang live_collections::keyed_singleton::tests::into_singleton_bounded_value
+        PASS [   4.197s] (562/681) hydro_lang live_collections::keyed_singleton::tests::into_singleton_unbounded_value
+        PASS [  10.720s] (563/681) dfir_rs::example/kvs_replicated test
+        PASS [   4.363s] (564/681) hydro_lang live_collections::keyed_singleton::tests::key_count_bounded_value
+        PASS [  46.017s] (565/681) dfir_rs::example/shopping test
+        PASS [   3.588s] (566/681) hydro_lang live_collections::keyed_singleton::tests::key_count_unbounded_value
+        SLOW [> 60.000s] (───────) dfir_rs::surface_examples test_all
+        PASS [   9.347s] (567/681) hydro_lang live_collections::keyed_singleton::tests::sim_unbounded_singleton_snapshot
+        PASS [   7.107s] (568/681) hydro_lang live_collections::keyed_stream::tests::reduce_watermark_filter
+        PASS [  22.549s] (569/681) dfir_rs::example/two_pc_hf test
+        PASS [   3.451s] (570/681) hydro_lang live_collections::keyed_stream::tests::reduce_watermark_garbage_collect
+        PASS [   6.782s] (571/681) hydro_lang live_collections::keyed_stream::tests::sim_batch_nondet_size
+        PASS [   3.215s] (572/681) hydro_lang live_collections::keyed_stream::tests::sim_batch_preserves_group_order
+        PASS [   3.153s] (573/681) hydro_lang live_collections::keyed_stream::tests::sim_batch_unordered_shuffles
+        PASS [  89.800s] (574/681) dfir_rs::surface_examples test_all
+        PASS [   6.944s] (575/681) hydro_lang live_collections::optional::tests::optional_or_cardinality
+        PASS [  24.928s] (576/681) hydro_test_template::example/echo_local test
+        PASS [   6.679s] (577/681) hydro_lang live_collections::singleton::tests::sim_fold_intermediate_state_count
+        PASS [   3.422s] (578/681) hydro_lang live_collections::singleton::tests::sim_fold_intermediate_states
+        PASS [   3.188s] (579/681) hydro_lang live_collections::singleton::tests::sim_fold_no_repeat_initial
+        PASS [   3.551s] (580/681) hydro_lang live_collections::singleton::tests::sim_fold_repeats_snapshots
+        PASS [   3.418s] (581/681) hydro_lang live_collections::singleton::tests::sim_fold_repeats_snapshots_count
+        PASS [   3.157s] (582/681) hydro_lang live_collections::singleton::tests::sim_top_level_singleton_exhaustive
+        PASS [   3.257s] (583/681) hydro_lang live_collections::singleton::tests::sim_top_level_singleton_join_count
+        PASS [   6.147s] (584/681) hydro_lang live_collections::singleton::tests::tick_cycle_cardinality
+        PASS [   7.213s] (585/681) hydro_lang live_collections::stream::networking::tests::sim_broadcast_bincode_o2m
+        PASS [   2.728s] (586/681) hydro_lang live_collections::stream::networking::tests::sim_send_bincode_m2m
+        PASS [   3.405s] (587/681) hydro_lang live_collections::stream::networking::tests::sim_send_bincode_m2o
+        PASS [   2.514s] (588/681) hydro_lang live_collections::stream::networking::tests::sim_send_bincode_multiple_m2o
+        PASS [   2.632s] (589/681) hydro_lang live_collections::stream::networking::tests::sim_send_bincode_o2m
+        PASS [   3.218s] (590/681) hydro_lang live_collections::stream::networking::tests::sim_send_bincode_o2o
+        PASS [   5.892s] (591/681) hydro_lang live_collections::stream::tests::atomic_fold_replays_each_tick
+        PASS [   2.885s] (592/681) hydro_lang live_collections::stream::tests::first_cardinality
+        PASS [   5.301s] (593/681) hydro_lang live_collections::stream::tests::first_ten_distributed
+        PASS [   6.494s] (594/681) hydro_lang live_collections::stream::tests::sim_batch_nondet_size
+        PASS [   3.537s] (595/681) hydro_lang live_collections::stream::tests::sim_batch_preserves_order
+        PASS [   3.282s] (596/681) hydro_lang live_collections::stream::tests::sim_batch_unordered_shuffles
+        PASS [   3.184s] (597/681) hydro_lang live_collections::stream::tests::sim_batch_unordered_shuffles_count
+        PASS [   3.202s] (598/681) hydro_lang live_collections::stream::tests::sim_unordered_count_instance_count
+        PASS [   6.652s] (599/681) hydro_lang live_collections::stream::tests::unbounded_enumerate_remembers_state
+        PASS [   2.899s] (600/681) hydro_lang live_collections::stream::tests::unbounded_reduce_remembers_state
+        PASS [   2.904s] (601/681) hydro_lang live_collections::stream::tests::unbounded_scan_remembers_state
+        PASS [   2.898s] (602/681) hydro_lang live_collections::stream::tests::unbounded_unique_remembers_state
+        PASS [   5.663s] (603/681) hydro_lang location::cluster::tests::sim_cluster_membership
+        PASS [   2.637s] (604/681) hydro_lang location::cluster::tests::sim_cluster_self_id
+        PASS [   3.618s] (605/681) hydro_lang location::cluster::tests::sim_cluster_with_tick
+        PASS [   5.894s] (606/681) hydro_lang location::tests::echo_external_bincode
+        PASS [   2.828s] (607/681) hydro_lang location::tests::echo_external_bytes
+        PASS [   2.947s] (608/681) hydro_lang location::tests::external_bytes
+        PASS [   2.939s] (609/681) hydro_lang location::tests::multi_external_bytes
+        PASS [   2.947s] (610/681) hydro_lang location::tests::multi_external_source
+        PASS [   2.147s] (611/681) hydro_lang location::tests::second_connection_only_multi_source
+        PASS [   2.839s] (612/681) hydro_lang location::tests::single_client_external_bytes
+        PASS [   2.957s] (613/681) hydro_lang location::tests::tick_singleton_replay_cardinality
+        PASS [   3.015s] (614/681) hydro_lang location::tests::top_level_singleton_replay_cardinality
+        PASS [   6.229s] (615/681) hydro_lang location::tick::tests::sim_atomic_stream
+        PASS [   3.673s] (616/681) hydro_lang location::tick::tests::sim_non_atomic_stream
+        PASS [  11.659s] (617/681) hydro_lang sim::tests::sim_batch_preserves_order_fuzzed
+        PASS [   3.572s] (618/681) hydro_lang sim::tests::sim_crash_with_fuzzed_batching
+        PASS [   2.836s] (619/681) hydro_lang sim::tests::trace_for_fuzzed_batching
+        PASS [   3.385s] (620/681) hydro_lang sim::tests::trace_for_fuzzed_batching_sliced
+        PASS [   3.843s] (621/681) hydro_lang sim::tests::trophies::sequence_payloads::test
+        PASS [   3.030s] (622/681) hydro_lang sim::tests::trophies::sequence_payloads::trace_snapshot
+        PASS [   0.019s] (623/681) hydro_lang viz::api::tests::test_graph_api_creation
+        PASS [   0.024s] (624/681) hydro_lang viz::api::tests::test_graph_format
+        PASS [   0.018s] (625/681) hydro_lang viz::api::tests::test_string_generation
+        PASS [   0.064s] (626/681) hydro_lang viz::json_test::tests::test_deterministic_output_and_network_tagging
+        PASS [   0.059s] (627/681) hydro_lang viz::json_test::tests::test_empty_semantic_tags
+        PASS [   0.060s] (628/681) hydro_lang viz::json_test::tests::test_json_structure_with_semantic_tags
+        PASS [   0.018s] (629/681) hydro_lang viz::url_generation_test::tests::test_compression_and_encoding
+        PASS [   0.020s] (630/681) hydro_lang viz::url_generation_test::tests::test_url_length_calculation
+        PASS [   0.019s] (631/681) hydro_lang viz::url_generation_test::tests::test_url_structure_example
+        PASS [   0.019s] (632/681) hydro_lang viz::url_generation_test::tests::test_visualizer_config_default
+        PASS [   0.017s] (633/681) hydro_lang viz::url_generation_test::tests::test_visualizer_config_local
+        PASS [   0.029s] (634/681) hydro_lang viz::url_generation_test::tests::test_visualizer_config_with_base_url
+        PASS [  10.202s] (635/681) hydro_lang::compile_fail test_all
+        SLOW [> 60.000s] (───────) hydro_lang::sim_fuzzer fuzz_with_cargo_sim
+        PASS [  68.664s] (636/681) hydro_lang::sim_fuzzer fuzz_with_cargo_sim
+        PASS [  15.171s] (637/681) hydro_std quorum::tests::collect_quorum_functionality
+        PASS [   1.746s] (638/681) hydro_std quorum::tests::collect_quorum_min_equals_max
+        PASS [   2.124s] (639/681) hydro_std quorum::tests::collect_quorum_no_double_quorum_before_max
+        PASS [   1.754s] (640/681) hydro_std quorum::tests::collect_quorum_no_responses
+        PASS [   1.720s] (641/681) hydro_std quorum::tests::collect_quorum_single_response
+        PASS [   1.857s] (642/681) hydro_std quorum::tests::collect_quorum_with_response_preserves_order
+        PASS [   0.414s] (643/681) hydro_test cluster::compute_pi::tests::compute_pi_ir
+        PASS [  18.150s] (644/681) hydro_test cluster::kv_replica::sequence_payloads::tests::sequence_payloads_sequences_all
+        PASS [   5.487s] (645/681) hydro_test cluster::many_to_many::tests::many_to_many
+        PASS [   0.089s] (646/681) hydro_test cluster::many_to_many::tests::many_to_many_ir
+        PASS [   0.109s] (647/681) hydro_test cluster::map_reduce::tests::map_reduce_ir
+        PASS [   5.932s] (648/681) hydro_test cluster::paxos::tests::proposer_indexes_payloads
+        PASS [   2.555s] (649/681) hydro_test cluster::paxos::tests::proposer_indexes_payloads_jumps_on_new_max
+        PASS [   0.593s] (650/681) hydro_test cluster::paxos_bench::tests::paxos_ir
+        PASS [  21.034s] (651/681) hydro_test cluster::paxos_bench::tests::paxos_some_throughput
+        PASS [   2.903s] (652/681) hydro_test cluster::simple_cluster::tests::decouple_cluster
+        PASS [   2.799s] (653/681) hydro_test cluster::simple_cluster::tests::decouple_process
+        PASS [   2.970s] (654/681) hydro_test cluster::simple_cluster::tests::partition
+        PASS [   3.035s] (655/681) hydro_test cluster::simple_cluster::tests::simple_cluster
+        PASS [   0.081s] (656/681) hydro_test cluster::simple_cluster::tests::simple_cluster_ir
+        PASS [   0.251s] (657/681) hydro_test cluster::two_pc_bench::tests::two_pc_ir
+        PASS [  12.335s] (658/681) hydro_test cluster::two_pc_bench::tests::two_pc_some_throughput
+        PASS [   3.017s] (659/681) hydro_test distributed::first_ten::tests::first_ten_distributed
+        PASS [   0.076s] (660/681) hydro_test distributed::first_ten::tests::first_ten_distributed_ir
+        PASS [   1.988s] (661/681) hydro_test local::chat_app::tests::test_chat_app_no_replay
+        PASS [   1.857s] (662/681) hydro_test local::chat_app::tests::test_chat_app_replay
+        PASS [   1.750s] (663/681) hydro_test local::count_elems::tests::test_count
+        PASS [   1.739s] (664/681) hydro_test local::futures::tests::test_ordered
+        PASS [   1.747s] (665/681) hydro_test local::futures::tests::test_unordered
+        PASS [   1.927s] (666/681) hydro_test local::negation::tests::test_anti_join_static_static
+        PASS [   1.898s] (667/681) hydro_test local::negation::tests::test_anti_join_static_tick
+        PASS [   1.940s] (668/681) hydro_test local::negation::tests::test_anti_join_tick_static
+        PASS [   1.921s] (669/681) hydro_test local::negation::tests::test_anti_join_tick_tick
+        PASS [   1.868s] (670/681) hydro_test local::negation::tests::test_difference_static_static
+        PASS [   1.929s] (671/681) hydro_test local::negation::tests::test_difference_static_tick
+        PASS [   2.098s] (672/681) hydro_test local::negation::tests::test_difference_tick_static
+        PASS [   1.894s] (673/681) hydro_test local::negation::tests::test_difference_tick_tick
+        PASS [  31.033s] (674/681) hydro_test::example/chat test
+        PASS [  14.859s] (675/681) hydro_test::example/compute_pi test
+        PASS [   5.663s] (676/681) hydro_test::example/echo test
+        PASS [   6.635s] (677/681) hydro_test::example/first_ten_distributed test
+        PASS [   5.606s] (678/681) hydro_test::example/http_counter test
+        PASS [   4.352s] (679/681) hydro_test::example/http_hello test
+        PASS [   5.780s] (680/681) hydro_test::example/map_reduce test
+        PASS [  14.645s] (681/681) hydro_test_template tests::test_echo_capitalize
+────────────
+     Summary [ 593.216s] 681 tests run: 681 passed (2 slow), 6 skipped
++ cargo test --workspace --doc
+   Compiling ring v0.17.14
+   Compiling dfir_rs v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_rs)
+   Compiling website_playground v0.0.0 (/Users/jmhwork/code/monorepo/hydro/website_playground)
+   Compiling rustls v0.23.32
+   Compiling rustls-webpki v0.103.6
+   Compiling tokio-rustls v0.26.4
+   Compiling hyper-rustls v0.27.7
+   Compiling reqwest v0.12.23
+   Compiling symsrv v0.5.6
+   Compiling wholesym v0.8.1
+   Compiling hydro_deploy v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/core)
+   Compiling hydro_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_lang)
+   Compiling hydro_std v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_std)
+   Compiling hydro_test_template v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_test_template)
+   Compiling hydro_test v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_test)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 12.55s
+   Doc-tests copy_span
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests dfir_lang
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests dfir_macro
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests dfir_rs
+
+running 95 tests
+test dfir_rs/src/scheduled/handoff/handoff_list.rs - scheduled::handoff::handoff_list::() (line 207) ... ignored
+test dfir_rs/src/scheduled/handoff/handoff_list.rs - scheduled::handoff::handoff_list::() (line 211) ... ignored
+test dfir_rs/src/scheduled/handoff/handoff_list.rs - scheduled::handoff::handoff_list::(T,__Rest) (line 207) ... ignored
+test dfir_rs/src/scheduled/handoff/handoff_list.rs - scheduled::handoff::handoff_list::(T,__Rest) (line 211) ... ignored
+test dfir_rs/src/scheduled/handoff/handoff_list.rs - scheduled::handoff::handoff_list::HandoffList (line 207) ... ignored
+test dfir_rs/src/scheduled/handoff/handoff_list.rs - scheduled::handoff::handoff_list::HandoffList (line 211) ... ignored
+test dfir_rs/src/scheduled/ticks.rs - scheduled::ticks::TickDuration (line 38) ... ok
+test dfir_rs/src/lib.rs - (line 11) ... ok
+test dfir_rs/src/scheduled/ticks.rs - scheduled::ticks::TickInstant (line 17) ... ok
+test dfir_rs/src/scheduled/ticks.rs - scheduled::ticks::TickDuration::SINGLE_TICK (line 100) ... ok
+test docs/docgen/anti_join_multiset.md - booktest::surface_ops::docs_docgen_anti_join_multiset_md (line 11) ... ok
+test docs/docgen/assert.md - booktest::surface_ops::docs_docgen_assert_md (line 7) ... ok
+test docs/docgen/chain.md - booktest::surface_ops::docs_docgen_chain_md (line 9) ... ok
+test docs/docgen/_lattice_join_fused_join.md - booktest::surface_ops::docs_docgen__lattice_join_fused_join_md (line 63) ... ok
+test dfir_rs/src/scheduled/ticks.rs - scheduled::ticks::TickDuration (line 32) ... ok
+test dfir_rs/src/scheduled/ticks.rs - scheduled::ticks::TickDuration::ZERO (line 83) ... ok
+test docs/docgen/cross_join.md - booktest::surface_ops::docs_docgen_cross_join_md (line 24) ... ok
+test docs/docgen/_counter.md - booktest::surface_ops::docs_docgen__counter_md (line 7) ... ok
+test docs/docgen/anti_join.md - booktest::surface_ops::docs_docgen_anti_join_md (line 11) ... ok
+test docs/docgen/_lattice_fold_batch.md - booktest::surface_ops::docs_docgen__lattice_fold_batch_md (line 12) ... ok
+test docs/docgen/dest_file.md - booktest::surface_ops::docs_docgen_dest_file_md (line 13) ... ok
+test docs/docgen/defer_signal.md - booktest::surface_ops::docs_docgen_defer_signal_md (line 10) ... ok
+test docs/docgen/cross_join_multiset.md - booktest::surface_ops::docs_docgen_cross_join_multiset_md (line 7) ... ok
+test docs/docgen/defer_tick.md - booktest::surface_ops::docs_docgen_defer_tick_md (line 36) ... ok
+test docs/docgen/difference.md - booktest::surface_ops::docs_docgen_difference_md (line 13) ... ok
+test docs/docgen/cross_singleton.md - booktest::surface_ops::docs_docgen_cross_singleton_md (line 14) ... ok
+test docs/docgen/enumerate.md - booktest::surface_ops::docs_docgen_enumerate_md (line 11) ... ok
+test docs/docgen/filter_map.md - booktest::surface_ops::docs_docgen_filter_map_md (line 8) ... ok
+test docs/docgen/cross_join.md - booktest::surface_ops::docs_docgen_cross_join_md (line 7) ... ok
+test docs/docgen/dest_sink_serde.md - booktest::surface_ops::docs_docgen_dest_sink_serde_md (line 8) ... ok
+test docs/docgen/fold.md - booktest::surface_ops::docs_docgen_fold_md (line 21) ... ok
+test docs/docgen/chain_first_n.md - booktest::surface_ops::docs_docgen_chain_first_n_md (line 10) ... ok
+test docs/docgen/defer_tick.md - booktest::surface_ops::docs_docgen_defer_tick_md (line 13) ... ok
+test docs/docgen/difference_multiset.md - booktest::surface_ops::docs_docgen_difference_multiset_md (line 14) ... ok
+test docs/docgen/flatten.md - booktest::surface_ops::docs_docgen_flatten_md (line 7) ... ok
+test docs/docgen/flat_map.md - booktest::surface_ops::docs_docgen_flat_map_md (line 11) ... ok
+test docs/docgen/assert_eq.md - booktest::surface_ops::docs_docgen_assert_eq_md (line 14) ... ok
+test docs/docgen/fold_keyed.md - booktest::surface_ops::docs_docgen_fold_keyed_md (line 42) ... ok
+test docs/docgen/filter.md - booktest::surface_ops::docs_docgen_filter_md (line 11) ... ok
+test docs/docgen/identity.md - booktest::surface_ops::docs_docgen_identity_md (line 23) ... ok
+test docs/docgen/_lattice_join_fused_join.md - booktest::surface_ops::docs_docgen__lattice_join_fused_join_md (line 40) ... ok
+test docs/docgen/join_fused.md - booktest::surface_ops::docs_docgen_join_fused_md (line 104) ... ok
+test docs/docgen/join.md - booktest::surface_ops::docs_docgen_join_md (line 68) ... ok
+test docs/docgen/fold_keyed.md - booktest::surface_ops::docs_docgen_fold_keyed_md (line 57) ... ok
+test docs/docgen/join_fused.md - booktest::surface_ops::docs_docgen_join_fused_md (line 22) ... ok
+test docs/docgen/inspect.md - booktest::surface_ops::docs_docgen_inspect_md (line 11) ... ok
+test docs/docgen/join_fused.md - booktest::surface_ops::docs_docgen_join_fused_md (line 86) ... ok
+test docs/docgen/join_fused.md - booktest::surface_ops::docs_docgen_join_fused_md (line 41) ... ok
+test docs/docgen/join_fused_lhs.md - booktest::surface_ops::docs_docgen_join_fused_lhs_md (line 9) ... ok
+test docs/docgen/join_fused.md - booktest::surface_ops::docs_docgen_join_fused_md (line 60) ... ok
+test docs/docgen/initialize.md - booktest::surface_ops::docs_docgen_initialize_md (line 8) ... ok
+test docs/docgen/fold_keyed.md - booktest::surface_ops::docs_docgen_fold_keyed_md (line 18) ... ok
+test docs/docgen/lattice_bimorphism.md - booktest::surface_ops::docs_docgen_lattice_bimorphism_md (line 12) ... ok
+test docs/docgen/identity.md - booktest::surface_ops::docs_docgen_identity_md (line 6) ... ok
+test docs/docgen/null.md - booktest::surface_ops::docs_docgen_null_md (line 6) ... ok
+test docs/docgen/join.md - booktest::surface_ops::docs_docgen_join_md (line 51) ... ok
+test docs/docgen/map.md - booktest::surface_ops::docs_docgen_map_md (line 13) ... ok
+test docs/docgen/partition.md - booktest::surface_ops::docs_docgen_partition_md (line 44) ... ok
+test docs/docgen/lattice_fold.md - booktest::surface_ops::docs_docgen_lattice_fold_md (line 16) ... ok
+test docs/docgen/partition.md - booktest::surface_ops::docs_docgen_partition_md (line 15) ... ok
+test docs/docgen/multiset_delta.md - booktest::surface_ops::docs_docgen_multiset_delta_md (line 4) ... ok
+test docs/docgen/join_multiset.md - booktest::surface_ops::docs_docgen_join_multiset_md (line 10) ... ok
+test docs/docgen/join.md - booktest::surface_ops::docs_docgen_join_md (line 6) ... ok
+test docs/docgen/reduce.md - booktest::surface_ops::docs_docgen_reduce_md (line 20) ... ok
+test docs/docgen/persist.md - booktest::surface_ops::docs_docgen_persist_md (line 4) ... ok
+test docs/docgen/persist_mut.md - booktest::surface_ops::docs_docgen_persist_mut_md (line 8) ... ok
+test docs/docgen/persist.md - booktest::surface_ops::docs_docgen_persist_md (line 24) ... ok
+test docs/docgen/sort.md - booktest::surface_ops::docs_docgen_sort_md (line 4) ... ok
+test docs/docgen/source_file.md - booktest::surface_ops::docs_docgen_source_file_md (line 11) ... ok
+test docs/docgen/reduce_keyed.md - booktest::surface_ops::docs_docgen_reduce_keyed_md (line 41) ... ok
+test docs/docgen/source_stdin.md - booktest::surface_ops::docs_docgen_source_stdin_md (line 9) ... ok
+test docs/docgen/persist_mut_keyed.md - booktest::surface_ops::docs_docgen_persist_mut_keyed_md (line 8) ... ok
+test docs/docgen/lattice_reduce.md - booktest::surface_ops::docs_docgen_lattice_reduce_md (line 16) ... ok
+test docs/docgen/source_stream.md - booktest::surface_ops::docs_docgen_source_stream_md (line 11) ... ok
+test docs/docgen/source_iter.md - booktest::surface_ops::docs_docgen_source_iter_md (line 11) ... ok
+test docs/docgen/source_json.md - booktest::surface_ops::docs_docgen_source_json_md (line 9) ... ok
+test docs/docgen/state_by.md - booktest::surface_ops::docs_docgen_state_by_md (line 33) ... ok
+test docs/docgen/reduce_keyed.md - booktest::surface_ops::docs_docgen_reduce_keyed_md (line 26) ... ok
+test docs/docgen/scan.md - booktest::surface_ops::docs_docgen_scan_md (line 21) ... ok
+test docs/docgen/tee.md - booktest::surface_ops::docs_docgen_tee_md (line 7) ... ok
+test docs/docgen/source_stream_serde.md - booktest::surface_ops::docs_docgen_source_stream_serde_md (line 10) ... ok
+test docs/docgen/for_each.md - booktest::surface_ops::docs_docgen_for_each_md (line 11) ... ok
+test docs/docgen/unique.md - booktest::surface_ops::docs_docgen_unique_md (line 25) ... ok
+test docs/docgen/unique.md - booktest::surface_ops::docs_docgen_unique_md (line 5) ... ok
+test docs/docgen/zip.md - booktest::surface_ops::docs_docgen_zip_md (line 11) ... ok
+test docs/docgen/spin.md - booktest::surface_ops::docs_docgen_spin_md (line 6) ... ok
+test docs/docgen/state_by.md - booktest::surface_ops::docs_docgen_state_by_md (line 9) ... ok
+test docs/docgen/unzip.md - booktest::surface_ops::docs_docgen_unzip_md (line 7) ... ok
+test docs/docgen/zip_longest.md - booktest::surface_ops::docs_docgen_zip_longest_md (line 8) ... ok
+test docs/docgen/union.md - booktest::surface_ops::docs_docgen_union_md (line 9) ... ok
+test docs/docgen/sort_by_key.md - booktest::surface_ops::docs_docgen_sort_by_key_md (line 7) ... ok
+test docs/docgen/state.md - booktest::surface_ops::docs_docgen_state_md (line 7) ... ok
+test docs/docgen/dest_sink.md - booktest::surface_ops::docs_docgen_dest_sink_md (line 52) ... ok
+test docs/docgen/dest_sink.md - booktest::surface_ops::docs_docgen_dest_sink_md (line 10) ... ok
+test docs/docgen/source_interval.md - booktest::surface_ops::docs_docgen_source_interval_md (line 13) ... ok
+
+test result: ok. 89 passed; 0 failed; 6 ignored; 0 measured; 0 filtered out; finished in 3.65s
+
+   Doc-tests example_test
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests hydro_build_utils
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests hydro_deploy
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests hydro_deploy_integration
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests hydro_lang
+
+running 157 tests
+test hydro_lang/src/compile/trybuild/generate.rs - compile::trybuild::generate::init_test (line 32) ... ignored
+test hydro_lang/src/lib.rs - prelude (line 37) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::get_max_key (line 740) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::inspect_with_key (line 699) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::key_count (line 368) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::filter_key_not_in (line 606) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::into_keyed_stream (line 786) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::inspect (line 653) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::entries (line 499) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::map_with_key (line 309) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::keys (line 578) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::map (line 257) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::values (line 530) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::into_singleton (line 419) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::filter (line 1140) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,L,B>::filter_map (line 1193) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,Tick<L>,Bounded>::get (line 833) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,Tick<L>,Bounded>::defer_tick (line 1029) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,Tick<L>,Bounded>::get_from (line 905) ... ok
+test hydro_lang/src/live_collections/keyed_singleton.rs - live_collections::keyed_singleton::KeyedSingleton<K,V,Tick<L>,Bounded>::get_many_if_present (line 864) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,ExactlyOnce>::fold_commutative (line 1473) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,ExactlyOnce>::reduce_commutative (line 1508) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,ExactlyOnce>::reduce_watermark_commutative (line 1540) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::cross_singleton (line 659) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::entries (line 313) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::filter (line 471) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::filter_key_not_in (line 1808) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::filter_map (line 559) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::filter_map_with_key (line 607) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::filter_with_key (line 517) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::flat_map_ordered (line 710) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::flat_map_unordered (line 759) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::flatten_ordered (line 818) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::flatten_unordered (line 846) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::fold_commutative_idempotent (line 1700) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::inspect (line 881) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::inspect_with_key (line 923) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::map (line 369) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::map_with_key (line 416) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::reduce_commutative_idempotent (line 1737) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::reduce_watermark_commutative_idempotent (line 1771) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,O,R>::values (line 343) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,TotalOrder,ExactlyOnce>::first (line 1278) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,TotalOrder,ExactlyOnce>::fold (line 1317) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,TotalOrder,ExactlyOnce>::fold_early_stop (line 1211) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,TotalOrder,ExactlyOnce>::generator (line 1101) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,TotalOrder,ExactlyOnce>::reduce (line 1368) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,TotalOrder,ExactlyOnce>::reduce_watermark (line 1411) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,TotalOrder,ExactlyOnce>::scan (line 1042) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,TotalOrder,R>::fold_idempotent (line 1586) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,TotalOrder,R>::reduce_idempotent (line 1621) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,B,TotalOrder,R>::reduce_watermark_idempotent (line 1653) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,Bounded,O,R>::chain (line 1956) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,L,Unbounded,O,R>::interleave (line 977) ... ok
+test hydro_lang/src/live_collections/keyed_stream/mod.rs - live_collections::keyed_stream::KeyedStream<K,V,Tick<L>,Bounded,O,R>::defer_tick (line 2062) ... ok
+test hydro_lang/src/live_collections/keyed_stream/networking.rs - live_collections::keyed_stream::networking::KeyedStream<MemberId<L2>,T,Cluster<'a,L>,B,O,R>::demux_bincode (line 96) ... ok
+test hydro_lang/src/live_collections/keyed_stream/networking.rs - live_collections::keyed_stream::networking::KeyedStream<MemberId<L2>,T,Process<'a,L>,B,O,R>::demux_bincode (line 28) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::filter (line 496) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::filter_map (line 531) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::flat_map_ordered (line 336) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::flat_map_unordered (line 379) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::flatten_ordered (line 430) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::flatten_unordered (line 459) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::into_singleton (line 709) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::map (line 295) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::or (line 618) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::unwrap_or (line 670) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,B>::zip (line 568) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,Bounded>::filter_if_none (line 816) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,Bounded>::filter_if_some (line 778) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,L,Bounded>::if_some_then (line 858) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,Tick<L>,Bounded>::all_ticks (line 1028) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,Tick<L>,Bounded>::defer_tick (line 1146) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,Tick<L>,Bounded>::into_stream (line 1197) ... ok
+test hydro_lang/src/live_collections/optional.rs - live_collections::optional::Optional<T,Tick<L>,Bounded>::latest (line 1076) ... ok
+test hydro_lang/src/live_collections/sliced.rs - live_collections::sliced::__sliced__ (line 81) ... ignored
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,L,B>::filter (line 458) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,L,B>::filter_if_none (line 633) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,L,B>::filter_if_some (line 595) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,L,B>::filter_map (line 494) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,L,B>::flat_map_ordered (line 302) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,L,B>::flat_map_unordered (line 344) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,L,B>::flatten_ordered (line 394) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,L,B>::flatten_unordered (line 422) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,L,B>::map (line 262) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,L,B>::zip (line 532) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,Tick<L>,Bounded>::all_ticks (line 825) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,Tick<L>,Bounded>::into_stream (line 952) ... ok
+test hydro_lang/src/live_collections/singleton.rs - live_collections::singleton::Singleton<T,Tick<L>,Bounded>::latest (line 872) ... ok
+test hydro_lang/src/live_collections/sliced.rs - live_collections::sliced::__sliced__ (line 93) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<&'_T,L,B,O,R>::cloned (line 1076) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V),L,B,O,R>::into_keyed (line 2025) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V),Tick<L>,Bounded,O,ExactlyOnce>::fold_keyed_commutative (line 2274) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V),Tick<L>,Bounded,O,ExactlyOnce>::reduce_keyed_commutative (line 2312) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V),Tick<L>,Bounded,O,R>::fold_keyed_commutative_idempotent (line 2166) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V),Tick<L>,Bounded,O,R>::keys (line 2198) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V),Tick<L>,Bounded,O,R>::reduce_keyed_commutative_idempotent (line 2229) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V),Tick<L>,Bounded,TotalOrder,ExactlyOnce>::fold_keyed (line 2070) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V),Tick<L>,Bounded,TotalOrder,ExactlyOnce>::reduce_keyed (line 2109) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V),Tick<L>,Bounded,TotalOrder,R>::fold_keyed_idempotent (line 2355) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V),Tick<L>,Bounded,TotalOrder,R>::reduce_keyed_idempotent (line 2393) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V1),L,B,O,R>::anti_join (line 1974) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<(K,V1),L,B,O,R>::join (line 1928) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<F,L,B,O,R>::resolve_futures (line 2580) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<F,L,B,O,R>::resolve_futures_ordered (line 2620) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,ExactlyOnce>::count (line 1327) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,ExactlyOnce>::fold_commutative (line 1265) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,ExactlyOnce>::reduce_commutative (line 1301) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::cross_product (line 742) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::cross_singleton (line 621) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::filter (line 553) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::filter_if_none (line 703) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::filter_if_some (line 666) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::filter_map (line 585) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::filter_not_in (line 814) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::flat_map_ordered (line 410) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::flat_map_unordered (line 446) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::flatten_ordered (line 493) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::flatten_unordered (line 518) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::fold_commutative_idempotent (line 1108) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::inspect (line 855) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::map (line 373) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::max (line 1201) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::min (line 1229) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::reduce_commutative_idempotent (line 1147) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,O,R>::unique (line 782) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,TotalOrder,ExactlyOnce>::collect_vec (line 1553) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,TotalOrder,ExactlyOnce>::enumerate (line 1472) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,TotalOrder,ExactlyOnce>::fold (line 1510) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,TotalOrder,ExactlyOnce>::reduce (line 1666) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,TotalOrder,ExactlyOnce>::scan (line 1591) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,TotalOrder,ExactlyOnce>::scan (line 1611) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,TotalOrder,R>::first (line 1423) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,TotalOrder,R>::fold_idempotent (line 1359) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,TotalOrder,R>::last (line 1447) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,B,TotalOrder,R>::reduce_idempotent (line 1395) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,Bounded,O,R>::chain (line 1796) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,Bounded,O,R>::repeat_with_keys (line 1874) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,Bounded,O,R>::sort (line 1756) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,L,Unbounded,O,R>::interleave (line 1707) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,Tick<L>,Bounded,O,R>::defer_tick (line 2796) ... ok
+test hydro_lang/src/live_collections/stream/mod.rs - live_collections::stream::Stream<T,Tick<L>,Bounded,O,R>::persist (line 2747) ... ok
+test hydro_lang/src/nondet.rs - nondet::__nondet__ (line 39) - compile ... ok
+test hydro_lang/src/nondet.rs - nondet::__nondet__ (line 55) ... ok
+test hydro_lang/src/live_collections/stream/networking.rs - live_collections::stream::networking::Stream<(MemberId<L2>,T),Cluster<'a,L>,B,O,R>::demux_bincode (line 541) ... ok
+test hydro_lang/src/live_collections/stream/networking.rs - live_collections::stream::networking::Stream<(MemberId<L2>,T),Process<'a,L>,B,O,R>::demux_bincode (line 270) ... ok
+test hydro_lang/src/live_collections/stream/networking.rs - live_collections::stream::networking::Stream<T,Cluster<'a,L>,B,O,R>::broadcast_bincode (line 475) ... ok
+test hydro_lang/src/live_collections/stream/networking.rs - live_collections::stream::networking::Stream<T,Cluster<'a,L>,B,O,R>::send_bincode (line 387) ... ok
+test hydro_lang/src/live_collections/stream/networking.rs - live_collections::stream::networking::Stream<T,Cluster<'a,L>,B,O,R>::send_bincode (line 409) ... ok
+test hydro_lang/src/live_collections/stream/networking.rs - live_collections::stream::networking::Stream<T,Process<'a,L>,B,O,R>::broadcast_bincode (line 154) ... ok
+test hydro_lang/src/live_collections/stream/networking.rs - live_collections::stream::networking::Stream<T,Process<'a,L>,B,O,R>::send_bincode (line 98) ... ok
+test hydro_lang/src/live_collections/stream/networking.rs - live_collections::stream::networking::Stream<T,Process<'a,L>,B,O,R>::send_bincode_external (line 202) ... ok
+test hydro_lang/src/live_collections/stream/networking.rs - live_collections::stream::networking::Stream<T,Process<'a,L>,B,TotalOrder,ExactlyOnce>::round_robin_bincode (line 325) ... ok
+test hydro_lang/src/location/mod.rs - location::Location::bind_single_client (line 263) ... ok
+test hydro_lang/src/location/mod.rs - location::Location::singleton (line 692) ... ok
+test hydro_lang/src/location/tick.rs - location::tick::Tick<L>::none (line 160) ... ok
+test hydro_lang/src/location/tick.rs - location::tick::Tick<L>::optional_first_tick (line 194) ... ok
+
+test result: ok. 155 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 82.67s
+
+   Doc-tests hydro_std
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests hydro_test
+
+running 28 tests
+test docs/docs/hydro/reference/live-collections/bounded-unbounded.md - docs::docs_docs_hydro_reference_live_collections_bounded_unbounded_md (line 13) - compile ... ok
+test docs/docs/hydro/reference/live-collections/bounded-unbounded.md - docs::docs_docs_hydro_reference_live_collections_bounded_unbounded_md (line 37) - compile ... ok
+test docs/docs/hydro/reference/live-collections/bounded-unbounded.md - docs::docs_docs_hydro_reference_live_collections_bounded_unbounded_md (line 25) - compile ... ok
+test docs/docs/hydro/reference/live-collections/determinism.md - docs::docs_docs_hydro_reference_live_collections_determinism_md (line 27) - compile ... ok
+test docs/docs/hydro/reference/live-collections/streams.md - docs::docs_docs_hydro_reference_live_collections_streams_md (line 103) - compile ... ok
+test docs/docs/hydro/reference/live-collections/streams.md - docs::docs_docs_hydro_reference_live_collections_streams_md (line 61) - compile ... ok
+test docs/docs/hydro/reference/locations/clusters.md - docs::docs_docs_hydro_reference_locations_clusters_md (line 10) - compile ... ok
+test docs/docs/hydro/reference/locations/clusters.md - docs::docs_docs_hydro_reference_locations_clusters_md (line 20) - compile ... ok
+test docs/docs/hydro/reference/live-collections/determinism.md - docs::docs_docs_hydro_reference_live_collections_determinism_md (line 44) ... ok
+test docs/docs/hydro/reference/locations/index.md - docs::docs_docs_hydro_reference_locations_index_md (line 17) ... ok
+test docs/docs/hydro/reference/locations/index.md - docs::docs_docs_hydro_reference_locations_index_md (line 29) ... ok
+test docs/docs/hydro/reference/locations/processes.md - docs::docs_docs_hydro_reference_locations_processes_md (line 24) - compile ... ok
+test docs/docs/hydro/reference/locations/processes.md - docs::docs_docs_hydro_reference_locations_processes_md (line 35) - compile ... ok
+test docs/docs/hydro/reference/locations/processes.md - docs::docs_docs_hydro_reference_locations_processes_md (line 8) - compile ... ok
+test docs/docs/hydro/reference/stageleft/errors.mdx - docs::docs_docs_hydro_reference_stageleft_errors_mdx (line 14) ... ignored
+test docs/docs/hydro/reference/live-collections/keyed-streams.mdx - docs::docs_docs_hydro_reference_live_collections_keyed_streams_mdx (line 52) ... ok
+test docs/docs/hydro/reference/live-collections/keyed-streams.mdx - docs::docs_docs_hydro_reference_live_collections_keyed_streams_mdx (line 147) ... ok
+test docs/docs/hydro/reference/live-collections/keyed-streams.mdx - docs::docs_docs_hydro_reference_live_collections_keyed_streams_mdx (line 17) ... ok
+test docs/docs/hydro/reference/live-collections/keyed-streams.mdx - docs::docs_docs_hydro_reference_live_collections_keyed_streams_mdx (line 115) ... ok
+test docs/docs/hydro/reference/live-collections/streams.md - docs::docs_docs_hydro_reference_live_collections_streams_md (line 18) ... ok
+test docs/docs/hydro/reference/live-collections/keyed-streams.mdx - docs::docs_docs_hydro_reference_live_collections_keyed_streams_mdx (line 90) ... ok
+test docs/docs/hydro/reference/locations/clusters.md - docs::docs_docs_hydro_reference_locations_clusters_md (line 78) ... ok
+test docs/docs/hydro/reference/locations/clusters.md - docs::docs_docs_hydro_reference_locations_clusters_md (line 31) ... ok
+test docs/docs/hydro/reference/locations/clusters.md - docs::docs_docs_hydro_reference_locations_clusters_md (line 55) ... ok
+test docs/docs/hydro/reference/locations/clusters.md - docs::docs_docs_hydro_reference_locations_clusters_md (line 129) ... ok
+test docs/docs/hydro/reference/locations/clusters.md - docs::docs_docs_hydro_reference_locations_clusters_md (line 105) ... ok
+test docs/docs/hydro/reference/locations/clusters.md - docs::docs_docs_hydro_reference_locations_clusters_md (line 154) ... ok
+test docs/docs/hydro/reference/live-collections/streams.md - docs::docs_docs_hydro_reference_live_collections_streams_md (line 37) ... ok
+
+test result: ok. 27 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 15.97s
+
+
+running 2 tests
+test docs/docs/hydro/reference/locations/clusters.md - docs::docs_docs_hydro_reference_locations_clusters_md (line 183) - compile fail ... ok
+test docs/docs/hydro/reference/live-collections/streams.md - docs::docs_docs_hydro_reference_live_collections_streams_md (line 77) - compile fail ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.58s
+
+all doctests ran in 24.09s; merged doctests compilation took 6.83s
+   Doc-tests hydro_test_template
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests include_mdtests
+
+running 2 tests
+test include_mdtests/src/../README.md - include_mdtests (line 10) ... ignored
+test include_mdtests/src/../README.md - include_mdtests (line 14) ... ignored
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests lattices
+
+running 2 tests
+test lattices/src/ght/macros.rs - ght::macros::GhtType (line 42) ... ok
+test lattices/src/ght/macros.rs - ght::macros::ColtType (line 79) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests lattices_macro
+
+running 2 tests
+test lattices_macro/src/../README.md - derive_lattice_macro (line 18) ... ignored
+test lattices_macro/src/../README.md - derive_lattice_macro (line 30) ... ignored
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests multiplatform_test
+
+running 4 tests
+test multiplatform_test/src/../README.md - (line 20) - compile ... ok
+test multiplatform_test/src/../README.md - (line 64) - compile ... ok
+test multiplatform_test/src/../README.md - (line 9) ... ok
+test multiplatform_test/src/../README.md - (line 53) ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests sinktools
+
+running 2 tests
+test sinktools/src/../README.md - (line 42) ... ok
+test sinktools/src/../README.md - (line 8) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests variadics
+
+running 27 tests
+test variadics/src/../README.md - (line 123) ... ok
+test variadics/src/../README.md - (line 140) ... ok
+test variadics/src/../README.md - (line 94) ... ok
+test variadics/src/../var_expr.md - var_expr (line 15) ... ok
+test variadics/src/../var_args.md - var_args (line 30) ... ok
+test variadics/src/../var_args.md - var_args (line 43) ... ok
+test variadics/src/../README.md - (line 170) ... ok
+test variadics/src/../README.md - (line 181) ... ok
+test variadics/src/../var_args.md - var_args (line 19) ... ok
+test variadics/src/../README.md - (line 85) ... ok
+test variadics/src/../var_type.md - var_type (line 8) ... ok
+test variadics/src/../var_expr.md - var_expr (line 28) ... ok
+test variadics/src/lib.rs - CopyRefVariadic (line 485) ... ok
+test variadics/src/../var_type.md - var_type (line 25) ... ok
+test variadics/src/../README.md - (line 194) ... ok
+test variadics/src/lib.rs - VariadicExt::as_mut_var (line 167) ... ok
+test variadics/src/../README.md - (line 107) ... ok
+test variadics/src/../README.md - (line 161) ... ok
+test variadics/src/lib.rs - variadic_trait (line 68) ... ok
+test variadics/src/../var_expr.md - var_expr (line 6) ... ok
+test variadics/src/../var_args.md - var_args (line 10) ... ok
+test variadics/src/lib.rs - RefVariadic (line 448) ... ok
+test variadics/src/lib.rs - EitherRefVariadic::UnRefVar (line 362) ... ok
+test variadics/src/lib.rs - EitherRefVariadic::mut_to_ref (line 375) ... ok
+test variadics/src/lib.rs - VariadicExt::as_ref_var (line 154) ... ok
+test variadics/src/lib.rs - MutVariadic (line 469) ... ok
+test variadics/src/lib.rs - CloneVariadic (line 525) ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+   Doc-tests variadics_macro
+
+running 1 test
+test variadics_macro/src/../README.md - (line 6) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests website_playground
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
++ '[' true = true ']'
++ pushd website_playground
+~/code/monorepo/hydro/website_playground ~/code/monorepo/hydro
++ rustup toolchain install nightly
+info: syncing channel updates for 'nightly-aarch64-apple-darwin'
+info: latest update on 2025-11-11, rust version 1.93.0-nightly (29a69716f 2025-11-10)
+info: downloading component 'rust-std' for 'wasm32-unknown-unknown'
+info: downloading component 'cargo'
+info: downloading component 'clippy'
+info: downloading component 'rust-docs'
+info: downloading component 'rust-std'
+info: downloading component 'rustc'
+info: downloading component 'rustfmt'
+info: removing previous version of component 'rust-std' for 'wasm32-unknown-unknown'
+info: removing previous version of component 'cargo'
+info: removing previous version of component 'clippy'
+info: removing previous version of component 'rust-docs'
+info: removing previous version of component 'rust-std'
+info: removing previous version of component 'rustc'
+info: removing previous version of component 'rustfmt'
+info: installing component 'rust-std' for 'wasm32-unknown-unknown'
+info: installing component 'cargo'
+info: installing component 'clippy'
+info: installing component 'rust-docs'
+info: installing component 'rust-std'
+info: installing component 'rustc'
+info: installing component 'rustfmt'
+
+  nightly-aarch64-apple-darwin updated - rustc 1.93.0-nightly (29a69716f 2025-11-10) (from rustc 1.93.0-nightly (adaa83897 2025-10-27))
+
+info: checking for self-update
++ RUSTUP_TOOLCHAIN=nightly
++ RUSTFLAGS='--cfg procmacro2_semver_exempt --cfg super_unstable'
++ wasm-pack build
+[INFO]: 🎯  Checking for the Wasm target...
+[INFO]: 🌀  Compiling to Wasm...
+   Compiling proc-macro2 v1.0.101
+   Compiling unicode-ident v1.0.19
+   Compiling libc v0.2.175
+   Compiling once_cell v1.21.3
+   Compiling semver v1.0.26
+   Compiling similar v2.7.0
+   Compiling version_check v0.9.5
+   Compiling serde_core v1.0.227
+   Compiling serde v1.0.227
+   Compiling wasm-bindgen-shared v0.2.101
+   Compiling stable_deref_trait v1.2.0
+   Compiling cfg-if v1.0.3
+   Compiling zerocopy v0.8.27
+   Compiling log v0.4.28
+   Compiling prettyplease v0.2.37
+   Compiling siphasher v1.0.1
+   Compiling bumpalo v3.19.0
+   Compiling heck v0.5.0
+   Compiling ahash v0.8.12
+   Compiling phf_shared v0.12.1
+   Compiling rustversion v1.0.22
+   Compiling thiserror v2.0.16
+   Compiling fastrand v2.3.0
+   Compiling either v1.15.0
+   Compiling phf_generator v0.12.1
+   Compiling wasm-bindgen v0.2.101
+   Compiling slotmap v1.0.7
+   Compiling unicode-segmentation v1.12.0
+   Compiling serde_json v1.0.143
+   Compiling writeable v0.6.1
+   Compiling litemap v0.8.0
+   Compiling convert_case v0.8.0
+   Compiling itertools v0.14.0
+   Compiling icu_properties_data v2.0.1
+   Compiling icu_normalizer_data v2.0.0
+   Compiling pin-project-lite v0.2.16
+   Compiling hashbrown v0.15.5
+   Compiling equivalent v1.0.2
+   Compiling futures-core v0.3.31
+   Compiling indexmap v2.11.1
+   Compiling console v0.15.11
+   Compiling insta v1.43.2
+   Compiling memchr v2.7.5
+   Compiling quote v1.0.40
+   Compiling syn v2.0.106
+   Compiling rustc_version v0.4.1
+   Compiling futures-sink v0.3.31
+   Compiling smallvec v1.15.1
+   Compiling hydro_build_utils v0.0.1 (/Users/jmhwork/code/monorepo/hydro/hydro_build_utils)
+   Compiling winnow v0.7.13
+   Compiling toml_datetime v0.6.11
+   Compiling itoa v1.0.15
+   Compiling utf8parse v0.2.2
+   Compiling variadics v0.0.9 (/Users/jmhwork/code/monorepo/hydro/variadics)
+   Compiling ryu v1.0.20
+   Compiling anstyle-parse v0.2.7
+   Compiling futures-channel v0.3.31
+   Compiling itertools v0.13.0
+   Compiling slab v0.4.11
+   Compiling futures-io v0.3.31
+   Compiling anstyle-query v1.1.4
+   Compiling toml_edit v0.22.27
+   Compiling is_terminal_polyfill v1.70.1
+   Compiling pin-utils v0.1.0
+   Compiling allocator-api2 v0.2.21
+   Compiling utf8_iter v1.0.4
+   Compiling percent-encoding v2.3.2
+   Compiling anstyle v1.0.11
+   Compiling colorchoice v1.0.4
+   Compiling futures-task v0.3.31
+   Compiling form_urlencoded v1.2.2
+   Compiling anstream v0.6.20
+   Compiling lattices_macro v0.5.10 (/Users/jmhwork/code/monorepo/hydro/lattices_macro)
+   Compiling hashbrown v0.14.5
+   Compiling ref-cast v1.0.24
+   Compiling bytes v1.10.1
+   Compiling strsim v0.11.1
+   Compiling clap_lex v0.7.5
+   Compiling fst v0.4.7
+   Compiling clap_builder v4.5.48
+   Compiling lattices v0.6.1 (/Users/jmhwork/code/monorepo/hydro/lattices)
+   Compiling synstructure v0.13.2
+   Compiling wasm-bindgen-backend v0.2.101
+   Compiling proc-macro-crate v3.3.0
+   Compiling byteorder v1.5.0
+   Compiling bytemuck v1.23.2
+   Compiling roaring v0.10.12
+   Compiling dfir_rs v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_rs)
+   Compiling tracing-core v0.1.34
+   Compiling cc-traits v2.0.0
+   Compiling data-encoding v2.9.0
+   Compiling rustc-hash v1.1.0
+   Compiling website_playground v0.0.0 (/Users/jmhwork/code/monorepo/hydro/website_playground)
+   Compiling wasm-bindgen-macro-support v0.2.101
+   Compiling serde_derive v1.0.227
+   Compiling zerofrom-derive v0.1.6
+   Compiling yoke-derive v0.8.0
+   Compiling zerovec-derive v0.11.1
+   Compiling displaydoc v0.2.5
+   Compiling strum_macros v0.27.2
+   Compiling phf_macros v0.12.1
+   Compiling thiserror-impl v2.0.16
+   Compiling optfield v0.4.0
+   Compiling wasm-bindgen-macro v0.2.101
+   Compiling sealed v0.6.0
+   Compiling phf v0.12.1
+   Compiling auto_impl v1.3.0
+   Compiling dfir_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_lang)
+   Compiling futures-macro v0.3.31
+   Compiling zerofrom v0.1.6
+   Compiling yoke v0.8.0
+   Compiling tokio-macros v2.5.0
+   Compiling strum v0.27.2
+   Compiling zerovec v0.11.4
+   Compiling zerotrie v0.2.2
+   Compiling futures-util v0.3.31
+   Compiling tokio v1.47.1
+   Compiling clap_derive v4.5.47
+   Compiling ref-cast-impl v1.0.24
+   Compiling variadics_macro v0.6.1 (/Users/jmhwork/code/monorepo/hydro/variadics_macro)
+   Compiling documented-macros v0.9.2
+   Compiling js-sys v0.3.78
+   Compiling tracing-attributes v0.1.30
+   Compiling clap v4.5.48
+   Compiling tinystr v0.8.1
+   Compiling potential_utf v0.1.3
+   Compiling icu_locale_core v2.0.0
+   Compiling icu_collections v2.0.0
+   Compiling tracing v0.1.41
+   Compiling bincode v1.3.3
+   Compiling icu_provider v2.0.0
+   Compiling console_error_panic_hook v0.1.7
+   Compiling icu_properties v2.0.1
+   Compiling icu_normalizer v2.0.0
+   Compiling documented v0.9.2
+   Compiling futures-executor v0.3.31
+   Compiling sinktools v0.0.1 (/Users/jmhwork/code/monorepo/hydro/sinktools)
+   Compiling futures v0.3.31
+   Compiling tokio-stream v0.1.17
+   Compiling tokio-util v0.7.16
+   Compiling idna_adapter v1.2.1
+   Compiling idna v1.1.0
+   Compiling web-sys v0.3.78
+   Compiling web-time v1.1.0
+   Compiling getrandom v0.2.16
+   Compiling serde-wasm-bindgen v0.4.5
+   Compiling url v2.5.7
+   Compiling webbrowser v1.0.5
+   Compiling dfir_macro v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_macro)
+    Finished `release` profile [optimized] target(s) in 21.70s
+[INFO]: Optimizing wasm binaries with `wasm-opt`...
+[INFO]: Optional fields missing from Cargo.toml: 'description', 'repository', and 'license'. These are not necessary, but recommended
+[INFO]: ✨   Done in 29.68s
+[INFO]: 📦   Your wasm pkg is ready to publish at /Users/jmhwork/code/monorepo/hydro/website_playground/pkg.
++ popd
+~/code/monorepo/hydro
++ '[' true = true ']'
++ rustup toolchain install nightly
+info: syncing channel updates for 'nightly-aarch64-apple-darwin'
+
+  nightly-aarch64-apple-darwin unchanged - rustc 1.93.0-nightly (29a69716f 2025-11-10)
+
+info: checking for self-update
++ RUSTUP_TOOLCHAIN=nightly
++ CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner
++ cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
+   Compiling proc-macro2 v1.0.101
+   Compiling unicode-ident v1.0.19
+   Compiling libc v0.2.175
+   Compiling semver v1.0.26
+   Compiling once_cell v1.21.3
+   Compiling similar v2.7.0
+   Compiling serde_core v1.0.227
+   Compiling serde v1.0.227
+   Compiling version_check v0.9.5
+   Compiling wasm-bindgen-shared v0.2.101
+   Compiling cfg-if v1.0.3
+   Compiling zerocopy v0.8.27
+   Compiling bumpalo v3.19.0
+   Compiling log v0.4.28
+   Compiling stable_deref_trait v1.2.0
+   Compiling wasm-bindgen v0.2.101
+   Compiling memchr v2.7.5
+   Compiling siphasher v1.0.1
+   Compiling heck v0.5.0
+   Compiling ahash v0.8.12
+   Compiling fastrand v2.3.0
+   Compiling phf_shared v0.12.1
+   Compiling prettyplease v0.2.37
+   Compiling thiserror v2.0.16
+   Compiling rustc_version v0.4.1
+   Compiling serde_json v1.0.143
+   Compiling phf_generator v0.12.1
+   Compiling either v1.15.0
+   Compiling slotmap v1.0.7
+   Compiling writeable v0.6.1
+   Compiling pin-project-lite v0.2.16
+   Compiling litemap v0.8.0
+   Compiling unicode-segmentation v1.12.0
+   Compiling quote v1.0.40
+   Compiling icu_normalizer_data v2.0.0
+   Compiling icu_properties_data v2.0.1
+   Compiling itertools v0.14.0
+   Compiling futures-core v0.3.31
+   Compiling hashbrown v0.15.5
+   Compiling smallvec v1.15.1
+   Compiling equivalent v1.0.2
+   Compiling console v0.15.11
+   Compiling convert_case v0.8.0
+   Compiling syn v2.0.106
+   Compiling winnow v0.7.13
+   Compiling toml_datetime v0.6.11
+   Compiling futures-sink v0.3.31
+   Compiling insta v1.43.2
+   Compiling indexmap v2.11.1
+   Compiling ryu v1.0.20
+   Compiling itoa v1.0.15
+   Compiling utf8parse v0.2.2
+   Compiling futures-channel v0.3.31
+   Compiling itertools v0.13.0
+   Compiling aho-corasick v1.1.3
+   Compiling anstyle-parse v0.2.7
+   Compiling pin-utils v0.1.0
+   Compiling is_terminal_polyfill v1.70.1
+   Compiling toml_edit v0.22.27
+   Compiling hydro_build_utils v0.0.1 (/Users/jmhwork/code/monorepo/hydro/hydro_build_utils)
+   Compiling colorchoice v1.0.4
+   Compiling anstyle-query v1.1.4
+   Compiling futures-task v0.3.31
+   Compiling anstyle v1.0.11
+   Compiling allocator-api2 v0.2.21
+   Compiling percent-encoding v2.3.2
+   Compiling futures-io v0.3.31
+   Compiling synstructure v0.13.2
+   Compiling wasm-bindgen-backend v0.2.101
+   Compiling libm v0.2.15
+   Compiling autocfg v1.5.0
+   Compiling variadics v0.0.9 (/Users/jmhwork/code/monorepo/hydro/variadics)
+   Compiling utf8_iter v1.0.4
+   Compiling regex-syntax v0.8.6
+   Compiling slab v0.4.11
+   Compiling hashbrown v0.14.5
+   Compiling proc-macro-crate v3.3.0
+   Compiling lattices_macro v0.5.10 (/Users/jmhwork/code/monorepo/hydro/lattices_macro)
+   Compiling form_urlencoded v1.2.2
+   Compiling wasm-bindgen-macro-support v0.2.101
+   Compiling num-traits v0.2.19
+   Compiling anstream v0.6.20
+   Compiling ppv-lite86 v0.2.21
+   Compiling tracing-core v0.1.34
+   Compiling clap_lex v0.7.5
+   Compiling serde_derive v1.0.227
+   Compiling zerofrom-derive v0.1.6
+   Compiling yoke-derive v0.8.0
+   Compiling zerovec-derive v0.11.1
+   Compiling displaydoc v0.2.5
+   Compiling strum_macros v0.27.2
+   Compiling phf_macros v0.12.1
+   Compiling thiserror-impl v2.0.16
+   Compiling optfield v0.4.0
+   Compiling dfir_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_lang)
+   Compiling sealed v0.6.0
+   Compiling wasm-bindgen-macro v0.2.101
+   Compiling auto_impl v1.3.0
+   Compiling futures-macro v0.3.31
+   Compiling regex-automata v0.4.10
+   Compiling tokio-macros v2.5.0
+   Compiling fst v0.4.7
+   Compiling strsim v0.11.1
+   Compiling bytes v1.10.1
+   Compiling phf v0.12.1
+   Compiling zerofrom v0.1.6
+   Compiling futures-util v0.3.31
+   Compiling ref-cast v1.0.24
+   Compiling clap_builder v4.5.48
+   Compiling tokio v1.47.1
+   Compiling strum v0.27.2
+   Compiling js-sys v0.3.78
+   Compiling yoke v0.8.0
+   Compiling getrandom v0.2.16
+   Compiling web-sys v0.3.78
+   Compiling tracing-attributes v0.1.30
+   Compiling rand_core v0.6.4
+   Compiling rand_chacha v0.3.1
+   Compiling documented-macros v0.9.2
+   Compiling ref-cast-impl v1.0.24
+   Compiling clap_derive v4.5.47
+   Compiling lattices v0.6.1 (/Users/jmhwork/code/monorepo/hydro/lattices)
+   Compiling byteorder v1.5.0
+   Compiling target-triple v0.1.4
+   Compiling bytemuck v1.23.2
+   Compiling lazy_static v1.5.0
+   Compiling roaring v0.10.12
+   Compiling clap v4.5.48
+   Compiling serde_spanned v1.0.0
+   Compiling toml_parser v1.0.2
+   Compiling toml_datetime v0.7.0
+   Compiling variadics_macro v0.6.1 (/Users/jmhwork/code/monorepo/hydro/variadics_macro)
+   Compiling tracing v0.1.41
+   Compiling rand v0.8.5
+   Compiling zerovec v0.11.4
+   Compiling zerotrie v0.2.2
+   Compiling futures-executor v0.3.31
+   Compiling dfir_rs v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_rs)
+   Compiling toml_writer v1.0.2
+   Compiling data-encoding v2.9.0
+   Compiling cc-traits v2.0.0
+   Compiling powerfmt v0.2.0
+   Compiling toml v0.9.5
+   Compiling documented v0.9.2
+   Compiling deranged v0.5.4
+   Compiling futures v0.3.31
+   Compiling sinktools v0.0.1 (/Users/jmhwork/code/monorepo/hydro/sinktools)
+   Compiling sharded-slab v0.1.7
+   Compiling tokio-stream v0.1.17
+   Compiling tokio-util v0.7.16
+   Compiling bincode v1.3.3
+   Compiling web-time v1.1.0
+   Compiling wasm-bindgen-futures v0.4.51
+   Compiling matchers v0.2.0
+   Compiling regex v1.11.2
+   Compiling tracing-log v0.2.0
+   Compiling wasm-bindgen-test-macro v0.3.51
+   Compiling thread_local v1.1.9
+   Compiling rustc-hash v1.1.0
+   Compiling termcolor v1.4.1
+   Compiling time-core v0.1.6
+   Compiling glob v0.3.3
+   Compiling nu-ansi-term v0.50.1
+   Compiling num-conv v0.1.0
+   Compiling example_test v0.0.0 (/Users/jmhwork/code/monorepo/hydro/example_test)
+   Compiling wasm-bindgen-test v0.3.51
+   Compiling include_mdtests v0.0.0 (/Users/jmhwork/code/monorepo/hydro/include_mdtests)
+   Compiling time v0.3.44
+   Compiling chrono v0.4.42
+   Compiling rand_distr v0.4.3
+   Compiling tracing-subscriber v0.3.20
+   Compiling trybuild v1.0.110
+   Compiling zipf v7.0.2
+   Compiling colored v2.2.0
+   Compiling multiplatform_test v0.5.0 (/Users/jmhwork/code/monorepo/hydro/multiplatform_test)
+   Compiling static_assertions v1.1.0
+   Compiling tinystr v0.8.1
+   Compiling potential_utf v0.1.3
+   Compiling icu_collections v2.0.0
+   Compiling icu_locale_core v2.0.0
+   Compiling icu_provider v2.0.0
+   Compiling icu_properties v2.0.1
+   Compiling icu_normalizer v2.0.0
+   Compiling idna_adapter v1.2.1
+   Compiling idna v1.1.0
+   Compiling url v2.5.7
+   Compiling webbrowser v1.0.5
+   Compiling dfir_macro v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_macro)
+warning: unused import: `dfir_lang::graph::WriteConfig`
+   --> dfir_rs/tests/surface_loop.rs:471:9
+    |
+471 |     use dfir_lang::graph::WriteConfig;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `df`
+   --> dfir_rs/tests/surface_loop.rs:475:9
+    |
+475 |     let df = dfir_syntax! {
+    |         ^^ help: if this is intentional, prefix it with an underscore: `_df`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `dfir_rs` (test "surface_loop") generated 2 warnings (run `cargo fix --test "surface_loop" -p dfir_rs` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 42.94s
+     Running unittests src/lib.rs (target/wasm32-unknown-unknown/debug/deps/dfir_rs-4a1f17f0554a3c76.wasm)
+no tests to run!
+                                                       Running tests/groupby.rs (target/wasm32-unknown-unknown/debug/deps/groupby-d8cb15c7072d1714.wasm)
+no tests to run!
+                                                       Running tests/scheduled_teeing_handoff.rs (target/wasm32-unknown-unknown/debug/deps/scheduled_teeing_handoff-6807eef0effdda83.wasm)
+Executing bindgen...                                                                                running 4 tests
+test test_scheduling_tee_after ... ok
+test test_scheduling_drop ... ok
+test test_scheduling ... ok
+test test_basic ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.02s
+
+                                                       Running tests/scheduled_test.rs (target/wasm32-unknown-unknown/debug/deps/scheduled_test-40cd9afb4f24373b.wasm)
+Executing bindgen...                                                                                running 5 tests
+test test_input_handle ... ok
+test test_cycle ... ok
+test test_basic_variadic ... ok
+test test_basic_n_m ... ok
+test map_filter ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.02s
+
+                                                       Running tests/surface_async.rs (target/wasm32-unknown-unknown/debug/deps/surface_async-6f5119565bcd1bd6.wasm)
+no tests to run!
+                                                       Running tests/surface_batch.rs (target/wasm32-unknown-unknown/debug/deps/surface_batch-83c34f04ae523f6e.wasm)
+Executing bindgen...                                                                                running 1 test
+test test_basic_2 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.03s
+
+                                                       Running tests/surface_book.rs (target/wasm32-unknown-unknown/debug/deps/surface_book-79fde3d8f279ee05.wasm)
+Executing bindgen...                                                                                running 1 test
+test test_surface_flows_1 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.03s
+
+                                                       Running tests/surface_codegen.rs (target/wasm32-unknown-unknown/debug/deps/surface_codegen-5316506fce32ae06.wasm)
+Executing bindgen...                                                                                running 27 tests
+test test_transitive_closure ... ok
+test test_surface_syntax_reachability_generated ... ok
+test test_sort_by_owned ... ok
+test test_sort_by_key ... ok
+test test_sort ... ok
+test test_recv_expr ... ok
+test test_multiset_join ... ok
+test test_large_diamond ... ok
+test test_join_order ... ok
+test test_iter_stream_batches ... ok
+test test_defer_tick ... ok
+test test_cross_join_multiset ... ok
+test test_cross_join ... ok
+test test_covid_tracing ... ok
+test test_channel_minimal ... ok
+test test_basic_union ... ok
+test test_basic_tee ... ok
+test test_basic_inspect_null ... ok
+test test_basic_inspect_no_null ... ok
+test test_basic_3 ... ok
+test test_basic_2 ... ok
+test test_assert_eq ... ok
+test test_anti_join_tick_static ... ok
+test test_anti_join_static ... ok
+test test_anti_join_multiset_tick_static ... ok
+test test_anti_join_multiset_static ... ok
+test test_anti_join ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.09s
+
+                                                       Running tests/surface_compile_fail.rs (target/wasm32-unknown-unknown/debug/deps/surface_compile_fail-a5721c38e66b8d43.wasm)
+no tests to run!
+                                                       Running tests/surface_context.rs (target/wasm32-unknown-unknown/debug/deps/surface_context-87ab8ba58a618050.wasm)
+Executing bindgen...                                                                                running 2 tests
+test test_context_ref ... ok
+test test_context_mut ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.03s
+
+                                                       Running tests/surface_counter.rs (target/wasm32-unknown-unknown/debug/deps/surface_counter-9b5428133f40cee6.wasm)
+no tests to run!
+                                                       Running tests/surface_cross_singleton.rs (target/wasm32-unknown-unknown/debug/deps/surface_cross_singleton-4230553576c5da44.wasm)
+Executing bindgen...                                                                                running 2 tests
+test test_union_defer_tick ... ok
+test test_basic ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_demux_enum.rs (target/wasm32-unknown-unknown/debug/deps/surface_demux_enum-bcdef2b3f156e975.wasm)
+Executing bindgen...                                                                                running 4 tests
+test test_zero_variants ... ok
+test test_one_variant ... ok
+test test_demux_enum_generic ... ok
+test test_demux_enum ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_difference_anti_join.rs (target/wasm32-unknown-unknown/debug/deps/surface_difference_anti_join-e4c8f4e9813ef661.wasm)
+Executing bindgen...                                                                                running 11 tests
+test test_difference_multiset_loop_lifetimes ... ok
+test test_difference_multiset ... ok
+test test_difference_loop_lifetimes ... ok
+test test_difference ... ok
+test test_diff_timing ... ok
+test test_diff_static ... ok
+test test_diff_multiset_timing ... ok
+test test_diff_multiset_tick_static ... ok
+test test_diff_multiset_static_tick ... ok
+test test_diff_multiset_static ... ok
+test test_anti_join_multiset ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.06s
+
+                                                       Running tests/surface_examples.rs (target/wasm32-unknown-unknown/debug/deps/surface_examples-feb37e27f8493677.wasm)
+no tests to run!
+                                                       Running tests/surface_fold.rs (target/wasm32-unknown-unknown/debug/deps/surface_fold-4c74ba26e08e1f54.wasm)
+Executing bindgen...                                                                                running 6 tests
+test test_fold_tick ... ok
+test test_fold_static_join ... ok
+test test_fold_static ... ok
+test test_fold_sort ... ok
+test test_fold_inference ... ok
+test test_fold_flatten ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.05s
+
+                                                       Running tests/surface_fold_keyed.rs (target/wasm32-unknown-unknown/debug/deps/surface_fold_keyed-9b8f9dbd710e5719.wasm)
+Executing bindgen...                                                                                running 4 tests
+test test_fold_keyed_tick ... ok
+test test_fold_keyed_static ... ok
+test test_fold_keyed_loop_lifetime ... ok
+test test_fold_keyed_infer_basic ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_forwardref.rs (target/wasm32-unknown-unknown/debug/deps/surface_forwardref-043470c44d49d5c1.wasm)
+Executing bindgen...                                                                                running 3 tests
+test test_forwardref_basic_middle ... ok
+test test_forwardref_basic_forward ... ok
+test test_forwardref_basic_backward ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.03s
+
+                                                       Running tests/surface_join.rs (target/wasm32-unknown-unknown/debug/deps/surface_join-d398c164b60c8fd3.wasm)
+Executing bindgen...                                                                                running 6 tests
+test tick_tick ... ok
+test tick_static ... ok
+test static_tick ... ok
+test static_static ... ok
+test replay_static ... ok
+test loop_lifetimes ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.05s
+
+                                                       Running tests/surface_join_fused.rs (target/wasm32-unknown-unknown/debug/deps/surface_join_fused-10b2cc836ef117f7.wasm)
+Executing bindgen...                                                                                running 7 tests
+test tick_tick_lhs_streaming_rhs_blocking ... ok
+test tick_tick_lhs_fold_rhs_reduce ... ok
+test tick_tick_lhs_blocking_rhs_streaming ... ok
+test static_tick_lhs_streaming_rhs_blocking ... ok
+test static_tick_lhs_blocking_rhs_streaming ... ok
+test static_static_lhs_streaming_rhs_blocking ... ok
+test static_static_lhs_blocking_rhs_streaming ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.05s
+
+                                                       Running tests/surface_lattice_batch.rs (target/wasm32-unknown-unknown/debug/deps/surface_lattice_batch-892cc31aaa1ba17e.wasm)
+Executing bindgen...                                                                                running 1 test
+test test_lattice_batch ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.03s
+
+                                                       Running tests/surface_lattice_bimorphism.rs (target/wasm32-unknown-unknown/debug/deps/surface_lattice_bimorphism-b5dfe70fe6fbf279.wasm)
+Executing bindgen...                                                                                running 5 tests
+test test_join ... ok
+test test_ght_join_bimorphism ... ok
+test test_cartesian_product_tick_state ... ok
+test test_cartesian_product_1401 ... ok
+test test_cartesian_product ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.06s
+
+                                                       Running tests/surface_lattice_bimorphism_persist_insertion.rs (target/wasm32-unknown-unknown/debug/deps/surface_lattice_bimorphism_persist_insertion-e6432e53873faccd.wasm)
+Executing bindgen...                                                                                running 3 tests
+test test_cartesian_product_multi_tick_tee ... ok
+test test_cartesian_product_multi_tick_identity ... ok
+test test_cartesian_product_multi_tick ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_lattice_fold.rs (target/wasm32-unknown-unknown/debug/deps/surface_lattice_fold-e8a8488395e07ff3.wasm)
+no tests to run!
+                                                       Running tests/surface_lattice_generalized_hash_trie.rs (target/wasm32-unknown-unknown/debug/deps/surface_lattice_generalized_hash_trie-65feb8f6603fbb36.wasm)
+no tests to run!
+                                                       Running tests/surface_lattice_join.rs (target/wasm32-unknown-unknown/debug/deps/surface_lattice_join-30e5328240d0eab4.wasm)
+Executing bindgen...                                                                                running 4 tests
+test test_lattice_join_fused_join_set_union ... ok
+test test_lattice_join_fused_join_reducing_behavior ... ok
+test test_lattice_join_fused_join_map_union ... ok
+test test_lattice_join_fused_join ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.05s
+
+                                                       Running tests/surface_lattice_reduce.rs (target/wasm32-unknown-unknown/debug/deps/surface_lattice_reduce-e125d734cb52f67c.wasm)
+no tests to run!
+                                                       Running tests/surface_loop.rs (target/wasm32-unknown-unknown/debug/deps/surface_loop-278c0a34db198e32.wasm)
+Executing bindgen...                                                                                running 7 tests
+test test_flo_syntax ... ok
+test test_flo_repeat_n_nested ... ok
+test test_flo_repeat_n_multiple_nested ... ok
+test test_flo_repeat_kmeans ... ok
+test test_flo_nested ... ok
+test test_enumerate_loop ... ok
+test test_batches_basic ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.06s
+
+                                                       Running tests/surface_multiset_delta.rs (target/wasm32-unknown-unknown/debug/deps/surface_multiset_delta-9129086d3229e93f.wasm)
+Executing bindgen...                                                                                running 5 tests
+test test_persist_multiset_delta ... ok
+test test_multiset_delta_2 ... ok
+test test_multiset_delta ... ok
+test test_chat_app_replay_manual ... ok
+test test_chat_app_replay ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_parser.rs (target/wasm32-unknown-unknown/debug/deps/surface_parser-4339c030d82a10ce.wasm)
+Executing bindgen...                                                                                running 15 tests
+test test_parser_port_reassign ... ok
+test test_parser_port_naked_knot ... ok
+test test_parser_port_naked_basic ... ok
+test test_parser_forwardref_union ... ok
+test test_parser_forwardref_tee ... ok
+test test_parser_forwardref_self_middle ... ok
+test test_parser_forwardref_mutual ... ok
+test test_parser_forwardref_knot ... ok
+test test_parser_forwardref_degen ... ok
+test test_parser_forwardref_cycle_right ... ok
+test test_parser_forwardref_cycle_left ... ok
+test test_parser_forwardref_chain ... ok
+test test_parser_forwardref_basic ... ok
+test test_parser_basic ... ok
+test test_flo_syntax ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.01s
+
+                                                       Running tests/surface_partition.rs (target/wasm32-unknown-unknown/debug/deps/surface_partition-fd85bada223c5d44.wasm)
+Executing bindgen...                                                                                running 2 tests
+test test_partition_round ... ok
+test test_partition_fizzbuzz ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.03s
+
+                                                       Running tests/surface_persist.rs (target/wasm32-unknown-unknown/debug/deps/surface_persist-a21b6e0ef10ed681.wasm)
+Executing bindgen...                                                                                running 11 tests
+test test_persist_single_subgraph ... ok
+test test_persist_single_handoff ... ok
+test test_persist_replay_join ... ok
+test test_persist_push ... ok
+test test_persist_pull ... ok
+test test_persist_mut_keyed ... ok
+test test_persist_mut ... ok
+test test_persist_join ... ok
+test test_persist_double_handoff ... ok
+test test_persist_basic ... ok
+test test_persist ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.06s
+
+                                                       Running tests/surface_reduce.rs (target/wasm32-unknown-unknown/debug/deps/surface_reduce-fdd5c6d35b219bbc.wasm)
+Executing bindgen...                                                                                running 4 tests
+test test_reduce_tick ... ok
+test test_reduce_sum ... ok
+test test_reduce_static ... ok
+test test_reduce ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_reduce_keyed.rs (target/wasm32-unknown-unknown/debug/deps/surface_reduce_keyed-532e1f8a07967e1b.wasm)
+Executing bindgen...                                                                                running 4 tests
+test test_reduce_keyed_tick ... ok
+test test_reduce_keyed_static ... ok
+test test_reduce_keyed_loop_lifetime ... ok
+test test_reduce_keyed_infer_basic ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_resolve_futures.rs (target/wasm32-unknown-unknown/debug/deps/surface_resolve_futures-78544209e07558c3.wasm)
+no tests to run!
+                                                       Running tests/surface_resolve_futures_ordered.rs (target/wasm32-unknown-unknown/debug/deps/surface_resolve_futures_ordered-e3c3abddfbd0f5ab.wasm)
+no tests to run!
+                                                       Running tests/surface_scan.rs (target/wasm32-unknown-unknown/debug/deps/surface_scan-aaafc6384191ecae.wasm)
+Executing bindgen...                                                                                running 8 tests
+test test_scan_tick ... ok
+test test_scan_static_early_termination ... ok
+test test_scan_static ... ok
+test test_scan_push ... ok
+test test_scan_empty_input ... ok
+test test_scan_early_termination ... ok
+test test_scan_different_types ... ok
+test test_scan_complex_accumulator ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_scheduling.rs (target/wasm32-unknown-unknown/debug/deps/surface_scheduling-cb21ee7bb52a62cc.wasm)
+Executing bindgen...                                                                                running 5 tests
+test test_tick_loop ... ok
+test test_stratum_loop ... ok
+test test_issue_800_1050_reduce_keyed ... ok
+test test_issue_800_1050_persist ... ok
+test test_issue_800_1050_fold_keyed ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_singleton.rs (target/wasm32-unknown-unknown/debug/deps/surface_singleton-f98a975eac703ad2.wasm)
+Executing bindgen...                                                                                running 10 tests
+test test_state_unused ... ok
+test test_state_tick ... ok
+test test_state ... ok
+test test_scheduling ... ok
+test test_reduce_singleton_push ... ok
+test test_reduce_singleton ... ok
+test test_multi_tick ... ok
+test test_fold_singleton_push ... ok
+test test_fold_singleton ... ok
+test test_fold_cross ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.05s
+
+                                                       Running tests/surface_state_scheduling.rs (target/wasm32-unknown-unknown/debug/deps/surface_state_scheduling-ce3bba03c2da7dcb.wasm)
+Executing bindgen...                                                                                running 8 tests
+test test_resume_external_event ... ok
+test test_repeat_iter ... ok
+test test_reduce_tick ... ok
+test test_reduce_static ... ok
+test test_fold_tick ... ok
+test test_fold_static ... ok
+test test_fold_keyed_tick ... ok
+test test_fold_keyed_static ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_stratum.rs (target/wasm32-unknown-unknown/debug/deps/surface_stratum-4c0f6a7df42f1dfe.wasm)
+Executing bindgen...                                                                                running 8 tests
+test test_tick_loop_3 ... ok
+test test_tick_loop_2 ... ok
+test test_tick_loop_1 ... ok
+test test_surface_syntax_graph_unreachability ... ok
+test test_subgraph_stratum_consolidation ... ok
+test test_difference_b ... ok
+test test_difference_a ... ok
+test test_defer_lazy ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.06s
+
+                                                       Running tests/surface_unique.rs (target/wasm32-unknown-unknown/debug/deps/surface_unique-341b58c0d78429bc.wasm)
+Executing bindgen...                                                                                running 6 tests
+test test_unique_tick_push ... ok
+test test_unique_tick_pull ... ok
+test test_unique_static_push ... ok
+test test_unique_static_pull ... ok
+test test_unique ... ok
+test test_loop_lifetime ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.04s
+
+                                                       Running tests/surface_warnings.rs (target/wasm32-unknown-unknown/debug/deps/surface_warnings-7bad67505ee455ca.wasm)
+no tests to run!
+                                                       Running tests/surface_zip_unzip.rs (target/wasm32-unknown-unknown/debug/deps/surface_zip_unzip-ef7cf8fbb257063b.wasm)
+Executing bindgen...                                                                                running 5 tests
+test test_zip_loop ... ok
+test test_zip_longest_basic ... ok
+test test_zip_basic ... ok
+test test_unzip_basic ... ok
+test test_loop_lifetime ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.05s
+
+                                                  + RUSTDOCFLAGS='--cfg docsrs -Dwarnings'
++ cargo +nightly doc --no-deps --all-features
+   Compiling proc-macro2 v1.0.101
+   Compiling unicode-ident v1.0.19
+   Compiling libc v0.2.175
+    Checking cfg-if v1.0.3
+   Compiling version_check v0.9.5
+   Compiling serde v1.0.227
+   Compiling serde_core v1.0.227
+   Compiling typenum v1.18.0
+    Checking zeroize v1.8.1
+   Compiling once_cell v1.21.3
+   Compiling semver v1.0.26
+    Checking subtle v2.6.1
+   Compiling autocfg v1.5.0
+   Compiling zerocopy v0.8.27
+    Checking memchr v2.7.5
+   Compiling similar v2.7.0
+    Checking smallvec v1.15.1
+   Compiling generic-array v0.14.7
+    Checking pin-project-lite v0.2.16
+    Checking const-oid v0.9.6
+    Checking futures-core v0.3.31
+   Compiling getrandom v0.3.3
+   Compiling lock_api v0.4.13
+   Compiling parking_lot_core v0.9.11
+   Compiling equivalent v1.0.2
+    Checking itoa v1.0.15
+   Compiling console v0.15.11
+   Compiling thiserror v2.0.16
+    Checking scopeguard v1.2.0
+   Compiling hashbrown v0.15.5
+   Compiling prettyplease v0.2.37
+   Compiling insta v1.43.2
+   Compiling toml_datetime v0.6.11
+   Compiling rustc_version v0.4.1
+   Compiling indexmap v2.11.1
+    Checking futures-io v0.3.31
+    Checking stable_deref_trait v1.2.0
+    Checking getrandom v0.2.16
+    Checking cpufeatures v0.2.17
+   Compiling hydro_build_utils v0.0.1 (/Users/jmhwork/code/monorepo/hydro/hydro_build_utils)
+   Compiling quote v1.0.40
+    Checking signal-hook-registry v1.4.6
+    Checking block-buffer v0.10.4
+    Checking block-padding v0.3.3
+    Checking base64ct v1.8.0
+    Checking futures-sink v0.3.31
+    Checking rand_core v0.6.4
+   Compiling crunchy v0.2.4
+    Checking socket2 v0.6.0
+    Checking mio v1.0.4
+   Compiling tiny-keccak v2.0.2
+    Checking slab v0.4.11
+   Compiling siphasher v1.0.1
+    Checking parking_lot v0.12.4
+   Compiling syn v2.0.106
+    Checking byteorder v1.5.0
+    Checking inout v0.1.4
+    Checking futures-channel v0.3.31
+    Checking pem-rfc7468 v0.7.0
+    Checking crypto-common v0.1.6
+    Checking pin-utils v0.1.0
+   Compiling either v1.15.0
+   Compiling ahash v0.8.12
+   Compiling toml_write v0.1.2
+   Compiling winnow v0.7.13
+   Compiling shlex v1.3.0
+   Compiling heck v0.5.0
+    Checking futures-task v0.3.31
+   Compiling find-msvc-tools v0.1.1
+   Compiling crc32fast v1.5.0
+    Checking digest v0.10.7
+    Checking cipher v0.4.4
+   Compiling itertools v0.14.0
+    Checking adler2 v2.0.1
+    Checking zlib-rs v0.5.2
+    Checking der v0.7.10
+   Compiling cc v1.2.36
+    Checking allocator-api2 v0.2.21
+    Checking sha2 v0.10.9
+    Checking hmac v0.12.1
+    Checking aes v0.8.4
+    Checking miniz_oxide v0.8.9
+   Compiling const-random-macro v0.1.16
+   Compiling toml_edit v0.22.27
+    Checking salsa20 v0.10.2
+    Checking pbkdf2 v0.12.2
+   Compiling synstructure v0.13.2
+    Checking cbc v0.1.2
+   Compiling variadics v0.0.9 (/Users/jmhwork/code/monorepo/hydro/variadics)
+    Checking log v0.4.28
+    Checking spki v0.7.3
+    Checking libz-rs-sys v0.5.2
+    Checking litemap v0.8.0
+    Checking const-random v0.1.18
+   Compiling libm v0.2.15
+    Checking writeable v0.6.1
+    Checking scrypt v0.11.0
+   Compiling phf_shared v0.12.1
+   Compiling num-traits v0.2.19
+    Checking flate2 v1.1.2
+   Compiling serde_derive v1.0.227
+   Compiling thiserror-impl v2.0.16
+   Compiling zerofrom-derive v0.1.6
+   Compiling yoke-derive v0.8.0
+   Compiling tokio-macros v2.5.0
+   Compiling zerovec-derive v0.11.1
+   Compiling futures-macro v0.3.31
+   Compiling displaydoc v0.2.5
+   Compiling proc-macro-crate v3.3.0
+    Checking pkcs5 v0.7.1
+   Compiling sealed v0.6.0
+    Checking ryu v1.0.20
+   Compiling rustix v1.1.2
+    Checking futures-util v0.3.31
+   Compiling fastrand v2.3.0
+   Compiling icu_properties_data v2.0.1
+   Compiling icu_normalizer_data v2.0.0
+    Checking zerofrom v0.1.6
+    Checking pkcs8 v0.10.2
+    Checking ppv-lite86 v0.2.21
+    Checking errno v0.3.14
+   Compiling phf_generator v0.12.1
+    Checking percent-encoding v2.3.2
+    Checking hashbrown v0.14.5
+   Compiling strum_macros v0.27.2
+   Compiling phf_macros v0.12.1
+   Compiling slotmap v1.0.7
+   Compiling crossbeam-utils v0.8.21
+   Compiling unicode-segmentation v1.12.0
+   Compiling optfield v0.4.0
+   Compiling convert_case v0.8.0
+   Compiling strum v0.27.2
+    Checking core-foundation-sys v0.8.7
+    Checking yoke v0.8.0
+    Checking form_urlencoded v1.2.2
+    Checking utf8_iter v1.0.4
+   Compiling ref-cast v1.0.24
+   Compiling tracing-attributes v0.1.30
+   Compiling ref-cast-impl v1.0.24
+   Compiling ring v0.17.14
+    Checking signature v2.2.0
+    Checking ff v0.13.1
+    Checking tracing-core v0.1.34
+    Checking base16ct v0.2.0
+    Checking fnv v1.0.7
+    Checking fallible-iterator v0.3.0
+    Checking utf8parse v0.2.2
+    Checking static_assertions v1.1.0
+   Compiling serde_json v1.0.143
+    Checking sec1 v0.7.3
+    Checking tracing v0.1.41
+    Checking anstyle-parse v0.2.7
+    Checking group v0.13.0
+    Checking twox-hash v1.6.3
+   Compiling auto_impl v1.3.0
+    Checking hkdf v0.12.4
+    Checking bytes v1.10.1
+    Checking bitflags v2.9.4
+    Checking crypto-bigint v0.5.5
+    Checking tokio v1.47.1
+    Checking http v1.3.1
+    Checking anstyle-query v1.1.4
+    Checking anstyle v1.0.11
+    Checking colorchoice v1.0.4
+    Checking is_terminal_polyfill v1.70.1
+    Checking spin v0.9.8
+   Compiling documented-macros v0.9.2
+   Compiling object v0.36.7
+    Checking http-body v1.0.1
+    Checking elliptic-curve v0.13.8
+    Checking anstream v0.6.20
+    Checking lazy_static v1.5.0
+    Checking ruzstd v0.7.3
+    Checking futures-executor v0.3.31
+    Checking rand_chacha v0.3.1
+    Checking zerovec v0.11.4
+    Checking zerotrie v0.2.2
+   Compiling dfir_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_lang)
+    Checking universal-hash v0.5.1
+    Checking rustls-pki-types v1.12.0
+    Checking clap_lex v0.7.5
+   Compiling httparse v1.10.1
+    Checking gimli v0.31.1
+    Checking alloc-no-stdlib v2.0.4
+    Checking opaque-debug v0.3.1
+    Checking untrusted v0.9.0
+    Checking bytemuck v1.23.2
+    Checking strsim v0.11.1
+    Checking alloc-stdlib v0.2.2
+    Checking clap_builder v4.5.48
+    Checking rand v0.8.5
+    Checking addr2line v0.24.2
+    Checking futures v0.3.31
+    Checking core-foundation v0.10.1
+    Checking itertools v0.13.0
+   Compiling phf v0.12.1
+    Checking num-integer v0.1.46
+   Compiling clap_derive v4.5.47
+   Compiling syn-inline-mod v0.6.0
+    Checking rfc6979 v0.4.0
+    Checking rustc-demangle v0.1.26
+   Compiling rustls v0.23.32
+    Checking data-encoding v2.9.0
+    Checking tower-service v0.3.3
+    Checking tokio-util v0.7.16
+    Checking parking v2.2.1
+    Checking try-lock v0.2.5
+    Checking rustls-webpki v0.103.6
+    Checking clap v4.5.48
+    Checking ecdsa v0.16.9
+    Checking want v0.3.1
+   Compiling stageleft_tool v0.10.2
+    Checking tinystr v0.8.1
+    Checking potential_utf v0.1.3
+    Checking brotli-decompressor v5.0.0
+    Checking polyval v0.6.2
+    Checking icu_collections v2.0.0
+    Checking primeorder v0.13.6
+    Checking concurrent-queue v2.5.0
+    Checking icu_locale_core v2.0.0
+   Compiling lattices_macro v0.5.10 (/Users/jmhwork/code/monorepo/hydro/lattices_macro)
+   Compiling curve25519-dalek v4.1.3
+   Compiling anyhow v1.0.100
+   Compiling cfg_aliases v0.2.1
+    Checking atomic-waker v1.1.2
+   Compiling num-bigint-dig v0.8.4
+    Checking icu_provider v2.0.0
+   Compiling nix v0.29.0
+    Checking icu_properties v2.0.1
+    Checking icu_normalizer v2.0.0
+    Checking brotli v8.0.2
+    Checking idna_adapter v1.2.1
+    Checking hyper v1.7.0
+    Checking ghash v0.5.1
+    Checking tokio-stream v0.1.17
+   Compiling documented v0.9.2
+    Checking idna v1.1.0
+    Checking num-iter v0.1.45
+    Checking sinktools v0.0.1 (/Users/jmhwork/code/monorepo/hydro/sinktools)
+    Checking tempfile v3.23.0
+    Checking ssh-encoding v0.2.0
+    Checking url v2.5.7
+   Compiling async-recursion v1.1.1
+   Compiling async-trait v0.1.89
+    Checking ctr v0.9.2
+    Checking aead v0.5.2
+    Checking rand_core v0.9.3
+    Checking sync_wrapper v1.0.2
+    Checking aho-corasick v1.1.3
+    Checking tower-layer v0.3.3
+    Checking powerfmt v0.2.0
+   Compiling winnow v0.5.40
+    Checking compression-core v0.4.29
+   Compiling fst v0.4.7
+    Checking ipnet v2.11.0
+    Checking regex-syntax v0.8.6
+   Compiling thiserror v1.0.69
+    Checking base64 v0.22.1
+    Checking unicode-width v0.2.1
+   Compiling wasm-bindgen-shared v0.2.101
+    Checking uuid v1.18.1
+    Checking compression-codecs v0.4.31
+    Checking tower v0.5.2
+    Checking hyper-util v0.1.17
+    Checking deranged v0.5.4
+    Checking tokio-rustls v0.26.4
+   Compiling toml_edit v0.20.7
+    Checking regex-automata v0.4.10
+    Checking aes-gcm v0.10.3
+    Checking backtrace v0.3.75
+    Checking poly1305 v0.8.0
+    Checking webpki-roots v1.0.2
+    Checking serde_spanned v0.6.9
+    Checking ed25519 v2.2.3
+    Checking pkcs1 v0.7.5
+   Compiling thiserror-impl v1.0.69
+    Checking blowfish v0.9.1
+    Checking chacha20 v0.9.1
+    Checking blake2 v0.10.6
+    Checking password-hash v0.5.0
+   Compiling lattices v0.6.1 (/Users/jmhwork/code/monorepo/hydro/lattices)
+    Checking inplace-vec-builder v0.1.1
+   Compiling async-io v2.6.0
+    Checking time-core v0.1.6
+    Checking num-conv v0.1.0
+   Compiling cpp_demangle v0.4.5
+    Checking crc-catalog v2.4.0
+    Checking scroll v0.12.0
+    Checking binary-merge v0.1.2
+    Checking option-ext v0.2.0
+    Checking minimal-lexical v0.2.1
+    Checking iri-string v0.7.8
+    Checking argon2 v0.5.3
+    Checking time v0.3.44
+    Checking crc v3.3.0
+    Checking range-collections v0.4.6
+    Checking dirs-sys v0.5.0
+    Checking pdb2 v0.9.2
+    Checking nom v7.1.3
+    Checking ssh-cipher v0.2.0
+    Checking bcrypt-pbkdf v0.10.0
+    Checking rsa v0.9.8
+    Checking ed25519-dalek v2.2.0
+    Checking regex v1.11.2
+    Checking tower-http v0.6.6
+    Checking hyper-rustls v0.27.7
+   Compiling proc-macro-crate v2.0.0
+   Compiling variadics_macro v0.6.1 (/Users/jmhwork/code/monorepo/hydro/variadics_macro)
+   Compiling prost-derive v0.13.5
+    Checking async-compression v0.4.32
+    Checking hydro_deploy_integration v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/hydro_deploy_integration)
+    Checking webbrowser v1.0.5
+    Checking event-listener v5.4.1
+    Checking p256 v0.13.2
+    Checking p521 v0.13.3
+    Checking p384 v0.13.1
+    Checking futures-lite v2.6.1
+    Checking roaring v0.10.12
+    Checking http-body-util v0.1.3
+    Checking polling v3.11.0
+    Checking linux-perf-event-reader v0.10.2
+    Checking prost v0.13.5
+    Checking serde_urlencoded v0.7.1
+    Checking iana-time-zone v0.1.64
+   Compiling zerocopy-derive v0.8.27
+    Checking sha1 v0.10.6
+    Checking elsa v1.11.2
+    Checking num_cpus v1.17.0
+    Checking hex v0.4.3
+    Checking maybe-owned v0.3.4
+    Checking linear-map v1.2.0
+   Compiling camino v1.2.0
+    Checking seize v0.3.3
+    Checking cc-traits v2.0.0
+   Compiling portable-atomic v1.11.1
+    Checking arrayvec v0.7.6
+    Checking lzxd v0.2.6
+    Checking chrono v0.4.42
+    Checking reqwest v0.12.23
+    Checking internal-russh-forked-ssh-key v0.6.10+upstream-0.6.7
+    Checking pdb-addr2line v0.11.2
+    Checking linux-perf-data v0.11.1
+    Checking flurry v0.5.2
+    Checking macho-unwind-info v0.5.0
+    Checking event-listener-strategy v0.5.4
+    Checking cab v0.6.0
+   Compiling dfir_macro v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_macro)
+    Checking russh-cryptovec v0.52.0
+   Compiling bolero-generator-derive v0.13.4
+    Checking dirs v6.0.0
+    Checking lzma-rs v0.3.0
+    Checking debugid v0.8.0
+    Checking rand_chacha v0.9.0
+    Checking rand_xoshiro v0.7.0
+    Checking russh-util v0.52.0
+    Checking num-bigint v0.4.6
+    Checking fs4 v0.13.1
+    Checking crossbeam-channel v0.5.15
+    Checking msvc-demangler v0.11.0
+    Checking srcsrv v0.2.3
+   Compiling try_match_inner v0.5.2
+   Compiling enum_dispatch v0.3.13
+   Compiling delegate v0.13.4
+    Checking env_filter v0.1.3
+   Compiling blake3 v1.8.2
+   Compiling dfir_rs v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_rs)
+    Checking scala-native-demangle v0.0.6
+    Checking md5 v0.7.0
+    Checking hex-literal v0.4.1
+    Checking home v0.5.11
+    Checking rangemap v1.6.0
+   Compiling glob v0.3.3
+   Compiling try_match v0.4.2
+    Checking env_logger v0.11.8
+    Checking symsrv v0.5.6
+   Compiling str_inflector v0.12.0
+    Checking bolero-generator-hydro v0.13.6
+    Checking russh v0.52.1
+    Checking rand v0.9.2
+   Compiling include_mdtests v0.0.0 (/Users/jmhwork/code/monorepo/hydro/include_mdtests)
+    Checking async-signal v0.2.13
+    Checking async-lock v3.4.1
+    Checking russh-sftp v2.1.1
+    Checking num-format v0.4.4
+    Checking example_test v0.0.0 (/Users/jmhwork/code/monorepo/hydro/example_test)
+    Checking rgb v0.8.52
+    Checking dashmap v6.1.0
+    Checking bincode v1.3.3
+    Checking cargo-platform v0.1.9
+    Checking samply-symbols v0.24.1
+    Checking async-promise v0.1.0
+   Compiling bolero-libfuzzer-hydro v0.13.1
+   Compiling multiplatform_test v0.5.0 (/Users/jmhwork/code/monorepo/hydro/multiplatform_test)
+    Checking memmap2 v0.9.8
+    Checking is-terminal v0.4.16
+    Checking quick-xml v0.26.0
+    Checking rustc-hash v1.1.0
+   Compiling bumpalo v3.19.0
+    Checking web-time v1.1.0
+    Checking arrayref v0.3.9
+   Compiling dtor-proc-macro v0.0.5
+    Checking constant_time_eq v0.3.1
+    Checking str_stack v0.1.0
+    Checking pretty-hex v0.4.1
+    Checking number_prefix v0.4.0
+   Compiling buildstructor v0.6.0
+   Compiling wasm-bindgen-backend v0.2.101
+    Checking wholesym v0.8.1
+    Checking cargo_metadata v0.18.1
+    Checking inferno v0.11.21
+    Checking async-process v2.5.0
+    Checking indicatif v0.17.11
+    Checking dtor v0.0.6
+    Checking nanoid v0.4.0
+    Checking serde_path_to_error v0.1.20
+    Checking dunce v1.0.5
+    Checking nameof v1.3.0
+   Compiling rustversion v1.0.22
+    Checking shell-escape v0.1.5
+   Compiling ctor-proc-macro v0.0.6
+   Compiling trybuild-internals-api v1.0.99
+   Compiling bolero-hydro v0.13.5
+    Checking dyn-clone v1.0.20
+    Checking memo-map v0.3.3
+   Compiling wasm-bindgen-macro-support v0.2.101
+    Checking toml v0.8.23
+    Checking bolero-engine-hydro v0.13.5
+   Compiling hydro_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_lang)
+   Compiling stageleft_macro v0.10.2
+    Checking termcolor v1.4.1
+   Compiling wasm-bindgen v0.2.101
+   Compiling wasm-bindgen-macro v0.2.101
+   Compiling match_box v0.0.2
+   Compiling ctor v0.2.9
+    Checking ctor v0.4.3
+   Compiling copy_span v0.1.0 (/Users/jmhwork/code/monorepo/hydro/copy_span)
+    Checking libloading v0.8.9
+    Checking colored v3.0.0
+    Checking indenter v0.3.4
+    Checking urlencoding v2.1.3
+   Compiling hydro_std v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_std)
+   Compiling phf_shared v0.11.3
+    Checking base64 v0.21.7
+    Checking hdrhistogram v7.5.4
+   Compiling phf_generator v0.11.3
+   Compiling by_address v1.2.1
+   Compiling palette v0.7.6
+   Compiling phf_macros v0.11.3
+   Compiling palette_derive v0.7.6
+   Compiling hydro_test v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_test)
+    Checking async-ssh2-russh v0.1.0
+   Compiling hydro_test_template v0.0.0 (/Users/jmhwork/code/monorepo/hydro/hydro_test_template)
+    Checking approx v0.5.1
+    Checking phf v0.11.3
+    Checking fast-srgb8 v1.0.0
+   Compiling website_playground v0.0.0 (/Users/jmhwork/code/monorepo/hydro/website_playground)
+    Checking hydro_deploy v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/core)
+ Documenting hydro_deploy v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/core)
+    Checking stageleft v0.10.2
+ Documenting lattices_macro v0.5.10 (/Users/jmhwork/code/monorepo/hydro/lattices_macro)
+ Documenting copy_span v0.1.0 (/Users/jmhwork/code/monorepo/hydro/copy_span)
+ Documenting variadics_macro v0.6.1 (/Users/jmhwork/code/monorepo/hydro/variadics_macro)
+ Documenting include_mdtests v0.0.0 (/Users/jmhwork/code/monorepo/hydro/include_mdtests)
+ Documenting dfir_rs v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_rs)
+ Documenting hydro_build_utils v0.0.1 (/Users/jmhwork/code/monorepo/hydro/hydro_build_utils)
+ Documenting dfir_macro v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_macro)
+ Documenting lattices v0.6.1 (/Users/jmhwork/code/monorepo/hydro/lattices)
+ Documenting dfir_lang v0.14.0 (/Users/jmhwork/code/monorepo/hydro/dfir_lang)
+ Documenting example_test v0.0.0 (/Users/jmhwork/code/monorepo/hydro/example_test)
+ Documenting hydro_deploy_integration v0.14.0 (/Users/jmhwork/code/monorepo/hydro/hydro_deploy/hydro_deploy_integration)
+ Documenting sinktools v0.0.1 (/Users/jmhwork/code/monorepo/hydro/sinktools)
+ Documenting variadics v0.0.9 (/Users/jmhwork/code/monorepo/hydro/variadics)
+ Documenting multiplatform_test v0.5.0 (/Users/jmhwork/code/monorepo/hydro/multiplatform_test)
+error: unresolved link to `RoaringTreemap`
+  --> lattices/src/set_union_with_tombstones.rs:60:7
+   |
+60 | /// [`RoaringTreemap`] for tombstones (see [`SetUnionWithTombstonesRoaring`]), which provides space-efficient
+   |       ^^^^^^^^^^^^^^ no item named `RoaringTreemap` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: `-D rustdoc::broken-intra-doc-links` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(rustdoc::broken_intra_doc_links)]`
+
+error: unresolved link to `RoaringTreemap`
+   --> lattices/src/set_union_with_tombstones.rs:377:7
+    |
+377 | /// [`RoaringTreemap`]-backed tombstone set with [`std::collections::HashSet`] for the main set.
+    |       ^^^^^^^^^^^^^^ no item named `RoaringTreemap` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: could not document `lattices`
+warning: build failed, waiting for other jobs to finish...

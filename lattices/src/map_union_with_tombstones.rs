@@ -18,7 +18,6 @@
 //! - Efficient union operations for merging
 //! - Maintains sorted order
 //! - Example: `MapUnionWithTombstonesFstString::new_from(HashMap::from([("key".to_string(), value)]), FstTombstoneSet::new())`
-//!
 
 //! ## For Other Types
 //! Use the generic [`MapUnionWithTombstones`] with [`HashSet`] for tombstones:
