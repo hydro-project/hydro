@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["keyed_counter","partitioned_counter","single_counter","single_counter_buggy"]};
+window.SIDEBAR_ITEMS = {"mod":["keyed_counter","keyed_counter_non_atomic","partitioned_counter","single_counter","single_counter_buggy"]};
