@@ -453,6 +453,15 @@ impl DfirGraph {
         if matches!(self.node(node_id), GraphNode::Handoff { .. }) {
             return Some(Color::Hoff);
         }
+
+        // TODO(shadaj): this is a horrible hack
+        if let GraphNode::Operator(op) = self.node(node_id)
+            && (op.name_string() == "resolve_futures_blocking"
+                || op.name_string() == "resolve_futures_blocking_ordered")
+        {
+            return Some(Color::Push);
+        }
+
         // In-degree, excluding ref-edges.
         let inn_degree = self.node_predecessor_nodes(node_id).count();
         // Out-degree excluding ref-edges.

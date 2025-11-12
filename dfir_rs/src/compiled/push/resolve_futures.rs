@@ -13,13 +13,15 @@ pin_project! {
         #[pin]
         sink: Si,
         queue: RefMut<'ctx, Queue>,
-        subgraph_waker: Waker,
+        // If `Some`, this waker will schedule future ticks, so all futures should be driven
+        // by it. If `None`, the subgraph execution should block until all futures are resolved.
+        subgraph_waker: Option<Waker>,
     }
 }
 
 impl<'ctx, Si, Queue> ResolveFutures<'ctx, Si, Queue> {
     /// Create with the given queue and following sink.
-    pub fn new(queue: RefMut<'ctx, Queue>, subgraph_waker: Waker, sink: Si) -> Self {
+    pub fn new(queue: RefMut<'ctx, Queue>, subgraph_waker: Option<Waker>, sink: Si) -> Self {
         Self {
             sink,
             queue,
@@ -39,13 +41,29 @@ impl<'ctx, Si, Queue> ResolveFutures<'ctx, Si, Queue> {
             // Ensure the following sink is ready.
             ready!(this.sink.as_mut().poll_ready(cx))?;
 
-            if let Poll::Ready(Some(out)) = Stream::poll_next(
-                Pin::new(&mut **this.queue),
-                &mut Context::from_waker(this.subgraph_waker),
-            ) {
-                this.sink.as_mut().start_send(out)?;
+            let poll_result = if let Some(w) = this.subgraph_waker.as_ref() {
+                Stream::poll_next(
+                    Pin::new(&mut **this.queue),
+                    &mut Context::<'_>::from_waker(w),
+                )
             } else {
-                return Poll::Ready(Ok(()));
+                Stream::poll_next(Pin::new(&mut **this.queue), cx)
+            };
+
+            match poll_result {
+                Poll::Ready(Some(out)) => {
+                    this.sink.as_mut().start_send(out)?;
+                }
+                Poll::Ready(None) => {
+                    return Poll::Ready(Ok(()));
+                }
+                Poll::Pending => {
+                    if this.subgraph_waker.is_some() {
+                        return Poll::Ready(Ok(())); // we will be re-woken on a future tick
+                    } else {
+                        return Poll::Pending;
+                    }
+                }
             }
         }
     }
@@ -66,20 +84,23 @@ where
         let mut this = self.project();
 
         this.queue.extend(std::iter::once(item));
-        // We MUST poll the queue stream to ensure that the futures begin.
-        // We use `this.subgraph_waker` to poll the queue stream, which means the futures are driven
-        // by the subgraph's own waker. This allows the subgraph execution to continue without waiting
-        // for the queued futures to complete; the subgraph does not block ("yield") on their readiness.
-        // If we instead used `cx.waker()`, the subgraph execution would yield ("block") until all queued
-        // futures are ready, effectively pausing subgraph progress until completion of those futures.
-        // Choose the waker based on whether you want subgraph execution to proceed independently of
-        // the queued futures, or to wait for them to complete before continuing.
-        if let Poll::Ready(Some(out)) = Stream::poll_next(
-            Pin::new(&mut **this.queue),
-            &mut Context::from_waker(this.subgraph_waker),
-        ) {
-            this.sink.as_mut().start_send(out)?;
+
+        if let Some(waker) = this.subgraph_waker.as_ref() {
+            // We MUST poll the queue stream to ensure that the futures begin.
+            // We use `this.subgraph_waker` to poll the queue stream, which means the futures are driven
+            // by the subgraph's own waker. This allows the subgraph execution to continue without waiting
+            // for the queued futures to complete; the subgraph does not block ("yield") on their readiness.
+            // If we instead used `cx.waker()`, the subgraph execution would yield ("block") until all queued
+            // futures are ready, effectively pausing subgraph progress until completion of those futures.
+            // Choose the waker based on whether you want subgraph execution to proceed independently of
+            // the queued futures, or to wait for them to complete before continuing.
+            if let Poll::Ready(Some(out)) =
+                Stream::poll_next(Pin::new(&mut **this.queue), &mut Context::from_waker(waker))
+            {
+                this.sink.as_mut().start_send(out)?;
+            }
         }
+
         Ok(())
     }
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {

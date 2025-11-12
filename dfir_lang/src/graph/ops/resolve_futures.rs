@@ -99,7 +99,7 @@ pub fn resolve_futures_writer(
                     // SAFETY: handle from `#df_ident.add_state(..)`.
                     #context.state_ref_unchecked(#futures_ident).borrow_mut()
                 };
-                #root::compiled::push::ResolveFutures::new(queue, #context.waker(), #output)
+                #root::compiled::push::ResolveFutures::new(queue, Some(#context.waker()), #output)
             };
         }
     };
