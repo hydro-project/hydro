@@ -310,7 +310,7 @@ mod tests {
 
     #[cfg(feature = "sim")]
     use crate::live_collections::sliced::sliced;
-    #[cfg(any(feature = "deploy", feature = "sim"))]
+    #[cfg(feature = "sim")]
     use crate::location::Location;
     #[cfg(feature = "sim")]
     use crate::nondet::nondet;
