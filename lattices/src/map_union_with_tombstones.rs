@@ -111,9 +111,10 @@ where
         self.map.extend(iter);
 
         // Extend tombstones and remove tombstoned keys from the map
-        self.tombstones.extend(other_tombstones.into_iter().inspect(|k| {
-            self.map.remove(k);
-        }));
+        self.tombstones
+            .extend(other_tombstones.into_iter().inspect(|k| {
+                self.map.remove(k);
+            }));
 
         if old_tombstones_len != self.tombstones.len() {
             changed = true;
@@ -351,8 +352,6 @@ pub type MapUnionWithTombstonesRoaring<Val> =
 /// Provides space-efficient, collision-free tombstone storage for String keys.
 pub type MapUnionWithTombstonesFstString<Val> =
     MapUnionWithTombstones<HashMap<String, Val>, FstTombstoneSet<String>>;
-
-
 
 #[cfg(test)]
 mod test {
