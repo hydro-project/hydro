@@ -118,7 +118,7 @@ fn init_rewrites() {
     );
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "trybuild"))]
 mod test_init {
     #[ctor::ctor]
     fn init() {
