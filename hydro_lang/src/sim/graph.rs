@@ -77,7 +77,12 @@ impl Node for SimExternal {
 
 impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     fn register(&self, key: usize, port: usize) {
-        assert!(self.registered.borrow_mut().insert(key, port).is_none());
+        assert!(
+            self.registered
+                .borrow_mut()
+                .insert(key, port)
+                .is_none_or(|old| old == port)
+        );
     }
 
     fn raw_port(&self, _key: usize) -> () {
@@ -295,10 +300,13 @@ impl<'a> Deploy<'a> for SimDeploy {
 
     fn e2o_source(
         _compile_env: &Self::CompileEnv,
+        _extra_stmts: &mut Vec<syn::Stmt>,
         _p1: &Self::External,
         p1_port: &Self::Port,
         _p2: &Self::Process,
         _p2_port: &Self::Port,
+        _codec_type: &syn::Type,
+        _shared_handle: String,
     ) -> syn::Expr {
         let ident = syn::Ident::new("__hydro_external_in", Span::call_site());
         syn::parse_quote!(
@@ -323,20 +331,12 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p1_port: &Self::Port,
         _p2: &Self::External,
         p2_port: &Self::Port,
+        _shared_handle: String,
     ) -> syn::Expr {
         let ident = syn::Ident::new("__hydro_external_out", Span::call_site());
         syn::parse_quote!(
             #ident.remove(&#p2_port).unwrap()
         )
-    }
-
-    fn o2e_connect(
-        _p1: &Self::Process,
-        _p1_port: &Self::Port,
-        _p2: &Self::External,
-        _p2_port: &Self::Port,
-    ) -> Box<dyn FnOnce()> {
-        Box::new(|| {})
     }
 
     #[expect(unreachable_code, reason = "todo!() is unreachable")]
@@ -512,8 +512,20 @@ pub(super) fn create_sim_graph_trybuild(
     );
 
     let inlined_staged = if is_test {
+        let raw_toml_manifest = toml::from_str::<toml::Value>(
+            &fs::read_to_string(path!(source_dir / "Cargo.toml")).unwrap(),
+        )
+        .unwrap();
+
+        let maybe_custom_lib_path = raw_toml_manifest
+            .get("lib")
+            .and_then(|lib| lib.get("path"))
+            .and_then(|path| path.as_str());
+
         let gen_staged = stageleft_tool::gen_staged_trybuild(
-            &path!(source_dir / "src" / "lib.rs"),
+            &maybe_custom_lib_path
+                .map(|s| path!(source_dir / s))
+                .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
             &path!(source_dir / "Cargo.toml"),
             crate_name.clone(),
             Some("hydro___test".to_string()),

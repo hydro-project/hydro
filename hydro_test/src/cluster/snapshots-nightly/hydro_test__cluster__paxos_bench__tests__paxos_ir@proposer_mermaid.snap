@@ -13,7 +13,7 @@ linkStyle default stroke:#aaa
 3v1["<div style=text-align:center>(3v1)</div> <code><br>chain()</code>"]:::otherClass
 4v1["<div style=text-align:center>(4v1)</div> <code><br>chain()</code>"]:::otherClass
 5v1["<div style=text-align:center>(5v1)</div> <code><br>reduce::&lt;<br>    'static,<br>&gt;({<br>    |curr, new| {<br>        if new &gt; *curr {<br>            *curr = new;<br>        }<br>    }<br>})</code>"]:::otherClass
-6v1["<div style=text-align:center>(6v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        Ballot {<br>            num: 0,<br>            proposer_id: MemberId::from_raw(0),<br>        }<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
+6v1["<div style=text-align:center>(6v1)</div> <code><br>source_iter({<br>    let e__free = {<br>        Ballot {<br>            num: 0,<br>            proposer_id: MemberId::from_raw_id(0),<br>        }<br>    };<br>    [e__free]<br>})</code>"]:::otherClass
 7v1["<div style=text-align:center>(7v1)</div> <code><br>persist::&lt;'static&gt;()</code>"]:::otherClass
 8v1["<div style=text-align:center>(8v1)</div> <code><br>chain_first_n(1)</code>"]:::otherClass
 9v1["<div style=text-align:center>(9v1)</div> <code><br>tee()</code>"]:::otherClass

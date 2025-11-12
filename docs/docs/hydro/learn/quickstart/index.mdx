@@ -1,23 +1,28 @@
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+import libRsSrc from '!!raw-loader!../../../../../template/hydro/src/lib.rs';
+import echoLocalSrc from '!!raw-loader!../../../../../template/hydro/examples/echo_local.rs';
+import echoGcpSrc from '!!raw-loader!../../../../../template/hydro/examples/echo_gcp.rs';
+import { getLines, extractOutput, highlightLines } from '../../../../src/util';
+
 # Quickstart
-In this tutorial, we'll walk through the basics of Hydro by building a simple dataflow that prints out the first 10 natural numbers. We'll start with a single process, then pipeline the computation, and finally distribute it across a cluster.
+In this tutorial, you will learn the basics of Hydro by building a keyed counter. You will start by generating a Hydro project from a template. Then, you will create a single counter, and build up to a full key-counter store that partitions its keys across a cluster. Along the way, you will learn the core elements of Hydro, such as live collections, slices, and simulation testing.
 
-:::tip
+On this page, you will explore the Hydro template, which comes with a simple distributed program.
 
-First you will need to install Rust. We recommend the conventional installation
-method, `rustup`, which allows you to easily manage and update Rust versions: [**Install Rust**](https://www.rust-lang.org/tools/install)
-
-The link in the previous line will take you to the Rust website that shows you how to
-install `rustup` and the Rust package manager `cargo` (and the
-internally-used `rustc` compiler). `cargo` is Rust's main development tool,
-used for building, running, and testing Rust code.
-
-We recommend using VS Code with the `rust-analyzer` extension (and NOT the
-`Rust` extension).
-
+:::learn
+- How to use live collections to handle RPC requests and responses
+- How to write logic spanning several distributed locations
+- How to quote Rust code with `q!` to run it on a distributed node
+- How to test distributed systems with Hydro's deterministic simulator
+- How to deploy a Hydro application to the cloud using Hydro Deploy
 :::
 
-## Getting Started with Hydro
-To get started with a new project, we'll use the Hydro template. The template comes with a simple distributed program.
+## Creating a Hydro Project
+Hydro is a Rust framework, so you will need to [install Rust](https://www.rust-lang.org/tools/install). We recommend using `rustup`, which allows you to easily manage and update Rust versions. To generate the template, you should install the `cargo-generate` utility and then expand the template into a folder of your choice.
 
 ```bash
 #shell-command-next-line
@@ -29,8 +34,188 @@ cargo generate gh:hydro-project/hydro-template
 cd my-example-project
 ```
 
-After `cd`ing into the generated folder, we can run tests for the included sample:
+:::info
+
+Hydro code is written with standard Rust tools. You'll manage dependencies, run tests, and launch Hydro programs using [Cargo](https://doc.rust-lang.org/cargo/), the standard Rust package manager.
+We recommend using VS Code with the [**Rust Analyzer**](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) extension, which provides inline errors and code completion
+
+:::
+
+After `cd`-ing into the generated folder, you can run tests for the included sample:
 ```bash
 #shell-command-next-line
 cargo test
 ```
+
+## Hello World in Hydro
+Hydro projects are typically organized into two folders:
+- **`src/`** contains the main distributed logic and tests (like regular Rust)
+- **`examples/`** contains deployment scripts for launching to the cloud (due to Cargo limitations)
+
+Let's take a look at the initial Hydro code in `src/lib.rs`, which implements an echo server. The top of the file initializes the project (this only needs to be done once, in `lib.rs`) and imports the Hydro prelude, which includes common Hydro APIs (you will want to do this in each file):
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
+} showLineNumbers={1}>{getLines(libRsSrc, 1, 4)}</CodeBlock>
+
+Next, the template defines the echo server function. The server takes in a stream of requests and responds with the text of each request capitalized. Hydro uses a stream programming model, which means that instead of the server taking a single request as a parameter, it takes in a _stream_ of requests that arrive over time. Similarly, the responses are sent back as a stream of values.
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
+} showLineNumbers={6}>{getLines(libRsSrc, 6, 9)}</CodeBlock>
+
+Let's dive into the parameters of this function. The input is a [`Stream`](../../reference/live-collections/streams.md), a [**Live Collection**](../../reference/live-collections/index.md) where new incoming requests arrive over time. The first type parameter, `String`, tells us that each incoming request will appear as a `String` element.
+
+The second type parameter identifies the [**`Location`**](../../reference/locations/index.md) for the live collection. Hydro provides two types of locations: [`Process`](../../reference/locations/processes.md) (a single machine) or [`Cluster`](../../reference/locations/clusters.md) (a set of machines). All locations in a Hydro program have the same lifetime `'a`, which is used to enforce borrowing constraints. By writing code that involves several locations, you can create a distributed system!
+
+Locations are **tagged** with a type to distinguish them at compile-time. In the template, the input and output streams are both located on `Process<'a, EchoServer>`, where `EchoServer` is the tag. Returning a stream from a _different_ location would result in a type error.
+
+Finally, let us take a look at the function body:
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
+} showLineNumbers={7}>{getLines(highlightLines(libRsSrc, [10]), 7, 12)}</CodeBlock>
+
+To process incoming requests, you use the APIs available on live collections. This example uses `Stream::map`, which transforms each element of the incoming requests into a element of the outgoing responses. In Hydro, all values and closures passed to such APIs must be **quoted**. Quoting _captures_ the Rust code so that it can be run on a distributed node. To quote an expression, you wrap it with the `q!` macro.
+
+:::caution
+
+Quoting relies on advanced features of Rust, and can sometimes emit strange type errors. The [Quoting Errors](../../reference/stageleft/errors.mdx) page covers the limitations of `q!`. For example, to invoke a local function `foo` you must use `self::foo`.
+
+If you forget to wrap an expression in `q!` when that is required, you'll see an error like:
+```text
+closure is expected to take 5 arguments, but it takes X arguments
+```
+
+:::
+
+## Testing with the Simulator
+Once you've written a piece of Hydro code, you'll want to write some unit tests to check its functionality. The [Hydro Simulator](../../reference/simulation/index.mdx) makes it possible to test distributed executions with standard Rust assertions.
+
+The template includes a unit test for the echo server in the `tests` module. When writing a simulator test, you should define it as a standard Rust test (`#[test] fn`) rather than as an asynchronous Tokio test:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
+} showLineNumbers={13}>{getLines(highlightLines(libRsSrc, []), 13, 18)}</CodeBlock>
+
+Next, let's take a look at the setup logic for the test, which:
+1. Creates the set of distributed locations involved in the test
+2. Declares an external input to use in the test
+3. Sets up the echo server using the function you defined before
+4. Declares an external output for assertions in the test
+
+To create locations, you must first create a `FlowBuilder`, which will track all the locations used across your distributed system. Then, you can create a process using `flow.process()`, which returns a `Process` value. In a simulation test, all inputs and outputs will originate on an `External`, which identifies an external client. To create an external, you use `flow.external::<()>()`, where `()` is a placeholder tag.
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
+} showLineNumbers={19}>{getLines(highlightLines(libRsSrc, []), 19, 21)}</CodeBlock>
+
+Now, you can create the echo server! You start by receiving inputs from the test client using `source_external_bincode`. This returns a tuple with two values: a port handle that the client can use to send requests, and a `Stream` of the received requests. You can then pass this stream into `echo_capitalize`, which returns a stream of responses. To send these back to the external client, you use `send_bincode_external`. This function returns a port handle that the client can use to receive responses.
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
+} showLineNumbers={23}>{getLines(highlightLines(libRsSrc, []), 23, 26)}</CodeBlock>
+
+Finally, you can write the functionality test. To create an **exhaustive** simulation test, which explores _all possible_ distributed executions, you invoke `flow.sim().exhaustive()`. This function takes in an async closure, which will be repeatedly invoked with different simulation instances, each testing a different distributed execution.
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
+} showLineNumbers={27}>{getLines(highlightLines(libRsSrc, []), 27, 37)}</CodeBlock>
+
+In any simulation test, the first step is to connect to the input and output ports so that you can interact with the distributed system. You do this by invoking `instance.connect()` for each of the input / output ports. Then, you can launch the simulated program using `instance.launch()`.
+
+:::caution
+
+You must connect to _all_ input and output ports before invoking `instance.launch()`, even if some are not used. The `launch` function will panic if any ports have not been connected.
+
+:::
+
+The included test sends the messages `"hello"` and `"world"` to the echo server using the `send()` method. Then, it uses `assert_yields_only` to check that the responses `"HELLO"` and `"WORLD"` are returned and that there are no additional responses. The APIs for receiving responses are async so you must use `.await` to wait for the assertion to complete.
+
+To run the test, you use the standard `cargo test` command:
+```bash
+#shell-command-next-line
+cargo test
+# running 1 test
+# test tests::test_echo_capitalize ... ok
+```
+
+## Deploying the Application
+Now that you've tested the echo server, you'll deploy it to run as a real program. The template includes two deployment scripts in the `examples/` folder: `echo_local.rs` for local testing and `echo_gcp.rs` for deploying to Google Cloud Platform. Let's start with the local deployment.
+
+### Local Deployment
+Open `examples/echo_local.rs`. The script starts by setting up a deployment and creating the flow locations:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/examples/echo_local.rs">examples/echo_local.rs</Link>
+} showLineNumbers={7}>{getLines(echoLocalSrc, 7, 11)}</CodeBlock>
+
+In a deployment script, you create a `Deployment` object which tracks the physical machines where your program will run. Then, you create a `FlowBuilder` just like in the simulator tests. However, instead of connecting to ports manually, you'll use `bind_single_client` to set up networking:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/examples/echo_local.rs">examples/echo_local.rs</Link>
+} showLineNumbers={13}>{getLines(echoLocalSrc, 13, 15)}</CodeBlock>
+
+The `bind_single_client` method creates a server that receives messages from a single external client. It returns a port handle, a stream of incoming messages, and a sink for sending responses. The method takes a codec (`LinesCodec`) that encodes and decodes the raw bytes (in this case, treating each line of text as a message). The `NetworkHint` specifies that the server should listen on port 4000.
+
+Next, you map the *logical locations* to *physical machines* using `with_process` and `with_external`:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/examples/echo_local.rs">examples/echo_local.rs</Link>
+} showLineNumbers={17}>{getLines(echoLocalSrc, 17, 26)}</CodeBlock>
+
+The `with_process` method assigns the `process` location to run on `deployment.Localhost()`, which represents your local machine. Similarly, `with_external` specifies where the external client will connect from (also localhost in this case). Finally, `deploy()` compiles the program, and `start_ctrl_c()` runs it.
+
+To run the local deployment:
+```bash
+#shell-command-next-line
+cargo run --example echo_local
+# Launched Echo Server! Run `nc localhost 4000` to connect.
+```
+
+In another terminal, connect using `nc`:
+```bash
+#shell-command-next-line
+nc localhost 4000
+hello
+# HELLO
+world
+# WORLD
+```
+
+### Cloud Deployment
+The template also includes deployment scripts that deploy the echo server to the cloud.
+
+Hydro Deploy includes APIs for configuring resources on AWS, Azure, and GCP. Instead of invoking `with_process` with `deployment.Localhost()`, you can deploy to the cloud by passing a cloud host. Note that the external client is still mapped to `Localhost`—you're deploying the server to the cloud while connecting from your local machine.
+
+<Tabs groupId="cloud">
+<TabItem value="gcp" label="GCP">
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/examples/echo_gcp.rs">examples/echo_gcp.rs</Link>
+} showLineNumbers={27}>{getLines(echoGcpSrc, 27, 37)}</CodeBlock>
+</TabItem>
+</Tabs>
+
+
+When deploying to the cloud, the port is assigned automatically. You can retrieve it after deployment:
+
+<CodeBlock language="rust" showLineNumbers={43}>{getLines(echoGcpSrc, 43, 47)}</CodeBlock>
+
+Finally, to launch the echo server in the cloud, we run the deploy script. Hydro Deploy will automatically provision the necessary cloud resources, launch your application, and forward the server port to your local machine:
+<Tabs groupId="cloud">
+<TabItem value="gcp" label="GCP">
+```bash
+#shell-command-next-line
+cargo run --example echo_gcp -- YOUR_GCP_PROJECT
+```
+
+:::info
+
+For GCP deployment, you'll need to set up Google Cloud credentials and have the `gcloud` and `terraform` CLIs installed. See the [Hydro Deploy documentation](../../reference/deploy/index.mdx) for more details.
+
+:::
+
+</TabItem>
+</Tabs>
+
+## Next Steps
+
+Congratulations! You've now written, tested, and deployed a simple Hydro program. In the next sections, you will expand your code into a stateful counter service with support for multiple clients. Along the way, you will learn how Hydro helps you avoid distributed bugs at compile-time and how to scale your application across clusters of machines.

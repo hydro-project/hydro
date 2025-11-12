@@ -51,7 +51,6 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        assert_eq!(out_recv.next().await.unwrap(), 0); // first tick (no data yet)
-        assert_eq!(out_recv.next().await.unwrap(), 3); // second tick
+        assert_eq!(out_recv.next().await.unwrap(), 3);
     }
 }

@@ -51,7 +51,7 @@ pub struct KeyedStream<
     K,
     V,
     Loc,
-    Bound: Boundedness,
+    Bound: Boundedness = Unbounded,
     Order: Ordering = TotalOrder,
     Retry: Retries = ExactlyOnce,
 > {
@@ -256,6 +256,37 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.into_inner()),
                     trusted: false,
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    fn assume_ordering_trusted<O2: Ordering>(
+        self,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, V, L, B, O2, R> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            KeyedStream::new(self.location, self.ir_node.into_inner())
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
+            // We can always weaken the ordering guarantee
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
+                },
+            )
+        } else {
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: true,
                     metadata: self
                         .location
                         .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
@@ -649,6 +680,53 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                     .new_node_metadata(KeyedStream::<K, U, L, B, O, R>::collection_kind()),
             },
         )
+    }
+
+    /// Generates a keyed stream that maps each value `v` to a tuple `(v, x)`,
+    /// where `v` is the value of `other`, a bounded [`super::singleton::Singleton`] or
+    /// [`Optional`]. If `other` is an empty [`Optional`], no values will be produced.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let batch = process
+    ///   .source_iter(q!(vec![(1, 123), (1, 456), (2, 123)]))
+    ///   .into_keyed()
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let count = batch.clone().entries().count(); // `count()` returns a singleton
+    /// batch.cross_singleton(count).all_ticks().entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [(123, 3), (456, 3)], 2: [(123, 3)] }
+    /// # for w in vec![(1, (123, 3)), (1, (456, 3)), (2, (123, 3))] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn cross_singleton<O2>(
+        self,
+        other: impl Into<Optional<O2, L, Bounded>>,
+    ) -> KeyedStream<K, (V, O2), L, B, O, R>
+    where
+        O2: Clone,
+    {
+        let other: Optional<O2, L, Bounded> = other.into();
+        check_matching_location(&self.location, &other.location);
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::CrossSingleton {
+                left: Box::new(self.ir_node.into_inner()),
+                right: Box::new(other.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<((K, V), O2), L, B, O, R>::collection_kind()),
+            },
+        )
+        .map(q!(|((k, v), o2)| (k, (v, o2))))
+        .into_keyed()
     }
 
     /// For each value `v` in each group, transform `v` using `f` and then treat the
@@ -1521,6 +1599,35 @@ where
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .reduce_watermark(other, comb)
     }
+
+    /// Counts the number of elements in each group, producing a [`KeyedSingleton`] with the counts.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4), (1, 5)]))
+    ///     .into_keyed();
+    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// batch
+    ///     .value_counts()
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, 3), (2, 2)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 3));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 2));
+    /// # }));
+    /// ```
+    pub fn value_counts(self) -> KeyedSingleton<K, usize, L, B::WhenValueUnbounded> {
+        self.assume_ordering_trusted(
+            nondet!(/** ordering within each group affects neither result nor intermediates */),
+        )
+        .fold(q!(|| 0), q!(|acc, _| *acc += 1))
+    }
 }
 
 impl<'a, K, V, L, B: Boundedness, R: Retries> KeyedStream<K, V, L, B, TotalOrder, R>
@@ -2239,5 +2346,39 @@ mod tests {
         // - two cases: (1, 1) and (1, 2) together, (2, 3) before or after
         // - two cases: (1, 1) and (1, 2) separate, (2, 3) grouped with one of them
         // - one case: all three together
+    }
+
+    #[test]
+    fn sim_batch_unordered_shuffles() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let input = node
+            .source_iter(q!([(1, 1), (1, 2), (2, 3)]))
+            .into_keyed()
+            .weakest_ordering();
+
+        let tick = node.tick();
+        let out_port = input
+            .batch(&tick, nondet!(/** test */))
+            .all_ticks()
+            .entries()
+            .send_bincode_external(&external);
+
+        let instances = flow.sim().exhaustive(async |mut compiled| {
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            out_recv
+                .assert_yields_only_unordered([(1, 1), (1, 2), (2, 3)])
+                .await;
+        });
+
+        assert_eq!(instances, 13);
+        // - 6 (3 * 2) cases: all three in a separate tick (pick where (2, 3) is), and order of (1, 1), (1, 2)
+        // - two cases: (1, 1) and (1, 2) together, (2, 3) before or after (order of (1, 1), (1, 2) doesn't matter because batched is still unordered)
+        // - 4 (2 * 2) cases: (1, 1) and (1, 2) separate, (2, 3) grouped with one of them, and order of (1, 1), (1, 2)
+        // - one case: all three together (order of (1, 1), (1, 2) doesn't matter because batched is still unordered)
     }
 }

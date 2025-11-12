@@ -17,7 +17,7 @@ use super::{
     CustomService, GcpComputeEngineHost, Host, LocalhostHost, ResourcePool, ResourceResult,
     Service, progress,
 };
-use crate::{AwsEc2Host, AzureHost, ServiceBuilder};
+use crate::{AwsEc2Host, AzureHost, HostTargetType, ServiceBuilder};
 
 pub struct Deployment {
     pub hosts: Vec<Weak<dyn Host>>,
@@ -231,6 +231,7 @@ impl Deployment {
         project: String,
         machine_type: String,
         image: String,
+        target_type: Option<HostTargetType>,
         region: String,
         network: Arc<RwLock<GcpNetwork>>,
         user: Option<String>,
@@ -242,6 +243,7 @@ impl Deployment {
                 project,
                 machine_type,
                 image,
+                target_type.unwrap_or(HostTargetType::Linux(crate::LinuxCompileType::Musl)),
                 region,
                 network,
                 user,
@@ -257,10 +259,22 @@ impl Deployment {
         os_type: String, // linux or windows
         machine_size: String,
         image: Option<HashMap<String, String>>,
+        target_type: Option<HostTargetType>,
         region: String,
         user: Option<String>,
     ) -> Arc<AzureHost> {
-        self.add_host(|id| AzureHost::new(id, project, os_type, machine_size, image, region, user))
+        self.add_host(|id| {
+            AzureHost::new(
+                id,
+                project,
+                os_type,
+                machine_size,
+                image,
+                target_type.unwrap_or(HostTargetType::Linux(crate::LinuxCompileType::Musl)),
+                region,
+                user,
+            )
+        })
     }
 
     #[builder(entry = "AwsEc2Host", exit = "add")]
@@ -268,13 +282,23 @@ impl Deployment {
         &mut self,
         region: String,
         instance_type: String,
+        target_type: Option<HostTargetType>,
         ami: String,
         network: Arc<RwLock<AwsNetwork>>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Arc<AwsEc2Host> {
         self.add_host(|id| {
-            AwsEc2Host::new(id, region, instance_type, ami, network, user, display_name)
+            AwsEc2Host::new(
+                id,
+                region,
+                instance_type,
+                target_type.unwrap_or(HostTargetType::Linux(crate::LinuxCompileType::Musl)),
+                ami,
+                network,
+                user,
+                display_name,
+            )
         })
     }
 }

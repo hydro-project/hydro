@@ -3,6 +3,55 @@ source: hydro_test/src/distributed/first_ten.rs
 expression: builder.finalize().ir()
 ---
 [
+    SendExternal {
+        to_external_id: 0,
+        to_key: 0,
+        to_many: false,
+        unpaired: false,
+        serialize_fn: Some(
+            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < () , _ > (| b | hydro_lang :: runtime_support :: bincode :: serialize (& b) . unwrap () . into ()),
+        ),
+        instantiate_fn: <network instantiate>,
+        input: CycleSource {
+            ident: Ident {
+                sym: cycle_0,
+            },
+            metadata: HydroIrMetadata {
+                location_kind: Process(
+                    1,
+                ),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: (),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    CycleSink {
+        ident: Ident {
+            sym: cycle_0,
+        },
+        input: Source {
+            source: Iter(
+                stageleft :: runtime_support :: type_hint :: < [() ; 0] > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; [] }),
+            ),
+            metadata: HydroIrMetadata {
+                location_kind: Process(
+                    1,
+                ),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: (),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("hi: {:?}" , n) }),
         input: ExternalInput {
@@ -13,7 +62,7 @@ expression: builder.finalize().ir()
             port_hint: Auto,
             instantiate_fn: <network instantiate>,
             deserialize_fn: Some(
-                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& res . unwrap ()) . unwrap () },
+                | res | { let b = res . unwrap () ; hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& b) . unwrap () },
             ),
             metadata: HydroIrMetadata {
                 location_kind: Process(

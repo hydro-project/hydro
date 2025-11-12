@@ -250,6 +250,11 @@ where
         }
     }
 
+    /// Returns the [`Location`] where this singleton is being materialized.
+    pub fn location(&self) -> &L {
+        &self.location
+    }
+
     /// Transforms the singleton value by applying a function `f` to it,
     /// continuously as the input is updated.
     ///
@@ -1182,7 +1187,7 @@ mod tests {
             compiled.launch();
             assert_eq!(out_recv.next().await.unwrap(), 0);
 
-            in_send.send(123).unwrap();
+            in_send.send(123);
 
             assert_eq!(out_recv.next().await.unwrap(), 123);
         });

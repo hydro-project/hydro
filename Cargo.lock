@@ -1076,6 +1076,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "copy_span"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2209,6 +2217,7 @@ dependencies = [
  "chrono",
  "clap",
  "colored 3.0.0",
+ "copy_span",
  "ctor 0.2.9",
  "data-encoding",
  "dfir_lang",
@@ -2287,6 +2296,23 @@ dependencies = [
  "tokio",
  "tokio-test",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "hydro_test_template"
+version = "0.0.0"
+dependencies = [
+ "ctor 0.2.9",
+ "example_test",
+ "futures",
+ "hydro_deploy",
+ "hydro_lang",
+ "hydro_std",
+ "stageleft",
+ "stageleft_tool",
+ "tokio",
+ "tokio-test",
+ "tokio-util",
 ]
 
 [[package]]
@@ -4744,9 +4770,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stageleft"
-version = "0.10.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b92cb4d28ec3c2b3aba8ee05487f10c3aa00d7a369a3fe9d4d89e8719f28ca4f"
+checksum = "d66d8913fd77d6b4819c5ce6e82eee9944d92a23d8c7cb879d990ff5789c2f1a"
 dependencies = [
  "ctor 0.4.3",
  "proc-macro-crate 3.3.0",
@@ -4758,9 +4784,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.10.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e05624677c37d2abebe0c3e50fa7722f99936d26de2a8a23ac5d2a397be596c0"
+checksum = "d4c9cc63171ddf4b9380f8a974b4d3be585e4d7d083986345e52efafd9b702c2"
 dependencies = [
  "proc-macro-crate 3.3.0",
  "proc-macro2",
@@ -4771,9 +4797,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.10.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da14207006ed0031a24197e0a2d3bc84b2a7ecf3a2ca70b70f1886cf1a37b464"
+checksum = "0580927a70ee83c137c7275e348f8a2116cd7e64f00fe6f0635fc8cb32748ded"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.3.0",

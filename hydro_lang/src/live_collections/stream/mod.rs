@@ -165,7 +165,7 @@ impl MinRetries<AtLeastOnce> for AtLeastOnce {
 pub struct Stream<
     Type,
     Loc,
-    Bound: Boundedness,
+    Bound: Boundedness = Unbounded,
     Order: Ordering = TotalOrder,
     Retry: Retries = ExactlyOnce,
 > {
@@ -614,7 +614,8 @@ where
     }
 
     /// Generates a stream that maps each input element `i` to a tuple `(i, x)`,
-    /// where `x` is the final value of `other`, a bounded [`Singleton`].
+    /// where `x` is the final value of `other`, a bounded [`Singleton`] or [`Optional`].
+    /// If `other` is an empty [`Optional`], no values will be produced.
     ///
     /// # Example
     /// ```rust
@@ -3134,9 +3135,9 @@ mod tests {
             let mut out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send.send(()).unwrap();
-            in_send.send(()).unwrap();
-            in_send.send(()).unwrap();
+            in_send.send(());
+            in_send.send(());
+            in_send.send(());
 
             assert_eq!(out_recv.next().await.unwrap(), 3); // fails with nondet batching
         });
@@ -3161,9 +3162,9 @@ mod tests {
             let out_recv = compiled.connect(&out_port);
             compiled.launch();
 
-            in_send.send(1).unwrap();
-            in_send.send(2).unwrap();
-            in_send.send(3).unwrap();
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
 
             out_recv.assert_yields_only([1, 2, 3]).await;
         });

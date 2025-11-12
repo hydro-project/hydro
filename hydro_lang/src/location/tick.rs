@@ -103,6 +103,15 @@ where
     }
 }
 
+impl<'a, L> Tick<Atomic<L>>
+where
+    L: Location<'a>,
+{
+    pub fn as_regular_tick(&self) -> Tick<L> {
+        self.l.tick.clone()
+    }
+}
+
 impl<'a, L> Tick<L>
 where
     L: Location<'a>,
@@ -294,6 +303,7 @@ where
 mod tests {
     use stageleft::q;
 
+    use crate::live_collections::sliced::sliced;
     use crate::location::Location;
     use crate::nondet::nondet;
     use crate::prelude::FlowBuilder;
@@ -317,11 +327,12 @@ mod tests {
         );
 
         let write_ack = atomic_write.end_atomic().send_bincode_external(&external);
-        let read_response = read_req
-            .batch(&tick, nondet!(/** test */))
-            .cross_singleton(current_state.snapshot_atomic(nondet!(/** test */)))
-            .all_ticks()
-            .send_bincode_external(&external);
+        let read_response = sliced! {
+            let batch_of_req = use(read_req, nondet!(/** test */));
+            let latest_singleton = use::atomic(current_state, nondet!(/** test */));
+            batch_of_req.cross_singleton(latest_singleton)
+        }
+        .send_bincode_external(&external);
 
         let sim_compiled = flow.sim().compiled();
         let instances = sim_compiled.exhaustive(async |mut compiled| {
@@ -331,9 +342,9 @@ mod tests {
             let mut read_response_recv = compiled.connect(&read_response);
             compiled.launch();
 
-            write_send.send(1).unwrap();
+            write_send.send(1);
             write_ack_recv.assert_yields([1]).await;
-            read_send.send(()).unwrap();
+            read_send.send(());
             assert!(read_response_recv.next().await.is_some_and(|(_, v)| v >= 1));
         });
 
@@ -346,8 +357,8 @@ mod tests {
             let mut read_response_recv = compiled.connect(&read_response);
             compiled.launch();
 
-            write_send.send(1).unwrap();
-            read_send.send(()).unwrap();
+            write_send.send(1);
+            read_send.send(());
             write_ack_recv.assert_yields([1]).await;
             let _ = read_response_recv.next().await;
         });
@@ -375,12 +386,12 @@ mod tests {
 
         let write_ack = write_req.send_bincode_external(&external);
 
-        let tick = node.tick();
-        let read_response = read_req
-            .batch(&tick, nondet!(/** test */))
-            .cross_singleton(current_state.snapshot(&tick, nondet!(/** test */)))
-            .all_ticks()
-            .send_bincode_external(&external);
+        let read_response = sliced! {
+            let batch_of_req = use(read_req, nondet!(/** test */));
+            let latest_singleton = use(current_state, nondet!(/** test */));
+            batch_of_req.cross_singleton(latest_singleton)
+        }
+        .send_bincode_external(&external);
 
         flow.sim().exhaustive(async |mut compiled| {
             let write_send = compiled.connect(&input_write);
@@ -389,9 +400,9 @@ mod tests {
             let mut read_response_recv = compiled.connect(&read_response);
             compiled.launch();
 
-            write_send.send(1).unwrap();
+            write_send.send(1);
             write_ack_recv.assert_yields([1]).await;
-            read_send.send(()).unwrap();
+            read_send.send(());
 
             if let Some((_, v)) = read_response_recv.next().await {
                 assert_eq!(v, 1);

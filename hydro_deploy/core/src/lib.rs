@@ -190,7 +190,13 @@ pub enum ClientStrategy<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HostTargetType {
     Local,
-    Linux,
+    Linux(LinuxCompileType),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LinuxCompileType {
+    Glibc,
+    Musl,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

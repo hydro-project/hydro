@@ -24,6 +24,11 @@ pub mod runtime_support {
     pub mod resource_measurement;
 }
 
+#[doc(hidden)]
+pub mod macro_support {
+    pub use copy_span;
+}
+
 pub mod prelude {
     // taken from `tokio`
     //! A "prelude" for users of the `hydro_lang` crate.
@@ -44,9 +49,26 @@ pub mod prelude {
     pub use crate::live_collections::keyed_stream::KeyedStream;
     pub use crate::live_collections::optional::Optional;
     pub use crate::live_collections::singleton::Singleton;
+    pub use crate::live_collections::sliced::sliced;
     pub use crate::live_collections::stream::Stream;
     pub use crate::location::{Cluster, External, Location as _, Process, Tick};
     pub use crate::nondet::{NonDet, nondet};
+
+    /// A macro to set up a Hydro crate.
+    #[macro_export]
+    macro_rules! setup {
+        () => {
+            stageleft::stageleft_no_entry_crate!();
+
+            #[cfg(test)]
+            mod test_init {
+                #[ctor::ctor]
+                fn init() {
+                    $crate::compile::init_test();
+                }
+            }
+        };
+    }
 }
 
 #[cfg(feature = "dfir_context")]
