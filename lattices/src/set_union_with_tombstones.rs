@@ -1,41 +1,6 @@
 //! Module containing the [`SetUnionWithTombstones`] lattice and aliases for different datastructures.
 //!
-//! # Choosing a Tombstone Implementation
-//!
-//! This module provides several specialized tombstone storage implementations optimized for different key types:
-//!
-//! ## For Integer Keys (u64)
-//! Use [`SetUnionWithTombstonesRoaring`] with [`RoaringTombstoneSet`]:
-//! - Extremely space-efficient bitmap compression
-//! - Fast O(1) lookups and efficient bitmap OR operations during merge
-//! - Works with u64 keys (other integer types can be cast to u64)
-//! - Example: `SetUnionWithTombstonesRoaring::new_from(HashSet::from([1u64, 2, 3]), RoaringTombstoneSet::new())`
-//!
-//! ## For String Keys
-//! Use [`SetUnionWithTombstonesFstString`] with [`FstTombstoneSet<String>`]:
-//! - Compressed finite state transducer storage
-//! - Zero false positives (collision-free)
-//! - Efficient union operations for merging
-//! - Maintains sorted order
-//! - Example: `SetUnionWithTombstonesFstString::new_from(HashSet::from(["a".to_string()]), FstTombstoneSet::new())`
-
-//! ## For Other Types
-//! Use the generic [`SetUnionWithTombstones`] with [`HashSet`] for both sets:
-//! - Works with any `Hash + Eq` type
-//! - No compression, but simple and flexible
-//! - Example: `SetUnionWithTombstonesHashSet::new_from([custom_type], [])`
-//!
-//! Alternatively, you can hash to 64-bit integers and follow instructions for that case above,
-//! understanding there's a tiny risk of hash collision which could result in data being
-//! tombstoned (deleted) incorrectly.
-//!
-//! ## Performance Characteristics
-//!
-//! | Implementation | Space Efficiency | Merge Speed | Lookup Speed | False Positives |
-//! |----------------|------------------|-------------|--------------|-----------------|
-//! | RoaringBitmap  | Excellent        | Excellent   | Excellent    | None            |
-//! | FST            | Very Good        | Good        | Very Good    | None            |
-//! | HashSet        | Poor             | Good        | Excellent    | None            |
+//! See [`crate::tombstone`] for documentation on choosing a tombstone implementation.
 
 use std::cmp::Ordering::{self, *};
 use std::collections::{BTreeSet, HashSet};
@@ -44,7 +9,7 @@ use cc_traits::{Collection, Get, Remove};
 
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, EmptySet, OptionSet, SingletonSet};
-use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet};
+use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet, TombstoneSet};
 use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
 /// Set-union lattice with tombstones.
@@ -92,13 +57,14 @@ impl<Set, TombstoneSet> SetUnionWithTombstones<Set, TombstoneSet> {
     }
 }
 
+// Merge implementation using TombstoneSet trait for optimized union operations
 impl<Item, SetSelf, TombstoneSetSelf, SetOther, TombstoneSetOther>
     Merge<SetUnionWithTombstones<SetOther, TombstoneSetOther>>
     for SetUnionWithTombstones<SetSelf, TombstoneSetSelf>
 where
     SetSelf: Extend<Item> + Len + for<'a> Remove<&'a Item>,
     SetOther: IntoIterator<Item = Item>,
-    TombstoneSetSelf: Extend<Item> + Len + for<'a> Get<&'a Item>,
+    TombstoneSetSelf: TombstoneSet<Item>,
     TombstoneSetOther: IntoIterator<Item = Item>,
 {
     fn merge(&mut self, other: SetUnionWithTombstones<SetOther, TombstoneSetOther>) -> bool {
@@ -121,70 +87,6 @@ where
 
         // if either there are new items in the real set, or the tombstone set increased
         old_set_len < self.set.len() || old_tombstones_len < self.tombstones.len()
-    }
-}
-
-// Specialized merge implementation for RoaringTombstoneSet with HashSet<u64>
-// This is highly efficient because:
-// 1. We can OR the roaring bitmaps directly (very fast)
-// 2. We can use the bitmap's efficient contains() for lookups
-impl Merge<SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>>
-    for SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>
-{
-    fn merge(&mut self, other: SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>) -> bool {
-        let old_set_len = self.set.len();
-        let old_tombstones_len = self.tombstones.len();
-
-        // OR the roaring bitmaps together - O(n) where n is bitmap size, very fast!
-        self.tombstones.union_with(&other.tombstones);
-
-        // Merge other.set into self.set, filtering out tombstoned items
-        self.set.extend(
-            other
-                .set
-                .into_iter()
-                .filter(|item| !self.tombstones.contains(item)),
-        );
-
-        // Remove any items from self.set that are now tombstoned
-        self.set.retain(|item| !self.tombstones.contains(item));
-
-        // Check if anything changed
-        old_set_len != self.set.len() || old_tombstones_len < self.tombstones.len()
-    }
-}
-
-// Specialized merge implementation for FstTombstoneSet with HashSet<String>
-// This is efficient because:
-// 1. We can union the FSTs directly (compressed set operation)
-// 2. FST provides fast membership testing with zero false positives
-impl Merge<SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>>
-    for SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>
-{
-    fn merge(
-        &mut self,
-        other: SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>,
-    ) -> bool {
-        let old_set_len = self.set.len();
-        let old_tombstones_len = self.tombstones.len();
-
-        // Union the FSTs together - efficient compressed set union
-        self.tombstones = self.tombstones.union(&other.tombstones);
-
-        // Merge other.set into self.set, filtering out tombstoned items
-        self.set.extend(
-            other
-                .set
-                .into_iter()
-                .filter(|item| !self.tombstones.contains(item.as_bytes())),
-        );
-
-        // Remove any items from self.set that are now tombstoned
-        self.set
-            .retain(|item| !self.tombstones.contains(item.as_bytes()));
-
-        // Check if anything changed
-        old_set_len != self.set.len() || old_tombstones_len < self.tombstones.len()
     }
 }
 

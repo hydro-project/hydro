@@ -1,41 +1,6 @@
 //! Module containing the [`MapUnionWithTombstones`] lattice and aliases for different datastructures.
 //!
-//! # Choosing a Tombstone Implementation
-//!
-//! This module provides several specialized tombstone storage implementations optimized for different key types:
-//!
-//! ## For Integer Keys (u64)
-//! Use [`MapUnionWithTombstonesRoaring`] with [`crate::tombstone::RoaringTombstoneSet`]:
-//! - Extremely space-efficient bitmap compression
-//! - Fast O(1) lookups and efficient bitmap OR operations during merge
-//! - Works with u64 keys (other integer types can be cast to u64)
-//! - Example: `MapUnionWithTombstonesRoaring::new_from(HashMap::from([(1u64, value)]), RoaringTombstoneSet::new())`
-//!
-//! ## For String Keys
-//! Use [`MapUnionWithTombstonesFstString`] with [`crate::tombstone::FstTombstoneSet<String>`]:
-//! - Compressed finite state transducer storage
-//! - Zero false positives (collision-free)
-//! - Efficient union operations for merging
-//! - Maintains sorted order
-//! - Example: `MapUnionWithTombstonesFstString::new_from(HashMap::from([("key".to_string(), value)]), FstTombstoneSet::new())`
-
-//! ## For Other Types
-//! Use the generic [`MapUnionWithTombstones`] with [`HashSet`] for tombstones:
-//! - Works with any `Hash + Eq` key type
-//! - No compression, but simple and flexible
-//! - Example: `MapUnionHashMapWithTombstoneHashSet::new_from([(custom_key, value)], [])`
-//!
-//! Alternatively, you can hash to 64-bit integers and follow instructions for that case above,
-//! understanding there's a tiny risk of hash collision which could result in keys being
-//! tombstoned (deleted) incorrectly.
-//!
-//! ## Performance Characteristics
-//!
-//! | Implementation | Space Efficiency | Merge Speed | Lookup Speed | False Positives |
-//! |----------------|------------------|-------------|--------------|-----------------|
-//! | RoaringBitmap  | Excellent        | Excellent   | Excellent    | None            |
-//! | FST            | Very Good        | Good        | Very Good    | None            |
-//! | HashSet        | Poor             | Good        | Excellent    | None            |
+//! See [`crate::tombstone`] for documentation on choosing a tombstone implementation.
 
 use std::cmp::Ordering::{self, *};
 use std::collections::{HashMap, HashSet};
@@ -45,7 +10,7 @@ use cc_traits::{Get, Iter, Len, Remove};
 
 use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
 use crate::collections::{EmptyMap, EmptySet, SingletonMap, SingletonSet};
-use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet};
+use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet, TombstoneSet};
 use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
 /// Map-union-with-tombstones compound lattice.
@@ -96,6 +61,7 @@ impl<Map, TombstoneSet> MapUnionWithTombstones<Map, TombstoneSet> {
     }
 }
 
+// Merge implementation using TombstoneSet trait for optimized union operations
 impl<MapSelf, MapOther, K, ValSelf, ValOther, TombstoneSetSelf, TombstoneSetOther>
     Merge<MapUnionWithTombstones<MapOther, TombstoneSetOther>>
     for MapUnionWithTombstones<MapSelf, TombstoneSetSelf>
@@ -107,11 +73,16 @@ where
     MapOther: IntoIterator<Item = (K, ValOther)>,
     ValSelf: Merge<ValOther> + LatticeFrom<ValOther>,
     ValOther: IsBot,
-    TombstoneSetSelf: Extend<K> + Len + for<'a> Get<&'a K> + Iter<Item = K>,
+    TombstoneSetSelf: TombstoneSet<K>,
     TombstoneSetOther: IntoIterator<Item = K>,
 {
     fn merge(&mut self, other: MapUnionWithTombstones<MapOther, TombstoneSetOther>) -> bool {
         let mut changed = false;
+
+        // Collect other.tombstones into a vec to avoid borrowing issues
+        let other_tombstones: Vec<_> = other.tombstones.into_iter().collect();
+        let old_tombstones_len = self.tombstones.len();
+
         // This vec collect is needed to prevent simultaneous mut references `self.0.extend` and
         // `self.0.get_mut`.
         // TODO(mingwei): This could be fixed with a different structure, maybe some sort of
@@ -139,14 +110,12 @@ where
             .collect();
         self.map.extend(iter);
 
-        let old_self_tombstones_len = self.tombstones.len();
+        // Extend tombstones and remove tombstoned keys from the map
+        self.tombstones.extend(other_tombstones.into_iter().inspect(|k| {
+            self.map.remove(k);
+        }));
 
-        self.tombstones
-            .extend(other.tombstones.into_iter().inspect(|k| {
-                self.map.remove(k);
-            }));
-
-        if old_self_tombstones_len != self.tombstones.len() {
+        if old_tombstones_len != self.tombstones.len() {
             changed = true;
         }
 
@@ -383,104 +352,7 @@ pub type MapUnionWithTombstonesRoaring<Val> =
 pub type MapUnionWithTombstonesFstString<Val> =
     MapUnionWithTombstones<HashMap<String, Val>, FstTombstoneSet<String>>;
 
-// Specialized merge implementation for RoaringTombstoneSet with HashMap<u64, Val>
-// This is highly efficient because:
-// 1. We can OR the roaring bitmaps directly (very fast)
-// 2. We can use the bitmap's efficient contains() for lookups
-impl<Val, ValOther> Merge<MapUnionWithTombstones<HashMap<u64, ValOther>, RoaringTombstoneSet>>
-    for MapUnionWithTombstones<HashMap<u64, Val>, RoaringTombstoneSet>
-where
-    Val: Merge<ValOther> + LatticeFrom<ValOther>,
-    ValOther: IsBot,
-{
-    fn merge(
-        &mut self,
-        other: MapUnionWithTombstones<HashMap<u64, ValOther>, RoaringTombstoneSet>,
-    ) -> bool {
-        let mut changed = false;
 
-        // OR the roaring bitmaps together - O(n) where n is bitmap size, very fast!
-        let old_tombstones_len = self.tombstones.len();
-        self.tombstones.union_with(&other.tombstones);
-        if old_tombstones_len != self.tombstones.len() {
-            changed = true;
-        }
-
-        // Merge the maps, filtering out tombstoned keys
-        let iter: Vec<_> = other
-            .map
-            .into_iter()
-            .filter(|(k_other, val_other)| {
-                !val_other.is_bot() && !self.tombstones.contains(k_other)
-            })
-            .filter_map(|(k_other, val_other)| match self.map.get_mut(&k_other) {
-                Some(val_self) => {
-                    changed |= val_self.merge(val_other);
-                    None
-                }
-                None => {
-                    changed = true;
-                    Some((k_other, Val::lattice_from(val_other)))
-                }
-            })
-            .collect();
-        self.map.extend(iter);
-
-        // Remove any keys from the map that are now tombstoned
-        self.map.retain(|k, _| !self.tombstones.contains(k));
-
-        changed
-    }
-}
-
-// Specialized merge implementation for FstTombstoneSet<String> with HashMap<String, Val>
-impl<Val, ValOther>
-    Merge<MapUnionWithTombstones<HashMap<String, ValOther>, FstTombstoneSet<String>>>
-    for MapUnionWithTombstones<HashMap<String, Val>, FstTombstoneSet<String>>
-where
-    Val: Merge<ValOther> + LatticeFrom<ValOther>,
-    ValOther: IsBot,
-{
-    fn merge(
-        &mut self,
-        other: MapUnionWithTombstones<HashMap<String, ValOther>, FstTombstoneSet<String>>,
-    ) -> bool {
-        let mut changed = false;
-
-        // Union the FSTs together - efficient compressed set union
-        let old_tombstones_len = self.tombstones.len();
-        self.tombstones = self.tombstones.union(&other.tombstones);
-        if old_tombstones_len != self.tombstones.len() {
-            changed = true;
-        }
-
-        // Merge the maps, filtering out tombstoned keys
-        let iter: Vec<_> = other
-            .map
-            .into_iter()
-            .filter(|(k_other, val_other)| {
-                !val_other.is_bot() && !self.tombstones.contains(k_other.as_bytes())
-            })
-            .filter_map(|(k_other, val_other)| match self.map.get_mut(&k_other) {
-                Some(val_self) => {
-                    changed |= val_self.merge(val_other);
-                    None
-                }
-                None => {
-                    changed = true;
-                    Some((k_other, Val::lattice_from(val_other)))
-                }
-            })
-            .collect();
-        self.map.extend(iter);
-
-        // Remove any keys from the map that are now tombstoned
-        self.map
-            .retain(|k, _| !self.tombstones.contains(k.as_bytes()));
-
-        changed
-    }
-}
 
 #[cfg(test)]
 mod test {

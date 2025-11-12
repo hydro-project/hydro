@@ -4,22 +4,40 @@
 //! with both [`crate::set_union_with_tombstones::SetUnionWithTombstones`] and
 //! [`crate::map_union_with_tombstones::MapUnionWithTombstones`].
 //!
-//! # Available Implementations
+//! # Choosing a Tombstone Implementation
 //!
-//! ## [`RoaringTombstoneSet`]
-//! - **Best for:** u64 integer keys
-//! - **Space efficiency:** Excellent (bitmap compression)
-//! - **Merge speed:** Excellent (O(n) bitmap OR)
-//! - **Lookup speed:** Excellent (O(1))
-//! - **False positives:** None
+//! This module provides several specialized tombstone storage implementations optimized for different key types:
 //!
-//! ## [`FstTombstoneSet<String>`]
-//! - **Best for:** String keys (UTF-8 text)
-//! - **Space efficiency:** Very good (FST compression)
-//! - **Merge speed:** Good (FST union operation)
-//! - **Lookup speed:** Very good (logarithmic)
-//! - **False positives:** None (collision-free)
+//! ## For Integer Keys (u64)
+//! Use [`RoaringTombstoneSet`]:
+//! - Extremely space-efficient bitmap compression
+//! - Fast O(1) lookups and efficient bitmap OR operations during merge
+//! - Works with u64 keys (other integer types can be cast to u64)
+//!
+//! ## For String Keys
+//! Use [`FstTombstoneSet<String>`]:
+//! - Compressed finite state transducer storage
+//! - Zero false positives (collision-free)
+//! - Efficient union operations for merging
+//! - Maintains sorted order
 //! - **Note:** For arbitrary byte sequences, encode them as hex or base64 strings first
+//!
+//! ## For Other Types
+//! Use [`std::collections::HashSet`] for tombstones:
+//! - Works with any `Hash + Eq` key type
+//! - No compression, but simple and flexible
+//!
+//! Alternatively, you can hash to 64-bit integers and follow instructions for that case above,
+//! understanding there's a tiny risk of hash collision which could result in keys being
+//! tombstoned (deleted) incorrectly.
+//!
+//! ## Performance Characteristics
+//!
+//! | Implementation | Space Efficiency | Merge Speed | Lookup Speed | False Positives |
+//! |----------------|------------------|-------------|--------------|-----------------|
+//! | RoaringBitmap  | Excellent        | Excellent   | Excellent    | None            |
+//! | FST            | Very Good        | Good        | Very Good    | None            |
+//! | HashSet        | Poor             | Good        | Excellent    | None            |
 //!
 //! # Performance Considerations
 //!
@@ -32,10 +50,31 @@
 //! Both implementations are `Send` and `Sync` when their contained types are.
 //! They do not use interior mutability.
 
+use std::collections::HashSet;
+
 use fst::{IntoStreamer, Set as FstSet, SetBuilder, Streamer};
 use roaring::RoaringTreemap;
 
 use crate::cc_traits::Len;
+
+/// Trait for tombstone set implementations that support efficient union operations.
+///
+/// This trait abstracts over different tombstone storage strategies, allowing
+/// specialized implementations like [`RoaringTombstoneSet`] and [`FstTombstoneSet`]
+/// to provide optimized merge operations for their respective key types.
+///
+/// Implementors must provide:
+/// - A way to check membership (`contains`)
+/// - A way to union with another tombstone set (`union_with`)
+/// - Standard collection traits (`Len`, `Extend`, etc.)
+pub trait TombstoneSet<Key>: Len + Extend<Key> {
+    /// Check if a key is in the tombstone set.
+    fn contains(&self, key: &Key) -> bool;
+
+    /// Union this tombstone set with another, modifying self in place.
+    /// Returns the old length before the union.
+    fn union_with(&mut self, other: &Self) -> usize;
+}
 
 /// A tombstone set backed by [`RoaringTreemap`] for u64 integer keys.
 /// This provides space-efficient bitmap compression for integer tombstones.
@@ -61,11 +100,17 @@ impl RoaringTombstoneSet {
     pub fn insert(&mut self, item: u64) -> bool {
         self.bitmap.insert(item)
     }
+}
 
-    /// Union this tombstone set with another, modifying self in place.
-    /// This is an efficient O(n) operation where n is the size of the bitmaps.
-    pub fn union_with(&mut self, other: &Self) {
+impl TombstoneSet<u64> for RoaringTombstoneSet {
+    fn contains(&self, key: &u64) -> bool {
+        self.bitmap.contains(*key)
+    }
+
+    fn union_with(&mut self, other: &Self) -> usize {
+        let old_len = self.len();
         self.bitmap = &self.bitmap | &other.bitmap;
+        old_len
     }
 }
 
@@ -152,7 +197,7 @@ impl<Item> FstTombstoneSet<Item> {
     }
 
     /// Union this FST with another, returning a new FST.
-    pub fn union(&self, other: &Self) -> Self {
+    fn union_internal(&self, other: &Self) -> Self {
         let union_stream = self.fst.op().add(&other.fst).union();
         let mut builder = SetBuilder::memory();
         let mut stream = union_stream.into_stream();
@@ -170,6 +215,30 @@ impl<Item> FstTombstoneSet<Item> {
             )
             .expect("FST construction from valid builder should not fail"),
         )
+    }
+}
+
+/// Helper trait to convert keys to byte slices for FST operations.
+pub trait AsBytes {
+    /// Convert the key to a byte slice.
+    fn as_bytes(&self) -> &[u8];
+}
+
+impl AsBytes for String {
+    fn as_bytes(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
+impl TombstoneSet<String> for FstTombstoneSet<String> {
+    fn contains(&self, key: &String) -> bool {
+        self.fst.contains(key.as_bytes())
+    }
+
+    fn union_with(&mut self, other: &Self) -> usize {
+        let old_len = self.len();
+        *self = self.union_internal(other);
+        old_len
     }
 }
 
@@ -225,5 +294,37 @@ impl FromIterator<String> for FstTombstoneSet<String> {
             )
             .expect("FST construction from valid builder should not fail"),
         )
+    }
+}
+
+impl IntoIterator for FstTombstoneSet<String> {
+    type Item = String;
+    type IntoIter = std::vec::IntoIter<String>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // Convert FST keys to strings
+        self.fst
+            .stream()
+            .into_strs()
+            .expect("FST contains valid UTF-8 strings")
+            .into_iter()
+    }
+}
+
+// Implement TombstoneSet for HashSet to support generic key types
+impl<K> TombstoneSet<K> for HashSet<K>
+where
+    K: Eq + std::hash::Hash + Clone,
+{
+    fn contains(&self, key: &K) -> bool {
+        HashSet::contains(self, key)
+    }
+
+    fn union_with(&mut self, other: &Self) -> usize {
+        let old_len = self.len();
+        for item in other.iter() {
+            self.insert(item.clone());
+        }
+        old_len
     }
 }
