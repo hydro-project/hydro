@@ -55,12 +55,12 @@
 <a href=#55 id=55 data-nosnippet>55</a>        <span class="macro">panic!</span>();
 <a href=#56 id=56 data-nosnippet>56</a>    }
 <a href=#57 id=57 data-nosnippet>57</a>
-<a href=#58 id=58 data-nosnippet>58</a>    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-<a href=#59 id=59 data-nosnippet>59</a>    </span><span class="doccomment">/// Gets the elements of the backtrace including inlined frames.
-<a href=#60 id=60 data-nosnippet>60</a>    ///
-<a href=#61 id=61 data-nosnippet>61</a>    /// Excludes all backtrace elements up to the original `get_backtrace` call as
-<a href=#62 id=62 data-nosnippet>62</a>    /// well as additional skipped frames from that call. Also drops the suffix
-<a href=#63 id=63 data-nosnippet>63</a>    /// of frames from `__rust_begin_short_backtrace` onwards.
+<a href=#58 id=58 data-nosnippet>58</a>    <span class="doccomment">/// Gets the elements of the backtrace including inlined frames.
+<a href=#59 id=59 data-nosnippet>59</a>    ///
+<a href=#60 id=60 data-nosnippet>60</a>    /// Excludes all backtrace elements up to the original `get_backtrace` call as
+<a href=#61 id=61 data-nosnippet>61</a>    /// well as additional skipped frames from that call. Also drops the suffix
+<a href=#62 id=62 data-nosnippet>62</a>    /// of frames from `__rust_begin_short_backtrace` onwards.
+<a href=#63 id=63 data-nosnippet>63</a>    </span><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 <a href=#64 id=64 data-nosnippet>64</a>    </span><span class="kw">pub fn </span>elements(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;BacktraceElement&gt; {
 <a href=#65 id=65 data-nosnippet>65</a>        <span class="self">self</span>.resolved
 <a href=#66 id=66 data-nosnippet>66</a>            .borrow_mut()
@@ -147,15 +147,17 @@
 <a href=#147 id=147 data-nosnippet>147</a>
 <a href=#148 id=148 data-nosnippet>148</a><span class="attr">#[cfg(test)]
 <a href=#149 id=149 data-nosnippet>149</a></span><span class="kw">mod </span>tests {
-<a href=#150 id=150 data-nosnippet>150</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<a href=#151 id=151 data-nosnippet>151</a>
-<a href=#152 id=152 data-nosnippet>152</a>    <span class="attr">#[cfg_attr(not(target_os = <span class="string">"linux"</span>), ignore)]
-<a href=#153 id=153 data-nosnippet>153</a>    #[test]
-<a href=#154 id=154 data-nosnippet>154</a>    </span><span class="kw">fn </span>test_backtrace() {
-<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">let </span>backtrace = Backtrace::get_backtrace(<span class="number">0</span>);
-<a href=#156 id=156 data-nosnippet>156</a>        <span class="kw">let </span>elements = backtrace.elements();
-<a href=#157 id=157 data-nosnippet>157</a>
-<a href=#158 id=158 data-nosnippet>158</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(elements);
-<a href=#159 id=159 data-nosnippet>159</a>    }
-<a href=#160 id=160 data-nosnippet>160</a>}
+<a href=#150 id=150 data-nosnippet>150</a>    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+<a href=#151 id=151 data-nosnippet>151</a>    </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
+<a href=#152 id=152 data-nosnippet>152</a>
+<a href=#153 id=153 data-nosnippet>153</a>    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+<a href=#154 id=154 data-nosnippet>154</a>    #[cfg_attr(not(target_os = <span class="string">"linux"</span>), ignore)]
+<a href=#155 id=155 data-nosnippet>155</a>    #[test]
+<a href=#156 id=156 data-nosnippet>156</a>    </span><span class="kw">fn </span>test_backtrace() {
+<a href=#157 id=157 data-nosnippet>157</a>        <span class="kw">let </span>backtrace = Backtrace::get_backtrace(<span class="number">0</span>);
+<a href=#158 id=158 data-nosnippet>158</a>        <span class="kw">let </span>elements = backtrace.elements();
+<a href=#159 id=159 data-nosnippet>159</a>
+<a href=#160 id=160 data-nosnippet>160</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(elements);
+<a href=#161 id=161 data-nosnippet>161</a>    }
+<a href=#162 id=162 data-nosnippet>162</a>}
 </code></pre></div></section></main></body></html>

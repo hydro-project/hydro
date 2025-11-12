@@ -3776,43 +3776,51 @@
 <a href=#3776 id=3776 data-nosnippet>3776</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <a href=#3777 id=3777 data-nosnippet>3777</a>
 <a href=#3778 id=3778 data-nosnippet>3778</a>    <span class="attr">#[test]
-<a href=#3779 id=3779 data-nosnippet>3779</a>    </span><span class="kw">fn </span>hydro_node_size() {
-<a href=#3780 id=3780 data-nosnippet>3780</a>        <span class="macro">assert_eq!</span>(size_of::&lt;HydroNode&gt;(), <span class="number">272</span>);
-<a href=#3781 id=3781 data-nosnippet>3781</a>    }
-<a href=#3782 id=3782 data-nosnippet>3782</a>
-<a href=#3783 id=3783 data-nosnippet>3783</a>    <span class="attr">#[test]
-<a href=#3784 id=3784 data-nosnippet>3784</a>    </span><span class="kw">fn </span>hydro_root_size() {
-<a href=#3785 id=3785 data-nosnippet>3785</a>        <span class="macro">assert_eq!</span>(size_of::&lt;HydroRoot&gt;(), <span class="number">168</span>);
-<a href=#3786 id=3786 data-nosnippet>3786</a>    }
-<a href=#3787 id=3787 data-nosnippet>3787</a>
-<a href=#3788 id=3788 data-nosnippet>3788</a>    <span class="attr">#[test]
-<a href=#3789 id=3789 data-nosnippet>3789</a>    </span><span class="kw">fn </span>test_simplify_q_macro_basic() {
-<a href=#3790 id=3790 data-nosnippet>3790</a>        <span class="comment">// Test basic non-q! expression
-<a href=#3791 id=3791 data-nosnippet>3791</a>        </span><span class="kw">let </span>simple_expr: syn::Expr = syn::parse_str(<span class="string">"x + y"</span>).unwrap();
-<a href=#3792 id=3792 data-nosnippet>3792</a>        <span class="kw">let </span>result = simplify_q_macro(simple_expr.clone());
-<a href=#3793 id=3793 data-nosnippet>3793</a>        <span class="macro">assert_eq!</span>(result, simple_expr);
+<a href=#3779 id=3779 data-nosnippet>3779</a>    #[cfg_attr(
+<a href=#3780 id=3780 data-nosnippet>3780</a>        not(feature = <span class="string">"build"</span>),
+<a href=#3781 id=3781 data-nosnippet>3781</a>        ignore = <span class="string">"expects inclusion of feature-gated fields"
+<a href=#3782 id=3782 data-nosnippet>3782</a>    </span>)]
+<a href=#3783 id=3783 data-nosnippet>3783</a>    </span><span class="kw">fn </span>hydro_node_size() {
+<a href=#3784 id=3784 data-nosnippet>3784</a>        <span class="macro">assert_eq!</span>(size_of::&lt;HydroNode&gt;(), <span class="number">272</span>);
+<a href=#3785 id=3785 data-nosnippet>3785</a>    }
+<a href=#3786 id=3786 data-nosnippet>3786</a>
+<a href=#3787 id=3787 data-nosnippet>3787</a>    <span class="attr">#[test]
+<a href=#3788 id=3788 data-nosnippet>3788</a>    #[cfg_attr(
+<a href=#3789 id=3789 data-nosnippet>3789</a>        not(feature = <span class="string">"build"</span>),
+<a href=#3790 id=3790 data-nosnippet>3790</a>        ignore = <span class="string">"expects inclusion of feature-gated fields"
+<a href=#3791 id=3791 data-nosnippet>3791</a>    </span>)]
+<a href=#3792 id=3792 data-nosnippet>3792</a>    </span><span class="kw">fn </span>hydro_root_size() {
+<a href=#3793 id=3793 data-nosnippet>3793</a>        <span class="macro">assert_eq!</span>(size_of::&lt;HydroRoot&gt;(), <span class="number">168</span>);
 <a href=#3794 id=3794 data-nosnippet>3794</a>    }
 <a href=#3795 id=3795 data-nosnippet>3795</a>
 <a href=#3796 id=3796 data-nosnippet>3796</a>    <span class="attr">#[test]
-<a href=#3797 id=3797 data-nosnippet>3797</a>    </span><span class="kw">fn </span>test_simplify_q_macro_actual_stageleft_call() {
-<a href=#3798 id=3798 data-nosnippet>3798</a>        <span class="comment">// Test a simplified version of what a real stageleft call might look like
-<a href=#3799 id=3799 data-nosnippet>3799</a>        </span><span class="kw">let </span>stageleft_call = <span class="macro">q!</span>(|x: usize| x + <span class="number">1</span>).splice_fn1_ctx(<span class="kw-2">&amp;</span>());
-<a href=#3800 id=3800 data-nosnippet>3800</a>        <span class="kw">let </span>result = simplify_q_macro(stageleft_call);
-<a href=#3801 id=3801 data-nosnippet>3801</a>        <span class="comment">// This should be processed by our visitor and simplified to q!(...)
-<a href=#3802 id=3802 data-nosnippet>3802</a>        // since we detect the stageleft::runtime_support::fn_* pattern
-<a href=#3803 id=3803 data-nosnippet>3803</a>        </span><span class="macro">hydro_build_utils::assert_snapshot!</span>(result.to_token_stream().to_string());
-<a href=#3804 id=3804 data-nosnippet>3804</a>    }
-<a href=#3805 id=3805 data-nosnippet>3805</a>
-<a href=#3806 id=3806 data-nosnippet>3806</a>    <span class="attr">#[test]
-<a href=#3807 id=3807 data-nosnippet>3807</a>    </span><span class="kw">fn </span>test_closure_no_pipe_at_start() {
-<a href=#3808 id=3808 data-nosnippet>3808</a>        <span class="comment">// Test a closure that does not start with a pipe
-<a href=#3809 id=3809 data-nosnippet>3809</a>        </span><span class="kw">let </span>stageleft_call = <span class="macro">q!</span>({
-<a href=#3810 id=3810 data-nosnippet>3810</a>            <span class="kw">let </span>foo = <span class="number">123</span>;
-<a href=#3811 id=3811 data-nosnippet>3811</a>            <span class="kw">move </span>|b: usize| b + foo
-<a href=#3812 id=3812 data-nosnippet>3812</a>        })
-<a href=#3813 id=3813 data-nosnippet>3813</a>        .splice_fn1_ctx(<span class="kw-2">&amp;</span>());
-<a href=#3814 id=3814 data-nosnippet>3814</a>        <span class="kw">let </span>result = simplify_q_macro(stageleft_call);
-<a href=#3815 id=3815 data-nosnippet>3815</a>        <span class="macro">hydro_build_utils::assert_snapshot!</span>(result.to_token_stream().to_string());
-<a href=#3816 id=3816 data-nosnippet>3816</a>    }
-<a href=#3817 id=3817 data-nosnippet>3817</a>}
+<a href=#3797 id=3797 data-nosnippet>3797</a>    </span><span class="kw">fn </span>test_simplify_q_macro_basic() {
+<a href=#3798 id=3798 data-nosnippet>3798</a>        <span class="comment">// Test basic non-q! expression
+<a href=#3799 id=3799 data-nosnippet>3799</a>        </span><span class="kw">let </span>simple_expr: syn::Expr = syn::parse_str(<span class="string">"x + y"</span>).unwrap();
+<a href=#3800 id=3800 data-nosnippet>3800</a>        <span class="kw">let </span>result = simplify_q_macro(simple_expr.clone());
+<a href=#3801 id=3801 data-nosnippet>3801</a>        <span class="macro">assert_eq!</span>(result, simple_expr);
+<a href=#3802 id=3802 data-nosnippet>3802</a>    }
+<a href=#3803 id=3803 data-nosnippet>3803</a>
+<a href=#3804 id=3804 data-nosnippet>3804</a>    <span class="attr">#[test]
+<a href=#3805 id=3805 data-nosnippet>3805</a>    </span><span class="kw">fn </span>test_simplify_q_macro_actual_stageleft_call() {
+<a href=#3806 id=3806 data-nosnippet>3806</a>        <span class="comment">// Test a simplified version of what a real stageleft call might look like
+<a href=#3807 id=3807 data-nosnippet>3807</a>        </span><span class="kw">let </span>stageleft_call = <span class="macro">q!</span>(|x: usize| x + <span class="number">1</span>).splice_fn1_ctx(<span class="kw-2">&amp;</span>());
+<a href=#3808 id=3808 data-nosnippet>3808</a>        <span class="kw">let </span>result = simplify_q_macro(stageleft_call);
+<a href=#3809 id=3809 data-nosnippet>3809</a>        <span class="comment">// This should be processed by our visitor and simplified to q!(...)
+<a href=#3810 id=3810 data-nosnippet>3810</a>        // since we detect the stageleft::runtime_support::fn_* pattern
+<a href=#3811 id=3811 data-nosnippet>3811</a>        </span><span class="macro">hydro_build_utils::assert_snapshot!</span>(result.to_token_stream().to_string());
+<a href=#3812 id=3812 data-nosnippet>3812</a>    }
+<a href=#3813 id=3813 data-nosnippet>3813</a>
+<a href=#3814 id=3814 data-nosnippet>3814</a>    <span class="attr">#[test]
+<a href=#3815 id=3815 data-nosnippet>3815</a>    </span><span class="kw">fn </span>test_closure_no_pipe_at_start() {
+<a href=#3816 id=3816 data-nosnippet>3816</a>        <span class="comment">// Test a closure that does not start with a pipe
+<a href=#3817 id=3817 data-nosnippet>3817</a>        </span><span class="kw">let </span>stageleft_call = <span class="macro">q!</span>({
+<a href=#3818 id=3818 data-nosnippet>3818</a>            <span class="kw">let </span>foo = <span class="number">123</span>;
+<a href=#3819 id=3819 data-nosnippet>3819</a>            <span class="kw">move </span>|b: usize| b + foo
+<a href=#3820 id=3820 data-nosnippet>3820</a>        })
+<a href=#3821 id=3821 data-nosnippet>3821</a>        .splice_fn1_ctx(<span class="kw-2">&amp;</span>());
+<a href=#3822 id=3822 data-nosnippet>3822</a>        <span class="kw">let </span>result = simplify_q_macro(stageleft_call);
+<a href=#3823 id=3823 data-nosnippet>3823</a>        <span class="macro">hydro_build_utils::assert_snapshot!</span>(result.to_token_stream().to_string());
+<a href=#3824 id=3824 data-nosnippet>3824</a>    }
+<a href=#3825 id=3825 data-nosnippet>3825</a>}
 </code></pre></div></section></main></body></html>
