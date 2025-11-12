@@ -2948,7 +2948,7 @@ mod tests {
     #[cfg(feature = "deploy")]
     use stageleft::q;
 
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
     #[cfg(feature = "deploy")]
     use crate::live_collections::stream::ExactlyOnce;
@@ -2956,9 +2956,9 @@ mod tests {
     use crate::live_collections::stream::NoOrder;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::live_collections::stream::TotalOrder;
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
 
     mod backtrace_chained_ops;

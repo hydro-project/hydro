@@ -1,3 +1,3 @@
 pub(crate) mod generate;
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 pub(crate) mod rewriters;

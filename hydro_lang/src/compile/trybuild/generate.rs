@@ -1,41 +1,39 @@
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 use std::fs::{self, File};
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 use std::io::{Read, Seek, SeekFrom, Write};
-#[cfg(feature = "deploy")]
-use std::path::Path;
-#[cfg(feature = "deploy")]
-use std::path::PathBuf;
+#[cfg(any(feature = "deploy", feature = "sim"))]
+use std::path::{Path, PathBuf};
 
 #[cfg(feature = "deploy")]
 use dfir_lang::graph::DfirGraph;
-#[cfg(feature = "deploy")]
-use proc_macro2::Span;
-#[cfg(feature = "deploy")]
-use sha2::{Sha256, Digest};
+#[cfg(any(feature = "deploy", feature = "sim"))]
+use sha2::{Digest, Sha256};
 #[cfg(feature = "deploy")]
 use stageleft::internal::quote;
 #[cfg(feature = "deploy")]
 use syn::visit_mut::VisitMut;
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 use trybuild_internals_api::cargo::{self, Metadata};
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
+use trybuild_internals_api::dependencies;
+#[cfg(any(feature = "deploy", feature = "sim"))]
 use trybuild_internals_api::env::Update;
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 use trybuild_internals_api::run::{PathDependency, Project};
-#[cfg(feature = "deploy")]
-use trybuild_internals_api::{Runner, dependencies, features, path};
+#[cfg(any(feature = "deploy", feature = "sim"))]
+use trybuild_internals_api::{Runner, features, path};
 
 #[cfg(feature = "deploy")]
 use super::rewriters::UseTestModeStaged;
 
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 pub const HYDRO_RUNTIME_FEATURES: &[&str] = &["deploy_integration", "runtime_measure"];
 
 pub(crate) static IS_TEST: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 pub(crate) static CONCURRENT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Enables "test mode" for Hydro, which makes it possible to compile Hydro programs written
@@ -67,7 +65,7 @@ fn clean_name_hint(name_hint: &str) -> String {
         .replace(")", "")
 }
 
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 pub struct TrybuildConfig {
     pub project_dir: PathBuf,
     pub target_dir: PathBuf,
@@ -213,7 +211,7 @@ pub fn compile_graph_trybuild(
     source_ast
 }
 
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 pub fn create_trybuild()
 -> Result<(PathBuf, PathBuf, Option<Vec<String>>), trybuild_internals_api::error::Error> {
     let Metadata {
@@ -322,7 +320,10 @@ pub fn create_trybuild()
 
         fs::create_dir_all(path!(project.dir / "src"))?;
 
-        let crate_name_ident = syn::Ident::new(&crate_name.replace("-", "_"), Span::call_site());
+        let crate_name_ident = syn::Ident::new(
+            &crate_name.replace("-", "_"),
+            proc_macro2::Span::call_site(),
+        );
         write_atomic(
             prettyplease::unparse(&syn::parse_quote! {
                 #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
@@ -435,7 +436,7 @@ crate-type = ["cdylib"]"#,
     ))
 }
 
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 fn check_contents(contents: &[u8], path: &Path) -> Result<bool, std::io::Error> {
     let mut file = File::options()
         .read(true)
@@ -450,7 +451,7 @@ fn check_contents(contents: &[u8], path: &Path) -> Result<bool, std::io::Error> 
     Ok(existing_contents == contents)
 }
 
-#[cfg(feature = "deploy")]
+#[cfg(any(feature = "deploy", feature = "sim"))]
 pub(crate) fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::Error> {
     let mut file = File::options()
         .read(true)

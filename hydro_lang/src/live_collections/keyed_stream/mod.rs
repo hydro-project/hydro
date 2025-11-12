@@ -2240,16 +2240,16 @@ mod tests {
     use futures::{SinkExt, StreamExt};
     #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use stageleft::q;
 
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
     #[cfg(feature = "deploy")]
     use crate::live_collections::stream::ExactlyOnce;
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
 
     #[cfg(feature = "deploy")]
