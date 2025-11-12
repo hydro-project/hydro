@@ -29,6 +29,15 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
+      - name: Verify generated template files are up to date
+        run: |
+          python3 template/generate_prompts.py
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Generated template files are out of date. Run ./template/generate_prompts.py and commit the changes."
+            git --no-pager status --porcelain
+            exit 1
+          fi
+
       - name: Action cargo-generate
         uses: cargo-generate/cargo-generate-action@v0.20.0
         with:
@@ -74,6 +83,15 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+
+      - name: Verify generated template files are up to date
+        run: |
+          python3 template/generate_prompts.py
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Generated template files are out of date. Run ./template/generate_prompts.py and commit the changes."
+            git --no-pager status --porcelain
+            exit 1
+          fi
 
       - name: Action cargo-generate
         uses: cargo-generate/cargo-generate-action@v0.20.0
