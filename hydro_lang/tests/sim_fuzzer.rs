@@ -1,3 +1,5 @@
+#![cfg(feature = "sim")]
+
 use std::env::join_paths;
 
 #[test]

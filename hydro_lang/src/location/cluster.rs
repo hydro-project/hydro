@@ -158,15 +158,19 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
+    #[cfg(feature = "sim")]
     use stageleft::q;
 
+    #[cfg(feature = "sim")]
     use super::CLUSTER_SELF_ID;
+    #[cfg(feature = "sim")]
     use crate::location::{Location, MembershipEvent};
+    #[cfg(feature = "sim")]
     use crate::nondet::nondet;
+    #[cfg(feature = "sim")]
     use crate::prelude::FlowBuilder;
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_cluster_self_id() {
         let flow = FlowBuilder::new();
@@ -201,8 +205,11 @@ mod tests {
             });
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_cluster_with_tick() {
+        use std::collections::HashMap;
+
         let flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
         let node = flow.process::<()>();
@@ -245,6 +252,7 @@ mod tests {
         // there are no dataflow cycles) and avoid simulating redundant interleavings
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_cluster_membership() {
         let flow = FlowBuilder::new();

@@ -55,12 +55,12 @@ impl Backtrace {
         panic!();
     }
 
-    #[cfg(feature = "build")]
     /// Gets the elements of the backtrace including inlined frames.
     ///
     /// Excludes all backtrace elements up to the original `get_backtrace` call as
     /// well as additional skipped frames from that call. Also drops the suffix
     /// of frames from `__rust_begin_short_backtrace` onwards.
+    #[cfg(feature = "build")]
     pub fn elements(&self) -> Vec<BacktraceElement> {
         self.resolved
             .borrow_mut()
@@ -147,8 +147,10 @@ impl Debug for BacktraceElement {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "build")]
     use super::*;
 
+    #[cfg(feature = "build")]
     #[cfg_attr(not(target_os = "linux"), ignore)]
     #[test]
     fn test_backtrace() {

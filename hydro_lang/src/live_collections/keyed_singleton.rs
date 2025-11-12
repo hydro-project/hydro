@@ -255,6 +255,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -274,6 +275,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # results.sort();
     /// # assert_eq!(results, vec![(1, 3), (2, 5)]);
     /// # }));
+    /// # }
     /// ```
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, U, L, B>
     where
@@ -307,6 +309,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -326,6 +329,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # results.sort();
     /// # assert_eq!(results, vec![(1, 3), (2, 6)]);
     /// # }));
+    /// # }
     /// ```
     pub fn map_with_key<U, F>(
         self,
@@ -366,6 +370,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -382,6 +387,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// // 3
     /// # assert_eq!(stream.next().await.unwrap(), 3);
     /// # }));
+    /// # }
     /// ```
     pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
         if B::ValueBound::BOUNDED {
@@ -417,6 +423,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -432,6 +439,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// // { 1: "a", 2: "b", 3: "c" }
     /// # assert_eq!(stream.next().await.unwrap(), vec![(1, "a".to_string()), (2, "b".to_string()), (3, "c".to_string())].into_iter().collect());
     /// # }));
+    /// # }
     /// ```
     pub fn into_singleton(self) -> Singleton<HashMap<K, V>, L, B::UnderlyingBound>
     where
@@ -497,6 +505,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -515,6 +524,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # results.sort();
     /// # assert_eq!(results, vec![(1, 2), (2, 4)]);
     /// # }));
+    /// # }
     /// ```
     pub fn entries(self) -> Stream<(K, V), L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
         self.into_keyed_stream().entries()
@@ -528,6 +538,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -546,6 +557,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # results.sort();
     /// # assert_eq!(results, vec![2, 4]);
     /// # }));
+    /// # }
     /// ```
     pub fn values(self) -> Stream<V, L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
         let map_f = q!(|(_, v)| v)
@@ -576,6 +588,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -594,6 +607,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2]);
     /// # }));
+    /// # }
     /// ```
     pub fn keys(self) -> Stream<K, L, B::UnderlyingBound, NoOrder, ExactlyOnce> {
         self.entries().map(q!(|(k, _)| k))
@@ -604,6 +618,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -625,6 +640,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_key_not_in<O2: Ordering, R2: Retries>(
         self,
@@ -651,6 +667,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -668,6 +685,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> Self
     where
@@ -697,6 +715,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -714,6 +733,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn inspect_with_key<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
     where
@@ -738,6 +758,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -753,6 +774,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// // (2, 456)
     /// # assert_eq!(stream.next().await.unwrap(), (2, 456));
     /// # }));
+    /// # }
     /// ```
     pub fn get_max_key(self) -> Optional<(K, V), L, B::UnderlyingBound>
     where
@@ -784,6 +806,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -805,6 +828,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn into_keyed_stream(
         self,
@@ -831,6 +855,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -846,6 +871,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     /// // 2
     /// # assert_eq!(stream.next().await.unwrap(), 2);
     /// # }));
+    /// # }
     /// ```
     pub fn get(self, key: Singleton<K, Tick<L>, Bounded>) -> Optional<V, Tick<L>, Bounded> {
         self.entries()
@@ -862,6 +888,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -885,6 +912,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     /// # results.sort();
     /// # assert_eq!(results, vec![(1, (10, 100)), (1, (10, 101)), (2, (20, 200))]);
     /// # }));
+    /// # }
     /// ```
     pub fn get_many_if_present<O2: Ordering, R2: Retries, V2>(
         self,
@@ -903,6 +931,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -930,6 +959,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
     /// # results.sort();
     /// # assert_eq!(results, vec![(1, (10, Some(100))), (2, (20, None))]);
     /// # }));
+    /// # }
     /// ```
     pub fn get_from<V2: Clone>(
         self,
@@ -1027,6 +1057,7 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1054,6 +1085,7 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn defer_tick(self) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
         KeyedSingleton::new(
@@ -1138,6 +1170,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1157,6 +1190,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![(1, 2), (2, 4)]);
     /// # }));
+    /// # }
     /// ```
     pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, V, L, B>
     where
@@ -1191,6 +1225,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1210,6 +1245,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![(1, 42), (3, 100)]);
     /// # }));
+    /// # }
     /// ```
     pub fn filter_map<F, U>(
         self,
@@ -1289,16 +1325,17 @@ where
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "deploy")]
-    use std::collections::HashMap;
-
-    #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
     #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use stageleft::q;
 
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
 
     #[cfg(feature = "deploy")]
@@ -1415,7 +1452,10 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        assert_eq!(external_out.next().await.unwrap(), HashMap::new());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            std::collections::HashMap::new()
+        );
 
         external_in.send((1, 1)).await.unwrap();
         assert_eq!(
@@ -1459,7 +1499,10 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        assert_eq!(external_out.next().await.unwrap(), HashMap::new());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            std::collections::HashMap::new()
+        );
 
         external_in.send((1, 1)).await.unwrap();
         assert_eq!(
@@ -1492,6 +1535,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_unbounded_singleton_snapshot() {
         let flow = FlowBuilder::new();

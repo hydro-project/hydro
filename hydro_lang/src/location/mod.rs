@@ -261,6 +261,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_deploy::Deployment;
     /// # use futures::{SinkExt, StreamExt};
@@ -295,6 +296,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     ///     vec![1, 2, 3, 42]
     /// );
     /// # });
+    /// # }
     /// ```
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bind_single_client<L, T, Codec: Encoder<T> + Decoder>(
@@ -690,6 +692,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -700,6 +703,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     /// // 5
     /// # assert_eq!(stream.next().await.unwrap(), 5);
     /// # }));
+    /// # }
     /// ```
     fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, Self>) -> Singleton<T, Self, Unbounded>
     where

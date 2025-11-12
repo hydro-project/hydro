@@ -3776,11 +3776,19 @@ mod test {
     use super::*;
 
     #[test]
+    #[cfg_attr(
+        not(feature = "build"),
+        ignore = "expects inclusion of feature-gated fields"
+    )]
     fn hydro_node_size() {
         assert_eq!(size_of::<HydroNode>(), 272);
     }
 
     #[test]
+    #[cfg_attr(
+        not(feature = "build"),
+        ignore = "expects inclusion of feature-gated fields"
+    )]
     fn hydro_root_size() {
         assert_eq!(size_of::<HydroRoot>(), 168);
     }
