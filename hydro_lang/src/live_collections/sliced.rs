@@ -325,6 +325,12 @@ impl<'a, L: Location<'a>> Slicable<'a, L> for () {
     fn slice(self, _tick: &Tick<L>, __backtrace: Self::Backtrace, _nondet: NonDet) -> Self::Slice {}
 }
 
+impl Unslicable for () {
+    type Unsliced = ();
+
+    fn unslice(self) -> Self::Unsliced {}
+}
+
 macro_rules! impl_slicable_for_tuple {
     ($($T:ident, $T_bt:ident, $idx:tt),*) => {
         impl<'a, L: Location<'a>, $($T: Slicable<'a, L>),*> Slicable<'a, L> for ($($T,)*) {
