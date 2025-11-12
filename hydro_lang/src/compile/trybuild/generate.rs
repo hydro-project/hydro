@@ -1,39 +1,27 @@
-#[cfg(any(feature = "deploy", feature = "sim"))]
 use std::fs::{self, File};
-#[cfg(any(feature = "deploy", feature = "sim"))]
 use std::io::{Read, Seek, SeekFrom, Write};
-#[cfg(any(feature = "deploy", feature = "sim"))]
 use std::path::{Path, PathBuf};
 
 #[cfg(feature = "deploy")]
 use dfir_lang::graph::DfirGraph;
-#[cfg(any(feature = "deploy", feature = "sim"))]
 use sha2::{Digest, Sha256};
 #[cfg(feature = "deploy")]
 use stageleft::internal::quote;
 #[cfg(feature = "deploy")]
 use syn::visit_mut::VisitMut;
-#[cfg(any(feature = "deploy", feature = "sim"))]
 use trybuild_internals_api::cargo::{self, Metadata};
-#[cfg(any(feature = "deploy", feature = "sim"))]
-use trybuild_internals_api::dependencies;
-#[cfg(any(feature = "deploy", feature = "sim"))]
 use trybuild_internals_api::env::Update;
-#[cfg(any(feature = "deploy", feature = "sim"))]
 use trybuild_internals_api::run::{PathDependency, Project};
-#[cfg(any(feature = "deploy", feature = "sim"))]
-use trybuild_internals_api::{Runner, features, path};
+use trybuild_internals_api::{Runner, dependencies, features, path};
 
 #[cfg(feature = "deploy")]
 use super::rewriters::UseTestModeStaged;
 
-#[cfg(any(feature = "deploy", feature = "sim"))]
 pub const HYDRO_RUNTIME_FEATURES: &[&str] = &["deploy_integration", "runtime_measure"];
 
 pub(crate) static IS_TEST: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
-#[cfg(any(feature = "deploy", feature = "sim"))]
 pub(crate) static CONCURRENT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Enables "test mode" for Hydro, which makes it possible to compile Hydro programs written
@@ -65,7 +53,6 @@ fn clean_name_hint(name_hint: &str) -> String {
         .replace(")", "")
 }
 
-#[cfg(any(feature = "deploy", feature = "sim"))]
 pub struct TrybuildConfig {
     pub project_dir: PathBuf,
     pub target_dir: PathBuf,
@@ -211,7 +198,6 @@ pub fn compile_graph_trybuild(
     source_ast
 }
 
-#[cfg(any(feature = "deploy", feature = "sim"))]
 pub fn create_trybuild()
 -> Result<(PathBuf, PathBuf, Option<Vec<String>>), trybuild_internals_api::error::Error> {
     let Metadata {
@@ -436,7 +422,6 @@ crate-type = ["cdylib"]"#,
     ))
 }
 
-#[cfg(any(feature = "deploy", feature = "sim"))]
 fn check_contents(contents: &[u8], path: &Path) -> Result<bool, std::io::Error> {
     let mut file = File::options()
         .read(true)
@@ -451,7 +436,6 @@ fn check_contents(contents: &[u8], path: &Path) -> Result<bool, std::io::Error> 
     Ok(existing_contents == contents)
 }
 
-#[cfg(any(feature = "deploy", feature = "sim"))]
 pub(crate) fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::Error> {
     let mut file = File::options()
         .read(true)
