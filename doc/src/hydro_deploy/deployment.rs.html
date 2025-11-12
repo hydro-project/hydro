@@ -17,7 +17,7 @@
 <a href=#17 id=17 data-nosnippet>17</a>    CustomService, GcpComputeEngineHost, Host, LocalhostHost, ResourcePool, ResourceResult,
 <a href=#18 id=18 data-nosnippet>18</a>    Service, progress,
 <a href=#19 id=19 data-nosnippet>19</a>};
-<a href=#20 id=20 data-nosnippet>20</a><span class="kw">use crate</span>::{AwsEc2Host, AzureHost, ServiceBuilder};
+<a href=#20 id=20 data-nosnippet>20</a><span class="kw">use crate</span>::{AwsEc2Host, AzureHost, HostTargetType, ServiceBuilder};
 <a href=#21 id=21 data-nosnippet>21</a>
 <a href=#22 id=22 data-nosnippet>22</a><span class="kw">pub struct </span>Deployment {
 <a href=#23 id=23 data-nosnippet>23</a>    <span class="kw">pub </span>hosts: Vec&lt;Weak&lt;<span class="kw">dyn </span>Host&gt;&gt;,
@@ -231,51 +231,75 @@
 <a href=#231 id=231 data-nosnippet>231</a>        project: String,
 <a href=#232 id=232 data-nosnippet>232</a>        machine_type: String,
 <a href=#233 id=233 data-nosnippet>233</a>        image: String,
-<a href=#234 id=234 data-nosnippet>234</a>        region: String,
-<a href=#235 id=235 data-nosnippet>235</a>        network: Arc&lt;RwLock&lt;GcpNetwork&gt;&gt;,
-<a href=#236 id=236 data-nosnippet>236</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#237 id=237 data-nosnippet>237</a>        display_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#238 id=238 data-nosnippet>238</a>    ) -&gt; Arc&lt;GcpComputeEngineHost&gt; {
-<a href=#239 id=239 data-nosnippet>239</a>        <span class="self">self</span>.add_host(|id| {
-<a href=#240 id=240 data-nosnippet>240</a>            GcpComputeEngineHost::new(
-<a href=#241 id=241 data-nosnippet>241</a>                id,
-<a href=#242 id=242 data-nosnippet>242</a>                project,
-<a href=#243 id=243 data-nosnippet>243</a>                machine_type,
-<a href=#244 id=244 data-nosnippet>244</a>                image,
-<a href=#245 id=245 data-nosnippet>245</a>                region,
-<a href=#246 id=246 data-nosnippet>246</a>                network,
-<a href=#247 id=247 data-nosnippet>247</a>                user,
-<a href=#248 id=248 data-nosnippet>248</a>                display_name,
-<a href=#249 id=249 data-nosnippet>249</a>            )
-<a href=#250 id=250 data-nosnippet>250</a>        })
-<a href=#251 id=251 data-nosnippet>251</a>    }
-<a href=#252 id=252 data-nosnippet>252</a>
-<a href=#253 id=253 data-nosnippet>253</a>    <span class="attr">#[builder(entry = <span class="string">"AzureHost"</span>, exit = <span class="string">"add"</span>)]
-<a href=#254 id=254 data-nosnippet>254</a>    </span><span class="kw">pub fn </span>add_azure_host(
-<a href=#255 id=255 data-nosnippet>255</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#256 id=256 data-nosnippet>256</a>        project: String,
-<a href=#257 id=257 data-nosnippet>257</a>        os_type: String, <span class="comment">// linux or windows
-<a href=#258 id=258 data-nosnippet>258</a>        </span>machine_size: String,
-<a href=#259 id=259 data-nosnippet>259</a>        image: <span class="prelude-ty">Option</span>&lt;HashMap&lt;String, String&gt;&gt;,
-<a href=#260 id=260 data-nosnippet>260</a>        region: String,
-<a href=#261 id=261 data-nosnippet>261</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#262 id=262 data-nosnippet>262</a>    ) -&gt; Arc&lt;AzureHost&gt; {
-<a href=#263 id=263 data-nosnippet>263</a>        <span class="self">self</span>.add_host(|id| AzureHost::new(id, project, os_type, machine_size, image, region, user))
-<a href=#264 id=264 data-nosnippet>264</a>    }
-<a href=#265 id=265 data-nosnippet>265</a>
-<a href=#266 id=266 data-nosnippet>266</a>    <span class="attr">#[builder(entry = <span class="string">"AwsEc2Host"</span>, exit = <span class="string">"add"</span>)]
-<a href=#267 id=267 data-nosnippet>267</a>    </span><span class="kw">pub fn </span>add_aws_ec2_host(
-<a href=#268 id=268 data-nosnippet>268</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#269 id=269 data-nosnippet>269</a>        region: String,
-<a href=#270 id=270 data-nosnippet>270</a>        instance_type: String,
-<a href=#271 id=271 data-nosnippet>271</a>        ami: String,
-<a href=#272 id=272 data-nosnippet>272</a>        network: Arc&lt;RwLock&lt;AwsNetwork&gt;&gt;,
-<a href=#273 id=273 data-nosnippet>273</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#274 id=274 data-nosnippet>274</a>        display_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#275 id=275 data-nosnippet>275</a>    ) -&gt; Arc&lt;AwsEc2Host&gt; {
-<a href=#276 id=276 data-nosnippet>276</a>        <span class="self">self</span>.add_host(|id| {
-<a href=#277 id=277 data-nosnippet>277</a>            AwsEc2Host::new(id, region, instance_type, ami, network, user, display_name)
-<a href=#278 id=278 data-nosnippet>278</a>        })
-<a href=#279 id=279 data-nosnippet>279</a>    }
-<a href=#280 id=280 data-nosnippet>280</a>}
+<a href=#234 id=234 data-nosnippet>234</a>        target_type: <span class="prelude-ty">Option</span>&lt;HostTargetType&gt;,
+<a href=#235 id=235 data-nosnippet>235</a>        region: String,
+<a href=#236 id=236 data-nosnippet>236</a>        network: Arc&lt;RwLock&lt;GcpNetwork&gt;&gt;,
+<a href=#237 id=237 data-nosnippet>237</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#238 id=238 data-nosnippet>238</a>        display_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#239 id=239 data-nosnippet>239</a>    ) -&gt; Arc&lt;GcpComputeEngineHost&gt; {
+<a href=#240 id=240 data-nosnippet>240</a>        <span class="self">self</span>.add_host(|id| {
+<a href=#241 id=241 data-nosnippet>241</a>            GcpComputeEngineHost::new(
+<a href=#242 id=242 data-nosnippet>242</a>                id,
+<a href=#243 id=243 data-nosnippet>243</a>                project,
+<a href=#244 id=244 data-nosnippet>244</a>                machine_type,
+<a href=#245 id=245 data-nosnippet>245</a>                image,
+<a href=#246 id=246 data-nosnippet>246</a>                target_type.unwrap_or(HostTargetType::Linux(<span class="kw">crate</span>::LinuxCompileType::Musl)),
+<a href=#247 id=247 data-nosnippet>247</a>                region,
+<a href=#248 id=248 data-nosnippet>248</a>                network,
+<a href=#249 id=249 data-nosnippet>249</a>                user,
+<a href=#250 id=250 data-nosnippet>250</a>                display_name,
+<a href=#251 id=251 data-nosnippet>251</a>            )
+<a href=#252 id=252 data-nosnippet>252</a>        })
+<a href=#253 id=253 data-nosnippet>253</a>    }
+<a href=#254 id=254 data-nosnippet>254</a>
+<a href=#255 id=255 data-nosnippet>255</a>    <span class="attr">#[builder(entry = <span class="string">"AzureHost"</span>, exit = <span class="string">"add"</span>)]
+<a href=#256 id=256 data-nosnippet>256</a>    </span><span class="kw">pub fn </span>add_azure_host(
+<a href=#257 id=257 data-nosnippet>257</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#258 id=258 data-nosnippet>258</a>        project: String,
+<a href=#259 id=259 data-nosnippet>259</a>        os_type: String, <span class="comment">// linux or windows
+<a href=#260 id=260 data-nosnippet>260</a>        </span>machine_size: String,
+<a href=#261 id=261 data-nosnippet>261</a>        image: <span class="prelude-ty">Option</span>&lt;HashMap&lt;String, String&gt;&gt;,
+<a href=#262 id=262 data-nosnippet>262</a>        target_type: <span class="prelude-ty">Option</span>&lt;HostTargetType&gt;,
+<a href=#263 id=263 data-nosnippet>263</a>        region: String,
+<a href=#264 id=264 data-nosnippet>264</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#265 id=265 data-nosnippet>265</a>    ) -&gt; Arc&lt;AzureHost&gt; {
+<a href=#266 id=266 data-nosnippet>266</a>        <span class="self">self</span>.add_host(|id| {
+<a href=#267 id=267 data-nosnippet>267</a>            AzureHost::new(
+<a href=#268 id=268 data-nosnippet>268</a>                id,
+<a href=#269 id=269 data-nosnippet>269</a>                project,
+<a href=#270 id=270 data-nosnippet>270</a>                os_type,
+<a href=#271 id=271 data-nosnippet>271</a>                machine_size,
+<a href=#272 id=272 data-nosnippet>272</a>                image,
+<a href=#273 id=273 data-nosnippet>273</a>                target_type.unwrap_or(HostTargetType::Linux(<span class="kw">crate</span>::LinuxCompileType::Musl)),
+<a href=#274 id=274 data-nosnippet>274</a>                region,
+<a href=#275 id=275 data-nosnippet>275</a>                user,
+<a href=#276 id=276 data-nosnippet>276</a>            )
+<a href=#277 id=277 data-nosnippet>277</a>        })
+<a href=#278 id=278 data-nosnippet>278</a>    }
+<a href=#279 id=279 data-nosnippet>279</a>
+<a href=#280 id=280 data-nosnippet>280</a>    <span class="attr">#[builder(entry = <span class="string">"AwsEc2Host"</span>, exit = <span class="string">"add"</span>)]
+<a href=#281 id=281 data-nosnippet>281</a>    </span><span class="kw">pub fn </span>add_aws_ec2_host(
+<a href=#282 id=282 data-nosnippet>282</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#283 id=283 data-nosnippet>283</a>        region: String,
+<a href=#284 id=284 data-nosnippet>284</a>        instance_type: String,
+<a href=#285 id=285 data-nosnippet>285</a>        target_type: <span class="prelude-ty">Option</span>&lt;HostTargetType&gt;,
+<a href=#286 id=286 data-nosnippet>286</a>        ami: String,
+<a href=#287 id=287 data-nosnippet>287</a>        network: Arc&lt;RwLock&lt;AwsNetwork&gt;&gt;,
+<a href=#288 id=288 data-nosnippet>288</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#289 id=289 data-nosnippet>289</a>        display_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#290 id=290 data-nosnippet>290</a>    ) -&gt; Arc&lt;AwsEc2Host&gt; {
+<a href=#291 id=291 data-nosnippet>291</a>        <span class="self">self</span>.add_host(|id| {
+<a href=#292 id=292 data-nosnippet>292</a>            AwsEc2Host::new(
+<a href=#293 id=293 data-nosnippet>293</a>                id,
+<a href=#294 id=294 data-nosnippet>294</a>                region,
+<a href=#295 id=295 data-nosnippet>295</a>                instance_type,
+<a href=#296 id=296 data-nosnippet>296</a>                target_type.unwrap_or(HostTargetType::Linux(<span class="kw">crate</span>::LinuxCompileType::Musl)),
+<a href=#297 id=297 data-nosnippet>297</a>                ami,
+<a href=#298 id=298 data-nosnippet>298</a>                network,
+<a href=#299 id=299 data-nosnippet>299</a>                user,
+<a href=#300 id=300 data-nosnippet>300</a>                display_name,
+<a href=#301 id=301 data-nosnippet>301</a>            )
+<a href=#302 id=302 data-nosnippet>302</a>        })
+<a href=#303 id=303 data-nosnippet>303</a>    }
+<a href=#304 id=304 data-nosnippet>304</a>}
 </code></pre></div></section></main></body></html>
