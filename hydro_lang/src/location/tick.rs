@@ -305,15 +305,15 @@ where
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "deploy")]
+    #[cfg(feature = "sim")]
     use stageleft::q;
 
     use crate::live_collections::sliced::sliced;
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
-    #[cfg(feature = "deploy")]
+    #[cfg(feature = "sim")]
     use crate::nondet::nondet;
-    #[cfg(feature = "deploy")]
+    #[cfg(feature = "sim")]
     use crate::prelude::FlowBuilder;
 
     #[cfg(feature = "sim")]

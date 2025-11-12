@@ -158,19 +158,16 @@ where
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "deploy")]
-    use std::collections::HashMap;
-
-    #[cfg(feature = "deploy")]
+    #[cfg(feature = "sim")]
     use stageleft::q;
 
-    #[cfg(feature = "deploy")]
+    #[cfg(feature = "sim")]
     use super::CLUSTER_SELF_ID;
-    #[cfg(feature = "deploy")]
+    #[cfg(feature = "sim")]
     use crate::location::{Location, MembershipEvent};
-    #[cfg(feature = "deploy")]
+    #[cfg(feature = "sim")]
     use crate::nondet::nondet;
-    #[cfg(feature = "deploy")]
+    #[cfg(feature = "sim")]
     use crate::prelude::FlowBuilder;
 
     #[cfg(feature = "sim")]
@@ -211,6 +208,8 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_cluster_with_tick() {
+        use std::collections::HashMap;
+
         let flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
         let node = flow.process::<()>();

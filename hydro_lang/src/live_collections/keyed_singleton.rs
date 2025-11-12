@@ -1325,20 +1325,17 @@ where
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "deploy")]
-    use std::collections::HashMap;
-
-    #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
     #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
-    #[cfg(feature = "sim")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use stageleft::q;
 
-    #[cfg(feature = "sim")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
-    #[cfg(feature = "sim")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
-    #[cfg(feature = "sim")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
 
     #[cfg(feature = "deploy")]
@@ -1455,7 +1452,7 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        assert_eq!(external_out.next().await.unwrap(), HashMap::new());
+        assert_eq!(external_out.next().await.unwrap(), std::collections::HashMap::new());
 
         external_in.send((1, 1)).await.unwrap();
         assert_eq!(
@@ -1499,7 +1496,7 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        assert_eq!(external_out.next().await.unwrap(), HashMap::new());
+        assert_eq!(external_out.next().await.unwrap(), std::collections::HashMap::new());
 
         external_in.send((1, 1)).await.unwrap();
         assert_eq!(

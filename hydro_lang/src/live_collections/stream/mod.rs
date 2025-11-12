@@ -2952,8 +2952,10 @@ mod tests {
     use crate::compile::builder::FlowBuilder;
     #[cfg(feature = "deploy")]
     use crate::live_collections::stream::ExactlyOnce;
-    #[cfg(feature = "deploy")]
-    use crate::live_collections::stream::{NoOrder, TotalOrder};
+    #[cfg(feature = "sim")]
+    use crate::live_collections::stream::NoOrder;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
+    use crate::live_collections::stream::TotalOrder;
     #[cfg(feature = "deploy")]
     use crate::location::Location;
     #[cfg(feature = "deploy")]
