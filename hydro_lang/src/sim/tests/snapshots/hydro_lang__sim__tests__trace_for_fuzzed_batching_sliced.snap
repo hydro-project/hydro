@@ -5,7 +5,12 @@ expression: log_str
 Running Tick
 * --> src/sim/tests/mod.rs:123:24
 *  |        let batch = use(input, nondet!(/** test */));
-*  |                       ^ releasing items: [456, 456, 456, 456, 456, 456, 456, 456, ..] (1000 total)
+*  |                       ^ releasing items: [456, 456, 456, 456, 456, 456, 456, 456, ..] (972 total)
+
+Running Tick
+* --> src/sim/tests/mod.rs:123:24
+*  |        let batch = use(input, nondet!(/** test */));
+*  |                       ^ releasing items: [456, 456, 456, 456, 456, 456, 456, 456, ..] (28 total)
 
 Running Tick
 * --> src/sim/tests/mod.rs:123:24
