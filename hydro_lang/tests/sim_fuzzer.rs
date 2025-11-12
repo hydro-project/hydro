@@ -28,6 +28,7 @@ fn fuzz_with_cargo_sim() {
             .unwrap(),
         )
         .env("NO_COLOR", "1")
+        .env("HYDRO_NO_FAILURE_OUTPUT", "1")
         .stderr(std::process::Stdio::piped())
         .spawn()
         .unwrap();

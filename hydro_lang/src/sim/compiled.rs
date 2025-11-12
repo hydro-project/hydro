@@ -139,12 +139,16 @@ impl CompiledSim {
 
             std::fs::create_dir_all(&repro_folder).unwrap();
 
-            unsafe {
-                std::env::set_var(
-                    "BOLERO_FAILURE_OUTPUT",
-                    caller_fuzz_repro_path.to_str().unwrap(),
-                );
+            if !std::env::var("HYDRO_NO_FAILURE_OUTPUT").is_ok_and(|v| v == "1") {
+                unsafe {
+                    std::env::set_var(
+                        "BOLERO_FAILURE_OUTPUT",
+                        caller_fuzz_repro_path.to_str().unwrap(),
+                    );
+                }
+            }
 
+            unsafe {
                 std::env::set_var("BOLERO_LIBFUZZER_ARGS", libfuzzer_args);
             }
 

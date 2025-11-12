@@ -205,6 +205,15 @@ pre {
   border-top: 2px solid rgb(207, 207, 207);
 }
 
+h1.with-border a {
+  font-weight: inherit;
+  color: inherit;
+}
+
+h1.with-border a:hover {
+  text-decoration: none;
+}
+
 .menu__link {
   font-size: 0.9em;
 }
