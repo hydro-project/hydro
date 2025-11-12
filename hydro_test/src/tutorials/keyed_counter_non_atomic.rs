@@ -4,6 +4,7 @@ use hydro_lang::prelude::*;
 
 pub struct CounterServer;
 
+#[expect(clippy::type_complexity, reason = "output types with orderings")]
 pub fn keyed_counter_service_buggy<'a, L: Location<'a> + NoTick, O: Ordering>(
     increment_requests: KeyedStream<u32, String, L, Unbounded, O>,
     get_requests: KeyedStream<u32, String, L, Unbounded, O>,
