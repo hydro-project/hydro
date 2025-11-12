@@ -1452,7 +1452,10 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        assert_eq!(external_out.next().await.unwrap(), std::collections::HashMap::new());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            std::collections::HashMap::new()
+        );
 
         external_in.send((1, 1)).await.unwrap();
         assert_eq!(
@@ -1496,7 +1499,10 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        assert_eq!(external_out.next().await.unwrap(), std::collections::HashMap::new());
+        assert_eq!(
+            external_out.next().await.unwrap(),
+            std::collections::HashMap::new()
+        );
 
         external_in.send((1, 1)).await.unwrap();
         assert_eq!(
