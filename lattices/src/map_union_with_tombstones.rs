@@ -1,4 +1,6 @@
 //! Module containing the [`MapUnionWithTombstones`] lattice and aliases for different datastructures.
+//!
+//! See [`crate::tombstone`] for documentation on choosing a tombstone implementation.
 
 use std::cmp::Ordering::{self, *};
 use std::collections::{HashMap, HashSet};
@@ -8,6 +10,7 @@ use cc_traits::{Get, Iter, Len, Remove};
 
 use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
 use crate::collections::{EmptyMap, EmptySet, SingletonMap, SingletonSet};
+use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet, TombstoneSet};
 use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
 /// Map-union-with-tombstones compound lattice.
@@ -58,6 +61,7 @@ impl<Map, TombstoneSet> MapUnionWithTombstones<Map, TombstoneSet> {
     }
 }
 
+// Merge implementation using TombstoneSet trait for optimized union operations
 impl<MapSelf, MapOther, K, ValSelf, ValOther, TombstoneSetSelf, TombstoneSetOther>
     Merge<MapUnionWithTombstones<MapOther, TombstoneSetOther>>
     for MapUnionWithTombstones<MapSelf, TombstoneSetSelf>
@@ -69,11 +73,16 @@ where
     MapOther: IntoIterator<Item = (K, ValOther)>,
     ValSelf: Merge<ValOther> + LatticeFrom<ValOther>,
     ValOther: IsBot,
-    TombstoneSetSelf: Extend<K> + Len + for<'a> Get<&'a K> + Iter<Item = K>,
+    TombstoneSetSelf: TombstoneSet<K>,
     TombstoneSetOther: IntoIterator<Item = K>,
 {
     fn merge(&mut self, other: MapUnionWithTombstones<MapOther, TombstoneSetOther>) -> bool {
         let mut changed = false;
+
+        // Collect other.tombstones into a vec to avoid borrowing issues
+        let other_tombstones: Vec<_> = other.tombstones.into_iter().collect();
+        let old_tombstones_len = self.tombstones.len();
+
         // This vec collect is needed to prevent simultaneous mut references `self.0.extend` and
         // `self.0.get_mut`.
         // TODO(mingwei): This could be fixed with a different structure, maybe some sort of
@@ -101,14 +110,13 @@ where
             .collect();
         self.map.extend(iter);
 
-        let old_self_tombstones_len = self.tombstones.len();
-
+        // Extend tombstones and remove tombstoned keys from the map
         self.tombstones
-            .extend(other.tombstones.into_iter().inspect(|k| {
+            .extend(other_tombstones.into_iter().inspect(|k| {
                 self.map.remove(k);
             }));
 
-        if old_self_tombstones_len != self.tombstones.len() {
+        if old_tombstones_len != self.tombstones.len() {
             changed = true;
         }
 
@@ -335,6 +343,16 @@ pub type MapUnionWithTombstonesSingletonMapOnly<K, Val> =
 pub type MapUnionWithTombstonesTombstoneSingletonSetOnly<K, Val> =
     MapUnionWithTombstones<EmptyMap<K, Val>, SingletonSet<K>>;
 
+/// [`crate::tombstone::RoaringTombstoneSet`]-backed tombstone set with [`HashMap`] for the main map.
+/// Provides space-efficient tombstone storage for u64 integer keys.
+pub type MapUnionWithTombstonesRoaring<Val> =
+    MapUnionWithTombstones<HashMap<u64, Val>, RoaringTombstoneSet>;
+
+/// FST-backed tombstone set with [`HashMap`] for the main map.
+/// Provides space-efficient, collision-free tombstone storage for String keys.
+pub type MapUnionWithTombstonesFstString<Val> =
+    MapUnionWithTombstones<HashMap<String, Val>, FstTombstoneSet<String>>;
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -433,5 +451,95 @@ mod test {
         assert_eq!(map_empty, map_a_bot);
         assert_eq!(map_empty, map_b_bot);
         assert_eq!(map_a_bot, map_b_bot);
+    }
+
+    #[test]
+    fn roaring_u64_basic() {
+        let mut x = MapUnionWithTombstonesRoaring::new_from(
+            HashMap::from([
+                (1u64, SetUnionHashSet::new_from([10])),
+                (2, SetUnionHashSet::new_from([20])),
+            ]),
+            RoaringTombstoneSet::new(),
+        );
+        let mut y = MapUnionWithTombstonesRoaring::new_from(
+            HashMap::from([
+                (2u64, SetUnionHashSet::new_from([21])),
+                (3, SetUnionHashSet::new_from([30])),
+            ]),
+            RoaringTombstoneSet::new(),
+        );
+
+        // Add tombstone for key 2
+        y.as_reveal_mut().1.insert(2);
+
+        x.merge(y);
+
+        // Should have keys 1 and 3, but not 2 (tombstoned)
+        assert!(!x.as_reveal_ref().0.contains_key(&2));
+        assert!(x.as_reveal_ref().0.contains_key(&1));
+        assert!(x.as_reveal_ref().0.contains_key(&3));
+        assert!(x.as_reveal_ref().1.contains(&2));
+    }
+
+    #[test]
+    fn fst_string_basic() {
+        let mut x = MapUnionWithTombstonesFstString::new_from(
+            HashMap::from([
+                ("apple".to_string(), SetUnionHashSet::new_from([1])),
+                ("banana".to_string(), SetUnionHashSet::new_from([2])),
+            ]),
+            FstTombstoneSet::new(),
+        );
+        let mut y = MapUnionWithTombstonesFstString::new_from(
+            HashMap::from([
+                ("banana".to_string(), SetUnionHashSet::new_from([3])),
+                ("cherry".to_string(), SetUnionHashSet::new_from([4])),
+            ]),
+            FstTombstoneSet::new(),
+        );
+
+        // Add tombstone for "banana"
+        y.as_reveal_mut().1.extend(vec!["banana".to_string()]);
+
+        x.merge(y);
+
+        // Should have "apple" and "cherry", but not "banana" (tombstoned)
+        assert!(!x.as_reveal_ref().0.contains_key("banana"));
+        assert!(x.as_reveal_ref().0.contains_key("apple"));
+        assert!(x.as_reveal_ref().0.contains_key("cherry"));
+        assert!(x.as_reveal_ref().1.contains(b"banana"));
+    }
+
+    #[test]
+    fn roaring_merge_efficiency() {
+        // Test that merging roaring bitmaps works correctly
+        let mut x = MapUnionWithTombstonesRoaring::new_from(
+            HashMap::from([
+                (1u64, SetUnionHashSet::new_from([1])),
+                (2, SetUnionHashSet::new_from([2])),
+            ]),
+            RoaringTombstoneSet::from_iter(vec![10u64, 20]),
+        );
+
+        let y = MapUnionWithTombstonesRoaring::new_from(
+            HashMap::from([(3u64, SetUnionHashSet::new_from([3]))]),
+            RoaringTombstoneSet::from_iter(vec![30u64, 2]),
+        );
+
+        x.merge(y);
+
+        // Should have all tombstones
+        assert!(x.as_reveal_ref().1.contains(&10));
+        assert!(x.as_reveal_ref().1.contains(&20));
+        assert!(x.as_reveal_ref().1.contains(&30));
+        assert!(x.as_reveal_ref().1.contains(&2));
+
+        // Should not have key 2 in the map
+        assert!(!x.as_reveal_ref().0.contains_key(&2));
+
+        // Should have keys 1 and 3
+        assert!(x.as_reveal_ref().0.contains_key(&1));
+        assert!(x.as_reveal_ref().0.contains_key(&3));
     }
 }
