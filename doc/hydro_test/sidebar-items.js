@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["cluster","distributed","external_client","local"]};
+window.SIDEBAR_ITEMS = {"mod":["cluster","distributed","external_client","local","tutorials"]};
