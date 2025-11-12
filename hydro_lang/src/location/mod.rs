@@ -261,6 +261,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_deploy::Deployment;
     /// # use futures::{SinkExt, StreamExt};
@@ -295,6 +296,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     ///     vec![1, 2, 3, 42]
     /// );
     /// # });
+    /// # }
     /// ```
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bind_single_client<L, T, Codec: Encoder<T> + Decoder>(

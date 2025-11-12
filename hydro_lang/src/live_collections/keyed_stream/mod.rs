@@ -704,6 +704,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -720,6 +721,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn cross_singleton<O2>(
         self,
@@ -1654,6 +1656,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1671,6 +1674,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, 3));
     /// # assert_eq!(stream.next().await.unwrap(), (2, 2));
     /// # }));
+    /// # }
     /// ```
     pub fn value_counts(self) -> KeyedSingleton<K, usize, L, B::WhenValueUnbounded> {
         self.assume_ordering_trusted(
@@ -2422,6 +2426,7 @@ mod tests {
         // - one case: all three together
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_batch_unordered_shuffles() {
         let flow = FlowBuilder::new();

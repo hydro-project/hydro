@@ -82,7 +82,7 @@ macro_rules! __sliced_parse_uses__ {
 /// let stream = sliced! {
 ///     let name1 = use(collection1, nondet!(/** explanation */));
 ///     let name2 = use::atomic(collection2, nondet!(/** explanation */));
-///     
+///
 ///     // arbitrary statements can follow
 ///     let intermediate = name1.map(...);
 ///     intermediate.cross_singleton(name2)
@@ -91,6 +91,7 @@ macro_rules! __sliced_parse_uses__ {
 ///
 /// # Example with two collections
 /// ```rust
+/// # #[cfg(feature = "deploy")] {
 /// # use hydro_lang::prelude::*;
 /// # use futures::StreamExt;
 /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -109,6 +110,7 @@ macro_rules! __sliced_parse_uses__ {
 /// # assert_eq!(stream.next().await.unwrap(), (4, 5));
 /// # assert_eq!(stream.next().await.unwrap(), (6, 5));
 /// # }));
+/// # }
 /// ```
 macro_rules! __sliced__ {
     ($($tt:tt)*) => {
