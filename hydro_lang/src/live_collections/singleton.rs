@@ -260,6 +260,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -270,6 +271,7 @@ where
     /// // 10
     /// # assert_eq!(stream.next().await.unwrap(), 10);
     /// # }));
+    /// # }
     /// ```
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Singleton<U, L, B>
     where
@@ -300,6 +302,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -312,6 +315,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn flat_map_ordered<U, I, F>(
         self,
@@ -342,6 +346,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
@@ -359,6 +364,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2, 3]);
     /// # }));
+    /// # }
     /// ```
     pub fn flat_map_unordered<U, I, F>(
         self,
@@ -392,6 +398,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -404,6 +411,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn flatten_ordered<U>(self) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
@@ -420,6 +428,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
@@ -437,6 +446,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2, 3]);
     /// # }));
+    /// # }
     /// ```
     pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder, ExactlyOnce>
     where
@@ -456,6 +466,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -466,6 +477,7 @@ where
     /// // 5
     /// # assert_eq!(stream.next().await.unwrap(), 5);
     /// # }));
+    /// # }
     /// ```
     pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
     where
@@ -492,6 +504,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -504,6 +517,7 @@ where
     /// // 42
     /// # assert_eq!(stream.next().await.unwrap(), 42);
     /// # }));
+    /// # }
     /// ```
     pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
     where
@@ -530,6 +544,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -546,6 +561,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn zip<O>(self, other: O) -> <Self as ZipResult<'a, O>>::Out
     where
@@ -593,6 +609,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -617,6 +634,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_if_some<U>(self, signal: Optional<U, L, B>) -> Optional<T, L, B> {
         self.zip::<Optional<(), L, B>>(signal.map(q!(|_u| ())))
@@ -631,6 +649,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -655,6 +674,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_if_none<U>(self, other: Optional<U, L, B>) -> Optional<T, L, B> {
         self.filter_if_some(
@@ -823,6 +843,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -846,6 +867,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, TotalOrder, ExactlyOnce> {
         self.into_stream().all_ticks()
@@ -870,6 +892,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -894,6 +917,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn latest(self) -> Singleton<T, L, Unbounded> {
         Singleton::new(
@@ -950,6 +974,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -966,6 +991,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(
@@ -1067,12 +1093,16 @@ mod tests {
     use futures::{SinkExt, StreamExt};
     #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
+    #[cfg(feature = "deploy")]
     use stageleft::q;
 
+    #[cfg(feature = "deploy")]
     use crate::compile::builder::FlowBuilder;
     #[cfg(feature = "deploy")]
     use crate::live_collections::stream::ExactlyOnce;
+    #[cfg(feature = "deploy")]
     use crate::location::Location;
+    #[cfg(feature = "deploy")]
     use crate::nondet::nondet;
 
     #[cfg(feature = "deploy")]
@@ -1118,6 +1148,7 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), 1);
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     #[should_panic]
     fn sim_fold_intermediate_states() {
@@ -1139,6 +1170,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_fold_intermediate_state_count() {
         let flow = FlowBuilder::new();
@@ -1166,6 +1198,7 @@ mod tests {
         )
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_fold_no_repeat_initial() {
         // check that we don't repeat the initial state of the fold in autonomous decisions
@@ -1193,6 +1226,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     #[should_panic]
     fn sim_fold_repeats_snapshots() {
@@ -1223,6 +1257,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_fold_repeats_snapshots_count() {
         // check the number of instances
@@ -1250,6 +1285,7 @@ mod tests {
         // don't have a combinatorial explanation for this number yet, but checked via logs
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_top_level_singleton_exhaustive() {
         // ensures that top-level singletons have only one snapshot
@@ -1272,6 +1308,7 @@ mod tests {
         assert_eq!(count, 1);
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_top_level_singleton_join_count() {
         // if a tick consumes a static snapshot and a stream batch, only the batch require space

@@ -26,6 +26,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -50,6 +51,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # results.sort();
     /// # assert_eq!(results, vec!["(MemberId::<()>(0), 0)", "(MemberId::<()>(1), 1)", "(MemberId::<()>(2), 2)", "(MemberId::<()>(3), 3)"]);
     /// # }));
+    /// # }
     /// ```
     pub fn demux_bincode(
         self,
@@ -94,6 +96,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -124,6 +127,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// #   "(MemberId::<()>(3), (MemberId::<()>(0), 3))", "(MemberId::<()>(3), (MemberId::<()>(1), 3))", "(MemberId::<()>(3), (MemberId::<()>(2), 3))", "(MemberId::<()>(3), (MemberId::<()>(3), 3))"
     /// # ]);
     /// # }));
+    /// # }
     /// ```
     pub fn demux_bincode(
         self,

@@ -1,28 +1,41 @@
+#[cfg(feature = "deploy")]
 use std::fs::{self, File};
+#[cfg(feature = "deploy")]
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+#[cfg(feature = "deploy")]
+use std::path::Path;
+#[cfg(feature = "deploy")]
+use std::path::PathBuf;
 
 #[cfg(feature = "deploy")]
 use dfir_lang::graph::DfirGraph;
+#[cfg(feature = "deploy")]
 use proc_macro2::Span;
-use sha2::{Digest, Sha256};
+#[cfg(feature = "deploy")]
+use sha2::{Sha256, Digest};
 #[cfg(feature = "deploy")]
 use stageleft::internal::quote;
 #[cfg(feature = "deploy")]
 use syn::visit_mut::VisitMut;
+#[cfg(feature = "deploy")]
 use trybuild_internals_api::cargo::{self, Metadata};
+#[cfg(feature = "deploy")]
 use trybuild_internals_api::env::Update;
+#[cfg(feature = "deploy")]
 use trybuild_internals_api::run::{PathDependency, Project};
+#[cfg(feature = "deploy")]
 use trybuild_internals_api::{Runner, dependencies, features, path};
 
 #[cfg(feature = "deploy")]
 use super::rewriters::UseTestModeStaged;
 
+#[cfg(feature = "deploy")]
 pub const HYDRO_RUNTIME_FEATURES: &[&str] = &["deploy_integration", "runtime_measure"];
 
 pub(crate) static IS_TEST: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
+#[cfg(feature = "deploy")]
 pub(crate) static CONCURRENT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Enables "test mode" for Hydro, which makes it possible to compile Hydro programs written
@@ -54,6 +67,7 @@ fn clean_name_hint(name_hint: &str) -> String {
         .replace(")", "")
 }
 
+#[cfg(feature = "deploy")]
 pub struct TrybuildConfig {
     pub project_dir: PathBuf,
     pub target_dir: PathBuf,
@@ -199,6 +213,7 @@ pub fn compile_graph_trybuild(
     source_ast
 }
 
+#[cfg(feature = "deploy")]
 pub fn create_trybuild()
 -> Result<(PathBuf, PathBuf, Option<Vec<String>>), trybuild_internals_api::error::Error> {
     let Metadata {
@@ -420,6 +435,7 @@ crate-type = ["cdylib"]"#,
     ))
 }
 
+#[cfg(feature = "deploy")]
 fn check_contents(contents: &[u8], path: &Path) -> Result<bool, std::io::Error> {
     let mut file = File::options()
         .read(true)
@@ -434,6 +450,7 @@ fn check_contents(contents: &[u8], path: &Path) -> Result<bool, std::io::Error> 
     Ok(existing_contents == contents)
 }
 
+#[cfg(feature = "deploy")]
 pub(crate) fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::Error> {
     let mut file = File::options()
         .read(true)

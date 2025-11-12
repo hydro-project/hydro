@@ -96,6 +96,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
@@ -110,6 +111,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// #     assert_eq!(stream.next().await, Some(w));
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn send_bincode<L2>(
         self,
@@ -152,6 +154,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -173,6 +176,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # results.sort();
     /// # assert_eq!(results, vec!["(MemberId::<()>(0), 123)", "(MemberId::<()>(1), 123)", "(MemberId::<()>(2), 123)", "(MemberId::<()>(3), 123)"]);
     /// # }));
+    /// # }
     /// ```
     pub fn broadcast_bincode<L2: 'a>(
         self,
@@ -200,6 +204,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(async move {
@@ -224,6 +229,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///     assert_eq!(external_recv_stream.next().await, Some(w));
     /// }
     /// # });
+    /// # }
     /// ```
     pub fn send_bincode_external<L2>(self, other: &External<L2>) -> ExternalBincodeStream<T, O, R>
     where
@@ -268,6 +274,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -291,6 +298,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # results.sort();
     /// # assert_eq!(results, vec!["(MemberId::<()>(0), 0)", "(MemberId::<()>(1), 1)", "(MemberId::<()>(2), 2)", "(MemberId::<()>(3), 3)"]);
     /// # }));
+    /// # }
     /// ```
     pub fn demux_bincode(
         self,
@@ -323,6 +331,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce};
     /// # use futures::StreamExt;
@@ -346,6 +355,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2, 3, 4]);
     /// # }));
+    /// # }
     /// ```
     pub fn round_robin_bincode<L2: 'a>(
         self,
@@ -385,6 +395,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
@@ -402,11 +413,13 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     /// # results.sort();
     /// # assert_eq!(results, vec!["(MemberId::<()>(0), 1)", "(MemberId::<()>(1), 1)", "(MemberId::<()>(2), 1)", "(MemberId::<()>(3), 1)"]);
     /// # }));
+    /// # }
     /// ```
     ///
     /// If you don't need to know the source for each element, you can use `.values()`
     /// to get just the data:
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::live_collections::stream::NoOrder;
     /// # use futures::StreamExt;
@@ -425,6 +438,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     /// // 1, 1, 1, 1
     /// # assert_eq!(results, vec!["1", "1", "1", "1"]);
     /// # }));
+    /// # }
     /// ```
     pub fn send_bincode<L2>(
         self,
@@ -473,6 +487,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use hydro_lang::location::MemberId;
     /// # use futures::StreamExt;
@@ -501,6 +516,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     /// #   "(MemberId::<()>(3), (MemberId::<()>(0), 123))", "(MemberId::<()>(3), (MemberId::<()>(1), 123))", "(MemberId::<()>(3), (MemberId::<()>(2), 123))", "(MemberId::<()>(3), (MemberId::<()>(3), 123))"
     /// # ]);
     /// # }));
+    /// # }
     /// ```
     pub fn broadcast_bincode<L2: 'a>(
         self,
@@ -539,6 +555,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
@@ -568,6 +585,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// #   "(MemberId::<()>(3), (MemberId::<()>(0), 3))", "(MemberId::<()>(3), (MemberId::<()>(1), 3))", "(MemberId::<()>(3), (MemberId::<()>(2), 3))", "(MemberId::<()>(3), (MemberId::<()>(3), 3))"
     /// # ]);
     /// # }));
+    /// # }
     /// ```
     pub fn demux_bincode(
         self,
@@ -582,12 +600,17 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "sim")]
     use stageleft::q;
 
+    #[cfg(feature = "sim")]
     use crate::location::{Location, MemberId};
+    #[cfg(feature = "sim")]
     use crate::nondet::nondet;
+    #[cfg(feature = "sim")]
     use crate::prelude::FlowBuilder;
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_send_bincode_o2o() {
         let flow = FlowBuilder::new();
@@ -620,6 +643,7 @@ mod tests {
         assert_eq!(instances, 4); // 2^{3 - 1}
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_send_bincode_m2o() {
         let flow = FlowBuilder::new();
@@ -656,6 +680,7 @@ mod tests {
         assert_eq!(instances, 75); // ∑ (k=1 to 4) S(4,k) × k! = 75
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_send_bincode_multiple_m2o() {
         let flow = FlowBuilder::new();
@@ -706,6 +731,7 @@ mod tests {
         assert_eq!(instances, 1);
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_send_bincode_o2m() {
         let flow = FlowBuilder::new();
@@ -740,6 +766,7 @@ mod tests {
             });
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_broadcast_bincode_o2m() {
         let flow = FlowBuilder::new();
@@ -782,6 +809,7 @@ mod tests {
         assert!(c_1_produced && c_2_produced); // in at least one execution each, the cluster member received both messages
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_send_bincode_m2m() {
         let flow = FlowBuilder::new();

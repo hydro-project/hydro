@@ -158,6 +158,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -169,6 +170,7 @@ where
     /// // 123
     /// # assert_eq!(stream.next().await.unwrap(), 123);
     /// # }));
+    /// # }
     /// ```
     pub fn none<T>(&self) -> Optional<T, Self, Bounded> {
         let e = q!([]);
@@ -192,6 +194,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -207,6 +210,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), 123);
     /// # assert_eq!(stream.next().await.unwrap(), 123);
     /// # }));
+    /// # }
     /// ```
     pub fn optional_first_tick<T: Clone>(
         &self,
@@ -301,13 +305,18 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "deploy")]
     use stageleft::q;
 
     use crate::live_collections::sliced::sliced;
+    #[cfg(feature = "deploy")]
     use crate::location::Location;
+    #[cfg(feature = "deploy")]
     use crate::nondet::nondet;
+    #[cfg(feature = "deploy")]
     use crate::prelude::FlowBuilder;
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_atomic_stream() {
         let flow = FlowBuilder::new();
@@ -366,6 +375,7 @@ mod tests {
         assert_eq!(instances_read_before_write, 3); // read before write, write before read, both in same tick
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     #[should_panic]
     fn sim_non_atomic_stream() {
