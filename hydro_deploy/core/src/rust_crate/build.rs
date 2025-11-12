@@ -119,7 +119,10 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     match params.target_type {
                         HostTargetType::Local => {}
-                        HostTargetType::Linux => {
+                        HostTargetType::Linux(crate::LinuxCompileType::Glibc) => {
+                            command.args(["--target", "x86_64-unknown-linux-gnu"]);
+                        }
+                        HostTargetType::Linux(crate::LinuxCompileType::Musl) => {
                             command.args(["--target", "x86_64-unknown-linux-musl"]);
                         }
                     }
