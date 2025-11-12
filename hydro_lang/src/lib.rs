@@ -22,6 +22,9 @@ pub mod runtime_support {
     pub use colored;
     pub use {bincode, dfir_rs, stageleft, tokio};
     pub mod resource_measurement;
+
+    #[cfg(feature = "runtime_mimalloc")]
+    pub use mimalloc;
 }
 
 #[doc(hidden)]
