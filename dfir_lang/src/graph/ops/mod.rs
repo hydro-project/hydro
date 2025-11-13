@@ -306,6 +306,8 @@ declare_ops![
     persist_mut_keyed::PERSIST_MUT_KEYED,
     prefix::PREFIX,
     resolve_futures::RESOLVE_FUTURES,
+    resolve_futures_blocking::RESOLVE_FUTURES_BLOCKING,
+    resolve_futures_blocking_ordered::RESOLVE_FUTURES_BLOCKING_ORDERED,
     resolve_futures_ordered::RESOLVE_FUTURES_ORDERED,
     reduce::REDUCE,
     scan::SCAN,
