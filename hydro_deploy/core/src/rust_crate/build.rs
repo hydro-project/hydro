@@ -227,12 +227,17 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                             cargo_metadata::Message::CompilerMessage(mut msg) => {
                                 // Update the path displayed to enable clicking in IDE.
                                 {
-                                    let full_path = format!(
-                                        "(full path) {}",
-                                        params.src.join("src/bin").display()
-                                    );
                                     if let Some(rendered) = msg.message.rendered.as_mut() {
-                                        *rendered = rendered.replace("src/bin", &full_path);
+                                        for diag_span in msg.message.spans.iter() {
+                                            *rendered = rendered.replace(
+                                                &diag_span.file_name,
+                                                &format!(
+                                                    "(full_path) {}/{}",
+                                                    params.src.display(),
+                                                    diag_span.file_name
+                                                ),
+                                            )
+                                        }
                                     }
                                 }
 
