@@ -32,16 +32,16 @@ async fn test_initial() {
     // Initial metrics should be zero
     for sg_id in subgraph_ids.iter() {
         let sg_metrics = metrics.subgraph_metrics(*sg_id);
-        assert_eq!(sg_metrics.total_run_count, 0);
-        assert_eq!(sg_metrics.total_poll_count, 0);
-        assert_eq!(sg_metrics.total_idle_count, 0);
-        assert_eq!(sg_metrics.total_poll_duration, Duration::ZERO);
-        assert_eq!(sg_metrics.total_idle_duration, Duration::ZERO);
+        assert_eq!(0, sg_metrics.total_run_count());
+        assert_eq!(0, sg_metrics.total_poll_count());
+        assert_eq!(0, sg_metrics.total_idle_count());
+        assert_eq!(Duration::ZERO, sg_metrics.total_poll_duration());
+        assert_eq!(Duration::ZERO, sg_metrics.total_idle_duration());
     }
 
     for handoff_id in handoff_ids.iter() {
         let handoff_metrics = metrics.handoff_metrics(*handoff_id);
-        assert_eq!(handoff_metrics.total_items_count, 0);
+        assert_eq!(0, handoff_metrics.total_items_count());
     }
 }
 
@@ -64,8 +64,8 @@ async fn test_subgraph_metrics() {
     let sg_metrics = metrics.subgraph_metrics(sg_id);
 
     // Should have run once
-    assert_eq!(1, sg_metrics.total_run_count);
-    assert!(sg_metrics.total_poll_count > 0);
+    assert_eq!(1, sg_metrics.total_run_count());
+    assert!(0 < sg_metrics.total_poll_count());
 
     // Poll duration should be non-zero (though might be very small)
     // We don't assert on exact duration as it depends on system performance
@@ -73,9 +73,9 @@ async fn test_subgraph_metrics() {
     println!(
         "Subgraph {:?}: runs={}, polls={}, poll_duration={:?}",
         sg_id,
-        sg_metrics.total_run_count,
-        sg_metrics.total_poll_count,
-        sg_metrics.total_poll_duration
+        sg_metrics.total_run_count(),
+        sg_metrics.total_poll_count(),
+        sg_metrics.total_poll_duration(),
     );
 }
 
@@ -99,7 +99,7 @@ async fn test_handoff_metrics() {
     let handoff_id = handoff_ids[0];
 
     let handoff_metrics = metrics.handoff_metrics(handoff_id);
-    assert_eq!(5, handoff_metrics.total_items_count);
+    assert_eq!(5, handoff_metrics.total_items_count());
 
     // Verify output
     let output: Vec<_> = collect_ready_async(&mut output_recv).await;
@@ -128,7 +128,7 @@ async fn test_multiple_ticks() {
     let sg_id = sg_ids[0];
 
     let sg_metrics = metrics_after_tick1.subgraph_metrics(sg_id);
-    assert_eq!(1, sg_metrics.total_run_count);
+    assert_eq!(1, sg_metrics.total_run_count());
     assert_eq!(1, df.current_tick().0);
 
     // Send more data and run second tick
@@ -139,7 +139,9 @@ async fn test_multiple_ticks() {
     let metrics_after_tick2 = df.metrics();
     assert_eq!(
         2,
-        metrics_after_tick2.subgraph_metrics(sg_id).total_run_count
+        metrics_after_tick2
+            .subgraph_metrics(sg_id)
+            .total_run_count()
     );
     assert_eq!(2, df.current_tick().0);
 
