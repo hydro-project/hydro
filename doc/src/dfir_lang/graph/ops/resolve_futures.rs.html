@@ -99,7 +99,7 @@
 <a href=#99 id=99 data-nosnippet>99</a>                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
 <a href=#100 id=100 data-nosnippet>100</a>                    </span>#context.state_ref_unchecked(#futures_ident).borrow_mut()
 <a href=#101 id=101 data-nosnippet>101</a>                };
-<a href=#102 id=102 data-nosnippet>102</a>                #root::compiled::push::ResolveFutures::new(queue, #context.waker(), #output)
+<a href=#102 id=102 data-nosnippet>102</a>                #root::compiled::push::ResolveFutures::new(queue, <span class="prelude-val">Some</span>(#context.waker()), #output)
 <a href=#103 id=103 data-nosnippet>103</a>            };
 <a href=#104 id=104 data-nosnippet>104</a>        }
 <a href=#105 id=105 data-nosnippet>105</a>    };
