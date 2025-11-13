@@ -6,7 +6,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 use std::path::Path;
-use std::pin::Pin;
+use std::pin::{self, Pin};
 use std::task::{Context, Poll, Waker};
 
 use bytes::Bytes;
@@ -25,6 +25,7 @@ use crate::compile::deploy::ConnectableAsync;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 use crate::location::dynamic::LocationId;
 use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
+use crate::sim::runtime::SimInlineHook;
 
 /// A handle to a compiled Hydro simulation, which can be instantiated and run.
 pub struct CompiledSim {
@@ -64,6 +65,7 @@ type SimLoaded<'a> = libloading::Symbol<
         Vec<(&'static str, Option<u32>, Dfir<'static>)>,
         Vec<(&'static str, Option<u32>, Dfir<'static>)>,
         HashMap<(&'static str, Option<u32>), Vec<Box<dyn SimHook>>>,
+        HashMap<(&'static str, Option<u32>), Vec<Box<dyn SimInlineHook>>>,
     ),
 >;
 
@@ -394,7 +396,7 @@ impl<'a> CompiledSimInstance<'a> {
             self.input_ports.insert(remaining, receiver);
         }
 
-        let (async_dfirs, tick_dfirs, hooks) = unsafe {
+        let (async_dfirs, tick_dfirs, hooks, inline_hooks) = unsafe {
             (self.func)(
                 colored::control::SHOULD_COLORIZE.should_colorize(),
                 self.output_ports,
@@ -422,6 +424,10 @@ impl<'a> CompiledSimInstance<'a> {
                 .map(|(lid, c_id, dfir)| (serde_json::from_str(lid).unwrap(), c_id, dfir))
                 .collect(),
             hooks: hooks
+                .into_iter()
+                .map(|((lid, cid), hs)| ((serde_json::from_str(lid).unwrap(), cid), hs))
+                .collect(),
+            inline_hooks: inline_hooks
                 .into_iter()
                 .map(|((lid, cid), hs)| ((serde_json::from_str(lid).unwrap(), cid), hs))
                 .collect(),
@@ -641,6 +647,7 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
 }
 
 type Hooks = HashMap<(LocationId, Option<u32>), Vec<Box<dyn SimHook>>>;
+type InlineHooks = HashMap<(LocationId, Option<u32>), Vec<Box<dyn SimInlineHook>>>;
 
 /// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
 /// about scheduling ticks and choices for non-deterministic operators like batch.
@@ -649,6 +656,7 @@ struct LaunchedSim<W: std::io::Write> {
     possibly_ready_ticks: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
     not_ready_ticks: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
     hooks: Hooks,
+    inline_hooks: InlineHooks,
     log: LogKind<W>,
 }
 
@@ -772,7 +780,38 @@ impl<W: std::io::Write> LaunchedSim<W> {
                         });
                     });
 
-                    assert!(removed.2.run_tick().await);
+                    let run_tick_future = removed.2.run_tick();
+                    if let Some(inline_hooks) =
+                        self.inline_hooks.get_mut(&(removed.0.clone(), removed.1))
+                    {
+                        let mut run_tick_future_pinned = pin::pin!(run_tick_future);
+
+                        loop {
+                            tokio::select! {
+                                biased;
+                                r = &mut run_tick_future_pinned => {
+                                    assert!(r);
+                                    break;
+                                }
+                                _ = async {} => {
+                                    bolero_generator::any::scope::borrow_with(|driver| {
+                                        for hook in inline_hooks.iter_mut() {
+                                            if hook.pending_decision() {
+                                                if !hook.has_decision() {
+                                                    hook.autonomous_decision(driver);
+                                                }
+
+                                                hook.release_decision(&mut tick_decision_writer);
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    } else {
+                        assert!(run_tick_future.await);
+                    }
+
                     self.possibly_ready_ticks.push(removed);
                 }
             }
