@@ -44,6 +44,23 @@ pub trait SimHook {
     fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write);
 }
 
+/// A hook that can make inline decisions during the execution of a tick.
+///
+/// Primarily used for `ObserveNonDet` IR nodes.
+pub trait SimInlineHook {
+    /// Whether there are pending inputs that require a decision to be made.
+    fn pending_decision(&self) -> bool;
+
+    /// Whether a decision has already been made and is ready to be released.
+    fn has_decision(&self) -> bool;
+
+    /// Make an autonomous decision.
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>);
+
+    /// Release the decision that was made, logging to `log_writer`.
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write);
+}
+
 struct ManualDebug<'a, T>(&'a T, fn(&T) -> Option<String>);
 impl<'a, T> Debug for ManualDebug<'a, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -707,6 +724,87 @@ impl<K: Hash + Eq + Clone, V: Clone> SimHook for KeyedSingletonHook<K, V> {
             for (key, value, _) in to_release {
                 self.output.send((key, value)).unwrap();
             }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
+pub struct StreamOrderHook<T> {
+    input: Rc<RefCell<Option<Vec<T>>>>,
+    to_release: Option<Vec<T>>,
+    output: UnboundedSender<Vec<T>>,
+    batch_location: (&'static str, &'static str, &'static str),
+    format_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> StreamOrderHook<T> {
+    pub fn new(
+        input: Rc<RefCell<Option<Vec<T>>>>,
+        output: UnboundedSender<Vec<T>>,
+        batch_location: (&'static str, &'static str, &'static str),
+        format_debug: fn(&T) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            output,
+            batch_location,
+            format_debug,
+        }
+    }
+}
+
+impl<T> SimInlineHook for StreamOrderHook<T> {
+    fn pending_decision(&self) -> bool {
+        self.input.borrow().is_some()
+    }
+
+    fn has_decision(&self) -> bool {
+        self.to_release.is_some()
+    }
+
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let mut inputs = self.input.borrow_mut().take().unwrap();
+
+        // from Bolero
+        let max_dst = inputs.len().saturating_sub(1);
+        for src in 0..max_dst {
+            let dst = (src..=max_dst).generate(driver).unwrap();
+            inputs.swap(src, dst);
+        }
+
+        self.to_release = Some(inputs);
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.batch_location;
+                let note_str = format!(
+                    "^ ordered items: {:?}",
+                    TruncatedVecDebug(RefCell::new(Some(to_release.iter())), 8, self.format_debug)
+                );
+
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Cyan)
+                );
+            }
+
+            self.output.send(to_release).unwrap();
         } else {
             panic!("No decision to release");
         }
