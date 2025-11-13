@@ -3344,7 +3344,32 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
-    #[ignore = "assume_ordering not yet supported on bounded collections"]
+    #[should_panic]
+    fn sim_observe_order_batched() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+
+        let tick = node.tick();
+        let batch = input.batch(&tick, nondet!(/** test */));
+        let out_port = batch
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+            out_recv.assert_yields_only([1, 2, 3, 4]).await; // fails with assume_ordering
+        });
+    }
+
+    #[test]
     fn sim_observe_order_batched_count() {
         let flow = FlowBuilder::new();
         let external = flow.external::<()>();
