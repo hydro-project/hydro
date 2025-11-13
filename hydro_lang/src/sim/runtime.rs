@@ -812,3 +812,117 @@ impl<T> SimInlineHook for StreamOrderHook<T, TotalOrder> {
         }
     }
 }
+
+type KeyedStreamOrderHookInput<K, V> = Rc<RefCell<Option<Vec<(K, V)>>>>;
+
+pub struct KeyedStreamOrderHook<K: Hash + Eq + Clone, V, Order: Ordering> {
+    input: KeyedStreamOrderHookInput<K, V>,
+    to_release: Option<FxHashMap<K, Vec<V>>>,
+    output: UnboundedSender<Vec<(K, V)>>,
+    batch_location: (&'static str, &'static str, &'static str),
+    format_key_debug: fn(&K) -> Option<String>,
+    format_value_debug: fn(&V) -> Option<String>,
+    _phantom: std::marker::PhantomData<Order>,
+}
+
+impl<K: Hash + Eq + Clone, V, Order: Ordering> KeyedStreamOrderHook<K, V, Order> {
+    pub fn new(
+        input: KeyedStreamOrderHookInput<K, V>,
+        output: UnboundedSender<Vec<(K, V)>>,
+        batch_location: (&'static str, &'static str, &'static str),
+        format_key_debug: fn(&K) -> Option<String>,
+        format_value_debug: fn(&V) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            output,
+            batch_location,
+            format_key_debug,
+            format_value_debug,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedStreamOrderHook<K, V, TotalOrder> {
+    fn pending_decision(&self) -> bool {
+        self.input.borrow().is_some()
+    }
+
+    fn has_decision(&self) -> bool {
+        self.to_release.is_some()
+    }
+
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let mut inputs = self.input.borrow_mut().take().unwrap();
+        let mut grouped = FxHashMap::default();
+        for (k, v) in inputs.drain(..) {
+            grouped.entry(k).or_insert_with(Vec::new).push(v);
+        }
+
+        let mut out = FxHashMap::default();
+        for (key, mut values) in grouped {
+            while !values.is_empty() {
+                // TODO(shadaj): this isn't particularly efficient
+                let idx = (0..values.len()).generate(driver).unwrap();
+                let value = values.remove(idx);
+                out.entry(key.clone()).or_insert_with(Vec::new).push(value);
+            }
+        }
+
+        self.to_release = Some(out);
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.batch_location;
+                let mut note_str = String::new();
+                for (key, values) in &to_release {
+                    let entry_text = format!(
+                        "{:?}: {:?}",
+                        ManualDebug(key, self.format_key_debug),
+                        TruncatedVecDebug(
+                            RefCell::new(Some(values.iter())),
+                            8,
+                            self.format_value_debug
+                        )
+                    );
+                    if !note_str.is_empty() {
+                        note_str.push_str(", ");
+                    }
+                    note_str.push_str(&entry_text);
+                }
+                note_str = format!("^ ordered items: {{ {} }}", note_str);
+
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Cyan)
+                );
+            }
+
+            let mut flat_out = vec![];
+            for (k, vs) in to_release {
+                for v in vs {
+                    flat_out.push((k.clone(), v));
+                }
+            }
+            self.output.send(flat_out).unwrap();
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
