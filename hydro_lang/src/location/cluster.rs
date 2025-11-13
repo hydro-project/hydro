@@ -63,8 +63,8 @@ impl<'a, C> Location<'a> for Cluster<'a, C> {
 }
 
 pub struct ClusterIds<'a, C> {
-    pub(crate) id: usize,
-    pub(crate) _phantom: Invariant<'a, C>,
+    pub id: usize,
+    pub _phantom: Invariant<'a, C>,
 }
 
 impl<C> Clone for ClusterIds<'_, C> {
@@ -158,15 +158,19 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
+    #[cfg(feature = "sim")]
     use stageleft::q;
 
+    #[cfg(feature = "sim")]
     use super::CLUSTER_SELF_ID;
-    use crate::location::{Location, MembershipEvent};
+    #[cfg(feature = "sim")]
+    use crate::location::{Location, MemberId, MembershipEvent};
+    #[cfg(feature = "sim")]
     use crate::nondet::nondet;
+    #[cfg(feature = "sim")]
     use crate::prelude::FlowBuilder;
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_cluster_self_id() {
         let flow = FlowBuilder::new();
@@ -177,12 +181,12 @@ mod tests {
         let external = flow.external::<()>();
 
         let out_port = cluster1
-            .source_iter(q!(vec![CLUSTER_SELF_ID.get_raw_id()]))
+            .source_iter(q!(vec![CLUSTER_SELF_ID]))
             .send_bincode(&node)
             .values()
             .interleave(
                 cluster2
-                    .source_iter(q!(vec![CLUSTER_SELF_ID.get_raw_id()]))
+                    .source_iter(q!(vec![CLUSTER_SELF_ID]))
                     .send_bincode(&node)
                     .values(),
             )
@@ -196,13 +200,16 @@ mod tests {
                 compiled.launch();
 
                 out_recv
-                    .assert_yields_only_unordered(vec![0, 1, 2, 0, 1, 2, 3])
+                    .assert_yields_only_unordered([0, 1, 2, 0, 1, 2, 3].map(MemberId::from_raw_id))
                     .await
             });
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_cluster_with_tick() {
+        use std::collections::HashMap;
+
         let flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
         let node = flow.process::<()>();
@@ -215,7 +222,7 @@ mod tests {
             .all_ticks()
             .send_bincode(&node)
             .entries()
-            .map(q!(|(id, v)| (id.get_raw_id(), v)))
+            .map(q!(|(id, v)| (id, v)))
             .send_bincode_external(&external);
 
         let count = flow
@@ -227,7 +234,7 @@ mod tests {
 
                 let grouped = out_recv.collect_sorted::<Vec<_>>().await.into_iter().fold(
                     HashMap::new(),
-                    |mut acc: HashMap<u32, usize>, (id, v)| {
+                    |mut acc: HashMap<MemberId<()>, usize>, (id, v)| {
                         *acc.entry(id).or_default() += v;
                         acc
                     },
@@ -245,6 +252,7 @@ mod tests {
         // there are no dataflow cycles) and avoid simulating redundant interleavings
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_cluster_membership() {
         let flow = FlowBuilder::new();
@@ -255,7 +263,7 @@ mod tests {
         let out_port = node
             .source_cluster_members(&cluster)
             .entries()
-            .map(q!(|(id, v)| (id.get_raw_id(), v)))
+            .map(q!(|(id, v)| (id, v)))
             .send_bincode_external(&external);
 
         flow.sim()
@@ -266,8 +274,8 @@ mod tests {
 
                 out_recv
                     .assert_yields_only_unordered(vec![
-                        (0, MembershipEvent::Joined),
-                        (1, MembershipEvent::Joined),
+                        (MemberId::from_raw_id(0), MembershipEvent::Joined),
+                        (MemberId::from_raw_id(1), MembershipEvent::Joined),
                     ])
                     .await;
             });

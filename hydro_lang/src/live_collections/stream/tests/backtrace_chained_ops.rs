@@ -1,5 +1,6 @@
 // separate file for stable line numbers
 
+#[cfg(feature = "build")]
 #[cfg_attr(not(target_os = "linux"), ignore)]
 #[test]
 fn backtrace_chained_ops() {

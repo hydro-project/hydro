@@ -304,6 +304,7 @@ pub enum HydroSource {
     ExternalNetwork(),
     Iter(DebugExpr),
     Spin(),
+    ClusterMembers(LocationId),
 }
 
 #[cfg(feature = "build")]
@@ -362,6 +363,7 @@ pub trait DfirBuilder {
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         out_kind: &CollectionKind,
+        op_meta: &HydroIrOpMetadata,
     );
 
     #[expect(clippy::too_many_arguments, reason = "TODO")]
@@ -488,6 +490,7 @@ impl DfirBuilder for BTreeMap<usize, FlatGraphBuilder> {
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         _out_kind: &CollectionKind,
+        _op_meta: &HydroIrOpMetadata,
     ) {
         let builder = self.get_dfir_mut(location);
         builder.add_dfir(
@@ -705,7 +708,7 @@ impl HydroRoot {
                                             .clone();
 
                                         let sink_port = D::allocate_process_port(&from_node);
-                                        let source_port = D::allocate_external_port(&to_node);
+                                        let source_port: <D as Deploy<'a>>::Port = D::allocate_external_port(&to_node);
 
                                         if *unpaired {
                                             use stageleft::quote_type;
@@ -988,13 +991,13 @@ impl HydroRoot {
     }
 
     #[cfg(feature = "build")]
-    pub fn emit(
+    pub fn emit<'a, D: Deploy<'a>>(
         &mut self,
         graph_builders: &mut dyn DfirBuilder,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, syn::Ident>,
         next_stmt_id: &mut usize,
     ) {
-        self.emit_core(
+        self.emit_core::<D>(
             &mut BuildersOrCallback::Builders::<
                 fn(&mut HydroRoot, &mut usize),
                 fn(&mut HydroNode, &mut usize),
@@ -1005,7 +1008,7 @@ impl HydroRoot {
     }
 
     #[cfg(feature = "build")]
-    pub fn emit_core(
+    pub fn emit_core<'a, D: Deploy<'a>>(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
             impl FnMut(&mut HydroRoot, &mut usize),
@@ -1016,7 +1019,8 @@ impl HydroRoot {
     ) {
         match self {
             HydroRoot::ForEach { f, input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1044,7 +1048,8 @@ impl HydroRoot {
                 input,
                 ..
             } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1076,7 +1081,8 @@ impl HydroRoot {
             }
 
             HydroRoot::DestSink { sink, input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1099,7 +1105,8 @@ impl HydroRoot {
             }
 
             HydroRoot::CycleSink { ident, input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1171,18 +1178,18 @@ impl HydroRoot {
 }
 
 #[cfg(feature = "build")]
-pub fn emit(ir: &mut Vec<HydroRoot>) -> BTreeMap<usize, FlatGraphBuilder> {
+pub fn emit<'a, D: Deploy<'a>>(ir: &mut Vec<HydroRoot>) -> BTreeMap<usize, FlatGraphBuilder> {
     let mut builders = BTreeMap::new();
     let mut built_tees = HashMap::new();
     let mut next_stmt_id = 0;
     for leaf in ir {
-        leaf.emit(&mut builders, &mut built_tees, &mut next_stmt_id);
+        leaf.emit::<D>(&mut builders, &mut built_tees, &mut next_stmt_id);
     }
     builders
 }
 
 #[cfg(feature = "build")]
-pub fn traverse_dfir(
+pub fn traverse_dfir<'a, D: Deploy<'a>>(
     ir: &mut [HydroRoot],
     transform_root: impl FnMut(&mut HydroRoot, &mut usize),
     transform_node: impl FnMut(&mut HydroNode, &mut usize),
@@ -1191,7 +1198,7 @@ pub fn traverse_dfir(
     let mut next_stmt_id = 0;
     let mut callback = BuildersOrCallback::Callback(transform_root, transform_node);
     ir.iter_mut().for_each(|leaf| {
-        leaf.emit_core(&mut callback, &mut seen_tees, &mut next_stmt_id);
+        leaf.emit_core::<D>(&mut callback, &mut seen_tees, &mut next_stmt_id);
     });
 }
 
@@ -2047,7 +2054,7 @@ impl HydroNode {
     }
 
     #[cfg(feature = "build")]
-    pub fn emit_core(
+    pub fn emit_core<'a, D: Deploy<'a>>(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
             impl FnMut(&mut HydroRoot, &mut usize),
@@ -2063,7 +2070,8 @@ impl HydroNode {
             }
 
             HydroNode::Cast { inner, .. } => {
-                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let inner_ident =
+                    inner.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(_) => {}
@@ -2083,7 +2091,8 @@ impl HydroNode {
                 metadata,
                 ..
             } => {
-                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let inner_ident =
+                    inner.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let observe_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2097,6 +2106,7 @@ impl HydroNode {
                             &inner.metadata().collection_kind,
                             &observe_ident,
                             &metadata.collection_kind,
+                            &metadata.op,
                         );
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {
@@ -2110,7 +2120,8 @@ impl HydroNode {
             }
 
             HydroNode::Persist { inner, .. } => {
-                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let inner_ident =
+                    inner.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let persist_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2139,7 +2150,8 @@ impl HydroNode {
             HydroNode::Batch {
                 inner, metadata, ..
             } => {
-                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let inner_ident =
+                    inner.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let batch_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2166,7 +2178,8 @@ impl HydroNode {
             }
 
             HydroNode::YieldConcat { inner, .. } => {
-                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let inner_ident =
+                    inner.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let yield_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2192,7 +2205,8 @@ impl HydroNode {
             }
 
             HydroNode::BeginAtomic { inner, metadata } => {
-                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let inner_ident =
+                    inner.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let begin_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2219,7 +2233,8 @@ impl HydroNode {
             }
 
             HydroNode::EndAtomic { inner, .. } => {
-                let inner_ident = inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let inner_ident =
+                    inner.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let end_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2281,6 +2296,19 @@ impl HydroNode {
                             debug_assert!(metadata.location_kind.is_top_level());
                             parse_quote! {
                                 #source_ident = spin();
+                            }
+                        }
+
+                        HydroSource::ClusterMembers(location_id) => {
+                            debug_assert!(metadata.location_kind.is_top_level());
+
+                            let expr = stageleft::QuotedWithContext::splice_untyped_ctx(
+                                D::cluster_membership_stream(location_id),
+                                &(),
+                            );
+
+                            parse_quote! {
+                                #source_ident = source_stream(#expr);
                             }
                         }
                     };
@@ -2367,7 +2395,7 @@ impl HydroNode {
 
                     teed_from.clone()
                 } else {
-                    let inner_ident = inner.0.borrow_mut().emit_core(
+                    let inner_ident = inner.0.borrow_mut().emit_core::<D>(
                         builders_or_callback,
                         built_tees,
                         next_stmt_id,
@@ -2408,8 +2436,10 @@ impl HydroNode {
             }
 
             HydroNode::Chain { first, second, .. } => {
-                let first_ident = first.emit_core(builders_or_callback, built_tees, next_stmt_id);
-                let second_ident = second.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let first_ident =
+                    first.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
+                let second_ident =
+                    second.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let chain_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2438,8 +2468,10 @@ impl HydroNode {
             }
 
             HydroNode::ChainFirst { first, second, .. } => {
-                let first_ident = first.emit_core(builders_or_callback, built_tees, next_stmt_id);
-                let second_ident = second.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let first_ident =
+                    first.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
+                let second_ident =
+                    second.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let chain_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2468,8 +2500,10 @@ impl HydroNode {
             }
 
             HydroNode::CrossSingleton { left, right, .. } => {
-                let left_ident = left.emit_core(builders_or_callback, built_tees, next_stmt_id);
-                let right_ident = right.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let left_ident =
+                    left.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
+                let right_ident =
+                    right.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let cross_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2533,9 +2567,9 @@ impl HydroNode {
                     };
 
                 let left_ident =
-                    left_inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                    left_inner.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
                 let right_ident =
-                    right_inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                    right_inner.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let stream_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2597,8 +2631,8 @@ impl HydroNode {
                         (neg, quote!('tick))
                     };
 
-                let pos_ident = pos.emit_core(builders_or_callback, built_tees, next_stmt_id);
-                let neg_ident = neg.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let pos_ident = pos.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
+                let neg_ident = neg.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let stream_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2627,7 +2661,8 @@ impl HydroNode {
             }
 
             HydroNode::ResolveFutures { input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let futures_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2654,7 +2689,8 @@ impl HydroNode {
             }
 
             HydroNode::ResolveFuturesOrdered { input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let futures_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2681,7 +2717,8 @@ impl HydroNode {
             }
 
             HydroNode::Map { f, input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let map_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2708,7 +2745,8 @@ impl HydroNode {
             }
 
             HydroNode::FlatMap { f, input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let flat_map_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2735,7 +2773,8 @@ impl HydroNode {
             }
 
             HydroNode::Filter { f, input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let filter_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2762,7 +2801,8 @@ impl HydroNode {
             }
 
             HydroNode::FilterMap { f, input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let filter_map_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2789,7 +2829,8 @@ impl HydroNode {
             }
 
             HydroNode::Sort { input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let sort_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2816,7 +2857,8 @@ impl HydroNode {
             }
 
             HydroNode::DeferTick { input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let defer_tick_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2843,7 +2885,8 @@ impl HydroNode {
             }
 
             HydroNode::Enumerate { input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let enumerate_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2875,7 +2918,8 @@ impl HydroNode {
             }
 
             HydroNode::Inspect { f, input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let inspect_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2902,7 +2946,8 @@ impl HydroNode {
             }
 
             HydroNode::Unique { input, .. } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let unique_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2960,7 +3005,8 @@ impl HydroNode {
                         (input, quote!('tick))
                     };
 
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let (HydroNode::Fold { init, acc, .. }
                 | HydroNode::FoldKeyed { init, acc, .. }
@@ -3069,7 +3115,8 @@ impl HydroNode {
                         (input, quote!('tick))
                     };
 
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let (HydroNode::Reduce { f, .. } | HydroNode::ReduceKeyed { f, .. }) = &*self
                 else {
@@ -3132,10 +3179,11 @@ impl HydroNode {
                         (input, quote!('tick))
                     };
 
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let watermark_ident =
-                    watermark.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                    watermark.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let chain_ident = syn::Ident::new(
                     &format!("reduce_keyed_watermark_chain_{}", *next_stmt_id),
@@ -3215,7 +3263,8 @@ impl HydroNode {
                 input,
                 ..
             } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let receiver_stream_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -3301,7 +3350,8 @@ impl HydroNode {
                 input,
                 ..
             } => {
-                let input_ident = input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
 
                 let counter_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -3337,7 +3387,9 @@ impl HydroNode {
             HydroNode::Cast { .. } | HydroNode::ObserveNonDet { .. } => {}
             HydroNode::Source { source, .. } => match source {
                 HydroSource::Stream(expr) | HydroSource::Iter(expr) => transform(expr),
-                HydroSource::ExternalNetwork() | HydroSource::Spin() => {}
+                HydroSource::ExternalNetwork()
+                | HydroSource::Spin()
+                | HydroSource::ClusterMembers(_) => {} // TODO: what goes here?
             },
             HydroNode::SingletonSource { value, .. } => {
                 transform(value);
@@ -3776,11 +3828,19 @@ mod test {
     use super::*;
 
     #[test]
+    #[cfg_attr(
+        not(feature = "build"),
+        ignore = "expects inclusion of feature-gated fields"
+    )]
     fn hydro_node_size() {
         assert_eq!(size_of::<HydroNode>(), 272);
     }
 
     #[test]
+    #[cfg_attr(
+        not(feature = "build"),
+        ignore = "expects inclusion of feature-gated fields"
+    )]
     fn hydro_root_size() {
         assert_eq!(size_of::<HydroRoot>(), 168);
     }

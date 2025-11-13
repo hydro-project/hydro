@@ -371,6 +371,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -381,6 +382,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B, O, R>
     where
@@ -408,6 +410,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -420,6 +423,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn flat_map_ordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B, O, R>
     where
@@ -444,6 +448,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
@@ -462,6 +467,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2, 3, 4]);
     /// # }));
+    /// # }
     /// ```
     pub fn flat_map_unordered<U, I, F>(
         self,
@@ -491,6 +497,7 @@ where
     /// not deterministic, use [`Stream::flatten_unordered`] instead.
     ///
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -503,6 +510,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn flatten_ordered<U>(self) -> Stream<U, L, B, O, R>
     where
@@ -516,6 +524,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
@@ -534,6 +543,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2, 3, 4]);
     /// # }));
+    /// # }
     /// ```
     pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder, R>
     where
@@ -551,6 +561,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -563,6 +574,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
     where
@@ -583,6 +595,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -595,6 +608,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B, O, R>
     where
@@ -619,6 +633,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -634,6 +649,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn cross_singleton<O2>(
         self,
@@ -664,6 +680,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -688,6 +705,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_if_some<U>(self, signal: Optional<U, L, Bounded>) -> Stream<T, L, B, O, R> {
         self.cross_singleton(signal.map(q!(|_u| ())))
@@ -701,6 +719,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -725,6 +744,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_if_none<U>(self, other: Optional<U, L, Bounded>) -> Stream<T, L, B, O, R> {
         self.filter_if_some(
@@ -740,6 +760,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use std::collections::HashSet;
     /// # use futures::StreamExt;
@@ -752,6 +773,7 @@ where
     /// # let expected = HashSet::from([('a', 1), ('b', 1), ('c', 1), ('a', 2), ('b', 2), ('c', 2), ('a', 3), ('b', 3), ('c', 3)]);
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
+    /// # }
     /// ```
     pub fn cross_product<T2, O2: Ordering>(
         self,
@@ -780,6 +802,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -790,6 +813,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn unique(self) -> Stream<T, L, B, O, ExactlyOnce>
     where
@@ -812,6 +836,7 @@ where
     /// all its elements are available before producing any output.
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -828,6 +853,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_not_in<O2: Ordering>(self, other: Stream<T, L, Bounded, O2, R>) -> Self
     where
@@ -853,6 +879,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -864,6 +891,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
     where
@@ -1074,6 +1102,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1084,6 +1113,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn cloned(self) -> Stream<T, L, B, O, R>
     where
@@ -1106,6 +1136,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1119,6 +1150,7 @@ where
     /// // true
     /// # assert_eq!(stream.next().await.unwrap(), true);
     /// # }));
+    /// # }
     /// ```
     pub fn fold_commutative_idempotent<A, I, F>(
         self,
@@ -1145,6 +1177,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1158,6 +1191,7 @@ where
     /// // true
     /// # assert_eq!(stream.next().await.unwrap(), true);
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_commutative_idempotent<F>(
         self,
@@ -1199,6 +1233,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1210,6 +1245,7 @@ where
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
     /// # }));
+    /// # }
     /// ```
     pub fn max(self) -> Optional<T, L, B>
     where
@@ -1227,6 +1263,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1238,6 +1275,7 @@ where
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
     /// # }));
+    /// # }
     /// ```
     pub fn min(self) -> Optional<T, L, B>
     where
@@ -1263,6 +1301,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1276,6 +1315,7 @@ where
     /// // 10
     /// # assert_eq!(stream.next().await.unwrap(), 10);
     /// # }));
+    /// # }
     /// ```
     pub fn fold_commutative<A, I, F>(
         self,
@@ -1299,6 +1339,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1312,6 +1353,7 @@ where
     /// // 10
     /// # assert_eq!(stream.next().await.unwrap(), 10);
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_commutative<F>(self, comb: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
     where
@@ -1325,6 +1367,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1336,6 +1379,7 @@ where
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
     /// # }));
+    /// # }
     /// ```
     pub fn count(self) -> Singleton<usize, L, B> {
         self.assume_ordering_trusted(nondet!(
@@ -1357,6 +1401,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1370,6 +1415,7 @@ where
     /// // true
     /// # assert_eq!(stream.next().await.unwrap(), true);
     /// # }));
+    /// # }
     /// ```
     pub fn fold_idempotent<A, I, F>(
         self,
@@ -1393,6 +1439,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1404,6 +1451,7 @@ where
     /// // true
     /// # assert_eq!(stream.next().await.unwrap(), true);
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_idempotent<F>(self, comb: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
     where
@@ -1421,6 +1469,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1432,6 +1481,7 @@ where
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
     /// # }));
+    /// # }
     /// ```
     pub fn first(self) -> Optional<T, L, B> {
         self.reduce_idempotent(q!(|_, _| {}))
@@ -1445,6 +1495,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1456,6 +1507,7 @@ where
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
     /// # }));
+    /// # }
     /// ```
     pub fn last(self) -> Optional<T, L, B> {
         self.reduce_idempotent(q!(|curr, new| *curr = new))
@@ -1470,6 +1522,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{TotalOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, TotalOrder, ExactlyOnce>(|process| {
@@ -1482,6 +1535,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn enumerate(self) -> Stream<(usize, T), L, B, TotalOrder, ExactlyOnce> {
         Stream::new(
@@ -1508,6 +1562,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1521,6 +1576,7 @@ where
     /// // "HELLOWORLD"
     /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
     /// # }));
+    /// # }
     /// ```
     pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, T)>(
         self,
@@ -1551,6 +1607,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1564,6 +1621,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn collect_vec(self) -> Singleton<Vec<T>, L, B> {
         self.fold(
@@ -1589,6 +1647,7 @@ where
     ///
     /// Basic usage - running sum:
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1605,10 +1664,12 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     ///
     /// Early termination example:
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1629,6 +1690,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn scan<A, U, I, F>(
         self,
@@ -1664,6 +1726,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1678,6 +1741,7 @@ where
     /// // "HELLOWORLD"
     /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
     /// # }));
+    /// # }
     /// ```
     pub fn reduce<F: Fn(&mut T, T) + 'a>(
         self,
@@ -1705,6 +1769,7 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbo
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1716,6 +1781,7 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbo
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn interleave<O2: Ordering, R2: Retries>(
         self,
@@ -1754,6 +1820,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1767,6 +1834,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn sort(self) -> Stream<T, L, Bounded, TotalOrder, R>
     where
@@ -1794,6 +1862,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1807,6 +1876,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn chain<O2: Ordering, R2: Retries>(
         self,
@@ -1872,6 +1942,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1897,6 +1968,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![(1, "a".to_string()), (1, "b".to_string()), (2, "a".to_string()), (2, "b".to_string())]);
     /// # }));
+    /// # }
     /// ```
     pub fn repeat_with_keys<K, V2>(
         self,
@@ -1926,6 +1998,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use std::collections::HashSet;
     /// # use futures::StreamExt;
@@ -1939,6 +2012,7 @@ where
     /// # let expected = HashSet::from([(1, ('a', 'x')), (2, ('b', 'y'))]);
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
+    /// # }
     pub fn join<V2, O2: Ordering, R2: Retries>(
         self,
         n: Stream<(K, V2), L, B, O2, R2>,
@@ -1972,6 +2046,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1988,6 +2063,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     pub fn anti_join<O2: Ordering, R2: Retries>(
         self,
         n: Stream<K, L, Bounded, O2, R2>,
@@ -2023,6 +2099,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2036,6 +2113,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
         KeyedStream::new(
@@ -2068,6 +2146,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2082,6 +2161,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
     /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
     /// # }));
+    /// # }
     /// ```
     pub fn fold_keyed<A, I, F>(
         self,
@@ -2107,6 +2187,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2119,6 +2200,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
     /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_keyed<F>(
         self,
@@ -2164,6 +2246,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2178,6 +2261,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, false));
     /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
+    /// # }
     /// ```
     pub fn fold_keyed_commutative_idempotent<A, I, F>(
         self,
@@ -2196,6 +2280,7 @@ where
     /// Given a stream of pairs `(K, V)`, produces a new stream of unique keys `K`.
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2208,6 +2293,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), 1);
     /// # assert_eq!(stream.next().await.unwrap(), 2);
     /// # }));
+    /// # }
     /// ```
     pub fn keys(self) -> Stream<K, Tick<L>, Bounded, NoOrder, ExactlyOnce> {
         self.into_keyed()
@@ -2227,6 +2313,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2241,6 +2328,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, false));
     /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_keyed_commutative_idempotent<F>(
         self,
@@ -2272,6 +2360,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2286,6 +2375,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
     /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
     /// # }));
+    /// # }
     /// ```
     pub fn fold_keyed_commutative<A, I, F>(
         self,
@@ -2310,6 +2400,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2324,6 +2415,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
     /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_keyed_commutative<F>(
         self,
@@ -2353,6 +2445,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2367,6 +2460,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, false));
     /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
+    /// # }
     /// ```
     pub fn fold_keyed_idempotent<A, I, F>(
         self,
@@ -2391,6 +2485,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2405,6 +2500,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, false));
     /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_keyed_idempotent<F>(
         self,
@@ -2578,6 +2674,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use std::collections::HashSet;
     /// # use futures::StreamExt;
     /// # use hydro_lang::prelude::*;
@@ -2601,6 +2698,7 @@ where
     /// #       );
     /// #   },
     /// # ));
+    /// # }
     pub fn resolve_futures(self) -> Stream<T, L, B, NoOrder, R> {
         Stream::new(
             self.location.clone(),
@@ -2618,6 +2716,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use std::collections::HashSet;
     /// # use futures::StreamExt;
     /// # use hydro_lang::prelude::*;
@@ -2641,6 +2740,7 @@ where
     /// #       );
     /// #   },
     /// # ));
+    /// # }
     pub fn resolve_futures_ordered(self) -> Stream<T, L, B, O, R> {
         Stream::new(
             self.location.clone(),
@@ -2745,6 +2845,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2768,6 +2869,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn persist(self) -> Stream<T, Tick<L>, Bounded, O, R>
     where
@@ -2794,6 +2896,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2819,6 +2922,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn defer_tick(self) -> Stream<T, Tick<L>, Bounded, O, R> {
         Stream::new(
@@ -2844,11 +2948,17 @@ mod tests {
     #[cfg(feature = "deploy")]
     use stageleft::q;
 
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
     #[cfg(feature = "deploy")]
     use crate::live_collections::stream::ExactlyOnce;
-    use crate::live_collections::stream::{NoOrder, TotalOrder};
+    #[cfg(feature = "sim")]
+    use crate::live_collections::stream::NoOrder;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
+    use crate::live_collections::stream::TotalOrder;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
 
     mod backtrace_chained_ops;
@@ -3114,6 +3224,7 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), 3);
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     #[should_panic]
     fn sim_batch_nondet_size() {
@@ -3143,6 +3254,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_batch_preserves_order() {
         let flow = FlowBuilder::new();
@@ -3170,6 +3282,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     #[should_panic]
     fn sim_batch_unordered_shuffles() {
@@ -3201,6 +3314,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_batch_unordered_shuffles_count() {
         let flow = FlowBuilder::new();
@@ -3228,8 +3342,34 @@ mod tests {
         )
     }
 
+    #[cfg(feature = "sim")]
     #[test]
-    #[ignore = "assume_ordering not yet supported on bounded collections"]
+    #[should_panic]
+    fn sim_observe_order_batched() {
+        let flow = FlowBuilder::new();
+        let external = flow.external::<()>();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+
+        let tick = node.tick();
+        let batch = input.batch(&tick, nondet!(/** test */));
+        let out_port = batch
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        flow.sim().exhaustive(async |mut compiled| {
+            let in_send = compiled.connect(&port);
+            let out_recv = compiled.connect(&out_port);
+            compiled.launch();
+
+            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+            out_recv.assert_yields_only([1, 2, 3, 4]).await; // fails with assume_ordering
+        });
+    }
+
+    #[test]
     fn sim_observe_order_batched_count() {
         let flow = FlowBuilder::new();
         let external = flow.external::<()>();
@@ -3259,6 +3399,7 @@ mod tests {
         )
     }
 
+    #[cfg(feature = "sim")]
     #[test]
     fn sim_unordered_count_instance_count() {
         let flow = FlowBuilder::new();

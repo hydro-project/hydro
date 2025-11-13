@@ -6,7 +6,7 @@ expression: for_each_meta.backtrace.elements()
     BacktraceElement {
         fn_name: "hydro_lang::live_collections::stream::tests::backtrace_chained_ops::backtrace_chained_ops",
         lineno: Some(
-            15,
+            16,
         ),
         colno: Some(
             33,
@@ -15,7 +15,7 @@ expression: for_each_meta.backtrace.elements()
     BacktraceElement {
         fn_name: "hydro_lang::live_collections::stream::tests::backtrace_chained_ops::backtrace_chained_ops::{{closure}}",
         lineno: Some(
-            5,
+            6,
         ),
         colno: Some(
             27,

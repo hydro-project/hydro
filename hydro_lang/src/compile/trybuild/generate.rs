@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 #[cfg(feature = "deploy")]
 use dfir_lang::graph::DfirGraph;
-use proc_macro2::Span;
 use sha2::{Digest, Sha256};
 #[cfg(feature = "deploy")]
 use stageleft::internal::quote;
@@ -307,7 +306,10 @@ pub fn create_trybuild()
 
         fs::create_dir_all(path!(project.dir / "src"))?;
 
-        let crate_name_ident = syn::Ident::new(&crate_name.replace("-", "_"), Span::call_site());
+        let crate_name_ident = syn::Ident::new(
+            &crate_name.replace("-", "_"),
+            proc_macro2::Span::call_site(),
+        );
         write_atomic(
             prettyplease::unparse(&syn::parse_quote! {
                 #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]

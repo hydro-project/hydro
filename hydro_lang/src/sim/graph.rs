@@ -8,6 +8,7 @@ use dfir_lang::graph::DfirGraph;
 use proc_macro2::Span;
 use quote::quote;
 use sha2::{Digest, Sha256};
+use stageleft::QuotedWithContext;
 use syn::visit_mut::VisitMut;
 use tempfile::TempPath;
 use trybuild_internals_api::{cargo, dependencies, path};
@@ -17,7 +18,9 @@ use crate::compile::trybuild::generate::{
     CONCURRENT_TEST_LOCK, IS_TEST, TrybuildConfig, create_trybuild, write_atomic,
 };
 use crate::compile::trybuild::rewriters::UseTestModeStaged;
+use crate::deploy::deploy_runtime::cluster_membership_stream;
 use crate::location::dynamic::LocationId;
+use crate::location::{MemberId, MembershipEvent};
 
 #[derive(Clone)]
 pub struct SimNode {
@@ -240,6 +243,7 @@ impl<'a> Deploy<'a> for SimDeploy {
             &format!("__hydro_m2o_source_{}", p2_port),
             Span::call_site(),
         );
+
         (
             syn::parse_quote!(#ident_sink),
             syn::parse_quote!(#ident_source),
@@ -343,17 +347,25 @@ impl<'a> Deploy<'a> for SimDeploy {
     fn cluster_ids(
         _env: &Self::CompileEnv,
         _of_cluster: usize,
-    ) -> impl stageleft::QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a {
+    ) -> impl QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a {
         todo!();
         stageleft::q!(todo!())
     }
 
     #[expect(unreachable_code, reason = "todo!() is unreachable")]
-    fn cluster_self_id(
-        _env: &Self::CompileEnv,
-    ) -> impl stageleft::QuotedWithContext<'a, u32, ()> + Copy + 'a {
+    fn cluster_self_id(_env: &Self::CompileEnv) -> impl QuotedWithContext<'a, u32, ()> + Copy + 'a {
         todo!();
         stageleft::q!(todo!())
+    }
+
+    fn cluster_membership_stream(
+        location_id: &LocationId,
+    ) -> impl QuotedWithContext<
+        'a,
+        Box<dyn futures::Stream<Item = (MemberId<()>, MembershipEvent)> + Unpin>,
+        (),
+    > {
+        cluster_membership_stream(location_id)
     }
 }
 
@@ -753,6 +765,7 @@ fn compile_sim_graph_trybuild(
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
             ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
+            ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimInlineHook>>>,
         ) {
             macro_rules! println {
                 ($($arg:tt)*) => ({
@@ -799,13 +812,14 @@ fn compile_sim_graph_trybuild(
             }
 
             let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
+            let mut __hydro_inline_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimInlineHook>>> = ::std::collections::HashMap::new();
             #(#extra_stmts_global)*
             #(#cluster_ids_stmts)*
 
             let mut __async_dfirs = vec![#(#process_dfir_exprs),*];
             let mut __tick_dfirs = vec![#(#process_tick_dfir_exprs),*];
             #(#cluster_dfir_stmts)*
-            (__async_dfirs, __tick_dfirs, __hydro_hooks)
+            (__async_dfirs, __tick_dfirs, __hydro_hooks, __hydro_inline_hooks)
         }
 
         #[unsafe(no_mangle)]
@@ -819,6 +833,7 @@ fn compile_sim_graph_trybuild(
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
+            ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimInlineHook>>>,
         ) {
             hydro_lang::runtime_support::colored::control::set_override(should_color);
             __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __println_handler, __eprintln_handler)

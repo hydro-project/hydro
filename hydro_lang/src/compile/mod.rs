@@ -30,6 +30,13 @@ pub mod builder;
 #[cfg(feature = "trybuild")]
 #[cfg_attr(docsrs, doc(cfg(feature = "trybuild")))]
 #[expect(missing_docs, reason = "TODO")]
+#[cfg_attr(
+    not(any(feature = "deploy", feature = "sim")),
+    expect(
+        dead_code,
+        reason = "\"trybuild\" feature should be enabled by \"deploy\" and/or \"sim\""
+    )
+)]
 pub mod trybuild;
 
 #[cfg(stageleft_runtime)]

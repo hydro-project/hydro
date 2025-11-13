@@ -18,7 +18,7 @@ viz = [
     "dep:auto_impl",
     "dep:clap",
     "dep:itertools",
-    "dep:webbrowser", 
+    "dep:webbrowser",
     "dep:data-encoding",
     "dep:serde_json",
     "dep:flate2",
