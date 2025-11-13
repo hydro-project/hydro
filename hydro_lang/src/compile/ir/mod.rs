@@ -363,6 +363,7 @@ pub trait DfirBuilder {
         in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         out_kind: &CollectionKind,
+        op_meta: &HydroIrOpMetadata,
     );
 
     #[expect(clippy::too_many_arguments, reason = "TODO")]
@@ -489,6 +490,7 @@ impl DfirBuilder for BTreeMap<usize, FlatGraphBuilder> {
         _in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         _out_kind: &CollectionKind,
+        _op_meta: &HydroIrOpMetadata,
     ) {
         let builder = self.get_dfir_mut(location);
         builder.add_dfir(
@@ -2104,6 +2106,7 @@ impl HydroNode {
                             &inner.metadata().collection_kind,
                             &observe_ident,
                             &metadata.collection_kind,
+                            &metadata.op,
                         );
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {

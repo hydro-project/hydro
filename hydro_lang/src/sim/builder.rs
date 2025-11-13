@@ -70,6 +70,29 @@ impl SimBuilder {
             _ => unreachable!(),
         }
     }
+
+    fn add_inline_hook(&mut self, tick_location: &LocationId, expr: syn::Expr) {
+        let tick_location_ser = serde_json::to_string(tick_location).unwrap();
+        match tick_location {
+            LocationId::Tick(_, l) => match l.root() {
+                LocationId::Process(_) => {
+                    self.add_extra_stmt_internal(
+                        l.root(),
+                        syn::parse_quote! {
+                            __hydro_inline_hooks.entry((#tick_location_ser, None)).or_default().push(#expr);
+                        },
+                    );
+                }
+                LocationId::Cluster(_) => {
+                    self.add_extra_stmt_internal(l.root(), syn::parse_quote! {
+                        __hydro_inline_hooks.entry((#tick_location_ser, Some(__current_cluster_id))).or_default().push(#expr);
+                    });
+                }
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl DfirBuilder for SimBuilder {
@@ -119,52 +142,7 @@ impl DfirBuilder for SimBuilder {
                 out_location
             };
 
-            let (batch_location, line, caret) = op_meta
-                .backtrace
-                .elements()
-                .first()
-                .map(|e| {
-                    if let Some(filename) = &e.filename
-                        && let Some(lineno) = e.lineno
-                        && let Some(colno) = e.colno
-                    {
-                        let line = std::fs::read_to_string(filename)
-                            .ok()
-                            .and_then(|s| {
-                                s.lines()
-                                    .nth(lineno.saturating_sub(1).try_into().unwrap())
-                                    .map(|s| s.to_string())
-                            })
-                            .unwrap_or_default();
-
-                        let relative_path = (|| {
-                            std::path::Path::new(filename)
-                                .strip_prefix(std::env::current_dir().ok()?)
-                                .ok()
-                        })();
-
-                        let filename_display = relative_path
-                            .map(|p| p.display().to_string())
-                            .unwrap_or_else(|| filename.clone());
-
-                        (
-                            format!("{}:{}:{}", filename_display, lineno, colno),
-                            line,
-                            format!("{:>1$}", "", (colno - 1).try_into().unwrap()),
-                        )
-                    } else {
-                        (
-                            "unknown location".to_string(),
-                            "".to_string(),
-                            "".to_string(),
-                        )
-                    }
-                })
-                .unwrap_or((
-                    "unknown location".to_string(),
-                    "".to_string(),
-                    "".to_string(),
-                ));
+            let (batch_location, line, caret) = location_for_op(op_meta);
 
             match in_kind {
                 CollectionKind::Stream {
@@ -485,9 +463,10 @@ impl DfirBuilder for SimBuilder {
         trusted: bool,
         location: &LocationId,
         in_ident: syn::Ident,
-        _in_kind: &CollectionKind,
+        in_kind: &CollectionKind,
         out_ident: &syn::Ident,
-        _out_kind: &CollectionKind,
+        out_kind: &CollectionKind,
+        op_meta: &HydroIrOpMetadata,
     ) {
         if trusted {
             let builder = self.get_dfir_mut(location);
@@ -499,7 +478,92 @@ impl DfirBuilder for SimBuilder {
                 None,
             );
         } else {
-            todo!()
+            if !location.is_top_level() {
+                let (assume_location, line, caret) = location_for_op(op_meta);
+                match (in_kind, out_kind) {
+                    (
+                        CollectionKind::Stream {
+                            order: StreamOrder::NoOrder,
+                            retry: StreamRetry::ExactlyOnce,
+                            ..
+                        },
+                        CollectionKind::Stream {
+                            order: StreamOrder::TotalOrder,
+                            retry: StreamRetry::ExactlyOnce,
+                            ..
+                        },
+                    ) => {
+                        let hoff_id = self.next_hoff_id;
+                        self.next_hoff_id += 1;
+
+                        let buffered_ident =
+                            syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                        let hoff_send_ident =
+                            syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                        let hoff_recv_ident =
+                            syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                        self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                            let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                        });
+
+                        self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                            let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident.into_inner()));
+                        });
+
+                        self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                            let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
+                        });
+
+                        self.add_inline_hook(
+                            location,
+                            syn::parse_quote!(
+                                Box::new(hydro_lang::sim::runtime::StreamOrderHook::<_, _>::new(
+                                    #buffered_ident.clone(),
+                                    #hoff_send_ident,
+                                    (#assume_location, #line, #caret),
+                                    ::hydro_lang::__maybe_debug__!(),
+                                ))
+                            ),
+                        );
+
+                        let builder = self.get_dfir_mut(location);
+                        builder.add_dfir(
+                            parse_quote! {
+                                #out_ident = #in_ident -> fold::<'tick>(
+                                    || ::std::vec::Vec::new(),
+                                    |acc, v| {
+                                        acc.push(Some(v));
+                                    }
+                                ) -> map(|v| {
+                                    let #buffered_ident = #buffered_ident.clone();
+                                    let #hoff_recv_ident = #hoff_recv_ident.clone();
+                                    async move {
+                                        fn force_matching_type<T>(a: &mut Option<::std::vec::Vec<Option<T>>>, b: ::std::vec::Vec<T>) -> ::std::vec::Vec<T> {
+                                            b
+                                        }
+
+                                        let mut out_holder = Some(v);
+                                        *#buffered_ident.borrow_mut() = out_holder.take();
+                                        force_matching_type(&mut out_holder, #hoff_recv_ident.borrow_mut().recv().await.unwrap())
+                                    }
+                                }) -> resolve_futures_blocking() -> flatten();
+                            },
+                            None,
+                            None,
+                        );
+                    }
+                    _ => {
+                        todo!(
+                            "non-trusted observe_nondet not yet supported for kinds {:?} -> {:?}",
+                            in_kind,
+                            out_kind
+                        );
+                    }
+                }
+            } else {
+                todo!("non-trusted observe_nondet not yet supported at top-level locations");
+            }
         }
     }
 
@@ -799,4 +863,53 @@ impl DfirBuilder for SimBuilder {
             );
         }
     }
+}
+
+fn location_for_op(op_meta: &HydroIrOpMetadata) -> (String, String, String) {
+    op_meta
+        .backtrace
+        .elements()
+        .first()
+        .map(|e| {
+            if let Some(filename) = &e.filename
+                && let Some(lineno) = e.lineno
+                && let Some(colno) = e.colno
+            {
+                let line = std::fs::read_to_string(filename)
+                    .ok()
+                    .and_then(|s| {
+                        s.lines()
+                            .nth(lineno.saturating_sub(1).try_into().unwrap())
+                            .map(|s| s.to_string())
+                    })
+                    .unwrap_or_default();
+
+                let relative_path = (|| {
+                    std::path::Path::new(filename)
+                        .strip_prefix(std::env::current_dir().ok()?)
+                        .ok()
+                })();
+
+                let filename_display = relative_path
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| filename.clone());
+
+                (
+                    format!("{}:{}:{}", filename_display, lineno, colno),
+                    line,
+                    format!("{:>1$}", "", (colno - 1).try_into().unwrap()),
+                )
+            } else {
+                (
+                    "unknown location".to_string(),
+                    "".to_string(),
+                    "".to_string(),
+                )
+            }
+        })
+        .unwrap_or((
+            "unknown location".to_string(),
+            "".to_string(),
+            "".to_string(),
+        ))
 }
