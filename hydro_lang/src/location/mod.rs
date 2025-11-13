@@ -36,7 +36,6 @@ use crate::live_collections::singleton::Singleton;
 use crate::live_collections::stream::{
     ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
 };
-use crate::location::cluster::ClusterIds;
 use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many, NotMany,
@@ -201,14 +200,21 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let underlying_memberids: ClusterIds<'a, C> = ClusterIds {
-            id: cluster.id,
-            _phantom: PhantomData,
-        };
-
-        self.source_iter(q!(underlying_memberids))
-            .map(q!(|id| (id.clone(), MembershipEvent::Joined)))
-            .into_keyed()
+        Stream::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::ClusterMembers(cluster.id()),
+                metadata: self.new_node_metadata(Stream::<
+                    (MemberId<()>, MembershipEvent),
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
+        .map(q!(|(k, v)| (MemberId::from_tagless(k), v)))
+        .into_keyed()
     }
 
     fn source_external_bytes<L>(

@@ -42,7 +42,7 @@ fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr 
         parse_quote! {
             ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_>, #t_type), _>(
                 |(id, data)| {
-                    (id.get_raw_id(), #root::runtime_support::bincode::serialize(&data).unwrap().into())
+                    (id.into_tagless(), #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
             )
         }
@@ -68,7 +68,7 @@ fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type)
         parse_quote! {
             |res| {
                 let (id, b) = res.unwrap();
-                (#root::location::MemberId::<#c_type>::from_raw_id(id), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                (#root::__staged::location::MemberId::<#c_type>::from_tagless(id as #root::__staged::location::MemberId::<()>), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
             }
         }
     } else {

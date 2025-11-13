@@ -559,7 +559,7 @@ impl DfirBuilder for SimBuilder {
             }
             (LocationId::Cluster(_), LocationId::Process(_)) => {
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(u32, __root_dfir_rs::bytes::Bytes)>();
+                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(::hydro_lang::location::MemberId<()>, __root_dfir_rs::bytes::Bytes)>();
                 });
 
                 self.extra_stmts_cluster
@@ -572,7 +572,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(serialize_pipeline) = serialize {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.send((__current_cluster_id, v)).unwrap());
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.send((::hydro_lang::location::MemberId::<()>::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -580,7 +580,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> for_each(|v| #sink.send((__current_cluster_id, v)).unwrap());
+                            #input_ident -> for_each(|v| #sink.send((::hydro_lang::location::MemberId::<()>::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -632,7 +632,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(serialize_pipeline) = serialize {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> map(#serialize_pipeline) -> for_each(|(id, v)| (#sink.borrow())[id as usize].send(v).unwrap());
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::<()>::get_raw_id(&target_member_id) as usize].send(v).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -640,7 +640,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> for_each(|(id, v)| (#sink.borrow())[id as usize].send(v).unwrap());
+                            #input_ident -> for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::<()>::get_raw_id(&target_member_id) as usize].send(v).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -671,7 +671,7 @@ impl DfirBuilder for SimBuilder {
                     Span::call_site(),
                 );
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<(u32, __root_dfir_rs::bytes::Bytes)>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
+                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<(::hydro_lang::location::MemberId<()>, __root_dfir_rs::bytes::Bytes)>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
                 });
 
                 self.extra_stmts_global.push(syn::parse_quote! {
@@ -690,7 +690,7 @@ impl DfirBuilder for SimBuilder {
                     .or_default()
                     .push(syn::parse_quote! {
                         let #source = {
-                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<(u32, __root_dfir_rs::bytes::Bytes)>();
+                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<(::hydro_lang::location::MemberId<()>, __root_dfir_rs::bytes::Bytes)>();
                             #sink_writer.borrow_mut().push(__sink);
                             __source
                         };
@@ -699,7 +699,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(serialize_pipeline) = serialize {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> map(#serialize_pipeline) -> for_each(|(id, v)| (#sink.borrow())[id as usize].send((__current_cluster_id, v)).unwrap());
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::<()>::get_raw_id(&target_member_id) as usize].send((::hydro_lang::location::MemberId::<()>::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -707,7 +707,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> for_each(|(id, v)| (#sink.borrow())[id as usize].send((__current_cluster_id, v)).unwrap());
+                            #input_ident -> for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::<()>::get_raw_id(&target_member_id) as usize].send((::hydro_lang::location::MemberId::<()>::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),

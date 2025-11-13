@@ -1020,6 +1020,12 @@ impl HydroNode {
                     HydroSource::ExternalNetwork() => "external_network()".to_string(),
                     HydroSource::Iter(expr) => format!("source_iter({})", expr),
                     HydroSource::Spin() => "spin()".to_string(),
+                    HydroSource::ClusterMembers(location_id) => {
+                        format!(
+                            "source_stream(cluster_membership_stream({:?}))",
+                            location_id
+                        )
+                    }
                 };
                 build_source_node(structure, metadata, label)
             }

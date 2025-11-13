@@ -25,6 +25,24 @@ impl<Tag> MemberId<Tag> {
             MemberId::Legacy { raw_id, .. } => *raw_id,
         }
     }
+
+    pub fn into_tagless(self) -> MemberId<()> {
+        match self {
+            MemberId::Legacy { raw_id, .. } => MemberId::Legacy {
+                raw_id,
+                _phantom: PhantomData,
+            },
+        }
+    }
+
+    pub fn from_tagless(other: MemberId<()>) -> Self {
+        match other {
+            MemberId::Legacy { raw_id, .. } => MemberId::Legacy {
+                raw_id,
+                _phantom: PhantomData,
+            },
+        }
+    }
 }
 
 impl<Tag> Debug for MemberId<Tag> {

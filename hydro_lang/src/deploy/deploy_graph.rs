@@ -30,7 +30,8 @@ use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
 use crate::compile::trybuild::generate::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
-use crate::location::NetworkHint;
+use crate::location::dynamic::LocationId;
+use crate::location::{MemberId, MembershipEvent, NetworkHint};
 use crate::staging_util::get_this_crate;
 
 /// Deployment backend that uses [`hydro_deploy`] for provisioning and launching.
@@ -439,6 +440,13 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn cluster_self_id(_env: &Self::CompileEnv) -> impl QuotedWithContext<'a, u32, ()> + Copy + 'a {
         cluster_self_id(RuntimeData::new("__hydro_lang_trybuild_cli"))
+    }
+
+    fn cluster_membership_stream(
+        location_id: &LocationId,
+    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (MemberId<()>, MembershipEvent)> + Unpin>, ()>
+    {
+        cluster_membership_stream(location_id)
     }
 }
 
