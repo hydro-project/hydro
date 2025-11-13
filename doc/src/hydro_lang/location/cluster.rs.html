@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/location/cluster.rs`."><title>cluster.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (25d319a0f 2025-11-11)" data-channel="nightly" data-search-js="search-8e3fad08.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/location/</div>cluster.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::fmt::{Debug, Formatter};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/location/cluster.rs`."><title>cluster.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (01867557c 2025-11-12)" data-channel="nightly" data-search-js="search-8e3fad08.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-a410ff4d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/location/</div>cluster.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::fmt::{Debug, Formatter};
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>std::marker::PhantomData;
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>proc_macro2::Span;
@@ -63,8 +63,8 @@
 <a href=#63 id=63 data-nosnippet>63</a>}
 <a href=#64 id=64 data-nosnippet>64</a>
 <a href=#65 id=65 data-nosnippet>65</a><span class="kw">pub struct </span>ClusterIds&lt;<span class="lifetime">'a</span>, C&gt; {
-<a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) id: usize,
-<a href=#67 id=67 data-nosnippet>67</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) _phantom: Invariant&lt;<span class="lifetime">'a</span>, C&gt;,
+<a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">pub </span>id: usize,
+<a href=#67 id=67 data-nosnippet>67</a>    <span class="kw">pub </span>_phantom: Invariant&lt;<span class="lifetime">'a</span>, C&gt;,
 <a href=#68 id=68 data-nosnippet>68</a>}
 <a href=#69 id=69 data-nosnippet>69</a>
 <a href=#70 id=70 data-nosnippet>70</a><span class="kw">impl</span>&lt;C&gt; Clone <span class="kw">for </span>ClusterIds&lt;<span class="lifetime">'_</span>, C&gt; {
@@ -164,7 +164,7 @@
 <a href=#164 id=164 data-nosnippet>164</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#165 id=165 data-nosnippet>165</a>    </span><span class="kw">use </span><span class="kw">super</span>::CLUSTER_SELF_ID;
 <a href=#166 id=166 data-nosnippet>166</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
-<a href=#167 id=167 data-nosnippet>167</a>    </span><span class="kw">use </span><span class="kw">crate</span>::location::{Location, MembershipEvent};
+<a href=#167 id=167 data-nosnippet>167</a>    </span><span class="kw">use </span><span class="kw">crate</span>::location::{Location, MemberId, MembershipEvent};
 <a href=#168 id=168 data-nosnippet>168</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#169 id=169 data-nosnippet>169</a>    </span><span class="kw">use </span><span class="kw">crate</span>::nondet::nondet;
 <a href=#170 id=170 data-nosnippet>170</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
@@ -181,12 +181,12 @@
 <a href=#181 id=181 data-nosnippet>181</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#182 id=182 data-nosnippet>182</a>
 <a href=#183 id=183 data-nosnippet>183</a>        <span class="kw">let </span>out_port = cluster1
-<a href=#184 id=184 data-nosnippet>184</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[CLUSTER_SELF_ID.get_raw_id()]))
+<a href=#184 id=184 data-nosnippet>184</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[CLUSTER_SELF_ID]))
 <a href=#185 id=185 data-nosnippet>185</a>            .send_bincode(<span class="kw-2">&amp;</span>node)
 <a href=#186 id=186 data-nosnippet>186</a>            .values()
 <a href=#187 id=187 data-nosnippet>187</a>            .interleave(
 <a href=#188 id=188 data-nosnippet>188</a>                cluster2
-<a href=#189 id=189 data-nosnippet>189</a>                    .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[CLUSTER_SELF_ID.get_raw_id()]))
+<a href=#189 id=189 data-nosnippet>189</a>                    .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[CLUSTER_SELF_ID]))
 <a href=#190 id=190 data-nosnippet>190</a>                    .send_bincode(<span class="kw-2">&amp;</span>node)
 <a href=#191 id=191 data-nosnippet>191</a>                    .values(),
 <a href=#192 id=192 data-nosnippet>192</a>            )
@@ -200,7 +200,7 @@
 <a href=#200 id=200 data-nosnippet>200</a>                compiled.launch();
 <a href=#201 id=201 data-nosnippet>201</a>
 <a href=#202 id=202 data-nosnippet>202</a>                out_recv
-<a href=#203 id=203 data-nosnippet>203</a>                    .assert_yields_only_unordered(<span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])
+<a href=#203 id=203 data-nosnippet>203</a>                    .assert_yields_only_unordered([<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>].map(MemberId::from_raw_id))
 <a href=#204 id=204 data-nosnippet>204</a>                    .<span class="kw">await
 <a href=#205 id=205 data-nosnippet>205</a>            </span>});
 <a href=#206 id=206 data-nosnippet>206</a>    }
@@ -222,7 +222,7 @@
 <a href=#222 id=222 data-nosnippet>222</a>            .all_ticks()
 <a href=#223 id=223 data-nosnippet>223</a>            .send_bincode(<span class="kw-2">&amp;</span>node)
 <a href=#224 id=224 data-nosnippet>224</a>            .entries()
-<a href=#225 id=225 data-nosnippet>225</a>            .map(<span class="macro">q!</span>(|(id, v)| (id.get_raw_id(), v)))
+<a href=#225 id=225 data-nosnippet>225</a>            .map(<span class="macro">q!</span>(|(id, v)| (id, v)))
 <a href=#226 id=226 data-nosnippet>226</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
 <a href=#227 id=227 data-nosnippet>227</a>
 <a href=#228 id=228 data-nosnippet>228</a>        <span class="kw">let </span>count = flow
@@ -234,7 +234,7 @@
 <a href=#234 id=234 data-nosnippet>234</a>
 <a href=#235 id=235 data-nosnippet>235</a>                <span class="kw">let </span>grouped = out_recv.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>.into_iter().fold(
 <a href=#236 id=236 data-nosnippet>236</a>                    HashMap::new(),
-<a href=#237 id=237 data-nosnippet>237</a>                    |<span class="kw-2">mut </span>acc: HashMap&lt;u32, usize&gt;, (id, v)| {
+<a href=#237 id=237 data-nosnippet>237</a>                    |<span class="kw-2">mut </span>acc: HashMap&lt;MemberId&lt;()&gt;, usize&gt;, (id, v)| {
 <a href=#238 id=238 data-nosnippet>238</a>                        <span class="kw-2">*</span>acc.entry(id).or_default() += v;
 <a href=#239 id=239 data-nosnippet>239</a>                        acc
 <a href=#240 id=240 data-nosnippet>240</a>                    },
@@ -263,7 +263,7 @@
 <a href=#263 id=263 data-nosnippet>263</a>        <span class="kw">let </span>out_port = node
 <a href=#264 id=264 data-nosnippet>264</a>            .source_cluster_members(<span class="kw-2">&amp;</span>cluster)
 <a href=#265 id=265 data-nosnippet>265</a>            .entries()
-<a href=#266 id=266 data-nosnippet>266</a>            .map(<span class="macro">q!</span>(|(id, v)| (id.get_raw_id(), v)))
+<a href=#266 id=266 data-nosnippet>266</a>            .map(<span class="macro">q!</span>(|(id, v)| (id, v)))
 <a href=#267 id=267 data-nosnippet>267</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
 <a href=#268 id=268 data-nosnippet>268</a>
 <a href=#269 id=269 data-nosnippet>269</a>        flow.sim()
@@ -274,8 +274,8 @@
 <a href=#274 id=274 data-nosnippet>274</a>
 <a href=#275 id=275 data-nosnippet>275</a>                out_recv
 <a href=#276 id=276 data-nosnippet>276</a>                    .assert_yields_only_unordered(<span class="macro">vec!</span>[
-<a href=#277 id=277 data-nosnippet>277</a>                        (<span class="number">0</span>, MembershipEvent::Joined),
-<a href=#278 id=278 data-nosnippet>278</a>                        (<span class="number">1</span>, MembershipEvent::Joined),
+<a href=#277 id=277 data-nosnippet>277</a>                        (MemberId::from_raw_id(<span class="number">0</span>), MembershipEvent::Joined),
+<a href=#278 id=278 data-nosnippet>278</a>                        (MemberId::from_raw_id(<span class="number">1</span>), MembershipEvent::Joined),
 <a href=#279 id=279 data-nosnippet>279</a>                    ])
 <a href=#280 id=280 data-nosnippet>280</a>                    .<span class="kw">await</span>;
 <a href=#281 id=281 data-nosnippet>281</a>            });

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/sim/builder.rs`."><title>builder.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (25d319a0f 2025-11-11)" data-channel="nightly" data-search-js="search-8e3fad08.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/sim/</div>builder.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::BTreeMap;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/sim/builder.rs`."><title>builder.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (01867557c 2025-11-12)" data-channel="nightly" data-search-js="search-8e3fad08.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-a410ff4d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/sim/</div>builder.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::BTreeMap;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>dfir_lang::graph::FlatGraphBuilder;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>proc_macro2::Span;
@@ -559,7 +559,7 @@
 <a href=#559 id=559 data-nosnippet>559</a>            }
 <a href=#560 id=560 data-nosnippet>560</a>            (LocationId::Cluster(<span class="kw">_</span>), LocationId::Process(<span class="kw">_</span>)) =&gt; {
 <a href=#561 id=561 data-nosnippet>561</a>                <span class="self">self</span>.extra_stmts_global.push(<span class="macro">syn::parse_quote!</span> {
-<a href=#562 id=562 data-nosnippet>562</a>                    <span class="kw">let </span>(#sink, #source) = __root_dfir_rs::util::unbounded_channel::&lt;(u32, __root_dfir_rs::bytes::Bytes)&gt;();
+<a href=#562 id=562 data-nosnippet>562</a>                    <span class="kw">let </span>(#sink, #source) = __root_dfir_rs::util::unbounded_channel::&lt;(::hydro_lang::location::MemberId&lt;()&gt;, __root_dfir_rs::bytes::Bytes)&gt;();
 <a href=#563 id=563 data-nosnippet>563</a>                });
 <a href=#564 id=564 data-nosnippet>564</a>
 <a href=#565 id=565 data-nosnippet>565</a>                <span class="self">self</span>.extra_stmts_cluster
@@ -572,7 +572,7 @@
 <a href=#572 id=572 data-nosnippet>572</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_pipeline) = serialize {
 <a href=#573 id=573 data-nosnippet>573</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#574 id=574 data-nosnippet>574</a>                        <span class="macro">parse_quote!</span> {
-<a href=#575 id=575 data-nosnippet>575</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|v| #sink.send((__current_cluster_id, v)).unwrap());
+<a href=#575 id=575 data-nosnippet>575</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|v| #sink.send((::hydro_lang::location::MemberId::&lt;()&gt;::from_raw_id(__current_cluster_id), v)).unwrap());
 <a href=#576 id=576 data-nosnippet>576</a>                        },
 <a href=#577 id=577 data-nosnippet>577</a>                        <span class="prelude-val">None</span>,
 <a href=#578 id=578 data-nosnippet>578</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
@@ -580,7 +580,7 @@
 <a href=#580 id=580 data-nosnippet>580</a>                } <span class="kw">else </span>{
 <a href=#581 id=581 data-nosnippet>581</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#582 id=582 data-nosnippet>582</a>                        <span class="macro">parse_quote!</span> {
-<a href=#583 id=583 data-nosnippet>583</a>                            #input_ident -&gt; for_each(|v| #sink.send((__current_cluster_id, v)).unwrap());
+<a href=#583 id=583 data-nosnippet>583</a>                            #input_ident -&gt; for_each(|v| #sink.send((::hydro_lang::location::MemberId::&lt;()&gt;::from_raw_id(__current_cluster_id), v)).unwrap());
 <a href=#584 id=584 data-nosnippet>584</a>                        },
 <a href=#585 id=585 data-nosnippet>585</a>                        <span class="prelude-val">None</span>,
 <a href=#586 id=586 data-nosnippet>586</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
@@ -632,7 +632,7 @@
 <a href=#632 id=632 data-nosnippet>632</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_pipeline) = serialize {
 <a href=#633 id=633 data-nosnippet>633</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#634 id=634 data-nosnippet>634</a>                        <span class="macro">parse_quote!</span> {
-<a href=#635 id=635 data-nosnippet>635</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|(id, v)| (#sink.borrow())[id <span class="kw">as </span>usize].send(v).unwrap());
+<a href=#635 id=635 data-nosnippet>635</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::&lt;()&gt;::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send(v).unwrap());
 <a href=#636 id=636 data-nosnippet>636</a>                        },
 <a href=#637 id=637 data-nosnippet>637</a>                        <span class="prelude-val">None</span>,
 <a href=#638 id=638 data-nosnippet>638</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
@@ -640,7 +640,7 @@
 <a href=#640 id=640 data-nosnippet>640</a>                } <span class="kw">else </span>{
 <a href=#641 id=641 data-nosnippet>641</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#642 id=642 data-nosnippet>642</a>                        <span class="macro">parse_quote!</span> {
-<a href=#643 id=643 data-nosnippet>643</a>                            #input_ident -&gt; for_each(|(id, v)| (#sink.borrow())[id <span class="kw">as </span>usize].send(v).unwrap());
+<a href=#643 id=643 data-nosnippet>643</a>                            #input_ident -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::&lt;()&gt;::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send(v).unwrap());
 <a href=#644 id=644 data-nosnippet>644</a>                        },
 <a href=#645 id=645 data-nosnippet>645</a>                        <span class="prelude-val">None</span>,
 <a href=#646 id=646 data-nosnippet>646</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
@@ -671,7 +671,7 @@
 <a href=#671 id=671 data-nosnippet>671</a>                    Span::call_site(),
 <a href=#672 id=672 data-nosnippet>672</a>                );
 <a href=#673 id=673 data-nosnippet>673</a>                <span class="self">self</span>.extra_stmts_global.push(<span class="macro">syn::parse_quote!</span> {
-<a href=#674 id=674 data-nosnippet>674</a>                    <span class="kw">let </span>#sink: ::std::rc::Rc&lt;::std::cell::RefCell&lt;Vec&lt;__root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;(u32, __root_dfir_rs::bytes::Bytes)&gt;&gt;&gt;&gt; = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
+<a href=#674 id=674 data-nosnippet>674</a>                    <span class="kw">let </span>#sink: ::std::rc::Rc&lt;::std::cell::RefCell&lt;Vec&lt;__root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;(::hydro_lang::location::MemberId&lt;()&gt;, __root_dfir_rs::bytes::Bytes)&gt;&gt;&gt;&gt; = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
 <a href=#675 id=675 data-nosnippet>675</a>                });
 <a href=#676 id=676 data-nosnippet>676</a>
 <a href=#677 id=677 data-nosnippet>677</a>                <span class="self">self</span>.extra_stmts_global.push(<span class="macro">syn::parse_quote!</span> {
@@ -690,7 +690,7 @@
 <a href=#690 id=690 data-nosnippet>690</a>                    .or_default()
 <a href=#691 id=691 data-nosnippet>691</a>                    .push(<span class="macro">syn::parse_quote!</span> {
 <a href=#692 id=692 data-nosnippet>692</a>                        <span class="kw">let </span>#source = {
-<a href=#693 id=693 data-nosnippet>693</a>                            <span class="kw">let </span>(__sink, __source) = __root_dfir_rs::util::unbounded_channel::&lt;(u32, __root_dfir_rs::bytes::Bytes)&gt;();
+<a href=#693 id=693 data-nosnippet>693</a>                            <span class="kw">let </span>(__sink, __source) = __root_dfir_rs::util::unbounded_channel::&lt;(::hydro_lang::location::MemberId&lt;()&gt;, __root_dfir_rs::bytes::Bytes)&gt;();
 <a href=#694 id=694 data-nosnippet>694</a>                            #sink_writer.borrow_mut().push(__sink);
 <a href=#695 id=695 data-nosnippet>695</a>                            __source
 <a href=#696 id=696 data-nosnippet>696</a>                        };
@@ -699,7 +699,7 @@
 <a href=#699 id=699 data-nosnippet>699</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_pipeline) = serialize {
 <a href=#700 id=700 data-nosnippet>700</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#701 id=701 data-nosnippet>701</a>                        <span class="macro">parse_quote!</span> {
-<a href=#702 id=702 data-nosnippet>702</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|(id, v)| (#sink.borrow())[id <span class="kw">as </span>usize].send((__current_cluster_id, v)).unwrap());
+<a href=#702 id=702 data-nosnippet>702</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::&lt;()&gt;::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send((::hydro_lang::location::MemberId::&lt;()&gt;::from_raw_id(__current_cluster_id), v)).unwrap());
 <a href=#703 id=703 data-nosnippet>703</a>                        },
 <a href=#704 id=704 data-nosnippet>704</a>                        <span class="prelude-val">None</span>,
 <a href=#705 id=705 data-nosnippet>705</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
@@ -707,7 +707,7 @@
 <a href=#707 id=707 data-nosnippet>707</a>                } <span class="kw">else </span>{
 <a href=#708 id=708 data-nosnippet>708</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#709 id=709 data-nosnippet>709</a>                        <span class="macro">parse_quote!</span> {
-<a href=#710 id=710 data-nosnippet>710</a>                            #input_ident -&gt; for_each(|(id, v)| (#sink.borrow())[id <span class="kw">as </span>usize].send((__current_cluster_id, v)).unwrap());
+<a href=#710 id=710 data-nosnippet>710</a>                            #input_ident -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::&lt;()&gt;::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send((::hydro_lang::location::MemberId::&lt;()&gt;::from_raw_id(__current_cluster_id), v)).unwrap());
 <a href=#711 id=711 data-nosnippet>711</a>                        },
 <a href=#712 id=712 data-nosnippet>712</a>                        <span class="prelude-val">None</span>,
 <a href=#713 id=713 data-nosnippet>713</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
