@@ -815,4 +815,118 @@
 <a href=#815 id=815 data-nosnippet>815</a>        }
 <a href=#816 id=816 data-nosnippet>816</a>    }
 <a href=#817 id=817 data-nosnippet>817</a>}
+<a href=#818 id=818 data-nosnippet>818</a>
+<a href=#819 id=819 data-nosnippet>819</a><span class="kw">type </span>KeyedStreamOrderHookInput&lt;K, V&gt; = Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;(K, V)&gt;&gt;&gt;&gt;;
+<a href=#820 id=820 data-nosnippet>820</a>
+<a href=#821 id=821 data-nosnippet>821</a><span class="kw">pub struct </span>KeyedStreamOrderHook&lt;K: Hash + Eq + Clone, V&gt; {
+<a href=#822 id=822 data-nosnippet>822</a>    input: KeyedStreamOrderHookInput&lt;K, V&gt;,
+<a href=#823 id=823 data-nosnippet>823</a>    to_release: <span class="prelude-ty">Option</span>&lt;FxHashMap&lt;K, Vec&lt;V&gt;&gt;&gt;,
+<a href=#824 id=824 data-nosnippet>824</a>    output: UnboundedSender&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#825 id=825 data-nosnippet>825</a>    batch_location: HookLocationMeta,
+<a href=#826 id=826 data-nosnippet>826</a>    format_key_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#827 id=827 data-nosnippet>827</a>    format_value_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>V) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#828 id=828 data-nosnippet>828</a>}
+<a href=#829 id=829 data-nosnippet>829</a>
+<a href=#830 id=830 data-nosnippet>830</a><span class="kw">impl</span>&lt;K: Hash + Eq + Clone, V&gt; KeyedStreamOrderHook&lt;K, V&gt; {
+<a href=#831 id=831 data-nosnippet>831</a>    <span class="kw">pub fn </span>new(
+<a href=#832 id=832 data-nosnippet>832</a>        input: KeyedStreamOrderHookInput&lt;K, V&gt;,
+<a href=#833 id=833 data-nosnippet>833</a>        output: UnboundedSender&lt;Vec&lt;(K, V)&gt;&gt;,
+<a href=#834 id=834 data-nosnippet>834</a>        batch_location: HookLocationMeta,
+<a href=#835 id=835 data-nosnippet>835</a>        format_key_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#836 id=836 data-nosnippet>836</a>        format_value_debug: <span class="kw">fn</span>(<span class="kw-2">&amp;</span>V) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#837 id=837 data-nosnippet>837</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#838 id=838 data-nosnippet>838</a>        <span class="self">Self </span>{
+<a href=#839 id=839 data-nosnippet>839</a>            input,
+<a href=#840 id=840 data-nosnippet>840</a>            to_release: <span class="prelude-val">None</span>,
+<a href=#841 id=841 data-nosnippet>841</a>            output,
+<a href=#842 id=842 data-nosnippet>842</a>            batch_location,
+<a href=#843 id=843 data-nosnippet>843</a>            format_key_debug,
+<a href=#844 id=844 data-nosnippet>844</a>            format_value_debug,
+<a href=#845 id=845 data-nosnippet>845</a>        }
+<a href=#846 id=846 data-nosnippet>846</a>    }
+<a href=#847 id=847 data-nosnippet>847</a>}
+<a href=#848 id=848 data-nosnippet>848</a>
+<a href=#849 id=849 data-nosnippet>849</a><span class="kw">impl</span>&lt;K: Hash + Eq + Clone, V&gt; SimInlineHook <span class="kw">for </span>KeyedStreamOrderHook&lt;K, V&gt; {
+<a href=#850 id=850 data-nosnippet>850</a>    <span class="kw">fn </span>pending_decision(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#851 id=851 data-nosnippet>851</a>        <span class="self">self</span>.input.borrow().is_some()
+<a href=#852 id=852 data-nosnippet>852</a>    }
+<a href=#853 id=853 data-nosnippet>853</a>
+<a href=#854 id=854 data-nosnippet>854</a>    <span class="kw">fn </span>has_decision(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#855 id=855 data-nosnippet>855</a>        <span class="self">self</span>.to_release.is_some()
+<a href=#856 id=856 data-nosnippet>856</a>    }
+<a href=#857 id=857 data-nosnippet>857</a>
+<a href=#858 id=858 data-nosnippet>858</a>    <span class="kw">fn </span>autonomous_decision&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, driver: <span class="kw-2">&amp;mut </span>Borrowed&lt;<span class="lifetime">'a</span>&gt;) {
+<a href=#859 id=859 data-nosnippet>859</a>        <span class="kw">let </span><span class="kw-2">mut </span>inputs = <span class="self">self</span>.input.borrow_mut().take().unwrap();
+<a href=#860 id=860 data-nosnippet>860</a>        <span class="kw">let </span><span class="kw-2">mut </span>grouped = FxHashMap::default();
+<a href=#861 id=861 data-nosnippet>861</a>        <span class="kw">for </span>(k, v) <span class="kw">in </span>inputs.drain(..) {
+<a href=#862 id=862 data-nosnippet>862</a>            grouped.entry(k).or_insert_with(Vec::new).push(v);
+<a href=#863 id=863 data-nosnippet>863</a>        }
+<a href=#864 id=864 data-nosnippet>864</a>
+<a href=#865 id=865 data-nosnippet>865</a>        <span class="kw">let </span><span class="kw-2">mut </span>out = FxHashMap::default();
+<a href=#866 id=866 data-nosnippet>866</a>        <span class="kw">for </span>(key, <span class="kw-2">mut </span>values) <span class="kw">in </span>grouped {
+<a href=#867 id=867 data-nosnippet>867</a>            <span class="comment">// from Bolero
+<a href=#868 id=868 data-nosnippet>868</a>            </span><span class="kw">let </span>max_dst = values.len().saturating_sub(<span class="number">1</span>);
+<a href=#869 id=869 data-nosnippet>869</a>            <span class="kw">for </span>src <span class="kw">in </span><span class="number">0</span>..max_dst {
+<a href=#870 id=870 data-nosnippet>870</a>                <span class="kw">let </span>dst = (src..=max_dst).generate(driver).unwrap();
+<a href=#871 id=871 data-nosnippet>871</a>                values.swap(src, dst);
+<a href=#872 id=872 data-nosnippet>872</a>            }
+<a href=#873 id=873 data-nosnippet>873</a>
+<a href=#874 id=874 data-nosnippet>874</a>            out.insert(key, values);
+<a href=#875 id=875 data-nosnippet>875</a>        }
+<a href=#876 id=876 data-nosnippet>876</a>
+<a href=#877 id=877 data-nosnippet>877</a>        <span class="self">self</span>.to_release = <span class="prelude-val">Some</span>(out);
+<a href=#878 id=878 data-nosnippet>878</a>    }
+<a href=#879 id=879 data-nosnippet>879</a>
+<a href=#880 id=880 data-nosnippet>880</a>    <span class="kw">fn </span>release_decision(<span class="kw-2">&amp;mut </span><span class="self">self</span>, log_writer: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write) {
+<a href=#881 id=881 data-nosnippet>881</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(to_release) = <span class="self">self</span>.to_release.take() {
+<a href=#882 id=882 data-nosnippet>882</a>            <span class="kw">if </span>!to_release.is_empty() {
+<a href=#883 id=883 data-nosnippet>883</a>                <span class="kw">let </span>(batch_location, line, caret_indent) = <span class="self">self</span>.batch_location;
+<a href=#884 id=884 data-nosnippet>884</a>                <span class="kw">let </span><span class="kw-2">mut </span>note_str = String::new();
+<a href=#885 id=885 data-nosnippet>885</a>                <span class="kw">for </span>(key, values) <span class="kw">in </span><span class="kw-2">&amp;</span>to_release {
+<a href=#886 id=886 data-nosnippet>886</a>                    <span class="kw">let </span>entry_text = <span class="macro">format!</span>(
+<a href=#887 id=887 data-nosnippet>887</a>                        <span class="string">"{:?}: {:?}"</span>,
+<a href=#888 id=888 data-nosnippet>888</a>                        ManualDebug(key, <span class="self">self</span>.format_key_debug),
+<a href=#889 id=889 data-nosnippet>889</a>                        TruncatedVecDebug(
+<a href=#890 id=890 data-nosnippet>890</a>                            RefCell::new(<span class="prelude-val">Some</span>(values.iter())),
+<a href=#891 id=891 data-nosnippet>891</a>                            <span class="number">8</span>,
+<a href=#892 id=892 data-nosnippet>892</a>                            <span class="self">self</span>.format_value_debug
+<a href=#893 id=893 data-nosnippet>893</a>                        )
+<a href=#894 id=894 data-nosnippet>894</a>                    );
+<a href=#895 id=895 data-nosnippet>895</a>                    <span class="kw">if </span>!note_str.is_empty() {
+<a href=#896 id=896 data-nosnippet>896</a>                        note_str.push_str(<span class="string">", "</span>);
+<a href=#897 id=897 data-nosnippet>897</a>                    }
+<a href=#898 id=898 data-nosnippet>898</a>                    note_str.push_str(<span class="kw-2">&amp;</span>entry_text);
+<a href=#899 id=899 data-nosnippet>899</a>                }
+<a href=#900 id=900 data-nosnippet>900</a>                note_str = <span class="macro">format!</span>(<span class="string">"^ ordered items: {{ {} }}"</span>, note_str);
+<a href=#901 id=901 data-nosnippet>901</a>
+<a href=#902 id=902 data-nosnippet>902</a>                <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
+<a href=#903 id=903 data-nosnippet>903</a>                    log_writer,
+<a href=#904 id=904 data-nosnippet>904</a>                    <span class="string">"{} {}"</span>,
+<a href=#905 id=905 data-nosnippet>905</a>                    <span class="string">"--&gt;"</span>.color(colored::Color::Blue),
+<a href=#906 id=906 data-nosnippet>906</a>                    batch_location
+<a href=#907 id=907 data-nosnippet>907</a>                );
+<a href=#908 id=908 data-nosnippet>908</a>
+<a href=#909 id=909 data-nosnippet>909</a>                <span class="kw">let _ </span>= <span class="macro">writeln!</span>(log_writer, <span class="string">" {}{}"</span>, <span class="string">"|"</span>.color(colored::Color::Blue), line);
+<a href=#910 id=910 data-nosnippet>910</a>
+<a href=#911 id=911 data-nosnippet>911</a>                <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
+<a href=#912 id=912 data-nosnippet>912</a>                    log_writer,
+<a href=#913 id=913 data-nosnippet>913</a>                    <span class="string">" {}{}{}"</span>,
+<a href=#914 id=914 data-nosnippet>914</a>                    <span class="string">"|"</span>.color(colored::Color::Blue),
+<a href=#915 id=915 data-nosnippet>915</a>                    caret_indent,
+<a href=#916 id=916 data-nosnippet>916</a>                    note_str.color(colored::Color::Cyan)
+<a href=#917 id=917 data-nosnippet>917</a>                );
+<a href=#918 id=918 data-nosnippet>918</a>            }
+<a href=#919 id=919 data-nosnippet>919</a>
+<a href=#920 id=920 data-nosnippet>920</a>            <span class="kw">let </span><span class="kw-2">mut </span>flat_out = <span class="macro">vec!</span>[];
+<a href=#921 id=921 data-nosnippet>921</a>            <span class="kw">for </span>(k, vs) <span class="kw">in </span>to_release {
+<a href=#922 id=922 data-nosnippet>922</a>                <span class="kw">for </span>v <span class="kw">in </span>vs {
+<a href=#923 id=923 data-nosnippet>923</a>                    flat_out.push((k.clone(), v));
+<a href=#924 id=924 data-nosnippet>924</a>                }
+<a href=#925 id=925 data-nosnippet>925</a>            }
+<a href=#926 id=926 data-nosnippet>926</a>            <span class="self">self</span>.output.send(flat_out).unwrap();
+<a href=#927 id=927 data-nosnippet>927</a>        } <span class="kw">else </span>{
+<a href=#928 id=928 data-nosnippet>928</a>            <span class="macro">panic!</span>(<span class="string">"No decision to release"</span>);
+<a href=#929 id=929 data-nosnippet>929</a>        }
+<a href=#930 id=930 data-nosnippet>930</a>    }
+<a href=#931 id=931 data-nosnippet>931</a>}
 </code></pre></div></section></main></body></html>
