@@ -226,16 +226,24 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                             }
                             cargo_metadata::Message::CompilerMessage(mut msg) => {
                                 // Update the path displayed to enable clicking in IDE.
-                                {
-                                    let full_path = format!(
-                                        "(full path) {}",
-                                        params.src.join("src/bin").display()
-                                    );
-                                    if let Some(rendered) = msg.message.rendered.as_mut() {
-                                        *rendered = rendered.replace("src/bin", &full_path);
+                                // TODO(mingwei): deduplicate code with hydro_lang sim/graph.rs
+                                if let Some(rendered) = msg.message.rendered.as_mut() {
+                                    let file_names = msg
+                                        .message
+                                        .spans
+                                        .iter()
+                                        .map(|s| &s.file_name)
+                                        .collect::<std::collections::BTreeSet<_>>();
+                                    for file_name in file_names {
+                                        *rendered = rendered.replace(
+                                            file_name,
+                                            &format!(
+                                                "(full path) {}/{file_name}",
+                                                params.src.display(),
+                                            ),
+                                        )
                                     }
                                 }
-
                                 ProgressTracker::println(msg.message.to_string());
                                 diagnostics.push(msg.message);
                             }

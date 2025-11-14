@@ -470,14 +470,21 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
             }
             cargo_metadata::Message::CompilerMessage(mut msg) => {
                 // Update the path displayed to enable clicking in IDE.
-                {
-                    let full_path =
-                        format!("(full path) {}", trybuild.project_dir.join("src").display());
-                    if let Some(rendered) = msg.message.rendered.as_mut() {
-                        *rendered = rendered.replace("src", &full_path);
+                // TODO(mingwei): deduplicate code with hydro_deploy rust_crate/build.rs
+                if let Some(rendered) = msg.message.rendered.as_mut() {
+                    let file_names = msg
+                        .message
+                        .spans
+                        .iter()
+                        .map(|s| &s.file_name)
+                        .collect::<std::collections::BTreeSet<_>>();
+                    for file_name in file_names {
+                        *rendered = rendered.replace(
+                            file_name,
+                            &format!("(full path) {}/{file_name}", trybuild.project_dir.display()),
+                        )
                     }
                 }
-
                 eprintln!("{}", msg.message);
             }
             cargo_metadata::Message::TextLine(line) => {
