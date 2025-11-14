@@ -764,78 +764,81 @@
 <a href=#764 id=764 data-nosnippet>764</a>        ) -&gt; (
 <a href=#765 id=765 data-nosnippet>765</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::graph::Dfir&lt;<span class="lifetime">'a</span>&gt;)&gt;,
 <a href=#766 id=766 data-nosnippet>766</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::graph::Dfir&lt;<span class="lifetime">'a</span>&gt;)&gt;,
-<a href=#767 id=767 data-nosnippet>767</a>            ::std::collections::HashMap&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;), ::std::vec::Vec&lt;Box&lt;<span class="kw">dyn </span>hydro_lang::sim::runtime::SimHook&gt;&gt;&gt;,
-<a href=#768 id=768 data-nosnippet>768</a>        ) {
-<a href=#769 id=769 data-nosnippet>769</a>            <span class="macro">macro_rules!</span> println {
-<a href=#770 id=770 data-nosnippet>770</a>                ($(<span class="macro-nonterminal">$arg</span>:tt)<span class="kw-2">*</span>) =&gt; ({
-<a href=#771 id=771 data-nosnippet>771</a>                    __println_handler(<span class="macro">::std::format_args!</span>($(<span class="macro-nonterminal">$arg</span>)<span class="kw-2">*</span>));
-<a href=#772 id=772 data-nosnippet>772</a>                })
-<a href=#773 id=773 data-nosnippet>773</a>            }
-<a href=#774 id=774 data-nosnippet>774</a>
-<a href=#775 id=775 data-nosnippet>775</a>            <span class="macro">macro_rules!</span> eprintln {
-<a href=#776 id=776 data-nosnippet>776</a>                ($(<span class="macro-nonterminal">$arg</span>:tt)<span class="kw-2">*</span>) =&gt; ({
-<a href=#777 id=777 data-nosnippet>777</a>                    __eprintln_handler(<span class="macro">::std::format_args!</span>($(<span class="macro-nonterminal">$arg</span>)<span class="kw-2">*</span>));
-<a href=#778 id=778 data-nosnippet>778</a>                })
-<a href=#779 id=779 data-nosnippet>779</a>            }
-<a href=#780 id=780 data-nosnippet>780</a>
-<a href=#781 id=781 data-nosnippet>781</a>            <span class="comment">// copy-pasted from std::dbg! so we can use the local eprintln! above
-<a href=#782 id=782 data-nosnippet>782</a>            </span><span class="macro">macro_rules!</span> dbg {
-<a href=#783 id=783 data-nosnippet>783</a>                <span class="comment">// NOTE: We cannot use `concat!` to make a static string as a format argument
-<a href=#784 id=784 data-nosnippet>784</a>                // of `eprintln!` because `file!` could contain a `{` or
-<a href=#785 id=785 data-nosnippet>785</a>                // `$val` expression could be a block (`{ .. }`), in which case the `eprintln!`
-<a href=#786 id=786 data-nosnippet>786</a>                // will be malformed.
-<a href=#787 id=787 data-nosnippet>787</a>                </span>() =&gt; {
-<a href=#788 id=788 data-nosnippet>788</a>                    <span class="macro">eprintln!</span>(<span class="string">"[{}:{}:{}]"</span>, <span class="macro">::std::file!</span>(), <span class="macro">::std::line!</span>(), <span class="macro">::std::column!</span>())
-<a href=#789 id=789 data-nosnippet>789</a>                };
-<a href=#790 id=790 data-nosnippet>790</a>                (<span class="macro-nonterminal">$val</span>:expr $(,)<span class="question-mark">?</span>) =&gt; {
-<a href=#791 id=791 data-nosnippet>791</a>                    <span class="comment">// Use of `match` here is intentional because it affects the lifetimes
-<a href=#792 id=792 data-nosnippet>792</a>                    // of temporaries - https://stackoverflow.com/a/48732525/1063961
-<a href=#793 id=793 data-nosnippet>793</a>                    </span><span class="kw">match </span><span class="macro-nonterminal">$val </span>{
-<a href=#794 id=794 data-nosnippet>794</a>                        tmp =&gt; {
-<a href=#795 id=795 data-nosnippet>795</a>                            <span class="macro">eprintln!</span>(<span class="string">"[{}:{}:{}] {} = {:#?}"</span>,
-<a href=#796 id=796 data-nosnippet>796</a>                                <span class="macro">::std::file!</span>(),
-<a href=#797 id=797 data-nosnippet>797</a>                                <span class="macro">::std::line!</span>(),
-<a href=#798 id=798 data-nosnippet>798</a>                                <span class="macro">::std::column!</span>(),
-<a href=#799 id=799 data-nosnippet>799</a>                                <span class="macro">::std::stringify!</span>(<span class="macro-nonterminal">$val</span>),
-<a href=#800 id=800 data-nosnippet>800</a>                                <span class="comment">// The `&amp;T: Debug` check happens here (not in the format literal desugaring)
-<a href=#801 id=801 data-nosnippet>801</a>                                // to avoid format literal related messages and suggestions.
-<a href=#802 id=802 data-nosnippet>802</a>                                </span>&amp;&amp;tmp <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">dyn </span>::std::fmt::Debug,
-<a href=#803 id=803 data-nosnippet>803</a>                            );
-<a href=#804 id=804 data-nosnippet>804</a>                            tmp
-<a href=#805 id=805 data-nosnippet>805</a>                        }
-<a href=#806 id=806 data-nosnippet>806</a>                    }
-<a href=#807 id=807 data-nosnippet>807</a>                };
-<a href=#808 id=808 data-nosnippet>808</a>                ($(<span class="macro-nonterminal">$val</span>:expr),+ $(,)<span class="question-mark">?</span>) =&gt; {
-<a href=#809 id=809 data-nosnippet>809</a>                    ($(<span class="macro">dbg!</span>(<span class="macro-nonterminal">$val</span>)),+,)
-<a href=#810 id=810 data-nosnippet>810</a>                };
-<a href=#811 id=811 data-nosnippet>811</a>            }
-<a href=#812 id=812 data-nosnippet>812</a>
-<a href=#813 id=813 data-nosnippet>813</a>            <span class="kw">let </span><span class="kw-2">mut </span>__hydro_hooks: ::std::collections::HashMap&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;), ::std::vec::Vec&lt;Box&lt;<span class="kw">dyn </span>hydro_lang::sim::runtime::SimHook&gt;&gt;&gt; = ::std::collections::HashMap::new();
-<a href=#814 id=814 data-nosnippet>814</a>            #(#extra_stmts_global)*
-<a href=#815 id=815 data-nosnippet>815</a>            #(#cluster_ids_stmts)*
-<a href=#816 id=816 data-nosnippet>816</a>
-<a href=#817 id=817 data-nosnippet>817</a>            <span class="kw">let </span><span class="kw-2">mut </span>__async_dfirs = <span class="macro">vec!</span>[#(#process_dfir_exprs),<span class="kw-2">*</span>];
-<a href=#818 id=818 data-nosnippet>818</a>            <span class="kw">let </span><span class="kw-2">mut </span>__tick_dfirs = <span class="macro">vec!</span>[#(#process_tick_dfir_exprs),<span class="kw-2">*</span>];
-<a href=#819 id=819 data-nosnippet>819</a>            #(#cluster_dfir_stmts)*
-<a href=#820 id=820 data-nosnippet>820</a>            (__async_dfirs, __tick_dfirs, __hydro_hooks)
-<a href=#821 id=821 data-nosnippet>821</a>        }
-<a href=#822 id=822 data-nosnippet>822</a>
-<a href=#823 id=823 data-nosnippet>823</a>        <span class="attr">#[<span class="kw">unsafe</span>(no_mangle)]
-<a href=#824 id=824 data-nosnippet>824</a>        </span><span class="kw">unsafe extern </span><span class="string">"Rust" </span><span class="kw">fn </span>__hydro_runtime(
-<a href=#825 id=825 data-nosnippet>825</a>            should_color: bool,
-<a href=#826 id=826 data-nosnippet>826</a>            __hydro_external_out: ::std::collections::HashMap&lt;usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
-<a href=#827 id=827 data-nosnippet>827</a>            __hydro_external_in: ::std::collections::HashMap&lt;usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
-<a href=#828 id=828 data-nosnippet>828</a>            __println_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
-<a href=#829 id=829 data-nosnippet>829</a>            __eprintln_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
-<a href=#830 id=830 data-nosnippet>830</a>        ) -&gt; (
-<a href=#831 id=831 data-nosnippet>831</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::graph::Dfir&lt;<span class="lifetime">'static</span>&gt;)&gt;,
-<a href=#832 id=832 data-nosnippet>832</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::graph::Dfir&lt;<span class="lifetime">'static</span>&gt;)&gt;,
-<a href=#833 id=833 data-nosnippet>833</a>            ::std::collections::HashMap&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;), ::std::vec::Vec&lt;Box&lt;<span class="kw">dyn </span>hydro_lang::sim::runtime::SimHook&gt;&gt;&gt;,
-<a href=#834 id=834 data-nosnippet>834</a>        ) {
-<a href=#835 id=835 data-nosnippet>835</a>            hydro_lang::runtime_support::colored::control::set_override(should_color);
-<a href=#836 id=836 data-nosnippet>836</a>            __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __println_handler, __eprintln_handler)
-<a href=#837 id=837 data-nosnippet>837</a>        }
-<a href=#838 id=838 data-nosnippet>838</a>    };
-<a href=#839 id=839 data-nosnippet>839</a>    source_ast
-<a href=#840 id=840 data-nosnippet>840</a>}
+<a href=#767 id=767 data-nosnippet>767</a>            hydro_lang::sim::runtime::Hooks&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
+<a href=#768 id=768 data-nosnippet>768</a>            hydro_lang::sim::runtime::InlineHooks&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
+<a href=#769 id=769 data-nosnippet>769</a>        ) {
+<a href=#770 id=770 data-nosnippet>770</a>            <span class="macro">macro_rules!</span> println {
+<a href=#771 id=771 data-nosnippet>771</a>                ($(<span class="macro-nonterminal">$arg</span>:tt)<span class="kw-2">*</span>) =&gt; ({
+<a href=#772 id=772 data-nosnippet>772</a>                    __println_handler(<span class="macro">::std::format_args!</span>($(<span class="macro-nonterminal">$arg</span>)<span class="kw-2">*</span>));
+<a href=#773 id=773 data-nosnippet>773</a>                })
+<a href=#774 id=774 data-nosnippet>774</a>            }
+<a href=#775 id=775 data-nosnippet>775</a>
+<a href=#776 id=776 data-nosnippet>776</a>            <span class="macro">macro_rules!</span> eprintln {
+<a href=#777 id=777 data-nosnippet>777</a>                ($(<span class="macro-nonterminal">$arg</span>:tt)<span class="kw-2">*</span>) =&gt; ({
+<a href=#778 id=778 data-nosnippet>778</a>                    __eprintln_handler(<span class="macro">::std::format_args!</span>($(<span class="macro-nonterminal">$arg</span>)<span class="kw-2">*</span>));
+<a href=#779 id=779 data-nosnippet>779</a>                })
+<a href=#780 id=780 data-nosnippet>780</a>            }
+<a href=#781 id=781 data-nosnippet>781</a>
+<a href=#782 id=782 data-nosnippet>782</a>            <span class="comment">// copy-pasted from std::dbg! so we can use the local eprintln! above
+<a href=#783 id=783 data-nosnippet>783</a>            </span><span class="macro">macro_rules!</span> dbg {
+<a href=#784 id=784 data-nosnippet>784</a>                <span class="comment">// NOTE: We cannot use `concat!` to make a static string as a format argument
+<a href=#785 id=785 data-nosnippet>785</a>                // of `eprintln!` because `file!` could contain a `{` or
+<a href=#786 id=786 data-nosnippet>786</a>                // `$val` expression could be a block (`{ .. }`), in which case the `eprintln!`
+<a href=#787 id=787 data-nosnippet>787</a>                // will be malformed.
+<a href=#788 id=788 data-nosnippet>788</a>                </span>() =&gt; {
+<a href=#789 id=789 data-nosnippet>789</a>                    <span class="macro">eprintln!</span>(<span class="string">"[{}:{}:{}]"</span>, <span class="macro">::std::file!</span>(), <span class="macro">::std::line!</span>(), <span class="macro">::std::column!</span>())
+<a href=#790 id=790 data-nosnippet>790</a>                };
+<a href=#791 id=791 data-nosnippet>791</a>                (<span class="macro-nonterminal">$val</span>:expr $(,)<span class="question-mark">?</span>) =&gt; {
+<a href=#792 id=792 data-nosnippet>792</a>                    <span class="comment">// Use of `match` here is intentional because it affects the lifetimes
+<a href=#793 id=793 data-nosnippet>793</a>                    // of temporaries - https://stackoverflow.com/a/48732525/1063961
+<a href=#794 id=794 data-nosnippet>794</a>                    </span><span class="kw">match </span><span class="macro-nonterminal">$val </span>{
+<a href=#795 id=795 data-nosnippet>795</a>                        tmp =&gt; {
+<a href=#796 id=796 data-nosnippet>796</a>                            <span class="macro">eprintln!</span>(<span class="string">"[{}:{}:{}] {} = {:#?}"</span>,
+<a href=#797 id=797 data-nosnippet>797</a>                                <span class="macro">::std::file!</span>(),
+<a href=#798 id=798 data-nosnippet>798</a>                                <span class="macro">::std::line!</span>(),
+<a href=#799 id=799 data-nosnippet>799</a>                                <span class="macro">::std::column!</span>(),
+<a href=#800 id=800 data-nosnippet>800</a>                                <span class="macro">::std::stringify!</span>(<span class="macro-nonterminal">$val</span>),
+<a href=#801 id=801 data-nosnippet>801</a>                                <span class="comment">// The `&amp;T: Debug` check happens here (not in the format literal desugaring)
+<a href=#802 id=802 data-nosnippet>802</a>                                // to avoid format literal related messages and suggestions.
+<a href=#803 id=803 data-nosnippet>803</a>                                </span>&amp;&amp;tmp <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">dyn </span>::std::fmt::Debug,
+<a href=#804 id=804 data-nosnippet>804</a>                            );
+<a href=#805 id=805 data-nosnippet>805</a>                            tmp
+<a href=#806 id=806 data-nosnippet>806</a>                        }
+<a href=#807 id=807 data-nosnippet>807</a>                    }
+<a href=#808 id=808 data-nosnippet>808</a>                };
+<a href=#809 id=809 data-nosnippet>809</a>                ($(<span class="macro-nonterminal">$val</span>:expr),+ $(,)<span class="question-mark">?</span>) =&gt; {
+<a href=#810 id=810 data-nosnippet>810</a>                    ($(<span class="macro">dbg!</span>(<span class="macro-nonterminal">$val</span>)),+,)
+<a href=#811 id=811 data-nosnippet>811</a>                };
+<a href=#812 id=812 data-nosnippet>812</a>            }
+<a href=#813 id=813 data-nosnippet>813</a>
+<a href=#814 id=814 data-nosnippet>814</a>            <span class="kw">let </span><span class="kw-2">mut </span>__hydro_hooks: ::std::collections::HashMap&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;), ::std::vec::Vec&lt;Box&lt;<span class="kw">dyn </span>hydro_lang::sim::runtime::SimHook&gt;&gt;&gt; = ::std::collections::HashMap::new();
+<a href=#815 id=815 data-nosnippet>815</a>            <span class="kw">let </span><span class="kw-2">mut </span>__hydro_inline_hooks: ::std::collections::HashMap&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;), ::std::vec::Vec&lt;Box&lt;<span class="kw">dyn </span>hydro_lang::sim::runtime::SimInlineHook&gt;&gt;&gt; = ::std::collections::HashMap::new();
+<a href=#816 id=816 data-nosnippet>816</a>            #(#extra_stmts_global)*
+<a href=#817 id=817 data-nosnippet>817</a>            #(#cluster_ids_stmts)*
+<a href=#818 id=818 data-nosnippet>818</a>
+<a href=#819 id=819 data-nosnippet>819</a>            <span class="kw">let </span><span class="kw-2">mut </span>__async_dfirs = <span class="macro">vec!</span>[#(#process_dfir_exprs),<span class="kw-2">*</span>];
+<a href=#820 id=820 data-nosnippet>820</a>            <span class="kw">let </span><span class="kw-2">mut </span>__tick_dfirs = <span class="macro">vec!</span>[#(#process_tick_dfir_exprs),<span class="kw-2">*</span>];
+<a href=#821 id=821 data-nosnippet>821</a>            #(#cluster_dfir_stmts)*
+<a href=#822 id=822 data-nosnippet>822</a>            (__async_dfirs, __tick_dfirs, __hydro_hooks, __hydro_inline_hooks)
+<a href=#823 id=823 data-nosnippet>823</a>        }
+<a href=#824 id=824 data-nosnippet>824</a>
+<a href=#825 id=825 data-nosnippet>825</a>        <span class="attr">#[<span class="kw">unsafe</span>(no_mangle)]
+<a href=#826 id=826 data-nosnippet>826</a>        </span><span class="kw">unsafe extern </span><span class="string">"Rust" </span><span class="kw">fn </span>__hydro_runtime(
+<a href=#827 id=827 data-nosnippet>827</a>            should_color: bool,
+<a href=#828 id=828 data-nosnippet>828</a>            __hydro_external_out: ::std::collections::HashMap&lt;usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
+<a href=#829 id=829 data-nosnippet>829</a>            __hydro_external_in: ::std::collections::HashMap&lt;usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream&lt;__root_dfir_rs::bytes::Bytes&gt;&gt;,
+<a href=#830 id=830 data-nosnippet>830</a>            __println_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
+<a href=#831 id=831 data-nosnippet>831</a>            __eprintln_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
+<a href=#832 id=832 data-nosnippet>832</a>        ) -&gt; (
+<a href=#833 id=833 data-nosnippet>833</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::graph::Dfir&lt;<span class="lifetime">'static</span>&gt;)&gt;,
+<a href=#834 id=834 data-nosnippet>834</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::graph::Dfir&lt;<span class="lifetime">'static</span>&gt;)&gt;,
+<a href=#835 id=835 data-nosnippet>835</a>            hydro_lang::sim::runtime::Hooks&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
+<a href=#836 id=836 data-nosnippet>836</a>            hydro_lang::sim::runtime::InlineHooks&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
+<a href=#837 id=837 data-nosnippet>837</a>        ) {
+<a href=#838 id=838 data-nosnippet>838</a>            hydro_lang::runtime_support::colored::control::set_override(should_color);
+<a href=#839 id=839 data-nosnippet>839</a>            __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __println_handler, __eprintln_handler)
+<a href=#840 id=840 data-nosnippet>840</a>        }
+<a href=#841 id=841 data-nosnippet>841</a>    };
+<a href=#842 id=842 data-nosnippet>842</a>    source_ast
+<a href=#843 id=843 data-nosnippet>843</a>}
 </code></pre></div></section></main></body></html>
