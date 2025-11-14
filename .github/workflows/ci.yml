@@ -92,7 +92,7 @@ jobs:
     steps:
       - name: Maximize build space
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        uses: easimon/maximize-build-space@master
+        uses: easimon/maximize-build-space@v10
 
       - name: Checkout sources
         uses: actions/checkout@v4
