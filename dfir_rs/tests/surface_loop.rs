@@ -466,6 +466,7 @@ pub fn test_enumerate_loop() {
     );
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[multiplatform_test(test, env_tracing)]
 pub fn test_write() {
     use dfir_lang::graph::WriteConfig;

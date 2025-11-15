@@ -71,7 +71,7 @@ impl Backtrace {
                     .frames()
                     .iter()
                     .skip_while(|f| {
-                        !(f.symbol_address() as usize == Backtrace::get_backtrace as usize
+                        !(std::ptr::eq(f.symbol_address(), Backtrace::get_backtrace as _)
                             || f.symbols()
                                 .first()
                                 .and_then(|s| s.name())
@@ -151,9 +151,13 @@ mod tests {
     use super::*;
 
     #[cfg(feature = "build")]
-    #[cfg_attr(not(target_os = "linux"), ignore)]
     #[test]
     fn test_backtrace() {
+        if cfg!(not(target_os = "linux")) && std::env::var_os("GITHUB_ACTIONS").is_some() {
+            eprintln!("Backtrace tests fail on non-linux Github Actions runners, skipping.");
+            return;
+        }
+
         let backtrace = Backtrace::get_backtrace(0);
         let elements = backtrace.elements();
 
