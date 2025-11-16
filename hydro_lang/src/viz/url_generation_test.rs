@@ -38,7 +38,7 @@ mod tests {
 
     #[test]
     fn test_url_length_calculation() {
-        let base_url = "https://hydro.run/docs/hydroscope";
+        let base_url = "https://hydro.run/hydroscope";
         let param_name = "data";
         let encoded_data = "eyJub2RlcyI6W10sImVkZ2VzIjpbXX0"; // base64 encoded {"nodes":[],"edges":[]}
         // Format: base_url#param_name=encoded_data
@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn test_url_structure_example() {
-        let base_url = "https://hydro.run/docs/hydroscope";
+        let base_url = "https://hydro.run/hydroscope";
         let param_name = "data";
         let encoded_data = "eyJub2RlcyI6W10sImVkZ2VzIjpbXX0";
         let url = format!("{}#{}={}", base_url, param_name, encoded_data);

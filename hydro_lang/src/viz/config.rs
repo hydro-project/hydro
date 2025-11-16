@@ -71,7 +71,7 @@ impl Default for VisualizerConfig {
     fn default() -> Self {
         // Check for environment variable override for local development
         let base_url = std::env::var("HYDRO_VISUALIZER_URL")
-            .unwrap_or_else(|_| "https://hydro.run/docs/hydroscope".to_string());
+            .unwrap_or_else(|_| "https://hydro.run/hydroscope".to_string());
 
         Self {
             base_url,
