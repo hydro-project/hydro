@@ -144,8 +144,11 @@ pub trait Deploy<'a> {
     fn cluster_ids(
         env: &Self::CompileEnv,
         of_cluster: usize,
-    ) -> impl QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a;
-    fn cluster_self_id(env: &Self::CompileEnv) -> impl QuotedWithContext<'a, u32, ()> + Copy + 'a;
+    ) -> impl QuotedWithContext<'a, &'a [MemberId<()>], ()> + Clone + 'a;
+
+    fn cluster_self_id(
+        env: &Self::CompileEnv,
+    ) -> impl QuotedWithContext<'a, MemberId<()>, ()> + Clone + 'a;
 
     fn cluster_membership_stream(
         location_id: &LocationId,

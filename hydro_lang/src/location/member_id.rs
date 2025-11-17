@@ -10,6 +10,10 @@ pub enum MemberId<Tag> {
         raw_id: u32,
         _phantom: PhantomData<Tag>,
     },
+    Docker {
+        container_name: String,
+        _phantom: PhantomData<Tag>,
+    },
 }
 
 impl<Tag> MemberId<Tag> {
@@ -20,9 +24,24 @@ impl<Tag> MemberId<Tag> {
         }
     }
 
+    pub fn from_container_name(container_name: impl ToString) -> Self {
+        MemberId::Docker {
+            container_name: container_name.to_string(),
+            _phantom: PhantomData,
+        }
+    }
+
     pub fn get_raw_id(&self) -> u32 {
         match self {
             MemberId::Legacy { raw_id, .. } => *raw_id,
+            _ => panic!(),
+        }
+    }
+
+    pub fn get_container_name(&self) -> String {
+        match self {
+            MemberId::Docker { container_name, .. } => container_name.clone(),
+            _ => panic!(),
         }
     }
 
@@ -32,6 +51,10 @@ impl<Tag> MemberId<Tag> {
                 raw_id,
                 _phantom: PhantomData,
             },
+            MemberId::Docker { container_name, .. } => MemberId::Docker {
+                container_name,
+                _phantom: PhantomData,
+            },
         }
     }
 
@@ -39,6 +62,10 @@ impl<Tag> MemberId<Tag> {
         match other {
             MemberId::Legacy { raw_id, .. } => MemberId::Legacy {
                 raw_id,
+                _phantom: PhantomData,
+            },
+            MemberId::Docker { container_name, .. } => MemberId::Docker {
+                container_name,
                 _phantom: PhantomData,
             },
         }
@@ -54,6 +81,12 @@ impl<Tag> Debug for MemberId<Tag> {
                 std::any::type_name::<Tag>(),
                 raw_id
             ),
+            MemberId::Docker { container_name, .. } => write!(
+                f,
+                "MemberId::<{}>(\"{}\")",
+                std::any::type_name::<Tag>(),
+                container_name
+            ),
         }
     }
 }
@@ -67,6 +100,14 @@ impl<Tag> Display for MemberId<Tag> {
                     "MemberId::<{}>({})",
                     std::any::type_name::<Tag>(),
                     raw_id
+                )
+            }
+            MemberId::Docker { container_name, .. } => {
+                write!(
+                    f,
+                    "MemberId::<{}>(\"{}\")",
+                    std::any::type_name::<Tag>(),
+                    container_name
                 )
             }
         }
@@ -87,6 +128,17 @@ impl<Tag> PartialOrd for MemberId<Tag> {
                     _phantom: _other_phantom,
                 },
             ) => Some(raw_id.cmp(other_raw_id)),
+            (
+                MemberId::Docker {
+                    container_name,
+                    _phantom,
+                },
+                MemberId::Docker {
+                    container_name: other_container_name,
+                    _phantom: _other_phantom,
+                },
+            ) => Some(container_name.cmp(other_container_name)),
+            _ => None,
         }
     }
 }
@@ -105,6 +157,10 @@ impl<Tag> Clone for MemberId<Tag> {
                 raw_id: *raw_id,
                 _phantom: PhantomData,
             },
+            MemberId::Docker { container_name, .. } => MemberId::Docker {
+                container_name: container_name.clone(),
+                _phantom: PhantomData,
+            },
         }
     }
 }
@@ -119,6 +175,17 @@ impl<Tag> PartialEq for MemberId<Tag> {
                     _phantom: _other_phantom,
                 },
             ) => raw_id == other_raw_id,
+            (
+                MemberId::Docker {
+                    container_name,
+                    _phantom,
+                },
+                MemberId::Docker {
+                    container_name: other_container_name,
+                    _phantom: _other_phantom,
+                },
+            ) => container_name == other_container_name,
+            _ => false,
         }
     }
 }
@@ -129,6 +196,10 @@ impl<Tag> Hash for MemberId<Tag> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
             MemberId::Legacy { raw_id, _phantom } => raw_id.hash(state),
+            MemberId::Docker {
+                container_name,
+                _phantom,
+            } => container_name.hash(state),
         }
     }
 }

@@ -8,9 +8,9 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 
 use bytes::{Bytes, BytesMut};
-use dfir_rs::pin_project_lite::pin_project;
-use dfir_rs::sinktools;
-use dfir_rs::sinktools::demux_map::DemuxMap;
+// use dfir_rs::pin_project_lite::pin_project;
+// use dfir_rs::sinktools;
+// use dfir_rs::sinktools::demux_map::DemuxMap;
 use futures::sink::Buffer;
 use futures::{Sink, SinkExt, StreamExt};
 use hydro_deploy_integration::{
@@ -25,15 +25,15 @@ use crate::location::{MemberId, MembershipEvent};
 
 #[derive(Default, Serialize, Deserialize)]
 pub(super) struct HydroMeta {
-    pub clusters: HashMap<usize, Vec<u32>>,
-    pub cluster_id: Option<u32>,
+    pub clusters: HashMap<usize, Vec<MemberId<()>>>,
+    pub cluster_id: Option<MemberId<()>>,
     pub subgraph_id: usize,
 }
 
 pub(super) fn cluster_members(
     cli: RuntimeData<&DeployPorts<HydroMeta>>,
     of_cluster: usize,
-) -> impl QuotedWithContext<'_, &[u32], ()> + Copy {
+) -> impl QuotedWithContext<'_, &[MemberId<()>], ()> + Clone {
     q!(cli
         .meta
         .clusters
@@ -44,10 +44,12 @@ pub(super) fn cluster_members(
 
 pub(super) fn cluster_self_id(
     cli: RuntimeData<&DeployPorts<HydroMeta>>,
-) -> impl QuotedWithContext<'_, u32, ()> + Copy {
+) -> impl QuotedWithContext<'_, MemberId<()>, ()> + Clone {
+    // TRYBUILD=overwrite INSTA_FORCE_PASS=1 INSTA_UPDATE=always cargo nextest run cluster::paxos_bench::tests::paxos_some_throughput
     q!(cli
         .meta
         .cluster_id
+        .clone()
         .expect("Tried to read Cluster Self ID on a non-cluster node"))
 }
 
@@ -101,6 +103,17 @@ pub(super) fn deploy_o2m(
                     .into_sink()
             ))
             .splice_untyped_ctx(&())
+            // QuotedWithContext::<'a, MapAdapterTypeHinter<MemberId<Tag>>, ()>::splice_untyped_ctx(
+            //     q!(MapAdapterTypeHinter {
+            //         sink: env
+            //             .port(p1_port)
+            //             .connect::<ConnectedDemux<u32, ConnectedDirect>>()
+            //             .into_sink(),
+            //         mapper: Box::new(|id: MemberId<_>| id.get_raw_id()),
+            //         _phantom: Default::default(),
+            //     }),
+            //     &(),
+            // )
         },
         {
             q!(env.port(c2_port).connect::<ConnectedDirect>().into_source()).splice_untyped_ctx(&())
@@ -123,6 +136,18 @@ pub(super) fn deploy_m2o(
                     .map(|v| v.map(|(k, v)| (MemberId::<()>::from_raw_id(k), v)))
             })
             .splice_untyped_ctx(&())
+
+            // QuotedWithContext::<'a, SourceAdapterTypeHinter<MemberId<Tag>>, ()>::splice_untyped_ctx(
+            //     q!(SourceAdapterTypeHinter {
+            //         stream: env
+            //             .port(p2_port)
+            //             .connect::<ConnectedTagged<u32, ConnectedDirect>>()
+            //             .into_source(),
+            //         mapper: Box::new(|k| MemberId::from_raw(k)),
+            //         _phantom: Default::default(),
+            //     }),
+            //     &(),
+            // )
         },
     )
 }
@@ -141,6 +166,18 @@ pub(super) fn deploy_m2m(
                     .into_sink()
             ))
             .splice_untyped_ctx(&())
+
+            // QuotedWithContext::<'a, MapAdapterTypeHinter<MemberId<Tag>>, ()>::splice_untyped_ctx(
+            //     q!(MapAdapterTypeHinter {
+            //         sink: env
+            //             .port(c1_port)
+            //             .connect::<ConnectedDemux<u32, ConnectedDirect>>()
+            //             .into_sink(),
+            //         mapper: Box::new(|id: MemberId<_>| id.get_raw_id()),
+            //         _phantom: Default::default(),
+            //     }),
+            //     &(),
+            // )
         },
         {
             q!({
@@ -150,6 +187,18 @@ pub(super) fn deploy_m2m(
                     .map(|v| v.map(|(k, v)| (MemberId::<()>::from_raw_id(k), v)))
             })
             .splice_untyped_ctx(&())
+
+            // QuotedWithContext::<'a, SourceAdapterTypeHinter<MemberId<Tag>>, ()>::splice_untyped_ctx(
+            //     q!(SourceAdapterTypeHinter {
+            //         stream: env
+            //             .port(c2_port)
+            //             .connect::<ConnectedTagged<u32, ConnectedDirect>>()
+            //             .into_source(),
+            //         mapper: Box::new(|k| MemberId::from_raw(k)),
+            //         _phantom: Default::default(),
+            //     }),
+            //     &(),
+            // )
         },
     )
 }

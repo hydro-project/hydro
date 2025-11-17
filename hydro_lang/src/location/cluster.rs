@@ -143,7 +143,9 @@ where
 
         QuoteTokens {
             prelude: None,
-            expr: Some(quote! { #root::location::MemberId::<#c_type>::from_raw_id(#ident) }),
+            expr: Some(
+                quote! { #root::location::MemberId::<#c_type>::from_tagless((#ident).clone()) },
+            ),
         }
     }
 }

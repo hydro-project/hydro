@@ -347,13 +347,15 @@ impl<'a> Deploy<'a> for SimDeploy {
     fn cluster_ids(
         _env: &Self::CompileEnv,
         _of_cluster: usize,
-    ) -> impl QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a {
+    ) -> impl QuotedWithContext<'a, &'a [MemberId<()>], ()> + Clone + 'a {
         todo!();
         stageleft::q!(todo!())
     }
 
     #[expect(unreachable_code, reason = "todo!() is unreachable")]
-    fn cluster_self_id(_env: &Self::CompileEnv) -> impl QuotedWithContext<'a, u32, ()> + Copy + 'a {
+    fn cluster_self_id(
+        _env: &Self::CompileEnv,
+    ) -> impl QuotedWithContext<'a, MemberId<()>, ()> + Clone + 'a {
         todo!();
         stageleft::q!(todo!())
     }
@@ -710,7 +712,7 @@ fn compile_sim_graph_trybuild(
                         Some(__current_cluster_id),
                         {
                             #(#extra_stmts_per_cluster)*
-                            let #self_id_ident = __current_cluster_id;
+                            let #self_id_ident = &*Box::leak(Box::new(::hydro_lang::location::MemberId::<()>::from_raw_id(__current_cluster_id)));
 
                             #(#tick_dfir_stmts)*
 
@@ -752,7 +754,7 @@ fn compile_sim_graph_trybuild(
                 .collect::<Vec<syn::Expr>>();
 
             syn::parse_quote! {
-                let #ident: &'static [u32] = &[#(#elements),*];
+                let #ident: &'static [::hydro_lang::location::MemberId<()>] = Box::leak(Box::new([#(::hydro_lang::location::MemberId::from_raw_id(#elements)),*]));
             }
         })
         .collect::<Vec<syn::Stmt>>();
