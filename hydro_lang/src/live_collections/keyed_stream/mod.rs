@@ -499,6 +499,59 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         )
     }
 
+    /// Prepends a new value to the key of each element in the stream, producing a new
+    /// keyed stream with compound keys. Because the original key is preserved, no re-grouping
+    /// occurs and the elements in each group preserve their original order.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    ///     .prefix_key(q!(|&(k, _)| k % 2))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { (1, 1): [2, 3], (0, 2): [4] }
+    /// # for w in vec![((1, 1), 2), ((1, 1), 3), ((0, 2), 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn prefix_key<K2, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedStream<(K2, K), V, L, B, O, R>
+    where
+        F: Fn(&(K, V)) -> K2 + 'a,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let map_f = q!({
+            let orig = f;
+            move |kv| {
+                let out = orig(&kv);
+                ((out, kv.0), kv.1)
+            }
+        })
+        .splice_fn1_ctx::<(K, V), ((K2, K), V)>(&self.location)
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f: map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedStream::<(K2, K), V, L, B, O, R>::collection_kind()),
+            },
+        )
+    }
+
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
     /// `f`, preserving the order of the elements within the group.
     ///
@@ -1021,6 +1074,41 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             metadata.tag = Some(name.to_string());
         }
         self
+    }
+}
+
+impl<'a, K1, K2, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<(K1, K2), V, L, B, O, R>
+{
+    /// Produces a new keyed stream by dropping the first element of the compound key.
+    ///
+    /// Because multiple keys may share the same suffix, this operation results in re-grouping
+    /// of the values under the new keys. The values across groups with the same new key
+    /// will be interleaved, so the resulting stream has [`NoOrder`] within each group.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![((1, 10), 2), ((1, 10), 3), ((2, 20), 4)]))
+    ///     .into_keyed()
+    ///     .drop_key_prefix()
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 10: [2, 3], 20: [4] }
+    /// # for w in vec![(10, 2), (10, 3), (20, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn drop_key_prefix(self) -> KeyedStream<K2, V, L, B, NoOrder, R> {
+        self.entries()
+            .map(q!(|((_k1, k2), v)| (k2, v)))
+            .into_keyed()
     }
 }
 
