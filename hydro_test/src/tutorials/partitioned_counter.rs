@@ -18,49 +18,29 @@ pub fn sharded_counter_service<'a>(
     KeyedStream<u32, (String, usize), Process<'a, CounterServer>, Unbounded, NoOrder>,
 ) {
     let sharded_increment_requests = increment_requests
-        .entries()
-        .map(q!(|(client, key)| {
+        .prefix_key(q!(|(_client, key)| {
             let mut hasher = DefaultHasher::new();
             key.hash(&mut hasher);
-            (
-                MemberId::from_raw_id(hasher.finish() as u32 % 5),
-                (client, key),
-            )
+            MemberId::from_raw_id(hasher.finish() as u32 % 5)
         }))
-        .into_keyed()
-        .demux_bincode(shard_servers)
-        .into_keyed();
+        .demux_bincode(shard_servers);
 
     let sharded_get_requests = get_requests
-        .entries()
-        .map(q!(|(client, key)| {
+        .prefix_key(q!(|(_client, key)| {
             let mut hasher = DefaultHasher::new();
             key.hash(&mut hasher);
-            (
-                MemberId::from_raw_id(hasher.finish() as u32 % 5),
-                (client, key),
-            )
+            MemberId::from_raw_id(hasher.finish() as u32 % 5)
         }))
-        .into_keyed()
-        .demux_bincode(shard_servers)
-        .into_keyed();
+        .demux_bincode(shard_servers);
 
     let (sharded_increment_ack, sharded_get_response) = super::keyed_counter::keyed_counter_service(
         sharded_increment_requests,
         sharded_get_requests,
     );
 
-    let increment_ack = sharded_increment_ack
-        .entries()
-        .send_bincode(leader)
-        .values()
-        .into_keyed();
+    let increment_ack = sharded_increment_ack.send_bincode(leader).drop_key_prefix();
 
-    let get_response = sharded_get_response
-        .entries()
-        .send_bincode(leader)
-        .values()
-        .into_keyed();
+    let get_response = sharded_get_response.send_bincode(leader).drop_key_prefix();
 
     (increment_ack, get_response)
 }
