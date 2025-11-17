@@ -1,0 +1,130 @@
+---
+sidebar_position: 2
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+
+import keyedCounterSrc from '!!raw-loader!../../../../../hydro_test/src/tutorials/keyed_counter.rs';
+import { getLines } from '../../../../src/util';
+
+# A Keyed Counter
+
+In the previous section, you built a single counter that tracked a global count. Now you'll extend this to a keyed counter service that maintains independent counts for different keys. This introduces a new challenge: requests arrive keyed by client ID, but you need to store and look up state by key name. You'll learn how to regroup streams and work with keyed state.
+
+:::learn
+- How to use the `KeyedSingleton` live collection to store keyed state
+- How to regroup keyed streams by different keys
+- How to maintain consistency guarantees across regrouped streams
+:::
+
+## Handling Multiple Keys
+
+Instead of a single global counter, you'll now support multiple independent counters identified by string keys. Each client can specify which key to increment or query.
+
+:::info
+
+Create a new file `src/keyed_counter.rs` and add `mod keyed_counter;` to your `src/lib.rs`.
+
+:::
+
+Your keyed counter service will handle requests where each client specifies a key name:
+
+```rust
+pub fn keyed_counter_service<'a>(
+    increment_requests: KeyedStream<u32, String, Process<'a, CounterServer>, Unbounded>,
+    get_requests: KeyedStream<u32, String, Process<'a, CounterServer>, Unbounded>,
+) -> (
+    KeyedStream<u32, String, Process<'a, CounterServer>, Unbounded>,
+    KeyedStream<u32, (String, usize), Process<'a, CounterServer>, Unbounded, NoOrder>,
+)
+```
+
+The function signature is similar to the single counter, but now the value type is `String` (the key name) instead of `()`. Get responses return tuples of `(String, usize)` containing both the key name and its count.
+
+## Maintaining Keyed State
+
+In the single counter, you used a `Singleton` to store a single value that updates over time. Now you need to store multiple values, one for each key. Hydro provides the [`KeyedSingleton`](../../reference/live-collections/keyed-streams.mdx#aggregation) live collection for this purpose. A `KeyedSingleton<K, V>` associates each key of type `K` with a value of type `V`, like a map. Just like a `Singleton`, the values update over time as new data arrives.
+
+Just like in the single counter, you'll need to establish consistency guarantees between increment acknowledgements and count snapshots. You start by marking the increment requests as atomic:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
+} showLineNumbers={15}>{getLines(keyedCounterSrc, 15, 16)}</CodeBlock>
+
+To track counts for multiple keys, you need to regroup the increment requests. Currently, they're keyed by client ID, but you need to count by key name. Regrouping a keyed stream is a common pattern in Hydro. You convert the keyed stream to entries (tuples of `(client_id, key_name)`), then map to swap the order to `(key_name, ())`. The `into_keyed()` method converts this back into a keyed stream, now keyed by key name:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
+} showLineNumbers={17}>{getLines(keyedCounterSrc, 17, 22)}</CodeBlock>
+
+The `value_counts()` method creates a `KeyedSingleton<String, usize>` that tracks the count for each key.
+
+:::tip
+
+Just as `Stream` has methods like `count()` to create a singleton, `KeyedStream` has methods like `value_counts()` to create a keyed singleton. Other methods include `fold()` for custom aggregations.
+
+:::
+
+Finally, you acknowledge the increments by ending the atomic block:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
+} showLineNumbers={23}>{getLines(keyedCounterSrc, 23, 23)}</CodeBlock>
+
+
+Now you have a `KeyedSingleton` that maintains independent counts for each key, and acknowledgements are sent back to clients as increments are processed.
+
+## Looking Up Keyed State
+
+Get requests arrive keyed by client ID, but you need to look them up by key name. This requires regrouping:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
+} showLineNumbers={25}>{getLines(keyedCounterSrc, 25, 29)}</CodeBlock>
+
+This swaps the key and value: `(client_id, key_name)` becomes `(key_name, client_id)`. Now the stream is keyed by key name, matching the structure of `current_count`. With both get requests and counts keyed by key name, you can perform lookups using `sliced!`:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
+} showLineNumbers={30}>{getLines(keyedCounterSrc, 30, 36)}</CodeBlock>
+
+Just like the previous tutorial, `use::atomic` ensures that count snapshots are consistent with increment acknowledgements. The `get_many_if_present()` method looks up the count for each key in the request batch, returning a keyed stream where each element contains the count and the client ID.
+
+:::info
+
+The `get_many_if_present()` method only returns entries for keys that exist in the keyed singleton. If a client queries a key that has never been incremented, no response is generated.
+
+:::
+
+Finally, you need to regroup the responses by client ID so each client receives their own responses:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
+} showLineNumbers={37}>{getLines(keyedCounterSrc, 37, 41)}</CodeBlock>
+
+The lookup results are keyed by key name with values `(count, client_id)`. You transform this to `(client_id, (key_name, count))` and regroup by client ID. This completes the data flow: requests arrive organized by client, get processed by key, and responses are routed back to the appropriate clients.
+
+## Testing the Keyed Counter
+
+The test follows the same pattern as the single counter. Because the simulator currently only supports `Stream` inputs and outputs, you can use `.into_keyed()` and `.entries()` to convert in and out of `KeyedStream`.
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
+} showLineNumbers={51}>{getLines(keyedCounterSrc, 51, 85)}</CodeBlock>
+
+This test verifies that a client can increment a specific key ("abc") and then read back the correct count. The atomic consistency guarantees ensure that after receiving an acknowledgement, a subsequent get request observes the updated count.
+
+Run the test with `cargo test -- keyed_counter` to verify the implementation works correctly across all possible execution orderings.
+
+## Next Steps
+
+You've now built a keyed counter service that tracks independent counts for multiple keys. The key insight is that keyed streams can be regrouped by different keys, allowing you to organize data by client ID for routing while storing state by key name for lookups.
+
+In the next section, you'll learn how to partition this service across a cluster of machines and abstract distributed components for reuse.
+
+:::warning
+
+The next steps of this tutorial are currently under development. In the meantime, you may want to look at the [framework docs](../../reference/index.mdx).
+
+:::
