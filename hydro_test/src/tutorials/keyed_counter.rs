@@ -1,15 +1,15 @@
-use hydro_lang::live_collections::stream::{NoOrder, Ordering};
+use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::location::{Location, NoTick};
 use hydro_lang::prelude::*;
 
 pub struct CounterServer;
 
 #[expect(clippy::type_complexity, reason = "output types with orderings")]
-pub fn keyed_counter_service<'a, L: Location<'a> + NoTick, O: Ordering>(
-    increment_requests: KeyedStream<u32, String, L, Unbounded, O>,
-    get_requests: KeyedStream<u32, String, L, Unbounded, O>,
+pub fn keyed_counter_service<'a, L: Location<'a> + NoTick>(
+    increment_requests: KeyedStream<u32, String, L, Unbounded>,
+    get_requests: KeyedStream<u32, String, L, Unbounded>,
 ) -> (
-    KeyedStream<u32, String, L, Unbounded, O>,
+    KeyedStream<u32, String, L, Unbounded>,
     KeyedStream<u32, (String, usize), L, Unbounded, NoOrder>,
 ) {
     let atomic_tick = increment_requests.location().tick();

@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use stageleft::quote_type;
+use stageleft::{q, quote_type};
 
 use super::KeyedStream;
 use crate::compile::ir::{DebugInstantiate, HydroNode};
@@ -74,6 +74,78 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                 metadata: other.new_node_metadata(
                     Stream::<T, Cluster<'a, L2>, Unbounded, O, R>::collection_kind(),
                 ),
+            },
+        )
+    }
+}
+
+impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<(MemberId<L2>, K), T, Process<'a, L>, B, O, R>
+{
+    /// Sends each group of this stream to a specific member of a cluster. The input stream has a
+    /// compound key where the first element is the recipient's [`MemberId`] and the second element
+    /// is a key that will be sent along with the value, using [`bincode`] to serialize/deserialize
+    /// messages.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// let p1 = flow.process::<()>();
+    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let to_send: KeyedStream<_, _, Process<_>, _> = p1
+    ///     .source_iter(q!(vec![0, 1, 2, 3]))
+    ///     .map(q!(|x| ((hydro_lang::location::MemberId::from_raw_id(x), x), x + 123)))
+    ///     .into_keyed();
+    /// let on_worker: KeyedStream<_, _, Cluster<_>, _> = to_send.demux_bincode(&workers);
+    /// # on_worker.entries().send_bincode(&p2).entries()
+    /// // if there are 4 members in the cluster, each receives one element
+    /// // - MemberId::<()>(0): { 0: [123] }
+    /// // - MemberId::<()>(1): { 1: [124] }
+    /// // - ...
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # for w in 0..4 {
+    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec!["(MemberId::<()>(0), (0, 123))", "(MemberId::<()(1), (1, 124))", "(MemberId::<()>(2), (2, 125))", "(MemberId::<()>(3), (3, 126))"]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn demux_bincode(
+        self,
+        other: &Cluster<'a, L2>,
+    ) -> KeyedStream<K, T, Cluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let serialize_pipeline = Some(serialize_bincode::<T>(true));
+
+        let deserialize_pipeline = Some(deserialize_bincode::<T>(None));
+
+        KeyedStream::new(
+            other.clone(),
+            HydroNode::Network {
+                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+                input: Box::new(
+                    self.entries()
+                        .map(q!(|((id, k), v)| (id, (k, v))))
+                        .ir_node
+                        .into_inner(),
+                ),
+                metadata: other.new_node_metadata(KeyedStream::<
+                    K,
+                    T,
+                    Cluster<'a, L2>,
+                    Unbounded,
+                    O,
+                    R,
+                >::collection_kind()),
             },
         )
     }
@@ -158,5 +230,85 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         );
 
         raw_stream.into_keyed()
+    }
+}
+
+impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<K, V, Cluster<'a, L>, B, O, R>
+{
+    #[expect(clippy::type_complexity, reason = "compound key types with ordering")]
+    /// "Moves" elements of this keyed stream from a cluster to a process by sending them over the
+    /// network, using [`bincode`] to serialize/deserialize messages. The resulting [`KeyedStream`]
+    /// has a compound key where the first element is the sender's [`MemberId`] and the second
+    /// element is the original key.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// # type Source = ();
+    /// # type Destination = ();
+    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let to_send: KeyedStream<_, _, Cluster<_>, _> = source
+    ///     .source_iter(q!(vec![0, 1, 2, 3]))
+    ///     .map(q!(|x| (x, x + 123)))
+    ///     .into_keyed();
+    /// let destination_process = flow.process::<Destination>();
+    /// let all_received = to_send.send_bincode(&destination_process); // KeyedStream<MemberId<Source>, i32, ...>
+    /// # all_received.entries().send_bincode(&p2).entries()
+    /// # }, |mut stream| async move {
+    /// // if there are 4 members in the source cluster, the destination process receives one message from each source member
+    /// // - From Source(0): [ (Source key: 0, Value: 123) ]
+    /// // - From Source(1): [ (Source key: 1, Value: 124) ]
+    /// // - ...
+    /// # let mut results = Vec::new();
+    /// # for w in 0..4 {
+    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![
+    /// #   "(MemberId::<()>(0), (0, 123))",
+    /// #   "(MemberId::<()>(1), (1, 124))",
+    /// #   "(MemberId::<()>(2), (2, 125))",
+    /// #   "(MemberId::<()>(3), (3, 126))"
+    /// # ]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn send_bincode<L2>(
+        self,
+        other: &Process<'a, L2>,
+    ) -> KeyedStream<(MemberId<L>, K), V, Process<'a, L2>, Unbounded, O, R>
+    where
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+    {
+        let serialize_pipeline = Some(serialize_bincode::<(K, V)>(true));
+
+        let deserialize_pipeline = Some(deserialize_bincode::<(K, V)>(Some(&quote_type::<L>())));
+
+        let raw_stream: Stream<(MemberId<L>, (K, V)), Process<'a, L2>, Unbounded, O, R> =
+            Stream::new(
+                other.clone(),
+                HydroNode::Network {
+                    serialize_fn: serialize_pipeline.map(|e| e.into()),
+                    instantiate_fn: DebugInstantiate::Building,
+                    deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+                    input: Box::new(self.ir_node.into_inner()),
+                    metadata: other.new_node_metadata(Stream::<
+                        (MemberId<L>, (K, V)),
+                        Cluster<'a, L2>,
+                        Unbounded,
+                        O,
+                        R,
+                    >::collection_kind()),
+                },
+            );
+
+        raw_stream
+            .map(q!(|(sender, (k, v))| ((sender, k), v)))
+            .into_keyed()
     }
 }
