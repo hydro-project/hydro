@@ -71,7 +71,7 @@
 <a href=#71 id=71 data-nosnippet>71</a>                    .frames()
 <a href=#72 id=72 data-nosnippet>72</a>                    .iter()
 <a href=#73 id=73 data-nosnippet>73</a>                    .skip_while(|f| {
-<a href=#74 id=74 data-nosnippet>74</a>                        !(f.symbol_address() <span class="kw">as </span>usize == Backtrace::get_backtrace <span class="kw">as </span>usize
+<a href=#74 id=74 data-nosnippet>74</a>                        !(std::ptr::eq(f.symbol_address(), Backtrace::get_backtrace <span class="kw">as _</span>)
 <a href=#75 id=75 data-nosnippet>75</a>                            || f.symbols()
 <a href=#76 id=76 data-nosnippet>76</a>                                .first()
 <a href=#77 id=77 data-nosnippet>77</a>                                .and_then(|s| s.name())
@@ -151,13 +151,17 @@
 <a href=#151 id=151 data-nosnippet>151</a>    </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <a href=#152 id=152 data-nosnippet>152</a>
 <a href=#153 id=153 data-nosnippet>153</a>    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-<a href=#154 id=154 data-nosnippet>154</a>    #[cfg_attr(not(target_os = <span class="string">"linux"</span>), ignore)]
-<a href=#155 id=155 data-nosnippet>155</a>    #[test]
-<a href=#156 id=156 data-nosnippet>156</a>    </span><span class="kw">fn </span>test_backtrace() {
-<a href=#157 id=157 data-nosnippet>157</a>        <span class="kw">let </span>backtrace = Backtrace::get_backtrace(<span class="number">0</span>);
-<a href=#158 id=158 data-nosnippet>158</a>        <span class="kw">let </span>elements = backtrace.elements();
-<a href=#159 id=159 data-nosnippet>159</a>
-<a href=#160 id=160 data-nosnippet>160</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(elements);
-<a href=#161 id=161 data-nosnippet>161</a>    }
-<a href=#162 id=162 data-nosnippet>162</a>}
+<a href=#154 id=154 data-nosnippet>154</a>    #[test]
+<a href=#155 id=155 data-nosnippet>155</a>    </span><span class="kw">fn </span>test_backtrace() {
+<a href=#156 id=156 data-nosnippet>156</a>        <span class="kw">if </span><span class="macro">cfg!</span>(not(target_os = <span class="string">"linux"</span>)) &amp;&amp; std::env::var_os(<span class="string">"GITHUB_ACTIONS"</span>).is_some() {
+<a href=#157 id=157 data-nosnippet>157</a>            <span class="macro">eprintln!</span>(<span class="string">"Backtrace tests fail on non-linux Github Actions runners, skipping."</span>);
+<a href=#158 id=158 data-nosnippet>158</a>            <span class="kw">return</span>;
+<a href=#159 id=159 data-nosnippet>159</a>        }
+<a href=#160 id=160 data-nosnippet>160</a>
+<a href=#161 id=161 data-nosnippet>161</a>        <span class="kw">let </span>backtrace = Backtrace::get_backtrace(<span class="number">0</span>);
+<a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">let </span>elements = backtrace.elements();
+<a href=#163 id=163 data-nosnippet>163</a>
+<a href=#164 id=164 data-nosnippet>164</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(elements);
+<a href=#165 id=165 data-nosnippet>165</a>    }
+<a href=#166 id=166 data-nosnippet>166</a>}
 </code></pre></div></section></main></body></html>
