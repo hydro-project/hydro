@@ -25,7 +25,8 @@ pub mod insta {
 macro_rules! nightly_wrapper {
     ($statement:stmt) => {
         $crate::insta::with_settings!({
-            snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" }
+            prepend_module_to_snapshot => option_env!("CARGO_TARGET_TMPDIR").is_some(), // Only for integration tests.
+            snapshot_path => if cfg!(nightly) { "snapshots-nightly" } else { "snapshots" },
         }, {
             $statement;
         });
