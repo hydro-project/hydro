@@ -6,7 +6,7 @@ expression: elements
     BacktraceElement {
         fn_name: "hydro_lang::compile::ir::backtrace::tests::test_backtrace",
         lineno: Some(
-            157,
+            161,
         ),
         colno: Some(
             25,
@@ -15,7 +15,7 @@ expression: elements
     BacktraceElement {
         fn_name: "hydro_lang::compile::ir::backtrace::tests::test_backtrace::{{closure}}",
         lineno: Some(
-            156,
+            155,
         ),
         colno: Some(
             24,
@@ -24,7 +24,7 @@ expression: elements
     BacktraceElement {
         fn_name: "core::ops::function::FnOnce::call_once",
         lineno: Some(
-            253,
+            250,
         ),
         colno: Some(
             5,

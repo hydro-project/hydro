@@ -1,9 +1,13 @@
 // separate file for stable line numbers
 
 #[cfg(feature = "build")]
-#[cfg_attr(not(target_os = "linux"), ignore)]
 #[test]
 fn backtrace_chained_ops() {
+    if cfg!(not(target_os = "linux")) && std::env::var_os("GITHUB_ACTIONS").is_some() {
+        eprintln!("Backtrace tests fail on non-linux Github Actions runners, skipping.");
+        return;
+    }
+
     use stageleft::q;
 
     use crate::compile::ir::HydroRoot;
