@@ -71,7 +71,7 @@
 <a href=#71 id=71 data-nosnippet>71</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
 <a href=#72 id=72 data-nosnippet>72</a>        <span class="comment">// Check for environment variable override for local development
 <a href=#73 id=73 data-nosnippet>73</a>        </span><span class="kw">let </span>base_url = std::env::var(<span class="string">"HYDRO_VISUALIZER_URL"</span>)
-<a href=#74 id=74 data-nosnippet>74</a>            .unwrap_or_else(|<span class="kw">_</span>| <span class="string">"https://hydro.run/docs/hydroscope"</span>.to_string());
+<a href=#74 id=74 data-nosnippet>74</a>            .unwrap_or_else(|<span class="kw">_</span>| <span class="string">"https://hydro.run/hydroscope"</span>.to_string());
 <a href=#75 id=75 data-nosnippet>75</a>
 <a href=#76 id=76 data-nosnippet>76</a>        <span class="self">Self </span>{
 <a href=#77 id=77 data-nosnippet>77</a>            base_url,
