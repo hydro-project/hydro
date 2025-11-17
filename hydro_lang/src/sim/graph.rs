@@ -470,14 +470,21 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
             }
             cargo_metadata::Message::CompilerMessage(mut msg) => {
                 // Update the path displayed to enable clicking in IDE.
-                {
-                    let full_path =
-                        format!("(full path) {}", trybuild.project_dir.join("src").display());
-                    if let Some(rendered) = msg.message.rendered.as_mut() {
-                        *rendered = rendered.replace("src", &full_path);
+                // TODO(mingwei): deduplicate code with hydro_deploy rust_crate/build.rs
+                if let Some(rendered) = msg.message.rendered.as_mut() {
+                    let file_names = msg
+                        .message
+                        .spans
+                        .iter()
+                        .map(|s| &s.file_name)
+                        .collect::<std::collections::BTreeSet<_>>();
+                    for file_name in file_names {
+                        *rendered = rendered.replace(
+                            file_name,
+                            &format!("(full path) {}/{file_name}", trybuild.project_dir.display()),
+                        )
                     }
                 }
-
                 eprintln!("{}", msg.message);
             }
             cargo_metadata::Message::TextLine(line) => {
@@ -764,7 +771,8 @@ fn compile_sim_graph_trybuild(
         ) -> (
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
-            ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
+            hydro_lang::sim::runtime::Hooks<&'static str>,
+            hydro_lang::sim::runtime::InlineHooks<&'static str>,
         ) {
             macro_rules! println {
                 ($($arg:tt)*) => ({
@@ -811,13 +819,14 @@ fn compile_sim_graph_trybuild(
             }
 
             let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
+            let mut __hydro_inline_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimInlineHook>>> = ::std::collections::HashMap::new();
             #(#extra_stmts_global)*
             #(#cluster_ids_stmts)*
 
             let mut __async_dfirs = vec![#(#process_dfir_exprs),*];
             let mut __tick_dfirs = vec![#(#process_tick_dfir_exprs),*];
             #(#cluster_dfir_stmts)*
-            (__async_dfirs, __tick_dfirs, __hydro_hooks)
+            (__async_dfirs, __tick_dfirs, __hydro_hooks, __hydro_inline_hooks)
         }
 
         #[unsafe(no_mangle)]
@@ -830,7 +839,8 @@ fn compile_sim_graph_trybuild(
         ) -> (
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
-            ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>>,
+            hydro_lang::sim::runtime::Hooks<&'static str>,
+            hydro_lang::sim::runtime::InlineHooks<&'static str>,
         ) {
             hydro_lang::runtime_support::colored::control::set_override(should_color);
             __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __println_handler, __eprintln_handler)

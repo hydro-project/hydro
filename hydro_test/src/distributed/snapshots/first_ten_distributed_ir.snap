@@ -1,0 +1,135 @@
+---
+source: hydro_test/src/distributed/first_ten.rs
+expression: builder.finalize().ir()
+---
+[
+    SendExternal {
+        to_external_id: 0,
+        to_key: 0,
+        to_many: false,
+        unpaired: false,
+        serialize_fn: Some(
+            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < () , _ > (| b | hydro_lang :: runtime_support :: bincode :: serialize (& b) . unwrap () . into ()),
+        ),
+        instantiate_fn: <network instantiate>,
+        input: CycleSource {
+            ident: Ident {
+                sym: cycle_0,
+            },
+            metadata: HydroIrMetadata {
+                location_kind: Process(
+                    1,
+                ),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: (),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    CycleSink {
+        ident: Ident {
+            sym: cycle_0,
+        },
+        input: Source {
+            source: Iter(
+                stageleft :: runtime_support :: type_hint :: < [() ; 0] > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; [] }),
+            ),
+            metadata: HydroIrMetadata {
+                location_kind: Process(
+                    1,
+                ),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: (),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("hi: {:?}" , n) }),
+        input: ExternalInput {
+            from_external_id: 0,
+            from_key: 0,
+            from_many: false,
+            codec_type: hydro_test :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: tokio_util :: codec :: length_delimited :: LengthDelimitedCodec,
+            port_hint: Auto,
+            instantiate_fn: <network instantiate>,
+            deserialize_fn: Some(
+                | res | { let b = res . unwrap () ; hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& b) . unwrap () },
+            ),
+            metadata: HydroIrMetadata {
+                location_kind: Process(
+                    1,
+                ),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: std :: string :: String,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("{}" , n . n) }),
+        input: Network {
+            serialize_fn: Some(
+                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+            ),
+            instantiate_fn: <network instantiate>,
+            deserialize_fn: Some(
+                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > (& res . unwrap ()) . unwrap () },
+            ),
+            input: Map {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | SendOverNetwork { n } }),
+                input: Source {
+                    source: Iter(
+                        stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < u32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; 0 .. 10 }),
+                    ),
+                    metadata: HydroIrMetadata {
+                        location_kind: Process(
+                            1,
+                        ),
+                        collection_kind: Stream {
+                            bound: Unbounded,
+                            order: TotalOrder,
+                            retry: ExactlyOnce,
+                            element_type: u32,
+                        },
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_kind: Process(
+                        1,
+                    ),
+                    collection_kind: Stream {
+                        bound: Unbounded,
+                        order: TotalOrder,
+                        retry: ExactlyOnce,
+                        element_type: hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
+                    },
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_kind: Process(
+                    2,
+                ),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: TotalOrder,
+                    retry: ExactlyOnce,
+                    element_type: hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+]

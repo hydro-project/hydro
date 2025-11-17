@@ -12,4 +12,4 @@ warning: unused variable: `a`
 4 |     let var_args!(a, ...b, ...c) = var_expr!(1, 2.0, "three", false);
   |                   ^ help: if this is intentional, prefix it with an underscore: `_a`
   |
-  = note: `#[warn(unused_variables)]` on by default
+  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default

@@ -10,4 +10,4 @@ warning: unused import: `dfir_rs::dfir_syntax`
 1 | use dfir_rs::dfir_syntax;
   |     ^^^^^^^^^^^^^^^^^^^^
   |
-  = note: `#[warn(unused_imports)]` on by default
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
