@@ -4,7 +4,6 @@ use core::fmt;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 use std::path::Path;
 use std::pin::{Pin, pin};
