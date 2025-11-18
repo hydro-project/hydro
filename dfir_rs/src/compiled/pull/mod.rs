@@ -7,7 +7,7 @@ mod half_join_state;
 pub use half_join_state::*;
 
 mod anti_join;
-pub use anti_join::*;
+pub use anti_join::{AntiJoin, AntiJoinPersist};
 
 mod fold;
 pub use fold::Fold;

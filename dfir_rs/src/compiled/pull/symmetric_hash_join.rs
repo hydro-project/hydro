@@ -2,7 +2,7 @@ use std::pin::Pin;
 use std::ptr::NonNull;
 use std::task::{Context, Poll, ready};
 
-use futures::stream::{Fuse, Stream, StreamExt};
+use futures::stream::{FusedStream, Stream, StreamExt};
 use itertools::Either;
 use pin_project_lite::pin_project;
 
@@ -25,13 +25,13 @@ pin_project! {
 }
 
 impl<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState, Replay> Stream
-    for SymmetricHashJoin<'a, Fuse<Lhs>, Fuse<Rhs>, LhsState, RhsState, Replay>
+    for SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState, Replay>
 where
     Key: Eq + std::hash::Hash + Clone,
     V1: Clone,
     V2: Clone,
-    Lhs: Stream<Item = (Key, V1)>,
-    Rhs: Stream<Item = (Key, V2)>,
+    Lhs: FusedStream<Item = (Key, V1)>,
+    Rhs: FusedStream<Item = (Key, V2)>,
     LhsState: HalfJoinState<Key, V1, V2>,
     RhsState: HalfJoinState<Key, V2, V1>,
     Replay: 'a + Iterator<Item = (Key, (V1, V2))>,
@@ -144,10 +144,10 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::super::HalfSetJoinState;
     use super::*;
-
-    use std::collections::HashSet;
 
     #[crate::test]
     async fn hash_join() {
