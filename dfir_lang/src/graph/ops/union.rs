@@ -64,7 +64,7 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                 .iter()
                 .map(|i| i.to_token_stream())
                 .reduce(|a, b| quote_spanned! {op_span=> check_inputs(#a, #b) })
-                .unwrap_or_else(|| quote_spanned! {op_span=> ::std::iter::empty() });
+                .unwrap_or_else(|| quote_spanned! {op_span=> #root::futures::stream::empty() });
             quote_spanned! {op_span=>
                 let #ident = {
                     #[allow(unused)]
