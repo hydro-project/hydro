@@ -46,7 +46,7 @@ pub const SORT: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
             // Fix requires handoff specialization.
-            let #ident = let #ident = #root::compiled::pull::SortByKey::new(#input, ::std::convert::identity);
+            let #ident = #root::compiled::pull::SortByKey::new(#input, ::std::convert::identity);
         };
         Ok(OperatorWriteOutput {
             write_iterator,

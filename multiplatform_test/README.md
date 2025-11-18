@@ -43,7 +43,7 @@ There are many platforms which can be specified:
 * `test` - Adds a standard [`#[test]` attribute](https://doc.rust-lang.org/reference/attributes/testing.html#the-test-attribute).
 * `tokio` - Adds a [`#[tokio::test]` attribute](https://docs.rs/tokio/latest/tokio/attr.test.html).
 * `async_std` - Adds an [`#[async_std::test]` attribute](https://docs.rs/async-std/latest/async_std/attr.test.html).
-* `hydroflow` - Adds a [`#[dfir_rs::test]` attribute](https://docs.rs/hydroflow/latest/hydroflow/attr.test.html).
+* `dfir` - Adds a [`#[dfir_rs::test]` attribute](https://docs.rs/hydroflow/latest/hydroflow/attr.test.html).
 * `wasm` - Adds a [`#[wasm_bindgen_test::wasm_bindgen_test]` attribute](https://docs.rs/wasm-bindgen-test/0.3.36/wasm_bindgen_test/attr.wasm_bindgen_test.html).
 * `env_logging` - Registers [`env_logger`](https://docs.rs/env_logger/latest/env_logger/) for [`log`ging](https://docs.rs/log/latest/log/).
 * `env_tracing` - Registers a [`FmtSubscriber`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/index.html#reexport.FmtSubscriber) with an [`EnvFilter`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html) for [`tracing`](https://docs.rs/tracing/latest/tracing/).

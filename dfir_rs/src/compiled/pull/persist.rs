@@ -16,7 +16,7 @@ pin_project! {
 }
 
 impl<'ctx, St, Item> Persist<'ctx, St, Item> {
-    /// Create with the preceeding sink and given replay index.
+    /// Create with the preceding sink and given replay index.
     pub fn new(stream: St, vec: &'ctx mut Vec<Item>, replay_idx: usize) -> Self {
         debug_assert!(replay_idx <= vec.len());
 

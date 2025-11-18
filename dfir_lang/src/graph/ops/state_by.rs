@@ -134,7 +134,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         St: 'a + #root::futures::stream::Stream<Item = Item>,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        #root::futures::stream::StreamExt::filter(
+                        #root::tokio_stream::StreamExt::filter(
                             stream,
                             move |item| {
                                 let state = unsafe {
