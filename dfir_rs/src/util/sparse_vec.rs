@@ -30,18 +30,41 @@ impl<T: Clone + Eq + Hash> SparseVec<T> {
 
     /// Delete all items of a specific value from this vector. This takes time proportional to the amount of items with that value in the vector, not the total size of the vector.
     pub fn delete(&mut self, item: &T) {
-        if let Some(indices) = self.item_locs.get(item) {
+        if let Some(indices) = self.item_locs.remove(item) {
             for index in indices {
-                self.items[*index] = None;
+                self.items[index] = None;
             }
         }
     }
 
-    /// Iterate through all items in the vector in order. Deleted items will not appear in the iteration.
-    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &T> + FusedIterator + Clone {
-        self.items.iter().filter_map(|x| x.as_ref())
+    /// Iterate through all items `&T` in the vector in order. Deleted items will not appear in the iteration.
+    pub fn iter(&self) -> SparseVecIter<'_, T> {
+        SparseVecIter { vec: self, idx: 0 }
     }
 }
+
+#[derive(Clone)]
+pub struct SparseVecIter<'a, T> {
+    vec: &'a SparseVec<T>,
+    idx: usize,
+}
+
+impl<'a, T> Iterator for SparseVecIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.idx < self.vec.items.len() {
+            let item = &self.vec.items[self.idx];
+            self.idx += 1;
+            if let Some(item) = item {
+                return Some(item);
+            }
+        }
+        None
+    }
+}
+
+impl<'a, T> FusedIterator for SparseVecIter<'a, T> {}
 
 #[cfg(test)]
 mod test {
