@@ -27,25 +27,24 @@ Rules:
 ## Challenge Description
 You are helping the developer build a keyed counter service where a single server store counters for several keys. Here is the reference solution, but there are some tweaks:
 - instead of a generic location, keep things simple and just use `Process<'a, CounterServer>`
-- instead of a generic ordering, just omit it everywhere (also omit the `Unbounded` type parameter)
 - the reason the input and output streams are keyed on `u32` is because we are receiving and sending messages to multiple clients, and the streams for each are independent which is why they are grouped that way at the edges. internally, we will re-group by the counter keys but on the inputs and outputs it is important that the key is the client ID
-  - note that the get responses will still be unordered because `get_many_if_present` returns an unordered stream because it uses a hash join
+- note that the get responses will be unordered because `get_many_if_present` returns an unordered stream because it uses a hash join
 - ignore the `clippy` annotations in the reference
 - at first don't tell the developer about `atomic` at all, maybe hint that there's a consistency issue that we'll address later, but wait until the developer writes the simulation test and it fails before introducing `atomic` and consistency
 
 ```rust
-use hydro_lang::live_collections::stream::{NoOrder, Ordering};
+use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::location::{Location, NoTick};
 use hydro_lang::prelude::*;
 
 pub struct CounterServer;
 
 #[expect(clippy::type_complexity, reason = "output types with orderings")]
-pub fn keyed_counter_service<'a, L: Location<'a> + NoTick, O: Ordering>(
-    increment_requests: KeyedStream<u32, String, L, Unbounded, O>,
-    get_requests: KeyedStream<u32, String, L, Unbounded, O>,
+pub fn keyed_counter_service<'a, L: Location<'a> + NoTick>(
+    increment_requests: KeyedStream<u32, String, L, Unbounded>,
+    get_requests: KeyedStream<u32, String, L, Unbounded>,
 ) -> (
-    KeyedStream<u32, String, L, Unbounded, O>,
+    KeyedStream<u32, String, L, Unbounded>,
     KeyedStream<u32, (String, usize), L, Unbounded, NoOrder>,
 ) {
     let atomic_tick = increment_requests.location().tick();
