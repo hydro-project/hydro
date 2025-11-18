@@ -1,25 +1,26 @@
-use std::cell::RefCell;
 use std::pin::Pin;
+use std::ptr::NonNull;
 use std::task::{Context, Poll, ready};
 
-use futures::stream::{Fuse, FusedStream, Stream, StreamExt};
+use futures::stream::{Fuse, Stream, StreamExt};
 use itertools::Either;
 use pin_project_lite::pin_project;
-use smallvec::SmallVec;
 
 use super::HalfJoinState;
 
 pin_project! {
-    pub struct SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState, Replay> {
+    pub struct SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState, Replay>
+    {
         #[pin]
         lhs: Lhs,
         #[pin]
         rhs: Rhs,
 
-        lhs_state: &'a RefCell<LhsState>,
-        rhs_state: &'a RefCell<RhsState>,
+        lhs_state: NonNull<LhsState>,
+        rhs_state: NonNull<RhsState>,
+        phantom: std::marker::PhantomData<&'a mut (LhsState, RhsState, Replay)>,
 
-        replay: Replay,
+        replay: Option<Replay>,
     }
 }
 
@@ -33,14 +34,24 @@ where
     Rhs: Stream<Item = (Key, V2)>,
     LhsState: HalfJoinState<Key, V1, V2>,
     RhsState: HalfJoinState<Key, V2, V1>,
-    Replay: Iterator<Item = (Key, (V1, V2))>,
+    Replay: 'a + Iterator<Item = (Key, (V1, V2))>,
 {
     type Item = (Key, (V1, V2));
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
-        let lhs_state = this.lhs_state.borrow_mut();
-        let rhs_state = this.rhs_state.borrow_mut();
+
+        // Do the replay if applicable
+        if let Some(replay) = this.replay.as_mut()
+            && let Some(item) = replay.next()
+        {
+            return Poll::Ready(Some(item));
+        }
+
+        *this.replay = None;
+        // SAFETY: aliases in `this.replay` have been dropped. `'a` lifetime remains valid.
+        let (lhs_state, rhs_state) = unsafe { (this.lhs_state.as_mut(), this.rhs_state.as_mut()) };
+
         loop {
             if let Some((k, v2, v1)) = lhs_state.pop_match() {
                 return Poll::Ready(Some((k, (v1, v2))));
@@ -51,8 +62,8 @@ where
 
             let lhs_poll = this.lhs.as_mut().poll_next(cx);
             if let Poll::Ready(Some((k, v1))) = lhs_poll {
-                if this.lhs_state.build(k.clone(), &v1)
-                    && let Some((k, v1, v2)) = this.rhs_state.probe(&k, &v1)
+                if lhs_state.build(k.clone(), &v1)
+                    && let Some((k, v1, v2)) = rhs_state.probe(&k, &v1)
                 {
                     return Poll::Ready(Some((k, (v1, v2))));
                 }
@@ -61,8 +72,8 @@ where
 
             let rhs_poll = this.rhs.as_mut().poll_next(cx);
             if let Poll::Ready(Some((k, v2))) = rhs_poll {
-                if this.rhs_state.build(k.clone(), &v2)
-                    && let Some((k, v2, v1)) = this.lhs_state.probe(&k, &v2)
+                if rhs_state.build(k.clone(), &v2)
+                    && let Some((k, v2, v1)) = lhs_state.probe(&k, &v2)
                 {
                     return Poll::Ready(Some((k, (v1, v2))));
                 }
@@ -76,32 +87,33 @@ where
     }
 }
 
-pub fn symmetric_hash_join_into_iter<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState>(
-    mut lhs: Lhs,
-    mut rhs: Rhs,
+pub fn symmetric_hash_join_into_stream<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState>(
+    lhs: Lhs,
+    rhs: Rhs,
     lhs_state: &'a mut LhsState,
     rhs_state: &'a mut RhsState,
     is_new_tick: bool,
-) -> impl 'a + Iterator<Item = (Key, (V1, V2))>
+) -> impl 'a + Stream<Item = (Key, (V1, V2))>
 where
     Key: 'a + Eq + std::hash::Hash + Clone,
     V1: 'a + Clone,
     V2: 'a + Clone,
-    Lhs: 'a + Iterator<Item = (Key, V1)>,
-    Rhs: 'a + Iterator<Item = (Key, V2)>,
+    Lhs: 'a + Stream<Item = (Key, V1)>,
+    Rhs: 'a + Stream<Item = (Key, V2)>,
     LhsState: HalfJoinState<Key, V1, V2>,
     RhsState: HalfJoinState<Key, V2, V1>,
 {
-    if is_new_tick {
-        for (k, v1) in lhs.by_ref() {
-            lhs_state.build(k.clone(), &v1);
-        }
+    let lhs_state = NonNull::from_mut(lhs_state);
+    let rhs_state = NonNull::from_mut(rhs_state);
 
-        for (k, v2) in rhs.by_ref() {
-            rhs_state.build(k.clone(), &v2);
-        }
+    let replay = is_new_tick.then(|| {
+        // Do a nested loops join to replay the state.
+        // SAFETY: the iterator is valid for the lifetime `'a`.
+        // The implementation of `SymmetricHashJoin` may not touch `lhs_state` or `rhs_state`
+        // until the replay iterator is dropped, ensuring no simultaneous modifications occur.
+        let (lhs_state, rhs_state) = unsafe { (lhs_state.as_ref(), rhs_state.as_ref()) };
 
-        Either::Left(if lhs_state.len() < rhs_state.len() {
+        if lhs_state.len() < rhs_state.len() {
             Either::Left(lhs_state.iter().flat_map(|(k, sv)| {
                 sv.iter().flat_map(|v1| {
                     rhs_state
@@ -117,74 +129,17 @@ where
                         .map(|v1| (k.clone(), (v1.clone(), v2.clone())))
                 })
             }))
-        })
-    } else {
-        Either::Right(SymmetricHashJoin {
-            lhs,
-            rhs,
-            lhs_state,
-            rhs_state,
-        })
-    }
-}
+        }
+    });
 
-pub fn symmetric_hash_join_into_stream<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState>(
-    mut lhs: Lhs,
-    mut rhs: Rhs,
-    lhs_state: &'a RefCell<LhsState>,
-    rhs_state: &'a RefCell<RhsState>,
-    is_new_tick: bool,
-) -> impl 'a + Stream<Item = (Key, (V1, V2))>
-where
-    Key: 'a + Eq + std::hash::Hash + Clone,
-    V1: 'a + Clone,
-    V2: 'a + Clone,
-    Lhs: 'a + Stream<Item = (Key, V1)>,
-    Rhs: 'a + Stream<Item = (Key, V2)>,
-    LhsState: HalfJoinState<Key, V1, V2>,
-    RhsState: HalfJoinState<Key, V2, V1>,
-{
-    fn assert_stream<St>(stream: St) -> St
-    where
-        St: Stream,
-    {
-        stream
-    }
-
-    let replay = if is_new_tick {
-        // For Stream, we don't bother to pre-build all the new items this tick.
-        // Instead, just replay, then do SymmetricHashJoin.
-
-        Either::Left(if lhs_state.borrow().len() < rhs_state.borrow().len() {
-            Either::Left(lhs_state.borrow().iter().flat_map(|(k, sv)| {
-                sv.iter().flat_map(|v1| {
-                    rhs_state
-                        .borrow()
-                        .full_probe(k)
-                        .map(|v2| (k.clone(), (v1.clone(), v2.clone())))
-                })
-            }))
-        } else {
-            Either::Right(rhs_state.borrow().iter().flat_map(|(k, sv)| {
-                sv.iter().flat_map(|v2| {
-                    lhs_state
-                        .borrow()
-                        .full_probe(k)
-                        .map(|v1| (k.clone(), (v1.clone(), v2.clone())))
-                })
-            }))
-        })
-    } else {
-        Either::Right(std::iter::empty())
-    };
-
-    assert_stream(SymmetricHashJoin {
+    SymmetricHashJoin {
         lhs: lhs.fuse(),
         rhs: rhs.fuse(),
         lhs_state,
         rhs_state,
         replay,
-    })
+        phantom: std::marker::PhantomData,
+    }
 }
 
 #[cfg(test)]
@@ -194,16 +149,16 @@ mod tests {
 
     use std::collections::HashSet;
 
-    #[test]
-    fn hash_join() {
-        let lhs = (0..10).map(|x| (x, format!("left {}", x)));
-        let rhs = (6..15).map(|x| (x / 2, format!("right {} / 2", x)));
+    #[crate::test]
+    async fn hash_join() {
+        let lhs = futures::stream::iter((0..10).map(|x| (x, format!("left {}", x))));
+        let rhs = futures::stream::iter((6..15).map(|x| (x / 2, format!("right {} / 2", x))));
 
         let (mut lhs_state, mut rhs_state) =
             (HalfSetJoinState::default(), HalfSetJoinState::default());
-        let join = symmetric_hash_join_into_iter(lhs, rhs, &mut lhs_state, &mut rhs_state, true);
+        let join = symmetric_hash_join_into_stream(lhs, rhs, &mut lhs_state, &mut rhs_state, true);
 
-        let joined = join.collect::<HashSet<_>>();
+        let joined = join.collect::<HashSet<_>>().await;
 
         assert!(joined.contains(&(3, ("left 3".into(), "right 6 / 2".into()))));
         assert!(joined.contains(&(3, ("left 3".into(), "right 7 / 2".into()))));
@@ -212,7 +167,9 @@ mod tests {
         assert!(joined.contains(&(5, ("left 5".into(), "right 10 / 2".into()))));
         assert!(joined.contains(&(5, ("left 5".into(), "right 11 / 2".into()))));
         assert!(joined.contains(&(6, ("left 6".into(), "right 12 / 2".into()))));
+        assert!(joined.contains(&(6, ("left 6".into(), "right 13 / 2".into()))));
         assert!(joined.contains(&(7, ("left 7".into(), "right 14 / 2".into()))));
+        assert_eq!(9, joined.len());
     }
 
     #[crate::test]
@@ -225,18 +182,16 @@ mod tests {
         lhs_tx.send((7, 3)).unwrap();
         rhs_tx.send((7, 3)).unwrap();
 
-        let (lhs_state, rhs_state) = (
-            RefCell::new(HalfSetJoinState::default()),
-            RefCell::new(HalfSetJoinState::default()),
-        );
+        let (mut lhs_state, mut rhs_state) =
+            (HalfSetJoinState::default(), HalfSetJoinState::default());
         let mut join =
-            symmetric_hash_join_into_stream(lhs_rx, rhs_rx, &lhs_state, &rhs_state, true);
+            symmetric_hash_join_into_stream(lhs_rx, rhs_rx, &mut lhs_state, &mut rhs_state, true);
 
         assert_eq!(join.next().await, Some((7, (3, 3))));
-        assert_eq!(join.next().await, None);
 
         lhs_tx.send((7, 3)).unwrap();
         rhs_tx.send((7, 3)).unwrap();
+        drop((lhs_tx, rhs_tx));
 
         assert_eq!(join.next().await, None);
     }
