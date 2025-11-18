@@ -182,19 +182,12 @@ mod tests {
     #[test]
     fn collect_quorum_with_response_preserves_order() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode(&external);
-        let out_port = collect_quorum_with_response(input, 3, 3)
-            .0
-            .send_bincode_external(&external);
+        let (in_send, input) = node.sim_input();
+        let out_recv = collect_quorum_with_response(input, 3, 3).0.sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
+        flow.sim().exhaustive(async || {
             in_send.send((1, Ok::<(), ()>(())));
             in_send.send((1, Ok(())));
             in_send.send((1, Ok(())));
@@ -212,27 +205,18 @@ mod tests {
     #[test]
     fn collect_quorum_functionality() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode(&external);
-        let (success_port, error_port) = {
+        let (in_send, input) = node.sim_input();
+        let (success_recv, error_recv) = {
             let (success, error) = collect_quorum(input, 2, 3);
-            (
-                success.send_bincode_external(&external),
-                error.send_bincode_external(&external),
-            )
+            (success.sim_output(), error.sim_output())
         };
 
         let compiled_sim = flow.sim().compiled();
 
         // Test case 1: Key reaches exact minimum quorum (2/3)
-        compiled_sim.exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let success_recv = compiled.connect(&success_port);
-            let error_recv = compiled.connect(&error_port);
-            compiled.launch();
-
+        compiled_sim.exhaustive(async || {
             in_send.send((1, Ok::<(), ()>(())));
             in_send.send((1, Ok(())));
 
@@ -241,12 +225,7 @@ mod tests {
         });
 
         // Test case 2: Key reaches maximum responses with mixed results (2 success, 1 error)
-        compiled_sim.exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let success_recv = compiled.connect(&success_port);
-            let error_recv = compiled.connect(&error_port);
-            compiled.launch();
-
+        compiled_sim.exhaustive(async || {
             in_send.send((2, Ok::<(), ()>(())));
             in_send.send((2, Ok(())));
             in_send.send((2, Err(())));
@@ -256,12 +235,7 @@ mod tests {
         });
 
         // Test case 3: Key doesn't reach quorum (1 success, 2 errors)
-        compiled_sim.exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let success_recv = compiled.connect(&success_port);
-            let error_recv = compiled.connect(&error_port);
-            compiled.launch();
-
+        compiled_sim.exhaustive(async || {
             in_send.send((3, Ok::<(), ()>(())));
             in_send.send((3, Err(())));
             in_send.send((3, Err(())));
@@ -271,12 +245,7 @@ mod tests {
         });
 
         // Test case 4: Key reaches quorum with extra responses
-        compiled_sim.exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let success_recv = compiled.connect(&success_port);
-            let error_recv = compiled.connect(&error_port);
-            compiled.launch();
-
+        compiled_sim.exhaustive(async || {
             in_send.send((4, Ok::<(), ()>(())));
             in_send.send((4, Ok(())));
             in_send.send((4, Ok(()))); // This should be ignored after quorum
@@ -286,12 +255,7 @@ mod tests {
         });
 
         // Test case 5: Key with only errors (no quorum)
-        compiled_sim.exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let success_recv = compiled.connect(&success_port);
-            let error_recv = compiled.connect(&error_port);
-            compiled.launch();
-
+        compiled_sim.exhaustive(async || {
             in_send.send((5, Err::<(), ()>(())));
             in_send.send((5, Err(())));
             in_send.send((5, Err(())));
@@ -303,12 +267,7 @@ mod tests {
         });
 
         // Test case 6: Key that reaches quorum exactly at max (2 success, 1 error)
-        compiled_sim.exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let success_recv = compiled.connect(&success_port);
-            let error_recv = compiled.connect(&error_port);
-            compiled.launch();
-
+        compiled_sim.exhaustive(async || {
             in_send.send((6, Err::<(), ()>(())));
             in_send.send((6, Ok(())));
             in_send.send((6, Ok(())));
@@ -321,19 +280,12 @@ mod tests {
     #[test]
     fn collect_quorum_min_equals_max() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode::<_, _, TotalOrder, _>(&external);
-        let success_port = collect_quorum(input, 2, 2)
-            .0
-            .send_bincode_external(&external);
+        let (in_send, input) = node.sim_input();
+        let success_recv = collect_quorum(input, 2, 2).0.sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let success_recv = compiled.connect(&success_port);
-            compiled.launch();
-
+        flow.sim().exhaustive(async || {
             // When min == max, we need exactly that many responses
             in_send.send((1, Ok::<(), ()>(())));
             in_send.send((1, Ok(())));
@@ -354,19 +306,12 @@ mod tests {
     #[test]
     fn collect_quorum_single_response() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode::<_, _, TotalOrder, _>(&external);
-        let success_port = collect_quorum(input, 1, 1)
-            .0
-            .send_bincode_external(&external);
+        let (in_send, input) = node.sim_input();
+        let success_recv = collect_quorum(input, 1, 1).0.sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let success_recv = compiled.connect(&success_port);
-            compiled.launch();
-
+        flow.sim().exhaustive(async || {
             // With min=max=1, any single success should immediately reach quorum
             in_send.send((1, Ok::<(), ()>(())));
             in_send.send((2, Err(())));
@@ -380,20 +325,15 @@ mod tests {
     #[test]
     fn collect_quorum_no_responses() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode::<_, _, TotalOrder, _>(&external);
-        let success_port = {
+        let (_in_send, input) = node.sim_input::<_, TotalOrder, _>();
+        let success_recv = {
             let (success, _error) = collect_quorum::<_, _, i32, ()>(input, 2, 3);
-            success.send_bincode_external(&external)
+            success.sim_output()
         };
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let _in_send = compiled.connect(&port);
-            let success_recv = compiled.connect(&success_port);
-            compiled.launch();
-
+        flow.sim().exhaustive(async || {
             // No responses sent - should get empty results
             success_recv.assert_no_more().await;
         });
@@ -402,19 +342,12 @@ mod tests {
     #[test]
     fn collect_quorum_no_double_quorum_before_max() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode::<_, _, TotalOrder, _>(&external);
-        let success_port = collect_quorum(input, 2, 4)
-            .0
-            .send_bincode_external(&external);
+        let (in_send, input) = node.sim_input::<_, TotalOrder, _>();
+        let success_recv = collect_quorum(input, 2, 4).0.sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let success_recv = compiled.connect(&success_port);
-            compiled.launch();
-
+        flow.sim().exhaustive(async || {
             // Key 1: First reaches quorum with 2 successes
             in_send.send((1, Ok::<(), ()>(())));
             in_send.send((1, Ok(())));
