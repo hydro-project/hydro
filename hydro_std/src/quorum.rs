@@ -174,7 +174,7 @@ pub fn collect_quorum<
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::live_collections::stream::TotalOrder;
+    use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
     use hydro_lang::prelude::*;
 
     use super::{collect_quorum, collect_quorum_with_response};
@@ -193,12 +193,37 @@ mod tests {
             in_send.send((1, Ok(())));
             in_send.send((2, Ok(())));
             in_send.send((2, Ok(())));
-            in_send.send((2, Ok(())));
+            in_send.send((3, Ok(())));
+            in_send.send((3, Ok(())));
+            in_send.send((3, Ok(())));
 
             assert_eq!(
                 out_recv.collect::<Vec<_>>().await,
-                vec![(1, ()), (1, ()), (1, ()), (2, ()), (2, ()), (2, ())]
+                vec![(1, ()), (1, ()), (1, ()), (3, ()), (3, ()), (3, ())]
             )
+        });
+    }
+
+    #[test]
+    fn collect_quorum_with_response_no_order() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+        let out_recv = collect_quorum_with_response(input, 2, 2).0.sim_output();
+
+        flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([
+                (1, Ok::<(), ()>(())),
+                (1, Ok(())),
+                (2, Ok(())),
+                (3, Ok(())),
+                (3, Ok(())),
+            ]);
+
+            out_recv
+                .assert_yields_only_unordered([(1, ()), (1, ()), (3, ()), (3, ())])
+                .await;
         });
     }
 

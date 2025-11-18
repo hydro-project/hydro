@@ -306,7 +306,7 @@ fn open_json_visualizer_with_fallback(json_content: &str, config: &VisualizerCon
 /// Automatically handles compression and file-based fallback for large graphs.
 ///
 /// This function generates JSON from the Hydro IR and opens it in the configured
-/// visualizer (defaults to <https://hydro.run/docs/hydroscope>, can be overridden
+/// visualizer (defaults to <https://hydro.run/hydroscope>, can be overridden
 /// with HYDRO_VISUALIZER_URL environment variable).
 pub fn open_json_visualizer(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result<()> {
     let json_content = render_with_config(roots, config, render_hydro_ir_json);

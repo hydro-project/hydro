@@ -2339,6 +2339,7 @@ mod tests {
     use crate::compile::builder::FlowBuilder;
     #[cfg(feature = "deploy")]
     use crate::live_collections::stream::ExactlyOnce;
+    #[cfg(feature = "sim")]
     use crate::live_collections::stream::{NoOrder, TotalOrder};
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
@@ -2542,8 +2543,6 @@ mod tests {
     #[test]
     #[should_panic]
     fn sim_observe_order_batched() {
-        use crate::live_collections::stream::{NoOrder, TotalOrder};
-
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
