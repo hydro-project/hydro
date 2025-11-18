@@ -2,10 +2,11 @@ use bytes::Bytes;
 use stageleft::q;
 
 use crate::live_collections::sliced::sliced;
-use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
-use crate::location::{External, Location, Process};
+use crate::live_collections::stream::{ExactlyOnce, TotalOrder};
+use crate::location::{Location, Process};
 use crate::nondet::nondet;
 use crate::prelude::FlowBuilder;
+use crate::sim::{SimReceiver, SimSender};
 
 mod trophies;
 
@@ -15,17 +16,12 @@ mod trophies;
 fn sim_crash_in_output() {
     // run as PATH="$PATH:." cargo sim -p hydro_lang --features sim -- sim_crash_in_output
     let flow = FlowBuilder::new();
-    let external = flow.external::<()>();
     let node = flow.process::<()>();
 
-    let (port, input) = node.source_external_bincode(&external);
-    let out_port: ExternalBincodeStream<Bytes> = input.send_bincode_external(&external);
+    let (in_send, input) = node.sim_input();
+    let out_recv: SimReceiver<Bytes, TotalOrder, ExactlyOnce> = input.sim_output();
 
-    flow.sim().fuzz(async |mut compiled| {
-        let in_send = compiled.connect(&port);
-        let mut out_recv = compiled.connect(&out_port);
-        compiled.launch();
-
+    flow.sim().fuzz(async || {
         in_send.send(bolero::any::<Vec<u8>>().into());
 
         let x = out_recv.next().await.unwrap();
@@ -41,20 +37,15 @@ fn sim_crash_in_output() {
 fn sim_crash_in_output_with_filter() {
     // run as PATH="$PATH:." cargo sim -p hydro_lang --features sim -- sim_crash_in_output_with_filter
     let flow = FlowBuilder::new();
-    let external = flow.external::<()>();
     let node = flow.process::<()>();
 
-    let (port, input) = node.source_external_bincode::<_, Bytes, _, _>(&external);
+    let (in_send, input) = node.sim_input::<Bytes, _, _>();
 
-    let out_port = input
+    let out_recv = input
         .filter(q!(|x| x.len() > 1 && x[0] == 42 && x[1] == 43))
-        .send_bincode_external(&external);
+        .sim_output();
 
-    flow.sim().fuzz(async |mut compiled| {
-        let in_send = compiled.connect(&port);
-        let mut out_recv = compiled.connect(&out_port);
-        compiled.launch();
-
+    flow.sim().fuzz(async || {
         in_send.send(bolero::any::<Vec<u8>>().into());
 
         if let Some(x) = out_recv.next().await
@@ -70,22 +61,17 @@ fn sim_crash_in_output_with_filter() {
 fn sim_batch_preserves_order_fuzzed() {
     // uses RNG fuzzing in CI
     let flow = FlowBuilder::new();
-    let external = flow.external::<()>();
     let node = flow.process::<()>();
 
-    let (port, input) = node.source_external_bincode(&external);
+    let (in_send, input) = node.sim_input();
 
     let tick = node.tick();
-    let out_port = input
+    let out_recv = input
         .batch(&tick, nondet!(/** test */))
         .all_ticks()
-        .send_bincode_external(&external);
+        .sim_output();
 
-    flow.sim().fuzz(async |mut compiled| {
-        let in_send = compiled.connect(&port);
-        let mut out_recv = compiled.connect(&out_port);
-        compiled.launch();
-
+    flow.sim().fuzz(async || {
         in_send.send(1);
         in_send.send(2);
         in_send.send(3);
@@ -98,33 +84,37 @@ fn sim_batch_preserves_order_fuzzed() {
 }
 
 fn fuzzed_batching_program<'a>(
-    external: External<'a, ()>,
     node: Process<'a>,
-) -> (ExternalBincodeSink<i32>, ExternalBincodeStream<i32>) {
+) -> (
+    SimSender<i32, TotalOrder, ExactlyOnce>,
+    SimReceiver<i32, TotalOrder, ExactlyOnce>,
+) {
     let tick = node.tick();
 
-    let (port, input) = node.source_external_bincode(&external);
+    let (in_send, input) = node.sim_input();
 
-    let out_port = input
+    let out_recv = input
         .batch(&tick, nondet!(/** test */))
         .fold(q!(|| 0), q!(|acc, v| *acc += v))
         .all_ticks()
-        .send_bincode_external(&external);
-    (port, out_port)
+        .sim_output();
+    (in_send, out_recv)
 }
 
 fn fuzzed_batching_program_sliced<'a>(
-    external: External<'a, ()>,
     node: Process<'a>,
-) -> (ExternalBincodeSink<i32>, ExternalBincodeStream<i32>) {
-    let (port, input) = node.source_external_bincode(&external);
+) -> (
+    SimSender<i32, TotalOrder, ExactlyOnce>,
+    SimReceiver<i32, TotalOrder, ExactlyOnce>,
+) {
+    let (in_send, input) = node.sim_input();
 
-    let out_port = sliced! {
+    let out_recv = sliced! {
         let batch = use(input, nondet!(/** test */));
         batch.fold(q!(|| 0), q!(|acc, v| *acc += v)).into_stream()
     }
-    .send_bincode_external(&external);
-    (port, out_port)
+    .sim_output();
+    (in_send, out_recv)
 }
 
 #[test]
@@ -132,16 +122,11 @@ fn fuzzed_batching_program_sliced<'a>(
 fn sim_crash_with_fuzzed_batching() {
     // run as PATH="$PATH:." cargo sim -p hydro_lang --features sim -- sim_crash_with_fuzzed_batching
     let flow = FlowBuilder::new();
-    let external = flow.external::<()>();
     let node = flow.process::<()>();
-    let (port, out_port) = fuzzed_batching_program(external, node);
+    let (in_send, out_recv) = fuzzed_batching_program(node);
 
     // takes forever with exhaustive, but should complete quickly with fuzz
-    flow.sim().fuzz(async |mut compiled| {
-        let in_send = compiled.connect(&port);
-        let mut out_recv = compiled.connect(&out_port);
-        compiled.launch();
-
+    flow.sim().fuzz(async || {
         for _ in 0..1000 {
             in_send.send(456); // the fuzzer should put these some batches
         }
@@ -166,10 +151,9 @@ fn sim_crash_with_fuzzed_batching() {
 #[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
 fn trace_for_fuzzed_batching() {
     let flow = FlowBuilder::new();
-    let external = flow.external::<()>();
     let node = flow.process::<()>();
 
-    let (port, out_port) = fuzzed_batching_program(external, node);
+    let (in_send, out_recv) = fuzzed_batching_program(node);
 
     let repro_bytes = std::fs::read(
         "./src/sim/tests/sim-failures/hydro_lang__sim__tests__sim_crash_with_fuzzed_batching.bin",
@@ -181,10 +165,7 @@ fn trace_for_fuzzed_batching() {
 
     flow.sim()
         .compiled()
-        .fuzz_repro(repro_bytes, async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let mut out_recv = compiled.connect(&out_port);
-
+        .fuzz_repro(repro_bytes, async |compiled| {
             let schedule = compiled.schedule_with_logger(&mut log_out);
             let rest = async move {
                 for _ in 0..1000 {
@@ -222,10 +203,9 @@ fn trace_for_fuzzed_batching() {
 #[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
 fn trace_for_fuzzed_batching_sliced() {
     let flow = FlowBuilder::new();
-    let external = flow.external::<()>();
     let node = flow.process::<()>();
 
-    let (port, out_port) = fuzzed_batching_program_sliced(external, node);
+    let (in_send, out_recv) = fuzzed_batching_program_sliced(node);
 
     let repro_bytes = std::fs::read(
         "./src/sim/tests/sim-failures/hydro_lang__sim__tests__sim_crash_with_fuzzed_batching.bin",
@@ -237,10 +217,7 @@ fn trace_for_fuzzed_batching_sliced() {
 
     flow.sim()
         .compiled()
-        .fuzz_repro(repro_bytes, async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let mut out_recv = compiled.connect(&out_port);
-
+        .fuzz_repro(repro_bytes, async |compiled| {
             let schedule = compiled.schedule_with_logger(&mut log_out);
             let rest = async move {
                 for _ in 0..1000 {
