@@ -18,5 +18,11 @@ pub use join_fused::*;
 mod persist;
 pub use persist::Persist;
 
+mod persist_mut;
+pub use persist_mut::PersistMut;
+
+mod persist_mut_keyed;
+pub use persist_mut_keyed::PersistMutKeyed;
+
 mod sort_by_key;
 pub use sort_by_key::SortByKey;

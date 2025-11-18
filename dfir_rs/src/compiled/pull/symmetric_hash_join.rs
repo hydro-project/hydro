@@ -49,8 +49,10 @@ where
         }
 
         *this.replay = None;
-        // SAFETY: aliases in `this.replay` have been dropped. `'a` lifetime remains valid.
-        let (lhs_state, rhs_state) = unsafe { (this.lhs_state.as_mut(), this.rhs_state.as_mut()) };
+        let (lhs_state, rhs_state) = unsafe {
+            // SAFETY: aliases in `this.replay` have been dropped. `'a` lifetime remains valid.
+            (this.lhs_state.as_mut(), this.rhs_state.as_mut())
+        };
 
         loop {
             if let Some((k, v2, v1)) = lhs_state.pop_match() {
@@ -108,10 +110,12 @@ where
 
     let replay = is_new_tick.then(|| {
         // Do a nested loops join to replay the state.
-        // SAFETY: the iterator is valid for the lifetime `'a`.
-        // The implementation of `SymmetricHashJoin` may not touch `lhs_state` or `rhs_state`
-        // until the replay iterator is dropped, ensuring no simultaneous modifications occur.
-        let (lhs_state, rhs_state) = unsafe { (lhs_state.as_ref(), rhs_state.as_ref()) };
+        let (lhs_state, rhs_state) = unsafe {
+            // SAFETY: the iterator is valid for the lifetime `'a`.
+            // The implementation of `SymmetricHashJoin` may not touch `lhs_state` or `rhs_state`
+            // until the replay iterator is dropped, ensuring no simultaneous modifications occur.
+            (lhs_state.as_ref(), rhs_state.as_ref())
+        };
 
         if lhs_state.len() < rhs_state.len() {
             Either::Left(lhs_state.iter().flat_map(|(k, sv)| {
