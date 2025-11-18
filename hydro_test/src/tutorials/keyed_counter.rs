@@ -52,27 +52,19 @@ mod tests {
     fn test_counter_read_after_write() {
         let flow = FlowBuilder::new();
         let process = flow.process::<CounterServer>();
-        let external = flow.external::<()>();
 
-        let (inc_in_port, inc_requests) = process.source_external_bincode(&external);
+        let (inc_in_port, inc_requests) = process.sim_input();
         let inc_requests = inc_requests.into_keyed();
 
-        let (get_in_port, get_requests) = process.source_external_bincode(&external);
+        let (get_in_port, get_requests) = process.sim_input();
         let get_requests = get_requests.into_keyed();
 
         let (inc_acks, get_responses) = keyed_counter_service(inc_requests, get_requests);
 
-        let inc_out_port = inc_acks.entries().send_bincode_external(&external);
-        let get_out_port = get_responses.entries().send_bincode_external(&external);
+        let inc_out_port = inc_acks.entries().sim_output();
+        let get_out_port = get_responses.entries().sim_output();
 
-        flow.sim().exhaustive(async |mut instance| {
-            let inc_in_port = instance.connect(&inc_in_port);
-            let get_in_port = instance.connect(&get_in_port);
-            let mut inc_out_port = instance.connect(&inc_out_port);
-            let get_out_port = instance.connect(&get_out_port);
-
-            instance.launch();
-
+        flow.sim().exhaustive(async || {
             inc_in_port.send((1, "abc".to_string()));
             inc_out_port
                 .assert_yields_unordered([(1, "abc".to_string())])
