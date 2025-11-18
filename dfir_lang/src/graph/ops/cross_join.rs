@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 use syn::parse_quote;
 
-use super::{OperatorCategory, OperatorConstraints, WriteContextArgs, RANGE_1};
+use super::{OperatorCategory, OperatorConstraints, RANGE_1, WriteContextArgs};
 
 /// > 2 input streams of type S and T, 1 output stream of type (S, T)
 ///
@@ -50,6 +50,7 @@ pub const CROSS_JOIN: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    op_span,
                    ident,
                    inputs,
@@ -62,10 +63,10 @@ pub const CROSS_JOIN: OperatorConstraints = OperatorConstraints {
         let rhs = &inputs[1];
         let write_iterator = output.write_iterator;
         output.write_iterator = quote_spanned!(op_span=>
-            let #lhs = #lhs.map(|a| ((), a));
-            let #rhs = #rhs.map(|b| ((), b));
+            let #lhs = #root::futures::stream::StreamExt::map(#lhs, |a| ((), a));
+            let #rhs = #root::futures::stream::StreamExt::map(#rhs, |b| ((), b));
             #write_iterator
-            let #ident = #ident.map(|((), (a, b))| (a, b));
+            let #ident = #root::futures::stream::StreamExt::map(#ident, |((), (a, b))| (a, b));
         );
 
         Ok(output)
