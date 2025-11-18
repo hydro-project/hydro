@@ -172,10 +172,4 @@ Run the test with `cargo test -- keyed_counter` to verify the implementation wor
 
 You've now built a keyed counter service that tracks independent counts for multiple keys. The key insight is that keyed streams can be regrouped by different keys, allowing you to organize data by client ID for routing while storing state by key name for lookups.
 
-In the next section, you'll learn how to partition this service across a cluster of machines and abstract distributed components for reuse.
-
-:::warning
-
-The next steps of this tutorial are currently under development. In the meantime, you may want to look at the [framework docs](../../reference/index.mdx).
-
-:::
+In the next section, you'll learn how to partition this service across a cluster of machines using `Cluster` locations and `MemberId` routing.
