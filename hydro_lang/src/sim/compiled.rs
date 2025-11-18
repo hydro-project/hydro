@@ -1,30 +1,40 @@
 //! Interfaces for compiled Hydro simulators and concrete simulation instances.
 
 use core::fmt;
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 use std::path::Path;
-use std::pin::{self, Pin};
-use std::task::{Context, Poll, Waker};
+use std::pin::{Pin, pin};
+use std::rc::Rc;
 
 use bytes::Bytes;
 use colored::Colorize;
 use dfir_rs::scheduled::graph::Dfir;
-use futures::{FutureExt, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use libloading::Library;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use tempfile::TempPath;
+use tokio::sync::Mutex;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::compile::deploy::ConnectableAsync;
+use super::runtime::{Hooks, InlineHooks};
+use super::{SimReceiver, SimSender};
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 use crate::location::dynamic::LocationId;
-use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
-use crate::sim::runtime::{Hooks, InlineHooks};
+
+struct SimConnections {
+    input_senders: HashMap<usize, Rc<UnboundedSender<Bytes>>>,
+    output_receivers: HashMap<usize, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>,
+    external_registered: HashMap<usize, usize>,
+}
+
+tokio::task_local! {
+    static CURRENT_SIM_CONNECTIONS: RefCell<SimConnections>;
+}
 
 /// A handle to a compiled Hydro simulation, which can be instantiated and run.
 pub struct CompiledSim {
@@ -115,7 +125,7 @@ impl CompiledSim {
     /// When running the test with `cargo test` (such as in CI), if a reproducer is found it will
     /// be executed, and if no reproducer is found a small number of random executions will be
     /// performed.
-    pub fn fuzz<'a>(&'a self, thunk: impl AsyncFn(CompiledSimInstance) + RefUnwindSafe) {
+    pub fn fuzz(&self, mut thunk: impl AsyncFn() + RefUnwindSafe) {
         let caller_fn = crate::compile::ir::backtrace::Backtrace::get_backtrace(0)
             .elements()
             .into_iter()
@@ -188,16 +198,16 @@ impl CompiledSim {
                         tokio::runtime::Builder::new_current_thread()
                             .build()
                             .unwrap()
-                            .block_on(async {
-                                let local_set = tokio::task::LocalSet::new();
-                                local_set.run_until(thunk(instance)).await
-                            })
+                            .block_on(async { instance.run(&mut thunk).await })
                     })
                 },
                 false,
             );
         } else if let Ok(existing_bytes) = std::fs::read(&caller_fuzz_repro_path) {
-            self.fuzz_repro(existing_bytes, thunk);
+            self.fuzz_repro(existing_bytes, async |compiled| {
+                compiled.launch();
+                thunk().await
+            });
         } else {
             eprintln!(
                 "Running a fuzz test without `cargo sim` and no reproducer found at {}, defaulting to 8192 iterations with random inputs.",
@@ -220,10 +230,7 @@ impl CompiledSim {
                         tokio::runtime::Builder::new_current_thread()
                             .build()
                             .unwrap()
-                            .block_on(async {
-                                let local_set = tokio::task::LocalSet::new();
-                                local_set.run_until(thunk(instance)).await
-                            })
+                            .block_on(async { instance.run(&mut thunk).await })
                     })
                 },
                 false,
@@ -248,10 +255,7 @@ impl CompiledSim {
                     tokio::runtime::Builder::new_current_thread()
                         .build()
                         .unwrap()
-                        .block_on(async {
-                            let local_set = tokio::task::LocalSet::new();
-                            local_set.run_until(thunk(instance)).await
-                        })
+                        .block_on(async { instance.run_without_launching(thunk).await })
                 },
             )
         });
@@ -267,10 +271,7 @@ impl CompiledSim {
     /// Because no fuzzer is involved, you can run exhaustive tests with `cargo test`.
     ///
     /// Returns the number of distinct executions explored.
-    pub fn exhaustive<'a>(
-        &'a self,
-        mut thunk: impl AsyncFnMut(CompiledSimInstance) + RefUnwindSafe,
-    ) -> usize {
+    pub fn exhaustive(&self, mut thunk: impl AsyncFnMut() + RefUnwindSafe) -> usize {
         if std::env::var("BOLERO_FUZZER").is_ok() {
             eprintln!(
                 "Cannot run exhaustive tests with a fuzzer. Please use `cargo test` instead of `cargo sim`."
@@ -313,10 +314,7 @@ impl CompiledSim {
                     tokio::runtime::Builder::new_current_thread()
                         .build()
                         .unwrap()
-                        .block_on(async {
-                            let local_set = tokio::task::LocalSet::new();
-                            local_set.run_until(thunk(instance)).await;
-                        })
+                        .block_on(async { instance.run(&mut thunk).await })
                 })
             },
             false,
@@ -338,44 +336,57 @@ pub struct CompiledSimInstance<'a> {
 }
 
 impl<'a> CompiledSimInstance<'a> {
-    #[deprecated(note = "Use `connect` instead")]
-    /// Like the corresponding method on [`crate::compile::deploy::DeployResult`], connects to the
-    /// given input port, and returns a closure that can be used to send messages to it.
-    pub fn connect_sink_bincode<T: Serialize + 'static, M, O: Ordering, R: Retries>(
-        &mut self,
-        port: &ExternalBincodeSink<T, M, O, R>,
-    ) -> SimSender<T, O, R> {
-        self.connect(port)
+    async fn run(self, thunk: impl AsyncFnOnce() + RefUnwindSafe) {
+        self.run_without_launching(async |instance| {
+            instance.launch();
+            thunk().await;
+        })
+        .await;
     }
 
-    #[deprecated(note = "Use `connect` instead")]
-    /// Like the corresponding method on [`crate::compile::deploy::DeployResult`], connects to the
-    /// given output port, and returns a stream that can be used to receive messages from it.
-    pub fn connect_source_bincode<T: DeserializeOwned + 'static, O: Ordering, R: Retries>(
-        &mut self,
-        port: &ExternalBincodeStream<T, O, R>,
-    ) -> SimReceiver<'a, T, O, R> {
-        self.connect(port)
-    }
+    async fn run_without_launching(
+        mut self,
+        thunk: impl AsyncFnOnce(CompiledSimInstance) + RefUnwindSafe,
+    ) {
+        let mut input_senders = HashMap::new();
+        let mut output_receivers = HashMap::new();
+        for remaining in &self.remaining_ports {
+            {
+                let (sender, receiver) = dfir_rs::util::unbounded_channel::<Bytes>();
+                self.output_ports.insert(*remaining, sender);
+                output_receivers.insert(
+                    *remaining,
+                    Rc::new(Mutex::new(UnboundedReceiverStream::new(
+                        receiver.into_inner(),
+                    ))),
+                );
+            }
 
-    /// Establishes a connection to the given input or output port, returning either a
-    /// [`SimSender`] (for input ports) or a stream (for output ports). This should be invoked
-    /// before calling [`Self::launch`], and should only be invoked once per port.
-    pub fn connect<'b, P: ConnectableAsync<&'b mut Self>>(
-        &'b mut self,
-        port: P,
-    ) -> <P as ConnectableAsync<&'b mut Self>>::Output {
-        let mut pinned = std::pin::pin!(port.connect(self));
-        if let Poll::Ready(v) = pinned.poll_unpin(&mut Context::from_waker(Waker::noop())) {
-            v
-        } else {
-            panic!("Connect impl should not have used any async operations");
+            {
+                let (sender, receiver) = dfir_rs::util::unbounded_channel::<Bytes>();
+                self.input_ports.insert(*remaining, receiver);
+                input_senders.insert(*remaining, Rc::new(sender));
+            }
         }
+
+        let local_set = tokio::task::LocalSet::new();
+        local_set
+            .run_until(CURRENT_SIM_CONNECTIONS.scope(
+                RefCell::new(SimConnections {
+                    input_senders,
+                    output_receivers,
+                    external_registered: self.external_registered.clone(),
+                }),
+                async move {
+                    thunk(self).await;
+                },
+            ))
+            .await;
     }
 
     /// Launches the simulation, which will asynchronously simulate the Hydro program. This should
     /// be invoked after connecting all inputs and outputs, but before receiving any messages.
-    pub fn launch(self) {
+    fn launch(self) {
         tokio::task::spawn_local(self.schedule_with_maybe_logger::<std::io::Empty>(None));
     }
 
@@ -391,15 +402,9 @@ impl<'a> CompiledSimInstance<'a> {
     }
 
     fn schedule_with_maybe_logger<W: std::io::Write>(
-        mut self,
+        self,
         log_override: Option<W>,
     ) -> impl use<W> + Future<Output = ()> {
-        for remaining in self.remaining_ports {
-            let (sender, receiver) = dfir_rs::util::unbounded_channel::<Bytes>();
-            self.output_ports.insert(remaining, sender);
-            self.input_ports.insert(remaining, receiver);
-        }
-
         let (async_dfirs, tick_dfirs, hooks, inline_hooks) = unsafe {
             (self.func)(
                 colored::control::SHOULD_COLORIZE.should_colorize(),
@@ -450,40 +455,68 @@ impl<'a> CompiledSimInstance<'a> {
     }
 }
 
-/// A receiver for an external bincode stream in a simulation.
-pub struct SimReceiver<'a, T, O: Ordering, R: Retries>(
-    Pin<Box<dyn Stream<Item = T> + 'a>>,
-    PhantomData<(O, R)>,
-);
-
-impl<'a, T, O: Ordering, R: Retries> SimReceiver<'a, T, O, R> {
-    /// Asserts that the stream has ended and no more messages can possibly arrive.
-    pub async fn assert_no_more(mut self)
-    where
-        T: Debug,
-    {
-        if let Some(next) = self.0.next().await {
-            panic!("Stream yielded unexpected message: {:?}", next);
-        }
+impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Clone for SimReceiver<T, O, R> {
+    fn clone(&self) -> Self {
+        *self
     }
 }
 
-impl<'a, T> SimReceiver<'a, T, TotalOrder, ExactlyOnce> {
+impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Copy for SimReceiver<T, O, R> {}
+
+impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimReceiver<T, O, R> {
+    async fn with_stream<Out>(
+        &self,
+        thunk: impl AsyncFnOnce(&mut Pin<&mut dyn Stream<Item = T>>) -> Out,
+    ) -> Out {
+        let receiver = CURRENT_SIM_CONNECTIONS.with(|connections| {
+            let connections = &mut *connections.borrow_mut();
+            connections
+                .output_receivers
+                .get(connections.external_registered.get(&self.0).unwrap())
+                .unwrap()
+                .clone()
+        });
+
+        let mut receiver_stream = receiver.lock().await;
+        thunk(&mut pin!(
+            &mut receiver_stream
+                .by_ref()
+                .map(|b| bincode::deserialize(&b).unwrap())
+        ))
+        .await
+    }
+
+    /// Asserts that the stream has ended and no more messages can possibly arrive.
+    pub async fn assert_no_more(self)
+    where
+        T: Debug,
+    {
+        self.with_stream(async |stream| {
+            if let Some(next) = stream.next().await {
+                panic!("Stream yielded unexpected message: {:?}", next);
+            }
+        })
+        .await;
+    }
+}
+
+impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
     /// Receives the next message from the external bincode stream. This will wait until a message
     /// is available, or return `None` if no more messages can possibly arrive.
-    pub async fn next(&mut self) -> Option<T> {
-        self.0.next().await
+    pub async fn next(&self) -> Option<T> {
+        self.with_stream(async |stream| stream.next().await).await
     }
 
     /// Collects all remaining messages from the external bincode stream into a collection. This
     /// will wait until no more messages can possibly arrive.
     pub async fn collect<C: Default + Extend<T>>(self) -> C {
-        self.0.collect().await
+        self.with_stream(async |stream| stream.collect().await)
+            .await
     }
 
     /// Asserts that the stream yields exactly the expected sequence of messages, in order.
     /// This does not check that the stream ends, use [`Self::assert_yields_only`] for that.
-    pub async fn assert_yields<T2: Debug>(&mut self, expected: impl IntoIterator<Item = T2>)
+    pub async fn assert_yields<T2: Debug>(&self, expected: impl IntoIterator<Item = T2>)
     where
         T: Debug + PartialEq<T2>,
     {
@@ -500,7 +533,7 @@ impl<'a, T> SimReceiver<'a, T, TotalOrder, ExactlyOnce> {
 
     /// Asserts that the stream yields only the expected sequence of messages, in order,
     /// and then ends.
-    pub async fn assert_yields_only<T2: Debug>(mut self, expected: impl IntoIterator<Item = T2>)
+    pub async fn assert_yields_only<T2: Debug>(self, expected: impl IntoIterator<Item = T2>)
     where
         T: Debug + PartialEq<T2>,
     {
@@ -509,46 +542,50 @@ impl<'a, T> SimReceiver<'a, T, TotalOrder, ExactlyOnce> {
     }
 }
 
-impl<'a, T> SimReceiver<'a, T, NoOrder, ExactlyOnce> {
+impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
     /// Collects all remaining messages from the external bincode stream into a collection,
     /// sorting them. This will wait until no more messages can possibly arrive.
     pub async fn collect_sorted<C: Default + Extend<T> + AsMut<[T]>>(self) -> C
     where
         T: Ord,
     {
-        let mut collected: C = self.0.collect().await;
-        collected.as_mut().sort();
-        collected
+        self.with_stream(async |stream| {
+            let mut collected: C = stream.collect().await;
+            collected.as_mut().sort();
+            collected
+        })
+        .await
     }
 
     /// Asserts that the stream yields exactly the expected sequence of messages, in some order.
     /// This does not check that the stream ends, use [`Self::assert_yields_only_unordered`] for that.
-    pub async fn assert_yields_unordered<T2: Debug>(
-        &mut self,
-        expected: impl IntoIterator<Item = T2>,
-    ) where
+    pub async fn assert_yields_unordered<T2: Debug>(&self, expected: impl IntoIterator<Item = T2>)
+    where
         T: Debug + PartialEq<T2>,
     {
-        let mut expected: Vec<T2> = expected.into_iter().collect();
+        self.with_stream(async |stream| {
+            let mut expected: Vec<T2> = expected.into_iter().collect();
 
-        while !expected.is_empty() {
-            if let Some(next) = self.0.next().await {
-                let idx = expected.iter().enumerate().find(|(_, e)| &next == *e);
-                if let Some((i, _)) = idx {
-                    expected.swap_remove(i);
+            while !expected.is_empty() {
+                if let Some(next) = stream.next().await {
+                    let idx = expected.iter().enumerate().find(|(_, e)| &next == *e);
+                    if let Some((i, _)) = idx {
+                        expected.swap_remove(i);
+                    } else {
+                        panic!("Stream yielded unexpected message: {:?}", next);
+                    }
                 } else {
-                    panic!("Stream yielded unexpected message: {:?}", next);
+                    panic!("Stream ended early, still expected: {:?}", expected);
                 }
-            } else {
-                panic!("Stream ended early, still expected: {:?}", expected);
             }
-        }
+        })
+        .await;
     }
 
     /// Asserts that the stream yields only the expected sequence of messages, in some order,
     /// and then ends.
     pub async fn assert_yields_only_unordered<T2: Debug>(
-        mut self,
+        self,
         expected: impl IntoIterator<Item = T2>,
     ) where
         T: Debug + PartialEq<T2>,
@@ -558,75 +595,51 @@ impl<'a, T> SimReceiver<'a, T, NoOrder, ExactlyOnce> {
     }
 }
 
-impl<'a, T: DeserializeOwned + 'static, O: Ordering, R: Retries>
-    ConnectableAsync<&mut CompiledSimInstance<'a>> for &ExternalBincodeStream<T, O, R>
-{
-    type Output = SimReceiver<'a, T, O, R>;
+impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimSender<T, O, R> {
+    fn with_sink<Out>(
+        &self,
+        thunk: impl FnOnce(&dyn Fn(T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>>) -> Out,
+    ) -> Out {
+        let sender = CURRENT_SIM_CONNECTIONS.with(|connections| {
+            let connections = &mut *connections.borrow_mut();
+            connections
+                .input_senders
+                .get(connections.external_registered.get(&self.0).unwrap())
+                .unwrap()
+                .clone()
+        });
 
-    async fn connect(self, ctx: &mut CompiledSimInstance<'a>) -> Self::Output {
-        let looked_up = ctx.external_registered.get(&self.port_id).unwrap();
-
-        assert!(ctx.remaining_ports.remove(looked_up));
-        let (sink, source) = dfir_rs::util::unbounded_channel::<Bytes>();
-        ctx.output_ports.insert(*looked_up, sink);
-
-        SimReceiver(
-            Box::pin(source.map(|b| bincode::deserialize(&b).unwrap())),
-            PhantomData,
-        )
+        thunk(&move |t| sender.send(bincode::serialize(&t).unwrap().into()))
     }
 }
 
-/// A sender to an external bincode sink in a simulation.
-pub struct SimSender<T, O: Ordering, R: Retries>(
-    Box<dyn Fn(T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>>>,
-    PhantomData<(O, R)>,
-);
-impl<T> SimSender<T, TotalOrder, ExactlyOnce> {
+impl<T: Serialize + DeserializeOwned, O: Ordering> SimSender<T, O, ExactlyOnce> {
+    /// Sends several messages to the external bincode sink. The messages will be asynchronously
+    /// processed as part of the simulation, in non-determinstic order.
+    pub fn send_many_unordered<I: IntoIterator<Item = T>>(&self, iter: I) {
+        self.with_sink(|send| {
+            for t in iter {
+                send(t).unwrap();
+            }
+        })
+    }
+}
+
+impl<T: Serialize + DeserializeOwned> SimSender<T, TotalOrder, ExactlyOnce> {
     /// Sends a message to the external bincode sink. The message will be asynchronously processed
     /// as part of the simulation.
     pub fn send(&self, t: T) {
-        (self.0)(t).unwrap()
+        self.with_sink(|send| send(t)).unwrap();
     }
 
     /// Sends several messages to the external bincode sink. The messages will be asynchronously
     /// processed as part of the simulation.
     pub fn send_many<I: IntoIterator<Item = T>>(&self, iter: I) {
-        for t in iter {
-            (self.0)(t).unwrap();
-        }
-    }
-}
-
-impl<T> SimSender<T, NoOrder, ExactlyOnce> {
-    /// Sends several messages to the external bincode sink. The messages will be asynchronously
-    /// processed as part of the simulation, in non-determinstic order.
-    pub fn send_many_unordered<I: IntoIterator<Item = T>>(
-        &self,
-        iter: I,
-    ) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>> {
-        for t in iter {
-            (self.0)(t)?;
-        }
-        Ok(())
-    }
-}
-
-impl<'a, T: Serialize + 'static, M, O: Ordering, R: Retries>
-    ConnectableAsync<&mut CompiledSimInstance<'a>> for &ExternalBincodeSink<T, M, O, R>
-{
-    type Output = SimSender<T, O, R>;
-
-    async fn connect(self, ctx: &mut CompiledSimInstance<'a>) -> Self::Output {
-        let looked_up = ctx.external_registered.get(&self.port_id).unwrap();
-
-        assert!(ctx.remaining_ports.remove(looked_up));
-        let (sink, source) = dfir_rs::util::unbounded_channel::<Bytes>();
-        ctx.input_ports.insert(*looked_up, source);
-        SimSender(
-            Box::new(move |t| sink.send(bincode::serialize(&t).unwrap().into())),
-            PhantomData,
-        )
+        self.with_sink(|send| {
+            for t in iter {
+                send(t).unwrap();
+            }
+        })
     }
 }
 
@@ -785,7 +798,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     if let Some(inline_hooks) =
                         self.inline_hooks.get_mut(&(removed.0.clone(), removed.1))
                     {
-                        let mut run_tick_future_pinned = pin::pin!(run_tick_future);
+                        let mut run_tick_future_pinned = pin!(run_tick_future);
 
                         loop {
                             tokio::select! {

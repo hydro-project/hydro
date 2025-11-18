@@ -118,7 +118,7 @@ Because each group in a keyed stream has an independent order of elements, calli
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_counter.rs">src/single_counter.rs</Link>
-} showLineNumbers={51}>{getLines(singleCounterSrc, 51, 64)}</CodeBlock>
+} showLineNumbers={50}>{getLines(singleCounterSrc, 50, 64)}</CodeBlock>
 
 If you run this test with `cargo test -- single_counter`, you'll see it fail! The simulator explores different execution orderings and finds one where the get request observes a count of 0 instead of 1:
 
