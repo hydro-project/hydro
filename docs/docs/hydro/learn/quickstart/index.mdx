@@ -102,31 +102,23 @@ Next, let's take a look at the setup logic for the test, which:
 3. Sets up the echo server using the function you defined before
 4. Declares an external output for assertions in the test
 
-To create locations, you must first create a `FlowBuilder`, which will track all the locations used across your distributed system. Then, you can create a process using `flow.process()`, which returns a `Process` value. In a simulation test, all inputs and outputs will originate on an `External`, which identifies an external client. To create an external, you use `flow.external::<()>()`, where `()` is a placeholder tag.
+To create locations, you must first create a `FlowBuilder`, which will track all the locations used across your distributed system. Then, you can create a process using `flow.process()`, which returns a `Process` value.
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
 } showLineNumbers={19}>{getLines(highlightLines(libRsSrc, []), 19, 21)}</CodeBlock>
 
-Now, you can create the echo server! You start by receiving inputs from the test client using `source_external_bincode`. This returns a tuple with two values: a port handle that the client can use to send requests, and a `Stream` of the received requests. You can then pass this stream into `echo_capitalize`, which returns a stream of responses. To send these back to the external client, you use `send_bincode_external`. This function returns a port handle that the client can use to receive responses.
+Now, you can create the echo server! You start by receiving inputs from the test client using `sim_input`. This returns a tuple with two values: a port handle that the test can use to send requests, and a `Stream` of the received requests. You can then pass this stream into `echo_capitalize`, which returns a stream of responses. To read the outputs from the test, you use `sim_output`. This function returns a port handle that the test can use to receive responses.
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
-} showLineNumbers={23}>{getLines(highlightLines(libRsSrc, []), 23, 26)}</CodeBlock>
+} showLineNumbers={22}>{getLines(highlightLines(libRsSrc, []), 22, 24)}</CodeBlock>
 
 Finally, you can write the functionality test. To create an **exhaustive** simulation test, which explores _all possible_ distributed executions, you invoke `flow.sim().exhaustive()`. This function takes in an async closure, which will be repeatedly invoked with different simulation instances, each testing a different distributed execution.
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
-} showLineNumbers={27}>{getLines(highlightLines(libRsSrc, []), 27, 37)}</CodeBlock>
-
-In any simulation test, the first step is to connect to the input and output ports so that you can interact with the distributed system. You do this by invoking `instance.connect()` for each of the input / output ports. Then, you can launch the simulated program using `instance.launch()`.
-
-:::caution
-
-You must connect to _all_ input and output ports before invoking `instance.launch()`, even if some are not used. The `launch` function will panic if any ports have not been connected.
-
-:::
+} showLineNumbers={26}>{getLines(highlightLines(libRsSrc, []), 26, 31)}</CodeBlock>
 
 The included test sends the messages `"hello"` and `"world"` to the echo server using the `send()` method. Then, it uses `assert_yields_only` to check that the responses `"HELLO"` and `"WORLD"` are returned and that there are no additional responses. The APIs for receiving responses are async so you must use `.await` to wait for the assertion to complete.
 
