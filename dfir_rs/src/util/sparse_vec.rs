@@ -43,6 +43,7 @@ impl<T: Clone + Eq + Hash> SparseVec<T> {
     }
 }
 
+/// An iterator for [`SparseVec`].
 #[derive(Clone)]
 pub struct SparseVecIter<'a, T> {
     vec: &'a SparseVec<T>,
