@@ -87,7 +87,7 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
                 )
             };
 
-            let #ident = #root::compiled::pull::Zip::new(
+            let #ident = #root::compiled::pull::ZipPersist::new(
                 #root::futures::stream::StreamExt::fuse(#lhs_input),
                 #root::futures::stream::StreamExt::fuse(#rhs_input),
                 &mut *#lhs_borrow,

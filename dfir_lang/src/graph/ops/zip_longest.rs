@@ -3,7 +3,7 @@ use syn::parse_quote;
 
 use super::{
     DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -75,7 +75,7 @@ pub const ZIP_LONGEST: OperatorConstraints = OperatorConstraints {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::itertools::Itertools::zip_longest(#lhs, #rhs);
+            let #ident = #root::compiled::pull::ZipLongest::new(#lhs, #rhs);
         };
 
         Ok(OperatorWriteOutput {
