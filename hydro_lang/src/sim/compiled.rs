@@ -1,6 +1,6 @@
 //! Interfaces for compiled Hydro simulators and concrete simulation instances.
 
-use core::fmt;
+use core::{fmt, panic};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
@@ -8,6 +8,7 @@ use std::panic::RefUnwindSafe;
 use std::path::Path;
 use std::pin::{Pin, pin};
 use std::rc::Rc;
+use std::task::ready;
 
 use bytes::Bytes;
 use colored::Colorize;
@@ -487,16 +488,20 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimReceiver<T, O,
     }
 
     /// Asserts that the stream has ended and no more messages can possibly arrive.
-    pub async fn assert_no_more(self)
+    pub fn assert_no_more(self) -> impl Future<Output = ()>
     where
         T: Debug,
     {
-        self.with_stream(async |stream| {
-            if let Some(next) = stream.next().await {
-                panic!("Stream yielded unexpected message: {:?}", next);
+        FutureTrackingCaller {
+            future: async move {
+                self.with_stream(async |stream| {
+                    if let Some(next) = stream.next().await {
+                        Err(format!("Stream yielded unexpected message: {:?}", next))?;
+                    }
+                    Ok(())
+                }).await
             }
-        })
-        .await;
+        }
     }
 }
 
@@ -516,29 +521,97 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
 
     /// Asserts that the stream yields exactly the expected sequence of messages, in order.
     /// This does not check that the stream ends, use [`Self::assert_yields_only`] for that.
-    pub async fn assert_yields<T2: Debug>(&self, expected: impl IntoIterator<Item = T2>)
+    pub fn assert_yields<T2: Debug, I: IntoIterator<Item = T2>>(&self, expected: I) -> impl use<'_, T, T2, I> + Future<Output = ()>
     where
         T: Debug + PartialEq<T2>,
     {
-        let mut expected: VecDeque<T2> = expected.into_iter().collect();
+        FutureTrackingCaller {
+            future: async {
+                let mut expected: VecDeque<T2> = expected.into_iter().collect();
 
-        while !expected.is_empty() {
-            if let Some(next) = self.next().await {
-                assert_eq!(next, expected.pop_front().unwrap());
-            } else {
-                panic!("Stream ended early, still expected: {:?}", expected);
+                while !expected.is_empty() {
+                    if let Some(next) = self.next().await {
+                        let next_expected = expected.pop_front().unwrap();
+                        if next == next_expected {
+                            expected.pop_front();
+                        } else {
+                            Err(format!("Stream yielded unexpected message: {:?}, expected: {:?}", next, next_expected))?
+                        }
+                    } else {
+                        Err(format!(
+                            "Stream ended early, still expected: {:?}",
+                            expected
+                        ))?;
+                    }
+                }
+
+                Ok(())
             }
         }
     }
 
     /// Asserts that the stream yields only the expected sequence of messages, in order,
     /// and then ends.
-    pub async fn assert_yields_only<T2: Debug>(self, expected: impl IntoIterator<Item = T2>)
+    pub fn assert_yields_only<T2: Debug, I: IntoIterator<Item = T2>>(&self, expected: I) -> impl use<'_, T, T2, I> + Future<Output = ()>
     where
         T: Debug + PartialEq<T2>,
     {
-        self.assert_yields(expected).await;
-        self.assert_no_more().await;
+        ChainedFuture {
+            first: self.assert_yields(expected),
+            second: self.assert_no_more(),
+            first_done: false,
+        }
+    }
+}
+
+pin_project_lite::pin_project! {
+    // A future that tracks the location of the `.await` call for better panic messages.
+    struct FutureTrackingCaller<F: Future<Output = Result<(), String>>> {
+        #[pin]
+        future: F,
+    }
+}
+
+impl<F: Future<Output = Result<(), String>>> Future for FutureTrackingCaller<F> {
+    type Output = ();
+
+    #[track_caller]
+    fn poll(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        match ready!(self.as_mut().project().future.poll(cx)) {
+            Ok(()) => std::task::Poll::Ready(()),
+            Err(e) => panic!("{}", e),
+        }
+    }
+}
+
+pin_project_lite::pin_project! {
+    // A future that first awaits the first future, then the second, propagating caller info.
+    struct ChainedFuture<F1: Future<Output = ()>, F2: Future<Output = ()>> {
+        #[pin]
+        first: F1,
+        #[pin]
+        second: F2,
+        first_done: bool,
+    }
+}
+
+impl<F1: Future<Output = ()>, F2: Future<Output = ()>> Future for ChainedFuture<F1, F2> {
+    type Output = ();
+
+    #[track_caller]
+    fn poll(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        if !self.first_done {
+            ready!(self.as_mut().project().first.poll(cx));
+            *self.as_mut().project().first_done = true;
+        }
+
+        self.as_mut().project().second.poll(cx)
     }
 }
 
@@ -559,39 +632,51 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
 
     /// Asserts that the stream yields exactly the expected sequence of messages, in some order.
     /// This does not check that the stream ends, use [`Self::assert_yields_only_unordered`] for that.
-    pub async fn assert_yields_unordered<T2: Debug>(&self, expected: impl IntoIterator<Item = T2>)
+    pub fn assert_yields_unordered<T2: Debug, I: IntoIterator<Item = T2>>(&self, expected: I) -> impl use<'_, T, T2, I> + Future<Output = ()>
     where
         T: Debug + PartialEq<T2>,
     {
-        self.with_stream(async |stream| {
-            let mut expected: Vec<T2> = expected.into_iter().collect();
+        FutureTrackingCaller {
+            future: async {
+                self.with_stream(async |stream| {
+                    let mut expected: Vec<T2> = expected.into_iter().collect();
 
-            while !expected.is_empty() {
-                if let Some(next) = stream.next().await {
-                    let idx = expected.iter().enumerate().find(|(_, e)| &next == *e);
-                    if let Some((i, _)) = idx {
-                        expected.swap_remove(i);
-                    } else {
-                        panic!("Stream yielded unexpected message: {:?}", next);
+                    while !expected.is_empty() {
+                        if let Some(next) = stream.next().await {
+                            let idx = expected.iter().enumerate().find(|(_, e)| &next == *e);
+                            if let Some((i, _)) = idx {
+                                expected.swap_remove(i);
+                            } else {
+                                Err(format!("Stream yielded unexpected message: {:?}", next))?
+                            }
+                        } else {
+                            Err(format!(
+                                "Stream ended early, still expected: {:?}",
+                                expected
+                            ))?
+                        }
                     }
-                } else {
-                    panic!("Stream ended early, still expected: {:?}", expected);
-                }
-            }
-        })
-        .await;
+
+                    Ok(())
+                })
+                .await
+            },
+        }
     }
 
     /// Asserts that the stream yields only the expected sequence of messages, in some order,
     /// and then ends.
-    pub async fn assert_yields_only_unordered<T2: Debug>(
-        self,
-        expected: impl IntoIterator<Item = T2>,
-    ) where
+    pub fn assert_yields_only_unordered<T2: Debug, I: IntoIterator<Item = T2>>(
+        &self,
+        expected: I,
+    ) -> impl use<'_, T, T2, I> + Future<Output = ()> where
         T: Debug + PartialEq<T2>,
     {
-        self.assert_yields_unordered(expected).await;
-        self.assert_no_more().await;
+        ChainedFuture {
+            first: self.assert_yields_unordered(expected),
+            second: self.assert_no_more(),
+            first_done: false,
+        }
     }
 }
 
