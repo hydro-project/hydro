@@ -26,3 +26,6 @@ pub use persist_mut_keyed::PersistMutKeyed;
 
 mod sort_by_key;
 pub use sort_by_key::SortByKey;
+
+mod flat_map;
+pub use flat_map::FlatMap;
