@@ -33,5 +33,8 @@ pub use flat_map::FlatMap;
 mod lattice_bimorphism;
 pub use lattice_bimorphism::LatticeBimorphismStream;
 
-mod zip;
-pub use zip::Zip;
+mod zip_longest;
+pub use zip_longest::ZipLongest;
+
+mod zip_persist;
+pub use zip_persist::ZipPersist;
