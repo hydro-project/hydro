@@ -119,7 +119,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
 
                 let #ident = #root::compiled::pull::Fold::new(
                     #input,
-                    #accumulator_ident,
+                    &mut *#accumulator_ident,
                     move |#accumulator_ident, #iterator_item_ident| {
                         #iterator_foreach
                     }
