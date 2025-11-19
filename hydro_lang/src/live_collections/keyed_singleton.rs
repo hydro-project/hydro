@@ -1540,26 +1540,20 @@ mod tests {
     fn sim_unbounded_singleton_snapshot() {
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
-        let external = flow.external::<()>();
 
-        let (input_port, input) = node.source_external_bincode(&external);
-        let out = input
+        let (input_port, input) = node.sim_input();
+        let output = input
             .into_keyed()
             .fold(q!(|| 0), q!(|acc, _| *acc += 1))
             .snapshot(&node.tick(), nondet!(/** test */))
             .entries()
             .all_ticks()
-            .send_bincode_external(&external);
+            .sim_output();
 
-        let count = flow.sim().exhaustive(async |mut instance| {
-            let input = instance.connect(&input_port);
-            let output = instance.connect(&out);
-
-            instance.launch();
-
-            input.send((1, 123));
-            input.send((1, 456));
-            input.send((2, 123));
+        let count = flow.sim().exhaustive(async || {
+            input_port.send((1, 123));
+            input_port.send((1, 456));
+            input_port.send((2, 123));
 
             let all = output.collect_sorted::<Vec<_>>().await;
             assert_eq!(all.last().unwrap(), &(2, 1));

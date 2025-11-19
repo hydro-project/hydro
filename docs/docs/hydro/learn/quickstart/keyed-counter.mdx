@@ -160,7 +160,7 @@ The test follows the same pattern as the single counter. Because the simulator c
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
-} showLineNumbers={51}>{getLines(keyedCounterSrc, 51, 85)}</CodeBlock>
+} showLineNumbers={51}>{getLines(keyedCounterSrc, 51, 77)}</CodeBlock>
 
 This test verifies that a client can increment a specific key ("abc") and then read back the correct count. The atomic consistency guarantees ensure that after receiving an acknowledgement, a subsequent get request observes the updated count.
 
