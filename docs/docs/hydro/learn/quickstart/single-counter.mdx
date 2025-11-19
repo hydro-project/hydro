@@ -135,7 +135,7 @@ Running Tick
   | let count_snapshot = use(current_count, nondet!(/** intentional, based on when the request came in */));
   |                         ^ releasing unchanged snapshot: 0
 
-thread panicked at:
+thread ... panicked at src/single_counter.rs:54:65:
 Stream yielded unexpected message: (1, 0)
 ```
 
