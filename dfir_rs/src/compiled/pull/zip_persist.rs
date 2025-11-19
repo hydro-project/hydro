@@ -9,7 +9,7 @@ use pin_project_lite::pin_project;
 pin_project! {
     /// Special stream for the `zip` operator.
     #[must_use = "streams do nothing unless polled"]
-    pub struct Zip<'a, St1, St2>
+    pub struct ZipPersist<'a, St1, St2>
     where
         St1: FusedStream,
         St2: FusedStream,
@@ -24,12 +24,12 @@ pin_project! {
     }
 }
 
-impl<'a, St1, St2> Zip<'a, St1, St2>
+impl<'a, St1, St2> ZipPersist<'a, St1, St2>
 where
     St1: FusedStream,
     St2: FusedStream,
 {
-    /// Create a new `Zip` stream from two source streams.
+    /// Create a new `ZipPersist` stream from two source streams.
     pub fn new(
         stream1: St1,
         stream2: St2,
@@ -45,7 +45,7 @@ where
     }
 }
 
-impl<St1, St2> Stream for Zip<'_, St1, St2>
+impl<St1, St2> Stream for ZipPersist<'_, St1, St2>
 where
     St1: FusedStream,
     St2: FusedStream,
