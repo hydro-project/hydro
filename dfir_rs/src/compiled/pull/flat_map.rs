@@ -73,8 +73,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use futures::stream::{self, StreamExt};
+
+    use super::*;
 
     #[tokio::test]
     async fn test_flat_map_basic() {

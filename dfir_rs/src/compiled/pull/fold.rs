@@ -5,8 +5,8 @@ use futures::stream::{FusedStream, Stream};
 use pin_project_lite::pin_project;
 
 pin_project! {
-    #[project = FoldProj]
-    pub enum Fold<'a, St, Accum, Func> {
+    #[project = FoldStateProj]
+    enum FoldState<'a, St, Accum, Func> {
         Folding {
             #[pin]
             stream: St,
@@ -17,12 +17,22 @@ pin_project! {
     }
 }
 
+pin_project! {
+    #[project = FoldProj]
+    pub struct Fold<'a, St, Accum, Func> {
+        #[pin]
+        state: FoldState<'a, St, Accum, Func>,
+    }
+}
+
 impl<'a, St, Accum, Func> Fold<'a, St, Accum, Func> {
     pub fn new(stream: St, accumulator: &'a mut Accum, func: Func) -> Self {
-        Self::Folding {
-            stream,
-            accumulator,
-            func,
+        Self {
+            state: FoldState::Folding {
+                stream,
+                accumulator,
+                func,
+            },
         }
     }
 }
@@ -35,9 +45,11 @@ where
 {
     type Item = Accum;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match self.as_mut().project() {
-            FoldProj::Folding {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+
+        match this.state.as_mut().project() {
+            FoldStateProj::Folding {
                 stream,
                 accumulator,
                 func,
@@ -48,11 +60,11 @@ where
                 } else {
                     // Release once, after the stream is exhausted.
                     let item = accumulator.clone();
-                    self.set(Fold::Done);
+                    this.state.set(FoldState::Done);
                     Poll::Ready(Some(item))
                 }
             }
-            FoldProj::Done => Poll::Ready(None),
+            FoldStateProj::Done => Poll::Ready(None),
         }
     }
 }
@@ -64,6 +76,6 @@ where
     Func: FnMut(&mut Accum, St::Item),
 {
     fn is_terminated(&self) -> bool {
-        matches!(self, Self::Done)
+        matches!(self.state, FoldState::Done)
     }
 }

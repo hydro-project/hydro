@@ -1,6 +1,6 @@
 use std::task::{Poll, ready};
 
-use futures::Stream;
+use futures::{Stream, stream::FusedStream};
 use pin_project_lite::pin_project;
 
 pin_project! {
@@ -77,5 +77,22 @@ where
         }
 
         unreachable!();
+    }
+}
+
+impl<St, Func, K> FusedStream for SortByKey<St, St::Item, Func>
+where
+    St: Stream,
+    Func: for<'a> FnMut(&'a St::Item) -> &'a K,
+    K: Ord,
+{
+    fn is_terminated(&self) -> bool {
+        if let SortByKeyState::Emitting { into_iter } = &self.state
+            && 0 == into_iter.len()
+        {
+            true
+        } else {
+            false
+        }
     }
 }
