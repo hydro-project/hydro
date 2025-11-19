@@ -575,6 +575,14 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
 
 pin_project_lite::pin_project! {
     // A future that tracks the location of the `.await` call for better panic messages.
+    //
+    // `#[track_caller]` is important for us to create assertion methods because it makes
+    // the panic backtrace show up at that method (instead of inside the call tree within
+    // that method). This is e.g. what `Option::unwrap` uses. Unfortunately, `#[track_caller]`
+    // does not work correctly for async methods (or `dyn Future` either), so we have to
+    // create these concrete future types that (1) have `#[track_caller]` on their `poll()`
+    // method and (2) have the `panic!` triggered in their `poll()` method (or in a directly
+    // nested concrete future).
     struct FutureTrackingCaller<F: Future<Output = Result<(), String>>> {
         #[pin]
         future: F,
