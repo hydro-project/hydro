@@ -1540,32 +1540,26 @@
 <a href=#1540 id=1540 data-nosnippet>1540</a>    </span><span class="kw">fn </span>sim_unbounded_singleton_snapshot() {
 <a href=#1541 id=1541 data-nosnippet>1541</a>        <span class="kw">let </span>flow = FlowBuilder::new();
 <a href=#1542 id=1542 data-nosnippet>1542</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#1543 id=1543 data-nosnippet>1543</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
-<a href=#1544 id=1544 data-nosnippet>1544</a>
-<a href=#1545 id=1545 data-nosnippet>1545</a>        <span class="kw">let </span>(input_port, input) = node.source_external_bincode(<span class="kw-2">&amp;</span>external);
-<a href=#1546 id=1546 data-nosnippet>1546</a>        <span class="kw">let </span>out = input
-<a href=#1547 id=1547 data-nosnippet>1547</a>            .into_keyed()
-<a href=#1548 id=1548 data-nosnippet>1548</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|acc, <span class="kw">_</span>| <span class="kw-2">*</span>acc += <span class="number">1</span>))
-<a href=#1549 id=1549 data-nosnippet>1549</a>            .snapshot(<span class="kw-2">&amp;</span>node.tick(), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#1550 id=1550 data-nosnippet>1550</a>            .entries()
-<a href=#1551 id=1551 data-nosnippet>1551</a>            .all_ticks()
-<a href=#1552 id=1552 data-nosnippet>1552</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
-<a href=#1553 id=1553 data-nosnippet>1553</a>
-<a href=#1554 id=1554 data-nosnippet>1554</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|<span class="kw-2">mut </span>instance| {
-<a href=#1555 id=1555 data-nosnippet>1555</a>            <span class="kw">let </span>input = instance.connect(<span class="kw-2">&amp;</span>input_port);
-<a href=#1556 id=1556 data-nosnippet>1556</a>            <span class="kw">let </span>output = instance.connect(<span class="kw-2">&amp;</span>out);
+<a href=#1543 id=1543 data-nosnippet>1543</a>
+<a href=#1544 id=1544 data-nosnippet>1544</a>        <span class="kw">let </span>(input_port, input) = node.sim_input();
+<a href=#1545 id=1545 data-nosnippet>1545</a>        <span class="kw">let </span>output = input
+<a href=#1546 id=1546 data-nosnippet>1546</a>            .into_keyed()
+<a href=#1547 id=1547 data-nosnippet>1547</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|acc, <span class="kw">_</span>| <span class="kw-2">*</span>acc += <span class="number">1</span>))
+<a href=#1548 id=1548 data-nosnippet>1548</a>            .snapshot(<span class="kw-2">&amp;</span>node.tick(), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#1549 id=1549 data-nosnippet>1549</a>            .entries()
+<a href=#1550 id=1550 data-nosnippet>1550</a>            .all_ticks()
+<a href=#1551 id=1551 data-nosnippet>1551</a>            .sim_output();
+<a href=#1552 id=1552 data-nosnippet>1552</a>
+<a href=#1553 id=1553 data-nosnippet>1553</a>        <span class="kw">let </span>count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#1554 id=1554 data-nosnippet>1554</a>            input_port.send((<span class="number">1</span>, <span class="number">123</span>));
+<a href=#1555 id=1555 data-nosnippet>1555</a>            input_port.send((<span class="number">1</span>, <span class="number">456</span>));
+<a href=#1556 id=1556 data-nosnippet>1556</a>            input_port.send((<span class="number">2</span>, <span class="number">123</span>));
 <a href=#1557 id=1557 data-nosnippet>1557</a>
-<a href=#1558 id=1558 data-nosnippet>1558</a>            instance.launch();
-<a href=#1559 id=1559 data-nosnippet>1559</a>
-<a href=#1560 id=1560 data-nosnippet>1560</a>            input.send((<span class="number">1</span>, <span class="number">123</span>));
-<a href=#1561 id=1561 data-nosnippet>1561</a>            input.send((<span class="number">1</span>, <span class="number">456</span>));
-<a href=#1562 id=1562 data-nosnippet>1562</a>            input.send((<span class="number">2</span>, <span class="number">123</span>));
-<a href=#1563 id=1563 data-nosnippet>1563</a>
-<a href=#1564 id=1564 data-nosnippet>1564</a>            <span class="kw">let </span>all = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
-<a href=#1565 id=1565 data-nosnippet>1565</a>            <span class="macro">assert_eq!</span>(all.last().unwrap(), <span class="kw-2">&amp;</span>(<span class="number">2</span>, <span class="number">1</span>));
-<a href=#1566 id=1566 data-nosnippet>1566</a>        });
-<a href=#1567 id=1567 data-nosnippet>1567</a>
-<a href=#1568 id=1568 data-nosnippet>1568</a>        <span class="macro">assert_eq!</span>(count, <span class="number">8</span>);
-<a href=#1569 id=1569 data-nosnippet>1569</a>    }
-<a href=#1570 id=1570 data-nosnippet>1570</a>}
+<a href=#1558 id=1558 data-nosnippet>1558</a>            <span class="kw">let </span>all = output.collect_sorted::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#1559 id=1559 data-nosnippet>1559</a>            <span class="macro">assert_eq!</span>(all.last().unwrap(), <span class="kw-2">&amp;</span>(<span class="number">2</span>, <span class="number">1</span>));
+<a href=#1560 id=1560 data-nosnippet>1560</a>        });
+<a href=#1561 id=1561 data-nosnippet>1561</a>
+<a href=#1562 id=1562 data-nosnippet>1562</a>        <span class="macro">assert_eq!</span>(count, <span class="number">8</span>);
+<a href=#1563 id=1563 data-nosnippet>1563</a>    }
+<a href=#1564 id=1564 data-nosnippet>1564</a>}
 </code></pre></div></section></main></body></html>
