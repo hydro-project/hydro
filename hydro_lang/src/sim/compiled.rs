@@ -606,6 +606,8 @@ impl<F: Future<Output = Result<(), String>>> Future for FutureTrackingCaller<F> 
 
 pin_project_lite::pin_project! {
     // A future that first awaits the first future, then the second, propagating caller info.
+    //
+    // See [`FutureTrackingCaller`] for context.
     struct ChainedFuture<F1: Future<Output = ()>, F2: Future<Output = ()>> {
         #[pin]
         first: F1,
