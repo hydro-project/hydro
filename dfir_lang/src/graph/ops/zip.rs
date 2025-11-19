@@ -54,8 +54,8 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
         let rhs_ident = wc.make_ident("rhs");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #lhs_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
-            let #rhs_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
+            let #lhs_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+            let #rhs_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
         };
 
         let write_prologue_after_lhs = wc
@@ -73,33 +73,26 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
                 }
             });
 
+        let lhs_borrow = wc.make_ident("lhs_borrow");
+        let rhs_borrow = wc.make_ident("rhs_borrow");
         let lhs_input = &inputs[0];
         let rhs_input = &inputs[1];
-        let write_iterator = quote_spanned! {op_span=>
-            let #ident = {
-                let (mut lhs_buf, mut rhs_buf) = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    (
-                        #context.state_ref_unchecked(#lhs_ident).borrow_mut(),
-                        #context.state_ref_unchecked(#rhs_ident).borrow_mut(),
-                    )
-                };
 
-                #root::itertools::Itertools::zip_longest(
-                    ::std::mem::take(&mut *lhs_buf).into_iter().chain(#lhs_input),
-                    ::std::mem::take(&mut *rhs_buf).into_iter().chain(#rhs_input),
+        let write_iterator = quote_spanned! {op_span=>
+            let (mut #lhs_borrow, mut #rhs_borrow) = unsafe {
+                // SAFETY: handle from `#df_ident.add_state(..)`.
+                (
+                    #context.state_ref_unchecked(#lhs_ident).borrow_mut(),
+                    #context.state_ref_unchecked(#rhs_ident).borrow_mut(),
                 )
-                    .filter_map(move |either| {
-                        match either {
-                            #root::itertools::EitherOrBoth::Both(lhs, rhs) => {
-                                return Some((lhs, rhs));
-                            },
-                            #root::itertools::EitherOrBoth::Left(lhs) => lhs_buf.push(lhs),
-                            #root::itertools::EitherOrBoth::Right(rhs) => rhs_buf.push(rhs),
-                        }
-                        None
-                    })
             };
+
+            let #ident = #root::compiled::pull::Zip::new(
+                #root::futures::stream::StreamExt::fuse(#lhs_input),
+                #root::futures::stream::StreamExt::fuse(#rhs_input),
+                &mut *#lhs_borrow,
+                &mut *#rhs_borrow,
+            );
         };
 
         Ok(OperatorWriteOutput {
