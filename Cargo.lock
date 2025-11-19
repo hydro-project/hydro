@@ -2238,6 +2238,7 @@ dependencies = [
  "libloading",
  "match_box",
  "nameof",
+ "pin-project-lite",
  "prettyplease",
  "proc-macro-crate 3.3.0",
  "proc-macro2",
