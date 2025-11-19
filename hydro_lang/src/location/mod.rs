@@ -41,6 +41,8 @@ use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many, NotMany,
 };
 use crate::nondet::NonDet;
+#[cfg(feature = "sim")]
+use crate::sim::SimSender;
 use crate::staging_util::get_this_crate;
 
 pub mod dynamic;
@@ -258,6 +260,28 @@ pub trait Location<'a>: dynamic::DynLocation {
             },
             stream.weaken_ordering().weaken_retries(),
         )
+    }
+
+    #[cfg(feature = "sim")]
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    /// Sets up a simulated input port on this location, returning a handle to send messages to
+    /// the location as well as a stream of received messages.
+    fn sim_input<T, O: Ordering, R: Retries>(
+        &self,
+    ) -> (SimSender<T, O, R>, Stream<T, Self, Unbounded, O, R>)
+    where
+        Self: Sized + NoTick,
+        T: Serialize + DeserializeOwned,
+    {
+        let external_location: External<'a, ()> = External {
+            id: 0,
+            flow_state: self.flow_state().clone(),
+            _phantom: PhantomData,
+        };
+
+        let (external, stream) = self.source_external_bincode(&external_location);
+
+        (SimSender(external.port_id, PhantomData), stream)
     }
 
     /// Establishes a server on this location to receive a bidirectional connection from a single

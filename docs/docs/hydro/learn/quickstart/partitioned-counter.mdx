@@ -102,11 +102,11 @@ This is a standard Hydro pattern for building a partitioned service in Hydro: pr
 
 ## Testing the Partitioned Counter
 
-The test is similar to the keyed counter test, but now you need to specify the cluster size:
+The test is similar to the keyed counter test, but now you need to instantiate the cluster (using `flow.cluster()`) and specify the cluster size (using `with_cluster_size`):
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
-} showLineNumbers={54}>{getLines(partitionedCounterSrc, 54, 92)}</CodeBlock>
+} showLineNumbers={54}>{highlightLines(getLines(partitionedCounterSrc, 54, 84), [5, 20])}</CodeBlock>
 
 The `with_cluster_size(&shards, 5)` method configures the simulator to create 5 cluster members. The test verifies that the partitioned counter behaves identically to the single-process version, even though the state is now distributed across multiple machines.
 

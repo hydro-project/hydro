@@ -18,18 +18,12 @@ mod tests {
     fn test_echo_capitalize() {
         let flow = FlowBuilder::new();
         let process = flow.process();
-        let external = flow.external::<()>();
 
-        let (in_port, requests) = process.source_external_bincode(&external);
+        let (in_port, requests) = process.sim_input();
         let responses = super::echo_capitalize(requests);
-        let out_port = responses.send_bincode_external(&external);
+        let out_port = responses.sim_output();
 
-        flow.sim().exhaustive(async |mut instance| {
-            let in_port = instance.connect(&in_port);
-            let out_port = instance.connect(&out_port);
-
-            instance.launch();
-
+        flow.sim().exhaustive(async || {
             in_port.send("hello".to_string());
             in_port.send("world".to_string());
 
