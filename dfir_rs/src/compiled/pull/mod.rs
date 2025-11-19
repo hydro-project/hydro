@@ -32,3 +32,6 @@ pub use flat_map::FlatMap;
 
 mod lattice_bimorphism;
 pub use lattice_bimorphism::LatticeBimorphismStream;
+
+mod zip;
+pub use zip::Zip;
