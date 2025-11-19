@@ -1,7 +1,7 @@
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
 
-use futures::stream::Stream;
+use futures::stream::{FusedStream, Stream};
 use pin_project_lite::pin_project;
 
 pin_project! {
@@ -54,5 +54,16 @@ where
             }
             FoldProj::Done => Poll::Ready(None),
         }
+    }
+}
+
+impl<St, Accum, Func> FusedStream for Fold<'_, St, Accum, Func>
+where
+    St: Stream,
+    Accum: Clone,
+    Func: FnMut(&mut Accum, St::Item),
+{
+    fn is_terminated(&self) -> bool {
+        matches!(self, Self::Done)
     }
 }
