@@ -41,3 +41,6 @@ pub use zip_longest::ZipLongest;
 
 mod zip_persist;
 pub use zip_persist::ZipPersist;
+
+mod reduce;
+pub use reduce::Reduce;
