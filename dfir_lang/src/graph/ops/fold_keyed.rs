@@ -89,7 +89,6 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                    inputs,
                    singleton_output_ident,
                    is_pull,
-                   work_fn,
                    root,
                    op_inst:
                        OperatorInstance {
@@ -125,8 +124,8 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
         ];
 
         let input = &inputs[0];
-        let initfn = &arguments[0];
-        let aggfn = &arguments[1];
+        let init_fn = &arguments[0];
+        let agg_fn = &arguments[1];
 
         let hashtable_ident = wc.make_ident("hashtable");
 
@@ -148,52 +147,53 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator = if Persistence::Mutable == persistence {
-            quote_spanned! {op_span=>
-                #assign_hashtable_ident
+            todo!()
+            // quote_spanned! {op_span=>
+            //     #assign_hashtable_ident
 
-                #work_fn(|| {
-                    #[inline(always)]
-                    fn check_input<Iter, K, V>(iter: Iter) -> impl ::std::iter::Iterator<Item = #root::util::PersistenceKeyed::<K, V>>
-                    where
-                        Iter: ::std::iter::Iterator<Item = #root::util::PersistenceKeyed::<K, V>>,
-                        K: ::std::clone::Clone,
-                        V: ::std::clone::Clone,
-                    {
-                        iter
-                    }
+            //     #work_fn(|| {
+            //         #[inline(always)]
+            //         fn check_input<Iter, K, V>(iter: Iter) -> impl ::std::iter::Iterator<Item = #root::util::PersistenceKeyed::<K, V>>
+            //         where
+            //             Iter: ::std::iter::Iterator<Item = #root::util::PersistenceKeyed::<K, V>>,
+            //             K: ::std::clone::Clone,
+            //             V: ::std::clone::Clone,
+            //         {
+            //             iter
+            //         }
 
-                    /// A: accumulator type
-                    /// T: iterator item type
-                    /// O: output type
-                    #[inline(always)]
-                    fn call_comb_type<A, T, O>(a: &mut A, t: T, f: impl Fn(&mut A, T) -> O) -> O {
-                        (f)(a, t)
-                    }
+            //         /// A: accumulator type
+            //         /// T: iterator item type
+            //         /// O: output type
+            //         #[inline(always)]
+            //         fn call_comb_type<A, T, O>(a: &mut A, t: T, f: impl Fn(&mut A, T) -> O) -> O {
+            //             (f)(a, t)
+            //         }
 
-                    for item in check_input(#input) {
-                        match item {
-                            Persist(k, v) => {
-                                let entry = #hashtable_ident.entry(k).or_insert_with(#initfn);
-                                call_comb_type(entry, v, #aggfn);
-                            },
-                            Delete(k) => {
-                                #hashtable_ident.remove(&k);
-                            },
-                        }
-                    }
-                });
+            //         for item in check_input(#input) {
+            //             match item {
+            //                 Persist(k, v) => {
+            //                     let entry = #hashtable_ident.entry(k).or_insert_with(#initfn);
+            //                     call_comb_type(entry, v, #aggfn);
+            //                 },
+            //                 Delete(k) => {
+            //                     #hashtable_ident.remove(&k);
+            //                 },
+            //             }
+            //         }
+            //     });
 
-                let #ident = #hashtable_ident
-                    .iter()
-                    .map(#[allow(suspicious_double_ref_op, clippy::clone_on_copy)] |(k, v)| (k.clone(), v.clone()));
-            }
+            //     let #ident = #hashtable_ident
+            //         .iter()
+            //         .map(#[allow(suspicious_double_ref_op, clippy::clone_on_copy)] |(k, v)| (k.clone(), v.clone()));
+            // }
         } else {
-            let iter_expr = match persistence {
-                Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
-                    #hashtable_ident.drain()
-                },
+            let then_fn = match persistence {
+                Persistence::None | Persistence::Tick => {
+                    quote_spanned! {op_span=> |ht| ht.drain() }
+                }
                 Persistence::Loop => quote_spanned! {op_span=>
-                    #hashtable_ident.iter().map(
+                    |ht| ht.iter().map(
                         #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
                         |(k, v)| (
                             ::std::clone::Clone::clone(k),
@@ -202,20 +202,22 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     )
                 },
                 Persistence::Static => quote_spanned! {op_span=>
-                    // Play everything but only on the first run of this tick/stratum.
-                    // (We know we won't have any more inputs, so it is fine to only play once.
-                    // Because of the `DelayType::Stratum` or `DelayType::MonotoneAccum`).
-                    #context.is_first_run_this_tick()
-                        .then_some(#hashtable_ident.iter())
-                        .into_iter()
-                        .flatten()
-                        .map(
-                            #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-                            |(k, v)| (
-                                ::std::clone::Clone::clone(k),
-                                ::std::clone::Clone::clone(v),
+                    |ht| {
+                        // Play everything but only on the first run of this tick/stratum.
+                        // (We know we won't have any more inputs, so it is fine to only play once.
+                        // Because of the `DelayType::Stratum` or `DelayType::MonotoneAccum`).
+                        #context.is_first_run_this_tick()
+                            .then_some(#hashtable_ident.iter())
+                            .into_iter()
+                            .flatten()
+                            .map(
+                                #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+                                |(k, v)| (
+                                    ::std::clone::Clone::clone(k),
+                                    ::std::clone::Clone::clone(v),
+                                )
                             )
-                        )
+                    }
                 },
                 Persistence::Mutable => unreachable!(),
             };
@@ -223,34 +225,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 #assign_hashtable_ident
 
-                #work_fn(|| {
-                    #[inline(always)]
-                    fn check_input<Iter, K, V>(iter: Iter) -> impl ::std::iter::Iterator<Item = (K, V)>
-                    where
-                        Iter: std::iter::Iterator<Item = (K, V)>,
-                        K: ::std::clone::Clone,
-                        V: ::std::clone::Clone
-                    {
-                        iter
-                    }
-
-                    /// A: accumulator type
-                    /// T: iterator item type
-                    /// O: output type
-                    #[inline(always)]
-                    fn call_comb_type<A, T, O>(a: &mut A, t: T, f: impl Fn(&mut A, T) -> O) -> O {
-                        (f)(a, t)
-                    }
-
-                    for kv in check_input(#input) {
-                        // TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
-                        #[allow(unknown_lints, clippy::unwrap_or_default)]
-                        let entry = #hashtable_ident.entry(kv.0).or_insert_with(#initfn);
-                        call_comb_type(entry, kv.1, #aggfn);
-                    }
-                });
-
-                let #ident = #iter_expr;
+                #ident = #root::compiled::pull::FoldKeyedThen::new(#input, &mut *#hashtable_ident, #init_fn, #agg_fn, #then_fn);
             }
         };
 

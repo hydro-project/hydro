@@ -3,7 +3,6 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use futures::stream::{FusedStream, Stream};
-use itertools::EitherOrBoth;
 use pin_project_lite::pin_project;
 
 pin_project! {
@@ -50,7 +49,7 @@ where
     St1: FusedStream,
     St2: FusedStream,
 {
-    type Item = EitherOrBoth<St1::Item, St2::Item>;
+    type Item = (St1::Item, St2::Item);
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
@@ -58,7 +57,7 @@ where
         if !this.vec1.is_empty() && !this.vec2.is_empty() {
             let item1 = this.vec1.pop_front().unwrap();
             let item2 = this.vec2.pop_front().unwrap();
-            return Poll::Ready(Some(EitherOrBoth::Both(item1, item2)));
+            return Poll::Ready(Some((item1, item2)));
         }
 
         loop {
@@ -75,18 +74,18 @@ where
                     return Poll::Pending;
                 }
                 (Poll::Ready(Some(item1)), Poll::Ready(Some(item2))) => {
-                    return Poll::Ready(Some(EitherOrBoth::Both(item1, item2)));
+                    return Poll::Ready(Some((item1, item2)));
                 }
                 (Poll::Ready(Some(item1)), _pending_or_none) => {
                     if let Some(item2) = this.vec2.pop_front() {
-                        return Poll::Ready(Some(EitherOrBoth::Both(item1, item2)));
+                        return Poll::Ready(Some((item1, item2)));
                     } else {
                         this.vec1.push_back(item1);
                     }
                 }
                 (_pending_or_none, Poll::Ready(Some(item2))) => {
                     if let Some(item1) = this.vec1.pop_front() {
-                        return Poll::Ready(Some(EitherOrBoth::Both(item1, item2)));
+                        return Poll::Ready(Some((item1, item2)));
                     } else {
                         this.vec2.push_back(item2);
                     }
