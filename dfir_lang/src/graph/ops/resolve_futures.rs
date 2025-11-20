@@ -25,17 +25,13 @@ pub const RESOLVE_FUTURES: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: move |wc, _| {
-        resolve_futures_writer(
-            Ident::new("FuturesUnordered", wc.op_span),
-            Ident::new("push", wc.op_span),
-            wc,
-        )
+        resolve_futures_writer(Ident::new("FuturesUnordered", wc.op_span), false, wc)
     },
 };
 
 pub fn resolve_futures_writer(
     future_type: Ident,
-    push_fn: Ident,
+    blocking: bool,
     wc @ &WriteContextArgs {
         root,
         context,
@@ -44,11 +40,11 @@ pub fn resolve_futures_writer(
         inputs,
         outputs,
         is_pull,
-        work_fn,
         ..
     }: &WriteContextArgs,
 ) -> Result<OperatorWriteOutput, ()> {
     let futures_ident = wc.make_ident("futures");
+    let queue_ident = wc.make_ident("queue");
 
     let write_prologue = quote_spanned! {op_span=>
         let #futures_ident = df.add_state(
@@ -58,50 +54,33 @@ pub fn resolve_futures_writer(
         );
     };
 
-    let write_iterator = if is_pull {
+    let opt_waker = if blocking {
+        quote_spanned! {op_span=> None }
+    } else {
+        quote_spanned! {op_span=> Some(#context.waker()) }
+    };
+
+    let stream_or_sink = if is_pull {
         let input = &inputs[0];
         quote_spanned! {op_span=>
-            let #ident = {
-                let mut out = ::std::vec::Vec::new();
-
-                let mut state = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#futures_ident)
-                        .borrow_mut()
-                };
-
-                (#work_fn)(|| {
-                    #input
-                        .for_each(|fut| {
-                            let mut fut = ::std::boxed::Box::pin(fut);
-                            if let #root::futures::task::Poll::Ready(val) = #root::futures::Future::poll(::std::pin::Pin::as_mut(&mut fut), &mut ::std::task::Context::from_waker(&#context.waker())) {
-                                out.push(val);
-                            } else {
-                                state.#push_fn(fut);
-                            }
-                        });
-
-                    while let #root::futures::task::Poll::Ready(Some(val)) =
-                        #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *state), &mut ::std::task::Context::from_waker(&#context.waker()))
-                    {
-                        out.push(val);
-                    }
-                });
-
-                ::std::iter::IntoIterator::into_iter(out)
-            };
+            #root::compiled::pull::ResolveFutures::new(
+                #root::futures::stream::StreamExt::fuse(#input),
+                &mut *#queue_ident,
+                #opt_waker,
+            )
         }
     } else {
         let output = &outputs[0];
         quote_spanned! {op_span=>
-            let #ident = {
-                let queue = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#futures_ident).borrow_mut()
-                };
-                #root::compiled::push::ResolveFutures::new(queue, Some(#context.waker()), #output)
-            };
+            #root::compiled::push::ResolveFutures::new(&mut *#queue_ident, #opt_waker, #output)
         }
+    };
+    let write_iterator = quote_spanned! {op_span=>
+        let mut #queue_ident = unsafe {
+            // SAFETY: handle from `#df_ident.add_state(..)`.
+            #context.state_ref_unchecked(#futures_ident).borrow_mut()
+        };
+        let #ident = #stream_or_sink;
     };
 
     Ok(OperatorWriteOutput {

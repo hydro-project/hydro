@@ -1,8 +1,8 @@
-use quote::quote_spanned;
 use syn::Ident;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1,
+    resolve_futures::resolve_futures_writer,
 };
 
 /// Given an incoming stream of `F: Future`, resolves each future, blocking the subgraph execution.
@@ -25,53 +25,6 @@ pub const RESOLVE_FUTURES_BLOCKING: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: move |wc, _| {
-        resolve_futures_writer(
-            Ident::new("FuturesUnordered", wc.op_span),
-            wc,
-        )
+        resolve_futures_writer(Ident::new("FuturesUnordered", wc.op_span), true, wc)
     },
 };
-
-pub fn resolve_futures_writer(
-    future_type: Ident,
-    wc @ &WriteContextArgs {
-        root,
-        context,
-        op_span,
-        ident,
-        outputs,
-        is_pull,
-        ..
-    }: &WriteContextArgs,
-) -> Result<OperatorWriteOutput, ()> {
-    let futures_ident = wc.make_ident("futures");
-
-    let write_prologue = quote_spanned! {op_span=>
-        let #futures_ident = df.add_state(
-            ::std::cell::RefCell::new(
-                #root::futures::stream::#future_type::new()
-            )
-        );
-    };
-
-    let write_iterator = if is_pull {
-        panic!("ResolveFuturesBlocking cannot be used in pull mode");
-    } else {
-        let output = &outputs[0];
-        quote_spanned! {op_span=>
-            let #ident = {
-                let queue = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#futures_ident).borrow_mut()
-                };
-                #root::compiled::push::ResolveFutures::new(queue, None, #output)
-            };
-        }
-    };
-
-    Ok(OperatorWriteOutput {
-        write_prologue,
-        write_iterator,
-        ..Default::default()
-    })
-}
