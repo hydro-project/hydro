@@ -75,7 +75,7 @@ where
                     // Only exhaust upstream, queue may have more futures in it.
                     stream_poll
                 } else {
-                    return Poll::Pending;
+                    Poll::Pending
                 }
             }
         }

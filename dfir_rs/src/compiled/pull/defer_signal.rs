@@ -60,10 +60,10 @@ where
         }
 
         // Stage 2: Empty the buffer (if signalled).
-        if *this.signalled {
-            if let Some(item) = this.buf.pop_front() {
-                return Poll::Ready(Some(item));
-            }
+        if *this.signalled
+            && let Some(item) = this.buf.pop_front()
+        {
+            return Poll::Ready(Some(item));
         }
 
         // Stage 3: Exhaust the input stream

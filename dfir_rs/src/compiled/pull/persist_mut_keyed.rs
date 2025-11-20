@@ -1,4 +1,5 @@
 use std::hash::Hash;
+use std::iter::FusedIterator;
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
 
@@ -92,12 +93,13 @@ where
     }
 }
 
-struct Iter<'ctx, Key, Item> {
-    iters: Option<(
-        std::collections::hash_map::Iter<'ctx, Key, SparseVec<Item>>,
-        &'ctx Key,
-        SparseVecIter<'ctx, Item>,
-    )>,
+enum Iter<'ctx, Key, Item> {
+    Iterating {
+        map_iter: std::collections::hash_map::Iter<'ctx, Key, SparseVec<Item>>,
+        key: &'ctx Key,
+        val_iter: SparseVecIter<'ctx, Item>,
+    },
+    Done,
 }
 
 impl<'ctx, Key, Item> Iter<'ctx, Key, Item>
@@ -107,8 +109,14 @@ where
 {
     fn new(map: &'ctx FxHashMap<Key, SparseVec<Item>>) -> Self {
         let mut map_iter = map.iter();
-        let iters = map_iter.next().map(|(k, v)| (map_iter, k, v.iter()));
-        Self { iters }
+        map_iter
+            .next()
+            .map(|(k, v)| Self::Iterating {
+                map_iter,
+                key: k,
+                val_iter: v.iter(),
+            })
+            .unwrap_or(Self::Done)
     }
 }
 
@@ -120,16 +128,28 @@ where
     type Item = (&'ctx Key, &'ctx Item);
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let (map_iter, key, val_iter) = self.iters.as_mut()?;
+        while let Iter::Iterating {
+            map_iter,
+            key,
+            val_iter,
+        } = self
+        {
             if let Some(item) = val_iter.next() {
                 return Some((key, item));
             } else if let Some((k, v)) = map_iter.next() {
                 *key = k;
                 *val_iter = v.iter();
             } else {
-                self.iters = None;
+                *self = Self::Done;
             }
         }
+        None
     }
+}
+
+impl<Key, Item> FusedIterator for Iter<'_, Key, Item>
+where
+    Key: Clone + Eq + Hash,
+    Item: Clone + Eq + Hash,
+{
 }
