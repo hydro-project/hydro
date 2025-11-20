@@ -285,7 +285,7 @@ pub fn test_cross_join_multiset() {
 pub fn test_defer_tick() {
     let (inp_send, inp_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
-    let mut flow = dfir_rs::dfir_syntax! {
+    let mut flow = dfir_syntax! {
         inp = source_stream(inp_recv) -> tee();
         diff = difference() -> for_each(|x| out_send.send(x).unwrap());
         inp -> [pos]diff;

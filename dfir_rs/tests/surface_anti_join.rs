@@ -35,7 +35,7 @@ pub fn test_anti_join_multiset() {
 pub fn test_anti_join() {
     let (inp_send, inp_recv) = unbounded_channel::<(usize, usize)>();
     let (out_send, mut out_recv) = unbounded_channel::<(usize, usize)>();
-    let mut flow = dfir_rs::dfir_syntax! {
+    let mut flow = dfir_syntax! {
         inp = source_stream(inp_recv) -> tee();
         diff = anti_join() -> sort() -> for_each(|x| out_send.send(x).unwrap());
         inp -> [pos]diff;
@@ -65,7 +65,7 @@ pub fn test_anti_join_static() {
     let (pos_send, pos_recv) = unbounded_channel::<(usize, usize)>();
     let (neg_send, neg_recv) = unbounded_channel::<usize>();
     let (out_send, mut out_recv) = unbounded_channel::<(usize, usize)>();
-    let mut flow = dfir_rs::dfir_syntax! {
+    let mut flow = dfir_syntax! {
         pos = source_stream(pos_recv);
         neg = source_stream(neg_recv);
         pos -> [pos]diff_static;
@@ -95,7 +95,7 @@ pub fn test_anti_join_tick_static() {
     let (pos_send, pos_recv) = unbounded_channel::<(usize, usize)>();
     let (neg_send, neg_recv) = unbounded_channel::<usize>();
     let (out_send, mut out_recv) = unbounded_channel::<(usize, usize)>();
-    let mut flow = dfir_rs::dfir_syntax! {
+    let mut flow = dfir_syntax! {
         pos = source_stream(pos_recv);
         neg = source_stream(neg_recv);
         pos -> [pos]diff_static;
@@ -127,7 +127,7 @@ pub fn test_anti_join_multiset_tick_static() {
     let (pos_send, pos_recv) = unbounded_channel::<(usize, usize)>();
     let (neg_send, neg_recv) = unbounded_channel::<usize>();
     let (out_send, mut out_recv) = unbounded_channel::<(usize, usize)>();
-    let mut flow = dfir_rs::dfir_syntax! {
+    let mut flow = dfir_syntax! {
         pos = source_stream(pos_recv);
         neg = source_stream(neg_recv);
         pos -> [pos]diff_static;
@@ -159,7 +159,7 @@ pub fn test_anti_join_multiset_static() {
     let (pos_send, pos_recv) = unbounded_channel::<(usize, usize)>();
     let (neg_send, neg_recv) = unbounded_channel::<usize>();
     let (out_send, mut out_recv) = unbounded_channel::<(usize, usize)>();
-    let mut flow = dfir_rs::dfir_syntax! {
+    let mut flow = dfir_syntax! {
         pos = source_stream(pos_recv);
         neg = source_stream(neg_recv);
         pos -> [pos]diff_static;
