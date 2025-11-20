@@ -9,6 +9,7 @@ use pin_project_lite::pin_project;
 use super::HalfJoinState;
 
 pin_project! {
+    #[must_use = "streams do nothing unless polled"]
     pub struct SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState, Replay>
     {
         #[pin]

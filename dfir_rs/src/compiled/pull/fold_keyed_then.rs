@@ -1,9 +1,7 @@
-use std::{
-    collections::HashMap,
-    hash::Hash,
-    pin::Pin,
-    task::{Context, Poll, ready},
-};
+use std::collections::HashMap;
+use std::hash::Hash;
+use std::pin::Pin;
+use std::task::{Context, Poll, ready};
 
 use futures::Stream;
 use pin_project_lite::pin_project;
@@ -28,6 +26,7 @@ pin_project! {
 }
 
 pin_project! {
+    #[must_use = "streams do nothing unless polled"]
     pub struct FoldKeyedThen<'a, St, Key, Val, InitFn, AggFn, ThenFn, ThenIter> {
         #[pin]
         state: FoldKeyedThenState<'a, St, Key, Val, InitFn, AggFn, ThenFn, ThenIter>

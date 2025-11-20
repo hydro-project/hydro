@@ -1,6 +1,7 @@
 use std::task::{Poll, ready};
 
-use futures::{Stream, stream::FusedStream};
+use futures::Stream;
+use futures::stream::FusedStream;
 use pin_project_lite::pin_project;
 
 pin_project! {
@@ -19,6 +20,7 @@ pin_project! {
 }
 
 pin_project! {
+    #[must_use = "streams do nothing unless polled"]
     pub struct SortByKey<St, Item, Func> {
         #[pin]
         state: SortByKeyState<St, Item, Func>,
