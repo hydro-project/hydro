@@ -13,6 +13,9 @@ pub use anti_join::{AntiJoin, AntiJoinPersist};
 mod fold;
 pub use fold::Fold;
 
+mod fold_keyed_then;
+pub use fold_keyed_then::FoldKeyedThen;
+
 mod persist;
 pub use persist::Persist;
 
