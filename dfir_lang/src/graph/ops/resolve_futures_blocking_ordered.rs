@@ -1,7 +1,8 @@
 use syn::Ident;
 
 use super::{
-    resolve_futures_blocking::resolve_futures_writer, OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1
+    OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1,
+    resolve_futures::resolve_futures_writer,
 };
 
 /// Given an incoming stream of `F: Future`, resolves each future, blocking the subgraph execution.
@@ -25,9 +26,6 @@ pub const RESOLVE_FUTURES_BLOCKING_ORDERED: OperatorConstraints = OperatorConstr
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: move |wc, _| {
-        resolve_futures_writer(
-            Ident::new("FuturesOrdered", wc.op_span),
-            wc
-        )
-    }
+        resolve_futures_writer(Ident::new("FuturesOrdered", wc.op_span), true, wc)
+    },
 };
