@@ -7,7 +7,7 @@ digraph {
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
     n1v1 [label="(n1v1) source_stream(pos_recv)", shape=invhouse, fillcolor="#88aaff"]
     n2v1 [label="(n2v1) source_stream(neg_recv)", shape=invhouse, fillcolor="#88aaff"]
-    n3v1 [label="(n3v1) difference_multiset()", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) difference()", shape=invhouse, fillcolor="#88aaff"]
     n4v1 [label="(n4v1) for_each(|x| output_send.send((context.current_tick().0, x)).unwrap())", shape=house, fillcolor="#ffff88"]
     n5v1 [label="(n5v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n6v1 [label="(n6v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
