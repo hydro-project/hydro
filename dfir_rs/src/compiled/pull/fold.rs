@@ -18,7 +18,6 @@ pin_project! {
 }
 
 pin_project! {
-    #[project = FoldProj]
     pub struct Fold<'a, St, Accum, Func> {
         #[pin]
         state: FoldState<'a, St, Accum, Func>,
@@ -50,19 +49,18 @@ where
 
         match this.state.as_mut().project() {
             FoldStateProj::Folding {
-                stream,
+                mut stream,
                 accumulator,
                 func,
             } => {
-                if let Some(item) = ready!(stream.poll_next(cx)) {
+                while let Some(item) = ready!(stream.as_mut().poll_next(cx)) {
                     let () = (func)(accumulator, item);
-                    Poll::Pending
-                } else {
-                    // Release once, after the stream is exhausted.
-                    let item = accumulator.clone();
-                    this.state.set(FoldState::Done);
-                    Poll::Ready(Some(item))
                 }
+
+                // Release once, after the stream is exhausted.
+                let item = accumulator.clone();
+                this.state.set(FoldState::Done);
+                Poll::Ready(Some(item))
             }
             FoldStateProj::Done => Poll::Ready(None),
         }
