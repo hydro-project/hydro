@@ -104,7 +104,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             fn call_comb_type<Accum, Item>(
                 accum: &mut Accum,
                 item: Item,
-                func: impl Fn(&mut Accum, Item),
+                mut func: impl FnMut(&mut Accum, Item),
             ) {
                 (func)(accum, item);
             }
