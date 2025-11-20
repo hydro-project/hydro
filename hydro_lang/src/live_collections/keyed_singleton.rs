@@ -924,6 +924,58 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
             .into_keyed()
     }
 
+    /// Given a keyed stream of lookup requests, where the key is the lookup and the value
+    /// is some additional metadata, emits a keyed stream of lookup results where the key
+    /// is the same as before, but the value is a tuple of the lookup result (as `Option<V>`)
+    /// and the metadata of the request. Unlike `get_many_if_present`, this returns all request
+    /// keys, with `None` for keys that are not found.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let keyed_data = process
+    ///     .source_iter(q!(vec![(1, 10), (2, 20)]))
+    ///     .into_keyed()
+    ///     .batch(&tick, nondet!(/** test */))
+    ///     .first();
+    /// let other_data = process
+    ///     .source_iter(q!(vec![(1, 100), (2, 200), (3, 300)]))
+    ///     .into_keyed()
+    ///     .batch(&tick, nondet!(/** test */));
+    /// keyed_data.get_many(other_data).entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: [(Some(10), 100)], 2: [(Some(20), 200)], 3: [(None, 300)] } in any order
+    /// # let mut results = vec![];
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (Some(10), 100)), (2, (Some(20), 200)), (3, (None, 300))]);
+    /// # }));
+    /// # }
+    /// ```
+    #[expect(clippy::type_complexity, reason = "stream types")]
+    pub fn get_many<O2: Ordering, R2: Retries, V2>(
+        self,
+        requests: KeyedStream<K, V2, Tick<L>, Bounded, O2, R2>,
+    ) -> KeyedStream<K, (Option<V>, V2), Tick<L>, Bounded, NoOrder, R2>
+    where
+        K: Clone,
+        V: Clone,
+        V2: Clone,
+    {
+        let lookup_result = self.clone().get_many_if_present(requests.clone());
+        let missing_keys = requests.filter_key_not_in(self.keys()).weakest_ordering();
+
+        lookup_result
+            .map(q!(|(v, v2)| (Some(v), v2)))
+            .chain(missing_keys.map(q!(|v2| (None, v2))))
+    }
+
     /// For each entry in `self`, looks up the entry in the `from` with a key that matches the
     /// **value** of the entry in `self`. The output is a keyed singleton with tuple values
     /// containing the value from `self` and an option of the value from `from`. If the key is not
@@ -1560,5 +1612,54 @@ mod tests {
         });
 
         assert_eq!(count, 8);
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn get_many_outer_join() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let tick = node.tick();
+        let keyed_data = node
+            .source_iter(q!(vec![(1, 10), (2, 20)]))
+            .into_keyed()
+            .batch(&tick, nondet!(/** test */))
+            .first();
+        let requests = node
+            .source_iter(q!(vec![(1, 100), (2, 200), (3, 300)]))
+            .into_keyed()
+            .batch(&tick, nondet!(/** test */));
+
+        let out = keyed_data
+            .get_many(requests)
+            .entries()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        let mut results = vec![];
+        for _ in 0..3 {
+            results.push(external_out.next().await.unwrap());
+        }
+        results.sort();
+
+        assert_eq!(
+            results,
+            vec![(1, (Some(10), 100)), (2, (Some(20), 200)), (3, (None, 300))]
+        );
     }
 }
