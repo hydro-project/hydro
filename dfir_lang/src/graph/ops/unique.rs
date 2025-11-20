@@ -101,7 +101,7 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
         };
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
-                let #ident = #input.filter(#filter_fn);
+                let #ident = #root::tokio_stream::StreamExt::filter(#input, #filter_fn);
             }
         } else {
             quote_spanned! {op_span=>
