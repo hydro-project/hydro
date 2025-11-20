@@ -64,27 +64,29 @@ where
             this.state_neg.insert(neg_item);
         }
 
-        if let Some(item) = this.state_pos.get(*this.replay_idx) {
-            // Second, replay.
+        // Second, replay.
+        while let Some(item) = this.state_pos.get(*this.replay_idx) {
             *this.replay_idx += 1;
-            Poll::Ready(Some(item.clone()))
-        } else {
-            // Third, stream, filter, and store positive.
-            debug_assert_eq!(this.state_pos.len(), *this.replay_idx);
-
-            while let Some(item) = ready!(this.stream_pos.as_mut().poll_next(cx)) {
-                if !this.state_neg.contains(&item.0) {
-                    // New item
-                    this.state_pos.push(item.clone());
-                    *this.replay_idx += 1;
-
-                    return Poll::Ready(Some(item));
-                }
+            if !this.state_neg.contains(&item.0) {
+                return Poll::Ready(Some(item.clone()));
             }
-
-            // Done
-            Poll::Ready(None)
         }
+
+        // Third, stream, filter, and store positive.
+        debug_assert_eq!(this.state_pos.len(), *this.replay_idx);
+
+        while let Some(item) = ready!(this.stream_pos.as_mut().poll_next(cx)) {
+            *this.replay_idx += 1;
+            if !this.state_neg.contains(&item.0) {
+                this.state_pos.push(item.clone());
+                return Poll::Ready(Some(item));
+            } else {
+                this.state_pos.push(item);
+            }
+        }
+
+        // Done
+        Poll::Ready(None)
     }
 }
 

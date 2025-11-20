@@ -8,7 +8,7 @@ classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
 classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
-1v1[\"(1v1) <code>difference_multiset::&lt;'tick, 'static&gt;()</code>"/]:::pullClass
+1v1[\"(1v1) <code>difference::&lt;'tick, 'static&gt;()</code>"/]:::pullClass
 2v1[\"(2v1) <code>sort()</code>"/]:::pullClass
 3v1[/"(3v1) <code>for_each(|v| output_send.send(v).unwrap())</code>"\]:::pushClass
 4v1[\"(4v1) <code>source_stream(pos_recv)</code>"/]:::pullClass
