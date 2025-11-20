@@ -2,7 +2,7 @@ use quote::quote_spanned;
 
 use super::{
     FloType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 /// > 0 input streams, 1 output stream
@@ -53,7 +53,7 @@ pub const SOURCE_JSON: OperatorConstraints = OperatorConstraints {
             let mut #ident_jsonread = {
                 let string = ::std::fs::read_to_string(#arguments).unwrap();
                 let value #generic_type = #root::serde_json::from_str(&string).unwrap();
-                ::std::iter::once(value)
+                #root::futures::stream::once(value)
             };
         };
         let write_iterator = quote_spanned! {op_span=>
