@@ -2,8 +2,8 @@ use quote::quote_spanned;
 use syn::parse_quote;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// > 2 input streams, 1 output stream, no arguments.
@@ -39,6 +39,7 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    context,
                    df_ident,
                    ident,
@@ -53,8 +54,9 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
         let internal_buffer = wc.make_ident("internal_buffer");
         let borrow_ident = wc.make_ident("borrow_ident");
 
+        // TODO(mingwei): different lifetimes? `'tick`?
         let write_prologue = quote_spanned! {op_span=>
-            let #internal_buffer = #df_ident.add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
+            let #internal_buffer = #df_ident.add_state(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
         };
 
         let input = &inputs[0];
@@ -62,19 +64,16 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = {
             quote_spanned! {op_span=>
-
                 let mut #borrow_ident = unsafe {
                     // SAFETY: handle from `#df_ident.add_state(..)`.
                     #context.state_ref_unchecked(#internal_buffer)
                 }.borrow_mut();
 
-                #borrow_ident.extend(#input);
-
-                let #ident = if #signal.count() > 0 {
-                    ::std::option::Option::Some(#borrow_ident.drain(..))
-                } else {
-                    ::std::option::Option::None
-                }.into_iter().flatten();
+                let #ident = #root::compiled::pull::DeferSignal::new(
+                    #root::futures::stream::StreamExt::fuse(#input),
+                    #root::futures::stream::StreamExt::fuse(#signal),
+                    &mut *#borrow_ident,
+                );
             }
         };
 
