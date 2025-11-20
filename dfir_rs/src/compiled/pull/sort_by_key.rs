@@ -20,16 +20,22 @@ pin_project! {
 }
 
 pin_project! {
+    /// Stream combinator which waits for all upstream items, sorts them using `Func`, then emits them.
     #[must_use = "streams do nothing unless polled"]
-    pub struct SortByKey<St, Item, Func> {
+    pub struct SortByKey<St, Func>
+    where
+        St: Stream,
+    {
         #[pin]
-        state: SortByKeyState<St, Item, Func>,
+        state: SortByKeyState<St, St::Item, Func>,
     }
 }
 
-impl<St, Item, Func> SortByKey<St, Item, Func>
+impl<St, Func, K> SortByKey<St, Func>
 where
     St: Stream,
+    Func: for<'a> FnMut(&'a St::Item) -> &'a K,
+    K: Ord,
 {
     pub fn new(stream: St, sort_func: Func) -> Self {
         let size_hint = stream.size_hint().0;
@@ -43,7 +49,7 @@ where
     }
 }
 
-impl<St, Func, K> Stream for SortByKey<St, St::Item, Func>
+impl<St, Func, K> Stream for SortByKey<St, Func>
 where
     St: Stream,
     Func: for<'a> FnMut(&'a St::Item) -> &'a K,
@@ -82,7 +88,7 @@ where
     }
 }
 
-impl<St, Func, K> FusedStream for SortByKey<St, St::Item, Func>
+impl<St, Func, K> FusedStream for SortByKey<St, Func>
 where
     St: Stream,
     Func: for<'a> FnMut(&'a St::Item) -> &'a K,
