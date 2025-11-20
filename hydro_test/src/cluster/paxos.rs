@@ -889,24 +889,19 @@ mod tests {
     #[test]
     fn proposer_indexes_payloads() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
         let tick = node.tick();
 
-        let (input_port, input_payloads) = node.source_external_bincode(&external);
+        let (in_send, input_payloads) = node.sim_input();
         let indexed = index_payloads(
             &tick,
             tick.none(),
             input_payloads.batch(&tick, nondet!(/** test */)),
         );
 
-        let out_port = indexed.all_ticks().send_bincode_external(&external);
+        let out_recv = indexed.all_ticks().sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&input_port);
-            let out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
+        flow.sim().exhaustive(async || {
             in_send.send(1);
             in_send.send(2);
             in_send.send(3);
@@ -921,11 +916,10 @@ mod tests {
     #[test]
     fn proposer_indexes_payloads_jumps_on_new_max() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
         let tick = node.tick();
 
-        let (input_port, input_payloads) = node.source_external_bincode(&external);
+        let (in_send, input_payloads) = node.sim_input();
         let release_new_base = node
             .source_iter(q!([123]))
             .batch(&tick, nondet!(/** test */))
@@ -936,13 +930,9 @@ mod tests {
             input_payloads.batch(&tick, nondet!(/** test */)),
         );
 
-        let out_port = indexed.all_ticks().send_bincode_external(&external);
+        let out_recv = indexed.all_ticks().sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&input_port);
-            let mut out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
+        flow.sim().exhaustive(async || {
             in_send.send(1);
             in_send.send(2);
             in_send.send(3);

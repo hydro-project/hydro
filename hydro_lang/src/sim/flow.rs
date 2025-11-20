@@ -63,7 +63,7 @@ impl<'a> SimFlow<'a> {
     /// When running the test with `cargo test` (such as in CI), if a reproducer is found it will
     /// be executed, and if no reproducer is found a small number of random executions will be
     /// performed.
-    pub fn fuzz(self, thunk: impl AsyncFn(CompiledSimInstance) + RefUnwindSafe) {
+    pub fn fuzz(self, thunk: impl AsyncFn() + RefUnwindSafe) {
         self.compiled().fuzz(thunk)
     }
 
@@ -77,7 +77,7 @@ impl<'a> SimFlow<'a> {
     /// Because no fuzzer is involved, you can run exhaustive tests with `cargo test`.
     ///
     /// Returns the number of distinct executions explored.
-    pub fn exhaustive(self, thunk: impl AsyncFnMut(CompiledSimInstance) + RefUnwindSafe) -> usize {
+    pub fn exhaustive(self, thunk: impl AsyncFnMut() + RefUnwindSafe) -> usize {
         self.compiled().exhaustive(thunk)
     }
 
@@ -96,6 +96,14 @@ impl<'a> SimFlow<'a> {
             extra_stmts_cluster: BTreeMap::new(),
             next_hoff_id: 0,
         };
+
+        self.externals.insert(
+            0,
+            SimExternal {
+                external_ports: self.external_ports.clone(),
+                registered: self.external_registered.clone(),
+            },
+        );
 
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
         self.ir.iter_mut().for_each(|leaf| {

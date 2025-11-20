@@ -89,11 +89,10 @@ fn sequence_payloads_old<'a, L: Location<'a> + NoTick>(
 fn test() {
     // run as PATH="$PATH:." cargo sim -p hydro_lang --features sim -- trophies::sequence_payloads
     let flow = FlowBuilder::new();
-    let external = flow.external::<()>();
     let node = flow.process::<()>();
     let tick = node.tick();
 
-    let (input_port, input_payloads) = node.source_external_bincode(&external);
+    let (in_send, input_payloads) = node.sim_input();
     let (sequenced, complete_next_slot) = sequence_payloads_old(&tick, input_payloads);
 
     // original behavior from the KV replica (unrelated to the bug)
@@ -106,21 +105,15 @@ fn test() {
         .filter_map(q!(|v| v)),
     );
 
-    let out_port = sequenced.all_ticks().send_bincode_external(&external);
+    let out_recv = sequenced.all_ticks().sim_output();
 
-    flow.sim().fuzz(async |mut compiled| {
-        let in_send = compiled.connect(&input_port);
-        let out_recv = compiled.connect(&out_port);
-        compiled.launch();
-
-        in_send
-            .send_many_unordered([
-                SequencedKv { seq: 0 },
-                SequencedKv { seq: 1 },
-                SequencedKv { seq: 2 },
-                SequencedKv { seq: 3 },
-            ])
-            .unwrap();
+    flow.sim().fuzz(async || {
+        in_send.send_many_unordered([
+            SequencedKv { seq: 0 },
+            SequencedKv { seq: 1 },
+            SequencedKv { seq: 2 },
+            SequencedKv { seq: 3 },
+        ]);
 
         out_recv
             .assert_yields_only([
@@ -137,11 +130,10 @@ fn test() {
 #[cfg_attr(target_os = "windows", ignore)] // trace locations don't work on Windows right now
 fn trace_snapshot() {
     let flow = FlowBuilder::new();
-    let external = flow.external::<()>();
     let node = flow.process::<()>();
     let tick = node.tick();
 
-    let (input_port, input_payloads) = node.source_external_bincode(&external);
+    let (in_send, input_payloads) = node.sim_input();
     let (sequenced, complete_next_slot) = sequence_payloads_old(&tick, input_payloads);
 
     // original behavior from the KV replica (unrelated to the bug)
@@ -154,7 +146,7 @@ fn trace_snapshot() {
         .filter_map(q!(|v| v)),
     );
 
-    let out_port = sequenced.all_ticks().send_bincode_external(&external);
+    let out_recv = sequenced.all_ticks().sim_output();
 
     let repro_bytes = std::fs::read(
         "./src/sim/tests/trophies/sim-failures/hydro_lang__sim__tests__trophies__sequence_payloads__test.bin",
@@ -166,20 +158,15 @@ fn trace_snapshot() {
 
     flow.sim()
         .compiled()
-        .fuzz_repro(repro_bytes, async |mut compiled| {
-            let in_send = compiled.connect(&input_port);
-            let out_recv = compiled.connect(&out_port);
-
+        .fuzz_repro(repro_bytes, async |compiled| {
             let schedule = compiled.schedule_with_logger(&mut log_out);
             let rest = async move {
-                in_send
-                    .send_many_unordered([
-                        SequencedKv { seq: 0 },
-                        SequencedKv { seq: 1 },
-                        SequencedKv { seq: 2 },
-                        SequencedKv { seq: 3 },
-                    ])
-                    .unwrap();
+                in_send.send_many_unordered([
+                    SequencedKv { seq: 0 },
+                    SequencedKv { seq: 1 },
+                    SequencedKv { seq: 2 },
+                    SequencedKv { seq: 3 },
+                ]);
 
                 let _all_out = out_recv.collect::<Vec<_>>().await;
             };

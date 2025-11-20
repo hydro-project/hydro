@@ -68,11 +68,10 @@ mod tests {
     #[test]
     fn sequence_payloads_sequences_all() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
         let tick = node.tick();
 
-        let (input_port, input_payloads) = node.source_external_bincode(&external);
+        let (in_send, input_payloads) = node.sim_input();
         let (sequenced, complete_next_slot) = sequence_payloads(&tick, input_payloads);
 
         complete_next_slot.complete_next_tick(sequenced.clone()
@@ -81,21 +80,15 @@ mod tests {
                 *next_slot = payload.seq + 1;
             })));
 
-        let out_port = sequenced.all_ticks().send_bincode_external(&external);
+        let out_recv = sequenced.all_ticks().sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&input_port);
-            let out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
-            in_send
-                .send_many_unordered([
-                    SequencedKv { seq: 0, kv: None },
-                    SequencedKv { seq: 1, kv: None },
-                    SequencedKv { seq: 2, kv: None },
-                    SequencedKv { seq: 3, kv: None },
-                ])
-                .unwrap();
+        flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([
+                SequencedKv { seq: 0, kv: None },
+                SequencedKv { seq: 1, kv: None },
+                SequencedKv { seq: 2, kv: None },
+                SequencedKv { seq: 3, kv: None },
+            ]);
 
             out_recv
                 .assert_yields_only([

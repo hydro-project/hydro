@@ -1,5 +1,5 @@
 ---
-source: dfir_rs/tests/surface_codegen.rs
+source: dfir_rs/tests/surface_sort.rs
 expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
@@ -8,9 +8,9 @@ classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
 classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
-1v1[\"(1v1) <code>source_stream(items_recv)</code>"/]:::pullClass
-2v1[\"(2v1) <code>sort()</code>"/]:::pullClass
-3v1[/"(3v1) <code>for_each(|v| print!(&quot;{:?}, &quot;, v))</code>"\]:::pushClass
+1v1[\"(1v1) <code>source_iter(vec![(2, 'y'), (3, 'x'), (1, 'z')])</code>"/]:::pullClass
+2v1[\"(2v1) <code>sort_by_key(|(k, _v)| k)</code>"/]:::pullClass
+3v1[/"(3v1) <code>for_each(|v| println!(&quot;{:?}&quot;, v))</code>"\]:::pushClass
 4v1["(4v1) <code>handoff</code>"]:::otherClass
 2v1-->3v1
 1v1-->4v1

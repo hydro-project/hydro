@@ -118,7 +118,7 @@ Because each group in a keyed stream has an independent order of elements, calli
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_counter.rs">src/single_counter.rs</Link>
-} showLineNumbers={51}>{getLines(singleCounterSrc, 51, 64)}</CodeBlock>
+} showLineNumbers={50}>{getLines(singleCounterSrc, 50, 64)}</CodeBlock>
 
 If you run this test with `cargo test -- single_counter`, you'll see it fail! The simulator explores different execution orderings and finds one where the get request observes a count of 0 instead of 1:
 
@@ -135,7 +135,7 @@ Running Tick
   | let count_snapshot = use(current_count, nondet!(/** intentional, based on when the request came in */));
   |                         ^ releasing unchanged snapshot: 0
 
-thread panicked at:
+thread ... panicked at src/single_counter.rs:54:65:
 Stream yielded unexpected message: (1, 0)
 ```
 
@@ -172,9 +172,3 @@ Run the test again with `cargo test -- single_counter`, and it should pass!
 ## Next Steps
 
 In the next sections, you will expand your single counter into a keyed counter service. You will add support for storing several keys, learning how to re-group streams and store keyed state. Then, to complete this tutorial series, you will partition your keyed store across a cluster of machines and learn how to abstract distributed components in Hydro.
-
-:::warning
-
-The next steps of this tutorial are currently under development. In the meantime, you may want to look at the [framework docs](../../reference/index.mdx).
-
-:::

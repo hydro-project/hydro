@@ -3229,23 +3229,18 @@ mod tests {
     #[should_panic]
     fn sim_batch_nondet_size() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode::<_, _, TotalOrder, _>(&external);
+        let (in_send, input) = node.sim_input::<_, TotalOrder, _>();
 
         let tick = node.tick();
-        let out_port = input
+        let out_recv = input
             .batch(&tick, nondet!(/** test */))
             .count()
             .all_ticks()
-            .send_bincode_external(&external);
+            .sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let mut out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
+        flow.sim().exhaustive(async || {
             in_send.send(());
             in_send.send(());
             in_send.send(());
@@ -3258,22 +3253,17 @@ mod tests {
     #[test]
     fn sim_batch_preserves_order() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode(&external);
+        let (in_send, input) = node.sim_input();
 
         let tick = node.tick();
-        let out_port = input
+        let out_recv = input
             .batch(&tick, nondet!(/** test */))
             .all_ticks()
-            .send_bincode_external(&external);
+            .sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
+        flow.sim().exhaustive(async || {
             in_send.send(1);
             in_send.send(2);
             in_send.send(3);
@@ -3287,26 +3277,21 @@ mod tests {
     #[should_panic]
     fn sim_batch_unordered_shuffles() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
         let tick = node.tick();
         let batch = input.batch(&tick, nondet!(/** test */));
-        let out_port = batch
+        let out_recv = batch
             .clone()
             .min()
             .zip(batch.max())
             .all_ticks()
-            .send_bincode_external(&external);
+            .sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
-            in_send.send_many_unordered([1, 2, 3]).unwrap();
+        flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([1, 2, 3]);
 
             if out_recv.collect::<Vec<_>>().await == vec![(1, 3), (2, 2)] {
                 panic!("saw both (1, 3) and (2, 2), so batching must have shuffled the order");
@@ -3318,21 +3303,16 @@ mod tests {
     #[test]
     fn sim_batch_unordered_shuffles_count() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
         let tick = node.tick();
         let batch = input.batch(&tick, nondet!(/** test */));
-        let out_port = batch.all_ticks().send_bincode_external(&external);
+        let out_recv = batch.all_ticks().sim_output();
 
-        let instance_count = flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
-            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([1, 2, 3, 4]);
             out_recv.assert_yields_only_unordered([1, 2, 3, 4]).await;
         });
 
@@ -3347,24 +3327,19 @@ mod tests {
     #[should_panic]
     fn sim_observe_order_batched() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
         let tick = node.tick();
         let batch = input.batch(&tick, nondet!(/** test */));
-        let out_port = batch
+        let out_recv = batch
             .assume_ordering::<TotalOrder>(nondet!(/** test */))
             .all_ticks()
-            .send_bincode_external(&external);
+            .sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
-            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+        flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([1, 2, 3, 4]);
             out_recv.assert_yields_only([1, 2, 3, 4]).await; // fails with assume_ordering
         });
     }
@@ -3373,24 +3348,19 @@ mod tests {
     #[test]
     fn sim_observe_order_batched_count() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
         let tick = node.tick();
         let batch = input.batch(&tick, nondet!(/** test */));
-        let out_port = batch
+        let out_recv = batch
             .assume_ordering::<TotalOrder>(nondet!(/** test */))
             .all_ticks()
-            .send_bincode_external(&external);
+            .sim_output();
 
-        let instance_count = flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
-            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([1, 2, 3, 4]);
             let _ = out_recv.collect::<Vec<_>>().await;
         });
 
@@ -3404,24 +3374,19 @@ mod tests {
     #[test]
     fn sim_unordered_count_instance_count() {
         let flow = FlowBuilder::new();
-        let external = flow.external::<()>();
         let node = flow.process::<()>();
 
-        let (port, input) = node.source_external_bincode::<_, _, NoOrder, _>(&external);
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
         let tick = node.tick();
-        let out_port = input
+        let out_recv = input
             .count()
             .snapshot(&tick, nondet!(/** test */))
             .all_ticks()
-            .send_bincode_external(&external);
+            .sim_output();
 
-        let instance_count = flow.sim().exhaustive(async |mut compiled| {
-            let in_send = compiled.connect(&port);
-            let out_recv = compiled.connect(&out_port);
-            compiled.launch();
-
-            in_send.send_many_unordered([1, 2, 3, 4]).unwrap();
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([1, 2, 3, 4]);
             assert!(out_recv.collect::<Vec<_>>().await.last().unwrap() == &4);
         });
 

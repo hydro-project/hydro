@@ -322,10 +322,9 @@ mod tests {
     fn sim_atomic_stream() {
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
-        let external = flow.external::<()>();
 
-        let (input_write, write_req) = node.source_external_bincode(&external);
-        let (input_read, read_req) = node.source_external_bincode::<_, (), _, _>(&external);
+        let (write_send, write_req) = node.sim_input();
+        let (read_send, read_req) = node.sim_input::<(), _, _>();
 
         let tick = node.tick();
         let atomic_write = write_req.atomic(&tick);
@@ -336,22 +335,16 @@ mod tests {
             }),
         );
 
-        let write_ack = atomic_write.end_atomic().send_bincode_external(&external);
-        let read_response = sliced! {
+        let write_ack_recv = atomic_write.end_atomic().sim_output();
+        let read_response_recv = sliced! {
             let batch_of_req = use(read_req, nondet!(/** test */));
             let latest_singleton = use::atomic(current_state, nondet!(/** test */));
             batch_of_req.cross_singleton(latest_singleton)
         }
-        .send_bincode_external(&external);
+        .sim_output();
 
         let sim_compiled = flow.sim().compiled();
-        let instances = sim_compiled.exhaustive(async |mut compiled| {
-            let write_send = compiled.connect(&input_write);
-            let read_send = compiled.connect(&input_read);
-            let mut write_ack_recv = compiled.connect(&write_ack);
-            let mut read_response_recv = compiled.connect(&read_response);
-            compiled.launch();
-
+        let instances = sim_compiled.exhaustive(async || {
             write_send.send(1);
             write_ack_recv.assert_yields([1]).await;
             read_send.send(());
@@ -360,13 +353,7 @@ mod tests {
 
         assert_eq!(instances, 1);
 
-        let instances_read_before_write = sim_compiled.exhaustive(async |mut compiled| {
-            let write_send = compiled.connect(&input_write);
-            let read_send = compiled.connect(&input_read);
-            let mut write_ack_recv = compiled.connect(&write_ack);
-            let mut read_response_recv = compiled.connect(&read_response);
-            compiled.launch();
-
+        let instances_read_before_write = sim_compiled.exhaustive(async || {
             write_send.send(1);
             read_send.send(());
             write_ack_recv.assert_yields([1]).await;
@@ -383,10 +370,9 @@ mod tests {
         // shows that atomic is necessary
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
-        let external = flow.external::<()>();
 
-        let (input_write, write_req) = node.source_external_bincode(&external);
-        let (input_read, read_req) = node.source_external_bincode::<_, (), _, _>(&external);
+        let (write_send, write_req) = node.sim_input();
+        let (read_send, read_req) = node.sim_input::<(), _, _>();
 
         let current_state = write_req.clone().fold(
             q!(|| 0),
@@ -395,22 +381,16 @@ mod tests {
             }),
         );
 
-        let write_ack = write_req.send_bincode_external(&external);
+        let write_ack_recv = write_req.sim_output();
 
-        let read_response = sliced! {
+        let read_response_recv = sliced! {
             let batch_of_req = use(read_req, nondet!(/** test */));
             let latest_singleton = use(current_state, nondet!(/** test */));
             batch_of_req.cross_singleton(latest_singleton)
         }
-        .send_bincode_external(&external);
+        .sim_output();
 
-        flow.sim().exhaustive(async |mut compiled| {
-            let write_send = compiled.connect(&input_write);
-            let read_send = compiled.connect(&input_read);
-            let mut write_ack_recv = compiled.connect(&write_ack);
-            let mut read_response_recv = compiled.connect(&read_response);
-            compiled.launch();
-
+        flow.sim().exhaustive(async || {
             write_send.send(1);
             write_ack_recv.assert_yields([1]).await;
             read_send.send(());

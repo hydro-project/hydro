@@ -178,9 +178,8 @@ mod tests {
         let cluster2 = flow.cluster::<()>();
 
         let node = flow.process::<()>();
-        let external = flow.external::<()>();
 
-        let out_port = cluster1
+        let out_recv = cluster1
             .source_iter(q!(vec![CLUSTER_SELF_ID]))
             .send_bincode(&node)
             .values()
@@ -190,15 +189,12 @@ mod tests {
                     .send_bincode(&node)
                     .values(),
             )
-            .send_bincode_external(&external);
+            .sim_output();
 
         flow.sim()
             .with_cluster_size(&cluster1, 3)
             .with_cluster_size(&cluster2, 4)
-            .exhaustive(async |mut compiled| {
-                let out_recv = compiled.connect(&out_port);
-                compiled.launch();
-
+            .exhaustive(async || {
                 out_recv
                     .assert_yields_only_unordered([0, 1, 2, 0, 1, 2, 3].map(MemberId::from_raw_id))
                     .await
@@ -213,9 +209,8 @@ mod tests {
         let flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
         let node = flow.process::<()>();
-        let external = flow.external::<()>();
 
-        let out_port = cluster
+        let out_recv = cluster
             .source_iter(q!(vec![1, 2, 3]))
             .batch(&cluster.tick(), nondet!(/** test */))
             .count()
@@ -223,15 +218,12 @@ mod tests {
             .send_bincode(&node)
             .entries()
             .map(q!(|(id, v)| (id, v)))
-            .send_bincode_external(&external);
+            .sim_output();
 
         let count = flow
             .sim()
             .with_cluster_size(&cluster, 2)
-            .exhaustive(async |mut compiled| {
-                let out_recv = compiled.connect(&out_port);
-                compiled.launch();
-
+            .exhaustive(async || {
                 let grouped = out_recv.collect_sorted::<Vec<_>>().await.into_iter().fold(
                     HashMap::new(),
                     |mut acc: HashMap<MemberId<()>, usize>, (id, v)| {
@@ -258,20 +250,16 @@ mod tests {
         let flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
         let node = flow.process::<()>();
-        let external = flow.external::<()>();
 
-        let out_port = node
+        let out_recv = node
             .source_cluster_members(&cluster)
             .entries()
             .map(q!(|(id, v)| (id, v)))
-            .send_bincode_external(&external);
+            .sim_output();
 
         flow.sim()
             .with_cluster_size(&cluster, 2)
-            .exhaustive(async |mut compiled| {
-                let out_recv = compiled.connect(&out_port);
-                compiled.launch();
-
+            .exhaustive(async || {
                 out_recv
                     .assert_yields_only_unordered(vec![
                         (MemberId::from_raw_id(0), MembershipEvent::Joined),

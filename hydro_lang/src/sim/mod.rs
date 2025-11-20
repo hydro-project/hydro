@@ -2,6 +2,25 @@
 //!
 //! See [`crate::compile::builder::FlowBuilder::sim`] and [`flow::SimFlow`] for more details.
 
+use std::marker::PhantomData;
+
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+
+use crate::live_collections::stream::{Ordering, Retries};
+
+/// A receiver for an external bincode stream in a simulation.
+pub struct SimReceiver<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+    pub(crate) usize,
+    pub(crate) PhantomData<(T, O, R)>,
+);
+
+/// A sender to an external bincode sink in a simulation.
+pub struct SimSender<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+    pub(crate) usize,
+    pub(crate) PhantomData<(T, O, R)>,
+);
+
 #[cfg(stageleft_runtime)]
 mod builder;
 
