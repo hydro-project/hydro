@@ -55,7 +55,6 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                    inputs,
                    is_pull,
                    singleton_output_ident,
-                   work_fn,
                    arguments,
                    ..
                },

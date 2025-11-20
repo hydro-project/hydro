@@ -1,6 +1,9 @@
 //! Pull-based operator helpers, i.e. [`Iterator`] helpers.
 #![allow(missing_docs, reason = "// TODO(mingwei)")]
 
+mod defer_signal;
+pub use defer_signal::DeferSignal;
+
 mod symmetric_hash_join;
 pub use symmetric_hash_join::*;
 
