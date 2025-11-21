@@ -1,6 +1,9 @@
 //! Pull-based operator helpers, i.e. [`Iterator`] helpers.
 #![allow(missing_docs, reason = "// TODO(mingwei)")]
 
+mod cross_singleton;
+pub use cross_singleton::CrossSingleton;
+
 mod defer_signal;
 pub use defer_signal::DeferSignal;
 

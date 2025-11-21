@@ -70,7 +70,7 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = #root::compiled::pull::DeferSignal::new(
-                    #root::futures::stream::StreamExt::fuse(#input),
+                    #input,
                     #root::futures::stream::StreamExt::fuse(#signal),
                     &mut *#borrow_ident,
                 );

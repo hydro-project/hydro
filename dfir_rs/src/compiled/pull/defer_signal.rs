@@ -2,8 +2,7 @@ use std::collections::VecDeque;
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
 
-use futures::Stream;
-use futures::stream::FusedStream;
+use futures::stream::{FusedStream, Stream};
 use pin_project_lite::pin_project;
 
 pin_project! {
@@ -11,7 +10,7 @@ pin_project! {
     #[must_use = "streams do nothing unless polled"]
     pub struct DeferSignal<'a, InputStream, SignalStream>
     where
-        InputStream: FusedStream,
+        InputStream: Stream,
         SignalStream: FusedStream,
     {
         #[pin]
@@ -27,7 +26,7 @@ pin_project! {
 
 impl<'a, InputStream, SignalStream> DeferSignal<'a, InputStream, SignalStream>
 where
-    InputStream: FusedStream,
+    InputStream: Stream,
     SignalStream: FusedStream,
 {
     pub fn new(
@@ -46,7 +45,7 @@ where
 
 impl<'a, InputStream, SignalStream> Stream for DeferSignal<'a, InputStream, SignalStream>
 where
-    InputStream: FusedStream,
+    InputStream: Stream,
     SignalStream: FusedStream,
 {
     type Item = InputStream::Item;
@@ -55,6 +54,7 @@ where
         let mut this = self.project();
 
         // Stage 1: Exhaust the signal.
+        // This will get called every time even after returning EOS (`None`), so we need fused.
         while let Some(_signal) = ready!(this.signal.as_mut().poll_next(cx)) {
             *this.signalled = true;
         }
@@ -65,6 +65,7 @@ where
         {
             return Poll::Ready(Some(item));
         }
+        debug_assert_eq!(0, this.buf.len());
 
         // Stage 3: Exhaust the input stream
         while let Some(item) = ready!(this.input.as_mut().poll_next(cx)) {
@@ -76,6 +77,7 @@ where
         }
 
         // Done
+        // Once the input stream returns `None` (above), we return `None`, so no need for input stream to be fused.
         Poll::Ready(None)
     }
 }
