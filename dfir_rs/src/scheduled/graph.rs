@@ -6,6 +6,7 @@ use std::cell::Cell;
 use std::cmp::Ordering;
 use std::future::Future;
 use std::marker::PhantomData;
+use std::rc::Rc;
 
 #[cfg(feature = "meta")]
 use dfir_lang::diagnostic::{Diagnostic, SerdeSpan};
@@ -18,13 +19,14 @@ use web_time::SystemTime;
 use super::context::Context;
 use super::handoff::handoff_list::PortList;
 use super::handoff::{Handoff, HandoffMeta, TeeingHandoff};
+use super::metrics::{DfirMetrics, DfirMetricsState, InstrumentSubgraph};
 use super::port::{RECV, RecvCtx, RecvPort, SEND, SendCtx, SendPort};
 use super::reactor::Reactor;
 use super::state::StateHandle;
 use super::subgraph::Subgraph;
+use super::ticks::{TickDuration, TickInstant};
 use super::{HandoffId, HandoffTag, LoopId, LoopTag, SubgraphId, SubgraphTag};
 use crate::Never;
-use crate::scheduled::ticks::{TickDuration, TickInstant};
 use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
 
 /// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
@@ -36,7 +38,9 @@ pub struct Dfir<'a> {
 
     pub(super) context: Context,
 
-    handoffs: SlotVec<HandoffTag, HandoffData>,
+    pub(super) handoffs: SlotVec<HandoffTag, HandoffData>,
+
+    metrics: Rc<DfirMetricsState>,
 
     #[cfg(feature = "meta")]
     /// See [`Self::meta_graph()`].
@@ -91,6 +95,11 @@ impl Dfir<'_> {
         if let Some(&pred_sg_id) = tee_root_data.preds.first() {
             self.subgraphs[pred_sg_id].succs.push(new_hoff_id);
         }
+
+        // Add metrics.
+        Rc::make_mut(&mut self.metrics)
+            .handoff_metrics
+            .insert(new_hoff_id, Default::default());
 
         let output_port = RecvPort {
             handoff_id: new_hoff_id,
@@ -282,8 +291,26 @@ impl<'a> Dfir<'a> {
         'pop: while let Some(sg_id) =
             self.context.stratum_queues[self.context.current_stratum].pop_front()
         {
+            let sg_data = &mut self.subgraphs[sg_id];
+
+            // Update handoff metadata.
+            // NOTE(mingwei):
+            // This is done BEFORE running the subgraph because we rely on the fact that subgraphs always(*) consume
+            // all inputs. This is NOT done AFTER running the subgraph because it may send to the handoff multiple
+            // times without the next subgraph draining the handoff.
+            // (*) - usually... always true for Hydro-generated DFIR at least.
+            for &handoff_id in sg_data.preds.iter() {
+                let handoff_metrics = &self.metrics.handoff_metrics[handoff_id];
+                let handoff_data = &mut self.handoffs[handoff_id];
+                let handoff_len = handoff_data.handoff.len();
+                handoff_metrics
+                    .total_items_count
+                    .update(|x| x + handoff_len);
+                handoff_metrics.curr_items_count.set(handoff_len);
+            }
+
+            // Run the subgraph (and do bookkeeping).
             {
-                let sg_data = &mut self.subgraphs[sg_id];
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
 
@@ -382,14 +409,23 @@ impl<'a> Dfir<'a> {
 
                 tracing::info!("Running subgraph.");
                 sg_data.last_tick_run_in = Some(self.context.current_tick);
-                Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs)).await;
+
+                let sg_metrics = &self.metrics.subgraph_metrics[sg_id];
+                let sg_fut =
+                    Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs));
+                let sg_fut = InstrumentSubgraph::new(sg_fut, sg_metrics);
+                let () = sg_fut.await;
+
+                sg_metrics.total_run_count.update(|x| x + 1);
             };
 
+            // Schedule the following subgraphs if data was pushed to the corresponding handoff.
             let sg_data = &self.subgraphs[sg_id];
             for &handoff_id in sg_data.succs.iter() {
-                let handoff = &self.handoffs[handoff_id];
-                if !handoff.handoff.is_bottom() {
-                    for &succ_id in handoff.succs.iter() {
+                let handoff_data = &self.handoffs[handoff_id];
+                let handoff_len = handoff_data.handoff.len();
+                if 0 < handoff_len {
+                    for &succ_id in handoff_data.succs.iter() {
                         let succ_sg_data = &self.subgraphs[succ_id];
                         // If we have sent data to the next tick, then we can start the next tick.
                         if succ_sg_data.stratum < self.context.current_stratum && !sg_data.is_lazy {
@@ -408,6 +444,8 @@ impl<'a> Dfir<'a> {
                         }
                     }
                 }
+                let handoff_metrics = &self.metrics.handoff_metrics[handoff_id];
+                handoff_metrics.curr_items_count.set(handoff_len);
             }
 
             let reschedule = self.context.reschedule_loop_block.take();
@@ -830,6 +868,11 @@ impl<'a> Dfir<'a> {
         self.context.init_stratum(stratum);
         self.context.stratum_queues[stratum].push_back(sg_id);
 
+        // Add metrics.
+        Rc::make_mut(&mut self.metrics)
+            .subgraph_metrics
+            .insert(sg_id, Default::default());
+
         sg_id
     }
 
@@ -925,9 +968,13 @@ impl<'a> Dfir<'a> {
                 0,
             )
         });
-
         self.context.init_stratum(stratum);
         self.context.stratum_queues[stratum].push_back(sg_id);
+
+        // Add metrics.
+        Rc::make_mut(&mut self.metrics)
+            .subgraph_metrics
+            .insert(sg_id, Default::default());
 
         sg_id
     }
@@ -943,6 +990,11 @@ impl<'a> Dfir<'a> {
         let handoff_id = self
             .handoffs
             .insert_with_key(|hoff_id| HandoffData::new(name.into(), handoff, hoff_id));
+
+        // Add metrics.
+        Rc::make_mut(&mut self.metrics)
+            .handoff_metrics
+            .insert(handoff_id, Default::default());
 
         // Make ports.
         let input_port = SendPort {
@@ -1003,6 +1055,14 @@ impl<'a> Dfir<'a> {
             },
         );
         loop_id
+    }
+
+    /// Returns DFIR runtime metrics accumulated since runtime creation.
+    pub fn metrics(&self) -> DfirMetrics {
+        DfirMetrics {
+            curr: Rc::clone(&self.metrics),
+            prev: None,
+        }
     }
 }
 
@@ -1073,6 +1133,7 @@ pub struct HandoffData {
     /// This field is only used in initialization.
     pub(super) succ_handoffs: Vec<HandoffId>,
 }
+
 impl std::fmt::Debug for HandoffData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         f.debug_struct("HandoffData")
@@ -1081,6 +1142,7 @@ impl std::fmt::Debug for HandoffData {
             .finish_non_exhaustive()
     }
 }
+
 impl HandoffData {
     /// New with `pred_handoffs` and `succ_handoffs` set to its own [`HandoffId`]: `vec![hoff_id]`.
     pub fn new(
@@ -1114,7 +1176,6 @@ pub(super) struct SubgraphData<'a> {
     /// The actual execution code of the subgraph.
     subgraph: Box<dyn 'a + Subgraph>,
 
-    #[expect(dead_code, reason = "may be useful in the future")]
     preds: Vec<HandoffId>,
     succs: Vec<HandoffId>,
 
@@ -1138,6 +1199,7 @@ pub(super) struct SubgraphData<'a> {
     /// The loop depth of the subgraph.
     loop_depth: usize,
 }
+
 impl<'a> SubgraphData<'a> {
     #[expect(clippy::too_many_arguments, reason = "internal use")]
     pub(crate) fn new(

@@ -260,6 +260,17 @@ impl<Tag: ?Sized, Val> Default for SecondarySlotVec<Tag, Val> {
         Self::new()
     }
 }
+impl<Tag: ?Sized, Val> Clone for SecondarySlotVec<Tag, Val>
+where
+    Val: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            slots: self.slots.clone(),
+            _phantom: PhantomData,
+        }
+    }
+}
 impl<Tag: ?Sized, Val> Index<Key<Tag>> for SecondarySlotVec<Tag, Val> {
     type Output = Val;
 
@@ -270,5 +281,14 @@ impl<Tag: ?Sized, Val> Index<Key<Tag>> for SecondarySlotVec<Tag, Val> {
 impl<Tag: ?Sized, Val> IndexMut<Key<Tag>> for SecondarySlotVec<Tag, Val> {
     fn index_mut(&mut self, key: Key<Tag>) -> &mut Self::Output {
         self.get_mut(key).unwrap()
+    }
+}
+impl<Tag: ?Sized, Val> FromIterator<(Key<Tag>, Val)> for SecondarySlotVec<Tag, Val> {
+    fn from_iter<T: IntoIterator<Item = (Key<Tag>, Val)>>(iter: T) -> Self {
+        let mut map = SecondarySlotVec::new();
+        for (key, val) in iter {
+            map.insert(key, val);
+        }
+        map
     }
 }
