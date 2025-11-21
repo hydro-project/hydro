@@ -80,9 +80,9 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
             let #ident = {
                 #[inline(always)]
                 fn check_inputs<'a, Func, LhsStream, RhsStream, LhsState, RhsState, Output>(
-                    mut lhs_stream: LhsStream,
-                    mut rhs_stream: RhsStream,
-                    mut func: Func,
+                    lhs_stream: LhsStream,
+                    rhs_stream: RhsStream,
+                    func: Func,
                     lhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<LhsState>>,
                     rhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<RhsState>>,
                     context: &'a #root::scheduled::context::Context,
@@ -106,13 +106,17 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                     };
 
                     #root::compiled::pull::LatticeBimorphismStream::new(
-                        lhs_stream, rhs_stream, func, lhs_state, rhs_state,
+                        #root::futures::stream::StreamExt::fuse(lhs_stream),
+                        #root::futures::stream::StreamExt::fuse(rhs_stream),
+                        func,
+                        lhs_state,
+                        rhs_state,
                     )
                 }
                 check_inputs(
-                    #func,
                     #lhs_items,
                     #rhs_items,
+                    #func,
                     #lhs_state_handle,
                     #rhs_state_handle,
                     &#context,
