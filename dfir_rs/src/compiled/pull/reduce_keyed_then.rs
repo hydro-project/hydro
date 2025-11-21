@@ -90,10 +90,10 @@ where
                         Entry::Occupied(occupied_entry) => {
                             let val = occupied_entry.into_mut();
                             let () = (agg_fn)(val, item);
-                        },
+                        }
                         Entry::Vacant(vacant_entry) => {
                             vacant_entry.insert(item);
-                        },
+                        }
                     }
                 } else {
                     let ReduceKeyedThenStateProjOwn::Reducing {
