@@ -1,5 +1,8 @@
 //! Pull-based operator helpers, i.e. [`Iterator`] helpers.
 
+mod cross_singleton;
+pub use cross_singleton::CrossSingleton;
+
 mod defer_signal;
 pub use defer_signal::DeferSignal;
 
