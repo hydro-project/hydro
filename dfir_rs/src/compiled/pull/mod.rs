@@ -37,6 +37,9 @@ pub use sort_by_key::SortByKey;
 mod flat_map;
 pub use flat_map::FlatMap;
 
+mod flatten;
+pub use flatten::Flatten;
+
 mod lattice_bimorphism;
 pub use lattice_bimorphism::LatticeBimorphismStream;
 
