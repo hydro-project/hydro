@@ -207,7 +207,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                         // (We know we won't have any more inputs, so it is fine to only play once.
                         // Because of the `DelayType::Stratum` or `DelayType::MonotoneAccum`).
                         #context.is_first_run_this_tick()
-                            .then_some(#hashtable_ident.iter())
+                            .then_some(ht.iter())
                             .into_iter()
                             .flatten()
                             .map(
@@ -225,7 +225,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 #assign_hashtable_ident
 
-                #ident = #root::compiled::pull::FoldKeyedThen::new(#input, &mut *#hashtable_ident, #init_fn, #agg_fn, #then_fn);
+                let #ident = #root::compiled::pull::FoldKeyedThen::new(#input, &mut *#hashtable_ident, #init_fn, #agg_fn, #then_fn);
             }
         };
 
