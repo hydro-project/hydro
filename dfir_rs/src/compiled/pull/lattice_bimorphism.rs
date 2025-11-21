@@ -105,6 +105,7 @@ where
             if !live && !rhs_pending && !lhs_pending {
                 return Poll::Ready(this.output.take());
             }
+            // Both streams may continue to be polled EOS (`None`) on subsequent loops or calls, so they must be fused.
         }
     }
 }
