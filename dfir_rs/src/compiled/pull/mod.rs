@@ -30,6 +30,9 @@ pub use persist_mut::PersistMut;
 mod persist_mut_keyed;
 pub use persist_mut_keyed::PersistMutKeyed;
 
+mod reduce_keyed_then;
+pub use reduce_keyed_then::ReduceKeyedThen;
+
 mod resolve_futures;
 pub use resolve_futures::ResolveFutures;
 

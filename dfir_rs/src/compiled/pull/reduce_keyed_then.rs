@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::hash::{BuildHasher, Hash};
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
@@ -7,16 +8,15 @@ use futures::Stream;
 use pin_project_lite::pin_project;
 
 pin_project! {
-    #[project = FoldKeyedThenStateProj]
-    #[project_replace = FoldKeyedThenStateProjOwn]
-    enum FoldKeyedThenState<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter> {
-        Folding {
+    #[project = ReduceKeyedThenStateProj]
+    #[project_replace = ReduceKeyedThenStateProjOwn]
+    enum ReduceKeyedThenState<'a, St, Key, Val, Hasher, AggFn, ThenFn, ThenIter> {
+        Reducing {
             #[pin]
             stream: St,
 
             state: &'a mut HashMap<Key, Val, Hasher>,
 
-            init_fn: InitFn,
             agg_fn: AggFn,
             then_fn: ThenFn,
         },
@@ -28,37 +28,34 @@ pin_project! {
 }
 
 pin_project! {
-    /// Special stream for all forms (lifetimes) of `fold_keyed`.
+    /// Special stream for all forms (lifetimes) of `reduce_keyed`.
     #[must_use = "streams do nothing unless polled"]
-    pub struct FoldKeyedThen<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter> {
+    pub struct ReduceKeyedThen<'a, St, Key, Val, Hasher, AggFn, ThenFn, ThenIter> {
         #[pin]
-        state: FoldKeyedThenState<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter>
+        state: ReduceKeyedThenState<'a, St, Key, Val, Hasher, AggFn, ThenFn, ThenIter>
     }
 }
 
-impl<'a, St, Item, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter>
-    FoldKeyedThen<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter>
+impl<'a, St, Key, Val, Hasher, AggFn, ThenFn, ThenIter>
+    ReduceKeyedThen<'a, St, Key, Val, Hasher, AggFn, ThenFn, ThenIter>
 where
-    St: Stream<Item = (Key, Item)>,
+    St: Stream<Item = (Key, Val)>,
     Key: Eq + Hash,
     Hasher: BuildHasher,
-    InitFn: FnMut() -> Val,
-    AggFn: FnMut(&mut Val, Item),
+    AggFn: FnMut(&mut Val, Val),
     ThenFn: FnOnce(&'a mut HashMap<Key, Val, Hasher>) -> ThenIter,
     ThenIter: Iterator,
 {
     pub fn new(
         stream: St,
         state: &'a mut HashMap<Key, Val, Hasher>,
-        init_fn: InitFn,
         agg_fn: AggFn,
         then_fn: ThenFn,
     ) -> Self {
         Self {
-            state: FoldKeyedThenState::Folding {
+            state: ReduceKeyedThenState::Reducing {
                 stream,
                 state,
-                init_fn,
                 agg_fn,
                 then_fn,
             },
@@ -66,14 +63,13 @@ where
     }
 }
 
-impl<'a, St, Item, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter> Stream
-    for FoldKeyedThen<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter>
+impl<'a, St, Key, Val, Hasher, AggFn, ThenFn, ThenIter> Stream
+    for ReduceKeyedThen<'a, St, Key, Val, Hasher, AggFn, ThenFn, ThenIter>
 where
-    St: Stream<Item = (Key, Item)>,
+    St: Stream<Item = (Key, Val)>,
     Key: Eq + Hash,
     Hasher: BuildHasher,
-    InitFn: FnMut() -> Val,
-    AggFn: FnMut(&mut Val, Item),
+    AggFn: FnMut(&mut Val, Val),
     ThenFn: FnOnce(&'a mut HashMap<Key, Val, Hasher>) -> ThenIter,
     ThenIter: Iterator,
 {
@@ -83,44 +79,49 @@ where
         let mut this = self.as_mut().project();
 
         match this.state.as_mut().project() {
-            FoldKeyedThenStateProj::Folding {
+            ReduceKeyedThenStateProj::Reducing {
                 mut stream,
                 state,
-                init_fn,
                 agg_fn,
                 then_fn: _,
             } => loop {
                 if let Some((key, item)) = ready!(stream.as_mut().poll_next(cx)) {
-                    let val = state.entry(key).or_insert_with(&mut *init_fn);
-                    let () = (agg_fn)(val, item);
+                    match state.entry(key) {
+                        Entry::Occupied(occupied_entry) => {
+                            let val = occupied_entry.into_mut();
+                            let () = (agg_fn)(val, item);
+                        },
+                        Entry::Vacant(vacant_entry) => {
+                            vacant_entry.insert(item);
+                        },
+                    }
                 } else {
-                    let FoldKeyedThenStateProjOwn::Folding {
+                    let ReduceKeyedThenStateProjOwn::Reducing {
                         stream: _,
                         state,
-                        init_fn: _,
                         agg_fn: _,
                         then_fn,
                     } = this
                         .state
                         .as_mut()
-                        .project_replace(FoldKeyedThenState::Empty)
+                        .project_replace(ReduceKeyedThenState::Empty)
                     else {
                         unreachable!();
                     };
                     let iter = (then_fn)(state);
-                    this.state.set(FoldKeyedThenState::Emitting { iter });
+                    this.state.set(ReduceKeyedThenState::Emitting { iter });
                     return self.poll_next(cx);
                 }
             },
-            FoldKeyedThenStateProj::Emitting { iter } => {
+            ReduceKeyedThenStateProj::Emitting { iter } => {
                 if let Some(item) = iter.next() {
                     Poll::Ready(Some(item))
                 } else {
-                    this.state.set(FoldKeyedThenState::Empty);
+                    this.state.set(ReduceKeyedThenState::Empty);
                     Poll::Ready(None)
                 }
             }
-            FoldKeyedThenStateProj::Empty => Poll::Ready(None),
+            ReduceKeyedThenStateProj::Empty => Poll::Ready(None),
         }
     }
 }
