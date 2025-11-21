@@ -224,10 +224,10 @@ pub fn null_write_iterator_fn(
 
     if is_pull {
         quote_spanned! {op_span=>
-            let #ident = #root::futures::stream::poll_fn(move |cx| {
+            let #ident = #root::futures::stream::poll_fn(move |_cx| {
                 // Make sure to poll all #inputs to completion.
                 #(
-                    let #inputs = #root::futures::stream::Stream::poll_next(::std::pin::pin!(#inputs), cx);
+                    let #inputs = #root::futures::stream::Stream::poll_next(::std::pin::pin!(#inputs), _cx);
                 )*
                 #(
                     let _ = ::std::task::ready!(#inputs);
