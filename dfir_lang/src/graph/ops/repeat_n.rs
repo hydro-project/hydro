@@ -25,6 +25,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    context,
                    df_ident,
                    op_span,
@@ -54,13 +55,26 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
                 #context.state_ref_unchecked(#singleton_output_ident)
             }.borrow_mut();
 
-            if 0 == #context.loop_iter_count() {
-                *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
-            }
-            let #ident = std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
+            let #ident = {
+                fn constrain_types<'ctx, Pull, Item>(input: Pull, vec: &'ctx mut Vec<Item>) -> impl 'ctx + #root::futures::stream::Stream<Item = Item>
+                where
+                    Pull: 'ctx + #root::futures::stream::Stream<Item = Item>,
+                    Item: ::std::clone::Clone,
+                {
+                    #root::compiled::pull::Persist::new(input, vec, 0)
+                }
+                constrain_types(#input, &mut *#vec_ident)
+            };
+
+            // TODO(mingwei): remove old code. This code is copied (is it correct?) from `prefix()`, we should DRY this.
+            // if 0 == #context.loop_iter_count() {
+            //     *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
+            // }
+            // let #ident = ::std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
         };
 
         // Reschedule, to repeat.
+        // TODO(mingwei): ensure `count_arg` is a usize literal (or eval it to such).
         let count_arg = &arguments[0];
         let write_iterator_after = quote_spanned! {op_span=>
             {

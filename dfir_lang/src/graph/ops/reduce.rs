@@ -55,7 +55,6 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                    inputs,
                    is_pull,
                    singleton_output_ident,
-                   work_fn,
                    arguments,
                    ..
                },
@@ -102,18 +101,9 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = {
-                    #assign_accum_ident
+                #assign_accum_ident
 
-                    #work_fn(|| #input.for_each(|#iterator_item_ident| {
-                        #iterator_foreach
-                    }));
-
-                    #[allow(clippy::clone_on_copy)]
-                    {
-                        ::std::iter::IntoIterator::into_iter(#work_fn(|| ::std::clone::Clone::clone(&*#accumulator_ident)))
-                    }
-                };
+                let #ident = #root::compiled::pull::Reduce::new(#input, &mut *#accumulator_ident, #func);
             }
         } else {
             // Is only push when used as a singleton, so no need to push to `outputs[0]`.

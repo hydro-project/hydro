@@ -93,25 +93,7 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                     #context.state_ref_unchecked(#persistdata_ident)
                 }.borrow_mut();
 
-                let #ident = {
-                    #[inline(always)]
-                    fn check_iter<T: ::std::hash::Hash + ::std::cmp::Eq>(iter: impl Iterator<Item = #root::util::Persistence::<T>>) -> impl Iterator<Item = #root::util::Persistence::<T>> {
-                        iter
-                    }
-
-                    if context.is_first_run_this_tick() {
-                        for item in check_iter(#input) {
-                            match item {
-                                #root::util::Persistence::Persist(v) => #vec_ident.push(v),
-                                #root::util::Persistence::Delete(v) => #vec_ident.delete(&v),
-                            }
-                        }
-
-                        Some(#vec_ident.iter().cloned()).into_iter().flatten()
-                    } else {
-                        None.into_iter().flatten()
-                    }
-                };
+                let #ident = #root::compiled::pull::PersistMut::new(#input, &mut *#vec_ident, #context.is_first_run_this_tick());
             }
         };
 

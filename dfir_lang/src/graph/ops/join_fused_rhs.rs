@@ -31,6 +31,7 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
         _ => None,
     },
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    op_span,
                    ident,
                    inputs,
@@ -53,7 +54,7 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = quote_spanned! {op_span=>
             #write_iterator
-            let #ident = #ident.map(|(k, (v1, v2))| (k, (v2, v1)));
+            let #ident = #root::futures::stream::StreamExt::map(#ident, |(k, (v1, v2))| (k, (v2, v1)));
         };
 
         Ok(OperatorWriteOutput {

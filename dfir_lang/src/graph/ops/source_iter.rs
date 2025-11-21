@@ -1,7 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1
+    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// > 0 input streams, 1 output stream
@@ -34,6 +35,7 @@ pub const SOURCE_ITER: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    op_span,
                    ident,
                    arguments,
@@ -45,14 +47,17 @@ pub const SOURCE_ITER: OperatorConstraints = OperatorConstraints {
         let write_prologue = quote_spanned! {op_span=>
             let mut #iter_ident = {
                 #[inline(always)]
-                fn check_iter<IntoIter: ::std::iter::IntoIterator<Item = Item>, Item>(into_iter: IntoIter) -> impl ::std::iter::Iterator<Item = Item> {
+                fn check_iter<IntoIter, Item>(into_iter: IntoIter) -> impl ::std::iter::Iterator<Item = Item>
+                where
+                    IntoIter: ::std::iter::IntoIterator<Item = Item>,
+                {
                     ::std::iter::IntoIterator::into_iter(into_iter)
                 }
                 check_iter(#iter)
             };
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #iter_ident.by_ref();
+            let #ident = #root::futures::stream::iter(#iter_ident.by_ref());
         };
         Ok(OperatorWriteOutput {
             write_prologue,
