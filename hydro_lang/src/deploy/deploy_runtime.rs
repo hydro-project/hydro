@@ -8,9 +8,6 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 
 use bytes::{Bytes, BytesMut};
-use dfir_rs::pin_project_lite::pin_project;
-use dfir_rs::sinktools;
-use dfir_rs::sinktools::demux_map::DemuxMap;
 use futures::sink::Buffer;
 use futures::{Sink, SinkExt, StreamExt};
 use hydro_deploy_integration::{
