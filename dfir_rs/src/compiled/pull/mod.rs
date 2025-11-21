@@ -15,6 +15,12 @@ pub use half_join_state::*;
 mod anti_join;
 pub use anti_join::{AntiJoin, AntiJoinPersist};
 
+mod flat_map;
+pub use flat_map::FlatMap;
+
+mod flatten;
+pub use flatten::Flatten;
+
 mod fold;
 pub use fold::Fold;
 
@@ -42,14 +48,11 @@ pub use resolve_futures::ResolveFutures;
 mod sort_by_key;
 pub use sort_by_key::SortByKey;
 
-mod flat_map;
-pub use flat_map::FlatMap;
-
-mod flatten;
-pub use flatten::Flatten;
-
 mod lattice_bimorphism;
 pub use lattice_bimorphism::LatticeBimorphismStream;
+
+mod lattice_fold_batch;
+pub use lattice_fold_batch::LatticeFoldBatch;
 
 mod zip_longest;
 pub use zip_longest::ZipLongest;
