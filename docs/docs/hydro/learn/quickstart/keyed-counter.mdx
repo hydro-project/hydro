@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 import CodeBlock from '@theme/CodeBlock';
@@ -10,19 +10,21 @@ import { getLines } from '../../../../src/util';
 
 # A Keyed Counter
 
-In the previous section, you built a single counter that tracked a global count. Now you'll extend this to a keyed counter service that maintains independent counts for different keys. This introduces a new challenge: requests arrive keyed by client ID, but you need to store and look up state by key name.
+In the previous section, you built a counter service that handles multiple concurrent clients but maintains only a single global count. Now you'll extend this to a **keyed counter** service that maintains independent counts for different keys. Each client can increment and query different named keys like "user_count", "page_views", etc.
 
-You'll learn how to regroup streams and work with keyed state. Along the way, you will encounter **stream types** for the first time, which Hydro uses to enforce distributed correctness guarantees:
+This introduces a new challenge: requests arrive keyed by **client ID** (which client sent the request), but you need to store and count by **key name** (which counter to increment). You'll learn how to **regroup** keyed streams to change the key, and how to use **keyed state** to maintain independent values per key.
+
+Along the way, you will encounter **stream types** for the first time, which Hydro uses to enforce distributed correctness guarantees:
 
 :::learn
 - How to use the `KeyedSingleton` live collection to store keyed state
+- How to regroup keyed streams to change the grouping key
 - How Hydro uses stream types to track message ordering and enforce distributed safety
-- How to regroup keyed streams for routing messages and looking up state
 :::
 
-## Handling Multiple Keys
+## From Single Counter to Multiple Keys
 
-Instead of a single global counter, you'll now support multiple independent counters identified by string keys. Each client can specify which key to increment or query.
+Instead of a single global counter, you'll now support multiple independent counters identified by string keys. Each client specifies which key to increment or query.
 
 :::info
 
@@ -42,11 +44,13 @@ pub fn keyed_counter_service<'a>(
 )
 ```
 
-The function signature is similar to the single counter, but now the value type is `String` (the key name) instead of `()`. Get responses return tuples of `(String, usize)` containing both the key name and its count.
+The function signature is similar to the concurrent clients counter, but now the value type is `String` (the key name) instead of `()`. Get responses return tuples of `(String, usize)` containing both the key name and its count.
 
-## Maintaining Keyed State
+## Regrouping Streams by Key Name
 
-In the single counter, you used a `Singleton` to store a single value that updates over time. Now you need to store multiple values, one for each key. Hydro provides the [`KeyedSingleton`](../../reference/live-collections/keyed-streams.mdx#aggregation) live collection for this purpose. A `KeyedSingleton<K, V>` associates each key of type `K` with a value of type `V`, like a map. Just like a `Singleton`, the values update over time as new data arrives.
+The core challenge is that requests arrive organized by **client ID** (which client sent the request), but you need to count by **key name** (which counter to increment). The solution is to **regroup** the stream.
+
+Just like in the concurrent clients counter, you'll establish consistency guarantees between increment acknowledgements and count snapshots. You start by marking the increment requests as atomic:
 
 Just like in the single counter, you'll need to establish consistency guarantees between increment acknowledgements and count snapshots. You start by marking the increment requests as atomic:
 
