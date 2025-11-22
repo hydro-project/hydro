@@ -1,13 +1,12 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote_spanned};
-use syn::spanned::Spanned;
-use syn::{Expr, ExprCall, parse_quote};
+use quote::quote_spanned;
+use syn::{Ident, parse_quote};
 
 use super::{
     DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
+use crate::diagnostic::Diagnostic;
 
 /// > 2 input streams of type `<(K, V1)>` and `<(K, V2)>`, 1 output stream of type `<(K, (V1, V2))>`
 ///
@@ -105,6 +104,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    context,
                    op_span,
                    ident,
@@ -118,48 +118,17 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
 
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
-        let lhs_join_options =
-            parse_argument(&arguments[0]).map_err(|err| diagnostics.push(err))?;
-        let rhs_join_options =
-            parse_argument(&arguments[1]).map_err(|err| diagnostics.push(err))?;
-
         let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
-            make_joindata(wc, persistences[0], &lhs_join_options, "lhs")
-                .map_err(|err| diagnostics.push(err))?;
+            make_joindata(wc, persistences[0], "lhs").map_err(|err| diagnostics.push(err))?;
 
         let (rhs_prologue, rhs_prologue_after, rhs_pre_write_iter, rhs_borrow) =
-            make_joindata(wc, persistences[1], &rhs_join_options, "rhs")
-                .map_err(|err| diagnostics.push(err))?;
+            make_joindata(wc, persistences[1], "rhs").map_err(|err| diagnostics.push(err))?;
 
-        let lhs = &inputs[0];
-        let rhs = &inputs[1];
+        let lhs_iter = &inputs[0];
+        let rhs_iter = &inputs[1];
 
-        let arg0_span = arguments[0].span();
-        let arg1_span = arguments[1].span();
-
-        let lhs_tokens = match lhs_join_options {
-            JoinOptions::FoldFrom(lhs_from, lhs_fold) => quote_spanned! {arg0_span=>
-                #lhs_borrow.fold_into(#lhs, #lhs_fold, #lhs_from);
-            },
-            JoinOptions::Fold(lhs_default, lhs_fold) => quote_spanned! {arg0_span=>
-                #lhs_borrow.fold_into(#lhs, #lhs_fold, #lhs_default);
-            },
-            JoinOptions::Reduce(lhs_reduce) => quote_spanned! {arg0_span=>
-                #lhs_borrow.reduce_into(#lhs, #lhs_reduce);
-            },
-        };
-
-        let rhs_tokens = match rhs_join_options {
-            JoinOptions::FoldFrom(rhs_from, rhs_fold) => quote_spanned! {arg0_span=>
-                #rhs_borrow.fold_into(#rhs, #rhs_fold, #rhs_from);
-            },
-            JoinOptions::Fold(rhs_default, rhs_fold) => quote_spanned! {arg1_span=>
-                #rhs_borrow.fold_into(#rhs, #rhs_fold, #rhs_default);
-            },
-            JoinOptions::Reduce(rhs_reduce) => quote_spanned! {arg1_span=>
-                #rhs_borrow.reduce_into(#rhs, #rhs_reduce);
-            },
-        };
+        let lhs_accum = &arguments[0];
+        let rhs_accum = &arguments[1];
 
         // Since both input arguments are stratum blocking then we don't need to keep track of ticks to avoid emitting the same thing twice in the same tick.
         let write_iterator = quote_spanned! {op_span=>
@@ -167,16 +136,27 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             #rhs_pre_write_iter
 
             let #ident = {
-                #lhs_tokens
-                #rhs_tokens
+                fn __check_accum<Accumulator, Key, Accum, Iter, Hasher, Item>(accum: &mut Accumulator, borrow: &mut HashMap<Key, Accum, Hasher>, iter: Iter)
+                where
+                    Accumulator: #root::compiled::pull::Accumulator<Accum, Item>,
+                    Key: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone,
+                    Iter: ::std::iter::Iterator<Item = (Key, Item)>,
+                    Hasher: ::std::hash::BuildHasher,
+                    Item: ::std::clone::Clone,
+                {
+                    #root::compiled::pull::Accumulator::accumulate_all(accum, borrow, iter);
+                }
+                __check_accum(&mut #lhs_accum, &mut *#lhs_borrow, #lhs_iter);
+                __check_accum(&mut #rhs_accum, &mut *#rhs_borrow, #rhs_iter);
 
                 // TODO: start the iterator with the smallest len() table rather than always picking rhs.
                 #[allow(clippy::clone_on_copy)]
                 #[allow(suspicious_double_ref_op)]
                 #rhs_borrow
-                    .table
                     .iter()
-                    .filter_map(|(k, v2)| #lhs_borrow.table.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))))
+                    .filter_map(|(k, v2)| {
+                        #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone())))
+                    })
             };
         };
 
@@ -205,74 +185,12 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
     },
 };
 
-pub(crate) enum JoinOptions<'a> {
-    FoldFrom(&'a Expr, &'a Expr),
-    Fold(&'a Expr, &'a Expr),
-    Reduce(&'a Expr),
-}
-
-pub(crate) fn parse_argument(arg: &Expr) -> Result<JoinOptions<'_>, Diagnostic> {
-    let Expr::Call(ExprCall {
-        attrs: _,
-        func,
-        paren_token: _,
-        args,
-    }) = arg
-    else {
-        return Err(Diagnostic::spanned(
-            arg.span(),
-            Level::Error,
-            format!("Argument must be a function call: {arg:?}"),
-        ));
-    };
-
-    let mut elems = args.iter();
-    let func_name = func.to_token_stream().to_string();
-
-    match func_name.as_str() {
-        "Fold" => match (elems.next(), elems.next()) {
-            (Some(default), Some(fold)) => Ok(JoinOptions::Fold(default, fold)),
-            _ => Err(Diagnostic::spanned(
-                args.span(),
-                Level::Error,
-                format!(
-                    "Fold requires two arguments, first is the default function, second is the folding function: {func:?}"
-                ),
-            )),
-        },
-        "FoldFrom" => match (elems.next(), elems.next()) {
-            (Some(from), Some(fold)) => Ok(JoinOptions::FoldFrom(from, fold)),
-            _ => Err(Diagnostic::spanned(
-                args.span(),
-                Level::Error,
-                format!(
-                    "FoldFrom requires two arguments, first is the From function, second is the folding function: {func:?}"
-                ),
-            )),
-        },
-        "Reduce" => match elems.next() {
-            Some(reduce) => Ok(JoinOptions::Reduce(reduce)),
-            _ => Err(Diagnostic::spanned(
-                args.span(),
-                Level::Error,
-                format!("Reduce requires one argument, the reducing function: {func:?}"),
-            )),
-        },
-        _ => Err(Diagnostic::spanned(
-            func.span(),
-            Level::Error,
-            format!("Unknown summarizing function: {func:?}"),
-        )),
-    }
-}
-
 /// Returns `(prologue, prologue_after, pre_write_iter, borrow)`.
 pub(crate) fn make_joindata(
     wc: &WriteContextArgs,
     persistence: Persistence,
-    join_options: &JoinOptions<'_>,
     side: &str,
-) -> Result<(TokenStream, TokenStream, TokenStream, TokenStream), Diagnostic> {
+) -> Result<(TokenStream, TokenStream, TokenStream, Ident), Diagnostic> {
     let joindata_ident = wc.make_ident(format!("joindata_{}", side));
     let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
 
@@ -284,34 +202,20 @@ pub(crate) fn make_joindata(
         ..
     } = wc;
 
-    let join_type = match *join_options {
-        JoinOptions::FoldFrom(_, _) => {
-            quote_spanned!(op_span=> #root::compiled::pull::HalfJoinStateFoldFrom)
-        }
-        JoinOptions::Fold(_, _) => {
-            quote_spanned!(op_span=> #root::compiled::pull::HalfJoinStateFold)
-        }
-        JoinOptions::Reduce(_) => {
-            quote_spanned!(op_span=> #root::compiled::pull::HalfJoinStateReduce)
-        }
-    };
-
     Ok(match persistence {
         Persistence::None => (
             Default::default(),
             Default::default(),
             quote_spanned! {op_span=>
-                let mut #borrow_ident = #join_type::default();
+                let #borrow_ident = &mut #root::rustc_hash::FxHashMap::default();
             },
-            quote_spanned! {op_span=>
-                #borrow_ident
-            },
+            borrow_ident,
         ),
         Persistence::Tick | Persistence::Loop | Persistence::Static => {
             let lifespan = wc.persistence_as_state_lifespan(persistence);
             (
                 quote_spanned! {op_span=>
-                    let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(#join_type::default()));
+                    let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default()));
                 },
                 lifespan.map(|lifespan| quote_spanned! {op_span=>
                     // Reset the value to the initializer fn at the end of each tick/loop execution.
@@ -323,9 +227,7 @@ pub(crate) fn make_joindata(
                         #context.state_ref_unchecked(#joindata_ident)
                     }.borrow_mut();
                 },
-                quote_spanned! {op_span=>
-                    #borrow_ident
-                },
+                borrow_ident
             )
         }
         Persistence::Mutable => panic!(),

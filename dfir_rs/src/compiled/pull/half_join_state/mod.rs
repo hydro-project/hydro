@@ -1,16 +1,14 @@
-mod fold;
-mod fold_from;
-mod multiset;
-mod reduce;
-mod set;
+/// State semantics for each half of a join.
 
-pub use fold::HalfJoinStateFold;
-pub use fold_from::HalfJoinStateFoldFrom;
-pub use multiset::HalfMultisetJoinState;
-pub use reduce::HalfJoinStateReduce;
-pub use set::HalfSetJoinState;
 use smallvec::SmallVec;
 
+mod multiset;
+pub use multiset::HalfMultisetJoinState;
+
+mod set;
+pub use set::HalfSetJoinState;
+
+/// State semantics for each half of a join.
 pub trait HalfJoinState<Key, ValBuild, ValProbe> {
     /// Insert a key value pair into the join state, currently this is always inserting into a hash table
     /// If the key-value pair exists then it is implementation defined what happens, usually either two copies are stored or only one copy is stored.
@@ -22,10 +20,17 @@ pub trait HalfJoinState<Key, ValBuild, ValProbe> {
 
     /// If there are any stored matches from previous calls to probe then this function will remove them one at a time and return it.
     fn pop_match(&mut self) -> Option<(Key, ValProbe, ValBuild)>;
+
+    /// Len of the join state in terms of number of keys.
     fn len(&self) -> usize;
+    /// If the state is empty (`len() == 0`).
     fn is_empty(&self) -> bool {
-        self.len() == 0
+        0 == self.len()
     }
+
+    /// An iter over all entries of the state.
     fn iter(&self) -> std::collections::hash_map::Iter<'_, Key, SmallVec<[ValBuild; 1]>>;
+
+    /// An iter over all the matches for a given key.
     fn full_probe(&self, k: &Key) -> std::slice::Iter<'_, ValBuild>;
 }
