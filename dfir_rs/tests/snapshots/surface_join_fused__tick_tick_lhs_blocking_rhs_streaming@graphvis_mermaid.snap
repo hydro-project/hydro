@@ -1,0 +1,85 @@
+---
+source: dfir_rs/tests/surface_join_fused.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_iter([(7, 1), (7, 2)])</code>"/]:::pullClass
+2v1[\"(2v1) <code>map(|(k, v)| (k, SetUnionSingletonSet::new_from(v)))</code>"/]:::pullClass
+3v1[\"(3v1) <code>source_iter([(7, 0)])</code>"/]:::pullClass
+4v1[\"(4v1) <code>source_iter([(7, 1)])</code>"/]:::pullClass
+5v1[\"(5v1) <code>defer_tick()</code>"/]:::pullClass
+6v1[\"(6v1) <code>source_iter([(7, 2)])</code>"/]:::pullClass
+7v1[\"(7v1) <code>defer_tick()</code>"/]:::pullClass
+8v1[\"(8v1) <code>defer_tick()</code>"/]:::pullClass
+9v1[\"(9v1) <code>union()</code>"/]:::pullClass
+10v1[\"<div style=text-align:center>(10v1)</div> <code>join_fused_lhs(<br>    Fold::new(<br>        SetUnionHashSet::default,<br>        |state, delta| {<br>            Merge::merge(state, delta);<br>        },<br>    ),<br>)</code>"/]:::pullClass
+11v1[/"<div style=text-align:center>(11v1)</div> <code>for_each(|x| {<br>    results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x)<br>})</code>"\]:::pushClass
+12v1["(12v1) <code>handoff</code>"]:::otherClass
+13v1["(13v1) <code>handoff</code>"]:::otherClass
+14v1["(14v1) <code>handoff</code>"]:::otherClass
+15v1["(15v1) <code>handoff</code>"]:::otherClass
+16v1[\"(16v1) <code>identity()</code>"/]:::pullClass
+17v1["(17v1) <code>handoff</code>"]:::otherClass
+18v1[\"(18v1) <code>identity()</code>"/]:::pullClass
+19v1["(19v1) <code>handoff</code>"]:::otherClass
+20v1[\"(20v1) <code>identity()</code>"/]:::pullClass
+21v1["(21v1) <code>handoff</code>"]:::otherClass
+2v1-->12v1
+1v1-->2v1
+3v1-->9v1
+5v1-->9v1
+4v1-->13v1
+8v1-->9v1
+7v1-->14v1
+6v1-->15v1
+9v1-->|1|10v1
+10v1-->11v1
+12v1--x|0|10v1; linkStyle 10 stroke:red
+13v1-->16v1
+14v1-->18v1
+15v1-->20v1
+16v1-->17v1
+17v1--o5v1; linkStyle 15 stroke:red
+18v1-->19v1
+19v1--o8v1; linkStyle 17 stroke:red
+20v1-->21v1
+21v1--o7v1; linkStyle 19 stroke:red
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    1v1
+    2v1
+end
+subgraph sg_2v1 ["sg_2v1 stratum 0"]
+    4v1
+end
+subgraph sg_3v1 ["sg_3v1 stratum 0"]
+    6v1
+end
+subgraph sg_4v1 ["sg_4v1 stratum 0"]
+    7v1
+end
+subgraph sg_5v1 ["sg_5v1 stratum 1"]
+    3v1
+    5v1
+    8v1
+    subgraph sg_5v1_var_my_join ["var <tt>my_join</tt>"]
+        10v1
+        11v1
+    end
+    subgraph sg_5v1_var_unioner ["var <tt>unioner</tt>"]
+        9v1
+    end
+end
+subgraph sg_6v1 ["sg_6v1 stratum 2"]
+    16v1
+end
+subgraph sg_7v1 ["sg_7v1 stratum 2"]
+    18v1
+end
+subgraph sg_8v1 ["sg_8v1 stratum 2"]
+    20v1
+end

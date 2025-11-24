@@ -15,9 +15,11 @@ use super::{
 ///
 /// For example:
 /// ```dfir
+/// use dfir_rs::compiled::pull::Reduce;
+///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2), ("key", 3)]) -> [1]my_join;
-/// my_join = join_fused_lhs(Reduce(|x, y| *x += y))
+/// my_join = join_fused_lhs(Reduce::new(|x, y| *x += y))
 ///     -> assert_eq([("key", (3, 2)), ("key", (3, 3))]);
 /// ```
 pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {

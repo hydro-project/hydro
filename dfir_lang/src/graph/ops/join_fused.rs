@@ -10,17 +10,17 @@ use crate::diagnostic::Diagnostic;
 
 /// > 2 input streams of type `<(K, V1)>` and `<(K, V2)>`, 1 output stream of type `<(K, (V1, V2))>`
 ///
-/// `join_fused` takes two arguments, they are the configuration options for the left hand side and right hand side inputs respectively.
-/// There are three available configuration options, they are `Reduce`: if the input type is the same as the accumulator type,
+/// `join_fused` takes two arguments, they are the aggregators for the left hand side and right hand side inputs respectively.
+/// There are three main aggregators available, they are `Reduce`: if the input type is the same as the accumulator type,
 /// `Fold`: if the input type is different from the accumulator type, and the accumulator type has a sensible default value, and
 /// `FoldFrom`: if the input type is different from the accumulator type, and the accumulator needs to be derived from the first input value.
 /// Examples of all three configuration options are below:
 /// ```dfir,ignore
-/// // Left hand side input will use fold, right hand side input will use reduce,
-/// join_fused(Fold(|| "default value", |x, y| *x += y), Reduce(|x, y| *x -= y))
+/// // Left hand side input will use `Fold`, right hand side input will use `Reduce`,
+/// join_fused(Fold::new(|| "default value", |x, y| *x += y), Reduce(|x, y| *x -= y))
 ///
-/// // Left hand side input will use FoldFrom, and the right hand side input will use Reduce again
-/// join_fused(FoldFrom(|x| "conversion function", |x, y| *x += y), Reduce(|x, y| *x *= y))
+/// // Left hand side input will use `FoldFrom`, and the right hand side input will use `Reduce` again
+/// join_fused(FoldFrom::new(|x| "conversion function", |x, y| *x += y), Reduce(|x, y| *x *= y))
 /// ```
 /// The three currently supported fused operator types are `Fold(Fn() -> A, Fn(A, T) -> A)`, `Reduce(Fn(A, A) -> A)`, and `FoldFrom(Fn(T) -> A, Fn(A, T) -> A)`
 ///
@@ -40,22 +40,26 @@ use crate::diagnostic::Diagnostic;
 /// ```
 ///
 /// ```dfir
+/// use dfir_rs::compiled::pull::{Fold, Reduce};
+///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
 /// source_iter(vec![("key", 2), ("key", 3)])
 ///     -> [1]my_join;
-/// my_join = join_fused(Reduce(|x, y| *x += y), Fold(|| 1, |x, y| *x *= y))
+/// my_join = join_fused(Reduce::new(|x, y| *x += y), Fold::new(|| 1, |x, y| *x *= y))
 ///     -> assert_eq([("key", (3, 6))]);
 /// ```
 ///
-/// Here is an example of using FoldFrom to derive the accumulator from the first value:
+/// Here is an example of using `FoldFrom` to derive the accumulator from the first value:
 ///
 /// ```dfir
+/// use dfir_rs::compiled::pull::{Fold, FoldFrom};
+///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
 /// source_iter(vec![("key", 2), ("key", 3)])
 ///     -> [1]my_join;
-/// my_join = join_fused(FoldFrom(|x| x + 3, |x, y| *x += y), Fold(|| 1, |x, y| *x *= y))
+/// my_join = join_fused(FoldFrom::new(|x: u32| x + 3, |x, y| *x += y), Fold::new(|| 1, |x, y| *x *= y))
 ///     -> assert_eq([("key", (6, 6))]);
 /// ```
 ///
@@ -69,22 +73,26 @@ use crate::diagnostic::Diagnostic;
 /// for example, the two following examples have identical behavior:
 ///
 /// ```dfir
+/// use dfir_rs::compiled::pull::{Fold, Reduce};
+///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> persist::<'static>() -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
 /// source_iter(vec![("key", 3)]) -> defer_tick() -> my_union;
 /// my_union = union() -> persist::<'static>() -> [1]my_join;
 ///
-/// my_join = join_fused(Reduce(|x, y| *x += y), Fold(|| 1, |x, y| *x *= y))
+/// my_join = join_fused(Reduce::new(|x, y| *x += y), Fold::new(|| 1, |x, y| *x *= y))
 ///     -> assert_eq([("key", (3, 2)), ("key", (3, 6))]);
 /// ```
 ///
 /// ```dfir
+/// use dfir_rs::compiled::pull::{Fold, Reduce};
+///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
 /// source_iter(vec![("key", 3)]) -> defer_tick() -> my_union;
 /// my_union = union() -> [1]my_join;
 ///
-/// my_join = join_fused::<'static>(Reduce(|x, y| *x += y), Fold(|| 1, |x, y| *x *= y))
+/// my_join = join_fused::<'static>(Reduce::new(|x, y| *x += y), Fold::new(|| 1, |x, y| *x *= y))
 ///     -> assert_eq([("key", (3, 2)), ("key", (3, 6))]);
 /// ```
 pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
@@ -136,7 +144,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             #rhs_pre_write_iter
 
             let #ident = {
-                fn __check_accum<Accumulator, Key, Accum, Iter, Hasher, Item>(accum: &mut Accumulator, borrow: &mut HashMap<Key, Accum, Hasher>, iter: Iter)
+                fn __check_accum<Accumulator, Key, Accum, Iter, Hasher, Item>(accum: &mut Accumulator, borrow: &mut ::std::collections::HashMap<Key, Accum, Hasher>, iter: Iter)
                 where
                     Accumulator: #root::compiled::pull::Accumulator<Accum, Item>,
                     Key: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone,
@@ -150,8 +158,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                 __check_accum(&mut #rhs_accum, &mut *#rhs_borrow, #rhs_iter);
 
                 // TODO: start the iterator with the smallest len() table rather than always picking rhs.
-                #[allow(clippy::clone_on_copy)]
-                #[allow(suspicious_double_ref_op)]
+                #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
                 #rhs_borrow
                     .iter()
                     .filter_map(|(k, v2)| {
