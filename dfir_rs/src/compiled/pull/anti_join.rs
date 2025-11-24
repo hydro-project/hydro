@@ -1,6 +1,7 @@
 use itertools::Either;
 use rustc_hash::FxHashSet;
 
+/// A custom [`Iterator`] for the `anti_join` operator.
 pub struct AntiJoin<'a, Key, V, Ipos>
 where
     Key: Eq + std::hash::Hash + Clone,
@@ -32,6 +33,7 @@ where
     }
 }
 
+/// Creates a custom [`Iterator`] for the `anti_join` operator, replaying if `new_tick`.
 pub fn anti_join_into_iter<'a, Key, V, Ipos>(
     input_pos: Ipos,
     state_neg: &'a mut FxHashSet<Key>,

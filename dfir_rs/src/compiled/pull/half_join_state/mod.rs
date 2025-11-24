@@ -1,5 +1,4 @@
 /// State semantics for each half of a join.
-
 use smallvec::SmallVec;
 
 mod multiset;
