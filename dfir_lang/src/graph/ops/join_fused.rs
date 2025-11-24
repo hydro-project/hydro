@@ -17,10 +17,10 @@ use crate::diagnostic::Diagnostic;
 /// Examples of all three configuration options are below:
 /// ```dfir,ignore
 /// // Left hand side input will use `Fold`, right hand side input will use `Reduce`,
-/// join_fused(Fold::new(|| "default value", |x, y| *x += y), Reduce(|x, y| *x -= y))
+/// join_fused(Fold::new(|| "default value", |x, y| *x += y), Reduce::new(|x, y| *x -= y))
 ///
 /// // Left hand side input will use `FoldFrom`, and the right hand side input will use `Reduce` again
-/// join_fused(FoldFrom::new(|x| "conversion function", |x, y| *x += y), Reduce(|x, y| *x *= y))
+/// join_fused(FoldFrom::new(|x| "conversion function", |x, y| *x += y), Reduce::new(|x, y| *x *= y))
 /// ```
 /// The three currently supported fused operator types are `Fold(Fn() -> A, Fn(A, T) -> A)`, `Reduce(Fn(A, A) -> A)`, and `FoldFrom(Fn(T) -> A, Fn(A, T) -> A)`
 ///
