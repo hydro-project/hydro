@@ -134,7 +134,7 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
                 #root::lattices::map_union::MapUnionSingletonMap::new_from(
                     (
                         k,
-                        #root::lattices::Pair::<#lhs_type, #rhs_type>::new_from(v1.clone(), v2.clone()),
+                        #root::lattices::Pair::<#lhs_type, #rhs_type>::new_from(v1, v2),
                     ),
                 )
             });
