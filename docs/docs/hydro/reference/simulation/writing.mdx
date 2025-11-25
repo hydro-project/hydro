@@ -1,11 +1,85 @@
 ---
-sidebar_position: 0
-unlisted: true
+sidebar_position: 1
 ---
 
-# Writing a Simulation Test
-:::caution
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
 
-The Hydro documentation is currently under active development! This page is a placeholder for future content.
+import singleClientCounterSrc from '!!raw-loader!../../../../../hydro_test/src/tutorials/single_client_counter.rs';
+import keyedCounterSrc from '!!raw-loader!../../../../../hydro_test/src/tutorials/keyed_counter.rs';
+import { getLines, highlightLines } from '../../../../src/util';
 
-:::
+# Writing Simulation Tests
+
+The Hydro simulator is a deterministic testing environment that explores the space of possible distributed executions. Unlike traditional unit tests that run a single execution path, the simulator systematically varies non-deterministic choices—batch boundaries, message ordering, and state snapshots—to find bugs that only manifest under specific interleavings.
+
+## Writing Tests
+
+A simulation test has three parts: setup, execution, and assertions. The setup creates a `FlowBuilder` and the distributed locations (processes and clusters). You then wire up your Hydro code and create simulation inputs and outputs using `sim_input()` and `sim_output()`. Here's a minimal example
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">single_client_counter.rs</Link>
+} showLineNumbers={33}>{getLines(singleClientCounterSrc, 33, 52)}</CodeBlock>
+
+The execution happens inside the async closure passed to `exhaustive()`. This closure is called repeatedly—once for each distinct execution the simulator explores. Inside, you send messages using the input ports and make assertions about the outputs.
+
+For ordered streams, use `send()` to send a single message or `send_many()` to send multiple messages in sequence. For unordered streams, use `send_many_unordered()` to send multiple messages that can be processed in any order. On the output side, you can check what messages appear using assertion methods like `assert_yields()` for ordered streams or `assert_yields_unordered()` for unordered streams. The `_only` variants additionally check that the stream ends after the expected messages.
+
+The `exhaustive()` method explores *all* possible executions. This is feasible when the inputs are finite and the number of `nondet!` decision points is manageable. For complex protocols, use `fuzz()` instead (see [Fuzzer-Guided Simulation](./fuzzing.mdx) for details).
+
+When a test fails, the simulator prints a trace showing the decisions it made:
+
+```text
+Running Tick
+  | let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
+  |                        ^ releasing no items
+  | let count_snapshot = use(current_count, nondet!(/** intentional, based on when the request came in */));
+  |                         ^ releasing snapshot: 0
+
+Running Tick
+  | let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
+  |                        ^ releasing items: [()]
+  | let count_snapshot = use(current_count, nondet!(/** intentional, based on when the request came in */));
+  |                         ^ releasing unchanged snapshot: 0
+
+thread ... panicked at src/single_client_counter.rs:50:
+Stream yielded unexpected message: 0
+```
+
+The trace shows which tick is running (and which cluster member, if applicable), each `nondet!` decision point with the choice made, and what items were released or which snapshot was observed. The "releasing unchanged snapshot" message indicates the simulator chose to re-release a previous snapshot rather than advancing to a newer one—simulating the case where state updates lag behind.
+
+Effective simulation testing relies on careful scoping and documentation:
+
+- **Start simple.** Test individual components before testing the full system. A test that sends one message and checks one response is easier to debug than one with complex interactions.
+- **Document your `nondet!` markers.** The explanation in each `nondet!` call appears in failure traces. Good explanations help you understand why a particular decision point exists and whether the non-determinism is acceptable.
+
+## Deterministic Exploration
+
+The simulator's power comes from systematically varying non-deterministic choices. Every `nondet!` marker in your code represents a decision point where the simulator makes different choices across executions.
+
+Code without any `nondet!` markers has **exactly one** possible execution. If your test sends a fixed sequence of inputs and your code has no `nondet!` markers, the test completes in a single execution. This means you can write fast unit tests for deterministic transformations while reserving exhaustive testing for code that genuinely non-deterministic choices.
+
+When you call `sliced!` with a `use` statement, the simulator makes a decision for each sliced input. Consider:
+
+```rust,ignore
+let get_response = sliced! {
+    let request_batch = use(get_requests, nondet!(/** ... */));
+    // ...
+};
+```
+
+If three requests arrive and `get_requests` is an ordered stream, the simulator might:
+- Release none initially, then all three later
+- Release all three in one batch
+- Release two, then one
+- ... and so on
+
+Similarly, when snapshotting a `Singleton`, the simulator decides which version to observe:
+
+```rust,ignore
+let count_snapshot = use(current_count, nondet!(/** ... */));
+```
+
+If the count has progressed through values 0 → 1 → 2, the simulator might snapshot any of these values. It can also re-release the same snapshot multiple times, simulating the case where state updates haven't propagated yet.
+
+For unordered streams, the simulator has additional freedom. When batching elements from an unordered stream, it selects *which* elements to include but doesn't need to simulate all possible orderings *within* the batch. Since the batch is also unordered, testing different internal orderings would be redundant. Such optimizations are key to making exhaustive testing tractable.
