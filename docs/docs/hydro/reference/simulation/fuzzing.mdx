@@ -1,0 +1,48 @@
+---
+sidebar_position: 2
+---
+
+# Coverage-Guided Fuzzing
+
+When exhaustive testing is impractical—because the execution space is too large—you can use fuzzer-guided simulation. Instead of exploring every possible execution, the fuzzer uses coverage-guided techniques to intelligently search for bugs.
+
+Use `fuzz()` instead of `exhaustive()` when your protocol has many `nondet!` decision points, tests involve unbounded message sequences, or exhaustive testing takes too long. Fuzzing trades completeness for practicality—it won't test every execution, but it will intelligently explore the space, prioritizing paths that increase code coverage.
+
+## Writing and Running Fuzz Tests
+
+A fuzz test looks almost identical to an exhaustive test, just call `fuzz()` instead of `exhaustive()`:
+
+```rust
+#[test]
+fn test_paxos_commits() {
+    let flow = FlowBuilder::new();
+    // ... setup code ...
+
+    flow.sim()
+        .with_cluster_size(&acceptors, 3)
+        .fuzz(async || {
+            // Send proposals and check commits
+            proposal_port.send("value1".to_string());
+            commit_port.assert_yields(["value1".to_string()]).await;
+        });
+}
+```
+
+During development, run fuzz tests with `cargo sim -- test_name`. This invokes `libfuzzer` to intelligently explore the execution space, tracking code coverage to prioritize unexplored paths and mutating previous inputs to find new behaviors. The fuzzer runs until interrupted or a failure is found.
+
+When running with `cargo test` (such as in CI), fuzz tests behave differently: if a reproducer exists, the test replays it to verify the bug is fixed; if no reproducer exists, the test runs 8192 random iterations. This means fuzz tests in CI serve as both regression testing for previously-found bugs and light random testing to catch obvious issues.
+
+## Reproducers and Debugging
+
+When `cargo sim` finds a failure, it saves a minimized reproducer to `<test_directory>/sim-failures/<test_module>__<test_name>.bin`. For example, a test at `src/cluster/paxos.rs` named `test_paxos_commits` would have its reproducer at `src/cluster/sim-failures/cluster__paxos__test_paxos_commits.bin`.
+
+To debug a failure:
+1. Run `cargo test -- test_paxos_commits` to replay the reproducer
+2. The simulator prints a detailed trace of all decisions
+3. Fix the bug
+4. Delete the reproducer file once the bug is fixed
+5. Run `cargo sim` again to continue fuzzing
+
+Set `HYDRO_SIM_LOG=1` to enable detailed logging for all simulation runs. When replaying a reproducer, logging is automatically enabled so you can see exactly what decisions led to the failure.
+
+The fuzzer maintains a corpus of interesting inputs in `.fuzz-corpus/` at the workspace root. This corpus persists across runs, allowing the fuzzer to build on previous exploration. You can safely delete this directory to start fresh, but keeping it helps the fuzzer make progress faster on subsequent runs.
