@@ -1,4 +1,4 @@
-error[E0271]: expected `Drain<'_, &str>` to be an iterator that yields `(_, _)`, but it yields `&str`
+error[E0271]: type mismatch resolving `<Iter<Drain<'_, &str>> as Stream>::Item == (_, _)`
  --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:3:9
   |
 3 |         source_iter(["hello", "world"])
@@ -8,25 +8,14 @@ error[E0271]: expected `Drain<'_, &str>` to be an iterator that yields `(_, _)`,
   |
   = note:  expected tuple `(_, _)`
           found reference `&str`
-note: required by a bound in `check_input`
- --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
+note: required by a bound in `FoldKeyedThen::<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter>::new`
+ --> src/compiled/pull/fold_keyed_then.rs
   |
-4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
-  |                ^^^^^^^^^^ required by this bound in `check_input`
-
-error[E0271]: expected `Drain<'_, &str>` to be an iterator that yields `(_, _)`, but it yields `&str`
- --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
-  |
-4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
-  |                ^^^^^^^^^^ expected `(_, _)`, found `&str`
-  |
-  = note:  expected tuple `(_, _)`
-          found reference `&str`
-note: required by a bound in `check_input`
- --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
-  |
-4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
-  |                ^^^^^^^^^^ required by this bound in `check_input`
+  |     St: Stream<Item = (Key, Item)>,
+  |                ^^^^^^^^^^^^^^^^^^ required by this bound in `FoldKeyedThen::<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter>::new`
+...
+  |     pub fn new(
+  |            --- required by a bound in this associated function
 
 error[E0271]: expected `new` to return `usize`, but it returns `String`
  --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:49
@@ -36,8 +25,67 @@ error[E0271]: expected `new` to return `usize`, but it returns `String`
   |                |
   |                required by a bound introduced by this call
   |
-note: required by a bound in `std::collections::hash_map::Entry::<'a, K, V>::or_insert_with`
- --> $RUST/std/src/collections/hash/map.rs
+note: required by a bound in `FoldKeyedThen::<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter>::new`
+ --> src/compiled/pull/fold_keyed_then.rs
   |
-  |     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
-  |                                          ^ required by this bound in `Entry::<'a, K, V>::or_insert_with`
+  |     InitFn: FnMut() -> Val,
+  |                        ^^^ required by this bound in `FoldKeyedThen::<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter>::new`
+...
+  |     pub fn new(
+  |            --- required by a bound in this associated function
+
+error[E0271]: type mismatch resolving `<Iter<Drain<'_, &str>> as Stream>::Item == (&str, _)`
+ --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
+  |
+4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
+  |                ^^^^^^^^^^ expected `(&str, _)`, found `&str`
+  |
+  = note:  expected tuple `(&str, _)`
+          found reference `&str`
+  = note: required for `FoldKeyedThen<'_, dfir_rs::futures::stream::Iter<std::vec::Drain<'_, &str>>, &str, usize, BuildHasherDefault<FxHasher>, fn() -> std::string::String {std::string::String::new}, {closure@$DIR/tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:62: 4:80}, {closure@$DIR/tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16: 4:26}, std::collections::hash_map::Drain<'_, &str, usize>>` to implement `Stream`
+note: required by a bound in `main::{closure#1}::{closure#0}::op_2v1__fold_keyed__loc_nopath_4_15_4_25`
+ --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
+  |
+4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
+  |                ^^^^^^^^^^ required by this bound in `op_2v1__fold_keyed__loc_nopath_4_15_4_25`
+
+error[E0271]: expected `new` to return `usize`, but it returns `String`
+ --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
+  |
+4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
+  |                ^^^^^^^^^^ expected `usize`, found `String`
+  |
+  = note: required for `FoldKeyedThen<'_, dfir_rs::futures::stream::Iter<std::vec::Drain<'_, &str>>, &str, usize, BuildHasherDefault<FxHasher>, fn() -> std::string::String {std::string::String::new}, {closure@$DIR/tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:62: 4:80}, {closure@$DIR/tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16: 4:26}, std::collections::hash_map::Drain<'_, &str, usize>>` to implement `Stream`
+note: required by a bound in `main::{closure#1}::{closure#0}::op_2v1__fold_keyed__loc_nopath_4_15_4_25`
+ --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
+  |
+4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
+  |                ^^^^^^^^^^ required by this bound in `op_2v1__fold_keyed__loc_nopath_4_15_4_25`
+
+error[E0271]: type mismatch resolving `<Iter<Drain<'_, &str>> as Stream>::Item == (&str, _)`
+ --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:7:16
+  |
+7 |             -> for_each(|(k, v)| println!("({:?}, {:?})", k, v));
+  |                ^^^^^^^^ expected `(&str, _)`, found `&str`
+  |
+  = note:  expected tuple `(&str, _)`
+          found reference `&str`
+  = note: required for `FoldKeyedThen<'_, dfir_rs::futures::stream::Iter<std::vec::Drain<'_, &str>>, &str, usize, BuildHasherDefault<FxHasher>, fn() -> std::string::String {std::string::String::new}, {closure@$DIR/tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:62: 4:80}, {closure@$DIR/tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16: 4:26}, std::collections::hash_map::Drain<'_, &str, usize>>` to implement `Stream`
+note: required by a bound in `main::{closure#1}::{closure#0}::op_2v1__fold_keyed__loc_nopath_4_15_4_25`
+ --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
+  |
+4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
+  |                ^^^^^^^^^^ required by this bound in `op_2v1__fold_keyed__loc_nopath_4_15_4_25`
+
+error[E0271]: expected `new` to return `usize`, but it returns `String`
+ --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:7:16
+  |
+7 |             -> for_each(|(k, v)| println!("({:?}, {:?})", k, v));
+  |                ^^^^^^^^ expected `usize`, found `String`
+  |
+  = note: required for `FoldKeyedThen<'_, dfir_rs::futures::stream::Iter<std::vec::Drain<'_, &str>>, &str, usize, BuildHasherDefault<FxHasher>, fn() -> std::string::String {std::string::String::new}, {closure@$DIR/tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:62: 4:80}, {closure@$DIR/tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16: 4:26}, std::collections::hash_map::Drain<'_, &str, usize>>` to implement `Stream`
+note: required by a bound in `main::{closure#1}::{closure#0}::op_2v1__fold_keyed__loc_nopath_4_15_4_25`
+ --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
+  |
+4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
+  |                ^^^^^^^^^^ required by this bound in `op_2v1__fold_keyed__loc_nopath_4_15_4_25`

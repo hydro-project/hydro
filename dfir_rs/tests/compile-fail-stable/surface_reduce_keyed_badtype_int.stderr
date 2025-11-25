@@ -1,4 +1,4 @@
-error[E0271]: expected `Drain<'_, {integer}>` to be an iterator that yields `(_, _)`, but it yields `{integer}`
+error[E0271]: type mismatch resolving `<Iter<Drain<'_, {integer}>> as Stream>::Item == (_, _)`
  --> tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:3:9
   |
 3 |         source_iter(0..1)
@@ -8,22 +8,41 @@ error[E0271]: expected `Drain<'_, {integer}>` to be an iterator that yields `(_,
   |
   = note: expected tuple `(_, _)`
               found type `{integer}`
-note: required by a bound in `check_input`
- --> tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:16
+note: required by a bound in `FoldKeyedThen::<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter>::new`
+ --> src/compiled/pull/fold_keyed_then.rs
   |
-4 |             -> fold_keyed(|| 0, |old: &mut u32, val: u32| { *old += val; })
-  |                ^^^^^^^^^^ required by this bound in `check_input`
+  |     St: Stream<Item = (Key, Item)>,
+  |                ^^^^^^^^^^^^^^^^^^ required by this bound in `FoldKeyedThen::<'a, St, Key, Val, Hasher, InitFn, AggFn, ThenFn, ThenIter>::new`
+...
+  |     pub fn new(
+  |            --- required by a bound in this associated function
 
-error[E0271]: expected `Drain<'_, {integer}>` to be an iterator that yields `(_, _)`, but it yields `{integer}`
+error[E0271]: type mismatch resolving `<Iter<Drain<'_, {integer}>> as Stream>::Item == (_, u32)`
  --> tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:16
   |
 4 |             -> fold_keyed(|| 0, |old: &mut u32, val: u32| { *old += val; })
-  |                ^^^^^^^^^^ expected `(_, _)`, found integer
+  |                ^^^^^^^^^^ expected `(_, u32)`, found integer
   |
-  = note: expected tuple `(_, _)`
+  = note: expected tuple `(_, u32)`
               found type `{integer}`
-note: required by a bound in `check_input`
+  = note: required for `FoldKeyedThen<'_, dfir_rs::futures::stream::Iter<std::vec::Drain<'_, {integer}>>, _, u32, BuildHasherDefault<FxHasher>, {closure@$DIR/tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:27: 4:29}, {closure@$DIR/tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:33: 4:58}, {closure@$DIR/tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:16: 4:26}, std::collections::hash_map::Drain<'_, _, u32>>` to implement `Stream`
+note: required by a bound in `main::{closure#1}::{closure#0}::op_2v1__fold_keyed__loc_nopath_4_15_4_25`
  --> tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:16
   |
 4 |             -> fold_keyed(|| 0, |old: &mut u32, val: u32| { *old += val; })
-  |                ^^^^^^^^^^ required by this bound in `check_input`
+  |                ^^^^^^^^^^ required by this bound in `op_2v1__fold_keyed__loc_nopath_4_15_4_25`
+
+error[E0271]: type mismatch resolving `<Iter<Drain<'_, {integer}>> as Stream>::Item == (_, u32)`
+ --> tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:5:16
+  |
+5 |             -> for_each(std::mem::drop);
+  |                ^^^^^^^^ expected `(_, u32)`, found integer
+  |
+  = note: expected tuple `(_, u32)`
+              found type `{integer}`
+  = note: required for `FoldKeyedThen<'_, dfir_rs::futures::stream::Iter<std::vec::Drain<'_, {integer}>>, _, u32, BuildHasherDefault<FxHasher>, {closure@$DIR/tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:27: 4:29}, {closure@$DIR/tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:33: 4:58}, {closure@$DIR/tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:16: 4:26}, std::collections::hash_map::Drain<'_, _, u32>>` to implement `Stream`
+note: required by a bound in `main::{closure#1}::{closure#0}::op_2v1__fold_keyed__loc_nopath_4_15_4_25`
+ --> tests/compile-fail-stable/surface_reduce_keyed_badtype_int.rs:4:16
+  |
+4 |             -> fold_keyed(|| 0, |old: &mut u32, val: u32| { *old += val; })
+  |                ^^^^^^^^^^ required by this bound in `op_2v1__fold_keyed__loc_nopath_4_15_4_25`
