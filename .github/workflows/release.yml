@@ -84,9 +84,15 @@ jobs:
           # Make sure to set this so the `gh` CLI works using our token.
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
 
-      - name: Check release.log for changelog review
+      - name: Check release.log for issues
         run: |
+          exit_code=0
           if grep "WOULD ask for review" release.log; then
-            echo "Changelog review required. Please see the line above and check RELEASING.md for more details."
-            exit 1
+              echo "Changelog review required. Please see the line above and check RELEASING.md for more information."
+              exit_code=1
           fi
+          if grep "WOULD create a new changelog" release.log; then
+              echo "A new crate is missing its CHANGELOG.md. Please see the line above and check RELEASING.md for more information."
+              exit_code=1
+          fi
+          exit $exit_code
