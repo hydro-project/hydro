@@ -2,6 +2,9 @@
 
 ## v0.5.11 (2025-11-25)
 
+<csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/>
+<csr-id-dc170e63f62e890bfd0dd054e5a930607fd67545/>
+
 ### Bug Fixes
 
  - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
@@ -21,7 +24,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release.
+ - 5 commits contributed to the release.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#1977](https://github.com/hydro-project/hydro/issues/1977), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2283](https://github.com/hydro-project/hydro/issues/2283)
 
@@ -38,6 +41,7 @@
  * **[#2283](https://github.com/hydro-project/hydro/issues/2283)**
     - Exclude crate/module in lib snapshot file names [ci-full] ([`dc170e6`](https://github.com/hydro-project/hydro/commit/dc170e63f62e890bfd0dd054e5a930607fd67545))
  * **Uncategorized**
+    - Release hydro_build_utils v0.0.1, dfir_lang v0.15.0, dfir_macro v0.15.0, variadics v0.0.10, sinktools v0.0.1, hydro_deploy_integration v0.15.0, lattices_macro v0.5.11, variadics_macro v0.6.2, lattices v0.6.2, multiplatform_test v0.6.0, dfir_rs v0.15.0, copy_span v0.1.0, hydro_deploy v0.15.0, hydro_lang v0.15.0, hydro_std v0.15.0, safety bump 5 crates ([`092de25`](https://github.com/hydro-project/hydro/commit/092de252238dfb9fa6b01e777c6dd8bf9db93398))
     - Ensure `hydro_build_utils` is published in the correct order ([`806a623`](https://github.com/hydro-project/hydro/commit/806a6239a649e24fe10c3c90dd30bd18debd41d2))
 </details>
 

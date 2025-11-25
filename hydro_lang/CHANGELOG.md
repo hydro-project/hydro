@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.15.0 (2025-11-25)
 
+<csr-id-d22507cf6064e4b9f6a02404d58f644cde3dcf0b/>
+<csr-id-623ed9ea41a04b442a44f85208ca51e22fb743b6/>
+<csr-id-bcef0557add258930a76900d6f2ce641c7f9b148/>
+<csr-id-efce466bd1704e8a80c7bdce31c798eba9b2fea1/>
+<csr-id-8f6c478b774c017b5d3fdbf2beea3d9427e04a03/>
+<csr-id-4922300dbdd3a5290e8251a8e5c9eda4291fdb01/>
+<csr-id-879b249c9e84c74befb11b7e3cab157d52eb7c23/>
+<csr-id-2bca9dbfe48a0f1ec46aabeeca0242475396607c/>
+<csr-id-c18fa3525afa9998adf721f7deaa982ef758fffa/>
+<csr-id-e84bd8083b5df395adedc6b4115dd2f33ce84865/>
+<csr-id-fabb3ccfc1365a9f94ce310b3a29684a18c73e50/>
+<csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/>
+<csr-id-e9ee6cfad870c54c05e9dccc45bdbfdb43aea362/>
+<csr-id-891a25d3f72b2fa10a5154940624a146bb460ed7/>
+<csr-id-a65893a65bc43cb13c516c95a8d86ad424446565/>
+<csr-id-0abd1ce44df16353047a416b235aa79f070ace2c/>
+<csr-id-10f5948a95651a19245be188abc0783d9431d8a7/>
+<csr-id-1fbd6e05d782388aa3542023b685172e6275baf8/>
+<csr-id-0e2698dd4e070951dbda6f87bbfbeee3044fea22/>
+<csr-id-a4bdf399f90581f409c89a72ae960405998fb33b/>
+<csr-id-cea261dd8b585a3c30a889650c1aa29ed0d54ad9/>
+<csr-id-224b2db7dc7e7c5cbd4c6ce024e0410957ce6747/>
+<csr-id-1f5826d52cc2db0efebc4a1f76cc3792e5dab04d/>
+<csr-id-aff7be602f35d12f910eb559a89b17421e448844/>
+<csr-id-6675bcaeb61152115a9bca3e009db217c42f72cf/>
+<csr-id-fc67ee7b66a554a5041495d36912c31974eb34e4/>
+<csr-id-584ebf1a6400953fcbd41b53c22483ecf5d81638/>
+<csr-id-790d526bb608c9022cacac0a528a56e3ccf53bf2/>
+<csr-id-f829a6ac160055b2879e532095923b7dcc970352/>
+<csr-id-920d9a394223a218ccbc077de61e2135886a2b15/>
+<csr-id-e842c25b32df6a09f8507e7530b7be3a963e1ea0/>
+<csr-id-6b4eafe07b5739581fd9d17364893ef823b8a6dc/>
+<csr-id-cfc73d9cd100a92192481b0f5612398b8b8fea76/>
+<csr-id-0be5729dd87a91a70001f88283b380d3da8df7d0/>
+<csr-id-1688bc9c21ae54bf8ae3813824c49aa9819d886b/>
+<csr-id-1ac529525ae9ac4ac47575787d436e9513d8c0aa/>
+<csr-id-868b00e0ab1fba4934cecd879e4c7481c04c13dc/>
+<csr-id-09ff1816be22fee9498ecd5f9b9e59109c31b2bf/>
+<csr-id-de04ee7eb7c9917f302fc22c362319b58ecf913b/>
+<csr-id-ea25d65f7167193f3ec485950730e8e62606f58b/>
+<csr-id-057192afde1373caedbbfc24516c28a96d12928c/>
+<csr-id-1c135152168c95199f887a8e6d619b12efbcf067/>
+<csr-id-caffe98b371f3887db0e19b0a3aba2fb1b4418dd/>
+<csr-id-def348cfcba4b01b308c5eeed81ba4d9e0384fd8/>
+<csr-id-2e2cd770fd18cd219ec1acdd2c74d46a5ee1b2de/>
+<csr-id-dc170e63f62e890bfd0dd054e5a930607fd67545/>
+<csr-id-b92fcd6552d7d278ebbc14deb2f35e93f30bb636/>
+<csr-id-6ec4299e25f7e9bd9e564a1c75d6f74e33c8c619/>
+<csr-id-ee3cd96ed2c482c0ff97df8cc4276ef150da6a20/>
+<csr-id-b256cba932a8d6d7a6be7b1c98c2f8c20b299375/>
+<csr-id-fa4e9d9914ed52aa5a7237c32a0dc57d713ec14a/>
+<csr-id-bd2ccb680f335a9a01264eda658c8f0e39215c49/>
+<csr-id-a4d8af603e6ad14659d1d43ca168495c883a58eb/>
+<csr-id-5778e00be619c4bfb913a39080adabb71a48a0f7/>
+<csr-id-537309f9aac44498aa617c8517fdbc21616cbebf/>
+<csr-id-13726f66e8befbe8c0aa808ef33be8622656467e/>
+<csr-id-5f8a4da212eba8b673f9c7a464c9e92d7c0602cd/>
+<csr-id-69754b503dc9ac32e8f9ec6fb14a0fac4f8930ce/>
+<csr-id-4bf1c05583c838e7e4d183382fd72743402f889d/>
+<csr-id-f71194766394e51791872291b46c86655c318bc8/>
+<csr-id-3d4bee4cfd19a57ea6f2dcfb161a48ad2ebd5255/>
+<csr-id-27167e54b6ad04ba5ad7cc08d2ef4060d30e99ff/>
+<csr-id-05145bf191bf0fcc794d282c3b18c0bd378a20ac/>
+<csr-id-4925e2c77a8e57d45d200c98a31859571a04d150/>
+<csr-id-7a80803561f1fc423e8e7872ce18718f261a0c1c/>
+<csr-id-b786c0f82f4f14e7285f1e2f5797e1e65dbc8a3d/>
+<csr-id-628c1c870f1833dd05b3f57ee3e2e1235183cecb/>
+<csr-id-1c26bc7899f29cb5b75446381ac5545f7ce017d8/>
+<csr-id-381be86c8729403d60575bbd7297b852b6b09ec0/>
+<csr-id-0fa650ab2e6cae0d7cce08ef63266544767f68a0/>
+<csr-id-804f9955dfc9ea64cb0f5177bcda5b9347fafe80/>
+<csr-id-97b879db93081b9dda3eecc834d06b55e5636030/>
+<csr-id-1a344a98fce99d004e0ba86a67c7509d807c37bb/>
+
 ### Chore
 
  - <csr-id-d22507cf6064e4b9f6a02404d58f644cde3dcf0b/> update to rust 1.91.1
@@ -121,10 +195,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    ### 1. JSON Format Migration
    - **Replaced** legacy ReactFlow-specific format with generic JSON schema
-   - **Added** comprehensive semantic tagging system for nodes and edges
-   - **Enhanced** edge styling with semantic-to-visual property mappings
-   
-   ### 2. Semantic Tagging System
+- **Added** comprehensive semantic tagging system for nodes and edges
+- **Enhanced** edge styling with semantic-to-visual property mappings
+
+### 2. Semantic Tagging System
    - **Edges**: `Network/Local`, `Bounded/Unbounded`, `TotalOrder/NoOrder`,
    `Keyed`, collection types (`Stream`, `Singleton`, `Optional`),
    `Persistent`, `Cycle`
@@ -133,7 +207,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - **Cross-location detection**: Automatic `Network` tag for edges
    crossing process/cluster boundaries
    
-   ### 3. Label Handling Improvements
+
+### 3. Label Handling Improvements
    - **Three label variants**: `label` (config-aware), `shortLabel` (for
    compact UI), `fullLabel` (detailed with context)
    - **Enhanced full labels**: Added contextual descriptions for common
@@ -141,7 +216,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - **UI toggle support**: Enables switching between compact and detailed
    labels
    
-   ### 4. Hierarchy Enhancements
+
+### 4. Hierarchy Enhancements
    - **Multiple hierarchy options**: Location-based (Process/Cluster) and
    Backtrace-based
    - **Backtrace improvements**: Path deduplication, sorted children,
@@ -149,7 +225,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - **Deterministic ordering**: All hierarchies and node assignments
    sorted for consistent output
    
-   ### 5. Hydroscope Renaming
+
+### 5. Hydroscope Renaming
    - **Renamed** ReactFlow references to Hydroscope (the new
    docs-integrated visualizer)
    - **Updated API methods**: `reactflow_string/to_file/to_browser` →
@@ -157,16 +234,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - **Added** new docs page at `/hydroscope` with interactive
    visualization
    
-   ### 6. Test Improvements
+
+### 6. Test Improvements
    - **New tests**: Deterministic output validation, network tagging
    verification
    - **Refactored tests**: URL generation tests now validate structure
    rather than brittle exact lengths
    - **Enhanced coverage**: Label field presence, semantic tag correctness
    
-   ## Files Changed (36 files, +17,298/-13,354 lines)
-   
-   ### Core Graph Module
+
+## Files Changed (36 files, +17,298/-13,354 lines)
+
+### Core Graph Module
    - `hydro_lang/src/graph/json.rs` - New JSON exporter with semantic tags
    and deterministic output (964 lines)
    - `hydro_lang/src/graph/json_test.rs` - Comprehensive test suite (207
@@ -184,39 +263,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - `hydro_lang/src/graph/template.rs` - Minimal template for backward
    compatibility
    
-   ### Documentation & Visualization
-   - `docs/src/pages/hydroscope.tsx` - New interactive visualizer page (150
+
+### Documentation
+
+- `docs/src/pages/hydroscope.tsx` - New interactive visualizer page (150
    lines)
-   - `docs/package.json` - Updated dependencies for visualizer
-   - `docs/docusaurus.config.js` - Configuration for Hydroscope page
-   
-   ### API Updates
+- `docs/package.json` - Updated dependencies for visualizer
+- `docs/docusaurus.config.js` - Configuration for Hydroscope page
+ - <csr-id-0fd3ee774593621144f167ca9942d80ea256bc79/> update crate description
+ - <csr-id-36951f957ff1f165e84ce7d1dc48c3f1e83caebd/> keyed stream docs
+ - <csr-id-5a7049dbedefa6359bcf4e40350591851d93a673/> set up lints so we can find missing docs
+ - <csr-id-83c7ff61536c81ea527180411889b9eb643658d1/> docs for `test_util` module
+ - <csr-id-3a3cf6e1fcd710677706def1975114954c6be8a1/> docs for `backtrace` module
+   Also cleans up the API interface, adds the `colno` field, and a unit
+   test showing that we can precisely identify each element of chained
+   operators.
+ - <csr-id-31c87e3dc310c89af7d625f64101113332e0cc0d/> add `doc(cfg(...))` annotation for `graph` module
+ - <csr-id-9c69c45d10e7061f45eb648573bd29a9885132d1/> document the `nondet` module
+ - <csr-id-6c29e98b49b18f5134ca898ee70a4e5a75049d8f/> start on docs for live collections
+ - <csr-id-520cdd9f4ae21c4b70ed279a56e9acd14c572b06/> polish for networking APIs
+ - <csr-id-eb049d6a7cd5df5762174d1ab8b7eff286975fa1/> keyed variants of networking APIs, send external
+ - <csr-id-a8dedb3d2e9d62a6e6f14a11e902c0bc8af97359/> `runtime_context` module
+ - <csr-id-338785e707ab378c086cbf55a49e74dc9fc2b2d5/> avoid rustfmt thrashing
+ - <csr-id-947910e104429b66fe1d7a85b06040197a4b19a3/> initial docs for `deploy` module
+ - <csr-id-84b71ba542de72df877f009cb0c797eb776a0352/> rustdoc for `KeyedStream::chain`
+ - <csr-id-2a80162140b1b4a7f6f3e605893c82daff2bd104/> rustdoc for `Stream::collect_vec`
+ - <csr-id-ce07ec2d9baef0293f9186c335958fdbcc524502/> struct docs for `Singleton` / `Optional`, and polish others
+ - <csr-id-fb5baec61063b3064116d17a2c9f62531478f677/> add basic docs around atomics for stream / keyed streams / singleton / optional
+ - <csr-id-1ab3fcc117ba9eb6690054a0aa58d071f323fdde/> `Singleton::zip` and `Optional::zip`
+ - <csr-id-b067f84b91c217b41504dfc79b52c5ceb48dcd5d/> `Singleton/Optional::latest*` and `ZipResult`
+ - <csr-id-7633b239c55f4d6bf91db70cda8a86839d0781c6/> `Singleton/Optional::all_ticks*`
+ - <csr-id-38993338dc36378c5ff025ab4b19020ff6817c36/> `Singleton/Optional::into_stream`
+ - <csr-id-c3fcaab754ec185ad7a0f1a5b476d909908ba20a/> start on docs for `KeyedSingleton`
+ - <csr-id-8f21a256e22f46f3a1e93233284a848ec4019066/> remaining `KeyedSingleton`-specific APIs
+   Will document all the `defer_tick`s in a separate PR.
+ - <csr-id-e456e66c1f0641c88909a54fe4b4c239337069d1/> `Stream::persist` rustdoc
+ - <csr-id-48c42c58d85273d6267dd84a4dd80b05a9b846bb/> remaining `Optional`-specific APIs
+ - <csr-id-3fd84aa8812fa027db293727d8e304708db66916/> new template and walkthrough
+ - <csr-id-aaa0ec1f9e6e359faec8ad8ecd304bdd637e348f/> single counter tutorial and prepare code for later tutorials
+
+### API Updates
    - `hydro_lang/src/compile/built.rs` - Renamed methods to use
    `hydroscope_*` prefix
    
-   ### Examples
+
+### Examples
    - Updated 12 example files with `#[hydro::main]` annotations for graph
    generation
    
-   ## Testing
+
+## Testing
    - ✅ All new tests pass
    - ✅ Deterministic output validated (same graph → identical JSON)
    - ✅ Network tagging verified for cross-location edges
    - ✅ Library builds successfully: `cargo build -p hydro_lang --features
    viz --lib`
    
-   ## Migration Path
+
+## Migration Path
    This PR maintains backward compatibility:
    - Old `BuiltFlow` API methods still available (deprecated internally)
    - Examples updated but old code will continue to work
    - JSON format is generic and can support future visualization tools
    
-   ## Related Issues
+
+## Related Issues
    - Fixes issues with non-deterministic graph output
    - Improves graph debugging experience
    - Enables docs-integrated visualization workflow
    
-   ## Checklist
+
+## Checklist
    - [x] Code compiles and tests pass
    - [x] New tests added for deterministic output and semantic tags
    - [x] API method names updated for consistency
@@ -744,7 +861,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 150 commits contributed to the release.
+ - 151 commits contributed to the release.
  - 150 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 150 unique issues were worked on: [#1957](https://github.com/hydro-project/hydro/issues/1957), [#1966](https://github.com/hydro-project/hydro/issues/1966), [#1971](https://github.com/hydro-project/hydro/issues/1971), [#1974](https://github.com/hydro-project/hydro/issues/1974), [#1975](https://github.com/hydro-project/hydro/issues/1975), [#1978](https://github.com/hydro-project/hydro/issues/1978), [#1979](https://github.com/hydro-project/hydro/issues/1979), [#1981](https://github.com/hydro-project/hydro/issues/1981), [#1982](https://github.com/hydro-project/hydro/issues/1982), [#1983](https://github.com/hydro-project/hydro/issues/1983), [#1984](https://github.com/hydro-project/hydro/issues/1984), [#1985](https://github.com/hydro-project/hydro/issues/1985), [#1990](https://github.com/hydro-project/hydro/issues/1990), [#1992](https://github.com/hydro-project/hydro/issues/1992), [#1996](https://github.com/hydro-project/hydro/issues/1996), [#2011](https://github.com/hydro-project/hydro/issues/2011), [#2016](https://github.com/hydro-project/hydro/issues/2016), [#2024](https://github.com/hydro-project/hydro/issues/2024), [#2026](https://github.com/hydro-project/hydro/issues/2026), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2032](https://github.com/hydro-project/hydro/issues/2032), [#2033](https://github.com/hydro-project/hydro/issues/2033), [#2042](https://github.com/hydro-project/hydro/issues/2042), [#2047](https://github.com/hydro-project/hydro/issues/2047), [#2049](https://github.com/hydro-project/hydro/issues/2049), [#2050](https://github.com/hydro-project/hydro/issues/2050), [#2053](https://github.com/hydro-project/hydro/issues/2053), [#2056](https://github.com/hydro-project/hydro/issues/2056), [#2058](https://github.com/hydro-project/hydro/issues/2058), [#2060](https://github.com/hydro-project/hydro/issues/2060), [#2063](https://github.com/hydro-project/hydro/issues/2063), [#2065](https://github.com/hydro-project/hydro/issues/2065), [#2066](https://github.com/hydro-project/hydro/issues/2066), [#2067](https://github.com/hydro-project/hydro/issues/2067), [#2068](https://github.com/hydro-project/hydro/issues/2068), [#2069](https://github.com/hydro-project/hydro/issues/2069), [#2071](https://github.com/hydro-project/hydro/issues/2071), [#2072](https://github.com/hydro-project/hydro/issues/2072), [#2073](https://github.com/hydro-project/hydro/issues/2073), [#2074](https://github.com/hydro-project/hydro/issues/2074), [#2075](https://github.com/hydro-project/hydro/issues/2075), [#2076](https://github.com/hydro-project/hydro/issues/2076), [#2078](https://github.com/hydro-project/hydro/issues/2078), [#2079](https://github.com/hydro-project/hydro/issues/2079), [#2081](https://github.com/hydro-project/hydro/issues/2081), [#2082](https://github.com/hydro-project/hydro/issues/2082), [#2085](https://github.com/hydro-project/hydro/issues/2085), [#2092](https://github.com/hydro-project/hydro/issues/2092), [#2093](https://github.com/hydro-project/hydro/issues/2093), [#2094](https://github.com/hydro-project/hydro/issues/2094), [#2095](https://github.com/hydro-project/hydro/issues/2095), [#2096](https://github.com/hydro-project/hydro/issues/2096), [#2097](https://github.com/hydro-project/hydro/issues/2097), [#2098](https://github.com/hydro-project/hydro/issues/2098), [#2099](https://github.com/hydro-project/hydro/issues/2099), [#2100](https://github.com/hydro-project/hydro/issues/2100), [#2101](https://github.com/hydro-project/hydro/issues/2101), [#2102](https://github.com/hydro-project/hydro/issues/2102), [#2103](https://github.com/hydro-project/hydro/issues/2103), [#2104](https://github.com/hydro-project/hydro/issues/2104), [#2105](https://github.com/hydro-project/hydro/issues/2105), [#2106](https://github.com/hydro-project/hydro/issues/2106), [#2107](https://github.com/hydro-project/hydro/issues/2107), [#2108](https://github.com/hydro-project/hydro/issues/2108), [#2111](https://github.com/hydro-project/hydro/issues/2111), [#2112](https://github.com/hydro-project/hydro/issues/2112), [#2114](https://github.com/hydro-project/hydro/issues/2114), [#2115](https://github.com/hydro-project/hydro/issues/2115), [#2116](https://github.com/hydro-project/hydro/issues/2116), [#2117](https://github.com/hydro-project/hydro/issues/2117), [#2118](https://github.com/hydro-project/hydro/issues/2118), [#2120](https://github.com/hydro-project/hydro/issues/2120), [#2122](https://github.com/hydro-project/hydro/issues/2122), [#2123](https://github.com/hydro-project/hydro/issues/2123), [#2124](https://github.com/hydro-project/hydro/issues/2124), [#2125](https://github.com/hydro-project/hydro/issues/2125), [#2126](https://github.com/hydro-project/hydro/issues/2126), [#2127](https://github.com/hydro-project/hydro/issues/2127), [#2129](https://github.com/hydro-project/hydro/issues/2129), [#2131](https://github.com/hydro-project/hydro/issues/2131), [#2136](https://github.com/hydro-project/hydro/issues/2136), [#2137](https://github.com/hydro-project/hydro/issues/2137), [#2140](https://github.com/hydro-project/hydro/issues/2140), [#2144](https://github.com/hydro-project/hydro/issues/2144), [#2145](https://github.com/hydro-project/hydro/issues/2145), [#2146](https://github.com/hydro-project/hydro/issues/2146), [#2148](https://github.com/hydro-project/hydro/issues/2148), [#2149](https://github.com/hydro-project/hydro/issues/2149), [#2150](https://github.com/hydro-project/hydro/issues/2150), [#2151](https://github.com/hydro-project/hydro/issues/2151), [#2156](https://github.com/hydro-project/hydro/issues/2156), [#2158](https://github.com/hydro-project/hydro/issues/2158), [#2164](https://github.com/hydro-project/hydro/issues/2164), [#2168](https://github.com/hydro-project/hydro/issues/2168), [#2169](https://github.com/hydro-project/hydro/issues/2169), [#2170](https://github.com/hydro-project/hydro/issues/2170), [#2171](https://github.com/hydro-project/hydro/issues/2171), [#2172](https://github.com/hydro-project/hydro/issues/2172), [#2173](https://github.com/hydro-project/hydro/issues/2173), [#2180](https://github.com/hydro-project/hydro/issues/2180), [#2181](https://github.com/hydro-project/hydro/issues/2181), [#2183](https://github.com/hydro-project/hydro/issues/2183), [#2184](https://github.com/hydro-project/hydro/issues/2184), [#2187](https://github.com/hydro-project/hydro/issues/2187), [#2188](https://github.com/hydro-project/hydro/issues/2188), [#2190](https://github.com/hydro-project/hydro/issues/2190), [#2192](https://github.com/hydro-project/hydro/issues/2192), [#2194](https://github.com/hydro-project/hydro/issues/2194), [#2196](https://github.com/hydro-project/hydro/issues/2196), [#2204](https://github.com/hydro-project/hydro/issues/2204), [#2205](https://github.com/hydro-project/hydro/issues/2205), [#2209](https://github.com/hydro-project/hydro/issues/2209), [#2210](https://github.com/hydro-project/hydro/issues/2210), [#2211](https://github.com/hydro-project/hydro/issues/2211), [#2212](https://github.com/hydro-project/hydro/issues/2212), [#2213](https://github.com/hydro-project/hydro/issues/2213), [#2214](https://github.com/hydro-project/hydro/issues/2214), [#2215](https://github.com/hydro-project/hydro/issues/2215), [#2216](https://github.com/hydro-project/hydro/issues/2216), [#2217](https://github.com/hydro-project/hydro/issues/2217), [#2218](https://github.com/hydro-project/hydro/issues/2218), [#2219](https://github.com/hydro-project/hydro/issues/2219), [#2225](https://github.com/hydro-project/hydro/issues/2225), [#2227](https://github.com/hydro-project/hydro/issues/2227), [#2229](https://github.com/hydro-project/hydro/issues/2229), [#2231](https://github.com/hydro-project/hydro/issues/2231), [#2243](https://github.com/hydro-project/hydro/issues/2243), [#2246](https://github.com/hydro-project/hydro/issues/2246), [#2247](https://github.com/hydro-project/hydro/issues/2247), [#2253](https://github.com/hydro-project/hydro/issues/2253), [#2255](https://github.com/hydro-project/hydro/issues/2255), [#2256](https://github.com/hydro-project/hydro/issues/2256), [#2257](https://github.com/hydro-project/hydro/issues/2257), [#2261](https://github.com/hydro-project/hydro/issues/2261), [#2262](https://github.com/hydro-project/hydro/issues/2262), [#2265](https://github.com/hydro-project/hydro/issues/2265), [#2272](https://github.com/hydro-project/hydro/issues/2272), [#2273](https://github.com/hydro-project/hydro/issues/2273), [#2279](https://github.com/hydro-project/hydro/issues/2279), [#2283](https://github.com/hydro-project/hydro/issues/2283), [#2287](https://github.com/hydro-project/hydro/issues/2287), [#2288](https://github.com/hydro-project/hydro/issues/2288), [#2289](https://github.com/hydro-project/hydro/issues/2289), [#2295](https://github.com/hydro-project/hydro/issues/2295), [#2296](https://github.com/hydro-project/hydro/issues/2296), [#2298](https://github.com/hydro-project/hydro/issues/2298), [#2304](https://github.com/hydro-project/hydro/issues/2304), [#2306](https://github.com/hydro-project/hydro/issues/2306), [#2313](https://github.com/hydro-project/hydro/issues/2313), [#2319](https://github.com/hydro-project/hydro/issues/2319)
 
@@ -1054,6 +1171,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Don't reference dfir_rs in deploy_runtime ([`8027431`](https://github.com/hydro-project/hydro/commit/80274315e135fc6b87d50e3111821329eb9e2ef2))
  * **[#2319](https://github.com/hydro-project/hydro/issues/2319)**
     - Move KeyedStream trait constraints from impl to methods ([`2b0c4d8`](https://github.com/hydro-project/hydro/commit/2b0c4d829d81312b546d9b0af8ab0158a2a678a6))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.0.1, dfir_lang v0.15.0, dfir_macro v0.15.0, variadics v0.0.10, sinktools v0.0.1, hydro_deploy_integration v0.15.0, lattices_macro v0.5.11, variadics_macro v0.6.2, lattices v0.6.2, multiplatform_test v0.6.0, dfir_rs v0.15.0, copy_span v0.1.0, hydro_deploy v0.15.0, hydro_lang v0.15.0, hydro_std v0.15.0, safety bump 5 crates ([`092de25`](https://github.com/hydro-project/hydro/commit/092de252238dfb9fa6b01e777c6dd8bf9db93398))
 </details>
 
 ## 0.14.0 (2025-07-31)
@@ -2250,6 +2369,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * #1486
    * __->__ #1485
 
+<csr-id-dff2a40669736014349cf12744d6a057a7992e11/> start splitting out leader election into a separate module
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1485).
+   * #1493
+   * #1492
+   * #1489
+   * #1488
+   * #1487
+   * #1486
+   * __->__ #1485
+
 ### New Features
 
  - <csr-id-baedf23eaa056bc0dad8331d116bb71176764206/> improve quickstart ergonomics
@@ -2311,6 +2444,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-38b17cd977fb6c00ddc37e7a5b30e45dba17329e/> simplify latency calculations
  - <csr-id-8b7b1c60fd33b78f9a4b0873bbbd150260ae2ad5/> complete split into leader election and sequencing phases
  - <csr-id-dff2a40669736014349cf12744d6a057a7992e11/> start splitting out leader election into a separate module
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1485).
+   * #1493
+   * #1492
+   * #1489
+   * #1488
+   * #1487
+   * #1486
+   * __->__ #1485
+ - <csr-id-1b18b358c87caa37a6519612131c8674653a2407/> simplify `persist_pullup` code
+   Instead of matching on `&mut` and juggling ownership, instead match on
+   the owned node and always replaced `*node = new_node` (sometimes itself)
+ - <csr-id-c752affc2ee2c5d82d19dd992f6a89b7070b8773/> use max and min in Paxos and make client generic over ballots
+
+<csr-id-dff2a40669736014349cf12744d6a057a7992e11/> start splitting out leader election into a separate module
    ---
    [//]: # (BEGIN SAPLING FOOTER)
    Stack created with [Sapling](https://sapling-scm.com). Best reviewed
@@ -3577,6 +3728,144 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * #1394
    * __->__ #1377
 
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
 ### Refactor (BREAKING)
 
  - <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
@@ -4593,6 +4882,154 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * #1394
    * __->__ #1377
 
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
 ### Documentation
 
  - <csr-id-f5f1eb0c612f5c0c1752360d972ef6853c5e12f0/> cleanup doc comments for clippy latest
@@ -4649,39 +5086,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * __->__ #1404
 * #1398
 * __->__ #1404
- - <csr-id-1aeacb212227f654e8f0cdc8a59816a68f059177/> rewrite IR in place to avoid stack overflow and disable cloning
-   Cloning was unsafe because values behind a `Rc<RefCell<...>>` in the
-   case of tee would be entangled with the old IR.
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1404).
-   * #1405
-   * #1398
-   * __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
 * #1398
 * __->__ #1404
  - <csr-id-1aeacb212227f654e8f0cdc8a59816a68f059177/> rewrite IR in place to avoid stack overflow and disable cloning
@@ -4695,6 +5099,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * #1405
    * #1398
    * __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+ - <csr-id-1aeacb212227f654e8f0cdc8a59816a68f059177/> rewrite IR in place to avoid stack overflow and disable cloning
+   Cloning was unsafe because values behind a `Rc<RefCell<...>>` in the
+   case of tee would be entangled with the old IR.
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1404).
+   * #1405
+   * #1398
+   * __->__ #1404
+* #1398
+* __->__ #1404
 * #1398
 * __->__ #1404
 * #1398
@@ -5767,6 +6210,165 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * #1395
    * __->__ #1394
  - <csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+ - <csr-id-09d6d44eafc866881e73719813fe9edeb49ca2a6/> start rearranging stages of flow compilation to prepare for trybuild approach
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
    ---
    [//]: # (BEGIN SAPLING FOOTER)
    Stack created with [Sapling](https://sapling-scm.com). Best reviewed

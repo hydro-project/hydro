@@ -2,6 +2,24 @@
 
 ## v0.15.0 (2025-11-25)
 
+<csr-id-0be5729dd87a91a70001f88283b380d3da8df7d0/>
+<csr-id-057192afde1373caedbbfc24516c28a96d12928c/>
+<csr-id-2e2cd770fd18cd219ec1acdd2c74d46a5ee1b2de/>
+<csr-id-1fc751515d5fd4b6ec07fec8e83b4aff70b3acca/>
+<csr-id-b256cba932a8d6d7a6be7b1c98c2f8c20b299375/>
+<csr-id-fa4e9d9914ed52aa5a7237c32a0dc57d713ec14a/>
+<csr-id-a4d8af603e6ad14659d1d43ca168495c883a58eb/>
+<csr-id-537309f9aac44498aa617c8517fdbc21616cbebf/>
+<csr-id-5f8a4da212eba8b673f9c7a464c9e92d7c0602cd/>
+<csr-id-4bf1c05583c838e7e4d183382fd72743402f889d/>
+<csr-id-05145bf191bf0fcc794d282c3b18c0bd378a20ac/>
+<csr-id-4925e2c77a8e57d45d200c98a31859571a04d150/>
+<csr-id-628c1c870f1833dd05b3f57ee3e2e1235183cecb/>
+<csr-id-1c26bc7899f29cb5b75446381ac5545f7ce017d8/>
+<csr-id-381be86c8729403d60575bbd7297b852b6b09ec0/>
+<csr-id-804f9955dfc9ea64cb0f5177bcda5b9347fafe80/>
+<csr-id-1a344a98fce99d004e0ba86a67c7509d807c37bb/>
+
 ### Documentation
 
  - <csr-id-3fd84aa8812fa027db293727d8e304708db66916/> new template and walkthrough
@@ -277,7 +295,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 36 commits contributed to the release.
+ - 37 commits contributed to the release.
  - 36 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 36 unique issues were worked on: [#1970](https://github.com/hydro-project/hydro/issues/1970), [#1975](https://github.com/hydro-project/hydro/issues/1975), [#1983](https://github.com/hydro-project/hydro/issues/1983), [#1984](https://github.com/hydro-project/hydro/issues/1984), [#1990](https://github.com/hydro-project/hydro/issues/1990), [#1995](https://github.com/hydro-project/hydro/issues/1995), [#2011](https://github.com/hydro-project/hydro/issues/2011), [#2016](https://github.com/hydro-project/hydro/issues/2016), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2032](https://github.com/hydro-project/hydro/issues/2032), [#2033](https://github.com/hydro-project/hydro/issues/2033), [#2035](https://github.com/hydro-project/hydro/issues/2035), [#2060](https://github.com/hydro-project/hydro/issues/2060), [#2067](https://github.com/hydro-project/hydro/issues/2067), [#2073](https://github.com/hydro-project/hydro/issues/2073), [#2075](https://github.com/hydro-project/hydro/issues/2075), [#2099](https://github.com/hydro-project/hydro/issues/2099), [#2104](https://github.com/hydro-project/hydro/issues/2104), [#2108](https://github.com/hydro-project/hydro/issues/2108), [#2111](https://github.com/hydro-project/hydro/issues/2111), [#2135](https://github.com/hydro-project/hydro/issues/2135), [#2136](https://github.com/hydro-project/hydro/issues/2136), [#2140](https://github.com/hydro-project/hydro/issues/2140), [#2158](https://github.com/hydro-project/hydro/issues/2158), [#2172](https://github.com/hydro-project/hydro/issues/2172), [#2173](https://github.com/hydro-project/hydro/issues/2173), [#2181](https://github.com/hydro-project/hydro/issues/2181), [#2209](https://github.com/hydro-project/hydro/issues/2209), [#2219](https://github.com/hydro-project/hydro/issues/2219), [#2227](https://github.com/hydro-project/hydro/issues/2227), [#2243](https://github.com/hydro-project/hydro/issues/2243), [#2256](https://github.com/hydro-project/hydro/issues/2256), [#2265](https://github.com/hydro-project/hydro/issues/2265), [#2272](https://github.com/hydro-project/hydro/issues/2272), [#2293](https://github.com/hydro-project/hydro/issues/2293), [#2304](https://github.com/hydro-project/hydro/issues/2304)
 
@@ -359,6 +377,8 @@
     - Add test for collecting unordered quorum ([`1fc7515`](https://github.com/hydro-project/hydro/commit/1fc751515d5fd4b6ec07fec8e83b4aff70b3acca))
  * **[#2304](https://github.com/hydro-project/hydro/issues/2304)**
     - Add specialized `sim_input` / `sim_output` to reduce simulation boilerplate ([`6b1d66a`](https://github.com/hydro-project/hydro/commit/6b1d66aa61056ffb4dd2896e98288489e64d654f))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.0.1, dfir_lang v0.15.0, dfir_macro v0.15.0, variadics v0.0.10, sinktools v0.0.1, hydro_deploy_integration v0.15.0, lattices_macro v0.5.11, variadics_macro v0.6.2, lattices v0.6.2, multiplatform_test v0.6.0, dfir_rs v0.15.0, copy_span v0.1.0, hydro_deploy v0.15.0, hydro_lang v0.15.0, hydro_std v0.15.0, safety bump 5 crates ([`092de25`](https://github.com/hydro-project/hydro/commit/092de252238dfb9fa6b01e777c6dd8bf9db93398))
 </details>
 
 ## v0.14.0 (2025-07-31)

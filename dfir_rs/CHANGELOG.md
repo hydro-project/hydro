@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.15.0 (2025-11-25)
 
+<csr-id-d22507cf6064e4b9f6a02404d58f644cde3dcf0b/>
+<csr-id-623ed9ea41a04b442a44f85208ca51e22fb743b6/>
+<csr-id-bcef0557add258930a76900d6f2ce641c7f9b148/>
+<csr-id-e5d90803ae16993ac3db24a7795d0864abc4ac52/>
+<csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/>
+<csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/>
+<csr-id-f4a26b3268a3fa4a6e907d33a3e5ac7529188f20/>
+<csr-id-356292ed01d8ffa07838687f2e1e8e2b682cbc26/>
+<csr-id-562d1081abef29175a8dc0bb7c3934114f6939e1/>
+<csr-id-9d943ac294a8735452f8535ad13767c60ce46ec7/>
+<csr-id-8535940a34dba130156eb3605ae56483586bb62a/>
+<csr-id-29027701471205a7c43e26ef2f8cee98663c578e/>
+
 ### Chore
 
  - <csr-id-d22507cf6064e4b9f6a02404d58f644cde3dcf0b/> update to rust 1.91.1
@@ -36,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+<csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/>
+<csr-id-669aefa679df02369ac51b2aa753a5908a76897b/>
+<csr-id-bdc54eba06f75c29f9393c69da6c07db0d602976/>
+<csr-id-d0570728bbdeae63571936d00d087673924842c3/>
+
  - <csr-id-dd62edfed25e52669d0f9169cfcefbe278cbaf65/> fix code generation for `scan` as a push-operator
  - <csr-id-1b818e321805f3134b66359fc0a6c70599a71422/> update backtrace snapshots for Rust 1.90 and remove unused types
    The line number of `core::ops::function::FnOnce::call_once` in the
@@ -43,18 +61,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-09c07701f03862f3a755420c202cacd5218cd114/> remove python udf support
  - <csr-id-4e84a3fc03af1eacf8af467e52407121f3b6ec9e/> [ci-full] fix ci issues
    - run docs/website on pr
-   - use bash by default on windows
-   - build website with nightly
-   - increase test timeout to 45m
-   - run docs with nightly
-   - make rustfmt use native line endings instead of unix
-   - fix compile-fail nightly stderr outputs
-   - add the ability to include [ci-full] into the body/title of a PR to
+- use bash by default on windows
+- build website with nightly
+- increase test timeout to 45m
+- run docs with nightly
+- make rustfmt use native line endings instead of unix
+- fix compile-fail nightly stderr outputs
+- add the ability to include [ci-full] into the body/title of a PR to
    get it to run the full stable/nightly linux/windows test matrix.
- - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
- - <csr-id-669aefa679df02369ac51b2aa753a5908a76897b/> add trybuild stable tests
- - <csr-id-bdc54eba06f75c29f9393c69da6c07db0d602976/> snapshot tests don't depend on the parent crate name
- - <csr-id-d0570728bbdeae63571936d00d087673924842c3/> check dfir warnings in tests on non-nightly
 
 ### Other
 
@@ -104,11 +118,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    subgraphs/operators, so all subgraphs/operators return `Poll::Ready(())`
    immediately
 
+## Pull Request Overview
+   
+   This PR refactors the `dfir_rs` library by removing the `demux` operator
+   and replacing its usage with the `demux_enum` operator, which provides
+   better type safety and ergonomics.
+   
+   - Removes the `demux` operator implementation and related code
+   - Updates examples to use `demux_enum` with enums for message handling
+   - Removes all compile-fail tests specific to the `demux` operator
+ - <csr-id-29027701471205a7c43e26ef2f8cee98663c578e/> superficially make subgraphs/operators asynchronous
+   Subgraphs now are async (create a future when running) which must be
+   awaited. However this PR does not actually change any
+   subgraphs/operators, so all subgraphs/operators return `Poll::Ready(())`
+   immediately
+
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 25 commits contributed to the release.
+ - 26 commits contributed to the release.
  - 25 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 24 unique issues were worked on: [#1997](https://github.com/hydro-project/hydro/issues/1997), [#2010](https://github.com/hydro-project/hydro/issues/2010), [#2020](https://github.com/hydro-project/hydro/issues/2020), [#2021](https://github.com/hydro-project/hydro/issues/2021), [#2022](https://github.com/hydro-project/hydro/issues/2022), [#2024](https://github.com/hydro-project/hydro/issues/2024), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2029](https://github.com/hydro-project/hydro/issues/2029), [#2038](https://github.com/hydro-project/hydro/issues/2038), [#2087](https://github.com/hydro-project/hydro/issues/2087), [#2091](https://github.com/hydro-project/hydro/issues/2091), [#2119](https://github.com/hydro-project/hydro/issues/2119), [#2122](https://github.com/hydro-project/hydro/issues/2122), [#2132](https://github.com/hydro-project/hydro/issues/2132), [#2134](https://github.com/hydro-project/hydro/issues/2134), [#2137](https://github.com/hydro-project/hydro/issues/2137), [#2147](https://github.com/hydro-project/hydro/issues/2147), [#2157](https://github.com/hydro-project/hydro/issues/2157), [#2163](https://github.com/hydro-project/hydro/issues/2163), [#2170](https://github.com/hydro-project/hydro/issues/2170), [#2281](https://github.com/hydro-project/hydro/issues/2281), [#2295](https://github.com/hydro-project/hydro/issues/2295), [#2309](https://github.com/hydro-project/hydro/issues/2309), [#2318](https://github.com/hydro-project/hydro/issues/2318)
 
@@ -167,8 +196,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#2318](https://github.com/hydro-project/hydro/issues/2318)**
     - Make `join_fused` use new `Accumulator` trait ([`f4a26b3`](https://github.com/hydro-project/hydro/commit/f4a26b3268a3fa4a6e907d33a3e5ac7529188f20))
  * **Uncategorized**
+    - Release hydro_build_utils v0.0.1, dfir_lang v0.15.0, dfir_macro v0.15.0, variadics v0.0.10, sinktools v0.0.1, hydro_deploy_integration v0.15.0, lattices_macro v0.5.11, variadics_macro v0.6.2, lattices v0.6.2, multiplatform_test v0.6.0, dfir_rs v0.15.0, copy_span v0.1.0, hydro_deploy v0.15.0, hydro_lang v0.15.0, hydro_std v0.15.0, safety bump 5 crates ([`092de25`](https://github.com/hydro-project/hydro/commit/092de252238dfb9fa6b01e777c6dd8bf9db93398))
     - Ensure `hydro_build_utils` is published in the correct order ([`806a623`](https://github.com/hydro-project/hydro/commit/806a6239a649e24fe10c3c90dd30bd18debd41d2))
 </details>
+
+<csr-unknown>
+ refactor github actions workflows, make stable the default toolchain add trybuild stable tests snapshot tests don’t depend on the parent crate name check dfir warnings in tests on non-nightly<csr-unknown/>
 
 ## 0.14.0 (2025-07-31)
 

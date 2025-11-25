@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.6.2 (2025-11-25)
 
+<csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/>
+<csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/>
+
 ### Chore
 
  - <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/> update pinned nightly to 2025-08-20, fix lints
@@ -35,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release.
+ - 6 commits contributed to the release.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#2024](https://github.com/hydro-project/hydro/issues/2024), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2157](https://github.com/hydro-project/hydro/issues/2157), [#2271](https://github.com/hydro-project/hydro/issues/2271)
 
@@ -54,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#2271](https://github.com/hydro-project/hydro/issues/2271)**
     - Add efficient tombstone storage for lattices (RoaringBitmap + FST) ([`1f05026`](https://github.com/hydro-project/hydro/commit/1f05026c2d695522713b152e3b872455e1c1b439))
  * **Uncategorized**
+    - Release hydro_build_utils v0.0.1, dfir_lang v0.15.0, dfir_macro v0.15.0, variadics v0.0.10, sinktools v0.0.1, hydro_deploy_integration v0.15.0, lattices_macro v0.5.11, variadics_macro v0.6.2, lattices v0.6.2, multiplatform_test v0.6.0, dfir_rs v0.15.0, copy_span v0.1.0, hydro_deploy v0.15.0, hydro_lang v0.15.0, hydro_std v0.15.0, safety bump 5 crates ([`092de25`](https://github.com/hydro-project/hydro/commit/092de252238dfb9fa6b01e777c6dd8bf9db93398))
     - Ensure `hydro_build_utils` is published in the correct order ([`806a623`](https://github.com/hydro-project/hydro/commit/806a6239a649e24fe10c3c90dd30bd18debd41d2))
 </details>
 
@@ -474,17 +478,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    Summary of types examined:
    
    - `Min<T>`: T is not a lattice
-- `Min<T>`: T is not a lattice
-- `set_union<T>`: is not a lattice
-- map_union - not safe to expose map
-- union_find<K> - K is not a lattice
-- VecUnion<Lat> - not safe to expose vec
-- WithTop<Lat>/WithBot<Lat> - already pub
-- Pair<LatA, LatB> - Changed in this commit
-- DomPair<LatKey, LatVal> - Already correctly done with left pub and
-   right private.
-- Conflict<T> / Point<T> - T is not a lattice type.
-- () - No nested types here.
 
 ### Bug Fixes
 
@@ -526,7 +519,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 </details>
 
 <csr-unknown>
- Make Pair<> members publicSummary of types examined: Expose PairBimorphism public.Address https://github.com/hydro-project/hydroflow/issues/1229. definitions of linearity and bilinearity in algebra lib add prototype of tagging algebraic properties<csr-unknown/>
+Min<T>: T is not a latticeset_union<T>: is not a latticemap_union - not safe to expose mapunion_find<K> - K is not a latticeVecUnion<Lat> - not safe to expose vecWithTop<Lat>/WithBot<Lat> - already pubPair<LatA, LatB> - Changed in this commitDomPair<LatKey, LatVal> - Already correctly done with left pub andright private.Conflict<T> / Point<T> - T is not a lattice type.() - No nested types here.<csr-unknown/>
 
 ## 0.5.4 (2024-04-05)
 
@@ -955,7 +948,6 @@ Unchanged from previous release.
  - <csr-id-931d93887c238025596cb22226e16d43e16a7425/> Add `reveal` methods, make fields private
  - <csr-id-7aec1ac884e01a560770dfab7e0ba64d520415f6/> Add `Provenance` generic param token to `Point`.
    - Use `()` provenance for `kvs_bench` example.
-- Use `()` provenance for `kvs_bench` example.
 
 ### Bug Fixes (BREAKING)
 
@@ -1019,7 +1011,7 @@ Unchanged from previous release.
 </details>
 
 <csr-unknown>
- Add reveal methods, make fields private Add Provenance generic param token to Point. Add IsBot::is_bot and IsTop::is_top traitsAlso adds test::check_lattice_bot (inlcluded in test::check_all) and test::check_lattice_top (NOT in check_all)<csr-unknown/>
+Use () provenance for kvs_bench example.<csr-unknown/>
 
 ## 0.2.0 (2023-05-31)
 
@@ -1154,10 +1146,6 @@ Unchanged from previous release.
 
  - <csr-id-95d23eaf8218002ad0a6a8c4c6e6c76e6b8f785b/> Update docs, add book chapter for `lattices` crate
    - Adds `mdbook-katex` to the book build for latex support.
-- Adds `mdbook-katex` to the book build for latex support.
-- Update `mdbook-*` plugins.
-- Moves most lattice implementations to the top level of the crate
-     to eliminate redundant documentation.
 
 ### New Features
 
@@ -1220,7 +1208,7 @@ Unchanged from previous release.
 </details>
 
 <csr-unknown>
- Update docs, add book chapter for lattices crate<csr-unknown/>
+Adds mdbook-katex to the book build for latex support.Update mdbook-* plugins.Moves most lattice implementations to the top level of the crateto eliminate redundant documentation.<csr-unknown/>
 
 ## 0.0.0 (2023-05-02)
 

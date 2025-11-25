@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.15.0 (2025-11-25)
 
+<csr-id-97b879db93081b9dda3eecc834d06b55e5636030/>
+
 ### New Features
 
  - <csr-id-4a4359495fff0b3cb63ec7909271f7fce443589b/> add `Location::bind_single_client` for bidi single client
@@ -14,19 +16,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+<csr-id-92adacc1aa147a0cb6b78ae750b2254dfc7738a0/>
+<csr-id-6b3788896630ab8d70d54c6e144d251860f170c4/>
+
  - <csr-id-e5f200472d9effe591d55dd82b4c37b0aff55d21/> compilation on non-Unix [ci-full]
  - <csr-id-4e84a3fc03af1eacf8af467e52407121f3b6ec9e/> [ci-full] fix ci issues
    - run docs/website on pr
-   - use bash by default on windows
-   - build website with nightly
-   - increase test timeout to 45m
-   - run docs with nightly
-   - make rustfmt use native line endings instead of unix
-   - fix compile-fail nightly stderr outputs
-   - add the ability to include [ci-full] into the body/title of a PR to
+- use bash by default on windows
+- build website with nightly
+- increase test timeout to 45m
+- run docs with nightly
+- make rustfmt use native line endings instead of unix
+- fix compile-fail nightly stderr outputs
+- add the ability to include [ci-full] into the body/title of a PR to
    get it to run the full stable/nightly linux/windows test matrix.
- - <csr-id-92adacc1aa147a0cb6b78ae750b2254dfc7738a0/> use round-robin polling for `MergeSource` to ensure fairness
- - <csr-id-6b3788896630ab8d70d54c6e144d251860f170c4/> make polling fair with round-robin
 
 ### New Features (BREAKING)
 
@@ -59,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 10 commits contributed to the release.
+ - 11 commits contributed to the release.
  - 10 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 10 unique issues were worked on: [#1966](https://github.com/hydro-project/hydro/issues/1966), [#1978](https://github.com/hydro-project/hydro/issues/1978), [#1980](https://github.com/hydro-project/hydro/issues/1980), [#1981](https://github.com/hydro-project/hydro/issues/1981), [#1996](https://github.com/hydro-project/hydro/issues/1996), [#2029](https://github.com/hydro-project/hydro/issues/2029), [#2031](https://github.com/hydro-project/hydro/issues/2031), [#2163](https://github.com/hydro-project/hydro/issues/2163), [#2246](https://github.com/hydro-project/hydro/issues/2246), [#2267](https://github.com/hydro-project/hydro/issues/2267)
 
@@ -89,7 +92,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Add `Location::bind_single_client` for bidi single client ([`4a43594`](https://github.com/hydro-project/hydro/commit/4a4359495fff0b3cb63ec7909271f7fce443589b))
  * **[#2267](https://github.com/hydro-project/hydro/issues/2267)**
     - Compilation on non-Unix [ci-full] ([`e5f2004`](https://github.com/hydro-project/hydro/commit/e5f200472d9effe591d55dd82b4c37b0aff55d21))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.0.1, dfir_lang v0.15.0, dfir_macro v0.15.0, variadics v0.0.10, sinktools v0.0.1, hydro_deploy_integration v0.15.0, lattices_macro v0.5.11, variadics_macro v0.6.2, lattices v0.6.2, multiplatform_test v0.6.0, dfir_rs v0.15.0, copy_span v0.1.0, hydro_deploy v0.15.0, hydro_lang v0.15.0, hydro_std v0.15.0, safety bump 5 crates ([`092de25`](https://github.com/hydro-project/hydro/commit/092de252238dfb9fa6b01e777c6dd8bf9db93398))
 </details>
+
+<csr-unknown>
+ use round-robin polling for MergeSource to ensure fairness make polling fair with round-robin<csr-unknown/>
 
 ## 0.14.0 (2025-07-30)
 

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.6.0 (2025-11-25)
 
+<csr-id-e5d90803ae16993ac3db24a7795d0864abc4ac52/>
+
 ### Chore
 
  - <csr-id-e5d90803ae16993ac3db24a7795d0864abc4ac52/> update wasm
@@ -15,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#2087](https://github.com/hydro-project/hydro/issues/2087)
 
@@ -27,12 +29,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  * **[#2087](https://github.com/hydro-project/hydro/issues/2087)**
     - Update wasm ([`e5d9080`](https://github.com/hydro-project/hydro/commit/e5d90803ae16993ac3db24a7795d0864abc4ac52))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.0.1, dfir_lang v0.15.0, dfir_macro v0.15.0, variadics v0.0.10, sinktools v0.0.1, hydro_deploy_integration v0.15.0, lattices_macro v0.5.11, variadics_macro v0.6.2, lattices v0.6.2, multiplatform_test v0.6.0, dfir_rs v0.15.0, copy_span v0.1.0, hydro_deploy v0.15.0, hydro_lang v0.15.0, hydro_std v0.15.0, safety bump 5 crates ([`092de25`](https://github.com/hydro-project/hydro/commit/092de252238dfb9fa6b01e777c6dd8bf9db93398))
 </details>
 
 ## 0.5.0 (2025-03-08)
 
 <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/>
 <csr-id-8b3b60812d9f561cb7f59120993fbf2e23191e2b/>
+<csr-id-3f76e91766a0bd9e61f11f9013d76f688467fb5e/>
+<csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 
 ### Chore
 
@@ -88,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.4.0 (2024-12-23)
 
 <csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/>
+<csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/>
 
 ### Chore
 
@@ -154,6 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.3.0 (2024-11-08)
 
 <csr-id-d5677604e93c07a5392f4229af94a0b736eca382/>
+<csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/>
 
 ### Chore
 
@@ -187,6 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.0 (2024-08-30)
 
 <csr-id-11af32828bab6e4a4264d2635ff71a12bb0bb778/>
+<csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/>
 
 ### Chore
 
@@ -229,6 +238,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-f19eccc79d6d7c88de7ba1ef6a0abf1caaef377f/>
 <csr-id-f60053f70da3071c54de4a0eabb059a143aa2ccc/>
 <csr-id-b391447ec13f1f79c99142f296dc2fa8640034f4/>
+<csr-id-f28237376a2479fb042d68bd27aad71f357bdbb1/>
+<csr-id-a83b39c47e2acdb8909fb864454d90ab82581d6e/>
+<csr-id-e5c5fcb25616ba00be955b318299c1cdf02bc241/>
+<csr-id-dd270adee8ed4d29a20628c4082b0f29cfd6ebac/>
 
 ### Chore
 
@@ -273,10 +286,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Adds `env_tracing` for `EnvFilter` `FmtSubscriber` `tracing`.
  - <csr-id-3a67daeaea2c168ddc4c3d4a10615ecd96fddff3/> `hydroflow`, `logging`/`tracing` features
    * Adds `tokio` for `#[tokio::test]`.
-   * Adds `async_std` for `#[async_std::test]`.
-   * Adds `hydroflow` for `#[hydroflow::test]`.
-   * Adds `env_logging` for `env_logger` registering.
-   * Adds `env_tracing` for `EnvFilter` `FmtSubscriber` `tracing`.
+* Adds `async_std` for `#[async_std::test]`.
+* Adds `hydroflow` for `#[hydroflow::test]`.
+* Adds `env_logging` for `env_logger` registering.
+* Adds `env_tracing` for `EnvFilter` `FmtSubscriber` `tracing`.
 
 ### Commit Statistics
 
