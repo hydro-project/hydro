@@ -2,6 +2,7 @@ use itertools::Either;
 
 use super::HalfJoinState;
 
+/// Custom [`Iterator`] for the `join` operator.
 pub struct SymmetricHashJoin<'a, Key, I1, V1, I2, V2, LhsState, RhsState>
 where
     Key: Eq + std::hash::Hash + Clone,
@@ -62,6 +63,7 @@ where
     }
 }
 
+/// Creates a custom [`Iterator`] for the `join` operator.
 pub fn symmetric_hash_join_into_iter<'a, Key, I1, V1, I2, V2, LhsState, RhsState>(
     mut lhs: I1,
     mut rhs: I2,

@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use dfir_rs::compiled::pull::{Fold, Reduce};
 use dfir_rs::lattices::set_union::SetUnionSingletonSet;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
@@ -38,7 +39,7 @@ pub fn tick_tick_lhs_blocking_rhs_streaming() {
         unioner = union()
             -> [1]my_join;
 
-        my_join = join_fused_lhs(Fold(SetUnionHashSet::default, Merge::merge))
+        my_join = join_fused_lhs(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
@@ -67,7 +68,7 @@ pub fn static_tick_lhs_blocking_rhs_streaming() {
         unioner = union()
             -> [1]my_join;
 
-        my_join = join_fused_lhs::<'static, 'tick>(Fold(SetUnionHashSet::default, Merge::merge))
+        my_join = join_fused_lhs::<'static, 'tick>(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
@@ -106,7 +107,7 @@ pub fn static_static_lhs_blocking_rhs_streaming() {
         unioner = union()
             -> [1]my_join;
 
-        my_join = join_fused_lhs::<'static, 'static>(Fold(SetUnionHashSet::default, Merge::merge))
+        my_join = join_fused_lhs::<'static, 'static>(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
@@ -136,7 +137,7 @@ pub fn tick_tick_lhs_streaming_rhs_blocking() {
         unioner = union()
             -> [0]my_join;
 
-        my_join = join_fused_rhs(Fold(SetUnionHashSet::default, Merge::merge))
+        my_join = join_fused_rhs(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
@@ -165,7 +166,7 @@ pub fn static_tick_lhs_streaming_rhs_blocking() {
         unioner = union()
             -> [0]my_join;
 
-        my_join = join_fused_rhs::<'static, 'tick>(Fold(SetUnionHashSet::default, Merge::merge))
+        my_join = join_fused_rhs::<'static, 'tick>(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
@@ -204,7 +205,7 @@ pub fn static_static_lhs_streaming_rhs_blocking() {
         unioner = union()
             -> [0]my_join;
 
-        my_join = join_fused_rhs::<'static, 'static>(Fold(SetUnionHashSet::default, Merge::merge))
+        my_join = join_fused_rhs::<'static, 'static>(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> inspect(|x| println!("{}, {x:?}", context.current_tick()))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
@@ -235,7 +236,10 @@ pub fn tick_tick_lhs_fold_rhs_reduce() {
         unioner = union()
             -> [1]my_join;
 
-        my_join = join_fused(Fold(SetUnionHashSet::default, Merge::merge), Reduce(std::ops::AddAssign::add_assign))
+        my_join =  join_fused(
+                Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }),
+                Reduce::new(std::ops::AddAssign::add_assign)
+            )
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
     assert_graphvis_snapshots!(df);
