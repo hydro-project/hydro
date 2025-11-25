@@ -39,7 +39,7 @@ pub(crate) async fn rep_server_flow(
         source_stream_serde(reqs_in)
           -> map(Result::unwrap)
           -> map(|((client, req), _a): ((usize, SealedSetOfIndexedValues<Request>), _)| (client, req))
-          -> fold_keyed::<'static>(SSIV_BOT, ssiv_merge)
+          -> fold_keyed::<'static>(SSIV_BOT, |state, delta| { (ssiv_merge)(state, delta); })
           -> [0]lookup_class;
         source_iter(client_class) -> [1]lookup_class;
         lookup_class = join::<'static>()
@@ -53,7 +53,7 @@ pub(crate) async fn rep_server_flow(
           -> map(|(m, _a): (((usize, ClientClass), SealedSetOfIndexedValues<Request>), _)| m)
           -> all_in;
         all_in = union()
-          -> fold_keyed::<'static>(SSIV_BOT, ssiv_merge)
+          -> fold_keyed::<'static>(SSIV_BOT, |state, delta| { (ssiv_merge)(state, delta); })
           -> unique()
           -> map(|m| (m, out_addr)) -> dest_sink_serde(out);
     }
