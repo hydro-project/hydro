@@ -1,6 +1,32 @@
 
 
+## v0.6.2 (2025-11-25)
+
+### Bug Fixes
+
+ - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#2028](https://github.com/hydro-project/hydro/issues/2028)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2028](https://github.com/hydro-project/hydro/issues/2028)**
+    - Refactor github actions workflows, make stable the default toolchain ([`c40876e`](https://github.com/hydro-project/hydro/commit/c40876ec4bd3b31254d683e479b9a235f3d11f67))
+</details>
+
 ## v0.6.1 (2025-07-30)
+
+<csr-id-3d40d1a65c41dca3893867fb567993a27491fa0c/>
 
 ### Chore
 
@@ -10,7 +36,8 @@
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release over the course of 5 calendar days.
+ - 2 commits contributed to the release.
+ - 144 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1944](https://github.com/hydro-project/hydro/issues/1944)
 
@@ -22,11 +49,14 @@
 
  * **[#1944](https://github.com/hydro-project/hydro/issues/1944)**
     - Update `proc-macro-crate` ([`3d40d1a`](https://github.com/hydro-project/hydro/commit/3d40d1a65c41dca3893867fb567993a27491fa0c))
+ * **Uncategorized**
+    - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
 </details>
 
 ## v0.6.0 (2025-03-08)
 
 <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/>
+<csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 
 ### Chore
 

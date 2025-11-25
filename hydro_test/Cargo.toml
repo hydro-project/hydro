@@ -8,8 +8,8 @@ edition = "2024"
 workspace = true
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.14.0" }
-hydro_std = { path = "../hydro_std", version = "^0.14.0" }
+hydro_lang = { path = "../hydro_lang", version = "^0.15.0" }
+hydro_std = { path = "../hydro_std", version = "^0.15.0" }
 stageleft.workspace = true
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
@@ -23,28 +23,28 @@ bytes = "1.1.0"
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
 # https://github.com/GitoxideLabs/cargo-smart-release/issues/36
 example_test = { path = "../example_test", version = "^0.0.0", optional = true }
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1", optional = true }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1", optional = true }
 
 [build-dependencies]
 stageleft_tool.workspace = true
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }
 
 [dev-dependencies]
 clap = { version = "4.4", features = ["derive"] }
 ctor = "0.2"
-dfir_lang = { path = "../dfir_lang", version = "^0.14.0" }
+dfir_lang = { path = "../dfir_lang", version = "^0.15.0" }
 example_test = { path = "../example_test", version = "^0.0.0" }
 futures = "0.3.0"
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0" }
-hydro_lang = { path = "../hydro_lang", version = "^0.14.0", features = [
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.15.0" }
+hydro_lang = { path = "../hydro_lang", version = "^0.15.0", features = [
     "deploy",
     "sim",
     "viz",
 ] }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }
 regex = "1"
 tokio = { version = "1.29.0", features = ["full"] }
 tokio-test = "0.4.4"
-dfir_rs = { path = "../dfir_rs", version = "^0.14.0", default-features = false }
+dfir_rs = { path = "../dfir_rs", version = "^0.15.0", default-features = false }
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }

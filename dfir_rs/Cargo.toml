@@ -1,7 +1,7 @@
 [package]
 name = "dfir_rs"
 publish = true
-version = "0.14.0"
+version = "0.15.0"
 documentation = "https://docs.rs/dfir_rs/"
 description = "DFIR runtime for Rust, used by Hydro."
 edition = { workspace = true }
@@ -30,12 +30,12 @@ name = "kvs_bench"
 bincode = "1.3.1"
 byteorder = "1.3.2"
 bytes = "1.1.0"
-dfir_lang = { path = "../dfir_lang", version = "^0.14.0", optional = true }
-dfir_macro = { optional = true, path = "../dfir_macro", version = "^0.14.0" }
+dfir_lang = { path = "../dfir_lang", version = "^0.15.0", optional = true }
+dfir_macro = { optional = true, path = "../dfir_macro", version = "^0.15.0" }
 futures = "0.3.0"
-hydro_deploy_integration = { optional = true, path = "../hydro_deploy/hydro_deploy_integration", version = "^0.14.0" }
+hydro_deploy_integration = { optional = true, path = "../hydro_deploy/hydro_deploy_integration", version = "^0.15.0" }
 itertools = "0.13.0"
-lattices = { path = "../lattices", version = "^0.6.1", features = [ "serde" ] }
+lattices = { path = "../lattices", version = "^0.6.2", features = [ "serde" ] }
 pin-project-lite = "0.2"
 ref-cast = "1.0.0"
 rustc-hash = "1.1.0"
@@ -49,18 +49,18 @@ tokio = { version = "1.29.0", features = [ "rt", "sync", "macros", "io-util", "t
 tokio-stream = { version = "0.1.3", default-features = false, features = [ "time", "io-util" ] }
 tokio-util = { version = "0.7.5", features = [ "codec" ] }
 tracing = "0.1.37"
-variadics = { path = "../variadics", version = "^0.0.9" }
+variadics = { path = "../variadics", version = "^0.0.10" }
 web-time = "1.0.0"
 
 # added to workaround `cargo smart-release` https://github.com/Byron/cargo-smart-release/issues/36
-multiplatform_test = { path = "../multiplatform_test", version = "^0.5.0", optional = true }
+multiplatform_test = { path = "../multiplatform_test", version = "^0.6.0", optional = true }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0", optional = true }
 example_test = { path = "../example_test", version = "^0.0.0", optional = true }
 
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
 # https://github.com/GitoxideLabs/cargo-smart-release/issues/36
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1", optional = true }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.29.0", features = [ "io-std", "fs" ] }
@@ -75,15 +75,15 @@ tokio-util = { version = "0.7.5", features = [ "net" ] }
 getrandom = { version = "0.2.6", features = [ "js" ] }
 
 [dev-dependencies]
-dfir_lang = { path = "../dfir_lang", version = "^0.14.0", features = [ "clap-derive" ] }
+dfir_lang = { path = "../dfir_lang", version = "^0.15.0", features = [ "clap-derive" ] }
 
 chrono = { version = "0.4.20", features = [ "serde", "clock" ], default-features = false }
 clap = { version = "4.5.4", features = [ "derive" ] }
 colored = "2.0"
 example_test = { path = "../example_test", version = "^0.0.0" }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
-multiplatform_test = { path = "../multiplatform_test", version = "^0.5.0" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }
+multiplatform_test = { path = "../multiplatform_test", version = "^0.6.0" }
 rand = { version = "0.8.0", features = [ "small_rng" ] }
 rand_distr = "0.4.3"
 regex = "1.10.4"
@@ -99,4 +99,4 @@ zipf = "7"
 criterion = { version = "0.5.0", features = [ "async_tokio", "html_reports" ] }
 
 [build-dependencies]
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }

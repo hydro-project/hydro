@@ -5,7 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.15.0 (2025-11-25)
+
+### Chore
+
+ - <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/> update pinned nightly to 2025-08-20, fix lints
+
+### Bug Fixes
+
+ - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
+ - <csr-id-5ec8b3b9b10b30f3c1b7bd8949874f0b4b7da7e9/> hardcoded crate name issues
+
+### Other
+
+ - <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/> ensure `hydro_build_utils` is published in the correct order
+
+### Refactor (BREAKING)
+
+ - <csr-id-9d943ac294a8735452f8535ad13767c60ce46ec7/> Make DFIR use `sinktools` for pushing to outputs [ci-bench]
+   This allows DFIR to handle `dest_sink` directly instead of having to
+   offload to a separate task, which causes latency and unwanted batching
+   (on single threaded runtimes)
+   
+   `pusherator` crate is no longer depended upon and is on a path to removal as it has been
+   replaced with `Sink`s
+   
+   Fixes some spanning bugs in codegen that using `Sink`s revealed
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 5 commits contributed to the release.
+ - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 4 unique issues were worked on: [#1977](https://github.com/hydro-project/hydro/issues/1977), [#2024](https://github.com/hydro-project/hydro/issues/2024), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2134](https://github.com/hydro-project/hydro/issues/2134)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1977](https://github.com/hydro-project/hydro/issues/1977)**
+    - Hardcoded crate name issues ([`5ec8b3b`](https://github.com/hydro-project/hydro/commit/5ec8b3b9b10b30f3c1b7bd8949874f0b4b7da7e9))
+ * **[#2024](https://github.com/hydro-project/hydro/issues/2024)**
+    - Update pinned nightly to 2025-08-20, fix lints ([`97426b8`](https://github.com/hydro-project/hydro/commit/97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71))
+ * **[#2028](https://github.com/hydro-project/hydro/issues/2028)**
+    - Refactor github actions workflows, make stable the default toolchain ([`c40876e`](https://github.com/hydro-project/hydro/commit/c40876ec4bd3b31254d683e479b9a235f3d11f67))
+ * **[#2134](https://github.com/hydro-project/hydro/issues/2134)**
+    - Make DFIR use `sinktools` for pushing to outputs [ci-bench] ([`9d943ac`](https://github.com/hydro-project/hydro/commit/9d943ac294a8735452f8535ad13767c60ce46ec7))
+ * **Uncategorized**
+    - Ensure `hydro_build_utils` is published in the correct order ([`806a623`](https://github.com/hydro-project/hydro/commit/806a6239a649e24fe10c3c90dd30bd18debd41d2))
+</details>
+
 ## 0.14.0 (2025-07-30)
+
+<csr-id-3d40d1a65c41dca3893867fb567993a27491fa0c/>
+<csr-id-98baec71a6f1d01d55a3c983fdbb7824c45305cd/>
 
 ### Chore
 
@@ -16,7 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release over the course of 92 calendar days.
+ - 3 commits contributed to the release.
+ - 109 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#1843](https://github.com/hydro-project/hydro/issues/1843), [#1944](https://github.com/hydro-project/hydro/issues/1944)
 
@@ -30,6 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Update pinned nightly to 2025-04-27, update span API usage ([`98baec7`](https://github.com/hydro-project/hydro/commit/98baec71a6f1d01d55a3c983fdbb7824c45305cd))
  * **[#1944](https://github.com/hydro-project/hydro/issues/1944)**
     - Update `proc-macro-crate` ([`3d40d1a`](https://github.com/hydro-project/hydro/commit/3d40d1a65c41dca3893867fb567993a27491fa0c))
+ * **Uncategorized**
+    - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
 </details>
 
 ## 0.13.0 (2025-04-11)

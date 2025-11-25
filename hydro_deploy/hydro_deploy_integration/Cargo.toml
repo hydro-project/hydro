@@ -1,7 +1,7 @@
 [package]
 name = "hydro_deploy_integration"
 publish = true
-version = "0.14.0"
+version = "0.15.0"
 documentation = "https://docs.rs/hydro_deploy_integration/"
 description = "`hydro_deploy` integration for deploying Rust crates."
 edition = { workspace = true }

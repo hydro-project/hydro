@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.6.2 (2025-11-25)
+
+### Chore
+
+ - <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/> update pinned nightly to 2025-08-20, fix lints
+
+### New Features
+
+ - <csr-id-1f05026c2d695522713b152e3b872455e1c1b439/> Add efficient tombstone storage for lattices (RoaringBitmap + FST)
+   This PR implements space-efficient tombstone storage for
+   `SetUnionWithTombstones` and `MapUnionWithTombstones` using
+   RoaringBitmap (for integers) and FST (for strings).
+ - <csr-id-7efe1dc660ab6c0c68762f71d4359f347cfe73b6/> `sinktools` crate
+   this also converts `variadic` to use `#[no_std]`, and adds
+   `feature="std"`, and fixes an issue causing trybuild tests to not run
+   
+   will replace `pusherator` in upcoming PR
+
+### Bug Fixes
+
+ - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
+
+### Other
+
+ - <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/> ensure `hydro_build_utils` is published in the correct order
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 5 commits contributed to the release.
+ - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 4 unique issues were worked on: [#2024](https://github.com/hydro-project/hydro/issues/2024), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2157](https://github.com/hydro-project/hydro/issues/2157), [#2271](https://github.com/hydro-project/hydro/issues/2271)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2024](https://github.com/hydro-project/hydro/issues/2024)**
+    - Update pinned nightly to 2025-08-20, fix lints ([`97426b8`](https://github.com/hydro-project/hydro/commit/97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71))
+ * **[#2028](https://github.com/hydro-project/hydro/issues/2028)**
+    - Refactor github actions workflows, make stable the default toolchain ([`c40876e`](https://github.com/hydro-project/hydro/commit/c40876ec4bd3b31254d683e479b9a235f3d11f67))
+ * **[#2157](https://github.com/hydro-project/hydro/issues/2157)**
+    - `sinktools` crate ([`7efe1dc`](https://github.com/hydro-project/hydro/commit/7efe1dc660ab6c0c68762f71d4359f347cfe73b6))
+ * **[#2271](https://github.com/hydro-project/hydro/issues/2271)**
+    - Add efficient tombstone storage for lattices (RoaringBitmap + FST) ([`1f05026`](https://github.com/hydro-project/hydro/commit/1f05026c2d695522713b152e3b872455e1c1b439))
+ * **Uncategorized**
+    - Ensure `hydro_build_utils` is published in the correct order ([`806a623`](https://github.com/hydro-project/hydro/commit/806a6239a649e24fe10c3c90dd30bd18debd41d2))
+</details>
+
 ## 0.6.1 (2025-03-15)
 
 ### Documentation
@@ -25,7 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
+ - 6 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1787](https://github.com/hydro-project/hydro/issues/1787)
 
@@ -37,6 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  * **[#1787](https://github.com/hydro-project/hydro/issues/1787)**
     - Demote python deploy docs, fix docsrs configs, fix #1392, fix #1629 ([`b235a42`](https://github.com/hydro-project/hydro/commit/b235a42a3071e55da7b09bdc8bc710b18e0fe053))
+ * **Uncategorized**
+    - Release dfir_lang v0.12.1, dfir_datalog_core v0.12.1, dfir_datalog v0.12.1, dfir_macro v0.12.1, hydro_deploy_integration v0.12.1, lattices v0.6.1, pusherator v0.0.12, dfir_rs v0.12.1, hydro_deploy v0.12.1, hydro_lang v0.12.1, hydro_std v0.12.1, hydro_cli v0.12.1 ([`23221b5`](https://github.com/hydro-project/hydro/commit/23221b53b30918707ddaa85529d04cd7919166b4))
 </details>
 
 ## 0.6.0 (2025-03-08)
@@ -45,6 +100,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-2fd6aa7417dfa29f389c04c5b9674b80bfed6cf2/>
 <csr-id-39a2963518a9cc63c7e60a5c542cfa2509064a0c/>
 <csr-id-c1983308743d912e5bf2583b7cccbb47d8a8b5d1/>
+<csr-id-edffa95f5fe44f4e0cbb4b6c93754e9047f0fd3d/>
+<csr-id-fd85262930c678601a80c080fb79778675124964/>
+<csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
+<csr-id-8f4426089dcbbe5d1098f89e367c7be49a03e401/>
 
 ### Chore
 
@@ -108,6 +167,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.5.9 (2024-12-23)
 
 <csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/>
+<csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/>
 
 ### Chore
 
@@ -179,6 +239,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-d5677604e93c07a5392f4229af94a0b736eca382/>
 <csr-id-47cb703e771f7d1c451ceb9d185ada96410949da/>
+<csr-id-cebd1dc35282514f025e047a9b94800f546dd62f/>
+<csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/>
 
 ### Chore
 
@@ -251,6 +313,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.5.7 (2024-08-30)
 
 <csr-id-11af32828bab6e4a4264d2635ff71a12bb0bb778/>
+<csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/>
 
 ### Chore
 
@@ -297,6 +360,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.5.6 (2024-07-23)
 
 <csr-id-3098f77fd99882aae23c4b31017aa4b761306197/>
+<csr-id-45091d413f6da32927b640df781ce671a6e17c15/>
 
 ### Chore
 
@@ -334,11 +398,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    ```rust
    struct MyLattice<KeySet, Epoch>
    where
-       KeySet: Collection,
-       Epoch: Ord,
+   KeySet: Collection,
+   Epoch: Ord,
    {
-       keys: SetUnion<KeySet>,
-       epoch: Max<Epoch>,
+   keys: SetUnion<KeySet>,
+   epoch: Max<Epoch>,
    }
    ```
    
@@ -401,29 +465,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-c2577bd0ad1969f4badf23874a9e7a6c1622c5c3/>
 <csr-id-d8e4d9dc784ae28fcefe5f32a0561698c1196d31/>
 <csr-id-c3f5a37ff746401a2383a900f9004e33072d5b1a/>
+<csr-id-e0a09c8147fcc5c092b611e0f2779efa296c37fe/>
+<csr-id-636b2cea52a45a7cd942e578d04083d08147cac1/>
+<csr-id-41bf0a78b97c1373724af6063aff5c4133e8dbdd/>
+<csr-id-e97e8c33a323db87959d86084cd679015d1cb5f2/>
 
  - <csr-id-0ed1f26b485894d3f24bd4d3251f6d3134fd1947/> Make Pair<> members public
    Summary of types examined:
    
    - `Min<T>`: T is not a lattice
- - <csr-id-e0a09c8147fcc5c092b611e0f2779efa296c37fe/> Make Pair<> members public
-   Summary of types examined:
-   
-   - `Min<T>`: T is not a lattice
-   - `set_union<T>`: is not a lattice
-   - map_union - not safe to expose map
-   - union_find<K> - K is not a lattice
-   - VecUnion<Lat> - not safe to expose vec
-   - WithTop<Lat>/WithBot<Lat> - already pub
-   - Pair<LatA, LatB> - Changed in this commit
-   - DomPair<LatKey, LatVal> - Already correctly done with left pub and
+- `Min<T>`: T is not a lattice
+- `set_union<T>`: is not a lattice
+- map_union - not safe to expose map
+- union_find<K> - K is not a lattice
+- VecUnion<Lat> - not safe to expose vec
+- WithTop<Lat>/WithBot<Lat> - already pub
+- Pair<LatA, LatB> - Changed in this commit
+- DomPair<LatKey, LatVal> - Already correctly done with left pub and
    right private.
-   - Conflict<T> / Point<T> - T is not a lattice type.
-   - () - No nested types here.
- - <csr-id-636b2cea52a45a7cd942e578d04083d08147cac1/> Expose PairBimorphism public.
-   Address https://github.com/hydro-project/hydroflow/issues/1229.
- - <csr-id-41bf0a78b97c1373724af6063aff5c4133e8dbdd/> definitions of linearity and bilinearity in algebra lib
- - <csr-id-e97e8c33a323db87959d86084cd679015d1cb5f2/> add prototype of tagging algebraic properties
+- Conflict<T> / Point<T> - T is not a lattice type.
+- () - No nested types here.
 
 ### Bug Fixes
 
@@ -464,9 +525,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Definitions of linearity and bilinearity in algebra lib ([`41bf0a7`](https://github.com/hydro-project/hydro/commit/41bf0a78b97c1373724af6063aff5c4133e8dbdd))
 </details>
 
+<csr-unknown>
+ Make Pair<> members publicSummary of types examined: Expose PairBimorphism public.Address https://github.com/hydro-project/hydroflow/issues/1229. definitions of linearity and bilinearity in algebra lib add prototype of tagging algebraic properties<csr-unknown/>
+
 ## 0.5.4 (2024-04-05)
 
 <csr-id-2a10c4f395bbf3a320bdde6ec24c3c6abd5d6ed0/>
+<csr-id-4e3c188dbe7cb83401fa3df537f7f8e83d1c9641/>
 
 Unchanged from previous release.
 
@@ -504,6 +569,8 @@ Unchanged from previous release.
 
 <csr-id-39ab8b0278e9e3fe96552ace0a4ae768a6bc10d8/>
 <csr-id-71353f0d4dfd9766dfdc715c4a91a028081f910f/>
+<csr-id-6b0a78ba0b4fd58302f7151254976c158a61b18c/>
+<csr-id-65c7ebe3d64c478e7a4f0d8eb12e2bb3c1b267a3/>
 
 ### Chore
 
@@ -586,6 +653,9 @@ Unchanged from previous release.
 <csr-id-1b555e57c8c812bed4d6495d2960cbf77fb0b3ef/>
 <csr-id-ba6afab8416ad66eee4fdb9d0c73e62d45752617/>
 <csr-id-f6a729925ddeb6063fa8c4b03d6621c1c35f0cc8/>
+<csr-id-7c48faf0d8301b498fa59e5eee5cddf5fa341229/>
+<csr-id-d08ceffdbe87215d942b8c24815cabc7909822f5/>
+<csr-id-18c1fa5c6602dbf660bffbb06290f6db373312cc/>
 
 ### Chore
 
@@ -649,6 +719,7 @@ Unchanged from previous release.
 ## 0.5.0 (2023-10-11)
 
 <csr-id-e788989737fbd501173bc99c6f9f5f5ba514ec9c/>
+<csr-id-e89dcfcdd2d3ad072ae3ddb8211116fec9332fed/>
 
 ### Chore
 
@@ -708,6 +779,10 @@ Unchanged from previous release.
 <csr-id-6a2ad6b770c2ccf470548320d8753025b3a66c0a/>
 <csr-id-262166e7cecf8ffb5a2c7bc989e8cf66c4524a68/>
 <csr-id-7b0485b20939ec86ed8e74ecc9c75ac1b5d01072/>
+<csr-id-f36ccd34f349b85ec39ad432b9f68b6f34dde532/>
+<csr-id-e0d1061908f94ea8282be08598d783393512bb34/>
+<csr-id-4a8f46a3f8f46e9493acf0900a4ac09ce4dc9dfb/>
+<csr-id-dd270adee8ed4d29a20628c4082b0f29cfd6ebac/>
 
 ### Chore
 
@@ -763,8 +838,8 @@ Unchanged from previous release.
 * `check_lattice_bot/top` now check that `is_bot` and `is_top` must be consistent among all equal elements
  - <csr-id-e09ac1cc2cb5c75e47ee2c7403ade7bf8d78cf1a/> Add bottom (+top) collapsing, implement `IsBot`/`IsTop` for all lattice types
    * `WithBot(Some(BOTTOM))` and `WithBot(None)` are now considered to both be bottom, equal. Also, `MapUnion({})` and `MapUnion({key: BOTTOM})` are considered to both be bottom, equal.
-   * `WithTop(Some(TOP))` and `WithTop(None)` are now considered to both be top, equal.
-   * `check_lattice_bot/top` now check that `is_bot` and `is_top` must be consistent among all equal elements
+* `WithTop(Some(TOP))` and `WithTop(None)` are now considered to both be top, equal.
+* `check_lattice_bot/top` now check that `is_bot` and `is_top` must be consistent among all equal elements
 
 ### Refactor (BREAKING)
 
@@ -813,6 +888,11 @@ Unchanged from previous release.
 <csr-id-4a727ecf1232e0f03f5300547282bfbe73342cfa/>
 <csr-id-5c7e4d3aea1dfb61d51bcb0291740281824e3090/>
 <csr-id-1bdadb82b25941d11f3fa24eaac35109927c852f/>
+<csr-id-336172dcaa31ea281ff534a09e13f9ff1c41e154/>
+<csr-id-fe38515c456625c5374843d2f766f401e76dc51a/>
+<csr-id-0f2e768fcf359de671bc6289a1d44502057c2656/>
+<csr-id-618a18b89a699f9272241ef97994e9dbbfe724ad/>
+<csr-id-1c739496f8286269a0cd47753468998fd759bf4e/>
 
 ### Documentation
 
@@ -841,8 +921,7 @@ Unchanged from previous release.
  - <csr-id-902d426dfec7754cbe949d80c669e3d3f1a1d262/> removed unused nightly features `impl_trait_in_assoc_type`, `type_alias_impl_trait`
  - <csr-id-dd95beacee1ab67047c964643762b8364073b6a2/> fix ConvertFrom for bottom to actually convert the type
    * fix: fix type inference with doubly-nested bottom types
-   
-   * fix: address comments
+* fix: address comments
 
 ### Refactor
 
@@ -869,15 +948,14 @@ Unchanged from previous release.
 ### New Features (BREAKING)
 
 <csr-id-deb26af6bcd547f91bf339367387d36e5e59565a/>
+<csr-id-07d115443b54e94d9a03240d12b88be5e3f2883f/>
+<csr-id-37e90cd9bf917b5ffa724e79791c5e87db4c1450/>
+<csr-id-6d49db05d30692b70825b4cd6af1590913913ae4/>
 
  - <csr-id-931d93887c238025596cb22226e16d43e16a7425/> Add `reveal` methods, make fields private
  - <csr-id-7aec1ac884e01a560770dfab7e0ba64d520415f6/> Add `Provenance` generic param token to `Point`.
    - Use `()` provenance for `kvs_bench` example.
- - <csr-id-07d115443b54e94d9a03240d12b88be5e3f2883f/> Add `reveal` methods, make fields private
- - <csr-id-37e90cd9bf917b5ffa724e79791c5e87db4c1450/> Add `Provenance` generic param token to `Point`.
-   - Use `()` provenance for `kvs_bench` example.
- - <csr-id-6d49db05d30692b70825b4cd6af1590913913ae4/> Add `IsBot::is_bot` and `IsTop::is_top` traits
-   Also adds `test::check_lattice_bot` (inlcluded in `test::check_all`) and `test::check_lattice_top` (NOT in `check_all`)
+- Use `()` provenance for `kvs_bench` example.
 
 ### Bug Fixes (BREAKING)
 
@@ -940,10 +1018,15 @@ Unchanged from previous release.
     - Add `Seq` lattice. ([`d9a60d0`](https://github.com/hydro-project/hydro/commit/d9a60d0196c2e48ed1764c828086a3f3b3b5d25b))
 </details>
 
+<csr-unknown>
+ Add reveal methods, make fields private Add Provenance generic param token to Point. Add IsBot::is_bot and IsTop::is_top traitsAlso adds test::check_lattice_bot (inlcluded in test::check_all) and test::check_lattice_top (NOT in check_all)<csr-unknown/>
+
 ## 0.2.0 (2023-05-31)
 
 <csr-id-fd896fbe925fbd8ef1d16be7206ac20ba585081a/>
 <csr-id-10b308532245db8f4480ce53b67aea050ae1918d/>
+<csr-id-c0f165e32a1dcdcadefe6cdcf0b068a31ef9d1d7/>
+<csr-id-b94cf68343c5dcaaaa0c18bb068f435441f32b09/>
 
 ### Chore
 
@@ -1013,6 +1096,7 @@ Unchanged from previous release.
 ## 0.1.1 (2023-05-23)
 
 <csr-id-3bee6f858a78d82b7431e124ef9792002c8d77ce/>
+<csr-id-0d8930b94a1ff3e3f22924a505721d217f632446/>
 
 ### Documentation
 
@@ -1060,15 +1144,19 @@ Unchanged from previous release.
 <csr-id-cd0a86d9271d0e3daab59c46f079925f863424e1/>
 <csr-id-20a1b2c0cd04a8b495a02ce345db3d48a99ea0e9/>
 <csr-id-1eda91a2ef8794711ef037240f15284e8085d863/>
+<csr-id-7818bafa3361890101864f82815b1c94130d97f4/>
+<csr-id-21a503e795593173b1fd114d70a7cfad3e79ecfe/>
+<csr-id-2a144a622682a958d44377df71a71b59cf1b39c4/>
 
 ### Documentation
 
+<csr-id-fc8f73980d0cf711bf6ac3fcb8558540d0f05acd/>
+
  - <csr-id-95d23eaf8218002ad0a6a8c4c6e6c76e6b8f785b/> Update docs, add book chapter for `lattices` crate
    - Adds `mdbook-katex` to the book build for latex support.
- - <csr-id-fc8f73980d0cf711bf6ac3fcb8558540d0f05acd/> Update docs, add book chapter for `lattices` crate
-   - Adds `mdbook-katex` to the book build for latex support.
-   - Update `mdbook-*` plugins.
-   - Moves most lattice implementations to the top level of the crate
+- Adds `mdbook-katex` to the book build for latex support.
+- Update `mdbook-*` plugins.
+- Moves most lattice implementations to the top level of the crate
      to eliminate redundant documentation.
 
 ### New Features
@@ -1130,6 +1218,9 @@ Unchanged from previous release.
  * **Uncategorized**
     - Release hydroflow_cli_integration v0.0.1, hydroflow_lang v0.0.1, hydroflow_datalog_core v0.0.1, hydroflow_datalog v0.0.1, hydroflow_macro v0.0.1, lattices v0.1.0, variadics v0.0.2, pusherator v0.0.1, hydroflow v0.0.2 ([`d91ebc9`](https://github.com/hydro-project/hydro/commit/d91ebc9e8e23965089c929558a09fc430ee72f2c))
 </details>
+
+<csr-unknown>
+ Update docs, add book chapter for lattices crate<csr-unknown/>
 
 ## 0.0.0 (2023-05-02)
 

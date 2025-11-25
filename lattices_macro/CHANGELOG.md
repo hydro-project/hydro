@@ -1,6 +1,49 @@
 
 
+## v0.5.11 (2025-11-25)
+
+### Bug Fixes
+
+ - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
+ - <csr-id-5ec8b3b9b10b30f3c1b7bd8949874f0b4b7da7e9/> hardcoded crate name issues
+
+### Other
+
+ - <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/> ensure `hydro_build_utils` is published in the correct order
+
+### Test
+
+ - <csr-id-dc170e63f62e890bfd0dd054e5a930607fd67545/> exclude crate/module in lib snapshot file names [ci-full]
+   Also removes unused
+   `hydro_lang/src/compile/ir/snapshots/hydro_lang__compile__ir__backtrace__tests__backtrace.snap`
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 3 unique issues were worked on: [#1977](https://github.com/hydro-project/hydro/issues/1977), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2283](https://github.com/hydro-project/hydro/issues/2283)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1977](https://github.com/hydro-project/hydro/issues/1977)**
+    - Hardcoded crate name issues ([`5ec8b3b`](https://github.com/hydro-project/hydro/commit/5ec8b3b9b10b30f3c1b7bd8949874f0b4b7da7e9))
+ * **[#2028](https://github.com/hydro-project/hydro/issues/2028)**
+    - Refactor github actions workflows, make stable the default toolchain ([`c40876e`](https://github.com/hydro-project/hydro/commit/c40876ec4bd3b31254d683e479b9a235f3d11f67))
+ * **[#2283](https://github.com/hydro-project/hydro/issues/2283)**
+    - Exclude crate/module in lib snapshot file names [ci-full] ([`dc170e6`](https://github.com/hydro-project/hydro/commit/dc170e63f62e890bfd0dd054e5a930607fd67545))
+ * **Uncategorized**
+    - Ensure `hydro_build_utils` is published in the correct order ([`806a623`](https://github.com/hydro-project/hydro/commit/806a6239a649e24fe10c3c90dd30bd18debd41d2))
+</details>
+
 ## v0.5.10 (2025-07-30)
+
+<csr-id-3d40d1a65c41dca3893867fb567993a27491fa0c/>
 
 ### Chore
 
@@ -10,7 +53,8 @@
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release over the course of 5 calendar days.
+ - 2 commits contributed to the release.
+ - 144 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1944](https://github.com/hydro-project/hydro/issues/1944)
 
@@ -22,11 +66,14 @@
 
  * **[#1944](https://github.com/hydro-project/hydro/issues/1944)**
     - Update `proc-macro-crate` ([`3d40d1a`](https://github.com/hydro-project/hydro/commit/3d40d1a65c41dca3893867fb567993a27491fa0c))
+ * **Uncategorized**
+    - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
 </details>
 
 ## v0.5.9 (2025-03-08)
 
 <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/>
+<csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 
 ### Chore
 
@@ -70,6 +117,7 @@
 ## v0.5.8 (2024-12-23)
 
 <csr-id-accb13cad718c99d350e4bafe82e0ca38bf94c62/>
+<csr-id-2a22d50285ae1be1a5f888d5d15321cc1bb13c82/>
 
 ### Chore
 
@@ -124,6 +172,7 @@
 ## v0.5.7 (2024-11-08)
 
 <csr-id-d5677604e93c07a5392f4229af94a0b736eca382/>
+<csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/>
 
 ### Chore
 
@@ -157,6 +206,7 @@
 ## v0.5.6 (2024-08-30)
 
 <csr-id-11af32828bab6e4a4264d2635ff71a12bb0bb778/>
+<csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/>
 
 ### Chore
 
@@ -228,11 +278,11 @@
    ```rust
    struct MyLattice<KeySet, Epoch>
    where
-       KeySet: Collection,
-       Epoch: Ord,
+   KeySet: Collection,
+   Epoch: Ord,
    {
-       keys: SetUnion<KeySet>,
-       epoch: Max<Epoch>,
+   keys: SetUnion<KeySet>,
+   epoch: Max<Epoch>,
    }
    ```
    

@@ -5,6 +5,111 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.15.0 (2025-11-25)
+
+### Chore
+
+ - <csr-id-83b77a16a0771a2efe86075ec98b60639a1510b7/> only depend on `samply` on supported systems, remove leftover DTrace code
+   Minimizes dependencies we pull in on Unix.
+ - <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/> update pinned nightly to 2025-08-20, fix lints
+
+### New Features
+
+ - <csr-id-fc3bf5bafdd225bf6a59fbb2a01c0450e8404315/> make glibc vs musl configurable for cloud deployments
+ - <csr-id-891a25d3f72b2fa10a5154940624a146bb460ed7/> use dynamically linked libraries in test mode
+ - <csr-id-a65893a65bc43cb13c516c95a8d86ad424446565/> share `__staged` across trybuild targets
+   Previously, each trybuild target (in test-mode) would have its own copy
+   of the `__staged` module containing the entire sources of the original
+   crate. This creates a huge compilation burden that is repeated on every
+   deployment.
+   
+   With an accompanying change in Stageleft, we are now able to share the
+   `__staged` module in the common `lib.rs`. This also moves the simulation
+   dylibs to be compiled as an example so that they do not conflict with
+   the caching of the shared `lib.rs`.
+   
+   Also reduces thrashing due to the lockfile having to be updated after
+   each time it is written (because packages have to be removed which were
+   needed in the workspace but not the trybuild).
+ - <csr-id-1dd2606932fa30cf1812d75a5a3733f817f344b5/> add support for aws via terraform
+
+### Bug Fixes
+
+ - <csr-id-f0acd7cb0e60d163c9e5a7c053ebdba995c8f289/> fix full path replacement for staged code errors
+ - <csr-id-807eb0afe3f5fcbec573959b5e4323f762cebe6e/> make `cargo sim` fuzzing command work again [ci-full]
+   Accidentally broken when we moved to sharing the trybuild-lib as a
+   dylib.
+ - <csr-id-6d2e7d05102c79e75e410804988b8a4b3b563aea/> simulator on Windows and test macOS in CI [ci-full]
+   Now that we have a bunch of platform-specific bits for dynamic
+   libraries, we should test all our supported dev platforms.
+ - <csr-id-dad4abeb494a45650d9ae0f600e917bae2679b87/> don't emit duplicate leafs for building Rust service
+   Because the `.build()` API creates a leaf itself, there is no need to
+   wrap it in another leaf (which results in two rows in the progress
+   display).
+
+### New Features (BREAKING)
+
+ - <csr-id-5d40134fbd4a82a2ee8b24b02b52abd506880435/> introduce support for dynamic external clients
+   So far, Hydro has only supported deployments where there is a statically
+   known number of single-connection external clients for sending /
+   receiving data. This is not practical in production applications where
+   external users will dynamically connect to the Hydro service.
+   
+   This takes the first step towards addressing this, by setting up the
+   networking mechanism for handling dynamically connected clients and
+   adding an API for sending/receiving data.
+   
+   This also changes the `source_external_bytes` APIs to return the raw
+   `BytesMut` sent over the network, rather than adding a freezing step.
+   
+   Finally, we show an end-to-end example using this interface to write a
+   simple HTTP server.
+
+### Refactor (BREAKING)
+
+ - <csr-id-9e07af1af8ad7c84a29d7a960bae7229bca67d68/> remove deprecated `add_connection` API
+   Has not been used for a long while...
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 12 commits contributed to the release.
+ - 12 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 12 unique issues were worked on: [#1966](https://github.com/hydro-project/hydro/issues/1966), [#1967](https://github.com/hydro-project/hydro/issues/1967), [#2024](https://github.com/hydro-project/hydro/issues/2024), [#2083](https://github.com/hydro-project/hydro/issues/2083), [#2177](https://github.com/hydro-project/hydro/issues/2177), [#2187](https://github.com/hydro-project/hydro/issues/2187), [#2191](https://github.com/hydro-project/hydro/issues/2191), [#2192](https://github.com/hydro-project/hydro/issues/2192), [#2194](https://github.com/hydro-project/hydro/issues/2194), [#2205](https://github.com/hydro-project/hydro/issues/2205), [#2269](https://github.com/hydro-project/hydro/issues/2269), [#2288](https://github.com/hydro-project/hydro/issues/2288)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1966](https://github.com/hydro-project/hydro/issues/1966)**
+    - Introduce support for dynamic external clients ([`5d40134`](https://github.com/hydro-project/hydro/commit/5d40134fbd4a82a2ee8b24b02b52abd506880435))
+ * **[#1967](https://github.com/hydro-project/hydro/issues/1967)**
+    - Remove deprecated `add_connection` API ([`9e07af1`](https://github.com/hydro-project/hydro/commit/9e07af1af8ad7c84a29d7a960bae7229bca67d68))
+ * **[#2024](https://github.com/hydro-project/hydro/issues/2024)**
+    - Update pinned nightly to 2025-08-20, fix lints ([`97426b8`](https://github.com/hydro-project/hydro/commit/97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71))
+ * **[#2083](https://github.com/hydro-project/hydro/issues/2083)**
+    - Add support for aws via terraform ([`1dd2606`](https://github.com/hydro-project/hydro/commit/1dd2606932fa30cf1812d75a5a3733f817f344b5))
+ * **[#2177](https://github.com/hydro-project/hydro/issues/2177)**
+    - Only depend on `samply` on supported systems, remove leftover DTrace code ([`83b77a1`](https://github.com/hydro-project/hydro/commit/83b77a16a0771a2efe86075ec98b60639a1510b7))
+ * **[#2187](https://github.com/hydro-project/hydro/issues/2187)**
+    - Share `__staged` across trybuild targets ([`a65893a`](https://github.com/hydro-project/hydro/commit/a65893a65bc43cb13c516c95a8d86ad424446565))
+ * **[#2191](https://github.com/hydro-project/hydro/issues/2191)**
+    - Don't emit duplicate leafs for building Rust service ([`dad4abe`](https://github.com/hydro-project/hydro/commit/dad4abeb494a45650d9ae0f600e917bae2679b87))
+ * **[#2192](https://github.com/hydro-project/hydro/issues/2192)**
+    - Use dynamically linked libraries in test mode ([`891a25d`](https://github.com/hydro-project/hydro/commit/891a25d3f72b2fa10a5154940624a146bb460ed7))
+ * **[#2194](https://github.com/hydro-project/hydro/issues/2194)**
+    - Simulator on Windows and test macOS in CI [ci-full] ([`6d2e7d0`](https://github.com/hydro-project/hydro/commit/6d2e7d05102c79e75e410804988b8a4b3b563aea))
+ * **[#2205](https://github.com/hydro-project/hydro/issues/2205)**
+    - Make `cargo sim` fuzzing command work again [ci-full] ([`807eb0a`](https://github.com/hydro-project/hydro/commit/807eb0afe3f5fcbec573959b5e4323f762cebe6e))
+ * **[#2269](https://github.com/hydro-project/hydro/issues/2269)**
+    - Make glibc vs musl configurable for cloud deployments ([`fc3bf5b`](https://github.com/hydro-project/hydro/commit/fc3bf5bafdd225bf6a59fbb2a01c0450e8404315))
+ * **[#2288](https://github.com/hydro-project/hydro/issues/2288)**
+    - Fix full path replacement for staged code errors ([`f0acd7c`](https://github.com/hydro-project/hydro/commit/f0acd7cb0e60d163c9e5a7c053ebdba995c8f289))
+</details>
+
 ## 0.14.0 (2025-07-31)
 
 <csr-id-555b83e4b07e4c1f5ce25ef1293cd715a30108fd/>
@@ -98,7 +203,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 17 commits contributed to the release over the course of 91 calendar days.
+ - 18 commits contributed to the release.
+ - 110 days passed between releases.
  - 16 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 16 unique issues were worked on: [#1803](https://github.com/hydro-project/hydro/issues/1803), [#1825](https://github.com/hydro-project/hydro/issues/1825), [#1844](https://github.com/hydro-project/hydro/issues/1844), [#1845](https://github.com/hydro-project/hydro/issues/1845), [#1849](https://github.com/hydro-project/hydro/issues/1849), [#1856](https://github.com/hydro-project/hydro/issues/1856), [#1859](https://github.com/hydro-project/hydro/issues/1859), [#1901](https://github.com/hydro-project/hydro/issues/1901), [#1907](https://github.com/hydro-project/hydro/issues/1907), [#1911](https://github.com/hydro-project/hydro/issues/1911), [#1918](https://github.com/hydro-project/hydro/issues/1918), [#1938](https://github.com/hydro-project/hydro/issues/1938), [#1941](https://github.com/hydro-project/hydro/issues/1941), [#1943](https://github.com/hydro-project/hydro/issues/1943), [#1955](https://github.com/hydro-project/hydro/issues/1955), [#1961](https://github.com/hydro-project/hydro/issues/1961)
 
@@ -141,6 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#1961](https://github.com/hydro-project/hydro/issues/1961)**
     - VM names violating GCP's regex ([`3a3ce7f`](https://github.com/hydro-project/hydro/commit/3a3ce7ff459f15d1fbee47d1e374d99ea122ff3a))
  * **Uncategorized**
+    - Release example_test v0.0.0, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0 ([`5f69ee0`](https://github.com/hydro-project/hydro/commit/5f69ee080a9e257bc07cdc4deda90ce5525a3d0e))
     - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
 </details>
 
@@ -189,9 +296,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **Uncategorized**
     - Release dfir_lang v0.13.0, dfir_datalog_core v0.13.0, dfir_datalog v0.13.0, dfir_macro v0.13.0, hydro_deploy_integration v0.13.0, dfir_rs v0.13.0, hydro_deploy v0.13.0, hydro_lang v0.13.0, hydro_std v0.13.0, hydro_cli v0.13.0, safety bump 8 crates ([`400fd8f`](https://github.com/hydro-project/hydro/commit/400fd8f2e8cada253f54980e7edce0631be70a82))
 </details>
-
-<csr-unknown>
-Fix integer rollover in _counter() by using u64 instead ofinferred i32.Refactor samply profile conversion for asynchronous frame lookup.<csr-unknown/>
 
 ## 0.12.1 (2025-03-15)
 
@@ -719,8 +823,75 @@ Fix integer rollover in _counter() by using u64 instead ofinferred i32.Refactor 
 
 ### Refactor (BREAKING)
 
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+### Refactor (BREAKING)
+
  - <csr-id-25989c7d938a0e93355a670f8d78a5aea900fce0/> rename integration crates to drop CLI references
  - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-ac8dcbf7c6dbe018907a3012b71b0e4fcf4d2cb6/> end-to-end flamegraph generation, fix #1365
+   Depends on #1370
+ - <csr-id-9a503cf85225ff1fcfe7a815fda3a4ac34a75c42/> `Deployment.stop()` for graceful shutdown including updated `perf` profile downloading
+   * `perf` profile downloading moved from the `drop()` impl to `async fn
+   stop()`
+   * download perf data via stdout
+   * update async-ssh2-lite to 0.5 to cleanup tokio compat issues
+   
+   WIP for #1365
+ - <csr-id-8bcd86c15bc4d9d2e3b564061be879bfe8820e25/> use `buildstructor` to handle excessive `Deployment` method arguments, fix #1364
+   Adds new method `Deployment::AzureHost`
+
+<csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
    ---
    [//]: # (BEGIN SAPLING FOOTER)
    Stack created with [Sapling](https://sapling-scm.com). Best reviewed
@@ -895,62 +1066,6 @@ Fix integer rollover in _counter() by using u64 instead ofinferred i32.Refactor 
    * #1395
    * __->__ #1394
 
-### Refactor (BREAKING)
-
- - <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
-   * #1395
-   * __->__ #1394
-
-<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
-   * #1395
-   * __->__ #1394
-
-<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
-   * #1395
-   * __->__ #1394
-
-<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
-   * #1395
-   * __->__ #1394
-
-<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
-   * #1395
-   * __->__ #1394
-
-<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
-   * #1395
-   * __->__ #1394
-
 <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
    ---
    [//]: # (BEGIN SAPLING FOOTER)
@@ -1037,6 +1152,98 @@ Fix integer rollover in _counter() by using u64 instead ofinferred i32.Refactor 
 ### Refactor (BREAKING)
 
  - <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+### Refactor (BREAKING)
+
+ - <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
    ---
    [//]: # (BEGIN SAPLING FOOTER)
    Stack created with [Sapling](https://sapling-scm.com). Best reviewed
@@ -1180,6 +1387,26 @@ Fix integer rollover in _counter() by using u64 instead ofinferred i32.Refactor 
 
  - <csr-id-0a465e55dd39c76bc1aefb020460a639d792fe87/> rename integration crates to drop CLI references
  - <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-bb081d3b0af6dbce9630e23dfe8b7d1363751c2b/> end-to-end flamegraph generation, fix #1365
+   Depends on #1370
+ - <csr-id-a2147864b24110c9ae2c1553e9e8b55bd5065f15/> `Deployment.stop()` for graceful shutdown including updated `perf` profile downloading
+   * `perf` profile downloading moved from the `drop()` impl to `async fn
+   stop()`
+   * download perf data via stdout
+   * update async-ssh2-lite to 0.5 to cleanup tokio compat issues
+   
+   WIP for #1365
+ - <csr-id-8856c8596d5ad9d5f24a46467690bfac1549fae2/> use `buildstructor` to handle excessive `Deployment` method arguments, fix #1364
+   Adds new method `Deployment::AzureHost`
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
    ---
    [//]: # (BEGIN SAPLING FOOTER)
    Stack created with [Sapling](https://sapling-scm.com). Best reviewed

@@ -1366,7 +1366,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_lang"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "auto_impl",
  "clap",
@@ -1386,7 +1386,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_macro"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "dfir_lang",
  "hydro_build_utils",
@@ -1399,7 +1399,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_rs"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "bincode",
  "byteorder",
@@ -2160,7 +2160,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "async-process",
@@ -2195,7 +2195,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy_integration"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -2212,7 +2212,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_lang"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "auto_impl",
  "backtrace",
@@ -2267,7 +2267,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_std"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "ctor 0.2.9",
  "hdrhistogram",
@@ -2771,7 +2771,7 @@ dependencies = [
 
 [[package]]
 name = "lattices"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "cc-traits",
  "fst",
@@ -2788,7 +2788,7 @@ dependencies = [
 
 [[package]]
 name = "lattices_macro"
-version = "0.5.10"
+version = "0.5.11"
 dependencies = [
  "hydro_build_utils",
  "prettyplease",
@@ -3049,7 +3049,7 @@ dependencies = [
 
 [[package]]
 name = "multiplatform_test"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "env_logger",
  "log",
@@ -5637,7 +5637,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "variadics"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "hashbrown 0.14.5",
  "hydro_build_utils",
@@ -5647,7 +5647,7 @@ dependencies = [
 
 [[package]]
 name = "variadics_macro"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.3.0",

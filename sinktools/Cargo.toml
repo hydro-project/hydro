@@ -22,7 +22,7 @@ futures-util = { version = "0.3", default-features = false, features = [
 ] }
 pin-project-lite = "0.2"
 sealed = "0.6"
-variadics = { optional = true, path = "../variadics", default-features = false, version = "^0.0.9" }
+variadics = { optional = true, path = "../variadics", default-features = false, version = "^0.0.10" }
 
 [dev-dependencies]
 futures-task = { version = "0.3" }
