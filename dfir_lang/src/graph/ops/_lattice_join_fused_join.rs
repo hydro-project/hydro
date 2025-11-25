@@ -106,11 +106,11 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
 
         let wc = WriteContextArgs {
             arguments: &parse_quote_spanned! {op_span=>
-                #root::compiled::pull::join_fused::FoldFrom::new(
+                #root::util::accumulator::FoldFrom::new(
                     <#lhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from,
                     |state, delta| { #root::lattices::Merge::merge(state, delta); },
                 ),
-                #root::compiled::pull::join_fused::FoldFrom::new(
+                #root::util::accumulator::FoldFrom::new(
                     <#rhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from,
                     |state, delta| { #root::lattices::Merge::merge(state, delta); },
                 ),

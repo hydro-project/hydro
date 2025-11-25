@@ -1,6 +1,7 @@
 #![warn(missing_docs)]
 //! Helper utilities for the DFIR syntax.
 
+pub mod accumulator;
 pub mod clear;
 #[cfg(feature = "dfir_macro")]
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]

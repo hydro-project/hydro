@@ -2,9 +2,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use dfir_rs::compiled::pull::join_fused::{Fold, Reduce};
 use dfir_rs::lattices::set_union::SetUnionSingletonSet;
 use dfir_rs::scheduled::ticks::TickInstant;
+use dfir_rs::util::accumulator::{Fold, Reduce};
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use lattices::Merge;
 use lattices::set_union::SetUnionHashSet;
