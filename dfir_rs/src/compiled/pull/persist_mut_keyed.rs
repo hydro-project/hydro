@@ -11,11 +11,9 @@ use crate::util::PersistenceKeyed;
 use crate::util::sparse_vec::{SparseVec, SparseVecIter};
 
 pin_project! {
-    #[project = PersistMutKeyedProj]
-    #[project_replace = PersistMutKeyedProjOwn]
-    /// Special stream for the `persist_mut_keyed` operator
-    #[must_use = "streams do nothing unless polled"]
-    pub enum PersistMutKeyed<'ctx, St, Key, Item> {
+    #[project = PersistMutKeyedStateProj]
+    #[project_replace = PersistMutKeyedStateProjOwn]
+    enum PersistMutKeyedState<'ctx, St, Key, Item> {
         Build {
             #[pin]
             stream: St,
@@ -25,6 +23,15 @@ pin_project! {
             iter: Iter<'ctx, Key, Item>,
         },
         Empty
+    }
+}
+
+pin_project! {
+    /// Special stream for the `persist_mut_keyed` operator
+    #[must_use = "streams do nothing unless polled"]
+    pub struct PersistMutKeyed<'ctx, St, Key, Item> {
+        #[pin]
+        state: PersistMutKeyedState<'ctx, St, Key, Item>,
     }
 }
 
@@ -40,11 +47,12 @@ where
         map: &'ctx mut FxHashMap<Key, SparseVec<Item>>,
         is_first_run_this_tick: bool,
     ) -> Self {
-        if is_first_run_this_tick {
-            Self::Build { stream, map }
+        let state = if is_first_run_this_tick {
+            PersistMutKeyedState::Build { stream, map }
         } else {
-            Self::Empty
-        }
+            PersistMutKeyedState::Empty
+        };
+        Self { state }
     }
 }
 
@@ -57,9 +65,10 @@ where
     type Item = (Key, Item);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.as_mut().project();
-        match this {
-            PersistMutKeyedProj::Build { mut stream, map } => {
+        let mut this = self.as_mut().project();
+        
+        match this.state.as_mut().project() {
+            PersistMutKeyedStateProj::Build { mut stream, map } => {
                 while let Some(delta) = ready!(stream.as_mut().poll_next(cx)) {
                     match delta {
                         PersistenceKeyed::Persist(k, v) => {
@@ -70,25 +79,25 @@ where
                         }
                     }
                 }
-                let PersistMutKeyedProjOwn::Build { stream: _, map } =
-                    self.as_mut().project_replace(PersistMutKeyed::Empty)
+                let PersistMutKeyedStateProjOwn::Build { stream: _, map } =
+                    this.state.as_mut().project_replace(PersistMutKeyedState::Empty)
                 else {
                     unreachable!();
                 };
-                self.as_mut().set(PersistMutKeyed::Play {
+                this.state.set(PersistMutKeyedState::Play {
                     iter: Iter::new(map),
                 });
                 self.poll_next(cx)
             }
-            PersistMutKeyedProj::Play { iter } => {
+            PersistMutKeyedStateProj::Play { iter } => {
                 if let Some((k, v)) = iter.next() {
                     Poll::Ready(Some((k.clone(), v.clone())))
                 } else {
-                    self.set(PersistMutKeyed::Empty);
+                    this.state.set(PersistMutKeyedState::Empty);
                     Poll::Ready(None)
                 }
             }
-            PersistMutKeyedProj::Empty => Poll::Ready(None),
+            PersistMutKeyedStateProj::Empty => Poll::Ready(None),
         }
     }
 }

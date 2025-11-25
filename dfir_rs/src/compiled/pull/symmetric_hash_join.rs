@@ -9,6 +9,7 @@ use pin_project_lite::pin_project;
 use super::HalfJoinState;
 
 pin_project! {
+    /// Stream combinator for symmetric hash join operations.
     #[must_use = "streams do nothing unless polled"]
     pub struct SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState, Replay>
     {
@@ -90,6 +91,7 @@ where
     }
 }
 
+/// Creates a symmetric hash join stream from two input streams and their join states.
 pub fn symmetric_hash_join_into_stream<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState>(
     lhs: Lhs,
     rhs: Rhs,

@@ -8,6 +8,7 @@ use lattices::{LatticeBimorphism, Merge};
 use pin_project_lite::pin_project;
 
 pin_project! {
+    /// Stream combinator for lattice bimorphism operations.
     #[must_use = "streams do nothing unless polled"]
     pub struct LatticeBimorphismStream<'a, Func, LhsStream, RhsStream, LhsState, RhsState, Output> {
         #[pin]
@@ -36,6 +37,7 @@ where
     RhsState: 'static + Clone,
     Output: Merge<Output>,
 {
+    /// Creates a new `LatticeBimorphismStream`.
     pub fn new(
         lhs_stream: LhsStream,
         rhs_stream: RhsStream,

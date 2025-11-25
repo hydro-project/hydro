@@ -9,11 +9,9 @@ use crate::util::Persistence;
 use crate::util::sparse_vec::{SparseVec, SparseVecIter};
 
 pin_project! {
-    #[project = PersistMutProj]
-    #[project_replace = PersistMutProjOwn]
-    /// Special stream for the `persist_mut` operator
-    #[must_use = "streams do nothing unless polled"]
-    pub enum PersistMut<'ctx, St, Item> {
+    #[project = PersistMutStateProj]
+    #[project_replace = PersistMutStateProjOwn]
+    enum PersistMutState<'ctx, St, Item> {
         Build {
             #[pin]
             stream: St,
@@ -26,6 +24,15 @@ pin_project! {
     }
 }
 
+pin_project! {
+    /// Special stream for the `persist_mut` operator
+    #[must_use = "streams do nothing unless polled"]
+    pub struct PersistMut<'ctx, St, Item> {
+        #[pin]
+        state: PersistMutState<'ctx, St, Item>,
+    }
+}
+
 impl<'ctx, St, Item> PersistMut<'ctx, St, Item>
 where
     St: Stream<Item = Persistence<Item>>,
@@ -33,11 +40,12 @@ where
 {
     /// Create with the preceding sink and given replay.
     pub fn new(stream: St, vec: &'ctx mut SparseVec<Item>, is_first_run_this_tick: bool) -> Self {
-        if is_first_run_this_tick {
-            Self::Build { stream, vec }
+        let state = if is_first_run_this_tick {
+            PersistMutState::Build { stream, vec }
         } else {
-            Self::Empty
-        }
+            PersistMutState::Empty
+        };
+        Self { state }
     }
 }
 
@@ -49,32 +57,33 @@ where
     type Item = Item;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.as_mut().project();
-        match this {
-            PersistMutProj::Build { mut stream, vec } => {
+        let mut this = self.as_mut().project();
+        
+        match this.state.as_mut().project() {
+            PersistMutStateProj::Build { mut stream, vec } => {
                 while let Some(delta) = ready!(stream.as_mut().poll_next(cx)) {
                     match delta {
                         Persistence::Persist(v) => vec.push(v),
                         Persistence::Delete(v) => vec.delete(&v),
                     }
                 }
-                let PersistMutProjOwn::Build { stream: _, vec } =
-                    self.as_mut().project_replace(PersistMut::Empty)
+                let PersistMutStateProjOwn::Build { stream: _, vec } =
+                    this.state.as_mut().project_replace(PersistMutState::Empty)
                 else {
                     unreachable!();
                 };
-                self.as_mut().set(PersistMut::Play { iter: vec.iter() });
+                this.state.set(PersistMutState::Play { iter: vec.iter() });
                 self.poll_next(cx)
             }
-            PersistMutProj::Play { iter } => {
+            PersistMutStateProj::Play { iter } => {
                 if let Some(item) = iter.next() {
                     Poll::Ready(Some(item.clone()))
                 } else {
-                    self.set(PersistMut::Empty);
+                    this.state.set(PersistMutState::Empty);
                     Poll::Ready(None)
                 }
             }
-            PersistMutProj::Empty => Poll::Ready(None),
+            PersistMutStateProj::Empty => Poll::Ready(None),
         }
     }
 }

@@ -46,6 +46,7 @@ where
     ThenFn: FnOnce(&'a mut HashMap<Key, Val, Hasher>) -> ThenIter,
     ThenIter: Iterator,
 {
+    /// Creates a new `ReduceKeyedThen` stream.
     pub fn new(
         stream: St,
         state: &'a mut HashMap<Key, Val, Hasher>,

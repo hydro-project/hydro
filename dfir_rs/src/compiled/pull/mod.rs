@@ -27,13 +27,15 @@ pub use fold::Fold;
 mod fold_keyed_then;
 pub use fold_keyed_then::FoldKeyedThen;
 
+/// Fused join operator implementations.
 pub mod join_fused;
 pub use join_fused::{JoinFused, JoinFusedLhs};
 
 mod persist;
 pub use persist::Persist;
 
-mod persist_mut;
+/// Persist mutable state operator.
+pub mod persist_mut;
 pub use persist_mut::PersistMut;
 
 mod persist_mut_keyed;

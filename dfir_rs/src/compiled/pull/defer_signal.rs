@@ -6,7 +6,7 @@ use futures::stream::{FusedStream, Stream};
 use pin_project_lite::pin_project;
 
 pin_project! {
-    // Special stream for the `defer_signal` operator.
+    /// Special stream for the `defer_signal` operator.
     #[must_use = "streams do nothing unless polled"]
     pub struct DeferSignal<'a, InputStream, SignalStream>
     where
@@ -29,6 +29,7 @@ where
     InputStream: Stream,
     SignalStream: FusedStream,
 {
+    /// Creates a new `DeferSignal` stream.
     pub fn new(
         input: InputStream,
         signal: SignalStream,

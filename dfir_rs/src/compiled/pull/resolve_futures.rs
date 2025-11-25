@@ -26,6 +26,7 @@ where
     Queue: Extend<Fut> + Stream<Item = Fut::Output> + Unpin,
     Fut: Future,
 {
+    /// Creates a new `ResolveFutures` stream.
     pub fn new(stream: St, queue: &'ctx mut Queue, subgraph_waker: Option<Waker>) -> Self {
         Self {
             stream,

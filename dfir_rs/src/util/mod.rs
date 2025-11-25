@@ -1,5 +1,5 @@
-#![warn(missing_docs)]
 //! Helper utilities for the DFIR syntax.
+#![warn(missing_docs)]
 
 pub mod accumulator;
 pub mod clear;

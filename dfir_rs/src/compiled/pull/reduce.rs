@@ -18,6 +18,7 @@ pin_project! {
 }
 
 pin_project! {
+    /// Stream combinator that reduces items into an accumulator.
     pub struct Reduce<'a, St, Func>
     where
         St: Stream,
@@ -33,6 +34,7 @@ where
     St::Item: Clone,
     Func: FnMut(&mut St::Item, St::Item),
 {
+    /// Creates a new `Reduce` stream combinator.
     pub fn new(stream: St, accumulator: &'a mut Option<St::Item>, func: Func) -> Self {
         Self {
             state: ReduceState::Reducing {

@@ -28,6 +28,7 @@ where
     Key: Eq + std::hash::Hash + Clone,
     Val: Eq + std::hash::Hash + Clone,
 {
+    /// Creates a new `AntiJoinPersist` stream.
     pub fn new(
         stream_pos: StPos,
         stream_neg: StNeg,
@@ -110,6 +111,7 @@ where
     Key: Eq + std::hash::Hash + Clone,
     Val: Eq + std::hash::Hash + Clone,
 {
+    /// Creates a new `AntiJoin` stream.
     pub fn new(stream_pos: StPos, stream_neg: StNeg, state_neg: &'a mut FxHashSet<Key>) -> Self {
         Self {
             stream_pos,

@@ -39,6 +39,7 @@ pin_project! {
 }
 
 pin_project! {
+    /// Stream combinator for fused join operations.
     pub struct JoinFused<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, RhsHasher, LhsAccum, RhsAccum> {
         #[pin]
         state: JoinFusedState<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, RhsHasher, LhsAccum, RhsAccum>,
@@ -58,6 +59,7 @@ where
     LhsVal: Clone,
     RhsVal: Clone,
 {
+    /// Creates a new `JoinFused` stream combinator.
     pub fn new(
         lhs: Lhs,
         rhs: Rhs,
@@ -176,6 +178,7 @@ where
 }
 
 pin_project! {
+    /// Stream combinator for left-hand side fused join operations.
     pub struct JoinFusedLhs<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, LhsAccum> {
         #[pin]
         lhs: Lhs,
@@ -201,6 +204,7 @@ where
     LhsVal: Clone,
     RhsVal: Clone,
 {
+    /// Creates a new `JoinFusedLhs` stream combinator.
     pub fn new(
         lhs: Lhs,
         rhs: Rhs,
