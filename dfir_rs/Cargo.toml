@@ -57,6 +57,11 @@ multiplatform_test = { path = "../multiplatform_test", version = "^0.5.0", optio
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0", optional = true }
 example_test = { path = "../example_test", version = "^0.0.0", optional = true }
 
+# coax cargo-smart-release into publishing this crate.
+# https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
+# https://github.com/GitoxideLabs/cargo-smart-release/issues/36
+hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1", optional = true }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.29.0", features = [ "io-std", "fs" ] }
 tokio-util = { version = "0.7.5", features = [ "net" ] }

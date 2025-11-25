@@ -70,6 +70,7 @@ jobs:
       - name: Run cargo smart-release
         # list lockstep-versioned packages at the end of this command
         run: >-
+          set -eo pipefail;
           cargo smart-release --update-crates-index
           --no-changelog-preview --allow-fully-generated-changelogs
           --bump ${{ inputs.bump }} --bump-dependencies auto
