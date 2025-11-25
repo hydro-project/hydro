@@ -5,6 +5,7 @@ use futures::stream::Stream;
 use pin_project_lite::pin_project;
 
 pin_project! {
+    /// Stream combinator that crosses each item from `item_stream` with a singleton value from `singleton_stream`.
     pub struct CrossSingleton<'a, ItemSt, SingletonSt>
     where
         ItemSt: Stream,
@@ -26,6 +27,7 @@ where
     SingletonSt: Stream,
     SingletonSt::Item: Clone,
 {
+    /// Creates a new `CrossSingleton` stream combinator.
     pub fn new(
         item_stream: ItemSt,
         singleton_stream: SingletonSt,

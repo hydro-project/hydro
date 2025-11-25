@@ -1,4 +1,4 @@
-/// Accumulator trait and implementors.
+//! Accumulator trait and implementors.
 use std::collections::hash_map::Entry;
 
 /// Generalization of fold, reduce, etc.

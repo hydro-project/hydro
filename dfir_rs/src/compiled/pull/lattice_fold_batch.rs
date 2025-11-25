@@ -23,7 +23,7 @@ pin_project! {
 }
 
 pin_project! {
-    // Special stream for the `_lattice_fold_batch` operator.
+    /// Special stream for the `_lattice_fold_batch` operator.
     #[must_use = "streams do nothing unless polled"]
     pub struct LatticeFoldBatch<'a, InputStream, SignalStream, LatticeType> {
         #[pin]
@@ -38,6 +38,7 @@ where
     SignalStream: FusedStream,
     LatticeType: Clone + Merge<InputStream::Item>,
 {
+    /// Creates a new `LatticeFoldBatch` stream.
     pub fn new(
         input: InputStream,
         signal: SignalStream,

@@ -18,6 +18,7 @@ pin_project! {
 }
 
 pin_project! {
+    /// Stream combinator that folds items into an accumulator.
     pub struct Fold<'a, St, Accum, Func> {
         #[pin]
         state: FoldState<'a, St, Accum, Func>,
@@ -30,6 +31,7 @@ where
     Accum: Clone,
     Func: FnMut(&mut Accum, St::Item),
 {
+    /// Creates a new `Fold` stream combinator.
     pub fn new(stream: St, accumulator: &'a mut Accum, func: Func) -> Self {
         Self {
             state: FoldState::Folding {

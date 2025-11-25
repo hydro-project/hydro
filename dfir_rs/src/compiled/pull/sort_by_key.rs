@@ -37,6 +37,7 @@ where
     Func: for<'a> FnMut(&'a St::Item) -> &'a K,
     K: Ord,
 {
+    /// Creates a new `SortByKey` stream combinator.
     pub fn new(stream: St, sort_func: Func) -> Self {
         let size_hint = stream.size_hint().0;
         Self {
