@@ -53,11 +53,11 @@ pub const SOURCE_JSON: OperatorConstraints = OperatorConstraints {
             let mut #ident_jsonread = {
                 let string = ::std::fs::read_to_string(#arguments).unwrap();
                 let value #generic_type = #root::serde_json::from_str(&string).unwrap();
-                #root::futures::stream::once(value)
+                #root::tokio_stream::once(value)
             };
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #ident_jsonread.by_ref();
+            let #ident = &mut #ident_jsonread;
         };
         Ok(OperatorWriteOutput {
             write_prologue,
