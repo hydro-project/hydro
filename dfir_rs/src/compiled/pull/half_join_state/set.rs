@@ -8,6 +8,7 @@ type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 use smallvec::{SmallVec, smallvec};
 
+/// [`HalfJoinState`] with set semantics.
 #[derive(Debug)]
 pub struct HalfSetJoinState<Key, ValBuild, ValProbe> {
     // Here a smallvec with inline storage of 1 is chosen.

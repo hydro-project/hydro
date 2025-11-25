@@ -1,6 +1,5 @@
 use quote::quote_spanned;
-use syn::parse_quote;
-use syn::spanned::Spanned;
+use syn::{parse_quote, parse_quote_spanned};
 
 use super::{
     DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
@@ -94,8 +93,6 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
                    root,
                    op_span,
                    ident,
-                   inputs,
-                   is_pull,
                    op_inst:
                        OperatorInstance {
                            generics: OpInstGenerics { type_args, .. },
@@ -108,69 +105,39 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
         let rhs_type = &type_args[1];
 
         let wc = WriteContextArgs {
-            arguments: &parse_quote! {
-                FoldFrom(<#lhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from, #root::lattices::Merge::merge),
-                FoldFrom(<#rhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from, #root::lattices::Merge::merge)
+            arguments: &parse_quote_spanned! {op_span=>
+                #root::compiled::pull::FoldFrom::new(
+                    <#lhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from,
+                    |state, delta| { #root::lattices::Merge::merge(state, delta); },
+                ),
+                #root::compiled::pull::FoldFrom::new(
+                    <#rhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from,
+                    |state, delta| { #root::lattices::Merge::merge(state, delta); },
+                ),
             },
             ..wc.clone()
         };
 
-        // initialize write_prologue and write_iterator_after via join_fused, but specialize the write_iterator
+        // Use `join_fused`'s codegen.
         let OperatorWriteOutput {
             write_prologue,
             write_prologue_after,
-            write_iterator: _,
+            write_iterator,
             write_iterator_after,
         } = (super::join_fused::JOIN_FUSED.write_fn)(&wc, diagnostics).unwrap();
 
-        assert!(is_pull);
-        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
-
-        let lhs_join_options = super::join_fused::parse_argument(&wc.arguments[0])
-            .map_err(|err| diagnostics.push(err))?;
-        let rhs_join_options = super::join_fused::parse_argument(&wc.arguments[1])
-            .map_err(|err| diagnostics.push(err))?;
-        let (_lhs_prologue, _lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
-            super::join_fused::make_joindata(&wc, persistences[0], &lhs_join_options, "lhs")
-                .map_err(|err| diagnostics.push(err))?;
-
-        let (_rhs_prologue, _rhs_prologue_after, rhs_pre_write_iter, rhs_borrow) =
-            super::join_fused::make_joindata(&wc, persistences[1], &rhs_join_options, "rhs")
-                .map_err(|err| diagnostics.push(err))?;
-
-        let lhs = &inputs[0];
-        let rhs = &inputs[1];
-
-        let arg0_span = wc.arguments[0].span();
-        let arg1_span = wc.arguments[1].span();
-
-        let lhs_tokens = quote_spanned! {arg0_span=>
-            #lhs_borrow.fold_into(#lhs, #root::lattices::Merge::merge,
-                <#lhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from);
-        };
-
-        let rhs_tokens = quote_spanned! {arg1_span=>
-            #rhs_borrow.fold_into(#rhs, #root::lattices::Merge::merge,
-                <#rhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from);
-        };
-
         let write_iterator = quote_spanned! {op_span=>
-            #lhs_pre_write_iter
-            #rhs_pre_write_iter
+            #write_iterator
 
-            let #ident = {
-                #lhs_tokens
-                #rhs_tokens
-
-                // TODO: start the iterator with the smallest len() table rather than always picking rhs.
-                #[allow(clippy::clone_on_copy)]
-                #[allow(suspicious_double_ref_op)]
-                #rhs_borrow
-                    .table
-                    .iter()
-                    .filter_map(|(k, v2)| #lhs_borrow.table.get(k).map(|v1| (k.clone(), #root::lattices::Pair::<#lhs_type, #rhs_type>::new_from(v1.clone(), v2.clone()))))
-                    .map(|(key, p)| #root::lattices::map_union::MapUnionSingletonMap::new_from((key, p)))
-            };
+            #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+            let #ident = #ident.map(|(k, (v1, v2))| {
+                #root::lattices::map_union::MapUnionSingletonMap::new_from(
+                    (
+                        k,
+                        #root::lattices::Pair::<#lhs_type, #rhs_type>::new_from(v1, v2),
+                    ),
+                )
+            });
         };
 
         Ok(OperatorWriteOutput {
