@@ -106,11 +106,11 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
 
         let wc = WriteContextArgs {
             arguments: &parse_quote_spanned! {op_span=>
-                #root::compiled::pull::FoldFrom::new(
+                #root::compiled::pull::join_fused::FoldFrom::new(
                     <#lhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from,
                     |state, delta| { #root::lattices::Merge::merge(state, delta); },
                 ),
-                #root::compiled::pull::FoldFrom::new(
+                #root::compiled::pull::join_fused::FoldFrom::new(
                     <#rhs_type as #root::lattices::LatticeFrom::<_>>::lattice_from,
                     |state, delta| { #root::lattices::Merge::merge(state, delta); },
                 ),
@@ -130,7 +130,7 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
             #write_iterator
 
             #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-            let #ident = #ident.map(|(k, (v1, v2))| {
+            let #ident = #root::futures::stream::StreamExt::map(#ident, |(k, (v1, v2))| {
                 #root::lattices::map_union::MapUnionSingletonMap::new_from(
                     (
                         k,
