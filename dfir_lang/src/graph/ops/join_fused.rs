@@ -124,16 +124,16 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         assert!(is_pull);
 
-        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
+        let [persistence_lhs, persistence_rhs] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
-            make_joindata(wc, persistences[0], "lhs").map_err(|err| diagnostics.push(err))?;
+            make_joindata(wc, persistence_lhs, "lhs").map_err(|err| diagnostics.push(err))?;
 
         let (rhs_prologue, rhs_prologue_after, rhs_pre_write_iter, rhs_borrow) =
-            make_joindata(wc, persistences[1], "rhs").map_err(|err| diagnostics.push(err))?;
+            make_joindata(wc, persistence_rhs, "rhs").map_err(|err| diagnostics.push(err))?;
 
-        let lhs_iter = &inputs[0];
-        let rhs_iter = &inputs[1];
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
 
         let lhs_accum = &arguments[0];
         let rhs_accum = &arguments[1];
@@ -143,32 +143,18 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             #lhs_pre_write_iter
             #rhs_pre_write_iter
 
-            let #ident = {
-                fn __check_accum<Accumulator, Key, Accum, Iter, Hasher, Item>(accum: &mut Accumulator, borrow: &mut ::std::collections::HashMap<Key, Accum, Hasher>, iter: Iter)
-                where
-                    Accumulator: #root::compiled::pull::Accumulator<Accum, Item>,
-                    Key: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone,
-                    Iter: ::std::iter::Iterator<Item = (Key, Item)>,
-                    Hasher: ::std::hash::BuildHasher,
-                    Item: ::std::clone::Clone,
-                {
-                    #root::compiled::pull::Accumulator::accumulate_all(accum, borrow, iter);
-                }
-                __check_accum(&mut #lhs_accum, &mut *#lhs_borrow, #lhs_iter);
-                __check_accum(&mut #rhs_accum, &mut *#rhs_borrow, #rhs_iter);
-
-                // TODO: start the iterator with the smallest len() table rather than always picking rhs.
-                #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-                #rhs_borrow
-                    .iter()
-                    .filter_map(|(k, v2)| {
-                        #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone())))
-                    })
-            };
+            let #ident = #root::compiled::pull::JoinFused::new(
+                #root::futures::stream::StreamExt::fuse(#lhs),
+                #rhs,
+                #lhs_accum,
+                #rhs_accum,
+                &mut *#lhs_borrow,
+                &mut *#rhs_borrow,
+            );
         };
 
         let write_iterator_after =
-            if persistences[0] == Persistence::Static || persistences[1] == Persistence::Static {
+            if persistence_lhs == Persistence::Static || persistence_rhs == Persistence::Static {
                 quote_spanned! {op_span=>
                     // TODO: Probably only need to schedule if #*_borrow.len() > 0?
                     #context.schedule_subgraph(#context.current_subgraph(), false);

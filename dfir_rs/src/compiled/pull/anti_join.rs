@@ -59,12 +59,12 @@ where
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
 
-        // First, get all negative.
+        // Stage 1: Get all negative.
         while let Some(neg_item) = ready!(this.stream_neg.as_mut().poll_next(cx)) {
             this.state_neg.insert(neg_item);
         }
 
-        // Second, replay.
+        // Stage 2: Replay.
         while let Some(item) = this.state_pos.get(*this.replay_idx) {
             *this.replay_idx += 1;
             if !this.state_neg.contains(&item.0) {
@@ -72,7 +72,7 @@ where
             }
         }
 
-        // Third, stream, filter, and store positive.
+        // Stage 3: stream, filter, and store positive.
         debug_assert_eq!(this.state_pos.len(), *this.replay_idx);
 
         while let Some(item) = ready!(this.stream_pos.as_mut().poll_next(cx)) {

@@ -57,15 +57,15 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         assert!(is_pull);
 
-        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
+        let [persistence_lhs, persistence_rhs] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
-            make_joindata(wc, persistences[0], "lhs").map_err(|err| diagnostics.push(err))?;
+            make_joindata(wc, persistence_lhs, "lhs").map_err(|err| diagnostics.push(err))?;
 
         let rhs_joindata_ident = wc.make_ident("rhs_joindata");
         let rhs_borrow_ident = wc.make_ident("rhs_joindata_borrow_ident");
 
-        let rhs_prologue = match persistences[1] {
+        let rhs_prologue = match persistence_rhs {
             Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>},
             Persistence::Static => quote_spanned! {op_span=>
                 let #rhs_joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
@@ -75,21 +75,25 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
             Persistence::Mutable => unreachable!(),
         };
 
-        let lhs_iter = &inputs[0];
-        let rhs_iter = &inputs[1];
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
 
         let lhs_accum = &arguments[0];
 
-        let write_iterator = match persistences[1] {
+        let write_iterator = match persistence_rhs {
             Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>
                 #lhs_pre_write_iter
 
-                let #ident = {
-                    let () = #root::compiled::pull::Accumulator::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs_iter);
+                let #rhs_borrow_ident = &mut ::std::vec::Vec::new();
 
-                    #[allow(clippy::clone_on_copy)]
-                    #rhs_iter.filter_map(|(k, v2)| #lhs_borrow.get(&k).map(|v1| (k, (v1.clone(), v2.clone()))))
-                };
+                let #ident = #root::compiled::pull::JoinFusedLhs::new(
+                    #root::futures::stream::StreamExt::fuse(#lhs),
+                    #rhs,
+                    #lhs_accum,
+                    &mut *#lhs_borrow,
+                    &mut *#rhs_borrow_ident,
+                    0,
+                );
             },
             Persistence::Static => quote_spanned! {op_span=>
                 #lhs_pre_write_iter
@@ -99,26 +103,26 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = {
-                    let () = #root::compiled::pull::Accumulator::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs_iter);
-
-                    #[allow(clippy::clone_on_copy)]
-                    #[allow(suspicious_double_ref_op)]
-                    if #context.is_first_run_this_tick() {
-                        #rhs_borrow_ident.extend(#rhs_iter);
-                        #rhs_borrow_ident.iter()
+                    let rhs_replay_idx = if #context.is_first_run_this_tick() {
+                        0
                     } else {
-                        let len = #rhs_borrow_ident.len();
-                        #rhs_borrow_ident.extend(#rhs_iter);
-                        #rhs_borrow_ident[len..].iter()
-                    }
-                    .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))))
+                        #rhs_borrow_ident.len()
+                    };
+                    #root::compiled::pull::JoinFusedLhs::new(
+                        #root::futures::stream::StreamExt::fuse(#lhs),
+                        #rhs,
+                        #lhs_accum,
+                        &mut *#lhs_borrow,
+                        &mut *#rhs_borrow_ident,
+                        rhs_replay_idx,
+                    )
                 };
             },
             Persistence::Mutable => unreachable!(),
         };
 
         let write_iterator_after =
-            if persistences[0] == Persistence::Static || persistences[1] == Persistence::Static {
+            if persistence_lhs == Persistence::Static || persistence_rhs == Persistence::Static {
                 quote_spanned! {op_span=>
                     // TODO: Probably only need to schedule if #*_borrow.len() > 0?
                     #context.schedule_subgraph(#context.current_subgraph(), false);
