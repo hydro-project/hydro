@@ -1,6 +1,8 @@
 [package]
 name = "sinktools"
 version = "0.0.1"
+description = "Extra sink adaptors and helpers."
+documentation = "https://docs.rs/sinktools/"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
