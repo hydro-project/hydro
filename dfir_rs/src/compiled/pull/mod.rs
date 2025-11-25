@@ -27,8 +27,8 @@ pub use fold::Fold;
 mod fold_keyed_then;
 pub use fold_keyed_then::FoldKeyedThen;
 
-mod join_fused;
-pub use join_fused::*;
+pub mod join_fused;
+pub use join_fused::{JoinFused, JoinFusedLhs};
 
 mod persist;
 pub use persist::Persist;
