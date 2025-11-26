@@ -62,7 +62,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
                     Item: ::std::clone::Clone,
                 {
                     if new_loop_execution {
-                        // TODO(minwgei): could this be done with a lifespan hook?
+                        // TODO(mingwei): could this be done with a lifespan hook?
                         vec.clear();
                     }
                     #root::compiled::pull::Persist::new(input, vec, 0)

@@ -71,7 +71,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
         super::fold_keyed::accum_keyed_codegen(
             wc,
             quote_spanned! {op_span=>
-                #root::compiled::pull::ReduceKeyedThen
+                #root::util::accumulator::Reduce
             },
         )
     },

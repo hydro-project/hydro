@@ -1,5 +1,8 @@
 //! Pull-based operator helpers, i.e. [`Iterator`] helpers.
 
+mod accum_keyed_then;
+pub use accum_keyed_then::AccumKeyedThen;
+
 mod cross_singleton;
 pub use cross_singleton::CrossSingleton;
 
@@ -24,9 +27,6 @@ pub use flatten::Flatten;
 mod fold;
 pub use fold::Fold;
 
-mod fold_keyed_then;
-pub use fold_keyed_then::FoldKeyedThen;
-
 /// Fused join operator implementations.
 pub mod join_fused;
 pub use join_fused::{JoinFused, JoinFusedLhs};
@@ -40,9 +40,6 @@ pub use persist_mut::PersistMut;
 
 mod persist_mut_keyed;
 pub use persist_mut_keyed::PersistMutKeyed;
-
-mod reduce_keyed_then;
-pub use reduce_keyed_then::ReduceKeyedThen;
 
 mod resolve_futures;
 pub use resolve_futures::ResolveFutures;
