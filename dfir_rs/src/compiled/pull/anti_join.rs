@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
 
@@ -25,8 +26,8 @@ impl<'a, StPos, StNeg, Key, Val> AntiJoinPersist<'a, StPos, StNeg, Key, Val>
 where
     StPos: Stream<Item = (Key, Val)>,
     StNeg: FusedStream<Item = Key>,
-    Key: Eq + std::hash::Hash + Clone,
-    Val: Eq + std::hash::Hash + Clone,
+    Key: Eq + Hash + Clone,
+    Val: Clone,
 {
     /// Creates a new `AntiJoinPersist` stream.
     pub fn new(
@@ -52,8 +53,8 @@ impl<'a, StPos, StNeg, Key, Val> Stream for AntiJoinPersist<'a, StPos, StNeg, Ke
 where
     StPos: Stream<Item = (Key, Val)>,
     StNeg: FusedStream<Item = Key>,
-    Key: Eq + std::hash::Hash + Clone,
-    Val: Eq + std::hash::Hash + Clone,
+    Key: Eq + Hash + Clone,
+    Val: Clone,
 {
     type Item = (Key, Val);
 
@@ -108,8 +109,8 @@ impl<'a, StPos, StNeg, Key, Val> AntiJoin<'a, StPos, StNeg, Key>
 where
     StPos: Stream<Item = (Key, Val)>,
     StNeg: FusedStream<Item = Key>,
-    Key: Eq + std::hash::Hash + Clone,
-    Val: Eq + std::hash::Hash + Clone,
+    Key: Eq + Hash + Clone,
+    Val: Clone,
 {
     /// Creates a new `AntiJoin` stream.
     pub fn new(stream_pos: StPos, stream_neg: StNeg, state_neg: &'a mut FxHashSet<Key>) -> Self {
@@ -125,8 +126,8 @@ impl<'a, StPos, StNeg, Key, Val> Stream for AntiJoin<'a, StPos, StNeg, Key>
 where
     StPos: Stream<Item = (Key, Val)>,
     StNeg: FusedStream<Item = Key>,
-    Key: Eq + std::hash::Hash + Clone,
-    Val: Eq + std::hash::Hash + Clone,
+    Key: Eq + Hash + Clone,
+    Val: Clone,
 {
     type Item = (Key, Val);
 

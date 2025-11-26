@@ -28,7 +28,7 @@ linkStyle default stroke:#aaa
 19v1["<div style=text-align:center>(19v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        move || (0, 0)<br>    },<br>    {<br>        move |accum, value| {<br>            if value.is_ok() {<br>                accum.0 += 1;<br>            } else {<br>                accum.1 += 1;<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
 21v1["<div style=text-align:center>(21v1)</div> <code><br>filter_map({<br>    let min__free = 3usize;<br>    move |(key, (success, _error))| {<br>        if success &gt;= min__free { Some(key) } else { None }<br>    }<br>})</code>"]:::otherClass
 22v1["<div style=text-align:center>(22v1)</div> <code><br>tee()</code>"]:::otherClass
-23v1["<div style=text-align:center>(23v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+23v1["<div style=text-align:center>(23v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 24v1["<div style=text-align:center>(24v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
 25v1["<div style=text-align:center>(25v1)</div> <code><br>source_stream({<br>    let cluster_ids__free = unsafe {<br>        ::std::mem::transmute::&lt;<br>            _,<br>            &amp;[hydro_lang::__staged::location::MemberId&lt;()&gt;],<br>        &gt;(__hydro_lang_cluster_ids_1)<br>    };<br>    Box::new(<br>        futures::stream::iter(<br>            cluster_ids__free<br>                .iter()<br>                .cloned()<br>                .map(|member_id| (member_id, MembershipEvent::Joined)),<br>        ),<br>    ) as Box&lt;dyn futures::Stream&lt;Item = (MemberId&lt;()&gt;, MembershipEvent)&gt; + Unpin&gt;<br>})</code>"]:::otherClass
 26v1["<div style=text-align:center>(26v1)</div> <code><br>map({<br>    |(k, v)| (MemberId::from_tagless(k), v)<br>})</code>"]:::otherClass
@@ -47,7 +47,7 @@ linkStyle default stroke:#aaa
 40v1["<div style=text-align:center>(40v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        move || (0, 0)<br>    },<br>    {<br>        move |accum, value| {<br>            if value.is_ok() {<br>                accum.0 += 1;<br>            } else {<br>                accum.1 += 1;<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
 42v1["<div style=text-align:center>(42v1)</div> <code><br>filter_map({<br>    let min__free = 3usize;<br>    move |(key, (success, _error))| {<br>        if success &gt;= min__free { Some(key) } else { None }<br>    }<br>})</code>"]:::otherClass
 43v1["<div style=text-align:center>(43v1)</div> <code><br>tee()</code>"]:::otherClass
-44v1["<div style=text-align:center>(44v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+44v1["<div style=text-align:center>(44v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 45v1["<div style=text-align:center>(45v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 46v1["<div style=text-align:center>(46v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
 56v1["<div style=text-align:center>(56v1)</div> <code><br>identity()</code>"]:::otherClass
@@ -72,7 +72,7 @@ linkStyle default stroke:#aaa
 19v1-->21v1
 21v1-->22v1
 18v1-->|pos|23v1
-22v1-->|neg|23v1
+22v1--x|neg|23v1; linkStyle 20 stroke:red
 44v1-->58v1
 25v1-->26v1
 26v1--x27v1; linkStyle 23 stroke:red
@@ -92,7 +92,7 @@ linkStyle default stroke:#aaa
 40v1-->42v1
 42v1-->43v1
 39v1-->|pos|44v1
-43v1-->|neg|44v1
+43v1--x|neg|44v1; linkStyle 40 stroke:red
 45v1-->46v1
 43v1-->45v1
 56v1--o1v1; linkStyle 43 stroke:red
