@@ -1,7 +1,9 @@
 use std::hint::black_box;
+use std::pin::Pin;
+use std::task::{Context, Poll, Waker};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use dfir_rs::compiled::pull::{HalfSetJoinState, symmetric_hash_join_into_iter};
+use dfir_rs::compiled::pull::{HalfSetJoinState, symmetric_hash_join_into_stream};
 use rand::SeedableRng;
 use rand::distributions::Distribution;
 use rand::rngs::StdRng;
@@ -16,16 +18,19 @@ fn ops(c: &mut Criterion) {
         b.iter(|| {
             let (mut lhs_state, mut rhs_state) =
                 black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-            let join = symmetric_hash_join_into_iter(
-                black_box(lhs.iter().cloned()),
-                black_box(rhs.iter().cloned()),
+            let mut join = symmetric_hash_join_into_stream(
+                black_box(futures::stream::iter(lhs.iter().cloned())),
+                black_box(futures::stream::iter(rhs.iter().cloned())),
                 &mut lhs_state,
                 &mut rhs_state,
                 false,
             );
 
-            for v in join {
-                black_box(v);
+            while let Poll::Ready(Some(item)) = futures::stream::Stream::poll_next(
+                Pin::new(&mut join),
+                &mut Context::from_waker(Waker::noop()),
+            ) {
+                black_box(item);
             }
         });
     });
@@ -37,16 +42,19 @@ fn ops(c: &mut Criterion) {
         b.iter(|| {
             let (mut lhs_state, mut rhs_state) =
                 black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-            let join = symmetric_hash_join_into_iter(
-                black_box(lhs.iter().cloned()),
-                black_box(rhs.iter().cloned()),
+            let mut join = symmetric_hash_join_into_stream(
+                black_box(futures::stream::iter(lhs.iter().cloned())),
+                black_box(futures::stream::iter(rhs.iter().cloned())),
                 &mut lhs_state,
                 &mut rhs_state,
                 false,
             );
 
-            for v in join {
-                black_box(v);
+            while let Poll::Ready(Some(item)) = futures::stream::Stream::poll_next(
+                Pin::new(&mut join),
+                &mut Context::from_waker(Waker::noop()),
+            ) {
+                black_box(item);
             }
         });
     });
@@ -58,15 +66,19 @@ fn ops(c: &mut Criterion) {
         b.iter(|| {
             let (mut lhs_state, mut rhs_state) =
                 black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-            let join = symmetric_hash_join_into_iter(
-                black_box(lhs.iter().cloned()),
-                black_box(rhs.iter().cloned()),
+            let mut join = symmetric_hash_join_into_stream(
+                black_box(futures::stream::iter(lhs.iter().cloned())),
+                black_box(futures::stream::iter(rhs.iter().cloned())),
                 &mut lhs_state,
                 &mut rhs_state,
                 false,
             );
-            for v in join {
-                black_box(v);
+
+            while let Poll::Ready(Some(item)) = futures::stream::Stream::poll_next(
+                Pin::new(&mut join),
+                &mut Context::from_waker(Waker::noop()),
+            ) {
+                black_box(item);
             }
         });
     });
@@ -87,16 +99,19 @@ fn ops(c: &mut Criterion) {
             b.iter(|| {
                 let (mut lhs_state, mut rhs_state) =
                     black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-                let join = symmetric_hash_join_into_iter(
-                    black_box(lhs.iter().cloned()),
-                    black_box(rhs.iter().cloned()),
+                let mut join = symmetric_hash_join_into_stream(
+                    black_box(futures::stream::iter(lhs.iter().cloned())),
+                    black_box(futures::stream::iter(rhs.iter().cloned())),
                     &mut lhs_state,
                     &mut rhs_state,
                     false,
                 );
 
-                for v in join {
-                    black_box(v);
+                while let Poll::Ready(Some(item)) = futures::stream::Stream::poll_next(
+                    Pin::new(&mut join),
+                    &mut Context::from_waker(Waker::noop()),
+                ) {
+                    black_box(item);
                 }
             });
         },
@@ -118,16 +133,19 @@ fn ops(c: &mut Criterion) {
             b.iter(|| {
                 let (mut lhs_state, mut rhs_state) =
                     black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-                let join = symmetric_hash_join_into_iter(
-                    black_box(lhs.iter().cloned()),
-                    black_box(rhs.iter().cloned()),
+                let mut join = symmetric_hash_join_into_stream(
+                    black_box(futures::stream::iter(lhs.iter().cloned())),
+                    black_box(futures::stream::iter(rhs.iter().cloned())),
                     &mut lhs_state,
                     &mut rhs_state,
                     false,
                 );
 
-                for v in join {
-                    black_box(v);
+                while let Poll::Ready(Some(item)) = futures::stream::Stream::poll_next(
+                    Pin::new(&mut join),
+                    &mut Context::from_waker(Waker::noop()),
+                ) {
+                    black_box(item);
                 }
             });
         },

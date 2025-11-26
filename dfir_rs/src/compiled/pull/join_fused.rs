@@ -146,7 +146,7 @@ where
                 lhs_scan,
                 rhs_state,
             } => {
-                while let Some((key, lhs_item)) = lhs_scan.next() {
+                for (key, lhs_item) in lhs_scan {
                     if let Some(rhs_item) = rhs_state.get(key) {
                         return Poll::Ready(Some((
                             key.clone(),
@@ -161,7 +161,7 @@ where
                 lhs_state,
                 rhs_scan,
             } => {
-                while let Some((key, rhs_item)) = rhs_scan.next() {
+                for (key, rhs_item) in rhs_scan {
                     if let Some(lhs_item) = lhs_state.get(key) {
                         return Poll::Ready(Some((
                             key.clone(),
