@@ -56,14 +56,18 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
             }.borrow_mut();
 
             let #ident = {
-                fn constrain_types<'ctx, Pull, Item>(input: Pull, vec: &'ctx mut Vec<Item>) -> impl 'ctx + #root::futures::stream::Stream<Item = Item>
+                fn constrain_types<'ctx, Pull, Item>(input: Pull, vec: &'ctx mut Vec<Item>, new_loop_execution: bool) -> impl 'ctx + #root::futures::stream::Stream<Item = Item>
                 where
                     Pull: 'ctx + #root::futures::stream::Stream<Item = Item>,
                     Item: ::std::clone::Clone,
                 {
+                    if new_loop_execution {
+                        // TODO(minwgei): could this be done with a lifespan hook?
+                        vec.clear();
+                    }
                     #root::compiled::pull::Persist::new(input, vec, 0)
                 }
-                constrain_types(#input, &mut *#vec_ident)
+                constrain_types(#input, &mut *#vec_ident, 0 == #context.loop_iter_count())
             };
 
             // TODO(mingwei): remove old code. This code is copied (is it correct?) from `prefix()`, we should DRY this.
@@ -78,7 +82,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
         let count_arg = &arguments[0];
         let write_iterator_after = quote_spanned! {op_span=>
             {
-                if #context.loop_iter_count() + 1 < #count_arg {
+                if #context.loop_iter_count() + 1 < ::std::convert::identity::<usize>(#count_arg) {
                     #context.reschedule_loop_block();
                 }
             }

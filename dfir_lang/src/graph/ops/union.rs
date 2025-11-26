@@ -43,23 +43,10 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                    inputs,
                    outputs,
                    is_pull,
-                   arguments,
                    ..
                },
                _| {
-        let max_output = arguments.get(0); // used in chain_first_n
-
         let write_iterator = if is_pull {
-            let mut chain_expr = quote_spanned! {op_span=>
-                // NOTE(mingwei): tokio `StreamExt::merge` may make more sense, but also might inline worse.
-                #root::futures::stream::StreamExt::chain(a, b)
-            };
-            if let Some(max) = max_output {
-                chain_expr = quote_spanned! {op_span=>
-                    #chain_expr.take(#max)
-                };
-            }
-
             let chains = inputs
                 .iter()
                 .map(|i| i.to_token_stream())
@@ -70,14 +57,14 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                     #[allow(unused)]
                     #[inline(always)]
                     fn check_inputs<A: #root::futures::stream::Stream<Item = Item>, B: #root::futures::stream::Stream<Item = Item>, Item>(a: A, b: B) -> impl #root::futures::stream::Stream<Item = Item> {
-                        #chain_expr
+                        // NOTE(mingwei): tokio `StreamExt::merge` may make more sense, but also might inline worse.
+                        #root::futures::stream::StreamExt::chain(a, b)
                     }
                     #chains
                 };
             }
         } else {
             assert_eq!(1, outputs.len());
-            assert_eq!(None, max_output);
             let output = &outputs[0];
             quote_spanned! {op_span=>
                 let #ident = #output;
