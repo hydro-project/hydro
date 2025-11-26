@@ -266,11 +266,10 @@ pub fn unbounded<T>() -> (Sender<T>, Receiver<T>) {
 
 #[cfg(test)]
 mod test {
-    use std::time::Duration;
-
     use futures::StreamExt;
     use rand::Rng;
     use tokio::task::LocalSet;
+    use web_time::Duration;
 
     use super::*;
 

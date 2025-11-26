@@ -79,7 +79,7 @@ fn test() {
     client2.read_regex("Client is live!");
 
     // wait 100ms so we don't drop a packet
-    let hundo_millis = std::time::Duration::from_millis(100);
+    let hundo_millis = web_time::Duration::from_millis(100);
     std::thread::sleep(hundo_millis);
 
     client1.write_line("Hello");
@@ -107,7 +107,7 @@ fn test_gossip() {
     client2.read_string("Client is live!");
 
     // wait 100ms so we don't drop a packet
-    let hundo_millis = std::time::Duration::from_millis(100);
+    let hundo_millis = web_time::Duration::from_millis(100);
     std::thread::sleep(hundo_millis);
 
     // Since gossiping has a small probability of a message not being received (maybe more so with
