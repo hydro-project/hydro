@@ -69,10 +69,11 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
             .map(ToTokens::to_token_stream)
             .unwrap_or(quote_spanned!(op_span=> _));
 
-        let lattice_ident = wc.make_ident("lattice");
+        let lattice_handle_ident = wc.make_ident("lattice_handle");
+        let lattice_state_ident = wc.make_ident("lattice_state");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #lattice_ident = #df_ident.add_state(::std::cell::RefCell::new(<#lattice_type as ::std::default::Default>::default()));
+            let #lattice_handle_ident = #df_ident.add_state(::std::cell::RefCell::new(<#lattice_type as ::std::default::Default>::default()));
         };
 
         let input = &inputs[0];
@@ -80,26 +81,16 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = {
             quote_spanned! {op_span=>
+                let mut #lattice_state_ident = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#lattice_handle_ident)
+                }.borrow_mut();
 
-                {
-                    let mut __lattice = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#lattice_ident)
-                    }.borrow_mut();
-
-                    for __item in #input {
-                        #root::lattices::Merge::merge(&mut *__lattice, __item);
-                    }
-                }
-
-                let #ident = if #signal.count() > 0 {
-                    ::std::option::Option::Some(unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#lattice_ident)
-                    }.take())
-                } else {
-                    ::std::option::Option::None
-                }.into_iter();
+                let #ident = #root::compiled::pull::LatticeFoldBatch::new(
+                    #input,
+                    #root::futures::stream::StreamExt::fuse(#signal),
+                    &mut *#lattice_state_ident,
+                );
             }
         };
 

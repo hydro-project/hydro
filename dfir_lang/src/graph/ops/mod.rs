@@ -23,7 +23,7 @@ use crate::parse::{Operator, PortIndex};
 /// The delay (soft barrier) type, for each input to an operator if needed.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug)]
 pub enum DelayType {
-    /// Input must be collected over the preceeding stratum.
+    /// Input must be collected over the preceding stratum.
     Stratum,
     /// Monotone accumulation: can delay to reduce flow rate, but also correct to emit "early"
     MonotoneAccum,
@@ -167,7 +167,12 @@ pub fn identity_write_iterator_fn(
         let input = &inputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_input<Iter: ::std::iter::Iterator<Item = Item>, Item>(iter: Iter) -> impl ::std::iter::Iterator<Item = Item> { iter }
+                fn check_input<St, Item>(stream: St) -> impl #root::futures::stream::Stream<Item = Item>
+                where
+                    St: #root::futures::stream::Stream<Item = Item>,
+                {
+                    stream
+                }
                 check_input::<_, #generic_type>(#input)
             };
         }
@@ -175,7 +180,12 @@ pub fn identity_write_iterator_fn(
         let output = &outputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_output<Push: #root::futures::sink::Sink<Item>, Item>(push: Push) -> impl #root::futures::sink::Sink<Item> { push }
+                fn check_output<Si, Item>(sink: Si) -> impl #root::futures::sink::Sink<Item>
+                where
+                    Si: #root::futures::sink::Sink<Item>,
+                {
+                    sink
+                }
                 check_output::<_, #generic_type>(#output)
             };
         }
@@ -214,10 +224,16 @@ pub fn null_write_iterator_fn(
 
     if is_pull {
         quote_spanned! {op_span=>
-            #(
-                #inputs.for_each(::std::mem::drop);
-            )*
-            let #ident = ::std::iter::empty::<#iter_type>();
+            let #ident = #root::futures::stream::poll_fn(move |_cx| {
+                // Make sure to poll all #inputs to completion.
+                #(
+                    let #inputs = #root::futures::stream::Stream::poll_next(::std::pin::pin!(#inputs), _cx);
+                )*
+                #(
+                    let _ = ::std::task::ready!(#inputs);
+                )*
+                ::std::task::Poll::Ready(::std::option::Option::None)
+            });
         }
     } else {
         quote_spanned! {op_span=>
@@ -251,7 +267,6 @@ declare_ops![
     all_iterations::ALL_ITERATIONS,
     all_once::ALL_ONCE,
     anti_join::ANTI_JOIN,
-    anti_join_multiset::ANTI_JOIN_MULTISET,
     assert::ASSERT,
     assert_eq::ASSERT_EQ,
     batch::BATCH,
@@ -266,7 +281,6 @@ declare_ops![
     dest_sink::DEST_SINK,
     dest_sink_serde::DEST_SINK_SERDE,
     difference::DIFFERENCE,
-    difference_multiset::DIFFERENCE_MULTISET,
     enumerate::ENUMERATE,
     filter::FILTER,
     filter_map::FILTER_MAP,

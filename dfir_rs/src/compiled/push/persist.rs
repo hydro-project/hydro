@@ -16,7 +16,7 @@ pin_project! {
 }
 
 impl<'ctx, Si, Item> Persist<'ctx, Si, Item> {
-    /// Create with the given replay and following sink.
+    /// Create with the given replay index and following sink.
     pub fn new(vec: &'ctx mut Vec<Item>, replay_idx: usize, sink: Si) -> Self
     where
         Self: Sink<Item>,
@@ -46,7 +46,7 @@ impl<'ctx, Si, Item> Persist<'ctx, Si, Item> {
     }
 }
 
-impl<'ctx, Si, Item> Sink<Item> for Persist<'ctx, Si, Item>
+impl<Si, Item> Sink<Item> for Persist<'_, Si, Item>
 where
     Si: Sink<Item>,
     Item: Clone,

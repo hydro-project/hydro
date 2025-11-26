@@ -80,7 +80,7 @@ pub const SOURCE_FILE: OperatorConstraints = OperatorConstraints {
             ::std::debug_assert!(#root::tokio::runtime::Handle::try_current().is_ok(), #missing_runtime_msg);
             #write_iterator
             // Unwrap each line. Will panic if invalid utf-8.
-            let #ident = #ident.map(|result| result.unwrap());
+            let #ident = #root::futures::stream::StreamExt::map(#ident, ::std::result::Result::unwrap);
         };
 
         Ok(OperatorWriteOutput {

@@ -44,6 +44,7 @@ pub const DIFFERENCE: OperatorConstraints = OperatorConstraints {
         _else => None,
     },
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    op_span,
                    ident,
                    inputs,
@@ -60,9 +61,9 @@ pub const DIFFERENCE: OperatorConstraints = OperatorConstraints {
 
         let pos = &inputs[1];
         let write_iterator = quote_spanned! {op_span=>
-            let #pos = #pos.map(|k| (k, ()));
+            let #pos = #root::futures::stream::StreamExt::map(#pos, |k| (k, ()));
             #write_iterator
-            let #ident = #ident.map(|(k, ())| k);
+            let #ident = #root::futures::stream::StreamExt::map(#ident, |(k, ())| k);
         };
 
         Ok(OperatorWriteOutput {

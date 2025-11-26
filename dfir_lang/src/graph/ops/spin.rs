@@ -1,8 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 /// This operator emits Unit, and triggers the start of a new tick at the end of each tick,
@@ -34,6 +33,7 @@ pub const SPIN: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |&WriteContextArgs {
+                   root,
                    context,
                    op_span,
                    ident,
@@ -43,7 +43,7 @@ pub const SPIN: OperatorConstraints = OperatorConstraints {
                _| {
         assert!(is_pull);
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = ::std::iter::once(());
+            let #ident = #root::tokio_stream::once(());
         };
         let write_iterator_after = quote_spanned! {op_span=>
             #context.schedule_subgraph(#context.current_subgraph(), true);

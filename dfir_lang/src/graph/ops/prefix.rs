@@ -25,6 +25,7 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    context,
                    df_ident,
                    op_span,
@@ -52,8 +53,18 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
                 // SAFETY: handle from `#df_ident.add_state(..)`.
                 #context.state_ref_unchecked(#singleton_output_ident)
             }.borrow_mut();
-            ::std::iter::Extend::extend(&mut *#vec_ident, #input);
-            let #ident = ::std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
+
+            // The same as `persist()`, except always replays.
+            let #ident = {
+                fn constrain_types<'ctx, Pull, Item>(input: Pull, vec: &'ctx mut Vec<Item>) -> impl 'ctx + #root::futures::stream::Stream<Item = Item>
+                where
+                    Pull: 'ctx + #root::futures::stream::Stream<Item = Item>,
+                    Item: ::std::clone::Clone,
+                {
+                    #root::compiled::pull::Persist::new(input, vec, 0)
+                }
+                constrain_types(#input, &mut *#vec_ident)
+            };
         };
         let write_iterator_after = quote_spanned! {op_span=>
             #context.allow_another_iteration();

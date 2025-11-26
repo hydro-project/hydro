@@ -2,9 +2,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use dfir_rs::compiled::pull::{Fold, Reduce};
 use dfir_rs::lattices::set_union::SetUnionSingletonSet;
 use dfir_rs::scheduled::ticks::TickInstant;
+use dfir_rs::util::accumulator::{Fold, Reduce};
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use lattices::Merge;
 use lattices::set_union::SetUnionHashSet;
@@ -236,7 +236,7 @@ pub fn tick_tick_lhs_fold_rhs_reduce() {
         unioner = union()
             -> [1]my_join;
 
-        my_join =  join_fused(
+        my_join = join_fused(
                 Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }),
                 Reduce::new(std::ops::AddAssign::add_assign)
             )
