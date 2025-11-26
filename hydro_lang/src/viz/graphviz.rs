@@ -122,6 +122,7 @@ where
             HydroNodeType::Network => ("doubleoctagon", "\"#80b1d3\""), // Light blue
             HydroNodeType::Sink => ("invhouse", "\"#fdb462\""),  // Light orange
             HydroNodeType::Tee => ("terminator", "\"#b3de69\""), // Light green
+            HydroNodeType::NonDeterministic => ("hexagon", "\"#fccde5\""), // Light pink/magenta
         };
 
         write!(
