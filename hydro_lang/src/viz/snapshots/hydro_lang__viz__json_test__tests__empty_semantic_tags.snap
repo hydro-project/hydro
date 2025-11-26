@@ -129,21 +129,26 @@ expression: output
       },
       {
         "colorIndex": 3,
+        "id": "NonDeterministic",
+        "label": "NonDeterministic"
+      },
+      {
+        "colorIndex": 4,
         "id": "Sink",
         "label": "Sink"
       },
       {
-        "colorIndex": 4,
+        "colorIndex": 5,
         "id": "Source",
         "label": "Source"
       },
       {
-        "colorIndex": 5,
+        "colorIndex": 6,
         "id": "Tee",
         "label": "Tee"
       },
       {
-        "colorIndex": 6,
+        "colorIndex": 7,
         "id": "Transform",
         "label": "Transform"
       }
@@ -162,6 +167,10 @@ expression: output
       {
         "label": "Network",
         "type": "Network"
+      },
+      {
+        "label": "NonDeterministic",
+        "type": "NonDeterministic"
       },
       {
         "label": "Sink",
