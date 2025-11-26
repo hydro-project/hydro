@@ -61,6 +61,7 @@ where
 {b:i$}classDef networkClass fill:#80b1d3,stroke:#79a8c8,text-align:left,white-space:pre
 {b:i$}classDef sinkClass fill:#fdb462,stroke:#f0aa5b,text-align:left,white-space:pre
 {b:i$}classDef teeClass fill:#b3de69,stroke:#aad362,text-align:left,white-space:pre
+{b:i$}classDef nondetClass fill:#fccde5,stroke:#f3c4dc,text-align:left,white-space:pre
 {b:i$}linkStyle default stroke:#666666",
             b = "",
             i = self.base.indent
@@ -85,6 +86,7 @@ where
             HydroNodeType::Network => "networkClass",
             HydroNodeType::Sink => "sinkClass",
             HydroNodeType::Tee => "teeClass",
+            HydroNodeType::NonDeterministic => "nondetClass",
         };
 
         let (lbracket, rbracket) = match node_type {
