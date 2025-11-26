@@ -109,7 +109,8 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                 let #ident = #root::compiled::pull::AntiJoin::new(
                     #input_pos,
                     #root::futures::stream::StreamExt::fuse(#input_neg),
-                    &mut *neg_borrow);
+                    &mut *neg_borrow,
+                );
             }
         } else {
             quote_spanned! {op_span =>
