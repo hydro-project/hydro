@@ -72,7 +72,7 @@ linkStyle default stroke:#aaa
 19v1-->21v1
 21v1-->22v1
 18v1-->|pos|23v1
-22v1--x|neg|23v1; linkStyle 20 stroke:red
+22v1-->|neg|23v1
 44v1-->58v1
 25v1-->26v1
 26v1--x27v1; linkStyle 23 stroke:red
@@ -92,7 +92,7 @@ linkStyle default stroke:#aaa
 40v1-->42v1
 42v1-->43v1
 39v1-->|pos|44v1
-43v1--x|neg|44v1; linkStyle 40 stroke:red
+43v1-->|neg|44v1
 45v1-->46v1
 43v1-->45v1
 56v1--o1v1; linkStyle 43 stroke:red

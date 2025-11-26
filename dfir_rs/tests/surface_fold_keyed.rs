@@ -44,7 +44,6 @@ pub fn test_fold_keyed_infer_basic() {
     );
 }
 
-
 #[multiplatform_test]
 pub fn test_fold_keyed_typed_basic() {
     pub struct SubordResponse {

@@ -46,8 +46,20 @@ pin_project! {
     }
 }
 
-impl<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum, LhsValIn, RhsValIn>
-    JoinFused<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum>
+impl<
+    'a,
+    Lhs,
+    Rhs,
+    Key,
+    LhsValAccum,
+    RhsValAccum,
+    LhsHasher,
+    RhsHasher,
+    LhsAccum,
+    RhsAccum,
+    LhsValIn,
+    RhsValIn,
+> JoinFused<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum>
 where
     Lhs: FusedStream<Item = (Key, LhsValIn)>,
     Rhs: Stream<Item = (Key, RhsValIn)>,
@@ -81,9 +93,32 @@ where
     }
 }
 
-impl<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum, LhsValIn, RhsValIn>
-    Stream
-    for JoinFused<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum>
+impl<
+    'a,
+    Lhs,
+    Rhs,
+    Key,
+    LhsValAccum,
+    RhsValAccum,
+    LhsHasher,
+    RhsHasher,
+    LhsAccum,
+    RhsAccum,
+    LhsValIn,
+    RhsValIn,
+> Stream
+    for JoinFused<
+        'a,
+        Lhs,
+        Rhs,
+        Key,
+        LhsValAccum,
+        RhsValAccum,
+        LhsHasher,
+        RhsHasher,
+        LhsAccum,
+        RhsAccum,
+    >
 where
     Lhs: FusedStream<Item = (Key, LhsValIn)>,
     Rhs: Stream<Item = (Key, RhsValIn)>,
