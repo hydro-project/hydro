@@ -15,7 +15,7 @@ use super::{
 ///
 /// For example:
 /// ```dfir
-/// use dfir_rs::compiled::pull::Reduce;
+/// use dfir_rs::util::accumulator::Reduce;
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2), ("key", 3)]) -> [1]my_join;

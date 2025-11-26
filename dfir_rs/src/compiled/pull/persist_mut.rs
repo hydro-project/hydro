@@ -58,7 +58,7 @@ where
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
-        
+
         match this.state.as_mut().project() {
             PersistMutStateProj::Build { mut stream, vec } => {
                 while let Some(delta) = ready!(stream.as_mut().poll_next(cx)) {

@@ -66,7 +66,7 @@ where
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
-        
+
         match this.state.as_mut().project() {
             PersistMutKeyedStateProj::Build { mut stream, map } => {
                 while let Some(delta) = ready!(stream.as_mut().poll_next(cx)) {
@@ -79,8 +79,10 @@ where
                         }
                     }
                 }
-                let PersistMutKeyedStateProjOwn::Build { stream: _, map } =
-                    this.state.as_mut().project_replace(PersistMutKeyedState::Empty)
+                let PersistMutKeyedStateProjOwn::Build { stream: _, map } = this
+                    .state
+                    .as_mut()
+                    .project_replace(PersistMutKeyedState::Empty)
                 else {
                     unreachable!();
                 };

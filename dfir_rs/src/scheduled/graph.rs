@@ -1180,7 +1180,7 @@ pub(crate) struct LoopData {
 /// Defines when state should be reset.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StateLifespan {
-    /// Always reset, a ssociated with the subgraph.
+    /// Always reset, associated with the subgraph.
     Subgraph(SubgraphId),
     /// Reset between loop executions.
     Loop(LoopId),
