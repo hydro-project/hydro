@@ -13,7 +13,7 @@ use crate::util::accumulator::Accumulator;
 pin_project! {
     #[project = JoinFusedStateProj]
     #[project_replace = JoinFusedStateProjOwn]
-    enum JoinFusedState<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, RhsHasher, LhsAccum, RhsAccum> {
+    enum JoinFusedState<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum> {
         Build {
             #[pin]
             lhs: Lhs,
@@ -23,16 +23,16 @@ pin_project! {
             lhs_accum: LhsAccum,
             rhs_accum: RhsAccum,
 
-            lhs_state: &'a mut HashMap<Key, LhsVal, LhsHasher>,
-            rhs_state: &'a mut HashMap<Key, RhsVal, RhsHasher>,
+            lhs_state: &'a mut HashMap<Key, LhsValAccum, LhsHasher>,
+            rhs_state: &'a mut HashMap<Key, RhsValAccum, RhsHasher>,
         },
         ScanLeft {
-            lhs_scan: hash_map::Iter<'a, Key, LhsVal>,
-            rhs_state: &'a mut HashMap<Key, RhsVal, RhsHasher>,
+            lhs_scan: hash_map::Iter<'a, Key, LhsValAccum>,
+            rhs_state: &'a mut HashMap<Key, RhsValAccum, RhsHasher>,
         },
         ScanRight {
-            lhs_state: &'a mut HashMap<Key, LhsVal, LhsHasher>,
-            rhs_scan: hash_map::Iter<'a, Key, RhsVal>,
+            lhs_state: &'a mut HashMap<Key, LhsValAccum, LhsHasher>,
+            rhs_scan: hash_map::Iter<'a, Key, RhsValAccum>,
         },
         Empty,
     }
@@ -40,24 +40,24 @@ pin_project! {
 
 pin_project! {
     /// Stream combinator for fused join operations.
-    pub struct JoinFused<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, RhsHasher, LhsAccum, RhsAccum> {
+    pub struct JoinFused<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum> {
         #[pin]
-        state: JoinFusedState<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, RhsHasher, LhsAccum, RhsAccum>,
+        state: JoinFusedState<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum>,
     }
 }
 
-impl<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, RhsHasher, LhsAccum, RhsAccum, LhsItem, RhsItem>
-    JoinFused<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, RhsHasher, LhsAccum, RhsAccum>
+impl<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum, LhsValIn, RhsValIn>
+    JoinFused<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum>
 where
-    Lhs: FusedStream<Item = (Key, LhsItem)>,
-    Rhs: Stream<Item = (Key, RhsItem)>,
-    LhsAccum: Accumulator<LhsVal, LhsItem>,
-    RhsAccum: Accumulator<RhsVal, RhsItem>,
+    Lhs: FusedStream<Item = (Key, LhsValIn)>,
+    Rhs: Stream<Item = (Key, RhsValIn)>,
+    LhsAccum: Accumulator<LhsValAccum, LhsValIn>,
+    RhsAccum: Accumulator<RhsValAccum, RhsValIn>,
     Key: Clone + Eq + Hash,
     LhsHasher: BuildHasher,
     RhsHasher: BuildHasher,
-    LhsVal: Clone,
-    RhsVal: Clone,
+    LhsValAccum: Clone,
+    RhsValAccum: Clone,
 {
     /// Creates a new `JoinFused` stream combinator.
     pub fn new(
@@ -65,8 +65,8 @@ where
         rhs: Rhs,
         lhs_accum: LhsAccum,
         rhs_accum: RhsAccum,
-        lhs_state: &'a mut HashMap<Key, LhsVal, LhsHasher>,
-        rhs_state: &'a mut HashMap<Key, RhsVal, RhsHasher>,
+        lhs_state: &'a mut HashMap<Key, LhsValAccum, LhsHasher>,
+        rhs_state: &'a mut HashMap<Key, RhsValAccum, RhsHasher>,
     ) -> Self {
         Self {
             state: JoinFusedState::Build {
@@ -81,21 +81,21 @@ where
     }
 }
 
-impl<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, RhsHasher, LhsAccum, RhsAccum, LhsItem, RhsItem>
+impl<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum, LhsValIn, RhsValIn>
     Stream
-    for JoinFused<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, RhsHasher, LhsAccum, RhsAccum>
+    for JoinFused<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, RhsHasher, LhsAccum, RhsAccum>
 where
-    Lhs: FusedStream<Item = (Key, LhsItem)>,
-    Rhs: Stream<Item = (Key, RhsItem)>,
-    LhsAccum: Accumulator<LhsVal, LhsItem>,
-    RhsAccum: Accumulator<RhsVal, RhsItem>,
+    Lhs: FusedStream<Item = (Key, LhsValIn)>,
+    Rhs: Stream<Item = (Key, RhsValIn)>,
+    LhsAccum: Accumulator<LhsValAccum, LhsValIn>,
+    RhsAccum: Accumulator<RhsValAccum, RhsValIn>,
     Key: Clone + Eq + Hash,
     LhsHasher: BuildHasher,
     RhsHasher: BuildHasher,
-    LhsVal: Clone,
-    RhsVal: Clone,
+    LhsValAccum: Clone,
+    RhsValAccum: Clone,
 {
-    type Item = (Key, (LhsVal, RhsVal));
+    type Item = (Key, (LhsValAccum, RhsValAccum));
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
@@ -179,7 +179,7 @@ where
 
 pin_project! {
     /// Stream combinator for left-hand side fused join operations.
-    pub struct JoinFusedLhs<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, LhsAccum> {
+    pub struct JoinFusedLhs<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, LhsAccum> {
         #[pin]
         lhs: Lhs,
         #[pin]
@@ -187,30 +187,30 @@ pin_project! {
 
         lhs_accum: LhsAccum,
 
-        lhs_state: &'a mut HashMap<Key, LhsVal, LhsHasher>,
-        rhs_state: &'a mut Vec<(Key, RhsVal)>,
+        lhs_state: &'a mut HashMap<Key, LhsValAccum, LhsHasher>,
+        rhs_state: &'a mut Vec<(Key, RhsValAccum)>,
         rhs_replay_idx: usize,
     }
 }
 
-impl<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, LhsAccum, LhsItem>
-    JoinFusedLhs<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, LhsAccum>
+impl<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, LhsAccum, LhsValIn>
+    JoinFusedLhs<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, LhsAccum>
 where
-    Lhs: FusedStream<Item = (Key, LhsItem)>,
-    Rhs: Stream<Item = (Key, RhsVal)>,
-    LhsAccum: Accumulator<LhsVal, LhsItem>,
+    Lhs: FusedStream<Item = (Key, LhsValIn)>,
+    Rhs: Stream<Item = (Key, RhsValAccum)>,
+    LhsAccum: Accumulator<LhsValAccum, LhsValIn>,
     Key: Eq + Hash,
     LhsHasher: BuildHasher,
-    LhsVal: Clone,
-    RhsVal: Clone,
+    LhsValAccum: Clone,
+    RhsValAccum: Clone,
 {
     /// Creates a new `JoinFusedLhs` stream combinator.
     pub fn new(
         lhs: Lhs,
         rhs: Rhs,
         lhs_accum: LhsAccum,
-        lhs_state: &'a mut HashMap<Key, LhsVal, LhsHasher>,
-        rhs_state: &'a mut Vec<(Key, RhsVal)>,
+        lhs_state: &'a mut HashMap<Key, LhsValAccum, LhsHasher>,
+        rhs_state: &'a mut Vec<(Key, RhsValAccum)>,
         rhs_replay_idx: usize,
     ) -> Self {
         debug_assert!(rhs_replay_idx <= rhs_state.len());
@@ -225,18 +225,18 @@ where
     }
 }
 
-impl<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, LhsAccum, LhsItem> Stream
-    for JoinFusedLhs<'a, Lhs, Rhs, Key, LhsVal, RhsVal, LhsHasher, LhsAccum>
+impl<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, LhsAccum, LhsValIn> Stream
+    for JoinFusedLhs<'a, Lhs, Rhs, Key, LhsValAccum, RhsValAccum, LhsHasher, LhsAccum>
 where
-    Lhs: FusedStream<Item = (Key, LhsItem)>,
-    Rhs: Stream<Item = (Key, RhsVal)>,
-    LhsAccum: Accumulator<LhsVal, LhsItem>,
+    Lhs: FusedStream<Item = (Key, LhsValIn)>,
+    Rhs: Stream<Item = (Key, RhsValAccum)>,
+    LhsAccum: Accumulator<LhsValAccum, LhsValIn>,
     Key: Clone + Eq + Hash,
     LhsHasher: BuildHasher,
-    LhsVal: Clone,
-    RhsVal: Clone,
+    LhsValAccum: Clone,
+    RhsValAccum: Clone,
 {
-    type Item = (Key, (LhsVal, RhsVal));
+    type Item = (Key, (LhsValAccum, RhsValAccum));
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();

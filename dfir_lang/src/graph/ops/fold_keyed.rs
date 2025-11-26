@@ -86,7 +86,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
         accum_keyed_codegen(
             wc,
             quote_spanned! {op_span=>
-                #root::compiled::pull::FoldKeyedThen
+                #root::util::accumulator::Fold
             },
         )
     },
@@ -94,7 +94,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
 
 pub fn accum_keyed_codegen(
     wc: &WriteContextArgs,
-    stream_type: TokenStream,
+    accum_type: TokenStream,
 ) -> Result<OperatorWriteOutput, ()> {
     let &WriteContextArgs {
         df_ident,
@@ -127,23 +127,21 @@ pub fn accum_keyed_codegen(
         _ => unreachable!(),
     };
 
-    let generic_type_args = [
-        type_args
-            .first()
-            .map(ToTokens::to_token_stream)
-            .unwrap_or(quote_spanned!(op_span=> _)),
-        type_args
-            .get(1)
-            .map(ToTokens::to_token_stream)
-            .unwrap_or(quote_spanned!(op_span=> _)),
-    ];
+    let key_type_arg = type_args
+        .first()
+        .map(ToTokens::to_token_stream)
+        .unwrap_or(quote_spanned!(op_span=> _));
+    let val_type_arg = type_args
+        .get(1)
+        .map(ToTokens::to_token_stream)
+        .unwrap_or(quote_spanned!(op_span=> _));
 
     let input = &inputs[0];
 
     let hashtable_ident = wc.make_ident("hashtable");
 
     let write_prologue = quote_spanned! {op_span=>
-        let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
+        let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#key_type_arg, #val_type_arg>::default()));
     };
     let write_prologue_after =wc
         .persistence_as_state_lifespan(persistence)
@@ -238,7 +236,26 @@ pub fn accum_keyed_codegen(
         quote_spanned! {op_span=>
             #assign_hashtable_ident
 
-            let #ident = #stream_type::new(#input, &mut *#hashtable_ident, #arguments, #then_fn);
+            let #ident = {
+                fn __check_inputs<'a, St, Key, ValAccum, Hasher, Accum, ThenFn, ThenIter, ValIn>(
+                    stream: St,
+                    state: &'a mut ::std::collections::HashMap<Key, ValAccum, Hasher>,
+                    accum: Accum,
+                    then_fn: ThenFn,
+                ) -> impl #root::futures::stream::Stream<Item = ThenIter::Item>
+                where
+                    St: #root::futures::stream::Stream<Item = (Key, ValIn)>,
+                    Key: ::std::cmp::Eq + ::std::hash::Hash,
+                    Hasher: ::std::hash::BuildHasher,
+                    Accum: #root::util::accumulator::Accumulator<ValAccum, ValIn>,
+                    ThenFn: ::std::ops::FnOnce(&'a mut ::std::collections::HashMap<Key, ValAccum, Hasher>) -> ThenIter,
+                    ThenIter: ::std::iter::Iterator,
+                {
+                    #root::compiled::pull::AccumKeyedThen::new(stream, state, accum, then_fn)
+                }
+
+                __check_inputs::<'_, _, #key_type_arg, #val_type_arg, _, _, _, _, _>(#input, &mut *#hashtable_ident, #accum_type::new(#arguments), #then_fn)
+            };
         }
     };
 
