@@ -2605,9 +2605,9 @@ impl HydroNode {
 
             HydroNode::Difference { .. } | HydroNode::AntiJoin { .. } => {
                 let operator: syn::Ident = if matches!(self, HydroNode::Difference { .. }) {
-                    parse_quote!(difference_multiset)
+                    parse_quote!(difference)
                 } else {
-                    parse_quote!(anti_join_multiset)
+                    parse_quote!(anti_join)
                 };
 
                 let (HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. }) =
