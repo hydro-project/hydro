@@ -13,6 +13,7 @@ use dfir_lang::diagnostic::{Diagnostic, SerdeSpan};
 use dfir_lang::graph::DfirGraph;
 use ref_cast::RefCast;
 use smallvec::SmallVec;
+use tracing::Instrument;
 use web_time::SystemTime;
 
 use super::context::Context;
@@ -287,7 +288,7 @@ impl<'a> Dfir<'a> {
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
 
-                let _enter = tracing::info_span!(
+                let run_subgraph_span_guard = tracing::info_span!(
                     "run-subgraph",
                     sg_id = sg_id.to_string(),
                     sg_name = &*sg_data.name,
@@ -382,7 +383,9 @@ impl<'a> Dfir<'a> {
 
                 tracing::info!("Running subgraph.");
                 sg_data.last_tick_run_in = Some(self.context.current_tick);
-                Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs)).await;
+                Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs))
+                    .instrument(run_subgraph_span_guard.exit())
+                    .await;
             };
 
             let sg_data = &self.subgraphs[sg_id];
