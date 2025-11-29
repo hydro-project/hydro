@@ -36,7 +36,7 @@ async fn main() {
                 .add(),
         )
         .with_external(&external, deployment.Localhost())
-        .deploy(&mut deployment);
+        .deploy(&(), &mut deployment);
 
     deployment.deploy().await.unwrap();
 

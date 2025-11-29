@@ -57,7 +57,7 @@ mod tests {
         println!(
             "{}",
             built
-                .preview_compile()
+                .preview_compile(&())
                 .dfir_for(&p1)
                 .surface_syntax_string()
         );
@@ -65,7 +65,7 @@ mod tests {
         let nodes = built
             .with_process(&p1, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 

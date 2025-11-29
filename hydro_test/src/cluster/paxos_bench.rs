@@ -189,7 +189,7 @@ mod tests {
             hydro_build_utils::assert_debug_snapshot!(built.ir());
         });
 
-        let preview = built.preview_compile();
+        let preview = built.preview_compile(&());
         hydro_build_utils::insta::with_settings!({
             snapshot_suffix => "proposer_mermaid"
         }, {
@@ -254,7 +254,7 @@ mod tests {
                 &replicas,
                 (0..PAXOS_F + 1).map(|_| TrybuildHost::new(deployment.Localhost())),
             )
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 

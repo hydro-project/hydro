@@ -1,8 +1,8 @@
 //! [`LazySinkSource`], and related items.
 
+use core::marker::PhantomData;
 use core::pin::Pin;
-use core::task::Poll;
-use core::{marker::PhantomData, task::Context};
+use core::task::{Context, Poll};
 use std::cell::RefCell;
 use std::rc::Rc;
 

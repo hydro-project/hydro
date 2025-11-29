@@ -143,7 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             (0..num_replicas)
                 .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
-        .deploy(&mut deployment);
+        .deploy(&(), &mut deployment);
 
     deployment.deploy().await.unwrap();
 

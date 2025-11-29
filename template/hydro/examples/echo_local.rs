@@ -17,7 +17,7 @@ async fn main() {
     let _nodes = flow
         .with_process(&process, deployment.Localhost())
         .with_external(&external, deployment.Localhost())
-        .deploy(&mut deployment);
+        .deploy(&(), &mut deployment);
 
     deployment.deploy().await.unwrap();
 

@@ -127,7 +127,7 @@ async fn main() {
                     )
             }),
         )
-        .deploy(&mut deployment);
+        .deploy(&(), &mut deployment);
 
     deployment.deploy().await.unwrap();
 

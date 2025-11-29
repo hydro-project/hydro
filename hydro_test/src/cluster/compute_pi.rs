@@ -66,7 +66,7 @@ mod tests {
 
         hydro_build_utils::assert_debug_snapshot!(built.ir());
 
-        for (id, ir) in built.preview_compile().all_dfir() {
+        for (id, ir) in built.preview_compile(&()).all_dfir() {
             hydro_build_utils::insta::with_settings!({
                 snapshot_suffix => format!("surface_graph_{id}"),
             }, {

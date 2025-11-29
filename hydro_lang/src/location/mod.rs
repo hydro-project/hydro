@@ -40,6 +40,7 @@ use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many, NotMany,
 };
+
 use crate::nondet::NonDet;
 #[cfg(feature = "sim")]
 use crate::sim::SimSender;
@@ -62,7 +63,7 @@ pub use cluster::Cluster;
 #[expect(missing_docs, reason = "TODO")]
 pub mod member_id;
 pub use member_id::MemberId;
-
+pub use member_id::TaglessMemberId;
 #[expect(missing_docs, reason = "TODO")]
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
@@ -207,7 +208,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             HydroNode::Source {
                 source: HydroSource::ClusterMembers(cluster.id()),
                 metadata: self.new_node_metadata(Stream::<
-                    (MemberId<()>, MembershipEvent),
+                    (TaglessMemberId, MembershipEvent),
                     Self,
                     Unbounded,
                     TotalOrder,
@@ -314,7 +315,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     /// let nodes = flow // ... with_process and with_external
     /// #     .with_process(&node, deployment.Localhost())
     /// #     .with_external(&external, deployment.Localhost())
-    /// #     .deploy(&mut deployment);
+    /// #     .deploy(&(), &mut deployment);
     ///
     /// deployment.deploy().await.unwrap();
     /// deployment.start().await.unwrap();
@@ -863,7 +864,7 @@ mod tests {
         let nodes = flow
             .with_process(&node, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -901,7 +902,7 @@ mod tests {
         let nodes = flow
             .with_process(&node, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -931,7 +932,7 @@ mod tests {
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -961,7 +962,7 @@ mod tests {
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -996,7 +997,7 @@ mod tests {
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -1028,7 +1029,7 @@ mod tests {
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -1069,7 +1070,7 @@ mod tests {
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
         deployment.start().await.unwrap();
@@ -1099,7 +1100,7 @@ mod tests {
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -1130,7 +1131,7 @@ mod tests {
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 

@@ -119,7 +119,7 @@ async fn main() {
             (0..f + 1)
                 .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
-        .deploy(&mut deployment);
+        .deploy(&(), &mut deployment);
 
     deployment.deploy().await.unwrap();
 

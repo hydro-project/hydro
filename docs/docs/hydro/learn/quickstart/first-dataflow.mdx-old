@@ -56,7 +56,7 @@ First, we initialize a new [Hydro Deploy](../../reference/deploy/index.mdx) depl
 
 To create a `Process`, we call `flow.process()`. After the dataflow has been created (by invoking the `hydro_template::first_ten::first_ten` function we created earlier), we must map each instantiated `Process` to a deployment target using `flow.with_process` (in this case we deploy to localhost).
 
-Finally, we call `flow.deploy(&mut deployment)` to provision the dataflow program on the target machine. This returns a struct with handles to the instantiated machines, which we must store in the `_nodes` variable to prevent them from being dropped. Then, we can start the dataflow program and block until `Ctrl-C` using `deployment.run_ctrl_c()`.
+Finally, we call `flow.deploy(&(), &mut deployment)` to provision the dataflow program on the target machine. This returns a struct with handles to the instantiated machines, which we must store in the `_nodes` variable to prevent them from being dropped. Then, we can start the dataflow program and block until `Ctrl-C` using `deployment.run_ctrl_c()`.
 
 We can then launch the program using the following command:
 

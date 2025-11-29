@@ -46,7 +46,7 @@ mod tests {
         let nodes = built
             .with_process(&p1, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -78,7 +78,7 @@ mod tests {
         let nodes = built
             .with_process(&p1, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
