@@ -81,6 +81,8 @@ pub mod live_collections;
 
 pub mod location;
 
+pub mod telemetry;
+
 #[cfg(any(
     feature = "deploy",
     feature = "deploy_integration" // hidden internal feature enabled in the trybuild

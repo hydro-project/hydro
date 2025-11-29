@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_default_optimize()
         .with_process(&process, TrybuildHost::new(deployment.Localhost()))
         .with_external(&external, deployment.Localhost())
-        .deploy(&mut deployment);
+        .deploy(&(), &mut deployment);
 
     deployment.deploy().await.unwrap();
 

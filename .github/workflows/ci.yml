@@ -62,7 +62,7 @@ jobs:
 
       - if: matrix.rust_release == 'latest-stable' && matrix.os == 'ubuntu-latest'
         uses: ./.github/actions/use-sccache
-      
+
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo check --all-targets
       - run: cargo check --all-targets --no-default-features
@@ -94,8 +94,8 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: easimon/maximize-build-space@c28619d8999a147d5e09c1199f84ff6af6ad5794
         with:
-          root-reserve-mb: 4096
-          
+          root-reserve-mb: 5120
+
       - name: Checkout sources
         uses: actions/checkout@v4
 

@@ -251,15 +251,21 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize::<D>().compile(env)
     }
 
-    pub fn compile_no_network<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
-        self.with_default_optimize::<D>().compile_no_network()
+    pub fn compile_no_network<D: Deploy<'a>>(
+        self,
+        compile_env: &D::CompileEnv,
+    ) -> CompiledFlow<'a, D::GraphId> {
+        self.with_default_optimize::<D>()
+            .compile_no_network(compile_env)
     }
 
-    pub fn deploy<D: Deploy<'a, CompileEnv = ()>>(
+    pub fn deploy<D: Deploy<'a>>(
         self,
-        env: &mut D::InstantiateEnv,
+        compile_env: &D::CompileEnv,
+        instantiate_env: &mut D::InstantiateEnv,
     ) -> DeployResult<'a, D> {
-        self.with_default_optimize().deploy(env)
+        self.with_default_optimize()
+            .deploy(compile_env, instantiate_env)
     }
 
     #[cfg(feature = "sim")]

@@ -287,15 +287,16 @@ impl<'a> Dfir<'a> {
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
 
-                let _enter = tracing::info_span!(
+                let run_subgraph_span = tracing::info_span!(
                     "run-subgraph",
                     sg_id = sg_id.to_string(),
                     sg_name = &*sg_data.name,
                     sg_depth = sg_data.loop_depth,
                     sg_loop_nonce = sg_data.last_loop_nonce.0,
                     sg_iter_count = sg_data.last_loop_nonce.1,
-                )
-                .entered();
+                );
+
+                let run_subgraph_span_guard = run_subgraph_span.enter();
 
                 match sg_data.loop_depth.cmp(&self.context.loop_nonce_stack.len()) {
                     Ordering::Greater => {
@@ -382,6 +383,7 @@ impl<'a> Dfir<'a> {
 
                 tracing::info!("Running subgraph.");
                 sg_data.last_tick_run_in = Some(self.context.current_tick);
+                drop(run_subgraph_span_guard);
                 Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs)).await;
             };
 

@@ -1130,7 +1130,7 @@ mod tests {
         let nodes = flow
             .with_process(&node, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 

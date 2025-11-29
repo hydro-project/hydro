@@ -70,7 +70,7 @@ fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type)
         parse_quote! {
             |res| {
                 let (id, b) = res.unwrap();
-                (#root::__staged::location::MemberId::<#c_type>::from_tagless(id as #root::__staged::location::MemberId::<()>), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                (#root::__staged::location::MemberId::<#c_type>::from_tagless(id as #root::__staged::location::TaglessMemberId), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
             }
         }
     } else {
@@ -220,7 +220,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// let nodes = flow
     ///     .with_process(&process, deployment.Localhost())
     ///     .with_external(&external, deployment.Localhost())
-    ///     .deploy(&mut deployment);
+    ///     .deploy(&(), &mut deployment);
     ///
     /// deployment.deploy().await.unwrap();
     /// // establish the TCP connection
@@ -397,6 +397,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
         self.enumerate()
             .batch(&join_tick, nondet_membership)
             .cross_singleton(current_members)
+            .filter(q!(|(_, members)| !members.is_empty()))
             .map(q!(|(data, members)| (
                 members[data.0 % members.len()].clone(),
                 data.1
@@ -475,6 +476,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
         self.enumerate()
             .batch(&join_tick, nondet_membership)
             .cross_singleton(current_members)
+            // .filter(q!(|(_, members)| !members.is_empty()))
             .map(q!(|(data, members)| (
                 members[data.0 % members.len()].clone(),
                 data.1
@@ -815,12 +817,15 @@ mod tests {
         assert_eq!(instances, 1);
     }
 
+    struct MemerCluster;
+    struct MemerNode;
+
     #[cfg(feature = "sim")]
     #[test]
     fn sim_send_bincode_o2m() {
         let flow = FlowBuilder::new();
-        let cluster = flow.cluster::<()>();
-        let node = flow.process::<()>();
+        let cluster = flow.cluster::<MemerCluster>();
+        let node = flow.process::<MemerNode>();
 
         let input = node.source_iter(q!(vec![
             (MemberId::from_raw_id(0), 123),

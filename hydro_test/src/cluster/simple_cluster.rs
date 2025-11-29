@@ -11,10 +11,7 @@ pub fn partition<'a, F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + '
 ) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
     cluster1
         .source_iter(q!(vec!(CLUSTER_SELF_ID)))
-        .map(q!(move |id| (
-            MemberId::<()>::from_raw_id(id.get_raw_id()),
-            format!("Hello from {}", id.get_raw_id())
-        )))
+        .map(q!(move |id| (id.clone(), format!("Hello from {}", id))))
         .send_partitioned(&cluster2, dist_policy)
         .assume_ordering(nondet!(/** testing, order does not matter */))
         .for_each(q!(move |message| println!(
@@ -28,7 +25,7 @@ pub fn decouple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster
     let cluster1 = flow.cluster();
     let cluster2 = flow.cluster();
     cluster1
-        .source_iter(q!(vec!(CLUSTER_SELF_ID)))
+        .source_iter(q!(vec!(CLUSTER_SELF_ID.clone())))
         // .for_each(q!(|message| println!("hey, {}", message)))
         .inspect(q!(|message| println!("Cluster1 node sending message: {}", message)))
         .decouple_cluster(&cluster2)
@@ -104,7 +101,7 @@ mod tests {
             .with_default_optimize()
             .with_process(&node, deployment.Localhost())
             .with_cluster(&cluster, (0..2).map(|_| deployment.Localhost()))
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -162,7 +159,7 @@ mod tests {
         let nodes = built
             .with_process(&process1, deployment.Localhost())
             .with_process(&process2, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
         let mut process2_stdout = nodes.get_process(&process2).stdout().await;
@@ -184,7 +181,7 @@ mod tests {
         let nodes = built
             .with_cluster(&cluster1, (0..3).map(|_| deployment.Localhost()))
             .with_cluster(&cluster2, (0..3).map(|_| deployment.Localhost()))
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -233,7 +230,7 @@ mod tests {
                 &cluster2,
                 (0..num_nodes * num_partitions).map(|_| deployment.Localhost()),
             )
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -251,7 +248,7 @@ mod tests {
         for (cluster2_id, mut stdout) in cluster2_stdouts.into_iter().enumerate() {
             if cluster2_id % num_partitions == 0 {
                 let expected_message = format!(
-                    r#"My self id is MemberId::<()>({}), my message is "Hello from {}""#,
+                    r#"My self id is MemberId::<()>({}), my message is "Hello from MemberId::<()>({})""#,
                     cluster2_id,
                     cluster2_id / num_partitions
                 );

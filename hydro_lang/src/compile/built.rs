@@ -27,8 +27,9 @@ pub struct BuiltFlow<'a> {
 
 pub(crate) fn build_inner<'a, D: Deploy<'a>>(
     ir: &mut Vec<HydroRoot>,
+    compile_env: &D::CompileEnv,
 ) -> BTreeMap<usize, DfirGraph> {
-    emit::<D>(ir)
+    emit::<D>(ir, compile_env)
         .into_iter()
         .map(|(k, v)| {
             let (mut flat_graph, _, _) = v.build();
@@ -372,15 +373,19 @@ impl<'a> BuiltFlow<'a> {
         self.into_deploy::<D>().compile(env)
     }
 
-    pub fn compile_no_network<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
-        self.into_deploy::<D>().compile_no_network()
+    pub fn compile_no_network<D: Deploy<'a>>(
+        self,
+        compile_env: &D::CompileEnv,
+    ) -> CompiledFlow<'a, D::GraphId> {
+        self.into_deploy::<D>().compile_no_network(compile_env)
     }
 
-    pub fn deploy<D: Deploy<'a, CompileEnv = ()>>(
+    pub fn deploy<D: Deploy<'a>>(
         self,
-        env: &mut D::InstantiateEnv,
+        compile_env: &D::CompileEnv,
+        instantiate_env: &mut D::InstantiateEnv,
     ) -> DeployResult<'a, D> {
-        self.into_deploy::<D>().deploy(env)
+        self.into_deploy::<D>().deploy(compile_env, instantiate_env)
     }
 
     #[cfg(feature = "viz")]

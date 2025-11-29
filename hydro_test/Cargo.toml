@@ -18,6 +18,7 @@ colored = "3.0.0"
 palette = "0.7.6"
 tokio = "1.29.0"
 bytes = "1.1.0"
+tracing = "0.1.37"
 
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates

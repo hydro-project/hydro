@@ -115,7 +115,7 @@ async fn main() {
             TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
         )
         .with_external(&external, deployment.Localhost())
-        .deploy(&mut deployment);
+        .deploy(&(), &mut deployment);
 
     deployment.deploy().await.unwrap();
 

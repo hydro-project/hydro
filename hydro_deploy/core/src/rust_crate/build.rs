@@ -34,7 +34,7 @@ pub struct BuildParams {
     /// `--features` flags, will be comma-delimited.
     features: Option<Vec<String>>,
     /// `--config` flag
-    config: Option<String>,
+    config: Vec<String>,
 }
 impl BuildParams {
     /// Creates a new `BuildParams` and canonicalizes the `src` path.
@@ -50,7 +50,7 @@ impl BuildParams {
         no_default_features: bool,
         target_type: HostTargetType,
         features: Option<Vec<String>>,
-        config: Option<String>,
+        config: Vec<String>,
     ) -> Self {
         // `fs::canonicalize` prepends windows paths with the `r"\\?\"`
         // https://stackoverflow.com/questions/21194530/what-does-mean-when-prepended-to-a-file-path
@@ -76,7 +76,7 @@ impl BuildParams {
     }
 }
 
-/// Information about a built crate. See [`build_crate`].
+/// Information about a built crate. See [`build_crate_memoized`].
 pub struct BuildOutput {
     /// The binary contents as a byte array.
     pub bin_data: Vec<u8>,
@@ -135,7 +135,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.args(["--features", &features.join(",")]);
                     }
 
-                    if let Some(config) = params.config.as_ref() {
+                    for config in &params.config {
                         command.args(["--config", config]);
                     }
 
