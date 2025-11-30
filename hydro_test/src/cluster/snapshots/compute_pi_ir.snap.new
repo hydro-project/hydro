@@ -1,5 +1,6 @@
 ---
 source: hydro_test/src/cluster/compute_pi.rs
+assertion_line: 67
 expression: built.ir()
 ---
 [
