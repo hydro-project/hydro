@@ -9,7 +9,7 @@ pub use super::json::HydroJson;
 // Re-export specific implementations
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
 use crate::compile::ir::backtrace::Backtrace;
-use crate::compile::ir::{DebugExpr, HydroIrMetadata, HydroNode, HydroRoot, HydroSource};
+use crate::compile::ir::{CollectionKind, DebugExpr, HydroIrMetadata, HydroNode, HydroRoot, HydroSource};
 use crate::location::dynamic::LocationId;
 
 /// Label for a graph node - can be either a static string or contain expressions.
@@ -353,7 +353,7 @@ pub fn get_unified_edge_style(
 /// This function analyzes the collection type and extracts relevant semantic tags
 /// for visualization purposes.
 pub fn extract_edge_properties_from_collection_kind(
-    collection_kind: &crate::compile::ir::CollectionKind,
+    collection_kind: &CollectionKind,
 ) -> HashSet<HydroEdgeProp> {
     use crate::compile::ir::CollectionKind;
 
@@ -675,6 +675,28 @@ fn setup_location(
     location_id
 }
 
+/// Extract a human-readable type string from CollectionKind for edge labels.
+/// This enables static analysis tools to detect lattice types like SetUnion, CausalWrapper, etc.
+fn extract_type_label(collection_kind: &CollectionKind) -> String {
+    match collection_kind {
+        CollectionKind::Stream { element_type, .. } => {
+            format!("Stream<{:?}>", element_type)
+        }
+        CollectionKind::Singleton { element_type, .. } => {
+            format!("Singleton<{:?}>", element_type)
+        }
+        CollectionKind::Optional { element_type, .. } => {
+            format!("Optional<{:?}>", element_type)
+        }
+        CollectionKind::KeyedStream { key_type, value_type, .. } => {
+            format!("KeyedStream<{:?}, {:?}>", key_type, value_type)
+        }
+        CollectionKind::KeyedSingleton { key_type, value_type, .. } => {
+            format!("KeyedSingleton<{:?}, {:?}>", key_type, value_type)
+        }
+    }
+}
+
 /// Helper function to add an edge with semantic tags extracted from metadata.
 /// This function combines collection kind extraction with network detection.
 fn add_edge_with_metadata(
@@ -683,7 +705,7 @@ fn add_edge_with_metadata(
     dst_id: usize,
     src_metadata: Option<&HydroIrMetadata>,
     dst_metadata: Option<&HydroIrMetadata>,
-    label: Option<String>,
+    semantic_label: Option<String>,
 ) {
     let mut properties = HashSet::new();
 
@@ -708,7 +730,18 @@ fn add_edge_with_metadata(
         properties.insert(HydroEdgeProp::Stream);
     }
 
-    structure.add_edge(src_id, dst_id, properties, label);
+    // Extract type information from source metadata for the edge label
+    let type_label = src_metadata.map(|m| extract_type_label(&m.collection_kind));
+    
+    // Combine semantic label (like "left", "right") with type label
+    let combined_label = match (semantic_label, type_label) {
+        (Some(sem), Some(typ)) => Some(format!("{}: {}", sem, typ)),
+        (None, Some(typ)) => Some(typ),
+        (Some(sem), None) => Some(sem),
+        (None, None) => None,
+    };
+
+    structure.add_edge(src_id, dst_id, properties, combined_label);
 }
 
 /// Helper function to write a graph structure using any GraphWrite implementation
