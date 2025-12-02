@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["MemberId"]};
+window.SIDEBAR_ITEMS = {"enum":["TaglessMemberId"],"struct":["MemberId"]};

@@ -694,7 +694,7 @@
 <a href=#694 id=694 data-nosnippet>694</a>            }
 <a href=#695 id=695 data-nosnippet>695</a>            (LocationId::Cluster(<span class="kw">_</span>), LocationId::Process(<span class="kw">_</span>)) =&gt; {
 <a href=#696 id=696 data-nosnippet>696</a>                <span class="self">self</span>.extra_stmts_global.push(<span class="macro">syn::parse_quote!</span> {
-<a href=#697 id=697 data-nosnippet>697</a>                    <span class="kw">let </span>(#sink, #source) = __root_dfir_rs::util::unbounded_channel::&lt;(::hydro_lang::location::MemberId&lt;()&gt;, __root_dfir_rs::bytes::Bytes)&gt;();
+<a href=#697 id=697 data-nosnippet>697</a>                    <span class="kw">let </span>(#sink, #source) = __root_dfir_rs::util::unbounded_channel::&lt;(::hydro_lang::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)&gt;();
 <a href=#698 id=698 data-nosnippet>698</a>                });
 <a href=#699 id=699 data-nosnippet>699</a>
 <a href=#700 id=700 data-nosnippet>700</a>                <span class="self">self</span>.extra_stmts_cluster
@@ -707,7 +707,7 @@
 <a href=#707 id=707 data-nosnippet>707</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_pipeline) = serialize {
 <a href=#708 id=708 data-nosnippet>708</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#709 id=709 data-nosnippet>709</a>                        <span class="macro">parse_quote!</span> {
-<a href=#710 id=710 data-nosnippet>710</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|v| #sink.send((::hydro_lang::location::MemberId::&lt;()&gt;::from_raw_id(__current_cluster_id), v)).unwrap());
+<a href=#710 id=710 data-nosnippet>710</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|v| #sink.send((::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
 <a href=#711 id=711 data-nosnippet>711</a>                        },
 <a href=#712 id=712 data-nosnippet>712</a>                        <span class="prelude-val">None</span>,
 <a href=#713 id=713 data-nosnippet>713</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
@@ -715,7 +715,7 @@
 <a href=#715 id=715 data-nosnippet>715</a>                } <span class="kw">else </span>{
 <a href=#716 id=716 data-nosnippet>716</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#717 id=717 data-nosnippet>717</a>                        <span class="macro">parse_quote!</span> {
-<a href=#718 id=718 data-nosnippet>718</a>                            #input_ident -&gt; for_each(|v| #sink.send((::hydro_lang::location::MemberId::&lt;()&gt;::from_raw_id(__current_cluster_id), v)).unwrap());
+<a href=#718 id=718 data-nosnippet>718</a>                            #input_ident -&gt; for_each(|v| #sink.send((::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
 <a href=#719 id=719 data-nosnippet>719</a>                        },
 <a href=#720 id=720 data-nosnippet>720</a>                        <span class="prelude-val">None</span>,
 <a href=#721 id=721 data-nosnippet>721</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
@@ -767,7 +767,7 @@
 <a href=#767 id=767 data-nosnippet>767</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_pipeline) = serialize {
 <a href=#768 id=768 data-nosnippet>768</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#769 id=769 data-nosnippet>769</a>                        <span class="macro">parse_quote!</span> {
-<a href=#770 id=770 data-nosnippet>770</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::&lt;()&gt;::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send(v).unwrap());
+<a href=#770 id=770 data-nosnippet>770</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::TaglessMemberId::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send(v).unwrap());
 <a href=#771 id=771 data-nosnippet>771</a>                        },
 <a href=#772 id=772 data-nosnippet>772</a>                        <span class="prelude-val">None</span>,
 <a href=#773 id=773 data-nosnippet>773</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
@@ -775,7 +775,7 @@
 <a href=#775 id=775 data-nosnippet>775</a>                } <span class="kw">else </span>{
 <a href=#776 id=776 data-nosnippet>776</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#777 id=777 data-nosnippet>777</a>                        <span class="macro">parse_quote!</span> {
-<a href=#778 id=778 data-nosnippet>778</a>                            #input_ident -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::&lt;()&gt;::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send(v).unwrap());
+<a href=#778 id=778 data-nosnippet>778</a>                            #input_ident -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::TaglessMemberId::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send(v).unwrap());
 <a href=#779 id=779 data-nosnippet>779</a>                        },
 <a href=#780 id=780 data-nosnippet>780</a>                        <span class="prelude-val">None</span>,
 <a href=#781 id=781 data-nosnippet>781</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
@@ -806,7 +806,7 @@
 <a href=#806 id=806 data-nosnippet>806</a>                    Span::call_site(),
 <a href=#807 id=807 data-nosnippet>807</a>                );
 <a href=#808 id=808 data-nosnippet>808</a>                <span class="self">self</span>.extra_stmts_global.push(<span class="macro">syn::parse_quote!</span> {
-<a href=#809 id=809 data-nosnippet>809</a>                    <span class="kw">let </span>#sink: ::std::rc::Rc&lt;::std::cell::RefCell&lt;Vec&lt;__root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;(::hydro_lang::location::MemberId&lt;()&gt;, __root_dfir_rs::bytes::Bytes)&gt;&gt;&gt;&gt; = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
+<a href=#809 id=809 data-nosnippet>809</a>                    <span class="kw">let </span>#sink: ::std::rc::Rc&lt;::std::cell::RefCell&lt;Vec&lt;__root_dfir_rs::tokio::sync::mpsc::UnboundedSender&lt;(::hydro_lang::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)&gt;&gt;&gt;&gt; = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
 <a href=#810 id=810 data-nosnippet>810</a>                });
 <a href=#811 id=811 data-nosnippet>811</a>
 <a href=#812 id=812 data-nosnippet>812</a>                <span class="self">self</span>.extra_stmts_global.push(<span class="macro">syn::parse_quote!</span> {
@@ -825,7 +825,7 @@
 <a href=#825 id=825 data-nosnippet>825</a>                    .or_default()
 <a href=#826 id=826 data-nosnippet>826</a>                    .push(<span class="macro">syn::parse_quote!</span> {
 <a href=#827 id=827 data-nosnippet>827</a>                        <span class="kw">let </span>#source = {
-<a href=#828 id=828 data-nosnippet>828</a>                            <span class="kw">let </span>(__sink, __source) = __root_dfir_rs::util::unbounded_channel::&lt;(::hydro_lang::location::MemberId&lt;()&gt;, __root_dfir_rs::bytes::Bytes)&gt;();
+<a href=#828 id=828 data-nosnippet>828</a>                            <span class="kw">let </span>(__sink, __source) = __root_dfir_rs::util::unbounded_channel::&lt;(::hydro_lang::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)&gt;();
 <a href=#829 id=829 data-nosnippet>829</a>                            #sink_writer.borrow_mut().push(__sink);
 <a href=#830 id=830 data-nosnippet>830</a>                            __source
 <a href=#831 id=831 data-nosnippet>831</a>                        };
@@ -834,7 +834,7 @@
 <a href=#834 id=834 data-nosnippet>834</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_pipeline) = serialize {
 <a href=#835 id=835 data-nosnippet>835</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#836 id=836 data-nosnippet>836</a>                        <span class="macro">parse_quote!</span> {
-<a href=#837 id=837 data-nosnippet>837</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::&lt;()&gt;::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send((::hydro_lang::location::MemberId::&lt;()&gt;::from_raw_id(__current_cluster_id), v)).unwrap());
+<a href=#837 id=837 data-nosnippet>837</a>                            #input_ident -&gt; map(#serialize_pipeline) -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::TaglessMemberId::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send((::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
 <a href=#838 id=838 data-nosnippet>838</a>                        },
 <a href=#839 id=839 data-nosnippet>839</a>                        <span class="prelude-val">None</span>,
 <a href=#840 id=840 data-nosnippet>840</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
@@ -842,7 +842,7 @@
 <a href=#842 id=842 data-nosnippet>842</a>                } <span class="kw">else </span>{
 <a href=#843 id=843 data-nosnippet>843</a>                    <span class="self">self</span>.get_dfir_mut(from).add_dfir(
 <a href=#844 id=844 data-nosnippet>844</a>                        <span class="macro">parse_quote!</span> {
-<a href=#845 id=845 data-nosnippet>845</a>                            #input_ident -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::MemberId::&lt;()&gt;::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send((::hydro_lang::location::MemberId::&lt;()&gt;::from_raw_id(__current_cluster_id), v)).unwrap());
+<a href=#845 id=845 data-nosnippet>845</a>                            #input_ident -&gt; for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::TaglessMemberId::get_raw_id(<span class="kw-2">&amp;</span>target_member_id) <span class="kw">as </span>usize].send((::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
 <a href=#846 id=846 data-nosnippet>846</a>                        },
 <a href=#847 id=847 data-nosnippet>847</a>                        <span class="prelude-val">None</span>,
 <a href=#848 id=848 data-nosnippet>848</a>                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"send{}"</span>, tag_id)),
