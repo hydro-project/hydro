@@ -31,7 +31,8 @@ use crate::compile::deploy_provider::{
 };
 use crate::compile::trybuild::generate::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
 use crate::location::dynamic::LocationId;
-use crate::location::{MemberId, MembershipEvent, NetworkHint};
+use crate::location::member_id::TaglessMemberId;
+use crate::location::{MembershipEvent, NetworkHint};
 use crate::staging_util::get_this_crate;
 
 /// Deployment backend that uses [`hydro_deploy`] for provisioning and launching.
@@ -46,7 +47,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
     type Process = DeployNode;
     type Cluster = DeployCluster;
     type External = DeployExternal;
-    type Meta = HashMap<usize, Vec<u32>>;
+    type Meta = HashMap<usize, Vec<TaglessMemberId>>;
     type GraphId = ();
     type Port = String;
     type ExternalRawPort = CustomClientPort;
@@ -434,17 +435,19 @@ impl<'a> Deploy<'a> for HydroDeploy {
     fn cluster_ids(
         _env: &Self::CompileEnv,
         of_cluster: usize,
-    ) -> impl QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a {
+    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
         cluster_members(RuntimeData::new("__hydro_lang_trybuild_cli"), of_cluster)
     }
 
-    fn cluster_self_id(_env: &Self::CompileEnv) -> impl QuotedWithContext<'a, u32, ()> + Copy + 'a {
+    fn cluster_self_id(
+        _env: &Self::CompileEnv,
+    ) -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
         cluster_self_id(RuntimeData::new("__hydro_lang_trybuild_cli"))
     }
 
     fn cluster_membership_stream(
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (MemberId<()>, MembershipEvent)> + Unpin>, ()>
+    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
     {
         cluster_membership_stream(location_id)
     }
@@ -742,7 +745,7 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
 
 impl Node for DeployExternal {
     type Port = String;
-    type Meta = HashMap<usize, Vec<u32>>;
+    type Meta = HashMap<usize, Vec<TaglessMemberId>>;
     type InstantiateEnv = Deployment;
 
     fn next_port(&self) -> Self::Port {
@@ -812,7 +815,7 @@ impl DeployCrateWrapper for DeployNode {
 
 impl Node for DeployNode {
     type Port = String;
-    type Meta = HashMap<usize, Vec<u32>>;
+    type Meta = HashMap<usize, Vec<TaglessMemberId>>;
     type InstantiateEnv = Deployment;
 
     fn next_port(&self) -> String {
@@ -888,7 +891,7 @@ impl DeployCluster {
 
 impl Node for DeployCluster {
     type Port = String;
-    type Meta = HashMap<usize, Vec<u32>>;
+    type Meta = HashMap<usize, Vec<TaglessMemberId>>;
     type InstantiateEnv = Deployment;
 
     fn next_port(&self) -> String {
@@ -943,7 +946,12 @@ impl Node for DeployCluster {
                 env.add_service(service)
             })
             .collect::<Vec<_>>();
-        meta.insert(self.id, (0..(cluster_nodes.len() as u32)).collect());
+        meta.insert(
+            self.id,
+            (0..(cluster_nodes.len() as u32))
+                .map(TaglessMemberId::from_raw_id)
+                .collect(),
+        );
         *self.members.borrow_mut() = cluster_nodes
             .into_iter()
             .map(|n| DeployClusterNode { underlying: n })
@@ -955,7 +963,7 @@ impl Node for DeployCluster {
             let mut n = node.underlying.try_write().unwrap();
             n.update_meta(HydroMeta {
                 clusters: meta.clone(),
-                cluster_id: Some(cluster_id as u32),
+                cluster_id: Some(TaglessMemberId::from_raw_id(cluster_id as u32)),
                 subgraph_id: self.id,
             });
         }

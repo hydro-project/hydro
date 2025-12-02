@@ -57,7 +57,7 @@ where
     {
         let sent = self
             .map(q!(move |b| (
-                MemberId::from_raw_id(CLUSTER_SELF_ID.get_raw_id()),
+                MemberId::from_tagless(CLUSTER_SELF_ID.clone().into_tagless()), // this is a seemingly round about way to convert from one member id tag to another.
                 b.clone()
             )))
             .demux_bincode(other)
