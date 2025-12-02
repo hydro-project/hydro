@@ -3,6 +3,7 @@ import KeyGroup from './KeyGroup';
 import OperatorBox from './OperatorBox';
 import CollectionBox from './CollectionBox';
 import Arrow from './Arrow';
+import SlicedRegion from './SlicedRegion';
 
 // Point class for representing 2D coordinates
 export class Point {
@@ -37,16 +38,55 @@ export const computeElementPositions = (contentTop, contentBottom, elementHeight
 };
 
 // Utility function to compute arrow positions between two bounding boxes
-export const computeArrowPosition = (fromBox, toBox) => {
+// Options: startSide and endSide can be 'left', 'right', 'top', 'bottom', or 'auto' (default)
+export const computeArrowPosition = (fromBox, toBox, options = {}) => {
+    const { startSide = 'auto', endSide = 'auto' } = options;
+    
     // Get bounding boxes (assuming they have getBounds() method or similar)
     const fromBounds = fromBox.getBounds ? fromBox.getBounds() : fromBox;
     const toBounds = toBox.getBounds ? toBox.getBounds() : toBox;
 
-    // Calculate arrow start and end points
-    const startX = fromBounds.right;
-    const startY = fromBounds.centerY;
-    const endX = toBounds.left;
-    const endY = toBounds.centerY;
+    // Determine arrow direction based on relative positions
+    const dx = toBounds.centerX - fromBounds.centerX;
+    const dy = toBounds.centerY - fromBounds.centerY;
+
+    let startX, startY, endX, endY;
+
+    // Compute start position
+    if (startSide === 'auto') {
+        if (Math.abs(dx) > Math.abs(dy)) {
+            startX = dx > 0 ? fromBounds.right : fromBounds.left;
+            startY = fromBounds.centerY;
+        } else {
+            startX = fromBounds.centerX;
+            startY = dy > 0 ? fromBounds.bottom : fromBounds.top;
+        }
+    } else {
+        switch (startSide) {
+            case 'left': startX = fromBounds.left; startY = fromBounds.centerY; break;
+            case 'right': startX = fromBounds.right; startY = fromBounds.centerY; break;
+            case 'top': startX = fromBounds.centerX; startY = fromBounds.top; break;
+            case 'bottom': startX = fromBounds.centerX; startY = fromBounds.bottom; break;
+        }
+    }
+
+    // Compute end position
+    if (endSide === 'auto') {
+        if (Math.abs(dx) > Math.abs(dy)) {
+            endX = dx > 0 ? toBounds.left : toBounds.right;
+            endY = toBounds.centerY;
+        } else {
+            endX = toBounds.centerX;
+            endY = dy > 0 ? toBounds.top : toBounds.bottom;
+        }
+    } else {
+        switch (endSide) {
+            case 'left': endX = toBounds.left; endY = toBounds.centerY; break;
+            case 'right': endX = toBounds.right; endY = toBounds.centerY; break;
+            case 'top': endX = toBounds.centerX; endY = toBounds.top; break;
+            case 'bottom': endX = toBounds.centerX; endY = toBounds.bottom; break;
+        }
+    }
 
     return { startX, startY, endX, endY };
 };
@@ -276,15 +316,20 @@ export class World {
     }
 
     // Create an arrow between two objects and add to render list
-    createArrow(id, fromObject, toObject) {
-        const arrowPos = computeArrowPosition(fromObject, toObject);
+    createArrow(id, fromObject, toObject, options = {}) {
+        const { dashed = false, strokeDasharray = '4,3', opacity = 1, startSide = 'auto', endSide = 'auto' } = options;
+        const arrowPos = computeArrowPosition(fromObject, toObject, { startSide, endSide });
         const arrowElement = (
             <Arrow 
                 key={id}
+                id={id}
                 startX={arrowPos.startX} 
                 startY={arrowPos.startY} 
                 endX={arrowPos.endX} 
-                endY={arrowPos.endY} 
+                endY={arrowPos.endY}
+                dashed={dashed}
+                strokeDasharray={strokeDasharray}
+                opacity={opacity}
             />
         );
         this.elements.push(arrowElement);
@@ -304,15 +349,18 @@ export class World {
             fontSize = '10px',
             fontWeight = 'bold',
             fontFamily = 'monospace',
+            opacity = 1,
         } = options;
 
         const textElement = (
             <foreignObject
                 key={id}
+                id={id}
                 x={position.x - width / 2}
                 y={position.y - height / 2}
                 width={width}
                 height={height}
+                opacity={opacity}
             >
                 <div
                     style={{
@@ -325,7 +373,7 @@ export class World {
                         fontFamily,
                     }}
                 >
-                    <span id={id}>{text}</span>
+                    <span>{text}</span>
                 </div>
             </foreignObject>
         );
@@ -342,6 +390,61 @@ export class World {
     // Get all elements for rendering
     getElements() {
         return this.elements;
+    }
+
+    // Create a sliced region (dotted rectangle) and add to render list
+    createSlicedRegion(id, position, width, height, label = 'sliced!', options = {}) {
+        const {
+            strokeColor = '#888',
+            strokeWidth = 2,
+            strokeDasharray = '6,4',
+            labelColor = '#666',
+            labelFontSize = 10,
+            rx = 8,
+            opacity = 1,
+            labelPosition = 'left'
+        } = options;
+
+        const region = {
+            position,
+            width,
+            height,
+            getBounds: () => ({
+                left: position.x - width / 2,
+                right: position.x + width / 2,
+                top: position.y - height / 2,
+                bottom: position.y + height / 2,
+                width,
+                height,
+                centerX: position.x,
+                centerY: position.y
+            }),
+            getCenter: () => new Point(position.x, position.y)
+        };
+
+        const element = (
+            <SlicedRegion
+                key={id}
+                id={id}
+                x={position.x}
+                y={position.y}
+                width={width}
+                height={height}
+                label={label}
+                strokeColor={strokeColor}
+                strokeWidth={strokeWidth}
+                strokeDasharray={strokeDasharray}
+                labelColor={labelColor}
+                labelFontSize={labelFontSize}
+                rx={rx}
+                opacity={opacity}
+                labelPosition={labelPosition}
+            />
+        );
+
+        this.elements.push(element);
+        this.objects[id] = region;
+        return region;
     }
 
     // Clear all elements and objects
