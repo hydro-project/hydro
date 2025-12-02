@@ -44,6 +44,17 @@ sim = [
     "dep:serde_json",
     "dfir_rs/meta", # affects layout of DFIR, thus the ABI
 ]
+
+# Dependencies needed to build the code that can deploy a hydro program with docker
+docker_deploy = [
+    "trybuild",
+    "docker_runtime",
+]
+
+# Dependencies needed to compile docker-deployed binaries with trybuild
+docker_runtime = [
+]
+
 deploy_integration = ["dep:hydro_deploy_integration"]
 build = ["dep:dfir_lang", "dep:backtrace", "dep:ctor"]
 trybuild = ["build", "dep:toml", "dep:prettyplease", "dep:stageleft_tool", "dep:trybuild-internals-api", "dep:sha2"]

@@ -19,8 +19,9 @@ use crate::compile::trybuild::generate::{
 };
 use crate::compile::trybuild::rewriters::UseTestModeStaged;
 use crate::deploy::deploy_runtime::cluster_membership_stream;
+use crate::location::MembershipEvent;
 use crate::location::dynamic::LocationId;
-use crate::location::{MemberId, MembershipEvent};
+use crate::location::member_id::TaglessMemberId;
 
 #[derive(Clone)]
 pub struct SimNode {
@@ -347,13 +348,15 @@ impl<'a> Deploy<'a> for SimDeploy {
     fn cluster_ids(
         _env: &Self::CompileEnv,
         _of_cluster: usize,
-    ) -> impl QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a {
+    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
         todo!();
         stageleft::q!(todo!())
     }
 
     #[expect(unreachable_code, reason = "todo!() is unreachable")]
-    fn cluster_self_id(_env: &Self::CompileEnv) -> impl QuotedWithContext<'a, u32, ()> + Copy + 'a {
+    fn cluster_self_id(
+        _env: &Self::CompileEnv,
+    ) -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
         todo!();
         stageleft::q!(todo!())
     }
@@ -362,7 +365,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         location_id: &LocationId,
     ) -> impl QuotedWithContext<
         'a,
-        Box<dyn futures::Stream<Item = (MemberId<()>, MembershipEvent)> + Unpin>,
+        Box<dyn futures::Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>,
         (),
     > {
         cluster_membership_stream(location_id)
@@ -710,7 +713,7 @@ fn compile_sim_graph_trybuild(
                         Some(__current_cluster_id),
                         {
                             #(#extra_stmts_per_cluster)*
-                            let #self_id_ident = __current_cluster_id;
+                            let #self_id_ident = &*Box::leak(Box::new(::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id)));
 
                             #(#tick_dfir_stmts)*
 
@@ -752,7 +755,7 @@ fn compile_sim_graph_trybuild(
                 .collect::<Vec<syn::Expr>>();
 
             syn::parse_quote! {
-                let #ident: &'static [u32] = &[#(#elements),*];
+                let #ident: &'static [::hydro_lang::location::TaglessMemberId] = Box::leak(Box::new([#(::hydro_lang::location::TaglessMemberId::from_raw_id(#elements)),*]));
             }
         })
         .collect::<Vec<syn::Stmt>>();

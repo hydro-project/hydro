@@ -9,6 +9,7 @@ use stageleft::{QuotedWithContext, quote_type};
 use super::dynamic::LocationId;
 use super::{Location, MemberId};
 use crate::compile::builder::FlowState;
+use crate::location::member_id::TaglessMemberId;
 use crate::staging_util::{Invariant, get_this_crate};
 
 pub struct Cluster<'a, ClusterTag> {
@@ -62,21 +63,22 @@ impl<'a, C> Location<'a> for Cluster<'a, C> {
     }
 }
 
-pub struct ClusterIds<'a, C> {
+pub struct ClusterIds<'a> {
     pub id: usize,
-    pub _phantom: Invariant<'a, C>,
+    pub _phantom: PhantomData<&'a ()>,
 }
 
-impl<C> Clone for ClusterIds<'_, C> {
+impl<'a> Clone for ClusterIds<'a> {
     fn clone(&self) -> Self {
-        *self
+        Self {
+            id: self.id,
+            _phantom: Default::default(),
+        }
     }
 }
 
-impl<C> Copy for ClusterIds<'_, C> {}
-
-impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
-    type O = &'a [MemberId<C>];
+impl<'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a> {
+    type O = &'a [TaglessMemberId];
 
     fn to_tokens(self, _ctx: &Ctx) -> QuoteTokens
     where
@@ -86,19 +88,15 @@ impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
             &format!("__hydro_lang_cluster_ids_{}", self.id),
             Span::call_site(),
         );
-        let root = get_this_crate();
-        let c_type = quote_type::<C>();
 
         QuoteTokens {
             prelude: None,
-            expr: Some(
-                quote! { unsafe { ::std::mem::transmute::<_, &[#root::__staged::location::MemberId<#c_type>]>(#ident) } },
-            ),
+            expr: Some(quote! { #ident }),
         }
     }
 }
 
-impl<'a, C, Ctx> QuotedWithContext<'a, &'a [MemberId<C>], Ctx> for ClusterIds<'a, C> {}
+impl<'a, Ctx> QuotedWithContext<'a, &'a [TaglessMemberId], Ctx> for ClusterIds<'a> {}
 
 pub trait IsCluster {
     type Tag;
@@ -143,7 +141,9 @@ where
 
         QuoteTokens {
             prelude: None,
-            expr: Some(quote! { #root::location::MemberId::<#c_type>::from_raw_id(#ident) }),
+            expr: Some(
+                quote! { #root::location::MemberId::<#c_type>::from_tagless((#ident).clone()) },
+            ),
         }
     }
 }

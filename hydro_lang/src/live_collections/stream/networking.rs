@@ -70,7 +70,7 @@ fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type)
         parse_quote! {
             |res| {
                 let (id, b) = res.unwrap();
-                (#root::__staged::location::MemberId::<#c_type>::from_tagless(id as #root::__staged::location::MemberId::<()>), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                (#root::__staged::location::MemberId::<#c_type>::from_tagless(id as #root::__staged::location::TaglessMemberId), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
             }
         }
     } else {

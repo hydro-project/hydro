@@ -61,8 +61,7 @@ pub use cluster::Cluster;
 
 #[expect(missing_docs, reason = "TODO")]
 pub mod member_id;
-pub use member_id::MemberId;
-
+pub use member_id::{MemberId, TaglessMemberId};
 #[expect(missing_docs, reason = "TODO")]
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
@@ -207,7 +206,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             HydroNode::Source {
                 source: HydroSource::ClusterMembers(cluster.id()),
                 metadata: self.new_node_metadata(Stream::<
-                    (MemberId<()>, MembershipEvent),
+                    (TaglessMemberId, MembershipEvent),
                     Self,
                     Unbounded,
                     TotalOrder,

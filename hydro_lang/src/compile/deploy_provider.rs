@@ -9,7 +9,8 @@ use serde::de::DeserializeOwned;
 use stageleft::QuotedWithContext;
 
 use crate::location::dynamic::LocationId;
-use crate::location::{MemberId, MembershipEvent, NetworkHint};
+use crate::location::member_id::TaglessMemberId;
+use crate::location::{MembershipEvent, NetworkHint};
 
 pub trait Deploy<'a> {
     type InstantiateEnv;
@@ -144,12 +145,15 @@ pub trait Deploy<'a> {
     fn cluster_ids(
         env: &Self::CompileEnv,
         of_cluster: usize,
-    ) -> impl QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a;
-    fn cluster_self_id(env: &Self::CompileEnv) -> impl QuotedWithContext<'a, u32, ()> + Copy + 'a;
+    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a;
+
+    fn cluster_self_id(
+        env: &Self::CompileEnv,
+    ) -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a;
 
     fn cluster_membership_stream(
         location_id: &LocationId,
-    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (MemberId<()>, MembershipEvent)> + Unpin>, ()>;
+    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>;
 }
 
 pub trait ProcessSpec<'a, D>
