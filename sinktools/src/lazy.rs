@@ -1,6 +1,7 @@
 //! [`LazySink`], [`LazySource`], and related items.
 
 use core::future::Future;
+use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::{Context, Poll, ready};
 
@@ -144,30 +145,33 @@ pin_project! {
 
 pin_project! {
     /// A lazy source will attempt to acquire a stream using the thunk when the first item is pulled from it
-    pub struct LazySource<ThunkFunc, StreamType, PreparingFutureType> {
+    pub struct LazySource<ThunkFunc, StreamType, PreparingFutureType, StreamItemType> {
         #[pin]
         state: LazySourceState<StreamType, PreparingFutureType, ThunkFunc>,
+        _phantom: PhantomData<StreamItemType>,
     }
 }
 
-impl<F, S, Fut, E> LazySource<F, S, Fut>
+impl<F, S, Fut, E, T> LazySource<F, S, Fut, T>
 where
     F: FnOnce() -> Fut,
     Fut: Future<Output = Result<S, E>>,
+    S: Stream<Item = T>,
 {
     /// Creates a new [`LazySource`]. Thunk should be something callable that returns a future that resolves to a [`Stream`] that the lazy sink will forward items to.
     pub fn new(thunk: F) -> Self {
         Self {
             state: LazySourceState::Uninit { func: Some(thunk) },
+            _phantom: Default::default(),
         }
     }
 }
 
-impl<F, S, Fut, E> Stream for LazySource<F, S, Fut>
+impl<F, S, Fut, E, T> Stream for LazySource<F, S, Fut, T>
 where
     F: FnOnce() -> Fut,
     Fut: Future<Output = Result<S, E>>,
-    S: Stream,
+    S: Stream<Item = T>,
 {
     type Item = S::Item;
 

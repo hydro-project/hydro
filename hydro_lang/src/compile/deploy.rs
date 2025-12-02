@@ -195,7 +195,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 .entry(c_id)
                 .or_default()
                 .push(syn::parse_quote! {
-                    let #self_id_ident = #self_id_expr;
+                    let #self_id_ident = &*Box::leak(Box::new(#self_id_expr));
                 });
 
             for other_location in self.processes.keys().chain(self.clusters.keys()) {

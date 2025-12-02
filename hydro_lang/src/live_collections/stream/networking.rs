@@ -70,7 +70,7 @@ fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type)
         parse_quote! {
             |res| {
                 let (id, b) = res.unwrap();
-                (#root::__staged::location::MemberId::<#c_type>::from_tagless(id as #root::__staged::location::MemberId::<()>), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
+                (#root::__staged::location::MemberId::<#c_type>::from_tagless(id as #root::__staged::location::TaglessMemberId), #root::runtime_support::bincode::deserialize::<#t_type>(&b).unwrap())
             }
         }
     } else {
@@ -382,6 +382,84 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
         other: &Cluster<'a, L2>,
         nondet_membership: NonDet,
     ) -> Stream<T, Cluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let ids = track_membership(self.location.source_cluster_members(other));
+        let join_tick = self.location.tick();
+        let current_members = ids
+            .snapshot(&join_tick, nondet_membership)
+            .filter(q!(|b| *b))
+            .keys()
+            .assume_ordering(nondet_membership)
+            .collect_vec();
+
+        self.enumerate()
+            .batch(&join_tick, nondet_membership)
+            .cross_singleton(current_members)
+            .map(q!(|(data, members)| (
+                members[data.0 % members.len()].clone(),
+                data.1
+            )))
+            .all_ticks()
+            .demux_bincode(other)
+    }
+}
+
+impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyOnce> {
+    /// Distributes elements of this stream to cluster members in a round-robin fashion, using
+    /// [`bincode`] to serialize/deserialize messages.
+    ///
+    /// This provides load balancing by evenly distributing work across cluster members. The
+    /// distribution is deterministic based on element order - the first element goes to member 0,
+    /// the second to member 1, and so on, wrapping around when reaching the end of the member list.
+    ///
+    /// # Non-Determinism
+    /// The set of cluster members may asynchronously change over time. Each element is distributed
+    /// based on the current cluster membership _at that point in time_. Depending on when cluster
+    /// members join and leave, the round-robin pattern will change. Furthermore, even when the
+    /// membership is stable, the order of members in the round-robin pattern may change across runs.
+    ///
+    /// # Ordering Requirements
+    /// This method is only available on streams with [`TotalOrder`] and [`ExactlyOnce`], since the
+    /// order of messages and retries affects the round-robin pattern.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce, NoOrder};
+    /// # use hydro_lang::location::MemberId;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// let p1 = flow.process::<()>();
+    /// let workers1: Cluster<()> = flow.cluster::<()>();
+    /// let workers2: Cluster<()> = flow.cluster::<()>();
+    /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(0..=16));
+    /// let on_worker1: Stream<_, Cluster<_>, _> = numbers.round_robin_bincode(&workers1, nondet!(/** assuming stable membership */));
+    /// let on_worker2: Stream<_, Cluster<_>, _> = on_worker1.round_robin_bincode(&workers2, nondet!(/** assuming stable membership */)).entries().assume_ordering(nondet!(/** assuming stable membership */));
+    /// on_worker2.send_bincode(&p2)
+    /// # .entries()
+    /// # .map(q!(|(w2, (w1, v))| ((w2, w1), v)))
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # let mut locations = std::collections::HashSet::new();
+    /// # for w in 0..=16 {
+    /// #     let (location, v) = stream.next().await.unwrap();
+    /// #     locations.insert(location);
+    /// #     results.push(v);
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, (0..=16).collect::<Vec<_>>());
+    /// # assert_eq!(locations.len(), 16);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn round_robin_bincode<L2: 'a>(
+        self,
+        other: &Cluster<'a, L2>,
+        nondet_membership: NonDet,
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
     where
         T: Serialize + DeserializeOwned,
     {

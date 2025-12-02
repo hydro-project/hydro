@@ -149,6 +149,7 @@ pub mod node_type_utils {
         (HydroNodeType::Network, "Network"),
         (HydroNodeType::Sink, "Sink"),
         (HydroNodeType::Tee, "Tee"),
+        (HydroNodeType::NonDeterministic, "NonDeterministic"),
     ];
 
     /// Convert HydroNodeType to string representation (used by JSON format)
@@ -176,6 +177,7 @@ pub enum HydroNodeType {
     Network,
     Sink,
     Tee,
+    NonDeterministic,
 }
 
 /// Types of edges in Hydro IR representing stream properties.
@@ -1084,11 +1086,21 @@ impl HydroNode {
                 tee_id
             }
 
+            // Non-deterministic operation
+            HydroNode::ObserveNonDet {
+                inner, metadata, ..
+            } => build_simple_transform(TransformParams {
+                structure,
+                seen_tees,
+                config,
+                input: inner,
+                metadata,
+                op_name: extract_op_name(self.print_root()),
+                node_type: HydroNodeType::NonDeterministic,
+            }),
+
             // Transform operations with Stream edges - grouped by node/edge type
             HydroNode::Cast { inner, metadata }
-            | HydroNode::ObserveNonDet {
-                inner, metadata, ..
-            }
             | HydroNode::DeferTick {
                 input: inner,
                 metadata,
@@ -1424,11 +1436,16 @@ impl HydroNode {
                 network_id
             }
 
-            // Handle remaining node types
-            HydroNode::Batch { inner, .. } => {
-                // Unpersist is typically optimized away, just pass through
-                inner.build_graph_structure(structure, seen_tees, config)
-            }
+            // Non-deterministic batch operation
+            HydroNode::Batch { inner, metadata } => build_simple_transform(TransformParams {
+                structure,
+                seen_tees,
+                config,
+                input: inner,
+                metadata,
+                op_name: extract_op_name(self.print_root()),
+                node_type: HydroNodeType::NonDeterministic,
+            }),
 
             HydroNode::YieldConcat { inner, .. } => {
                 // Unpersist is typically optimized away, just pass through
