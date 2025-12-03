@@ -289,12 +289,12 @@ pub trait Service: Send + Sync {
 
 pub trait ServiceBuilder {
     type Service: Service + 'static;
-    fn build(self, id: usize) -> Self::Service;
+    fn build(self, id: usize, on: Arc<dyn Host>) -> Self::Service;
 }
 
 impl<S: Service + 'static, T: FnOnce(usize) -> S> ServiceBuilder for T {
     type Service = S;
-    fn build(self, id: usize) -> Self::Service {
+    fn build(self, id: usize, _on: Arc<dyn Host>) -> Self::Service {
         self(id)
     }
 }
