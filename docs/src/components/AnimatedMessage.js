@@ -22,7 +22,7 @@ const AnimatedMessage = ({
 
   return (
     <g id={id} opacity={opacity} style={{
-      transform: `translateX(${x}px) translateY(${y}px)`
+      transform: `translateX(${x}px) translateY(${y}px)`,
     }}>
       <g style={{
         transform: `translateX(-${width / 2}px) translateY(-${height / 2}px)`
