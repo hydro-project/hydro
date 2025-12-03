@@ -49,6 +49,7 @@ build = ["dep:dfir_lang", "dep:backtrace", "dep:ctor"]
 trybuild = ["build", "dep:toml", "dep:prettyplease", "dep:stageleft_tool", "dep:trybuild-internals-api", "dep:sha2"]
 runtime_measure = ["dep:chrono", "dep:procfs"]
 runtime_support = ["dep:dfir_rs", "dfir_rs/deploy_integration"]
+runtime_mimalloc = ["dep:mimalloc"]
 dfir_context = ["dep:dfir_rs"]
 
 [package.metadata.docs.rs]
@@ -66,6 +67,7 @@ dfir_rs = { path = "../dfir_rs", version = "^0.15.0", default-features = false, 
 dfir_lang = { path = "../dfir_lang", version = "^0.15.0", optional = true }
 futures = "0.3.0"
 match_box = "0.0.2"
+mimalloc = { version = "0.1", optional = true }
 nameof = { version = "1.0.0", optional = true }
 prettyplease = { version = "0.2.0", features = ["verbatim"], optional = true }
 proc-macro-crate = "3.3"
