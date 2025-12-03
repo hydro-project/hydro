@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -48,41 +47,15 @@ pub struct RustCrateService {
 }
 
 impl RustCrateService {
-    #[expect(clippy::too_many_arguments, reason = "internal code")]
     pub fn new(
         id: usize,
-        src: PathBuf,
         on: Arc<dyn Host>,
-        bin: Option<String>,
-        example: Option<String>,
-        profile: Option<String>,
-        rustflags: Option<String>,
-        target_dir: Option<PathBuf>,
-        build_env: Vec<(String, String)>,
-        no_default_features: bool,
+        build_params: BuildParams,
         tracing: Option<TracingOptions>,
-        features: Option<Vec<String>>,
-        config: Option<String>,
         args: Option<Vec<String>>,
         display_id: Option<String>,
         external_ports: Vec<u16>,
     ) -> Self {
-        let target_type = on.target_type();
-
-        let build_params = BuildParams::new(
-            src,
-            bin,
-            example,
-            profile,
-            rustflags,
-            target_dir,
-            build_env,
-            no_default_features,
-            target_type,
-            features,
-            config,
-        );
-
         Self {
             id,
             on,
