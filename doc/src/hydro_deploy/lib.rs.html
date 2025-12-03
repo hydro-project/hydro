@@ -289,12 +289,12 @@
 <a href=#289 id=289 data-nosnippet>289</a>
 <a href=#290 id=290 data-nosnippet>290</a><span class="kw">pub trait </span>ServiceBuilder {
 <a href=#291 id=291 data-nosnippet>291</a>    <span class="kw">type </span>Service: Service + <span class="lifetime">'static</span>;
-<a href=#292 id=292 data-nosnippet>292</a>    <span class="kw">fn </span>build(<span class="self">self</span>, id: usize) -&gt; <span class="self">Self</span>::Service;
+<a href=#292 id=292 data-nosnippet>292</a>    <span class="kw">fn </span>build(<span class="self">self</span>, id: usize, on: Arc&lt;<span class="kw">dyn </span>Host&gt;) -&gt; <span class="self">Self</span>::Service;
 <a href=#293 id=293 data-nosnippet>293</a>}
 <a href=#294 id=294 data-nosnippet>294</a>
 <a href=#295 id=295 data-nosnippet>295</a><span class="kw">impl</span>&lt;S: Service + <span class="lifetime">'static</span>, T: FnOnce(usize) -&gt; S&gt; ServiceBuilder <span class="kw">for </span>T {
 <a href=#296 id=296 data-nosnippet>296</a>    <span class="kw">type </span>Service = S;
-<a href=#297 id=297 data-nosnippet>297</a>    <span class="kw">fn </span>build(<span class="self">self</span>, id: usize) -&gt; <span class="self">Self</span>::Service {
+<a href=#297 id=297 data-nosnippet>297</a>    <span class="kw">fn </span>build(<span class="self">self</span>, id: usize, _on: Arc&lt;<span class="kw">dyn </span>Host&gt;) -&gt; <span class="self">Self</span>::Service {
 <a href=#298 id=298 data-nosnippet>298</a>        <span class="self">self</span>(id)
 <a href=#299 id=299 data-nosnippet>299</a>    }
 <a href=#300 id=300 data-nosnippet>300</a>}

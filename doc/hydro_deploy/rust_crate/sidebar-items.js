@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CrateTarget"],"mod":["ports","service","tracing_options"],"struct":["RustCrate"]};
+window.SIDEBAR_ITEMS = {"enum":["CrateTarget"],"mod":["build","ports","service","tracing_options"],"struct":["RustCrate"]};

@@ -34,7 +34,7 @@
 <a href=#34 id=34 data-nosnippet>34</a>    <span class="doccomment">/// `--features` flags, will be comma-delimited.
 <a href=#35 id=35 data-nosnippet>35</a>    </span>features: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
 <a href=#36 id=36 data-nosnippet>36</a>    <span class="doccomment">/// `--config` flag
-<a href=#37 id=37 data-nosnippet>37</a>    </span>config: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#37 id=37 data-nosnippet>37</a>    </span>config: Vec&lt;String&gt;,
 <a href=#38 id=38 data-nosnippet>38</a>}
 <a href=#39 id=39 data-nosnippet>39</a><span class="kw">impl </span>BuildParams {
 <a href=#40 id=40 data-nosnippet>40</a>    <span class="doccomment">/// Creates a new `BuildParams` and canonicalizes the `src` path.
@@ -50,7 +50,7 @@
 <a href=#50 id=50 data-nosnippet>50</a>        no_default_features: bool,
 <a href=#51 id=51 data-nosnippet>51</a>        target_type: HostTargetType,
 <a href=#52 id=52 data-nosnippet>52</a>        features: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
-<a href=#53 id=53 data-nosnippet>53</a>        config: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#53 id=53 data-nosnippet>53</a>        config: Vec&lt;String&gt;,
 <a href=#54 id=54 data-nosnippet>54</a>    ) -&gt; <span class="self">Self </span>{
 <a href=#55 id=55 data-nosnippet>55</a>        <span class="comment">// `fs::canonicalize` prepends windows paths with the `r"\\?\"`
 <a href=#56 id=56 data-nosnippet>56</a>        // https://stackoverflow.com/questions/21194530/what-does-mean-when-prepended-to-a-file-path
@@ -76,7 +76,7 @@
 <a href=#76 id=76 data-nosnippet>76</a>    }
 <a href=#77 id=77 data-nosnippet>77</a>}
 <a href=#78 id=78 data-nosnippet>78</a>
-<a href=#79 id=79 data-nosnippet>79</a><span class="doccomment">/// Information about a built crate. See [`build_crate`].
+<a href=#79 id=79 data-nosnippet>79</a><span class="doccomment">/// Information about a built crate. See [`build_crate_memoized`].
 <a href=#80 id=80 data-nosnippet>80</a></span><span class="kw">pub struct </span>BuildOutput {
 <a href=#81 id=81 data-nosnippet>81</a>    <span class="doccomment">/// The binary contents as a byte array.
 <a href=#82 id=82 data-nosnippet>82</a>    </span><span class="kw">pub </span>bin_data: Vec&lt;u8&gt;,
@@ -135,7 +135,7 @@
 <a href=#135 id=135 data-nosnippet>135</a>                        command.args([<span class="string">"--features"</span>, <span class="kw-2">&amp;</span>features.join(<span class="string">","</span>)]);
 <a href=#136 id=136 data-nosnippet>136</a>                    }
 <a href=#137 id=137 data-nosnippet>137</a>
-<a href=#138 id=138 data-nosnippet>138</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(config) = params.config.as_ref() {
+<a href=#138 id=138 data-nosnippet>138</a>                    <span class="kw">for </span>config <span class="kw">in </span><span class="kw-2">&amp;</span>params.config {
 <a href=#139 id=139 data-nosnippet>139</a>                        command.args([<span class="string">"--config"</span>, config]);
 <a href=#140 id=140 data-nosnippet>140</a>                    }
 <a href=#141 id=141 data-nosnippet>141</a>
