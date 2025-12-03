@@ -362,6 +362,7 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn cluster_membership_stream(
+        _env: &Self::CompileEnv,
         location_id: &LocationId,
     ) -> impl QuotedWithContext<
         'a,

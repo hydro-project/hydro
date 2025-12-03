@@ -137,20 +137,26 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
     /// Compiles the flow into DFIR using placeholders for the network.
     /// Useful for generating Mermaid diagrams of the DFIR.
-    pub fn preview_compile(&self) -> CompiledFlow<'a, ()> {
+    pub fn preview_compile(&self, compile_env: &D::CompileEnv) -> CompiledFlow<'a, ()> {
         CompiledFlow {
-            dfir: build_inner::<D>(unsafe {
-                // SAFETY: `build_inner` does not mutate the IR, &mut is required
-                // only because the shared traversal logic requires it
-                &mut *self.ir.get()
-            }),
+            dfir: build_inner::<D>(
+                unsafe {
+                    // SAFETY: `build_inner` does not mutate the IR, &mut is required
+                    // only because the shared traversal logic requires it
+                    &mut *self.ir.get()
+                },
+                compile_env,
+            ),
             _phantom: PhantomData,
         }
     }
 
-    pub fn compile_no_network(mut self) -> CompiledFlow<'a, D::GraphId> {
+    pub fn compile_no_network(
+        mut self,
+        compile_env: &D::CompileEnv,
+    ) -> CompiledFlow<'a, D::GraphId> {
         CompiledFlow {
-            dfir: build_inner::<D>(self.ir.get_mut()),
+            dfir: build_inner::<D>(self.ir.get_mut(), compile_env),
             _phantom: PhantomData,
         }
     }
@@ -172,7 +178,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         });
 
         CompiledFlow {
-            dfir: build_inner::<D>(self.ir.get_mut()),
+            dfir: build_inner::<D>(self.ir.get_mut(), env),
             _phantom: PhantomData,
         }
     }
@@ -215,14 +221,18 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     }
 }
 
-impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
+impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     #[must_use]
-    pub fn deploy(mut self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
+    pub fn deploy(
+        mut self,
+        compile_env: &D::CompileEnv,
+        instantiate_env: &mut D::InstantiateEnv,
+    ) -> DeployResult<'a, D> {
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
         let mut extra_stmts = BTreeMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
-                &(),
+                compile_env,
                 &mut extra_stmts,
                 &mut seen_tees_instantiate,
                 &self.processes,
@@ -231,8 +241,8 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
             );
         });
 
-        let mut compiled = build_inner::<D>(self.ir.get_mut());
-        self.cluster_id_stmts(&mut extra_stmts, &());
+        let mut compiled = build_inner::<D>(self.ir.get_mut(), compile_env);
+        self.cluster_id_stmts(&mut extra_stmts, compile_env);
         let mut meta = D::Meta::default();
 
         let (mut processes, mut clusters, mut externals) = (
@@ -241,7 +251,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
                 .filter_map(|(node_id, node)| {
                     if let Some(ir) = compiled.remove(&node_id) {
                         node.instantiate(
-                            env,
+                            instantiate_env,
                             &mut meta,
                             ir,
                             extra_stmts.remove(&node_id).unwrap_or_default(),
@@ -257,7 +267,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
                 .filter_map(|(cluster_id, cluster)| {
                     if let Some(ir) = compiled.remove(&cluster_id) {
                         cluster.instantiate(
-                            env,
+                            instantiate_env,
                             &mut meta,
                             ir,
                             extra_stmts.remove(&cluster_id).unwrap_or_default(),
@@ -272,7 +282,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
                 .into_iter()
                 .map(|(external_id, external)| {
                     external.instantiate(
-                        env,
+                        instantiate_env,
                         &mut meta,
                         Default::default(),
                         extra_stmts.remove(&external_id).unwrap_or_default(),

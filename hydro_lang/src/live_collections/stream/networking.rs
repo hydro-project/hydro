@@ -220,7 +220,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// let nodes = flow
     ///     .with_process(&process, deployment.Localhost())
     ///     .with_external(&external, deployment.Localhost())
-    ///     .deploy(&mut deployment);
+    ///     .deploy(&(), &mut deployment);
     ///
     /// deployment.deploy().await.unwrap();
     /// // establish the TCP connection

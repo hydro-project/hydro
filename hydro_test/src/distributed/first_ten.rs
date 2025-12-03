@@ -59,7 +59,7 @@ mod tests {
             .with_process(&p1, deployment.Localhost())
             .with_process(&p2, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 

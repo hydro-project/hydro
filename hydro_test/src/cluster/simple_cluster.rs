@@ -101,7 +101,7 @@ mod tests {
             .with_default_optimize()
             .with_process(&node, deployment.Localhost())
             .with_cluster(&cluster, (0..2).map(|_| deployment.Localhost()))
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -159,7 +159,7 @@ mod tests {
         let nodes = built
             .with_process(&process1, deployment.Localhost())
             .with_process(&process2, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
         let mut process2_stdout = nodes.get_process(&process2).stdout().await;
@@ -181,7 +181,7 @@ mod tests {
         let nodes = built
             .with_cluster(&cluster1, (0..3).map(|_| deployment.Localhost()))
             .with_cluster(&cluster2, (0..3).map(|_| deployment.Localhost()))
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -230,7 +230,7 @@ mod tests {
                 &cluster2,
                 (0..num_nodes * num_partitions).map(|_| deployment.Localhost()),
             )
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 

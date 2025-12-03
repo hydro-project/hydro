@@ -33,7 +33,7 @@ pub async fn multi_location_test<'a, T, C, O: Ordering, R: Retries>(
         .with_remaining_processes(|| deployment.Localhost())
         .with_remaining_clusters(|| vec![deployment.Localhost(); 4])
         .with_external(&external, deployment.Localhost())
-        .deploy(&mut deployment);
+        .deploy(&(), &mut deployment);
 
     deployment.deploy().await.unwrap();
 
@@ -61,7 +61,7 @@ pub async fn stream_transform_test<'a, T, C, O: Ordering, R: Retries>(
     let nodes = flow
         .with_process(&process, deployment.Localhost())
         .with_external(&external, deployment.Localhost())
-        .deploy(&mut deployment);
+        .deploy(&(), &mut deployment);
 
     deployment.deploy().await.unwrap();
 

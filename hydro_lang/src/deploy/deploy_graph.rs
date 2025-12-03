@@ -446,6 +446,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn cluster_membership_stream(
+        _env: &Self::CompileEnv,
         location_id: &LocationId,
     ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
     {

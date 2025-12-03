@@ -62,7 +62,7 @@ mod tests {
 
         hydro_build_utils::assert_snapshot!(
             built
-                .preview_compile()
+                .preview_compile(&())
                 .dfir_for(&p1)
                 .to_mermaid(&Default::default())
         );
@@ -70,7 +70,7 @@ mod tests {
         let nodes = built
             .with_process(&p1, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 
@@ -127,7 +127,7 @@ mod tests {
 
         hydro_build_utils::assert_snapshot!(
             built
-                .preview_compile()
+                .preview_compile(&())
                 .dfir_for(&p1)
                 .to_mermaid(&Default::default())
         );
@@ -135,7 +135,7 @@ mod tests {
         let nodes = built
             .with_process(&p1, deployment.Localhost())
             .with_external(&external, deployment.Localhost())
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 

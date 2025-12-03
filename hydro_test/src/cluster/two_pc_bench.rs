@@ -84,7 +84,7 @@ mod tests {
             hydro_build_utils::assert_debug_snapshot!(built.ir());
         });
 
-        let preview = built.preview_compile();
+        let preview = built.preview_compile(&());
         hydro_build_utils::insta::with_settings!({
             snapshot_suffix => "coordinator_mermaid"
         }, {
@@ -99,7 +99,7 @@ mod tests {
             );
         });
 
-        let preview = built.preview_compile();
+        let preview = built.preview_compile(&());
         hydro_build_utils::insta::with_settings!({
             snapshot_suffix => "participants_mermaid"
         }, {
@@ -137,7 +137,7 @@ mod tests {
                 &client_aggregator,
                 TrybuildHost::new(deployment.Localhost()),
             )
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 

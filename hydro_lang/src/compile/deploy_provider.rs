@@ -152,6 +152,7 @@ pub trait Deploy<'a> {
     ) -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a;
 
     fn cluster_membership_stream(
+        env: &Self::CompileEnv,
         location_id: &LocationId,
     ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>;
 }

@@ -36,7 +36,7 @@ mod tests {
         let nodes = builder
             .with_default_optimize()
             .with_cluster(&cluster, (0..2).map(|_| deployment.Localhost()))
-            .deploy(&mut deployment);
+            .deploy(&(), &mut deployment);
 
         deployment.deploy().await.unwrap();
 

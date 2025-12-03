@@ -75,7 +75,7 @@ async fn main() {
             &cluster,
             (0..8).map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
-        .deploy(&mut deployment);
+        .deploy(&(), &mut deployment);
 
     deployment.run_ctrl_c().await.unwrap();
 }
