@@ -100,9 +100,10 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                    df_ident,
                    loop_id,
                    op_span,
+                   work_fn,
+                   work_fn_async,
                    ident,
                    inputs,
-                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -190,7 +191,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             let #ident = {
                 // Limit error propagation by bounding locally, erasing output iterator type.
                 #[inline(always)]
-                fn check_inputs<'a, K, I1, V1, I2, V2>(
+                async fn check_inputs<'a, K, I1, V1, I2, V2>(
                     lhs: I1,
                     rhs: I2,
                     lhs_state: &'a mut #join_type<K, V1, V2>,
@@ -204,10 +205,11 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     I1: 'a + #root::futures::stream::Stream<Item = (K, V1)>,
                     I2: 'a + #root::futures::stream::Stream<Item = (K, V2)>,
                 {
-                    #root::compiled::pull::symmetric_hash_join_into_stream(lhs, rhs, lhs_state, rhs_state, is_new_tick)
+                    #root::compiled::pull::symmetric_hash_join_into_stream(lhs, rhs, lhs_state, rhs_state, is_new_tick).await
                 }
 
-                check_inputs(#lhs, #rhs, &mut *#lhs_borrow_ident, &mut *#rhs_borrow_ident, #context.is_first_run_this_tick())
+                let fut = check_inputs(#lhs, #rhs, &mut *#lhs_borrow_ident, &mut *#rhs_borrow_ident, #context.is_first_run_this_tick());
+                #work_fn_async(fut).await
             };
         };
 

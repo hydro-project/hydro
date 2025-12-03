@@ -126,10 +126,10 @@ pub struct OperatorWriteOutput {
     /// operator is emitted in order.
     ///
     /// Emitted code should assign to [`WriteContextArgs::ident`] and use
-    /// [`WriteContextArgs::inputs`] (pull iterators) or
-    /// [`WriteContextArgs::outputs`] (pusherators).
+    /// [`WriteContextArgs::inputs`] (pull `Stream`s) or
+    /// [`WriteContextArgs::outputs`] (push `Sink`s).
     pub write_iterator: TokenStream,
-    /// Code which runs after iterators have been run. Mainly for flushing IO.
+    /// Code which runs after `Stream`s/`Sink`s have been run. Mainly for flushing IO.
     pub write_iterator_after: TokenStream,
 }
 
@@ -386,16 +386,18 @@ pub struct WriteContextArgs<'a> {
     pub op_span: Span,
     /// Tag for this operator appended to the generated identifier.
     pub op_tag: Option<String>,
-    /// Identifier for a function to call when doing work outside the iterator.
+    /// Identifier for a function to call when doing work outside the stream.
     pub work_fn: &'a Ident,
+    /// Identifier for a function to wrap futures when doing work outside the stream.
+    pub work_fn_async: &'a Ident,
 
-    /// Ident the iterator or pullerator should be assigned to.
+    /// Ident the `Stream` or `Sink` should be assigned to.
     pub ident: &'a Ident,
-    /// If a pull iterator (true) or pusherator (false) should be used.
+    /// If a pull `Stream` (true) or push `Sink` (false) should be used.
     pub is_pull: bool,
-    /// Input operator idents (or ref idents; used for pull).
+    /// Input `Stream` operator idents (or ref idents; used for pull).
     pub inputs: &'a [Ident],
-    /// Output operator idents (or ref idents; used for push).
+    /// Output `Sink` operator idents (or ref idents; used for push).
     pub outputs: &'a [Ident],
     /// Ident for the singleton output of this operator, if any.
     pub singleton_output_ident: &'a Ident,

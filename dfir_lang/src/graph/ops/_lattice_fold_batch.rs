@@ -51,6 +51,7 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
                    df_ident,
                    ident,
                    op_span,
+                   work_fn_async,
                    root,
                    inputs,
                    is_pull,
@@ -69,11 +70,12 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
             .map(ToTokens::to_token_stream)
             .unwrap_or(quote_spanned!(op_span=> _));
 
-        let lattice_handle_ident = wc.make_ident("lattice_handle");
         let lattice_state_ident = wc.make_ident("lattice_state");
+        let lattice_ident = wc.make_ident("lattice");
+        let signal_ident = wc.make_ident("signal");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #lattice_handle_ident = #df_ident.add_state(::std::cell::RefCell::new(<#lattice_type as ::std::default::Default>::default()));
+            let #lattice_state_ident = #df_ident.add_state(::std::cell::RefCell::new(<#lattice_type as ::std::default::Default>::default()));
         };
 
         let input = &inputs[0];
@@ -81,15 +83,28 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = {
             quote_spanned! {op_span=>
-                let mut #lattice_state_ident = unsafe {
+                let mut #lattice_ident = unsafe {
                     // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#lattice_handle_ident)
+                    #context.state_ref_unchecked(#lattice_state_ident)
                 }.borrow_mut();
 
-                let #ident = #root::compiled::pull::LatticeFoldBatch::new(
-                    #input,
-                    #root::futures::stream::StreamExt::fuse(#signal),
-                    &mut *#lattice_state_ident,
+                // Eagerly consume input to ensure updated state.
+                {
+                    let fut = #root::compiled::pull::ForEach::new(#input, |delta| {
+                        let _bool = #root::lattices::Merge::merge(&mut *#lattice_ident, delta);
+                    });
+                    let () = #work_fn_async(fut).await;
+                }
+
+                let #signal_ident = {
+                    // Short-circuit after first signal message.
+                    let fut = #root::compiled::pull::IntoNext::new(#signal);
+                    ::std::option::Option::is_some(&#work_fn_async(fut).await)
+                };
+
+                let #ident = #root::futures::stream::iter(
+                    // `Some` if `true`
+                    bool::then(#signal_ident, || ::std::mem::take(&mut *#lattice_ident))
                 );
             }
         };

@@ -1,22 +1,7 @@
-//! Pull-based operator helpers, i.e. [`Iterator`] helpers.
-
-mod accum_keyed_then;
-pub use accum_keyed_then::AccumKeyedThen;
+//! Pull-based operator helpers, i.e. [`futures::Stream`] helpers.
 
 mod cross_singleton;
 pub use cross_singleton::CrossSingleton;
-
-mod defer_signal;
-pub use defer_signal::DeferSignal;
-
-mod symmetric_hash_join;
-pub use symmetric_hash_join::*;
-
-mod half_join_state;
-pub use half_join_state::*;
-
-mod anti_join;
-pub use anti_join::{AntiJoin, AntiJoinPersist};
 
 mod flat_map;
 pub use flat_map::FlatMap;
@@ -24,10 +9,15 @@ pub use flat_map::FlatMap;
 mod flatten;
 pub use flatten::Flatten;
 
-mod fold;
-pub use fold::Fold;
+mod for_each;
+pub use for_each::ForEach;
 
-/// Fused join operator implementations.
+mod half_join_state;
+pub use half_join_state::*;
+
+mod into_next;
+pub use into_next::IntoNext;
+
 pub mod join_fused;
 pub use join_fused::{JoinFused, JoinFusedLhs};
 
@@ -47,11 +37,11 @@ pub use resolve_futures::ResolveFutures;
 mod sort_by_key;
 pub use sort_by_key::SortByKey;
 
+mod symmetric_hash_join;
+pub use symmetric_hash_join::*;
+
 mod lattice_bimorphism;
 pub use lattice_bimorphism::LatticeBimorphismStream;
-
-mod lattice_fold_batch;
-pub use lattice_fold_batch::LatticeFoldBatch;
 
 mod zip_longest;
 pub use zip_longest::ZipLongest;

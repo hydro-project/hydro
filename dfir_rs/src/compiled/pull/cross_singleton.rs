@@ -58,6 +58,7 @@ where
             None => {
                 let Some(singleton) = ready!(this.singleton_stream.poll_next(cx)) else {
                     // If `singleton_stream` returns EOS (`None`), we return EOS, no fused needed.
+                    // This short-circuits the `ItemSt` side, dropping them.
                     return Poll::Ready(None);
                 };
                 this.singleton_state.insert(singleton)

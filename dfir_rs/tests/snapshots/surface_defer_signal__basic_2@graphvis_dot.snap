@@ -1,5 +1,5 @@
 ---
-source: dfir_rs/tests/surface_batch.rs
+source: dfir_rs/tests/surface_defer_signal.rs
 expression: df.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {

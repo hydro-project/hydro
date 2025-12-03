@@ -1,33 +1,31 @@
+use std::borrow::Cow;
 use std::pin::Pin;
-use std::ptr::NonNull;
 use std::task::{Context, Poll, ready};
 
+use futures::future::Either as FutEither;
 use futures::stream::{FusedStream, Stream, StreamExt};
-use itertools::Either;
+use itertools::Either as IterEither;
 use pin_project_lite::pin_project;
 
-use super::HalfJoinState;
+use super::{ForEach, HalfJoinState};
 
 pin_project! {
     /// Stream combinator for symmetric hash join operations.
     #[must_use = "streams do nothing unless polled"]
-    pub struct SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState, Replay>
+    pub struct SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState>
     {
         #[pin]
         lhs: Lhs,
         #[pin]
         rhs: Rhs,
 
-        lhs_state: NonNull<LhsState>,
-        rhs_state: NonNull<RhsState>,
-        phantom: std::marker::PhantomData<&'a mut (LhsState, RhsState, Replay)>,
-
-        replay: Option<Replay>,
+        lhs_state: &'a mut LhsState,
+        rhs_state: &'a mut RhsState,
     }
 }
 
-impl<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState, Replay> Stream
-    for SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState, Replay>
+impl<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState> Stream
+    for SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState>
 where
     Key: Eq + std::hash::Hash + Clone,
     V1: Clone,
@@ -36,38 +34,24 @@ where
     Rhs: FusedStream<Item = (Key, V2)>,
     LhsState: HalfJoinState<Key, V1, V2>,
     RhsState: HalfJoinState<Key, V2, V1>,
-    Replay: 'a + Iterator<Item = (Key, (V1, V2))>,
 {
     type Item = (Key, (V1, V2));
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
 
-        // Do the replay if applicable
-        if let Some(replay) = this.replay.as_mut()
-            && let Some(item) = replay.next()
-        {
-            return Poll::Ready(Some(item));
-        }
-
-        *this.replay = None;
-        let (lhs_state, rhs_state) = unsafe {
-            // SAFETY: aliases in `this.replay` have been dropped. `'a` lifetime remains valid.
-            (this.lhs_state.as_mut(), this.rhs_state.as_mut())
-        };
-
         loop {
-            if let Some((k, v2, v1)) = lhs_state.pop_match() {
+            if let Some((k, v2, v1)) = this.lhs_state.pop_match() {
                 return Poll::Ready(Some((k, (v1, v2))));
             }
-            if let Some((k, v1, v2)) = rhs_state.pop_match() {
+            if let Some((k, v1, v2)) = this.rhs_state.pop_match() {
                 return Poll::Ready(Some((k, (v1, v2))));
             }
 
             let lhs_poll = this.lhs.as_mut().poll_next(cx);
             if let Poll::Ready(Some((k, v1))) = lhs_poll {
-                if lhs_state.build(k.clone(), &v1)
-                    && let Some((k, v1, v2)) = rhs_state.probe(&k, &v1)
+                if this.lhs_state.build(k.clone(), Cow::Borrowed(&v1))
+                    && let Some((k, v1, v2)) = this.rhs_state.probe(&k, &v1)
                 {
                     return Poll::Ready(Some((k, (v1, v2))));
                 }
@@ -76,8 +60,8 @@ where
 
             let rhs_poll = this.rhs.as_mut().poll_next(cx);
             if let Poll::Ready(Some((k, v2))) = rhs_poll {
-                if rhs_state.build(k.clone(), &v2)
-                    && let Some((k, v2, v1)) = lhs_state.probe(&k, &v2)
+                if this.rhs_state.build(k.clone(), Cow::Borrowed(&v2))
+                    && let Some((k, v2, v1)) = this.lhs_state.probe(&k, &v2)
                 {
                     return Poll::Ready(Some((k, (v1, v2))));
                 }
@@ -92,7 +76,7 @@ where
 }
 
 /// Creates a symmetric hash join stream from two input streams and their join states.
-pub fn symmetric_hash_join_into_stream<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState>(
+pub async fn symmetric_hash_join_into_stream<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState>(
     lhs: Lhs,
     rhs: Rhs,
     lhs_state: &'a mut LhsState,
@@ -108,20 +92,19 @@ where
     LhsState: HalfJoinState<Key, V1, V2>,
     RhsState: HalfJoinState<Key, V2, V1>,
 {
-    let lhs_state = NonNull::from_mut(lhs_state);
-    let rhs_state = NonNull::from_mut(rhs_state);
+    if is_new_tick {
+        ForEach::new(lhs, |(k, v1)| {
+            lhs_state.build(k.clone(), Cow::Owned(v1));
+        })
+        .await;
 
-    let replay = is_new_tick.then(|| {
-        // Do a nested loops join to replay the state.
-        let (lhs_state, rhs_state) = unsafe {
-            // SAFETY: the iterator is valid for the lifetime `'a`.
-            // The implementation of `SymmetricHashJoin` may not touch `lhs_state` or `rhs_state`
-            // until the replay iterator is dropped, ensuring no simultaneous modifications occur.
-            (lhs_state.as_ref(), rhs_state.as_ref())
-        };
+        ForEach::new(rhs, |(k, v2)| {
+            rhs_state.build(k.clone(), Cow::Owned(v2));
+        })
+        .await;
 
-        if lhs_state.len() < rhs_state.len() {
-            Either::Left(lhs_state.iter().flat_map(|(k, sv)| {
+        let iter = if lhs_state.len() < rhs_state.len() {
+            IterEither::Left(lhs_state.iter().flat_map(|(k, sv)| {
                 sv.iter().flat_map(|v1| {
                     rhs_state
                         .full_probe(k)
@@ -129,23 +112,22 @@ where
                 })
             }))
         } else {
-            Either::Right(rhs_state.iter().flat_map(|(k, sv)| {
+            IterEither::Right(rhs_state.iter().flat_map(|(k, sv)| {
                 sv.iter().flat_map(|v2| {
                     lhs_state
                         .full_probe(k)
                         .map(|v1| (k.clone(), (v1.clone(), v2.clone())))
                 })
             }))
-        }
-    });
-
-    SymmetricHashJoin {
-        lhs: lhs.fuse(),
-        rhs: rhs.fuse(),
-        lhs_state,
-        rhs_state,
-        replay,
-        phantom: std::marker::PhantomData,
+        };
+        FutEither::Left(futures::stream::iter(iter))
+    } else {
+        FutEither::Right(SymmetricHashJoin {
+            lhs: lhs.fuse(),
+            rhs: rhs.fuse(),
+            lhs_state,
+            rhs_state,
+        })
     }
 }
 
@@ -163,7 +145,8 @@ mod tests {
 
         let (mut lhs_state, mut rhs_state) =
             (HalfSetJoinState::default(), HalfSetJoinState::default());
-        let join = symmetric_hash_join_into_stream(lhs, rhs, &mut lhs_state, &mut rhs_state, true);
+        let join =
+            symmetric_hash_join_into_stream(lhs, rhs, &mut lhs_state, &mut rhs_state, true).await;
 
         let joined = join.collect::<HashSet<_>>().await;
 
@@ -192,7 +175,8 @@ mod tests {
         let (mut lhs_state, mut rhs_state) =
             (HalfSetJoinState::default(), HalfSetJoinState::default());
         let mut join =
-            symmetric_hash_join_into_stream(lhs_rx, rhs_rx, &mut lhs_state, &mut rhs_state, true);
+            symmetric_hash_join_into_stream(lhs_rx, rhs_rx, &mut lhs_state, &mut rhs_state, true)
+                .await;
 
         assert_eq!(join.next().await, Some((7, (3, 3))));
 

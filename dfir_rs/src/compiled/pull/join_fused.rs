@@ -1,6 +1,8 @@
-/// State semantics for (each half of) the `join_fused` operator.
-use std::collections::HashMap;
-use std::collections::hash_map;
+//! Fused join operator implementations.
+//!
+//! And state semantics for (each half of) the `join_fused` operator.
+
+use std::collections::{HashMap, hash_map};
 use std::hash::{BuildHasher, Hash};
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};

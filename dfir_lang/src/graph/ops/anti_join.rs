@@ -48,6 +48,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                    context,
                    df_ident,
                    op_span,
+                   work_fn_async,
                    ident,
                    is_pull,
                    inputs,
@@ -58,8 +59,10 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
 
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
-        let pos_antijoindata_ident = wc.make_ident("antijoindata_pos");
-        let neg_antijoindata_ident = wc.make_ident("antijoindata_neg");
+        let pos_ident = wc.make_ident("pos");
+        let neg_ident = wc.make_ident("neg");
+        let pos_borrow = wc.make_ident("pos_borrow");
+        let neg_borrow = wc.make_ident("neg_borrow");
 
         let pos_persist = match persistences[0] {
             Persistence::None | Persistence::Tick => false,
@@ -69,7 +72,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
 
         let write_prologue_pos = pos_persist.then(|| {
             quote_spanned! {op_span=>
-                let #pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                let #pos_ident = #df_ident.add_state(std::cell::RefCell::new(
                     ::std::vec::Vec::new()
                 ));
             }
@@ -79,12 +82,12 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
             .map(|lifespan| quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
                 #df_ident.set_state_lifespan_hook(
-                    #pos_antijoindata_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
+                    #pos_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
                 );
             })).flatten();
 
         let write_prologue_neg = quote_spanned! {op_span=>
-            let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+            let #neg_ident = #df_ident.add_state(std::cell::RefCell::new(
                 #root::rustc_hash::FxHashSet::default()
             ));
         };
@@ -93,49 +96,68 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
             .map(|lifespan| quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
                 #df_ident.set_state_lifespan_hook(
-                    #neg_antijoindata_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
+                    #neg_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
                 );
             }).unwrap_or_default();
 
         let input_neg = &inputs[0]; // N before P
         let input_pos = &inputs[1];
+
+        let accum_neg = quote_spanned! {op_span=>
+            let fut = #root::compiled::pull::ForEach::new(#input_neg, |k| {
+                #neg_borrow.insert(k);
+            });
+            let () = #work_fn_async(fut).await;
+        };
+
         let write_iterator = if !pos_persist {
             quote_spanned! {op_span=>
-                let mut neg_borrow = unsafe {
+                let mut #neg_borrow = unsafe {
                     // SAFETY: handle from `#df_ident`.
-                    #context.state_ref_unchecked(#neg_antijoindata_ident)
+                    #context.state_ref_unchecked(#neg_ident)
                 }.borrow_mut();
 
-                let #ident = #root::compiled::pull::AntiJoin::new(
-                    #input_pos,
-                    #root::futures::stream::StreamExt::fuse(#input_neg),
-                    &mut *neg_borrow,
-                );
+                let #ident = {
+                    #accum_neg
+
+                    #root::tokio_stream::StreamExt::filter(#input_pos, |(k, _)| {
+                        !#neg_borrow.contains(k)
+                    })
+                };
             }
         } else {
             quote_spanned! {op_span =>
-                let (mut neg_borrow, mut pos_borrow) = unsafe {
+                let (mut #neg_borrow, mut #pos_borrow) = unsafe {
                     // SAFETY: handles from `#df_ident`.
                     (
-                        #context.state_ref_unchecked(#neg_antijoindata_ident).borrow_mut(),
-                        #context.state_ref_unchecked(#pos_antijoindata_ident).borrow_mut(),
+                        #context.state_ref_unchecked(#neg_ident).borrow_mut(),
+                        #context.state_ref_unchecked(#pos_ident).borrow_mut(),
                     )
                 };
 
 
                 let #ident = {
+                    #accum_neg
+
                     let replay_idx = if #context.is_first_run_this_tick() {
                         0
                     } else {
-                        pos_borrow.len()
+                        #pos_borrow.len()
                     };
-                    #root::compiled::pull::AntiJoinPersist::new(
-                        #input_pos,
-                        #root::futures::stream::StreamExt::fuse(#input_neg),
-                        &mut *pos_borrow,
-                        &mut *neg_borrow,
-                        replay_idx
-                    )
+
+                    // Accum into pos vec
+                    let fut = #root::compiled::pull::ForEach::new(#input_pos, |kv| {
+                        #pos_borrow.push(kv);
+                    });
+                    let () = #work_fn_async(fut).await;
+
+                    // Replay out of pos vec
+                    let iter = #pos_borrow[replay_idx..].iter();
+                    let iter = ::std::iter::Iterator::filter(iter, |(k, _)| {
+                        !#neg_borrow.contains(k)
+                    });
+                    let iter = ::std::iter::Iterator::cloned(iter);
+                    #root::futures::stream::iter(iter)
                 };
             }
         };

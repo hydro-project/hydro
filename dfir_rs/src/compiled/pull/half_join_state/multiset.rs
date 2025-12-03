@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::{borrow::Cow, collections::VecDeque};
 use std::collections::hash_map::Entry;
 
 use super::HalfJoinState;
@@ -45,18 +45,18 @@ where
     ValBuild: Clone,
     ValProbe: Clone,
 {
-    fn build(&mut self, k: Key, v: &ValBuild) -> bool {
+    fn build(&mut self, k: Key, v: Cow<'_, ValBuild>) -> bool {
         let entry = self.table.entry(k);
 
         match entry {
             Entry::Occupied(mut e) => {
                 let vec = e.get_mut();
 
-                vec.push(v.clone());
+                vec.push(v.into_owned());
                 self.len += 1;
             }
             Entry::Vacant(e) => {
-                e.insert(smallvec![v.clone()]);
+                e.insert(smallvec![v.into_owned()]);
                 self.len += 1;
             }
         };

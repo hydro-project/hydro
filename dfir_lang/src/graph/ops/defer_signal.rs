@@ -44,6 +44,7 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
                    df_ident,
                    ident,
                    op_span,
+                   work_fn_async,
                    inputs,
                    is_pull,
                    ..
@@ -51,12 +52,13 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
                _| {
         assert!(is_pull);
 
-        let internal_buffer = wc.make_ident("internal_buffer");
-        let borrow_ident = wc.make_ident("borrow_ident");
+        let buffer_ident = wc.make_ident("buffer");
+        let borrow_ident = wc.make_ident("borrow");
+        let signal_ident = wc.make_ident("signal");
 
         // TODO(mingwei): different lifetimes? `'tick`?
         let write_prologue = quote_spanned! {op_span=>
-            let #internal_buffer = #df_ident.add_state(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+            let #buffer_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
         };
 
         let input = &inputs[0];
@@ -66,14 +68,28 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 let mut #borrow_ident = unsafe {
                     // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#internal_buffer)
+                    #context.state_ref_unchecked(#buffer_ident)
                 }.borrow_mut();
 
-                let #ident = #root::compiled::pull::DeferSignal::new(
-                    #input,
-                    #root::futures::stream::StreamExt::fuse(#signal),
-                    &mut *#borrow_ident,
-                );
+                // Eagerly consume input to ensure updated state.
+                {
+                    let fut = #root::compiled::pull::ForEach::new(#input, |item| {
+                        ::std::vec::Vec::push(&mut *#borrow_ident, item);
+                    });
+                    let () = #work_fn_async(fut).await;
+                }
+
+                let #signal_ident = {
+                    // Short-circuit after first signal message.
+                    let fut = #root::compiled::pull::IntoNext::new(#signal);
+                    #work_fn_async(fut).await.is_some()
+                };
+
+                let #ident = #root::futures::stream::iter(if #signal_ident {
+                    #borrow_ident.drain(..)
+                } else {
+                    #borrow_ident.drain(..0) // Hack for empty.
+                });
             }
         };
 

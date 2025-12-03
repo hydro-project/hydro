@@ -1057,6 +1057,11 @@ impl DfirGraph {
                                 source_tag,
                                 span = op_span
                             );
+                            let work_fn_async = format_ident!(
+                                "{}__async",
+                                work_fn,
+                                span = op_span
+                            );
 
                             let context_args = WriteContextArgs {
                                 root: &root,
@@ -1068,6 +1073,7 @@ impl DfirGraph {
                                 op_span,
                                 op_tag: self.operator_tag.get(node_id).cloned(),
                                 work_fn: &work_fn,
+                                work_fn_async: &work_fn_async,
                                 ident: &ident,
                                 is_pull,
                                 inputs: &inputs,
@@ -1098,8 +1104,14 @@ impl DfirGraph {
                             op_prologue_code.push(syn::parse_quote! {
                                 #[allow(non_snake_case)]
                                 #[inline(always)]
-                                fn #work_fn<T>(thunk: impl FnOnce() -> T) -> T {
+                                fn #work_fn<T>(thunk: impl ::std::ops::FnOnce() -> T) -> T {
                                     thunk()
+                                }
+
+                                #[allow(non_snake_case)]
+                                #[inline(always)]
+                                async fn #work_fn_async<T>(thunk: impl ::std::future::Future<Output = T>) -> T {
+                                    thunk.await
                                 }
                             });
                             op_prologue_code.push(write_prologue);
