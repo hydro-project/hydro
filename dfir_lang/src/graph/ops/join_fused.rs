@@ -40,7 +40,7 @@ use crate::diagnostic::Diagnostic;
 /// ```
 ///
 /// ```dfir
-/// use dfir_rs::compiled::pull::{Fold, Reduce};
+/// use dfir_rs::util::accumulator::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
@@ -53,7 +53,7 @@ use crate::diagnostic::Diagnostic;
 /// Here is an example of using `FoldFrom` to derive the accumulator from the first value:
 ///
 /// ```dfir
-/// use dfir_rs::compiled::pull::{Fold, FoldFrom};
+/// use dfir_rs::util::accumulator::{Fold, FoldFrom};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
@@ -73,7 +73,7 @@ use crate::diagnostic::Diagnostic;
 /// for example, the two following examples have identical behavior:
 ///
 /// ```dfir
-/// use dfir_rs::compiled::pull::{Fold, Reduce};
+/// use dfir_rs::util::accumulator::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> persist::<'static>() -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
@@ -85,7 +85,7 @@ use crate::diagnostic::Diagnostic;
 /// ```
 ///
 /// ```dfir
-/// use dfir_rs::compiled::pull::{Fold, Reduce};
+/// use dfir_rs::util::accumulator::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
