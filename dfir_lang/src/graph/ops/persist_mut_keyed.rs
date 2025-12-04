@@ -48,6 +48,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                    context,
                    df_ident,
                    op_span,
+                   work_fn_async,
                    ident,
                    inputs,
                    is_pull,
@@ -78,7 +79,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
         }
 
         let persistdata_ident = wc.make_ident("persistdata");
-        let map_ident = wc.make_ident("persistvec");
+        let vec_ident = wc.make_ident("persistvec");
         let write_prologue = quote_spanned! {op_span=>
             let #persistdata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                 #root::rustc_hash::FxHashMap::<_, #root::util::sparse_vec::SparseVec<_>>::default()
@@ -88,12 +89,40 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
         let write_iterator = {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let mut #map_ident = unsafe {
+                let mut #vec_ident = unsafe {
                     // SAFETY: handle from `#df_ident.add_state(..)`.
                     #context.state_ref_unchecked(#persistdata_ident)
                 }.borrow_mut();
 
-                let #ident = #root::compiled::pull::PersistMutKeyed::new(#input, &mut *#map_ident, #context.is_first_run_this_tick());
+                let #ident = {
+                    #[inline(always)]
+                    fn check_stream<K, V>(st: impl #root::futures::stream::Stream<Item = #root::util::PersistenceKeyed::<K, V>>) -> impl #root::futures::stream::Stream<Item = #root::util::PersistenceKeyed::<K, V>> {
+                        st
+                    }
+
+                    let iter = if context.is_first_run_this_tick() {
+                        let fut = #root::compiled::pull::ForEach::new(check_stream(#input), |item| {
+                            match item {
+                                #root::util::PersistenceKeyed::Persist(k, v) => {
+                                    #vec_ident.entry(k).or_default().push(v);
+                                },
+                                #root::util::PersistenceKeyed::Delete(k) => {
+                                    #vec_ident.remove(&k);
+                                }
+                            }
+                        });
+                        let () = #work_fn_async(fut).await;
+
+                        #[allow(clippy::clone_on_copy)]
+                        Some(#vec_ident.iter()
+                            .flat_map(|(k, v)| v.iter().map(move |v| (k.clone(), v.clone()))))
+                        .into_iter()
+                        .flatten()
+                    } else {
+                        None.into_iter().flatten()
+                    };
+                    #root::futures::stream::iter(iter)
+                };
             }
         };
 
