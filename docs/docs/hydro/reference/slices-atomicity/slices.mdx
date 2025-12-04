@@ -1,0 +1,129 @@
+---
+sidebar_position: 0
+---
+
+import SliceBatchAnimation from './SliceBatchAnimation';
+import SliceSnapshotAnimation from './SliceSnapshotAnimation';
+
+# Slice Blocks
+
+When building distributed applications, you often need to process incoming requests while observing the current state of your system. For example, a counter service needs to respond to "get" requests with the current count, or a key-value store needs to look up values for incoming queries.
+
+The challenge is that in Hydro, live collections update asynchronously. A `Stream` of requests arrives over time, and a `Singleton` holding state changes as updates are processed. How do you combine these two asynchronous sources in a meaningful way?
+
+## The `sliced!` Macro
+
+Hydro provides the `sliced!` macro to solve this problem. It allows you to take a **slice** of multiple live collections at a point in time, process them together, and emit results back into the asynchronous world.
+
+```rust,ignore
+use hydro_lang::prelude::*;
+
+let get_response = sliced! {
+    let request_batch = use(get_requests, nondet!(/** batch boundaries are non-deterministic */));
+    let count_snapshot = use(current_count, nondet!(/** snapshot timing is non-deterministic */));
+
+    request_batch.cross_singleton(count_snapshot)
+};
+```
+
+The `sliced!` macro takes multiple `use` statements, each specifying a live collection to slice. The syntax is inspired by React hooks. Each `use` statement returns the sliced version of the collection:
+
+- For a `Stream` / `KeyedStream`, you get a **batch** of elements that arrived since the last slice
+- For a `Singleton` / `KeyedSingleton`, you get a **snapshot** of the current value
+
+The body of `sliced!` must return a live collection. This collection is automatically "unsliced" back into an unbounded collection that continues across slice boundaries. For example, a bounded `Stream` becomes an unbounded `Stream` (concatenating elements across slices). When a `Singleton` is returned, the "unsliced" `Singleton` is continually updated to the latest `Singleton` result inside the slice.
+
+## Using Slices
+Slices are a powerful tool for manipulating asynchronous data, but should only be used when necessary, since they involve non-determinism.
+
+1. **Keep slices focused**: Each `sliced!` block should have a clear purpose. If you're doing multiple unrelated operations, consider separate blocks.
+2. **Document non-determinism**: The explanation in each `nondet!` call should explain why the non-determinism doesn't affect correctness.
+3. **Test with simulation**: Use [exhaustive simulation testing](../simulation/writing.mdx) to verify your code handles all possible batch boundaries and snapshot timings correctly.
+
+
+When you slice a `Stream`, you receive a batch of elements. The batch contains all elements that have arrived since the previous slice was processed. The boundaries of these batches are non-deterministic—they depend on network timing, processing speed, and other runtime factors.
+
+In the animation below, elements arrive continuously on the input stream. When a slice is taken, all pending elements are collected into a batch for processing. The batch is then transformed (in this case, each integer is converted to a string), and the results are emitted back to the output stream.
+
+```rust
+# use hydro_lang::prelude::*;
+# use futures::StreamExt;
+# tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+let numbers = process.source_iter(q!(vec![1, 2, 3, 4, 5]));
+
+let stringified = sliced! {
+    let batch = use(numbers, nondet!(/** batch boundaries don't affect final result */));
+    batch.map(q!(|x| x.to_string()))
+};
+// Eventually emits: "1", "2", "3", "4", "5" (in batches)
+# stringified
+# }, |mut stream| async move {
+# let mut results = vec![];
+# for _ in 0..5 {
+#     results.push(stream.next().await.unwrap());
+# }
+# results.sort();
+# assert_eq!(results, vec!["1", "2", "3", "4", "5"]);
+# }));
+```
+
+<SliceBatchAnimation />
+
+The key insight is that while batch boundaries are non-deterministic, the **eventual result** is deterministic—all elements will eventually be processed and emitted.
+
+When you slice a `Singleton`, you receive a snapshot of its current value. This snapshot represents the state at the moment the slice is taken. If the singleton is updated between slices, subsequent slices will observe the new value.
+
+The animation below shows how a singleton's value changes over time as updates are processed. When a slice is taken, the current value is captured and can be used in computations with other sliced collections.
+
+```rust,ignore
+let requests: Stream<()> = ...; // (), (), ()
+let state: Singleton<i32> = ...; // 5 ~> 7
+
+let scaled = sliced! {
+    let batch = use(requests, nondet!(/** batch boundaries are non-deterministic */));
+    let current_state = use(state, nondet!(/** snapshot timing is non-deterministic */));
+    batch.cross_singleton(current_state)
+};
+```
+
+<SliceSnapshotAnimation />
+
+The `sliced!` macro can combine any number of live collections. All collections are sliced at the same logical point in time, allowing you to perform joins and lookups:
+
+```rust,ignore
+let result = sliced! {
+    let requests = use(get_requests, nondet!(/** ... */));
+    let cache = use(cache_state, nondet!(/** ... */));
+    let config = use(runtime_config, nondet!(/** ... */));
+    
+    // All three are sliced together
+    requests
+        .cross_singleton(cache)
+        .cross_singleton(config)
+        .map(q!(|((req, cache), config)| process(req, cache, config)))
+};
+```
+
+## Non-Determinism and `nondet!`
+
+Every `use` statement in `sliced!` requires a `nondet!` marker. This is because slicing involves inherent non-determinism:
+
+- **Batch boundaries**: Which elements end up in the same batch depends on timing
+- **Snapshot timing**: Which version of a singleton is observed depends on when the slice occurs
+- **Interleaving**: The order in which slices from different sources are combined is non-deterministic
+
+The `nondet!` marker serves two purposes:
+1. It makes non-determinism explicit in your code, highlighting points that need careful review
+2. It requires you to document why the non-determinism is acceptable for your application
+
+```rust,ignore
+let response = sliced! {
+    // Document why batch boundaries don't affect correctness
+    let requests = use(incoming, nondet!(/** each request is handled independently */));
+    
+    // Document why snapshot timing is acceptable
+    let state = use(current_state, nondet!(/** clients tolerate slightly stale reads */));
+    
+    requests.cross_singleton(state)
+};
+```
