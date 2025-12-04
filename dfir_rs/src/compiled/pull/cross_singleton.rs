@@ -53,6 +53,7 @@ where
         let this = self.project();
 
         // Set the singleton state only if it is not already set.
+        // This short-circuits the `SingletonSt` side to the first item only.
         let singleton = match this.singleton_state {
             Some(singleton) => singleton,
             None => {

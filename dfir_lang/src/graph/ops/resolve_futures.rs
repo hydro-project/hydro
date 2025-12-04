@@ -80,16 +80,33 @@ pub fn resolve_futures_writer(
 
         quote_spanned! {op_span=>
             {
-                let () = #work_fn_async(#root::compiled::pull::ForEach::new(#input, |f| {
-                    ::std::iter::Extend::extend(&mut *#queue_ident, ::std::iter::once(f));
-                })).await;
+                let first_item_opt = #work_fn_async(async {
+                    // Accumulate all futures.
+                    let () = #root::compiled::pull::ForEach::new(#input, |f| {
+                        ::std::iter::Extend::extend(&mut *#queue_ident, ::std::iter::once(f));
+                    }).await;
 
-                #root::futures::stream::poll_fn(|_cx| {
-                    match #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
-                        ::std::task::Poll::Ready(opt) => ::std::task::Poll::Ready(opt),
-                        ::std::task::Poll::Pending => #if_pending,
-                    }
-                })
+                    // Ensure the queue starts, by polling it.
+                    // This unfortunately means we also need to store the result of the first poll in `first_item_opt`.
+                    #root::futures::future::poll_fn(|_cx| {
+                        let opt = if let ::std::task::Poll::Ready(opt) = #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
+                            opt
+                        } else {
+                            ::std::option::Option::None
+                        };
+                        ::std::task::Poll::Ready(opt) // Always resolve immediately.
+                    }).await
+                }).await;
+
+                #root::futures::stream::StreamExt::chain(
+                    #root::futures::stream::iter(first_item_opt),
+                    #root::futures::stream::poll_fn(|_cx| {
+                        match #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
+                            ::std::task::Poll::Ready(opt) => ::std::task::Poll::Ready(opt),
+                            ::std::task::Poll::Pending => #if_pending,
+                        }
+                    }),
+                )
             }
         }
     } else {
