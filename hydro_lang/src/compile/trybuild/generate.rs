@@ -53,6 +53,7 @@ fn clean_name_hint(name_hint: &str) -> String {
         .replace(")", "")
 }
 
+#[derive(Debug, Clone)]
 pub struct TrybuildConfig {
     pub project_dir: PathBuf,
     pub target_dir: PathBuf,
@@ -64,6 +65,7 @@ pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
     name_hint: &Option<String>,
+    is_containerized: bool,
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
@@ -71,7 +73,13 @@ pub fn create_graph_trybuild(
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let generated_code = compile_graph_trybuild(graph, extra_stmts, crate_name.clone(), is_test);
+    let generated_code = compile_graph_trybuild(
+        graph,
+        extra_stmts,
+        crate_name.clone(),
+        is_test,
+        is_containerized,
+    );
 
     let inlined_staged = if is_test {
         let gen_staged = stageleft_tool::gen_staged_trybuild(
@@ -155,6 +163,7 @@ pub fn compile_graph_trybuild(
     extra_stmts: Vec<syn::Stmt>,
     crate_name: String,
     is_test: bool,
+    is_containerized: bool,
 ) -> syn::File {
     let mut diagnostics = Vec::new();
     let mut dfir_expr: syn::Expr = syn::parse2(partitioned_graph.as_code(
@@ -174,25 +183,52 @@ pub fn compile_graph_trybuild(
 
     let trybuild_crate_name_ident = quote::format_ident!("{}_hydro_trybuild", crate_name);
 
-    let source_ast: syn::File = syn::parse_quote! {
-        #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-        use hydro_lang::prelude::*;
-        use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
-        pub use #trybuild_crate_name_ident::__staged;
+    let source_ast: syn::File = if is_containerized {
+        syn::parse_quote! {
+            #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+            use hydro_lang::prelude::*;
+            use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
+            pub use #trybuild_crate_name_ident::__staged;
 
-        #[allow(unused)]
-        fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::__staged::deploy::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
-            #(#extra_stmts)*
-            #dfir_expr
+            #[allow(unused)]
+            async fn __hydro_runtime<'a>() -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+                /// extra_stmts
+                #(#extra_stmts)*
+
+                /// dfir_expr
+                #dfir_expr
+            }
+
+            #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio", flavor = "current_thread")]
+            async fn main() {
+                hydro_lang::telemetry::initialize_tracing();
+
+                let flow = __hydro_runtime().await;
+
+                hydro_lang::runtime_support::resource_measurement::run_containerized(flow).await;
+            }
         }
+    } else {
+        syn::parse_quote! {
+            #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+            use hydro_lang::prelude::*;
+            use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
+            pub use #trybuild_crate_name_ident::__staged;
 
-        #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio", flavor = "current_thread")]
-        async fn main() {
-            let ports = hydro_lang::runtime_support::dfir_rs::util::deploy::init_no_ack_start().await;
-            let flow = __hydro_runtime(&ports);
-            println!("ack start");
+            #[allow(unused)]
+            fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::__staged::deploy::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+                #(#extra_stmts)*
+                #dfir_expr
+            }
 
-            hydro_lang::runtime_support::resource_measurement::run(flow).await;
+            #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio", flavor = "current_thread")]
+            async fn main() {
+                let ports = hydro_lang::runtime_support::dfir_rs::util::deploy::init_no_ack_start().await;
+                let flow = __hydro_runtime(&ports);
+                println!("ack start");
+
+                hydro_lang::runtime_support::resource_measurement::run(flow).await;
+            }
         }
     };
     source_ast
