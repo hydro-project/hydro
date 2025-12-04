@@ -76,7 +76,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
 
         let input = &inputs[0];
         let accumulator_ident = wc.make_ident("accumulator");
-        let item_ident = wc.make_ident("iterator_item");
+        let item_ident = wc.make_ident("item");
 
         let write_prologue = quote_spanned! {op_span=>
             #[allow(unused_mut, reason = "for if `Fn` instead of `FnMut`.")]
@@ -127,8 +127,8 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                 }
 
                 let #ident = #work_fn(
-                    || #root::futures::stream::once(
-                        ::std::future::ready(
+                    || #root::futures::stream::iter(
+                        ::std::iter::once(
                             ::std::clone::Clone::clone(&*#accumulator_ident)
                         )
                     )

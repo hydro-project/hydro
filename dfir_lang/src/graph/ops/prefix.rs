@@ -29,6 +29,7 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
                    context,
                    df_ident,
                    op_span,
+                   work_fn_async,
                    ident,
                    is_pull,
                    inputs,
@@ -55,15 +56,15 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
             }.borrow_mut();
 
             // The same as `persist()`, except always replays.
+
             let #ident = {
-                fn constrain_types<'ctx, Pull, Item>(input: Pull, vec: &'ctx mut Vec<Item>) -> impl 'ctx + #root::futures::stream::Stream<Item = Item>
-                where
-                    Pull: 'ctx + #root::futures::stream::Stream<Item = Item>,
-                    Item: ::std::clone::Clone,
-                {
-                    #root::compiled::pull::Persist::new(input, vec, 0)
-                }
-                constrain_types(#input, &mut *#vec_ident)
+                let fut = #root::compiled::pull::ForEach::new(#input, |item| {
+                    #vec_ident.push(item);
+                });
+                let () = #work_fn_async(fut).await;
+
+                let iter = #vec_ident.iter().cloned();
+                #root::futures::stream::iter(iter)
             };
         };
         let write_iterator_after = quote_spanned! {op_span=>

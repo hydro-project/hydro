@@ -21,9 +21,6 @@ pub use half_join_state::*;
 mod into_next;
 pub use into_next::IntoNext;
 
-mod persist_mut_keyed;
-pub use persist_mut_keyed::PersistMutKeyed;
-
 mod resolve_futures;
 pub use resolve_futures::ResolveFutures;
 
@@ -41,6 +38,3 @@ pub use zip_longest::ZipLongest;
 
 mod zip_persist;
 pub use zip_persist::ZipPersist;
-
-mod reduce;
-pub use reduce::Reduce;
