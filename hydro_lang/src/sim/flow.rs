@@ -108,7 +108,6 @@ impl<'a> SimFlow<'a> {
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
         self.ir.iter_mut().for_each(|leaf| {
             leaf.compile_network::<SimDeploy>(
-                &(),
                 &mut BTreeMap::new(),
                 &mut seen_tees_instantiate,
                 &self.processes,
