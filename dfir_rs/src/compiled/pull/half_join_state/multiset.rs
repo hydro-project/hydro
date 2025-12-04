@@ -1,4 +1,5 @@
-use std::{borrow::Cow, collections::VecDeque};
+use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
 
 use super::HalfJoinState;

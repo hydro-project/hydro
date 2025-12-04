@@ -175,7 +175,7 @@ mod tests {
         let (mut lhs_state, mut rhs_state) =
             (HalfSetJoinState::default(), HalfSetJoinState::default());
         let mut join =
-            symmetric_hash_join_into_stream(lhs_rx, rhs_rx, &mut lhs_state, &mut rhs_state, true)
+            symmetric_hash_join_into_stream(lhs_rx, rhs_rx, &mut lhs_state, &mut rhs_state, false)
                 .await;
 
         assert_eq!(join.next().await, Some((7, (3, 3))));

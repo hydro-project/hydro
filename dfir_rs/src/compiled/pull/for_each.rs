@@ -17,7 +17,7 @@ pin_project! {
 impl<St, Func> ForEach<St, Func>
 where
     St: Stream,
-    Func: FnMut(St::Item) -> (),
+    Func: FnMut(St::Item),
 {
     /// Create a new ForEach future.
     pub fn new(stream: St, f: Func) -> Self {
@@ -28,7 +28,7 @@ where
 impl<St, Func> Future for ForEach<St, Func>
 where
     St: Stream,
-    Func: FnMut(St::Item) -> (),
+    Func: FnMut(St::Item),
 {
     type Output = ();
 
@@ -44,7 +44,7 @@ where
 impl<St, Func> FusedFuture for ForEach<St, Func>
 where
     St: FusedStream,
-    Func: FnMut(St::Item) -> (),
+    Func: FnMut(St::Item),
 {
     fn is_terminated(&self) -> bool {
         self.stream.is_terminated()

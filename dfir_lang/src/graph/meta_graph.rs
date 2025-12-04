@@ -1057,11 +1057,7 @@ impl DfirGraph {
                                 source_tag,
                                 span = op_span
                             );
-                            let work_fn_async = format_ident!(
-                                "{}__async",
-                                work_fn,
-                                span = op_span
-                            );
+                            let work_fn_async = format_ident!("{}__async", work_fn, span = op_span);
 
                             let context_args = WriteContextArgs {
                                 root: &root,

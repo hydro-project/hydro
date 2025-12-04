@@ -1,9 +1,10 @@
 use std::hint::black_box;
-use std::pin::Pin;
+use std::pin::pin;
 use std::task::{Context, Poll, Waker};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use dfir_rs::compiled::pull::{HalfSetJoinState, symmetric_hash_join_into_stream};
+use futures::stream::Stream;
 use rand::SeedableRng;
 use rand::distributions::Distribution;
 use rand::rngs::StdRng;
@@ -18,18 +19,23 @@ fn ops(c: &mut Criterion) {
         b.iter(|| {
             let (mut lhs_state, mut rhs_state) =
                 black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-            let mut join = symmetric_hash_join_into_stream(
+            let join = symmetric_hash_join_into_stream(
                 black_box(futures::stream::iter(lhs.iter().cloned())),
                 black_box(futures::stream::iter(rhs.iter().cloned())),
                 &mut lhs_state,
                 &mut rhs_state,
                 false,
             );
+            let join = pin!(join);
+            let Poll::Ready(join) = Future::poll(join, &mut Context::from_waker(Waker::noop()))
+            else {
+                panic!()
+            };
 
-            while let Poll::Ready(Some(item)) = futures::stream::Stream::poll_next(
-                Pin::new(&mut join),
-                &mut Context::from_waker(Waker::noop()),
-            ) {
+            let mut join = pin!(join);
+            while let Poll::Ready(Some(item)) =
+                Stream::poll_next(join.as_mut(), &mut Context::from_waker(Waker::noop()))
+            {
                 black_box(item);
             }
         });
@@ -42,18 +48,23 @@ fn ops(c: &mut Criterion) {
         b.iter(|| {
             let (mut lhs_state, mut rhs_state) =
                 black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-            let mut join = symmetric_hash_join_into_stream(
+            let join = symmetric_hash_join_into_stream(
                 black_box(futures::stream::iter(lhs.iter().cloned())),
                 black_box(futures::stream::iter(rhs.iter().cloned())),
                 &mut lhs_state,
                 &mut rhs_state,
                 false,
             );
+            let join = pin!(join);
+            let Poll::Ready(join) = Future::poll(join, &mut Context::from_waker(Waker::noop()))
+            else {
+                panic!()
+            };
 
-            while let Poll::Ready(Some(item)) = futures::stream::Stream::poll_next(
-                Pin::new(&mut join),
-                &mut Context::from_waker(Waker::noop()),
-            ) {
+            let mut join = pin!(join);
+            while let Poll::Ready(Some(item)) =
+                Stream::poll_next(join.as_mut(), &mut Context::from_waker(Waker::noop()))
+            {
                 black_box(item);
             }
         });
@@ -66,18 +77,23 @@ fn ops(c: &mut Criterion) {
         b.iter(|| {
             let (mut lhs_state, mut rhs_state) =
                 black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-            let mut join = symmetric_hash_join_into_stream(
+            let join = symmetric_hash_join_into_stream(
                 black_box(futures::stream::iter(lhs.iter().cloned())),
                 black_box(futures::stream::iter(rhs.iter().cloned())),
                 &mut lhs_state,
                 &mut rhs_state,
                 false,
             );
+            let join = pin!(join);
+            let Poll::Ready(join) = Future::poll(join, &mut Context::from_waker(Waker::noop()))
+            else {
+                panic!()
+            };
 
-            while let Poll::Ready(Some(item)) = futures::stream::Stream::poll_next(
-                Pin::new(&mut join),
-                &mut Context::from_waker(Waker::noop()),
-            ) {
+            let mut join = pin!(join);
+            while let Poll::Ready(Some(item)) =
+                Stream::poll_next(join.as_mut(), &mut Context::from_waker(Waker::noop()))
+            {
                 black_box(item);
             }
         });
@@ -99,18 +115,23 @@ fn ops(c: &mut Criterion) {
             b.iter(|| {
                 let (mut lhs_state, mut rhs_state) =
                     black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-                let mut join = symmetric_hash_join_into_stream(
+                let join = symmetric_hash_join_into_stream(
                     black_box(futures::stream::iter(lhs.iter().cloned())),
                     black_box(futures::stream::iter(rhs.iter().cloned())),
                     &mut lhs_state,
                     &mut rhs_state,
                     false,
                 );
+                let join = pin!(join);
+                let Poll::Ready(join) = Future::poll(join, &mut Context::from_waker(Waker::noop()))
+                else {
+                    panic!()
+                };
 
-                while let Poll::Ready(Some(item)) = futures::stream::Stream::poll_next(
-                    Pin::new(&mut join),
-                    &mut Context::from_waker(Waker::noop()),
-                ) {
+                let mut join = pin!(join);
+                while let Poll::Ready(Some(item)) =
+                    Stream::poll_next(join.as_mut(), &mut Context::from_waker(Waker::noop()))
+                {
                     black_box(item);
                 }
             });
@@ -133,18 +154,23 @@ fn ops(c: &mut Criterion) {
             b.iter(|| {
                 let (mut lhs_state, mut rhs_state) =
                     black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-                let mut join = symmetric_hash_join_into_stream(
+                let join = symmetric_hash_join_into_stream(
                     black_box(futures::stream::iter(lhs.iter().cloned())),
                     black_box(futures::stream::iter(rhs.iter().cloned())),
                     &mut lhs_state,
                     &mut rhs_state,
                     false,
                 );
+                let join = pin!(join);
+                let Poll::Ready(join) = Future::poll(join, &mut Context::from_waker(Waker::noop()))
+                else {
+                    panic!()
+                };
 
-                while let Poll::Ready(Some(item)) = futures::stream::Stream::poll_next(
-                    Pin::new(&mut join),
-                    &mut Context::from_waker(Waker::noop()),
-                ) {
+                let mut join = pin!(join);
+                while let Poll::Ready(Some(item)) =
+                    Stream::poll_next(join.as_mut(), &mut Context::from_waker(Waker::noop()))
+                {
                     black_box(item);
                 }
             });

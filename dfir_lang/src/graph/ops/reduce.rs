@@ -81,7 +81,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             fn call_comb_type<Item>(
                 accum: &mut ::std::option::Option<Item>,
                 item: Item,
-                func: impl ::std::ops::FnMut(&mut Item, Item),
+                mut func: impl ::std::ops::FnMut(&mut Item, Item),
             ) {
                 match accum {
                     accum @ ::std::option::Option::None => *accum = ::std::option::Option::Some(item),
