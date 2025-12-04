@@ -2,9 +2,9 @@
 use std::collections::hash_map::Entry;
 
 /// Generalization of fold, reduce, etc.
-pub trait Accumulator<Accum, Item> {
+pub trait Accumulator<ValAccum, ValIn> {
     /// Accumulates a value into an either occupied or vacant table entry.
-    fn accumulate<Key>(&mut self, entry: Entry<'_, Key, Accum>, item: Item);
+    fn accumulate<Key>(&mut self, entry: Entry<'_, Key, ValAccum>, item: ValIn);
 }
 
 /// Fold with an initialization and fold function.

@@ -40,7 +40,7 @@ use crate::diagnostic::Diagnostic;
 /// ```
 ///
 /// ```dfir
-/// use dfir_rs::util::accumulator::{Fold, Reduce};
+/// use dfir_rs::compiled::pull::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
@@ -53,7 +53,7 @@ use crate::diagnostic::Diagnostic;
 /// Here is an example of using `FoldFrom` to derive the accumulator from the first value:
 ///
 /// ```dfir
-/// use dfir_rs::util::accumulator::{Fold, FoldFrom};
+/// use dfir_rs::compiled::pull::{Fold, FoldFrom};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
@@ -73,7 +73,7 @@ use crate::diagnostic::Diagnostic;
 /// for example, the two following examples have identical behavior:
 ///
 /// ```dfir
-/// use dfir_rs::util::accumulator::{Fold, Reduce};
+/// use dfir_rs::compiled::pull::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> persist::<'static>() -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
@@ -85,7 +85,7 @@ use crate::diagnostic::Diagnostic;
 /// ```
 ///
 /// ```dfir
-/// use dfir_rs::util::accumulator::{Fold, Reduce};
+/// use dfir_rs::compiled::pull::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
@@ -115,6 +115,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                    root,
                    context,
                    op_span,
+                   work_fn_async,
                    ident,
                    inputs,
                    is_pull,
@@ -124,13 +125,13 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         assert!(is_pull);
 
-        let [persistence_lhs, persistence_rhs] = wc.persistence_args_disallow_mutable(diagnostics);
+        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
-            make_joindata(wc, persistence_lhs, "lhs").map_err(|err| diagnostics.push(err))?;
+            make_joindata(wc, persistences[0], "lhs").map_err(|err| diagnostics.push(err))?;
 
         let (rhs_prologue, rhs_prologue_after, rhs_pre_write_iter, rhs_borrow) =
-            make_joindata(wc, persistence_rhs, "rhs").map_err(|err| diagnostics.push(err))?;
+            make_joindata(wc, persistences[1], "rhs").map_err(|err| diagnostics.push(err))?;
 
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -143,18 +144,33 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             #lhs_pre_write_iter
             #rhs_pre_write_iter
 
-            let #ident = #root::compiled::pull::JoinFused::new(
-                #root::futures::stream::StreamExt::fuse(#lhs),
-                #rhs,
-                #lhs_accum,
-                #rhs_accum,
-                &mut *#lhs_borrow,
-                &mut *#rhs_borrow,
-            );
+            let #ident = {
+                async fn __check_accum<Accumulator, Key, Accum, St, Hasher, Item>(accum: &mut Accumulator, borrow: &mut ::std::collections::HashMap<Key, Accum, Hasher>, st: St)
+                where
+                    Accumulator: #root::util::accumulator::Accumulator<Accum, Item>,
+                    Key: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone,
+                    St: #root::futures::stream::Stream<Item = (Key, Item)>,
+                    Hasher: ::std::hash::BuildHasher,
+                    Item: ::std::clone::Clone,
+                {
+                    #root::compiled::pull::accumulate_all(accum, borrow, st).await;
+                }
+                #work_fn_async(__check_accum(&mut #lhs_accum, &mut *#lhs_borrow, #lhs)).await;
+                #work_fn_async(__check_accum(&mut #rhs_accum, &mut *#rhs_borrow, #rhs)).await;
+
+                // TODO: start the iterator with the smallest len() table rather than always picking rhs.
+                #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+                let iter = #rhs_borrow
+                    .iter()
+                    .filter_map(|(k, v2)| {
+                        #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone())))
+                    });
+                #root::futures::stream::iter(iter)
+            };
         };
 
         let write_iterator_after =
-            if persistence_lhs == Persistence::Static || persistence_rhs == Persistence::Static {
+            if persistences[0] == Persistence::Static || persistences[1] == Persistence::Static {
                 quote_spanned! {op_span=>
                     // TODO: Probably only need to schedule if #*_borrow.len() > 0?
                     #context.schedule_subgraph(#context.current_subgraph(), false);

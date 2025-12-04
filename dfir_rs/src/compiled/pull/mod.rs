@@ -1,5 +1,8 @@
 //! Pull-based operator helpers, i.e. [`futures::Stream`] helpers.
 
+mod accumulate_all;
+pub use accumulate_all::accumulate_all;
+
 mod cross_singleton;
 pub use cross_singleton::CrossSingleton;
 
@@ -17,9 +20,6 @@ pub use half_join_state::*;
 
 mod into_next;
 pub use into_next::IntoNext;
-
-pub mod join_fused;
-pub use join_fused::{JoinFused, JoinFusedLhs};
 
 mod persist;
 pub use persist::Persist;
