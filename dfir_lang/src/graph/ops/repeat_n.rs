@@ -29,6 +29,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
                    context,
                    df_ident,
                    op_span,
+                   work_fn_async,
                    arguments,
                    ident,
                    is_pull,
@@ -55,34 +56,19 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
                 #context.state_ref_unchecked(#singleton_output_ident)
             }.borrow_mut();
 
-            let #ident = {
-                fn constrain_types<'ctx, Pull, Item>(input: Pull, vec: &'ctx mut Vec<Item>, new_loop_execution: bool) -> impl 'ctx + #root::futures::stream::Stream<Item = Item>
-                where
-                    Pull: 'ctx + #root::futures::stream::Stream<Item = Item>,
-                    Item: ::std::clone::Clone,
-                {
-                    if new_loop_execution {
-                        // TODO(mingwei): could this be done with a lifespan hook?
-                        vec.clear();
-                    }
-                    #root::compiled::pull::Persist::new(input, vec, 0)
-                }
-                constrain_types(#input, &mut *#vec_ident, 0 == #context.loop_iter_count())
-            };
-
-            // TODO(mingwei): remove old code. This code is copied (is it correct?) from `prefix()`, we should DRY this.
-            // if 0 == #context.loop_iter_count() {
-            //     *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
-            // }
-            // let #ident = ::std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
+            if 0 == #context.loop_iter_count() {
+                *#vec_ident = #work_fn_async(
+                    #root::futures::stream::StreamExt::collect::<::std::vec::Vec<_>>(#input),
+                ).await;
+            }
+            let #ident = #root::futures::stream::iter(::std::clone::Clone::clone(&*#vec_ident));
         };
 
         // Reschedule, to repeat.
-        // TODO(mingwei): ensure `count_arg` is a usize literal (or eval it to such).
         let count_arg = &arguments[0];
         let write_iterator_after = quote_spanned! {op_span=>
             {
-                if #context.loop_iter_count() + 1 < ::std::convert::identity::<usize>(#count_arg) {
+                if #context.loop_iter_count() + 1 < #count_arg {
                     #context.reschedule_loop_block();
                 }
             }
