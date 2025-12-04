@@ -129,33 +129,3 @@ pub fn resolve_futures_writer(
         ..Default::default()
     })
 }
-
-// let #ident = {
-//     let mut out = ::std::vec::Vec::new();
-
-//     let mut state = unsafe {
-//         // SAFETY: handle from `#df_ident.add_state(..)`.
-//         #context.state_ref_unchecked(#futures_ident)
-//             .borrow_mut()
-//     };
-
-//     (#work_fn)(|| {
-//         #input
-//             .for_each(|fut| {
-//                 let mut fut = ::std::boxed::Box::pin(fut);
-//                 if let #root::futures::task::Poll::Ready(val) = #root::futures::Future::poll(::std::pin::Pin::as_mut(&mut fut), &mut ::std::task::Context::from_waker(&#context.waker())) {
-//                     out.push(val);
-//                 } else {
-//                     state.#push_fn(fut);
-//                 }
-//             });
-
-//         while let #root::futures::task::Poll::Ready(Some(val)) =
-//             #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *state), &mut ::std::task::Context::from_waker(&#context.waker()))
-//         {
-//             out.push(val);
-//         }
-//     });
-
-//     ::std::iter::IntoIterator::into_iter(out)
-// };
