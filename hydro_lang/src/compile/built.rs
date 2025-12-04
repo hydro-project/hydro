@@ -368,18 +368,15 @@ impl<'a> BuiltFlow<'a> {
         self.into_deploy().with_remaining_clusters(spec)
     }
 
-    pub fn compile<D: Deploy<'a>>(self, env: &D::CompileEnv) -> CompiledFlow<'a, D::GraphId> {
-        self.into_deploy::<D>().compile(env)
+    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
+        self.into_deploy::<D>().compile()
     }
 
     pub fn compile_no_network<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
         self.into_deploy::<D>().compile_no_network()
     }
 
-    pub fn deploy<D: Deploy<'a, CompileEnv = ()>>(
-        self,
-        env: &mut D::InstantiateEnv,
-    ) -> DeployResult<'a, D> {
+    pub fn deploy<D: Deploy<'a>>(self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         self.into_deploy::<D>().deploy(env)
     }
 

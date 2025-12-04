@@ -145,7 +145,6 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
 pub(super) struct SimDeploy {}
 impl<'a> Deploy<'a> for SimDeploy {
     type InstantiateEnv = ();
-    type CompileEnv = ();
     type Process = SimNode;
     type Cluster = SimNode;
     type External = SimExternal;
@@ -176,7 +175,6 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn o2o_sink_source(
-        _compile_env: &Self::CompileEnv,
         _p1: &Self::Process,
         p1_port: &Self::Port,
         _p2: &Self::Process,
@@ -204,7 +202,6 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn o2m_sink_source(
-        _compile_env: &Self::CompileEnv,
         _p1: &Self::Process,
         p1_port: &Self::Port,
         _c2: &Self::Cluster,
@@ -232,7 +229,6 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn m2o_sink_source(
-        _compile_env: &Self::CompileEnv,
         _c1: &Self::Cluster,
         c1_port: &Self::Port,
         _p2: &Self::Process,
@@ -261,7 +257,6 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn m2m_sink_source(
-        _compile_env: &Self::CompileEnv,
         _c1: &Self::Cluster,
         c1_port: &Self::Port,
         _c2: &Self::Cluster,
@@ -289,7 +284,6 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn e2o_many_source(
-        _compile_env: &Self::CompileEnv,
         _extra_stmts: &mut Vec<syn::Stmt>,
         _p2: &Self::Process,
         _p2_port: &Self::Port,
@@ -304,7 +298,6 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn e2o_source(
-        _compile_env: &Self::CompileEnv,
         _extra_stmts: &mut Vec<syn::Stmt>,
         _p1: &Self::External,
         p1_port: &Self::Port,
@@ -331,7 +324,6 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn o2e_sink(
-        _compile_env: &Self::CompileEnv,
         _p1: &Self::Process,
         _p1_port: &Self::Port,
         _p2: &Self::External,
@@ -346,7 +338,6 @@ impl<'a> Deploy<'a> for SimDeploy {
 
     #[expect(unreachable_code, reason = "todo!() is unreachable")]
     fn cluster_ids(
-        _env: &Self::CompileEnv,
         _of_cluster: usize,
     ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
         todo!();
@@ -354,9 +345,7 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     #[expect(unreachable_code, reason = "todo!() is unreachable")]
-    fn cluster_self_id(
-        _env: &Self::CompileEnv,
-    ) -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
+    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
         todo!();
         stageleft::q!(todo!())
     }
