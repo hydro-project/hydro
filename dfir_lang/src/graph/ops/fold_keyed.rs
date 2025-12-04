@@ -172,11 +172,11 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
 
                     let fut = #root::compiled::pull::ForEach::new(check_input(#input), |item| {
                         match item {
-                            Persist(k, v) => {
+                            #root::util::PersistenceKeyed::Persist(k, v) => {
                                 let entry = #hashtable_ident.entry(k).or_insert_with(#initfn);
                                 call_comb_type(entry, v, #aggfn);
                             },
-                            Delete(k) => {
+                            #root::util::PersistenceKeyed::Delete(k) => {
                                 #hashtable_ident.remove(&k);
                             },
                         }
