@@ -72,12 +72,12 @@ pub const SOURCE_STREAM_SERDE: OperatorConstraints = OperatorConstraints {
                 // Using the `tick_cx` will cause the tick to "block" (yield) until the stream is exhausted, which is not what we want.
                 // We want only the ready items, and will awaken this subgraph on a later tick when more items are available.
                 match #root::futures::stream::Stream::poll_next(#stream_ident.as_mut(), &mut ::std::task::Context::from_waker(&#context.waker())) {
-                    ::std::task::Poll::Ready(Some(::std::result::Result::Ok((payload, addr)))) =>
+                    ::std::task::Poll::Ready(::std::option::Option::Some(::std::result::Result::Ok((payload, addr)))) =>
                         ::std::task::Poll::Ready(::std::option::Option::Some(
                             #root::util::deserialize_from_bytes::<#generic_type>(payload).map(|payload| (payload, addr))
                         )),
-                    ::std::task::Poll::Ready(Some(Err(_)))
-                        | ::std::task::Poll::Ready(None)
+                    ::std::task::Poll::Ready(::std::option::Option::Some(::std::result::Result::Err(_)))
+                        | ::std::task::Poll::Ready(::std::option::Option::None)
                         | ::std::task::Poll::Pending => ::std::task::Poll::Ready(::std::option::Option::None),
                 }
             });

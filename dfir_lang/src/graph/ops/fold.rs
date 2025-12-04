@@ -127,10 +127,8 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                 }
 
                 let #ident = #work_fn(
-                    || #root::futures::stream::iter(
-                        ::std::iter::once(
-                            ::std::clone::Clone::clone(&*#accumulator_ident)
-                        )
+                    || #root::tokio_stream::once(
+                        ::std::clone::Clone::clone(&*#accumulator_ident)
                     )
                 );
             }
