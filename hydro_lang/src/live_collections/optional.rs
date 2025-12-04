@@ -11,9 +11,7 @@ use syn::parse_quote;
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::singleton::Singleton;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::compile::ir::{
-    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode,
-};
+use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
@@ -749,27 +747,17 @@ where
     where
         T: Clone,
     {
-        let none: syn::Expr = parse_quote!([::std::option::Option::None]);
-        let core_ir = HydroNode::Source {
-            source: HydroSource::Iter(none.into()),
-            metadata: self
-                .location
-                .new_node_metadata(Singleton::<Option<T>, L, B>::collection_kind()),
-        };
+        let none: syn::Expr = parse_quote!(::std::option::Option::None);
 
-        let none_singleton = if L::is_top_level() {
-            Singleton::new(
-                self.location.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(core_ir),
-                    metadata: self
-                        .location
-                        .new_node_metadata(Singleton::<Option<T>, L, B>::collection_kind()),
-                },
-            )
-        } else {
-            Singleton::new(self.location.clone(), core_ir)
-        };
+        let none_singleton = Singleton::new(
+            self.location.clone(),
+            HydroNode::SingletonSource {
+                value: none.into(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Singleton::<Option<T>, L, B>::collection_kind()),
+            },
+        );
 
         self.map(q!(|v| Some(v))).unwrap_or(none_singleton)
     }
@@ -1285,6 +1273,7 @@ mod tests {
     use super::Optional;
     use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
+    use crate::nondet::nondet;
 
     #[tokio::test]
     async fn optional_or_cardinality() {
@@ -1316,6 +1305,45 @@ mod tests {
 
         deployment.start().await.unwrap();
 
+        assert_eq!(external_out.next().await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn into_singleton_top_level_none_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let node_tick = node.tick();
+        let top_level_none = node.singleton(q!(123)).filter(q!(|_| false));
+        let into_singleton = top_level_none.into_singleton();
+
+        let tick_driver = node.spin();
+
+        let counts = into_singleton
+            .snapshot(&node_tick, nondet!(/** test */))
+            .into_stream()
+            .count()
+            .zip(tick_driver.batch(&node_tick, nondet!(/** test */)).count())
+            .map(q!(|(c, _)| c))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_out = nodes.connect(counts).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), 1);
+        assert_eq!(external_out.next().await.unwrap(), 1);
         assert_eq!(external_out.next().await.unwrap(), 1);
     }
 }
