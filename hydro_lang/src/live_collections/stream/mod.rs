@@ -1201,9 +1201,7 @@ where
         F: Fn(&mut T, T) + 'a,
     {
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        self.assume_ordering(nondet)
-            .assume_retries(nondet)
-            .reduce(comb)
+        self.assume_retries(nondet).reduce_commutative(comb)
     }
 
     // only for internal APIs that have been carefully vetted, will eventually be removed once we
@@ -1215,17 +1213,8 @@ where
     where
         F: Fn(&mut T, T) + 'a,
     {
-        let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-
-        let ordered = if B::BOUNDED {
-            self.assume_ordering_trusted(nondet)
-        } else {
-            self.assume_ordering(nondet) // if unbounded, ordering affects intermediate states
-        };
-
-        ordered
-            .assume_retries_trusted(nondet) // retries never affect intermediate states
-            .reduce(comb)
+        self.assume_retries_trusted(nondet!(/** because the closure is trusted idempotent, retries don't affect intermediate states */))
+            .reduce_commutative_trusted(comb)
     }
 
     /// Computes the maximum element in the stream as an [`Optional`], which
@@ -1361,6 +1350,19 @@ where
     {
         let nondet = nondet!(/** the combinator function is commutative */);
         self.assume_ordering(nondet).reduce(comb)
+    }
+
+    fn reduce_commutative_trusted<F>(self, comb: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
+    where
+        F: Fn(&mut T, T) + 'a,
+    {
+        let ordered = if B::BOUNDED {
+            self.assume_ordering_trusted(nondet!(/** if bounded, there are no intermediate states and output is deterministic because trusted commutative */))
+        } else {
+            self.assume_ordering(nondet!(/** if unbounded, ordering affects intermediate states */))
+        };
+
+        ordered.reduce(comb)
     }
 
     /// Computes the number of elements in the stream as a [`Singleton`].

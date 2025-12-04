@@ -954,20 +954,11 @@ where
 
     #[deprecated(note = "use .into_stream().persist()")]
     #[expect(missing_docs, reason = "deprecated")]
-    pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Persist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(Stream::<
-                    T,
-                    Tick<L>,
-                    Bounded,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
-            },
-        )
+    pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce>
+    where
+        T: Clone,
+    {
+        self.into_stream().persist()
     }
 
     /// Converts this singleton into a [`Stream`] containing a single element, the value.

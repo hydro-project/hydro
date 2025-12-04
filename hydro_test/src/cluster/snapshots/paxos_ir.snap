@@ -243,20 +243,20 @@ expression: built.ir()
                                                                 },
                                                             },
                                                         },
-                                                        trusted: false,
+                                                        trusted: true,
                                                         metadata: HydroIrMetadata {
                                                             location_kind: Cluster(
                                                                 0,
                                                             ),
                                                             collection_kind: Stream {
                                                                 bound: Unbounded,
-                                                                order: TotalOrder,
-                                                                retry: AtLeastOnce,
+                                                                order: NoOrder,
+                                                                retry: ExactlyOnce,
                                                                 element_type: hydro_test :: __staged :: cluster :: paxos :: Ballot,
                                                             },
                                                         },
                                                     },
-                                                    trusted: true,
+                                                    trusted: false,
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Cluster(
                                                             0,
@@ -1568,10 +1568,8 @@ expression: built.ir()
                                                                                                                                                                                                         },
                                                                                                                                                                                                     },
                                                                                                                                                                                                     second: Cast {
-                                                                                                                                                                                                        inner: Source {
-                                                                                                                                                                                                            source: Iter(
-                                                                                                                                                                                                                [:: std :: option :: Option :: None],
-                                                                                                                                                                                                            ),
+                                                                                                                                                                                                        inner: SingletonSource {
+                                                                                                                                                                                                            value: :: std :: option :: Option :: None,
                                                                                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                                                                                 location_kind: Tick(
                                                                                                                                                                                                                     1,
@@ -3713,10 +3711,8 @@ expression: built.ir()
                                                                                                                                                     },
                                                                                                                                                 },
                                                                                                                                                 second: Cast {
-                                                                                                                                                    inner: Source {
-                                                                                                                                                        source: Iter(
-                                                                                                                                                            [:: std :: option :: Option :: None],
-                                                                                                                                                        ),
+                                                                                                                                                    inner: SingletonSource {
+                                                                                                                                                        value: :: std :: option :: Option :: None,
                                                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                                                             location_kind: Tick(
                                                                                                                                                                 1,
@@ -4106,10 +4102,8 @@ expression: built.ir()
                                     },
                                 },
                                 second: Cast {
-                                    inner: Source {
-                                        source: Iter(
-                                            [:: std :: option :: Option :: None],
-                                        ),
+                                    inner: SingletonSource {
+                                        value: :: std :: option :: Option :: None,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
                                                 10,
@@ -5576,10 +5570,8 @@ expression: built.ir()
                                                                                                                                                                                                 },
                                                                                                                                                                                             },
                                                                                                                                                                                             second: Cast {
-                                                                                                                                                                                                inner: Source {
-                                                                                                                                                                                                    source: Iter(
-                                                                                                                                                                                                        [:: std :: option :: Option :: None],
-                                                                                                                                                                                                    ),
+                                                                                                                                                                                                inner: SingletonSource {
+                                                                                                                                                                                                    value: :: std :: option :: Option :: None,
                                                                                                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                                                                                                         location_kind: Tick(
                                                                                                                                                                                                             1,
@@ -7012,10 +7004,8 @@ expression: built.ir()
                                     },
                                 },
                                 second: Cast {
-                                    inner: Source {
-                                        source: Iter(
-                                            [:: std :: option :: Option :: None],
-                                        ),
+                                    inner: SingletonSource {
+                                        value: :: std :: option :: Option :: None,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
                                                 2,
@@ -8444,10 +8434,8 @@ expression: built.ir()
                                     },
                                 },
                                 second: Cast {
-                                    inner: Source {
-                                        source: Iter(
-                                            [:: std :: option :: Option :: None],
-                                        ),
+                                    inner: SingletonSource {
+                                        value: :: std :: option :: Option :: None,
                                         metadata: HydroIrMetadata {
                                             location_kind: Tick(
                                                 14,
@@ -10484,10 +10472,8 @@ expression: built.ir()
                                                                                                                                                                                 },
                                                                                                                                                                             },
                                                                                                                                                                             second: Cast {
-                                                                                                                                                                                inner: Source {
-                                                                                                                                                                                    source: Iter(
-                                                                                                                                                                                        [:: std :: option :: Option :: None],
-                                                                                                                                                                                    ),
+                                                                                                                                                                                inner: SingletonSource {
+                                                                                                                                                                                    value: :: std :: option :: Option :: None,
                                                                                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                                                                                         location_kind: Tick(
                                                                                                                                                                                             0,
@@ -11596,10 +11582,8 @@ expression: built.ir()
                                             },
                                         },
                                         second: Cast {
-                                            inner: Source {
-                                                source: Iter(
-                                                    [:: std :: option :: Option :: None],
-                                                ),
+                                            inner: SingletonSource {
+                                                value: :: std :: option :: Option :: None,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
                                                         18,
@@ -12377,10 +12361,8 @@ expression: built.ir()
                                             },
                                         },
                                         second: Cast {
-                                            inner: Source {
-                                                source: Iter(
-                                                    [:: std :: option :: Option :: None],
-                                                ),
+                                            inner: SingletonSource {
+                                                value: :: std :: option :: Option :: None,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
                                                         18,
