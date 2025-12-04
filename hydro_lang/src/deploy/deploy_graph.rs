@@ -43,7 +43,6 @@ pub enum HydroDeploy {}
 
 impl<'a> Deploy<'a> for HydroDeploy {
     type InstantiateEnv = Deployment;
-    type CompileEnv = ();
     type Process = DeployNode;
     type Cluster = DeployCluster;
     type External = DeployExternal;
@@ -65,7 +64,6 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn o2o_sink_source(
-        _env: &(),
         _p1: &Self::Process,
         p1_port: &Self::Port,
         _p2: &Self::Process,
@@ -111,7 +109,6 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn o2m_sink_source(
-        _env: &(),
         _p1: &Self::Process,
         p1_port: &Self::Port,
         _c2: &Self::Cluster,
@@ -167,7 +164,6 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn m2o_sink_source(
-        _env: &(),
         _c1: &Self::Cluster,
         c1_port: &Self::Port,
         _p2: &Self::Process,
@@ -219,7 +215,6 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn m2m_sink_source(
-        _env: &(),
         _c1: &Self::Cluster,
         c1_port: &Self::Port,
         _c2: &Self::Cluster,
@@ -280,7 +275,6 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn e2o_many_source(
-        _compile_env: &Self::CompileEnv,
         extra_stmts: &mut Vec<syn::Stmt>,
         _p2: &Self::Process,
         p2_port: &Self::Port,
@@ -336,7 +330,6 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn e2o_source(
-        _compile_env: &Self::CompileEnv,
         extra_stmts: &mut Vec<syn::Stmt>,
         _p1: &Self::External,
         _p1_port: &Self::Port,
@@ -418,7 +411,6 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn o2e_sink(
-        _compile_env: &Self::CompileEnv,
         _p1: &Self::Process,
         _p1_port: &Self::Port,
         _p2: &Self::External,
@@ -433,15 +425,12 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn cluster_ids(
-        _env: &Self::CompileEnv,
         of_cluster: usize,
     ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
         cluster_members(RuntimeData::new("__hydro_lang_trybuild_cli"), of_cluster)
     }
 
-    fn cluster_self_id(
-        _env: &Self::CompileEnv,
-    ) -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
+    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
         cluster_self_id(RuntimeData::new("__hydro_lang_trybuild_cli"))
     }
 
