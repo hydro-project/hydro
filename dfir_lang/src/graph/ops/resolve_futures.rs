@@ -36,6 +36,7 @@ pub fn resolve_futures_writer(
         root,
         context,
         op_span,
+        work_fn_async,
         ident,
         inputs,
         outputs,
@@ -62,12 +63,34 @@ pub fn resolve_futures_writer(
 
     let stream_or_sink = if is_pull {
         let input = &inputs[0];
+
+        let task_cx = if blocking {
+            quote_spanned! {op_span=> _cx }
+        } else {
+            quote_spanned! {op_span=> &mut ::std::task::Context::from_waker(&#context.waker()) }
+        };
+
+        let if_pending = if blocking {
+            // Wait for all items.
+            quote_spanned! {op_span=> ::std::task::Poll::Pending }
+        } else {
+            // EOS immediately, futures items will be in future ticks.
+            quote_spanned! {op_span=> ::std::task::Poll::Ready(::std::option::Option::None) }
+        };
+
         quote_spanned! {op_span=>
-            #root::compiled::pull::ResolveFutures::new(
-                #root::futures::stream::StreamExt::fuse(#input),
-                &mut *#queue_ident,
-                #opt_waker,
-            )
+            {
+                let () = #work_fn_async(#root::compiled::pull::ForEach::new(#input, |f| {
+                    ::std::iter::Extend::extend(&mut *#queue_ident, ::std::iter::once(f));
+                })).await;
+
+                #root::futures::stream::poll_fn(|_cx| {
+                    match #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
+                        ::std::task::Poll::Ready(opt) => ::std::task::Poll::Ready(opt),
+                        ::std::task::Poll::Pending => #if_pending,
+                    }
+                })
+            }
         }
     } else {
         let output = &outputs[0];
@@ -89,3 +112,33 @@ pub fn resolve_futures_writer(
         ..Default::default()
     })
 }
+
+// let #ident = {
+//     let mut out = ::std::vec::Vec::new();
+
+//     let mut state = unsafe {
+//         // SAFETY: handle from `#df_ident.add_state(..)`.
+//         #context.state_ref_unchecked(#futures_ident)
+//             .borrow_mut()
+//     };
+
+//     (#work_fn)(|| {
+//         #input
+//             .for_each(|fut| {
+//                 let mut fut = ::std::boxed::Box::pin(fut);
+//                 if let #root::futures::task::Poll::Ready(val) = #root::futures::Future::poll(::std::pin::Pin::as_mut(&mut fut), &mut ::std::task::Context::from_waker(&#context.waker())) {
+//                     out.push(val);
+//                 } else {
+//                     state.#push_fn(fut);
+//                 }
+//             });
+
+//         while let #root::futures::task::Poll::Ready(Some(val)) =
+//             #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *state), &mut ::std::task::Context::from_waker(&#context.waker()))
+//         {
+//             out.push(val);
+//         }
+//     });
+
+//     ::std::iter::IntoIterator::into_iter(out)
+// };

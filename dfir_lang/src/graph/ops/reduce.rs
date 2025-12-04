@@ -79,13 +79,13 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
         let foreach_body = quote_spanned! {op_span=>
             #[inline(always)]
             fn call_comb_type<Item>(
-                accum: &mut Option<Item>,
+                accum: &mut ::std::option::Option<Item>,
                 item: Item,
-                func: impl Fn(&mut Item, Item),
+                func: impl ::std::ops::FnMut(&mut Item, Item),
             ) {
                 match accum {
-                    accum @ None => *accum = Some(item),
-                    Some(accum) => (func)(accum, item),
+                    accum @ ::std::option::Option::None => *accum = ::std::option::Option::Some(item),
+                    ::std::option::Option::Some(accum) => (func)(accum, item),
                 }
             }
             #[allow(clippy::redundant_closure_call)]
