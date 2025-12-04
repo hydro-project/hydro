@@ -34,6 +34,7 @@ pub const SORT_BY_KEY: OperatorConstraints = OperatorConstraints {
     write_fn: |&WriteContextArgs {
                    root,
                    op_span,
+                   work_fn_async,
                    ident,
                    inputs,
                    is_pull,
@@ -43,11 +44,13 @@ pub const SORT_BY_KEY: OperatorConstraints = OperatorConstraints {
                _| {
         assert!(is_pull);
         let input = &inputs[0];
-        let sort_func = &arguments[0];
         let write_iterator = quote_spanned! {op_span=>
             // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
-            // Fix requires handoff specialization.
-            let #ident = #root::compiled::pull::SortByKey::new(#input, #sort_func);
+            let #ident = {
+                let mut tmp = #work_fn_async(#root::futures::stream::StreamExt::collect::<::std::vec::Vec<_>>(#input)).await;
+                #root::util::sort_unstable_by_key_hrtb(&mut tmp, #arguments);
+                #root::futures::stream::iter(tmp)
+            };
         };
         Ok(OperatorWriteOutput {
             write_iterator,

@@ -21,12 +21,6 @@ pub use half_join_state::*;
 mod into_next;
 pub use into_next::IntoNext;
 
-mod resolve_futures;
-pub use resolve_futures::ResolveFutures;
-
-mod sort_by_key;
-pub use sort_by_key::SortByKey;
-
 mod symmetric_hash_join;
 pub use symmetric_hash_join::*;
 
