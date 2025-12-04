@@ -14,7 +14,6 @@ use crate::location::{MembershipEvent, NetworkHint};
 
 pub trait Deploy<'a> {
     type InstantiateEnv;
-    type CompileEnv;
 
     type Process: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv> + Clone;
     type Cluster: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv> + Clone;
@@ -48,7 +47,6 @@ pub trait Deploy<'a> {
     fn allocate_external_port(external: &Self::External) -> Self::Port;
 
     fn o2o_sink_source(
-        compile_env: &Self::CompileEnv,
         p1: &Self::Process,
         p1_port: &Self::Port,
         p2: &Self::Process,
@@ -62,7 +60,6 @@ pub trait Deploy<'a> {
     ) -> Box<dyn FnOnce()>;
 
     fn o2m_sink_source(
-        compile_env: &Self::CompileEnv,
         p1: &Self::Process,
         p1_port: &Self::Port,
         c2: &Self::Cluster,
@@ -76,7 +73,6 @@ pub trait Deploy<'a> {
     ) -> Box<dyn FnOnce()>;
 
     fn m2o_sink_source(
-        compile_env: &Self::CompileEnv,
         c1: &Self::Cluster,
         c1_port: &Self::Port,
         p2: &Self::Process,
@@ -90,7 +86,6 @@ pub trait Deploy<'a> {
     ) -> Box<dyn FnOnce()>;
 
     fn m2m_sink_source(
-        compile_env: &Self::CompileEnv,
         c1: &Self::Cluster,
         c1_port: &Self::Port,
         c2: &Self::Cluster,
@@ -104,7 +99,6 @@ pub trait Deploy<'a> {
     ) -> Box<dyn FnOnce()>;
 
     fn e2o_many_source(
-        compile_env: &Self::CompileEnv,
         extra_stmts: &mut Vec<syn::Stmt>,
         p2: &Self::Process,
         p2_port: &Self::Port,
@@ -113,9 +107,7 @@ pub trait Deploy<'a> {
     ) -> syn::Expr;
     fn e2o_many_sink(shared_handle: String) -> syn::Expr;
 
-    #[expect(clippy::too_many_arguments, reason = "necessary for code generation")]
     fn e2o_source(
-        compile_env: &Self::CompileEnv,
         extra_stmts: &mut Vec<syn::Stmt>,
         p1: &Self::External,
         p1_port: &Self::Port,
@@ -134,7 +126,6 @@ pub trait Deploy<'a> {
     ) -> Box<dyn FnOnce()>;
 
     fn o2e_sink(
-        compile_env: &Self::CompileEnv,
         p1: &Self::Process,
         p1_port: &Self::Port,
         p2: &Self::External,
@@ -143,13 +134,10 @@ pub trait Deploy<'a> {
     ) -> syn::Expr;
 
     fn cluster_ids(
-        env: &Self::CompileEnv,
         of_cluster: usize,
     ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a;
 
-    fn cluster_self_id(
-        env: &Self::CompileEnv,
-    ) -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a;
+    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a;
 
     fn cluster_membership_stream(
         location_id: &LocationId,

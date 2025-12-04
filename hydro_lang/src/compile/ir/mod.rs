@@ -659,7 +659,6 @@ impl HydroRoot {
     #[cfg(feature = "build")]
     pub fn compile_network<'a, D>(
         &mut self,
-        compile_env: &D::CompileEnv,
         extra_stmts: &mut BTreeMap<usize, Vec<syn::Stmt>>,
         seen_tees: &mut SeenTees,
         processes: &HashMap<usize, D::Process>,
@@ -718,7 +717,6 @@ impl HydroRoot {
                                             to_node.register(*to_key, source_port.clone());
 
                                             let _ = D::e2o_source(
-                                                compile_env,
                                                 refcell_extra_stmts.borrow_mut().entry(*process_id).or_default(),
                                                 &to_node, &source_port,
                                                 &from_node, &sink_port,
@@ -730,7 +728,6 @@ impl HydroRoot {
                                         (
                                             (
                                                 D::o2e_sink(
-                                                    compile_env,
                                                     &from_node,
                                                     &sink_port,
                                                     &to_node,
@@ -784,7 +781,6 @@ impl HydroRoot {
                             metadata.location_kind.root(),
                             processes,
                             clusters,
-                            compile_env,
                         ),
 
                         DebugInstantiate::Finalized(_) => panic!("network already finalized"),
@@ -838,7 +834,6 @@ impl HydroRoot {
                                             parse_quote!(DUMMY),
                                             if *from_many {
                                                 D::e2o_many_source(
-                                                    compile_env,
                                                     refcell_extra_stmts.borrow_mut().entry(*process_id).or_default(),
                                                     &to_node, &source_port,
                                                     codec_type.0.as_ref(),
@@ -846,7 +841,6 @@ impl HydroRoot {
                                                 )
                                             } else {
                                                 D::e2o_source(
-                                                    compile_env,
                                                     refcell_extra_stmts.borrow_mut().entry(*process_id).or_default(),
                                                     &from_node, &sink_port,
                                                     &to_node, &source_port,
@@ -3718,7 +3712,6 @@ fn instantiate_network<'a, D>(
     to_location: &LocationId,
     processes: &HashMap<usize, D::Process>,
     clusters: &HashMap<usize, D::Cluster>,
-    compile_env: &D::CompileEnv,
 ) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
 where
     D: Deploy<'a>,
@@ -3742,7 +3735,7 @@ where
             let source_port = D::allocate_process_port(&to_node);
 
             (
-                D::o2o_sink_source(compile_env, &from_node, &sink_port, &to_node, &source_port),
+                D::o2o_sink_source(&from_node, &sink_port, &to_node, &source_port),
                 D::o2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
@@ -3764,7 +3757,7 @@ where
             let source_port = D::allocate_cluster_port(&to_node);
 
             (
-                D::o2m_sink_source(compile_env, &from_node, &sink_port, &to_node, &source_port),
+                D::o2m_sink_source(&from_node, &sink_port, &to_node, &source_port),
                 D::o2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
@@ -3786,7 +3779,7 @@ where
             let source_port = D::allocate_process_port(&to_node);
 
             (
-                D::m2o_sink_source(compile_env, &from_node, &sink_port, &to_node, &source_port),
+                D::m2o_sink_source(&from_node, &sink_port, &to_node, &source_port),
                 D::m2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
@@ -3808,7 +3801,7 @@ where
             let source_port = D::allocate_cluster_port(&to_node);
 
             (
-                D::m2m_sink_source(compile_env, &from_node, &sink_port, &to_node, &source_port),
+                D::m2m_sink_source(&from_node, &sink_port, &to_node, &source_port),
                 D::m2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }

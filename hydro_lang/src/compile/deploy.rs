@@ -157,12 +157,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 }
 
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
-    pub fn compile(mut self, env: &D::CompileEnv) -> CompiledFlow<'a, D::GraphId> {
+    pub fn compile(mut self) -> CompiledFlow<'a, D::GraphId> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
         let mut extra_stmts = BTreeMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
-                env,
                 &mut extra_stmts,
                 &mut seen_tees,
                 &self.processes,
@@ -177,11 +176,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         }
     }
 
-    fn cluster_id_stmts(
-        &self,
-        extra_stmts: &mut BTreeMap<usize, Vec<syn::Stmt>>,
-        env: &<D as Deploy<'a>>::CompileEnv,
-    ) {
+    fn cluster_id_stmts(&self, extra_stmts: &mut BTreeMap<usize, Vec<syn::Stmt>>) {
         let mut all_clusters_sorted = self.clusters.keys().collect::<Vec<_>>();
         all_clusters_sorted.sort();
 
@@ -190,7 +185,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 &format!("__hydro_lang_cluster_self_id_{}", c_id),
                 Span::call_site(),
             );
-            let self_id_expr = D::cluster_self_id(env).splice_untyped();
+            let self_id_expr = D::cluster_self_id().splice_untyped();
             extra_stmts
                 .entry(c_id)
                 .or_default()
@@ -203,7 +198,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                     &format!("__hydro_lang_cluster_ids_{}", c_id),
                     Span::call_site(),
                 );
-                let other_id_expr = D::cluster_ids(env, c_id).splice_untyped();
+                let other_id_expr = D::cluster_ids(c_id).splice_untyped();
                 extra_stmts
                     .entry(*other_location)
                     .or_default()
@@ -215,14 +210,13 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     }
 }
 
-impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
+impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     #[must_use]
     pub fn deploy(mut self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
         let mut extra_stmts = BTreeMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
-                &(),
                 &mut extra_stmts,
                 &mut seen_tees_instantiate,
                 &self.processes,
@@ -232,7 +226,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
         });
 
         let mut compiled = build_inner::<D>(self.ir.get_mut());
-        self.cluster_id_stmts(&mut extra_stmts, &());
+        self.cluster_id_stmts(&mut extra_stmts);
         let mut meta = D::Meta::default();
 
         let (mut processes, mut clusters, mut externals) = (
