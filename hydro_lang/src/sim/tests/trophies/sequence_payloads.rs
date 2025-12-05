@@ -97,12 +97,17 @@ fn test() {
 
     // original behavior from the KV replica (unrelated to the bug)
     complete_next_slot.complete_next_tick(
-        sequenced.clone()
-        .persist() // Optimization: all_ticks() + fold() = fold<static>, where the state of the previous fold is saved and persisted values are deleted.
-        .fold(q!(|| None), q!(|next_slot, payload: SequencedKv| {
-            *next_slot = Some(payload.seq);
-        }))
-        .filter_map(q!(|v| v)),
+        sequenced
+            .clone()
+            .across_ticks(|s| {
+                s.fold(
+                    q!(|| None),
+                    q!(|next_slot, payload: SequencedKv| {
+                        *next_slot = Some(payload.seq);
+                    }),
+                )
+            })
+            .filter_map(q!(|v| v)),
     );
 
     let out_recv = sequenced.all_ticks().sim_output();
@@ -138,12 +143,17 @@ fn trace_snapshot() {
 
     // original behavior from the KV replica (unrelated to the bug)
     complete_next_slot.complete_next_tick(
-        sequenced.clone()
-        .persist() // Optimization: all_ticks() + fold() = fold<static>, where the state of the previous fold is saved and persisted values are deleted.
-        .fold(q!(|| None), q!(|next_slot, payload: SequencedKv| {
-            *next_slot = Some(payload.seq);
-        }))
-        .filter_map(q!(|v| v)),
+        sequenced
+            .clone()
+            .across_ticks(|s| {
+                s.fold(
+                    q!(|| None),
+                    q!(|next_slot, payload: SequencedKv| {
+                        *next_slot = Some(payload.seq);
+                    }),
+                )
+            })
+            .filter_map(q!(|v| v)),
     );
 
     let out_recv = sequenced.all_ticks().sim_output();

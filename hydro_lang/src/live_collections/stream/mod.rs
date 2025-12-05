@@ -21,6 +21,7 @@ use crate::compile::ir::{
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
+use crate::live_collections::batch_atomic::BatchAtomic;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick, NoAtomic};
@@ -2838,12 +2839,12 @@ where
         )
     }
 
-    /// Accumulates the elements of this stream **across ticks** by concatenating them together.
+    /// Transforms the stream using the given closure in "stateful" mode, where stateful operators
+    /// such as `fold` retrain their memory across ticks rather than resetting across batches of
+    /// input.
     ///
-    /// The output stream in tick T will contain the elements of the input at tick 0, 1, ..., up to
-    /// and including tick T. This is useful for accumulating streaming inputs across ticks, but be
-    /// careful when using this operator, as its memory usage will grow linearly over time since it
-    /// must store its inputs indefinitely.
+    /// This API is particularly useful for stateful computation on batches of data, such as
+    /// maintaining an accumulated state that is up to date with the current batch.
     ///
     /// # Example
     /// ```rust
@@ -2852,40 +2853,32 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![1, 2, 3, 4]))
+    /// #  .batch(&tick, nondet!(/** test */));
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![5, 6, 7]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick(); // appears on the second tick
+    /// let input = // [1, 2, 3, 4 (first batch), 5, 6, 7 (second batch)]
+    /// # batch_first_tick.chain(batch_second_tick).all_ticks();
     ///
-    /// let batch_first_tick = process
-    ///   .source_iter(q!(vec![1, 2, 3, 4]))
-    ///   .batch(&tick, nondet!(/** test */));
-    /// let batch_second_tick = process
-    ///   .source_iter(q!(vec![5, 6, 7, 8]))
-    ///   .batch(&tick, nondet!(/** test */))
-    ///   .defer_tick(); // appears on the second tick
-    /// batch_first_tick.chain(batch_second_tick)
-    ///   .persist()
-    ///   .all_ticks()
+    /// input.batch(&tick, nondet!(/** test */))
+    ///     .across_ticks(|s| s.count()).all_ticks()
     /// # }, |mut stream| async move {
-    /// // [1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, ...]
-    /// # for w in vec![1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
+    /// // [4, 7]
+    /// assert_eq!(stream.next().await.unwrap(), 4);
+    /// assert_eq!(stream.next().await.unwrap(), 7);
     /// # }));
     /// # }
     /// ```
-    pub fn persist(self) -> Stream<T, Tick<L>, Bounded, O, R>
-    where
-        T: Clone,
-    {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Persist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self
-                    .location
-                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
-            },
-        )
+    pub fn across_ticks<Out: BatchAtomic>(
+        self,
+        thunk: impl FnOnce(Stream<T, Atomic<L>, Unbounded, O, R>) -> Out,
+    ) -> Out::Batched {
+        thunk(self.all_ticks_atomic()).batched_atomic()
     }
 
     /// Shifts the elements in `self` to the **next tick**, so that the returned stream at tick `T`
