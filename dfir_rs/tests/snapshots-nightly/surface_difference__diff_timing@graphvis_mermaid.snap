@@ -1,0 +1,33 @@
+---
+source: dfir_rs/tests/surface_difference.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_stream(pos_recv)</code>"/]:::pullClass
+2v1[\"(2v1) <code>source_stream(neg_recv)</code>"/]:::pullClass
+3v1[\"(3v1) <code>difference()</code>"/]:::pullClass
+4v1[/"(4v1) <code>for_each(|x| output_send.send((context.current_tick().0, x)).unwrap())</code>"\]:::pushClass
+5v1["(5v1) <code>handoff</code>"]:::otherClass
+6v1["(6v1) <code>handoff</code>"]:::otherClass
+1v1-->6v1
+2v1-->5v1
+3v1-->4v1
+5v1--x|neg|3v1; linkStyle 3 stroke:red
+6v1-->|pos|3v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    2v1
+end
+subgraph sg_2v1 ["sg_2v1 stratum 1"]
+    subgraph sg_2v1_var_diff ["var <tt>diff</tt>"]
+        3v1
+        4v1
+    end
+end
+subgraph sg_3v1 ["sg_3v1 stratum 0"]
+    1v1
+end

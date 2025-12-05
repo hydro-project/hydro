@@ -1,5 +1,0 @@
-error: `lattice_fold` should have exactly 0 generic type arguments, actually has 1.
- --> tests/compile-fail/surface_lattice_fold_wronggeneric.rs:6:31
-  |
-6 | ...   -> lattice_fold::<'static, dfir_rs::lattices::set_union::SetUnionHashSet<u32>>(dfir_rs::lattices::se...
-  |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
