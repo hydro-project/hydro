@@ -3,7 +3,7 @@
 #[cfg(feature = "deploy_integration")]
 pub(crate) mod deploy_runtime;
 
-#[cfg(feature = "deploy_integration")]
+#[cfg(feature = "docker_runtime")]
 pub mod deploy_runtime_containerized;
 
 #[cfg(stageleft_runtime)]
@@ -22,11 +22,11 @@ pub mod deploy_graph;
 pub use deploy_graph::*;
 
 #[cfg(stageleft_runtime)]
-#[cfg(feature = "deploy")]
-#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+#[cfg(feature = "docker_deploy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "docker_deploy")))]
 pub mod deploy_graph_containerized;
 
 #[cfg(stageleft_runtime)]
-#[cfg(feature = "deploy")]
-#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+#[cfg(feature = "docker_deploy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "docker_deploy")))]
 pub use deploy_graph_containerized::*;
