@@ -20,11 +20,12 @@ pub fn graph_reachability<'a>(
         .map(q!(|r| (r, ())))
         .join(
             edges
-                .batch(
+                .collect_vec()
+                .snapshot(
                     &reachability_tick,
                     nondet!(/** edges can be inserted on any tick because we are fixpointing */),
                 )
-                .persist(),
+                .flatten_ordered(),
         )
         .map(q!(|(_from, (_, to))| to));
     set_reached_cycle.complete_next_tick(reached.clone().chain(reachable));

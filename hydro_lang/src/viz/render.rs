@@ -1131,17 +1131,6 @@ impl HydroNode {
                 node_type: HydroNodeType::Transform,
             }),
 
-            // Transform operation - semantic tags extracted from metadata
-            HydroNode::Persist { inner, metadata } => build_simple_transform(TransformParams {
-                structure,
-                seen_tees,
-                config,
-                input: inner,
-                metadata,
-                op_name: extract_op_name(self.print_root()),
-                node_type: HydroNodeType::Transform,
-            }),
-
             // Aggregation operation - semantic tags extracted from metadata
             HydroNode::Sort {
                 input: inner,
