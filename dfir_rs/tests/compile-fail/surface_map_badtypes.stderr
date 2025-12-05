@@ -9,3 +9,9 @@ error[E0308]: mismatched types
   |
   = note: expected type `{integer}`
             found tuple `(_, _)`
+
+error[E0282]: type annotations needed
+ --> tests/compile-fail/surface_map_badtypes.rs:5:31
+  |
+5 |         source_iter(0..10) -> map(|(a, b)| a + b) -> for_each(std::mem::drop);
+  |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type

@@ -60,16 +60,63 @@ help: if there were a trait named `Example` with associated type `Square` implem
 15 |         my_demux[<Shape as Example>::Square] -> for_each(std::mem::drop);
    |                  ++++++++++++++++++++
 
-error[E0277]: the trait bound `Shape: DemuxEnum<_>` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
+error[E0277]: the trait bound `Shape: DemuxEnumSink<_>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:28
    |
 12 |         ]) -> demux_enum::<Shape>();
-   |               ^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |                            ^^^^^ unsatisfied trait bound
    |
-help: the trait `DemuxEnum<_>` is not implemented for `Shape`
+help: the trait `DemuxEnumSink<_>` is not implemented for `Shape`
   --> tests/compile-fail/surface_demuxenum_notenum.rs:4:5
    |
  4 |     struct Shape {
    |     ^^^^^^^^^^^^
    = note: ensure there is exactly one output for each enum variant.
    = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
+note: required by a bound in `demux_enum_guard`
+  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
+   |
+12 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
+
+error[E0277]: the trait bound `Shape: DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
+   |
+12 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)>` is not implemented for `Shape`
+  --> tests/compile-fail/surface_demuxenum_notenum.rs:4:5
+   |
+ 4 |     struct Shape {
+   |     ^^^^^^^^^^^^
+   = note: ensure there is exactly one output for each enum variant.
+   = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
+note: required by a bound in `demux_enum_guard`
+  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
+   |
+12 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
+
+error[E0277]: the trait bound `Shape: DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_notenum.rs:9:20
+   |
+ 9 |           my_demux = source_iter([
+   |  ____________________^
+10 | |             Shape { area: 10.0 },
+11 | |             Shape { area: 9.0 },
+12 | |         ]) -> demux_enum::<Shape>();
+   | |___________________________________^ unsatisfied trait bound
+   |
+help: the trait `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)>` is not implemented for `Shape`
+  --> tests/compile-fail/surface_demuxenum_notenum.rs:4:5
+   |
+ 4 |     struct Shape {
+   |     ^^^^^^^^^^^^
+   = note: ensure there is exactly one output for each enum variant.
+   = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
+note: required by a bound in `demux_enum_guard`
+  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
+   |
+12 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
