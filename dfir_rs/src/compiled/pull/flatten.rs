@@ -52,18 +52,22 @@ where
             }
 
             // Get the next item from the stream and create a new iterator
-            match ready!(this.stream.as_mut().poll_next(cx)) {
-                Some(stream_item) => {
-                    let new_iter = stream_item.into_iter();
-                    *this.current_iter = Some(new_iter);
-                    // Loop back to try getting an item from the new iterator
-                }
-                None => {
-                    // Stream is exhausted
-                    return Poll::Ready(None);
-                }
+            if let Some(stream_item) = ready!(this.stream.as_mut().poll_next(cx)) {
+                *this.current_iter = Some(stream_item.into_iter());
+                // Loop back to try getting an item from the new iterator
+            } else {
+                // Stream is exhausted
+                return Poll::Ready(None);
             }
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let lower = self
+            .current_iter
+            .as_ref()
+            .map_or(0, |iter| iter.size_hint().0);
+        (lower, None)
     }
 }
 
