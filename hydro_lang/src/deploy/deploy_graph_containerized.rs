@@ -44,7 +44,7 @@ pub struct DockerNetwork {
 }
 
 impl DockerNetwork {
-    /// creates a new docker network (wil actually be created when deployment.start() is called).
+    /// creates a new docker network (will actually be created when deployment.start() is called).
     pub fn new(name: String) -> Self {
         Self {
             name: format!("{name}-{}", nanoid::nanoid!(6, &CONTAINER_ALPHABET)),
