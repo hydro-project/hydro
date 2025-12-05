@@ -68,7 +68,7 @@ where
     }
 }
 
-/// Initialize tracing use the above custom formatter with the default "trace" directive, if RUST_LOG is not set.
+/// Initialize tracing using the above custom formatter with the default "trace" directive, if RUST_LOG is not set.
 pub fn initialize_tracing() {
     use tracing_subscriber::filter::EnvFilter;
 
