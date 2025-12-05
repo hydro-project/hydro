@@ -467,9 +467,7 @@ fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
     let a_max_ballot = p_to_acceptors_p1a
         .clone()
         .inspect(q!(|p1a| println!("Acceptor received P1a: {:?}", p1a)))
-        .all_ticks_atomic()
-        .max()
-        .snapshot_atomic(nondet!(/** always up to date with batch being processed */))
+        .across_ticks(|s| s.max())
         .unwrap_or(acceptor_tick.singleton(q!(Ballot {
             num: 0,
             proposer_id: MemberId::from_raw_id(0)
@@ -827,10 +825,8 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
                 None
             }
         ));
-    let a_log = a_p2as_to_place_in_log
-        .all_ticks_atomic()
-        .into_keyed()
-        .reduce_watermark_commutative(
+    let a_log = a_p2as_to_place_in_log.across_ticks(|s| {
+        s.into_keyed().reduce_watermark_commutative(
             a_checkpoint.clone(),
             q!(|prev_entry, entry| {
                 // Insert p2a into the log if it has a higher ballot than what was there before
@@ -841,19 +837,14 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
                     };
                 }
             }),
-        );
-    let a_log_snapshot = a_log
-        .snapshot_atomic(nondet!(
-            /// We need to know the current state of the log for p1b
-            /// TODO(shadaj): this isn't a justification for correctness
-        ))
-        .entries()
-        .fold_commutative(
-            q!(|| HashMap::new()),
-            q!(|map, (slot, entry)| {
-                map.insert(slot, entry);
-            }),
-        );
+        )
+    });
+    let a_log_snapshot = a_log.entries().fold_commutative(
+        q!(|| HashMap::new()),
+        q!(|map, (slot, entry)| {
+            map.insert(slot, entry);
+        }),
+    );
 
     let a_to_proposers_p2b = p_to_acceptors_p2a_batch
         .cross_singleton(a_max_ballot)
