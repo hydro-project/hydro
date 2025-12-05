@@ -1,19 +1,97 @@
-error[E0271]: type mismatch resolving `<impl Pusherator<Item = (u32,)> as Pusherator>::Item == (f64,)`
-  --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:17:15
+error[E0277]: the trait bound `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>: dfir_rs::futures::Sink<(f64,)>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:17:28
    |
 17 |         ]) -> demux_enum::<Shape>();
-   |               ^^^^^^^^^^^^^^^^^^^^^ expected `(f64,)`, found `(u32,)`
+   |                            ^^^^^ unsatisfied trait bound
    |
-   = note: expected tuple `(f64,)`
-              found tuple `(u32,)`
-note: required for `Shape` to implement `DemuxEnum<(impl Pusherator<Item = (f64,)>, impl Pusherator<Item = (f64, f64)>, impl Pusherator<Item = (u32,)>)>`
+   = help: the trait `dfir_rs::futures::Sink<(f64,)>` is not implemented for `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>`
+   = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
+             `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
+             `&mut S` implements `dfir_rs::futures::Sink<Item>`
+             `Box<S>` implements `dfir_rs::futures::Sink<Item>`
+             `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
+             `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
+             `DemuxEnum<Outputs>` implements `dfir_rs::futures::Sink<Item>`
+             `DemuxMap<Key, Si>` implements `dfir_rs::futures::Sink<(Key, Item)>`
+             `DemuxVar<Sinks, Error>` implements `dfir_rs::futures::Sink<(usize, Item)>`
+           and $N others
+note: required for `Shape` to implement `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<(f64,), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(f64, f64), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(u32,), Error = Infallible>>)>`
   --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:5:14
    |
  5 |     #[derive(DemuxEnum)]
    |              ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
  6 |     enum Shape {
    |          ^^^^^
-   = note: associated types for the current `impl` cannot be restricted in `where` clauses
-   = note: associated types for the current `impl` cannot be restricted in `where` clauses
-   = note: associated types for the current `impl` cannot be restricted in `where` clauses
+note: required by a bound in `demux_enum_guard`
+  --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:17:15
+   |
+17 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
+   = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>: dfir_rs::futures::Sink<(f64,)>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:17:15
+   |
+17 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `dfir_rs::futures::Sink<(f64,)>` is not implemented for `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>`
+   = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
+             `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
+             `&mut S` implements `dfir_rs::futures::Sink<Item>`
+             `Box<S>` implements `dfir_rs::futures::Sink<Item>`
+             `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
+             `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
+             `DemuxEnum<Outputs>` implements `dfir_rs::futures::Sink<Item>`
+             `DemuxMap<Key, Si>` implements `dfir_rs::futures::Sink<(Key, Item)>`
+             `DemuxVar<Sinks, Error>` implements `dfir_rs::futures::Sink<(usize, Item)>`
+           and $N others
+note: required for `Shape` to implement `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<(f64,), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(f64, f64), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(u32,), Error = Infallible>>)>`
+  --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:5:14
+   |
+ 5 |     #[derive(DemuxEnum)]
+   |              ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+ 6 |     enum Shape {
+   |          ^^^^^
+note: required by a bound in `demux_enum_guard`
+  --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:17:15
+   |
+17 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
+   = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>: dfir_rs::futures::Sink<(f64,)>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:13:20
+   |
+13 |           my_demux = source_iter([
+   |  ____________________^
+14 | |             Shape::Rectangle { w: 10.0, h: 8.0 },
+15 | |             Shape::Square(9.0),
+16 | |             Shape::Circle { r: 5.0 },
+17 | |         ]) -> demux_enum::<Shape>();
+   | |___________________________________^ unsatisfied trait bound
+   |
+   = help: the trait `dfir_rs::futures::Sink<(f64,)>` is not implemented for `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>`
+   = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
+             `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
+             `&mut S` implements `dfir_rs::futures::Sink<Item>`
+             `Box<S>` implements `dfir_rs::futures::Sink<Item>`
+             `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
+             `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
+             `DemuxEnum<Outputs>` implements `dfir_rs::futures::Sink<Item>`
+             `DemuxMap<Key, Si>` implements `dfir_rs::futures::Sink<(Key, Item)>`
+             `DemuxVar<Sinks, Error>` implements `dfir_rs::futures::Sink<(usize, Item)>`
+           and $N others
+note: required for `Shape` to implement `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<(f64,), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(f64, f64), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(u32,), Error = Infallible>>)>`
+  --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:5:14
+   |
+ 5 |     #[derive(DemuxEnum)]
+   |              ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+ 6 |     enum Shape {
+   |          ^^^^^
+note: required by a bound in `demux_enum_guard`
+  --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:17:15
+   |
+17 |         ]) -> demux_enum::<Shape>();
+   |               ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
    = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)

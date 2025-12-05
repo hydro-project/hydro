@@ -1,6 +1,4 @@
-pub mod rustc_version {
-    pub use rustc_version::*;
-}
+pub use {insta, rustc_version};
 
 #[macro_export]
 macro_rules! emit_nightly_configuration {
@@ -15,10 +13,6 @@ macro_rules! emit_nightly_configuration {
             println!("cargo:rustc-cfg=nightly");
         }
     };
-}
-
-pub mod insta {
-    pub use ::insta::*;
 }
 
 #[macro_export]
