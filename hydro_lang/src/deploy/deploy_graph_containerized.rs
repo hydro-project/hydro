@@ -664,7 +664,7 @@ impl DockerDeploy {
         Ok(())
     }
 
-    /// Start the deployment, tell docker to create containers from the existing provisionined images.
+    /// Start the deployment, tell docker to create containers from the existing provisioned images.
     #[instrument(level = "trace", skip_all)]
     pub async fn start(&self, nodes: &DeployResult<'_, Self>) -> Result<(), anyhow::Error> {
         let docker = Docker::connect_with_local_defaults()?;
