@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::fs::read_dir;
 use std::process::Command;
 
-use insta::assert_snapshot;
+use hydro_build_utils::insta::assert_snapshot;
 
 /// Bit of a jank test, runs `cargo run -p dfir --example <EXAMPLE>` for all the
 /// `example_*.rs` examples and uses `insta` to snapshot tests the stdout.
