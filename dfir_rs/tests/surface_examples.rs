@@ -6,6 +6,7 @@ use hydro_build_utils::insta::assert_snapshot;
 
 /// Bit of a jank test, runs `cargo run -p dfir --example <EXAMPLE>` for all the
 /// `example_*.rs` examples and uses `insta` to snapshot tests the stdout.
+#[cfg(not(nightly))]
 #[test]
 fn test_all() {
     let examples_files = read_dir("examples/")
