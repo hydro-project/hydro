@@ -79,6 +79,24 @@ fn ops(c: &mut Criterion) {
         )
     });
 
+    c.bench_function("micro/ops/flat_map2", |b| {
+        b.iter_batched_ref(
+            || {
+                const NUM_INTS: usize = 10_000;
+                let dist = Uniform::new(0, 100);
+                let data: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
+
+                dfir_syntax! {
+                    source_iter(black_box(data)) -> flat_map(|x| 0..x) -> for_each(|x| { black_box(x); });
+                }
+            },
+            |df| {
+                df.run_available_sync();
+            },
+            BatchSize::LargeInput,
+        )
+    });
+
     c.bench_function("micro/ops/join", |b| {
         b.iter_batched_ref(
             || {
