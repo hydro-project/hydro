@@ -14,11 +14,12 @@ pub fn chat_app<'a>(
     if replay_messages {
         users_stream.cross_product(messages)
     } else {
+        let current_users = users_stream.collect_vec();
         let tick = process.tick();
 
-        let users = users_stream
-            .batch(&tick, nondet_user_arrival_broadcast)
-            .persist();
+        let users = current_users
+            .snapshot(&tick, nondet_user_arrival_broadcast)
+            .flatten_ordered();
 
         let messages = messages.batch(&tick, nondet_user_arrival_broadcast);
 

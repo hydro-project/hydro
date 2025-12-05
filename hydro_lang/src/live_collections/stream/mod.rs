@@ -2838,56 +2838,6 @@ where
         )
     }
 
-    /// Accumulates the elements of this stream **across ticks** by concatenating them together.
-    ///
-    /// The output stream in tick T will contain the elements of the input at tick 0, 1, ..., up to
-    /// and including tick T. This is useful for accumulating streaming inputs across ticks, but be
-    /// careful when using this operator, as its memory usage will grow linearly over time since it
-    /// must store its inputs indefinitely.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let batch_first_tick = process
-    ///   .source_iter(q!(vec![1, 2, 3, 4]))
-    ///   .batch(&tick, nondet!(/** test */));
-    /// let batch_second_tick = process
-    ///   .source_iter(q!(vec![5, 6, 7, 8]))
-    ///   .batch(&tick, nondet!(/** test */))
-    ///   .defer_tick(); // appears on the second tick
-    /// batch_first_tick.chain(batch_second_tick)
-    ///   .persist()
-    ///   .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // [1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, ...]
-    /// # for w in vec![1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// # }
-    /// ```
-    pub fn persist(self) -> Stream<T, Tick<L>, Bounded, O, R>
-    where
-        T: Clone,
-    {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Persist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self
-                    .location
-                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
-            },
-        )
-    }
-
     /// Shifts the elements in `self` to the **next tick**, so that the returned stream at tick `T`
     /// always has the elements of `self` at tick `T - 1`.
     ///
