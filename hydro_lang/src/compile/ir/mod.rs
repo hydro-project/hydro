@@ -1460,11 +1460,6 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
-    Persist {
-        inner: Box<HydroNode>,
-        metadata: HydroIrMetadata,
-    },
-
     BeginAtomic {
         inner: Box<HydroNode>,
         metadata: HydroIrMetadata,
@@ -1715,7 +1710,6 @@ impl HydroNode {
 
             HydroNode::Cast { inner, .. }
             | HydroNode::ObserveNonDet { inner, .. }
-            | HydroNode::Persist { inner, .. }
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
             | HydroNode::Batch { inner, .. }
@@ -1819,10 +1813,6 @@ impl HydroNode {
                         metadata: metadata.clone(),
                     }
                 }
-            }
-            HydroNode::Persist { inner, metadata } => HydroNode::Persist {
-                inner: Box::new(inner.deep_clone(seen_tees)),
-                metadata: metadata.clone(),
             },
             HydroNode::YieldConcat { inner, metadata } => HydroNode::YieldConcat {
                 inner: Box::new(inner.deep_clone(seen_tees)),
@@ -2112,34 +2102,6 @@ impl HydroNode {
                 *next_stmt_id += 1;
 
                 observe_ident
-            }
-
-            HydroNode::Persist { inner, .. } => {
-                let inner_ident =
-                    inner.emit_core::<D>(builders_or_callback, built_tees, next_stmt_id);
-
-                let persist_ident =
-                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
-
-                match builders_or_callback {
-                    BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.get_dfir_mut(&out_location);
-                        builder.add_dfir(
-                            parse_quote! {
-                                #persist_ident = #inner_ident -> persist::<'static>();
-                            },
-                            None,
-                            Some(&next_stmt_id.to_string()),
-                        );
-                    }
-                    BuildersOrCallback::Callback(_, node_callback) => {
-                        node_callback(self, next_stmt_id);
-                    }
-                }
-
-                *next_stmt_id += 1;
-
-                persist_ident
             }
 
             HydroNode::Batch {
@@ -2542,20 +2504,14 @@ impl HydroNode {
                 let is_top_level = left.metadata().location_kind.is_top_level()
                     && right.metadata().location_kind.is_top_level();
                 let (left_inner, left_lifetime) =
-                    if let HydroNode::Persist { inner: left, .. } = left.as_mut() {
-                        debug_assert!(!left.metadata().location_kind.is_top_level());
-                        (left, quote!('static))
-                    } else if left.metadata().location_kind.is_top_level() {
+                    if left.metadata().location_kind.is_top_level() {
                         (left, quote!('static))
                     } else {
                         (left, quote!('tick))
                     };
 
                 let (right_inner, right_lifetime) =
-                    if let HydroNode::Persist { inner: right, .. } = right.as_mut() {
-                        debug_assert!(!right.metadata().location_kind.is_top_level());
-                        (right, quote!('static))
-                    } else if right.metadata().location_kind.is_top_level() {
+                    if right.metadata().location_kind.is_top_level() {
                         (right, quote!('static))
                     } else {
                         (right, quote!('tick))
@@ -2617,10 +2573,7 @@ impl HydroNode {
                 };
 
                 let (neg, neg_lifetime) =
-                    if let HydroNode::Persist { inner: neg, .. } = neg.as_mut() {
-                        debug_assert!(!neg.metadata().location_kind.is_top_level());
-                        (neg, quote!('static))
-                    } else if neg.metadata().location_kind.is_top_level() {
+                    if neg.metadata().location_kind.is_top_level() {
                         (neg, quote!('static))
                     } else {
                         (neg, quote!('tick))
@@ -2991,10 +2944,7 @@ impl HydroNode {
                 };
 
                 let (input, lifetime) =
-                    if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
-                        debug_assert!(!input.metadata().location_kind.is_top_level());
-                        (input, quote!('static))
-                    } else if input.metadata().location_kind.is_top_level() {
+                    if input.metadata().location_kind.is_top_level() {
                         (input, quote!('static))
                     } else {
                         (input, quote!('tick))
@@ -3101,10 +3051,7 @@ impl HydroNode {
                 };
 
                 let (input, lifetime) =
-                    if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
-                        debug_assert!(!input.metadata().location_kind.is_top_level());
-                        (input, quote!('static))
-                    } else if input.metadata().location_kind.is_top_level() {
+                    if input.metadata().location_kind.is_top_level() {
                         (input, quote!('static))
                     } else {
                         (input, quote!('tick))
@@ -3165,10 +3112,7 @@ impl HydroNode {
                 ..
             } => {
                 let (input, lifetime) =
-                    if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
-                        debug_assert!(!input.metadata().location_kind.is_top_level());
-                        (input, quote!('static))
-                    } else if input.metadata().location_kind.is_top_level() {
+                    if input.metadata().location_kind.is_top_level() {
                         (input, quote!('static))
                     } else {
                         (input, quote!('tick))
@@ -3391,7 +3335,6 @@ impl HydroNode {
             }
             HydroNode::CycleSource { .. }
             | HydroNode::Tee { .. }
-            | HydroNode::Persist { .. }
             | HydroNode::YieldConcat { .. }
             | HydroNode::BeginAtomic { .. }
             | HydroNode::EndAtomic { .. }
@@ -3463,7 +3406,6 @@ impl HydroNode {
             HydroNode::SingletonSource { metadata, .. } => metadata,
             HydroNode::CycleSource { metadata, .. } => metadata,
             HydroNode::Tee { metadata, .. } => metadata,
-            HydroNode::Persist { metadata, .. } => metadata,
             HydroNode::YieldConcat { metadata, .. } => metadata,
             HydroNode::BeginAtomic { metadata, .. } => metadata,
             HydroNode::EndAtomic { metadata, .. } => metadata,
@@ -3513,7 +3455,6 @@ impl HydroNode {
             HydroNode::SingletonSource { metadata, .. } => metadata,
             HydroNode::CycleSource { metadata, .. } => metadata,
             HydroNode::Tee { metadata, .. } => metadata,
-            HydroNode::Persist { metadata, .. } => metadata,
             HydroNode::YieldConcat { metadata, .. } => metadata,
             HydroNode::BeginAtomic { metadata, .. } => metadata,
             HydroNode::EndAtomic { metadata, .. } => metadata,
@@ -3563,7 +3504,6 @@ impl HydroNode {
             }
             HydroNode::Cast { inner, .. }
             | HydroNode::ObserveNonDet { inner, .. }
-            | HydroNode::Persist { inner, .. }
             | HydroNode::YieldConcat { inner, .. }
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
@@ -3596,30 +3536,18 @@ impl HydroNode {
             | HydroNode::Network { input, .. }
             | HydroNode::Counter { input, .. }
             | HydroNode::ResolveFutures { input, .. }
-            | HydroNode::ResolveFuturesOrdered { input, .. } => {
-                vec![input]
-            }
-            HydroNode::Fold { input, .. }
+            | HydroNode::ResolveFuturesOrdered { input, .. }
+            | HydroNode::Fold { input, .. }
             | HydroNode::FoldKeyed { input, .. }
             | HydroNode::Reduce { input, .. }
             | HydroNode::ReduceKeyed { input, .. }
             | HydroNode::Scan { input, .. } => {
-                // Skip persist before fold/reduce
-                if let HydroNode::Persist { inner, .. } = input.as_ref() {
-                    vec![inner]
-                } else {
-                    vec![input]
-                }
+                vec![input]
             }
             HydroNode::ReduceKeyedWatermark {
                 input, watermark, ..
             } => {
-                // Skip persist before fold/reduce
-                if let HydroNode::Persist { inner, .. } = input.as_ref() {
-                    vec![inner, watermark]
-                } else {
-                    vec![input, watermark]
-                }
+                vec![input, watermark]
             }
         }
     }
@@ -3642,7 +3570,6 @@ impl HydroNode {
             HydroNode::SingletonSource { value, .. } => format!("SingletonSource({:?})", value),
             HydroNode::CycleSource { ident, .. } => format!("CycleSource({})", ident),
             HydroNode::Tee { inner, .. } => format!("Tee({})", inner.0.borrow().print_root()),
-            HydroNode::Persist { .. } => "Persist()".to_string(),
             HydroNode::YieldConcat { .. } => "YieldConcat()".to_string(),
             HydroNode::BeginAtomic { .. } => "BeginAtomic()".to_string(),
             HydroNode::EndAtomic { .. } => "EndAtomic()".to_string(),
