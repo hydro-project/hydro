@@ -1,4 +1,4 @@
-error[E0271]: expected `Drain<'_, Option<{integer}>>` to be an iterator that yields `(_, _)`, but it yields `Option<{integer}>`
+error[E0271]: type mismatch resolving `<Iter<Drain<'_, Option<{integer}>>> as Stream>::Item == (_, _)`
  --> tests/compile-fail/surface_fold_keyed_badtype_option.rs:3:9
   |
 3 |         source_iter([ Some(5), None, Some(12) ])
@@ -14,7 +14,7 @@ note: required by a bound in `check_input`
 4 |             -> reduce_keyed(|old: &mut u32, val: u32| { *old += val; })
   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check_input`
 
-error[E0271]: expected `Drain<'_, Option<{integer}>>` to be an iterator that yields `(_, _)`, but it yields `Option<{integer}>`
+error[E0271]: type mismatch resolving `<Iter<Drain<'_, Option<{integer}>>> as Stream>::Item == (_, _)`
  --> tests/compile-fail/surface_fold_keyed_badtype_option.rs:4:16
   |
 4 |             -> reduce_keyed(|old: &mut u32, val: u32| { *old += val; })

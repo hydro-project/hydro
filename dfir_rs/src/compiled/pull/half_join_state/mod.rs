@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 /// State semantics for each half of a join.
 use smallvec::SmallVec;
 
@@ -8,10 +10,13 @@ mod set;
 pub use set::HalfSetJoinState;
 
 /// State semantics for each half of a join.
-pub trait HalfJoinState<Key, ValBuild, ValProbe> {
+pub trait HalfJoinState<Key, ValBuild, ValProbe>
+where
+    ValBuild: Clone,
+{
     /// Insert a key value pair into the join state, currently this is always inserting into a hash table
     /// If the key-value pair exists then it is implementation defined what happens, usually either two copies are stored or only one copy is stored.
-    fn build(&mut self, k: Key, v: &ValBuild) -> bool;
+    fn build(&mut self, k: Key, v: Cow<'_, ValBuild>) -> bool;
 
     /// This function does the actual joining part of the join. It looks up a key in the local join state and creates matches
     /// The first match is return directly to the caller, and any additional matches are stored internally to be retrieved later with `pop_match`

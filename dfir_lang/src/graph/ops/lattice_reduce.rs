@@ -76,8 +76,8 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
             let #input = {
                 #[inline(always)]
                 fn check_inputs<Lat>(
-                    input: impl ::std::iter::Iterator<Item = Lat>
-                ) -> impl ::std::iter::Iterator<Item = Lat>
+                    input: impl #root::futures::stream::Stream<Item = Lat>
+                ) -> impl #root::futures::stream::Stream<Item = Lat>
                 where
                     Lat: #root::lattices::Merge<Lat>,
                 {

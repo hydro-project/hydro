@@ -23,7 +23,7 @@ pub fn test_difference_multiset() {
     let mut df = dfir_syntax! {
         source_iter([1, 2, 2, 3, 3, 4, 4, 5, 5]) -> [pos]diff;
         source_iter([2, 3, 4]) -> [neg]diff;
-        diff = difference_multiset() -> for_each(|x| result_send.send(x).unwrap());
+        diff = difference() -> for_each(|x| result_send.send(x).unwrap());
     };
     df.run_available_sync();
 
@@ -120,7 +120,7 @@ pub fn test_diff_multiset_timing() {
     let mut df = dfir_syntax! {
         source_stream(pos_recv) -> [pos]diff;
         source_stream(neg_recv) -> [neg]diff;
-        diff = difference_multiset() -> for_each(|x| output_send.send((context.current_tick().0, x)).unwrap());
+        diff = difference() -> for_each(|x| output_send.send((context.current_tick().0, x)).unwrap());
     };
     assert_graphvis_snapshots!(df);
 
@@ -162,7 +162,7 @@ pub fn test_diff_multiset_static() {
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
     let mut df = dfir_syntax! {
-        diff = difference_multiset::<'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
+        diff = difference::<'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
 
         poss = source_stream(pos_recv); //-> tee();
         poss -> [pos]diff;
@@ -208,7 +208,7 @@ pub fn test_diff_multiset_tick_static() {
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
     let mut df = dfir_syntax! {
-        diff = difference_multiset::<'tick, 'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
+        diff = difference::<'tick, 'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
 
         poss = source_stream(pos_recv); //-> tee();
         poss -> [pos]diff;
@@ -251,7 +251,7 @@ pub fn test_diff_multiset_static_tick() {
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
     let mut df = dfir_syntax! {
-        diff = difference_multiset::<'static, 'tick>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
+        diff = difference::<'static, 'tick>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
 
         poss = source_stream(pos_recv); //-> tee();
         poss -> [pos]diff;
@@ -356,19 +356,19 @@ pub fn test_difference_multiset_loop_lifetimes() {
         loop {
             pos -> batch() -> [pos]diff_nn;
             neg -> batch() -> [neg]diff_nn;
-            diff_nn = difference_multiset::<'none, 'none>() -> for_each(|x| result_nn_send.send((context.loop_iter_count(), x)).unwrap());
+            diff_nn = difference::<'none, 'none>() -> for_each(|x| result_nn_send.send((context.loop_iter_count(), x)).unwrap());
 
             pos -> batch() -> [pos]diff_nl;
             neg -> batch() -> [neg]diff_nl;
-            diff_nl = difference_multiset::<'none, 'loop>() -> for_each(|x| result_nl_send.send((context.loop_iter_count(), x)).unwrap());
+            diff_nl = difference::<'none, 'loop>() -> for_each(|x| result_nl_send.send((context.loop_iter_count(), x)).unwrap());
 
             pos -> batch() -> [pos]diff_ln;
             neg -> batch() -> [neg]diff_ln;
-            diff_ln = difference_multiset::<'loop, 'none>() -> for_each(|x| result_ln_send.send((context.loop_iter_count(), x)).unwrap());
+            diff_ln = difference::<'loop, 'none>() -> for_each(|x| result_ln_send.send((context.loop_iter_count(), x)).unwrap());
 
             pos -> batch() -> [pos]diff_ll;
             neg -> batch() -> [neg]diff_ll;
-            diff_ll = difference_multiset::<'loop, 'loop>() -> for_each(|x| result_ll_send.send((context.loop_iter_count(), x)).unwrap());
+            diff_ll = difference::<'loop, 'loop>() -> for_each(|x| result_ll_send.send((context.loop_iter_count(), x)).unwrap());
         };
     };
     df.run_available_sync();

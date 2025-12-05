@@ -1,4 +1,4 @@
-error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `String`, but it yields `{integer}`
+error[E0271]: type mismatch resolving `<impl Stream<Item = {integer}> as Stream>::Item == String`
  --> tests/compile-fail-stable/surface_identity_wronggeneric.rs:5:9
   |
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
@@ -12,7 +12,7 @@ note: required by a bound in `check_input`
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
   |                               ^^^^^^^^ required by this bound in `check_input`
 
-error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `String`, but it yields `{integer}`
+error[E0271]: type mismatch resolving `<impl Stream<Item = {integer}> as Stream>::Item == String`
  --> tests/compile-fail-stable/surface_identity_wronggeneric.rs:5:31
   |
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
@@ -24,7 +24,7 @@ note: required by a bound in `check_input`
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
   |                               ^^^^^^^^ required by this bound in `check_input`
 
-error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `String`, but it yields `{integer}`
+error[E0271]: type mismatch resolving `<impl Stream<Item = {integer}> as Stream>::Item == String`
  --> tests/compile-fail-stable/surface_identity_wronggeneric.rs:5:55
   |
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);

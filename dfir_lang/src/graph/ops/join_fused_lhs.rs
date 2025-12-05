@@ -15,7 +15,7 @@ use super::{
 ///
 /// For example:
 /// ```dfir
-/// use dfir_rs::compiled::pull::Reduce;
+/// use dfir_rs::util::accumulator::Reduce;
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2), ("key", 3)]) -> [1]my_join;
@@ -48,6 +48,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                    context,
                    df_ident,
                    op_span,
+                   work_fn_async,
                    ident,
                    inputs,
                    is_pull,
@@ -75,8 +76,8 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
             Persistence::Mutable => unreachable!(),
         };
 
-        let lhs_iter = &inputs[0];
-        let rhs_iter = &inputs[1];
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
 
         let lhs_accum = &arguments[0];
 
@@ -85,10 +86,12 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 #lhs_pre_write_iter
 
                 let #ident = {
-                    let () = #root::compiled::pull::Accumulator::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs_iter);
+                    let () = #work_fn_async(
+                        #root::compiled::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
+                    ).await;
 
                     #[allow(clippy::clone_on_copy)]
-                    #rhs_iter.filter_map(|(k, v2)| #lhs_borrow.get(&k).map(|v1| (k, (v1.clone(), v2.clone()))))
+                    #root::tokio_stream::StreamExt::filter_map(#rhs, |(k, v2)| #lhs_borrow.get(&k).map(|v1| (k, (v1.clone(), v2.clone()))))
                 };
             },
             Persistence::Static => quote_spanned! {op_span=>
@@ -99,19 +102,32 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = {
-                    let () = #root::compiled::pull::Accumulator::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs_iter);
+                    // Accumulate LHS.
+                    let () = #work_fn_async(
+                        #root::compiled::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
+                    ).await;
+
+                    // RHS replay index.
+                    let replay_idx = if #context.is_first_run_this_tick() {
+                        0
+                    } else {
+                        #rhs_borrow_ident.len()
+                    };
+
+                    // Accumulate RHS.
+                    let () = #work_fn_async(
+                        #root::compiled::pull::ForEach::new(#rhs, |kv| {
+                            #rhs_borrow_ident.push(kv);
+                        }),
+                    ).await;
+
 
                     #[allow(clippy::clone_on_copy)]
                     #[allow(suspicious_double_ref_op)]
-                    if #context.is_first_run_this_tick() {
-                        #rhs_borrow_ident.extend(#rhs_iter);
-                        #rhs_borrow_ident.iter()
-                    } else {
-                        let len = #rhs_borrow_ident.len();
-                        #rhs_borrow_ident.extend(#rhs_iter);
-                        #rhs_borrow_ident[len..].iter()
-                    }
-                    .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))))
+                    let iter = #rhs_borrow_ident[replay_idx..]
+                        .iter()
+                        .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
+                    #root::futures::stream::iter(iter)
                 };
             },
             Persistence::Mutable => unreachable!(),

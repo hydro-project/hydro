@@ -1,18 +1,19 @@
-use std::cell::RefMut;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker, ready};
 
-use futures::Stream;
 use futures::sink::Sink;
+use futures::stream::{FusedStream, Stream};
 use pin_project_lite::pin_project;
 
 pin_project! {
-    /// Special sink for the `resolve_futures` and `resolve_futures_ordered` operators.
+    /// Special sink for the `resolve_futures[_blocking][_ordered]` operators.
+    ///
+    /// `Queue` may be either [`futures::stream::FuturesOrdered`] or [`futures::stream::FuturesUnordered`].
     #[must_use = "sinks do nothing unless polled"]
     pub struct ResolveFutures<'ctx, Si, Queue> {
         #[pin]
         sink: Si,
-        queue: RefMut<'ctx, Queue>,
+        queue: &'ctx mut Queue,
         // If `Some`, this waker will schedule future ticks, so all futures should be driven
         // by it. If `None`, the subgraph execution should block until all futures are resolved.
         subgraph_waker: Option<Waker>,
@@ -21,7 +22,7 @@ pin_project! {
 
 impl<'ctx, Si, Queue> ResolveFutures<'ctx, Si, Queue> {
     /// Create with the given queue and following sink.
-    pub fn new(queue: RefMut<'ctx, Queue>, subgraph_waker: Option<Waker>, sink: Si) -> Self {
+    pub fn new(queue: &'ctx mut Queue, subgraph_waker: Option<Waker>, sink: Si) -> Self {
         Self {
             sink,
             queue,
@@ -33,7 +34,7 @@ impl<'ctx, Si, Queue> ResolveFutures<'ctx, Si, Queue> {
     fn empty_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>>
     where
         Si: Sink<Queue::Item>,
-        Queue: Stream + Unpin,
+        Queue: FusedStream + Unpin,
     {
         let mut this = self.project();
 
@@ -72,7 +73,7 @@ impl<'ctx, Si, Queue> ResolveFutures<'ctx, Si, Queue> {
 impl<'ctx, Si, Queue, Fut> Sink<Fut> for ResolveFutures<'ctx, Si, Queue>
 where
     Si: Sink<Fut::Output>,
-    Queue: Extend<Fut> + Stream<Item = Fut::Output> + Unpin,
+    Queue: Extend<Fut> + FusedStream<Item = Fut::Output> + Unpin,
     Fut: Future,
 {
     type Error = Si::Error;
@@ -80,6 +81,7 @@ where
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.empty_ready(cx)
     }
+
     fn start_send(self: Pin<&mut Self>, item: Fut) -> Result<(), Self::Error> {
         let mut this = self.project();
 
@@ -103,10 +105,12 @@ where
 
         Ok(())
     }
+
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         ready!(self.as_mut().empty_ready(cx))?;
         self.project().sink.poll_flush(cx)
     }
+
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         ready!(self.as_mut().empty_ready(cx))?;
         self.project().sink.poll_close(cx)

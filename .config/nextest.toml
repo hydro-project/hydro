@@ -1,3 +1,6 @@
+[profile.default]
+slow-timeout = { terminate-after = 5 } # terminate after 5 intervals of (default: `period = "60s"`).
+
 [test-groups]
 serial-integration = { max-threads = 1 }
 hydro-trybuild-group = { max-threads = 1 }

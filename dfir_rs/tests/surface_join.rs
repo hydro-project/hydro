@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::rc::Rc;
 
 use dfir_rs::scheduled::ticks::TickInstant;
@@ -201,49 +201,49 @@ pub fn loop_lifetimes() {
     df.run_available_sync();
 
     assert_eq!(
-        &[
+        BTreeSet::from_iter([
             (0, (7, (1, 5))),
             (0, (7, (2, 5))),
-            (1, (8, (4, 6))),
-            (1, (8, (4, 8))),
             (1, (7, (1, 5))),
+            (1, (7, (1, 7))),
             (1, (7, (2, 5))),
+            (1, (7, (2, 7))),
             (1, (7, (3, 5))),
-            (1, (7, (1, 7))),
-            (1, (7, (2, 7))),
             (1, (7, (3, 7))),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result1_recv)
-    );
-    assert_eq!(
-        &[
-            (0, (7, (1, 5))),
-            (0, (7, (2, 5))),
-            (1, (8, (4, 8))),
-            (1, (7, (1, 7))),
-            (1, (7, (2, 7))),
-            (1, (7, (3, 7))),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result2_recv)
-    );
-    assert_eq!(
-        &[
-            (0, (7, (1, 5))),
-            (0, (7, (2, 5))),
             (1, (8, (4, 6))),
             (1, (8, (4, 8))),
-            (1, (7, (3, 5))),
-            (1, (7, (3, 7))),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result3_recv)
+        ]),
+        collect_ready(&mut result1_recv)
     );
     assert_eq!(
-        &[
+        BTreeSet::from_iter([
+            (0, (7, (1, 5))),
+            (0, (7, (2, 5))),
+            (1, (7, (1, 7))),
+            (1, (7, (2, 7))),
+            (1, (7, (3, 7))),
+            (1, (8, (4, 8))),
+        ]),
+        collect_ready(&mut result2_recv)
+    );
+    assert_eq!(
+        BTreeSet::from_iter([
+            (0, (7, (1, 5))),
+            (0, (7, (2, 5))),
+            (1, (7, (3, 5))),
+            (1, (7, (3, 7))),
+            (1, (8, (4, 6))),
+            (1, (8, (4, 8))),
+        ]),
+        collect_ready(&mut result3_recv)
+    );
+    assert_eq!(
+        BTreeSet::from_iter([
             (0, (7, (1, 5))),
             (0, (7, (2, 5))),
             (1, (8, (4, 8))),
             (1, (7, (3, 7))),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result4_recv)
+        ]),
+        collect_ready(&mut result4_recv)
     );
 }
