@@ -6,9 +6,6 @@ pub use accumulate_all::accumulate_all;
 mod cross_singleton;
 pub use cross_singleton::CrossSingleton;
 
-mod flat_map;
-pub use flat_map::FlatMap;
-
 mod flatten;
 pub use flatten::Flatten;
 
