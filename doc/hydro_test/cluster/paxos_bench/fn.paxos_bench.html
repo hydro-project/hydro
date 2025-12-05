@@ -4,7 +4,7 @@
     f: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
     num_replicas: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
     paxos: impl <a class="trait" href="../paxos_with_client/trait.PaxosLike.html" title="trait hydro_test::cluster::paxos_with_client::PaxosLike">PaxosLike</a>&lt;'a&gt;,
-    clients: &amp;<a class="struct" href="../../../hydro_lang/location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, <a class="struct" href="struct.Client.html" title="struct hydro_test::cluster::paxos_bench::Client">Client</a>&gt;,
-    client_aggregator: &amp;<a class="struct" href="../../../hydro_lang/location/process/struct.Process.html" title="struct hydro_lang::location::process::Process">Process</a>&lt;'a, <a class="struct" href="struct.Aggregator.html" title="struct hydro_test::cluster::paxos_bench::Aggregator">Aggregator</a>&gt;,
-    replicas: &amp;<a class="struct" href="../../../hydro_lang/location/cluster/struct.Cluster.html" title="struct hydro_lang::location::cluster::Cluster">Cluster</a>&lt;'a, <a class="struct" href="../kv_replica/struct.Replica.html" title="struct hydro_test::cluster::kv_replica::Replica">Replica</a>&gt;,
+    clients: &amp;Cluster&lt;'a, <a class="struct" href="struct.Client.html" title="struct hydro_test::cluster::paxos_bench::Client">Client</a>&gt;,
+    client_aggregator: &amp;Process&lt;'a, <a class="struct" href="struct.Aggregator.html" title="struct hydro_test::cluster::paxos_bench::Aggregator">Aggregator</a>&gt;,
+    replicas: &amp;Cluster&lt;'a, <a class="struct" href="../kv_replica/struct.Replica.html" title="struct hydro_test::cluster::kv_replica::Replica">Replica</a>&gt;,
 )</code></pre></section></div></main></body></html>
