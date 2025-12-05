@@ -29,7 +29,6 @@ use tracing::{debug, instrument};
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
 use crate::location::{MemberId, MembershipEvent};
-use crate::staging_util::Invariant;
 
 pub fn deploy_containerized_o2o(target: &str, bind_addr: &str) -> (syn::Expr, syn::Expr) {
     (
