@@ -79,7 +79,7 @@ pub fn initialize_tracing() {
     );
 }
 
-/// Initialize tracing use the above custom formatter, using the tracing directive.
+/// Initialize tracing using the above custom formatter, using the tracing directive.
 /// something like "{level},{abc}={level},{xyz}={level}" where {level} is one of "tracing,debug,info,warn,error"
 pub fn initialize_tracing_with_directive(directive: impl AsRef<str>) {
     use tracing::subscriber::set_global_default;
