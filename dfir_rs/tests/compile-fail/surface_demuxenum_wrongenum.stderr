@@ -1,0 +1,170 @@
+error[E0277]: the trait bound `std::option::Option<()>: DemuxEnumBase` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:17:28
+   |
+17 |         ]) -> demux_enum::<Option<()>>();
+   |                            ^^^^^^^^^^ the trait `DemuxEnumBase` is not implemented for `std::option::Option<()>`
+   |
+   = note: use `#[derive(dfir_rs::DemuxEnum)]`
+help: the trait `DemuxEnumBase` is implemented for `Shape`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:5:14
+   |
+ 5 |     #[derive(DemuxEnum)]
+   |              ^^^^^^^^^
+note: required by a bound in `check_impl_demux_enum`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:17:28
+   |
+17 |         ]) -> demux_enum::<Option<()>>();
+   |                            ^^^^^^^^^^ required by this bound in `check_impl_demux_enum`
+   = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: no variant named `Circle` found for enum `std::option::Option<()>`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:19:18
+   |
+19 |         my_demux[Circle] -> for_each(std::mem::drop);
+   |                  ^^^^^^ variant not found in `std::option::Option<()>`
+
+error[E0599]: no variant named `Rectangle` found for enum `std::option::Option<()>`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:18:18
+   |
+18 |         my_demux[Rectangle] -> for_each(std::mem::drop);
+   |                  ^^^^^^^^^ variant not found in `std::option::Option<()>`
+
+error[E0599]: no variant named `Square` found for enum `std::option::Option<()>`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:20:18
+   |
+20 |         my_demux[Square] -> for_each(std::mem::drop);
+   |                  ^^^^^^ variant not found in `std::option::Option<()>`
+
+error[E0277]: the trait bound `std::option::Option<()>: DemuxEnumSink<_>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:17:28
+   |
+17 |         ]) -> demux_enum::<Option<()>>();
+   |                            ^^^^^^^^^^ the trait `DemuxEnumSink<_>` is not implemented for `std::option::Option<()>`
+   |
+   = note: ensure there is exactly one output for each enum variant.
+   = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
+help: the trait `DemuxEnumSink<(Pin<&mut __SinkCircle>, Pin<&mut __SinkRectangle>, Pin<&mut __SinkSquare>)>` is implemented for `Shape`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:5:14
+   |
+ 5 |     #[derive(DemuxEnum)]
+   |              ^^^^^^^^^
+note: required by a bound in `demux_enum_guard`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:17:15
+   |
+17 |         ]) -> demux_enum::<Option<()>>();
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
+   = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::option::Option<()>: DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:17:15
+   |
+17 |         ]) -> demux_enum::<Option<()>>();
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)>` is not implemented for `std::option::Option<()>`
+   = note: ensure there is exactly one output for each enum variant.
+   = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
+help: the trait `DemuxEnumSink<(Pin<&mut __SinkCircle>, Pin<&mut __SinkRectangle>, Pin<&mut __SinkSquare>)>` is implemented for `Shape`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:5:14
+   |
+ 5 |     #[derive(DemuxEnum)]
+   |              ^^^^^^^^^
+note: required by a bound in `demux_enum_guard`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:17:15
+   |
+17 |         ]) -> demux_enum::<Option<()>>();
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
+   = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `impl dfir_rs::futures::Sink<std::option::Option<()>, Error = Infallible>: dfir_rs::futures::Sink<Shape>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:17:15
+   |
+13 |           my_demux = source_iter([
+   |  ____________________-
+14 | |             Shape::Rectangle { w: 10.0, h: 8.0 },
+15 | |             Shape::Square(9.0),
+16 | |             Shape::Circle { r: 5.0 },
+17 | |         ]) -> demux_enum::<Option<()>>();
+   | |               ^^^^^^^^^^^^^^^^^^^^^^^^^-
+   | |_______________|________________________|
+   |                 |                        required by a bound introduced by this call
+   |                 the trait `dfir_rs::futures::Sink<Shape>` is not implemented for `impl dfir_rs::futures::Sink<std::option::Option<()>, Error = Infallible>`
+   |
+   = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
+             `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
+             `&mut S` implements `dfir_rs::futures::Sink<Item>`
+             `Box<S>` implements `dfir_rs::futures::Sink<Item>`
+             `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
+             `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
+             `DemuxEnum<Outputs>` implements `dfir_rs::futures::Sink<Item>`
+             `DemuxMap<Key, Si>` implements `dfir_rs::futures::Sink<(Key, Item)>`
+             `DemuxVar<Sinks, Error>` implements `dfir_rs::futures::Sink<(usize, Item)>`
+           and $N others
+note: required by a bound in `pivot_run_sg_1v1`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:13:20
+   |
+13 |           my_demux = source_iter([
+   |  ____________________^
+14 | |             Shape::Rectangle { w: 10.0, h: 8.0 },
+15 | |             Shape::Square(9.0),
+16 | |             Shape::Circle { r: 5.0 },
+17 | |         ]) -> demux_enum::<Option<()>>();
+   | |________________________________________^ required by this bound in `pivot_run_sg_1v1`
+
+error[E0277]: the trait bound `std::option::Option<()>: DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:13:20
+   |
+13 |           my_demux = source_iter([
+   |  ____________________^
+14 | |             Shape::Rectangle { w: 10.0, h: 8.0 },
+15 | |             Shape::Square(9.0),
+16 | |             Shape::Circle { r: 5.0 },
+17 | |         ]) -> demux_enum::<Option<()>>();
+   | |________________________________________^ unsatisfied trait bound
+   |
+   = help: the trait `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)>` is not implemented for `std::option::Option<()>`
+   = note: ensure there is exactly one output for each enum variant.
+   = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
+help: the trait `DemuxEnumSink<(Pin<&mut __SinkCircle>, Pin<&mut __SinkRectangle>, Pin<&mut __SinkSquare>)>` is implemented for `Shape`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:5:14
+   |
+ 5 |     #[derive(DemuxEnum)]
+   |              ^^^^^^^^^
+note: required by a bound in `demux_enum_guard`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:17:15
+   |
+17 |         ]) -> demux_enum::<Option<()>>();
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
+   = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `impl dfir_rs::futures::Sink<std::option::Option<()>, Error = Infallible>: dfir_rs::futures::Sink<Shape>` is not satisfied
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:13:20
+   |
+13 |           my_demux = source_iter([
+   |  ____________________^
+14 | |             Shape::Rectangle { w: 10.0, h: 8.0 },
+15 | |             Shape::Square(9.0),
+16 | |             Shape::Circle { r: 5.0 },
+17 | |         ]) -> demux_enum::<Option<()>>();
+   | |________________________________________^ the trait `dfir_rs::futures::Sink<Shape>` is not implemented for `impl dfir_rs::futures::Sink<std::option::Option<()>, Error = Infallible>`
+   |
+   = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
+             `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
+             `&mut S` implements `dfir_rs::futures::Sink<Item>`
+             `Box<S>` implements `dfir_rs::futures::Sink<Item>`
+             `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
+             `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
+             `DemuxEnum<Outputs>` implements `dfir_rs::futures::Sink<Item>`
+             `DemuxMap<Key, Si>` implements `dfir_rs::futures::Sink<(Key, Item)>`
+             `DemuxVar<Sinks, Error>` implements `dfir_rs::futures::Sink<(usize, Item)>`
+           and $N others
+note: required by a bound in `pivot_run_sg_1v1`
+  --> tests/compile-fail/surface_demuxenum_wrongenum.rs:13:20
+   |
+13 |           my_demux = source_iter([
+   |  ____________________^
+14 | |             Shape::Rectangle { w: 10.0, h: 8.0 },
+15 | |             Shape::Square(9.0),
+16 | |             Shape::Circle { r: 5.0 },
+17 | |         ]) -> demux_enum::<Option<()>>();
+   | |________________________________________^ required by this bound in `pivot_run_sg_1v1`
