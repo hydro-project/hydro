@@ -18,16 +18,19 @@ pub(super) struct DfirMetricsState {
     pub(super) handoff_metrics: SecondarySlotVec<HandoffTag, HandoffMetrics>,
 }
 
-/// DFIR runtime metrics accumulated across a time, possibly since runtime creation.
+/// DFIR runtime metrics accumulated across a span of time, possibly since runtime creation.
 #[derive(Clone)]
 pub struct DfirMetrics {
+    /// `curr` is constantly updating (via shared ownership).
     pub(super) curr: Rc<DfirMetricsState>,
+    /// `prev` s an unchanging snapshot in time.
     /// `None` for "since creation".
     pub(super) prev: Option<DfirMetricsState>,
 }
 impl DfirMetrics {
     /// Begins a new metrics collection period, effectively resetting all metrics to zero.
     pub fn reset(&mut self) {
+        // The `clone` clones a snapshot of `curr` which no longer updates.
         self.prev = Some(self.curr.as_ref().clone());
     }
 
@@ -171,6 +174,7 @@ where
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
 
+        // End idle duration.
         if let Some(idle_start) = this.idle_start {
             this.metrics
                 .total_idle_duration
@@ -178,14 +182,18 @@ where
             this.metrics.total_idle_count.update(|x| x + 1);
         }
 
+        // Begin poll duration.
         let poll_start = Instant::now();
         let out = this.future.poll(cx);
-        this.idle_start.replace(Instant::now());
 
+        // End poll duration.
         this.metrics
             .total_poll_duration
             .update(|x| x + poll_start.elapsed());
         this.metrics.total_poll_count.update(|x| x + 1);
+
+        // Begin idle duration.
+        this.idle_start.replace(Instant::now());
 
         out
     }

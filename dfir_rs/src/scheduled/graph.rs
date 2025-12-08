@@ -97,7 +97,7 @@ impl Dfir<'_> {
             self.subgraphs[pred_sg_id].succs.push(new_hoff_id);
         }
 
-        // Add metrics.
+        // Initialize handoff metrics struct.
         Rc::make_mut(&mut self.metrics)
             .handoff_metrics
             .insert(new_hoff_id, Default::default());
@@ -294,11 +294,13 @@ impl<'a> Dfir<'a> {
         {
             let sg_data = &mut self.subgraphs[sg_id];
 
-            // Update handoff metadata.
+            // Update handoff metrics.
             // NOTE(mingwei):
-            // This is done BEFORE running the subgraph because we rely on the fact that subgraphs always(*) consume
-            // all inputs. This is NOT done AFTER running the subgraph because it may send to the handoff multiple
-            // times without the next subgraph draining the handoff.
+            // We measure handoff metrics at `recv`, not `send`.
+            // This is done because we (a) know that all `recv`
+            // will be consumed(*) by the subgraph when it is run, and in contrast (b) do not know
+            // that all `send` will be consumed after a run. I.e. this subgraph may run multiple
+            // times before the next subgraph consumes the output; don't double count those.
             // (*) - usually... always true for Hydro-generated DFIR at least.
             for &handoff_id in sg_data.preds.iter() {
                 let handoff_metrics = &self.metrics.handoff_metrics[handoff_id];
@@ -414,9 +416,10 @@ impl<'a> Dfir<'a> {
                 let sg_metrics = &self.metrics.subgraph_metrics[sg_id];
                 let sg_fut =
                     Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs));
+                // Update subgraph metrics.
                 let sg_fut = InstrumentSubgraph::new(sg_fut, sg_metrics);
                 // Pass along `run_subgraph_span` to the run subgraph future.
-                let sg_fut = sg_fut.instrument(run_subgraph_span_guard.exit())
+                let sg_fut = sg_fut.instrument(run_subgraph_span_guard.exit());
                 let () = sg_fut.await;
 
                 sg_metrics.total_run_count.update(|x| x + 1);
@@ -871,7 +874,7 @@ impl<'a> Dfir<'a> {
         self.context.init_stratum(stratum);
         self.context.stratum_queues[stratum].push_back(sg_id);
 
-        // Add metrics.
+        // Initialize subgraph metrics struct.
         Rc::make_mut(&mut self.metrics)
             .subgraph_metrics
             .insert(sg_id, Default::default());
@@ -974,7 +977,7 @@ impl<'a> Dfir<'a> {
         self.context.init_stratum(stratum);
         self.context.stratum_queues[stratum].push_back(sg_id);
 
-        // Add metrics.
+        // Initialize subgraph metrics struct.
         Rc::make_mut(&mut self.metrics)
             .subgraph_metrics
             .insert(sg_id, Default::default());
@@ -994,7 +997,7 @@ impl<'a> Dfir<'a> {
             .handoffs
             .insert_with_key(|hoff_id| HandoffData::new(name.into(), handoff, hoff_id));
 
-        // Add metrics.
+        // Initialize handoff metrics struct.
         Rc::make_mut(&mut self.metrics)
             .handoff_metrics
             .insert(handoff_id, Default::default());
