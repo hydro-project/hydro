@@ -467,8 +467,9 @@ fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
     let a_max_ballot = p_to_acceptors_p1a
         .clone()
         .inspect(q!(|p1a| println!("Acceptor received P1a: {:?}", p1a)))
-        .persist()
+        .all_ticks_atomic()
         .max()
+        .snapshot_atomic(nondet!(/** always up to date with batch being processed */))
         .unwrap_or(acceptor_tick.singleton(q!(Ballot {
             num: 0,
             proposer_id: MemberId::from_raw_id(0)

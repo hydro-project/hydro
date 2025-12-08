@@ -917,6 +917,7 @@ where
                 inner: Box::new(self.ir_node.into_inner()),
                 metadata: self
                     .location
+                    .tick
                     .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),
             },
         )
@@ -1201,15 +1202,6 @@ where
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
-    }
-
-    #[deprecated(note = "use .into_stream().persist()")]
-    #[expect(missing_docs, reason = "deprecated")]
-    pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce>
-    where
-        T: Clone,
-    {
-        self.into_stream().persist()
     }
 
     /// Converts this optional into a [`Stream`] containing a single element, the value, if it is
