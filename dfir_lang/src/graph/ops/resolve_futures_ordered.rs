@@ -1,7 +1,8 @@
 use syn::Ident;
 
 use super::{
-    resolve_futures::resolve_futures_writer, OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1
+    OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1,
+    resolve_futures::resolve_futures_writer,
 };
 
 /// Given an incoming stream of `F: Future`, sends those futures to the executor being used
@@ -26,10 +27,6 @@ pub const RESOLVE_FUTURES_ORDERED: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: move |wc, _| {
-        resolve_futures_writer(
-            Ident::new("FuturesOrdered", wc.op_span),
-            Ident::new("push_back", wc.op_span),
-            wc
-        )
-    }
+        resolve_futures_writer(Ident::new("FuturesOrdered", wc.op_span), false, wc)
+    },
 };

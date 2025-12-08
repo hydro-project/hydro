@@ -40,7 +40,7 @@ use crate::diagnostic::Diagnostic;
 /// ```
 ///
 /// ```dfir
-/// use dfir_rs::compiled::pull::{Fold, Reduce};
+/// use dfir_rs::util::accumulator::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
@@ -53,7 +53,7 @@ use crate::diagnostic::Diagnostic;
 /// Here is an example of using `FoldFrom` to derive the accumulator from the first value:
 ///
 /// ```dfir
-/// use dfir_rs::compiled::pull::{Fold, FoldFrom};
+/// use dfir_rs::util::accumulator::{Fold, FoldFrom};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
@@ -73,7 +73,7 @@ use crate::diagnostic::Diagnostic;
 /// for example, the two following examples have identical behavior:
 ///
 /// ```dfir
-/// use dfir_rs::compiled::pull::{Fold, Reduce};
+/// use dfir_rs::util::accumulator::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> persist::<'static>() -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
@@ -85,7 +85,7 @@ use crate::diagnostic::Diagnostic;
 /// ```
 ///
 /// ```dfir
-/// use dfir_rs::compiled::pull::{Fold, Reduce};
+/// use dfir_rs::util::accumulator::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
@@ -115,6 +115,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                    root,
                    context,
                    op_span,
+                   work_fn_async,
                    ident,
                    inputs,
                    is_pull,
@@ -132,8 +133,8 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
         let (rhs_prologue, rhs_prologue_after, rhs_pre_write_iter, rhs_borrow) =
             make_joindata(wc, persistences[1], "rhs").map_err(|err| diagnostics.push(err))?;
 
-        let lhs_iter = &inputs[0];
-        let rhs_iter = &inputs[1];
+        let lhs = &inputs[0];
+        let rhs = &inputs[1];
 
         let lhs_accum = &arguments[0];
         let rhs_accum = &arguments[1];
@@ -144,26 +145,27 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             #rhs_pre_write_iter
 
             let #ident = {
-                fn __check_accum<Accumulator, Key, Accum, Iter, Hasher, Item>(accum: &mut Accumulator, borrow: &mut ::std::collections::HashMap<Key, Accum, Hasher>, iter: Iter)
+                async fn __check_accum<Accumulator, Key, Accum, St, Hasher, Item>(accum: &mut Accumulator, borrow: &mut ::std::collections::HashMap<Key, Accum, Hasher>, st: St)
                 where
-                    Accumulator: #root::compiled::pull::Accumulator<Accum, Item>,
+                    Accumulator: #root::util::accumulator::Accumulator<Accum, Item>,
                     Key: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone,
-                    Iter: ::std::iter::Iterator<Item = (Key, Item)>,
+                    St: #root::futures::stream::Stream<Item = (Key, Item)>,
                     Hasher: ::std::hash::BuildHasher,
                     Item: ::std::clone::Clone,
                 {
-                    #root::compiled::pull::Accumulator::accumulate_all(accum, borrow, iter);
+                    #root::compiled::pull::accumulate_all(accum, borrow, st).await;
                 }
-                __check_accum(&mut #lhs_accum, &mut *#lhs_borrow, #lhs_iter);
-                __check_accum(&mut #rhs_accum, &mut *#rhs_borrow, #rhs_iter);
+                #work_fn_async(__check_accum(&mut #lhs_accum, &mut *#lhs_borrow, #lhs)).await;
+                #work_fn_async(__check_accum(&mut #rhs_accum, &mut *#rhs_borrow, #rhs)).await;
 
                 // TODO: start the iterator with the smallest len() table rather than always picking rhs.
                 #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-                #rhs_borrow
+                let iter = #rhs_borrow
                     .iter()
                     .filter_map(|(k, v2)| {
                         #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone())))
-                    })
+                    });
+                #root::futures::stream::iter(iter)
             };
         };
 

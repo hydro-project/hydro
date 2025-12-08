@@ -37,7 +37,7 @@ pub(crate) async fn server_state_flow(
         source_iter(shopping_ssiv)
           -> map(|pair| (pair, remote_addr)) -> dest_sink_serde(reqs_out);
         source_stream_serde(reqs_in) -> map(Result::unwrap) -> map(|((client, req), _a): ((usize, SealedSetOfIndexedValues<Request>), _)| (client, req))
-          -> fold_keyed::<'static>(SSIV_BOT, ssiv_merge) -> [0]lookup_class;
+          -> fold_keyed::<'static>(SSIV_BOT, |state, delta| { (ssiv_merge)(state, delta); }) -> [0]lookup_class;
         source_iter(client_class) -> [1]lookup_class;
         lookup_class = join::<'static>()
           -> map(|(client, (li, class))| ((client, class), li))

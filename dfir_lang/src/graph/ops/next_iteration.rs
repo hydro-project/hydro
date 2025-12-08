@@ -1,8 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0,
-    RANGE_1,
+    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 // TODO(mingwei)
@@ -23,6 +23,7 @@ pub const NEXT_ITERATION: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |&WriteContextArgs {
+                   root,
                    context,
                    ident,
                    is_pull,
@@ -36,7 +37,7 @@ pub const NEXT_ITERATION: OperatorConstraints = OperatorConstraints {
         let input = &inputs[0];
         let write_iterator = quote_spanned! {op_span=>
             // Discard items from previous loop executions.
-            let #ident = ::std::iter::Iterator::filter(#input, |_| 0 != #context.loop_iter_count());
+            let #ident = #root::tokio_stream::StreamExt::filter(#input, |_| 0 != #context.loop_iter_count());
         };
 
         Ok(OperatorWriteOutput {

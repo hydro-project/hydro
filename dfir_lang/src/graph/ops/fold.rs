@@ -53,11 +53,13 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                    context,
                    df_ident,
                    op_span,
+                   work_fn,
+                   work_fn_async,
                    ident,
                    is_pull,
                    inputs,
+                   outputs,
                    singleton_output_ident,
-                   work_fn,
                    arguments,
                    ..
                },
@@ -74,7 +76,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
 
         let input = &inputs[0];
         let accumulator_ident = wc.make_ident("accumulator");
-        let iterator_item_ident = wc.make_ident("iterator_item");
+        let item_ident = wc.make_ident("item");
 
         let write_prologue = quote_spanned! {op_span=>
             #[allow(unused_mut, reason = "for if `Fn` instead of `FnMut`.")]
@@ -99,40 +101,44 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                 #context.state_ref_unchecked(#singleton_output_ident)
             }.borrow_mut();
         };
-        let iterator_foreach = quote_spanned! {op_span=>
+        let foreach_body = quote_spanned! {op_span=>
             #[inline(always)]
             fn call_comb_type<Accum, Item>(
                 accum: &mut Accum,
                 item: Item,
-                func: impl Fn(&mut Accum, Item),
+                mut func: impl FnMut(&mut Accum, Item),
             ) {
                 (func)(accum, item);
             }
             #[allow(clippy::redundant_closure_call)]
-            call_comb_type(&mut *#accumulator_ident, #iterator_item_ident, #func);
+            call_comb_type(&mut *#accumulator_ident, #item_ident, #func);
         };
 
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
-                let #ident = {
-                    #assign_accum_ident
+                #assign_accum_ident
 
-                    #work_fn(|| #input.for_each(|#iterator_item_ident| {
-                        #iterator_foreach
-                    }));
+                // Eagerly consume input to ensure updated state.
+                {
+                    let __fut = #root::compiled::pull::ForEach::new(#input, |#item_ident| {
+                        #foreach_body
+                    });
+                    let () = #work_fn_async(__fut).await;
+                }
 
-                    #[allow(clippy::clone_on_copy)]
-                    {
-                        ::std::iter::once(#work_fn(|| ::std::clone::Clone::clone(&*#accumulator_ident)))
-                    }
-                };
+                let #ident = #work_fn(
+                    || #root::tokio_stream::once(
+                        ::std::clone::Clone::clone(&*#accumulator_ident)
+                    )
+                );
             }
         } else {
+            assert_eq!(0, outputs.len());
             quote_spanned! {op_span=>
-                let #ident = #root::sinktools::for_each::ForEach::new(|#iterator_item_ident| {
+                let #ident = #root::sinktools::for_each::ForEach::new(|#item_ident| {
                     #assign_accum_ident
 
-                    #iterator_foreach
+                    #foreach_body
                 });
             }
         };

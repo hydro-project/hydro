@@ -39,6 +39,7 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
+        root,
                    op_span,
                    ident,
                    inputs,
@@ -51,10 +52,10 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         let rhs = &inputs[1];
         let write_iterator = output.write_iterator;
         output.write_iterator = quote_spanned!(op_span=>
-            let #lhs = #lhs.map(|a| ((), a));
-            let #rhs = #rhs.map(|b| ((), b));
+            let #lhs = #root::futures::stream::StreamExt::map(#lhs, |a| ((), a));
+            let #rhs = #root::futures::stream::StreamExt::map(#rhs, |b| ((), b));
             #write_iterator
-            let #ident = #ident.map(|((), (a, b))| (a, b));
+            let #ident = #root::futures::stream::StreamExt::map(#ident, |((), (a, b))| (a, b));
         );
 
         Ok(output)

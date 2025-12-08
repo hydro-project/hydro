@@ -47,7 +47,7 @@ pub const FILTER_MAP: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #input.filter_map(#func);
+                let #ident = #root::tokio_stream::StreamExt::filter_map(#input, #func);
             }
         } else {
             let output = &outputs[0];

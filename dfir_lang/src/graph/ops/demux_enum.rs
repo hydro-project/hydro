@@ -134,7 +134,7 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
             if is_pull {
                 let input = &inputs[0];
                 quote_spanned! {op_span=>
-                    let #ident = #input.map(#map_fn);
+                    let #ident = #root::futures::stream::StreamExt::map(#input, #map_fn);
                 }
             } else {
                 let output = &outputs[0];

@@ -5,7 +5,7 @@ expression: df.meta_graph().unwrap().to_dot(cfg)
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
-    n1v1 [label="(n1v1) difference_multiset::<'tick, 'static>()", shape=invhouse, fillcolor="#88aaff"]
+    n1v1 [label="(n1v1) difference::<'tick, 'static>()", shape=invhouse, fillcolor="#88aaff"]
     n2v1 [label="(n2v1) sort()", shape=invhouse, fillcolor="#88aaff"]
     n3v1 [label="(n3v1) for_each(|v| output_send.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
     n4v1 [label="(n4v1) source_stream(pos_recv)", shape=invhouse, fillcolor="#88aaff"]
