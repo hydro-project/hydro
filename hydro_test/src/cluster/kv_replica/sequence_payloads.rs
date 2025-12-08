@@ -74,11 +74,18 @@ mod tests {
         let (in_send, input_payloads) = node.sim_input();
         let (sequenced, complete_next_slot) = sequence_payloads(&tick, input_payloads);
 
-        complete_next_slot.complete_next_tick(sequenced.clone()
-            .persist() // Optimization: all_ticks() + fold() = fold<static>, where the state of the previous fold is saved and persisted values are deleted.
-            .fold(q!(|| 0), q!(|next_slot, payload: SequencedKv<(), ()>| {
-                *next_slot = payload.seq + 1;
-            })));
+        complete_next_slot.complete_next_tick(
+            sequenced
+                .clone()
+                .all_ticks_atomic()
+                .fold(
+                    q!(|| 0),
+                    q!(|next_slot, payload: SequencedKv<(), ()>| {
+                        *next_slot = payload.seq + 1;
+                    }),
+                )
+                .snapshot_atomic(nondet!(/** always up to date with current batch */)),
+        );
 
         let out_recv = sequenced.all_ticks().sim_output();
 

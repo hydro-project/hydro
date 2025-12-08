@@ -387,37 +387,47 @@ impl DfirBuilder for SimBuilder {
         match in_kind {
             CollectionKind::Stream { .. } | CollectionKind::KeyedStream { .. } => {
                 debug_assert!(out_location.is_top_level());
-                if let LocationId::Atomic(_) = out_location {
-                    todo!("atomic yield is not yet supported");
+                if let LocationId::Atomic(t) = out_location {
+                    if t.as_ref() == in_location {
+                        self.get_dfir_mut(out_location).add_dfir(
+                            parse_quote! {
+                                #out_ident = #in_ident;
+                            },
+                            None,
+                            None,
+                        );
+                    } else {
+                        todo!("atomic yield to a different tick is not yet supported");
+                    }
+                } else {
+                    let hoff_id = self.next_hoff_id;
+                    self.next_hoff_id += 1;
+
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(out_location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                    });
+
+                    self.get_dfir_mut(in_location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #hoff_send_ident.send(v).unwrap());
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(out_location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
                 }
-
-                let hoff_id = self.next_hoff_id;
-                self.next_hoff_id += 1;
-
-                let hoff_send_ident =
-                    syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                let hoff_recv_ident =
-                    syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-
-                self.add_extra_stmt_internal(out_location, syn::parse_quote! {
-                    let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
-                });
-
-                self.get_dfir_mut(in_location).add_dfir(
-                    parse_quote! {
-                        #in_ident -> for_each(|v| #hoff_send_ident.send(v).unwrap());
-                    },
-                    None,
-                    None,
-                );
-
-                self.get_dfir_mut(out_location).add_dfir(
-                    parse_quote! {
-                        #out_ident = source_stream(#hoff_recv_ident);
-                    },
-                    None,
-                    None,
-                );
             }
             _ => todo!(),
         }

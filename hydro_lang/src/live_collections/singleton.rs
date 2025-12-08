@@ -952,15 +952,6 @@ where
         )
     }
 
-    #[deprecated(note = "use .into_stream().persist()")]
-    #[expect(missing_docs, reason = "deprecated")]
-    pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce>
-    where
-        T: Clone,
-    {
-        self.into_stream().persist()
-    }
-
     /// Converts this singleton into a [`Stream`] containing a single element, the value.
     ///
     /// # Example
