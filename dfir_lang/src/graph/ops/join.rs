@@ -100,9 +100,10 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                    df_ident,
                    loop_id,
                    op_span,
+                   work_fn,
+                   work_fn_async,
                    ident,
                    inputs,
-                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -141,7 +142,11 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
 
             let lifespan = wc.persistence_as_state_lifespan(persistence);
             let reset = lifespan.map(|lifespan| quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(#joindata_ident, #lifespan, |rcell| (#work_fn)(|| #root::util::clear::Clear::clear(::std::cell::RefCell::get_mut(rcell))));
+                #df_ident.set_state_lifespan_hook(
+                    #joindata_ident,
+                    #lifespan,
+                    |rcell| (#work_fn)(|| #root::util::clear::Clear::clear(::std::cell::RefCell::get_mut(rcell)))
+                );
             }).unwrap_or_default();
 
             let prologue = quote_spanned! {op_span=>
@@ -186,24 +191,25 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             let #ident = {
                 // Limit error propagation by bounding locally, erasing output iterator type.
                 #[inline(always)]
-                fn check_inputs<'a, K, I1, V1, I2, V2>(
+                async fn check_inputs<'a, K, I1, V1, I2, V2>(
                     lhs: I1,
                     rhs: I2,
                     lhs_state: &'a mut #join_type<K, V1, V2>,
                     rhs_state: &'a mut #join_type<K, V2, V1>,
                     is_new_tick: bool,
-                ) -> impl 'a + Iterator<Item = (K, (V1, V2))>
+                ) -> impl 'a + #root::futures::stream::Stream<Item = (K, (V1, V2))>
                 where
                     K: Eq + std::hash::Hash + Clone,
                     V1: Clone #additional_trait_bounds,
                     V2: Clone #additional_trait_bounds,
-                    I1: 'a + Iterator<Item = (K, V1)>,
-                    I2: 'a + Iterator<Item = (K, V2)>,
+                    I1: 'a + #root::futures::stream::Stream<Item = (K, V1)>,
+                    I2: 'a + #root::futures::stream::Stream<Item = (K, V2)>,
                 {
-                    #work_fn(|| #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick))
+                    #root::compiled::pull::symmetric_hash_join_into_stream(lhs, rhs, lhs_state, rhs_state, is_new_tick).await
                 }
 
-                check_inputs(#lhs, #rhs, &mut *#lhs_borrow_ident, &mut *#rhs_borrow_ident, #context.is_first_run_this_tick())
+                let fut = check_inputs(#lhs, #rhs, &mut *#lhs_borrow_ident, &mut *#rhs_borrow_ident, #context.is_first_run_this_tick());
+                #work_fn_async(fut).await
             };
         };
 

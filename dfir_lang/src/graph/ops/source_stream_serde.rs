@@ -64,15 +64,21 @@ pub const SOURCE_STREAM_SERDE: OperatorConstraints = OperatorConstraints {
         let receiver = &arguments[0];
         let stream_ident = wc.make_ident("stream");
         let write_prologue = quote_spanned! {op_span=>
+            // TODO(mingwei): use `::std::pin::pin!(..)`?
             let mut #stream_ident = Box::pin(#receiver);
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = ::std::iter::from_fn(|| {
+            let #ident = #root::futures::stream::poll_fn(|_tick_cx| {
+                // Using the `tick_cx` will cause the tick to "block" (yield) until the stream is exhausted, which is not what we want.
+                // We want only the ready items, and will awaken this subgraph on a later tick when more items are available.
                 match #root::futures::stream::Stream::poll_next(#stream_ident.as_mut(), &mut ::std::task::Context::from_waker(&#context.waker())) {
-                    ::std::task::Poll::Ready(Some(::std::result::Result::Ok((payload, addr)))) => Some(#root::util::deserialize_from_bytes::<#generic_type>(payload).map(|payload| (payload, addr))),
-                    ::std::task::Poll::Ready(Some(Err(_))) => None,
-                    ::std::task::Poll::Ready(None) => None,
-                    ::std::task::Poll::Pending => None,
+                    ::std::task::Poll::Ready(::std::option::Option::Some(::std::result::Result::Ok((payload, addr)))) =>
+                        ::std::task::Poll::Ready(::std::option::Option::Some(
+                            #root::util::deserialize_from_bytes::<#generic_type>(payload).map(|payload| (payload, addr))
+                        )),
+                    ::std::task::Poll::Ready(::std::option::Option::Some(::std::result::Result::Err(_)))
+                        | ::std::task::Poll::Ready(::std::option::Option::None)
+                        | ::std::task::Poll::Pending => ::std::task::Poll::Ready(::std::option::Option::None),
                 }
             });
         };

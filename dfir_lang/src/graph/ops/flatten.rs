@@ -44,7 +44,7 @@ pub const FLATTEN: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #input.flatten();
+                let #ident = #root::compiled::pull::Flatten::new(#input);
             }
         } else {
             let output = &outputs[0];

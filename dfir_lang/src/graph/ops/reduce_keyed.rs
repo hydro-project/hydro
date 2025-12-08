@@ -78,7 +78,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                    inputs,
                    singleton_output_ident,
                    is_pull,
-                   work_fn,
+                   work_fn_async,
                    root,
                    op_name,
                    op_inst:
@@ -158,25 +158,24 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                     #context.state_ref_unchecked(#singleton_output_ident)
                 }.borrow_mut();
 
-                #work_fn(|| {
+                {
                     #[inline(always)]
-                    fn check_input<Iter, K, V>(iter: Iter) -> impl ::std::iter::Iterator<Item = (K, V)>
+                    fn check_input<St, K, V>(st: St) -> impl #root::futures::stream::Stream<Item = (K, V)>
                     where
-                        Iter: std::iter::Iterator<Item = (K, V)>,
+                        St: #root::futures::stream::Stream<Item = (K, V)>,
                         K: ::std::clone::Clone,
                         V: ::std::clone::Clone
                     {
-                        iter
+                        st
                     }
 
                     /// A: accumulator/item type
-                    /// O: output type
                     #[inline(always)]
-                    fn call_comb_type<A, O>(acc: &mut A, item: A, f: impl Fn(&mut A, A) -> O) -> O {
-                        (f)(acc, item)
+                    fn call_comb_type<A>(acc: &mut A, item: A, f: impl Fn(&mut A, A)) {
+                        let () = (f)(acc, item);
                     }
 
-                    for kv in check_input(#input) {
+                    let fut = #root::compiled::pull::ForEach::new(check_input(#input), |kv| {
                         match #hashtable_ident.entry(kv.0) {
                             ::std::collections::hash_map::Entry::Vacant(vacant) => {
                                 vacant.insert(kv.1);
@@ -185,10 +184,12 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                                 call_comb_type(occupied.get_mut(), kv.1, #aggfn);
                             }
                         }
-                    }
-                });
+                    });
+                    let () = #work_fn_async(fut).await;
+                }
 
                 let #ident = #iter_expr;
+                let #ident = #root::futures::stream::iter(#ident);
             }
         };
 

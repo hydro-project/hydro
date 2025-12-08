@@ -15,12 +15,12 @@ pub fn test_reduce_keyed_infer_basic() {
 
     let mut df = dfir_rs::dfir_syntax! {
         source_iter([
-            SubordResponse { xid: "123", mtype: 33 },
-            SubordResponse { xid: "123", mtype: 52 },
-            SubordResponse { xid: "123", mtype: 72 },
-            SubordResponse { xid: "123", mtype: 83 },
-            SubordResponse { xid: "123", mtype: 78 },
-        ])
+                SubordResponse { xid: "123", mtype: 33 },
+                SubordResponse { xid: "123", mtype: 52 },
+                SubordResponse { xid: "123", mtype: 72 },
+                SubordResponse { xid: "123", mtype: 83 },
+                SubordResponse { xid: "123", mtype: 78 },
+            ])
             -> map(|m: SubordResponse| (m.xid, m.mtype))
             -> reduce_keyed::<'static>(|old: &mut u32, val: u32| *old += val)
             -> for_each(|kv| result_send.send(kv).unwrap());

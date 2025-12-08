@@ -1,4 +1,4 @@
-error[E0271]: expected `Drain<'_, &str>` to be an iterator that yields `(_, _)`, but it yields `&str`
+error[E0271]: type mismatch resolving `<Iter<Drain<'_, &str>> as Stream>::Item == (_, _)`
  --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:3:9
   |
 3 |         source_iter(["hello", "world"])
@@ -14,7 +14,7 @@ note: required by a bound in `check_input`
 4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
   |                ^^^^^^^^^^ required by this bound in `check_input`
 
-error[E0271]: expected `Drain<'_, &str>` to be an iterator that yields `(_, _)`, but it yields `&str`
+error[E0271]: type mismatch resolving `<Iter<Drain<'_, &str>> as Stream>::Item == (_, _)`
  --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
   |
 4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {

@@ -34,7 +34,7 @@ pub(crate) async fn client_state_flow(
     // The second process listens on reqs_in and runs the lookup join.
     dfir_syntax! {
         source_iter(shopping_ssiv)
-          -> fold_keyed::<'static>(SSIV_BOT, ssiv_merge)
+          -> fold_keyed::<'static>(SSIV_BOT, |state, delta| { (ssiv_merge)(state, delta); })
           -> map(|pair| (pair, remote_addr)) -> dest_sink_serde(carts_out);
         source_stream_serde(carts_in) -> map(Result::unwrap) -> map(|((client, cart), _a): ((usize, SealedSetOfIndexedValues<Request>), _)| (client, cart))
           -> [0]lookup_class;

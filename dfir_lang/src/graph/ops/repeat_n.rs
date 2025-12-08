@@ -25,9 +25,11 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    context,
                    df_ident,
                    op_span,
+                   work_fn_async,
                    arguments,
                    ident,
                    is_pull,
@@ -55,9 +57,11 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
             }.borrow_mut();
 
             if 0 == #context.loop_iter_count() {
-                *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
+                *#vec_ident = #work_fn_async(
+                    #root::futures::stream::StreamExt::collect::<::std::vec::Vec<_>>(#input),
+                ).await;
             }
-            let #ident = std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
+            let #ident = #root::futures::stream::iter(::std::clone::Clone::clone(&*#vec_ident));
         };
 
         // Reschedule, to repeat.

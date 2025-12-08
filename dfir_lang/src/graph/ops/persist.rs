@@ -62,7 +62,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                    outputs,
                    singleton_output_ident,
                    op_name,
-                   work_fn,
+                   work_fn_async,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -105,14 +105,19 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = {
-                    if #context.is_first_run_this_tick() {
-                        #work_fn(|| #vec_ident.extend(#input));
-                        #vec_ident.iter().cloned()
+                    let replay_idx = if #context.is_first_run_this_tick() {
+                        0
                     } else {
-                        let len = #vec_ident.len();
-                        #work_fn(|| #vec_ident.extend(#input));
-                        #vec_ident[len..].iter().cloned()
-                    }
+                        #vec_ident.len()
+                    };
+
+                    let fut = #root::compiled::pull::ForEach::new(#input, |item| {
+                        #vec_ident.push(item);
+                    });
+                    let () = #work_fn_async(fut).await;
+
+                    let iter = #vec_ident[replay_idx..].iter().cloned();
+                    #root::futures::stream::iter(iter)
                 };
             }
         } else {

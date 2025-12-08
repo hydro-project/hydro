@@ -20,7 +20,6 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
     let reader = tokio::io::BufReader::new(tokio::io::stdin());
     let stdin_lines = LinesStream::new(reader.lines());
 
-    #[expect(clippy::map_identity, reason = "helps type inference?")]
     let mut hf: Dfir = dfir_syntax! {
         // fetch peers from file, convert ip:port to a SocketAddr, and tee
         peers = source_iter(peer_list)

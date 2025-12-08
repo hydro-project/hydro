@@ -160,7 +160,7 @@ pub const SCAN: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
-                let #ident = #input.filter_map(|#iterator_item_ident| {
+                let #ident = #root::tokio_stream::StreamExt::filter_map(#input, |#iterator_item_ident| {
                     #filter_map_body
                 });
             }

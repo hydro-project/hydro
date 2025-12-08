@@ -18,7 +18,6 @@ pub fn main() {
     // An edge in the input data = a pair of `usize` vertex IDs.
     let (edges_send, edges_recv) = dfir_rs::util::unbounded_channel::<(usize, usize)>();
 
-    #[expect(clippy::map_identity, reason = "code symmetry")]
     let mut df = dfir_syntax! {
         edges = source_stream(edges_recv) -> tee();
 
