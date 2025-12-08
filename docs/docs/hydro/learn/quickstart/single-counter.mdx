@@ -87,8 +87,8 @@ Code that involves `nondet!` calls for extra scrutiny during code review, as any
 After declaring the `use` statements, which must come at the top of the macro invocation, the body of `sliced!` processes the data:
 
 <CodeBlock language="rust" title={
-  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={19}>{getLines(singleClientCounterSrc, 19, 20)}</CodeBlock>
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter_buggy.rs">src/single_client_counter.rs</Link>
+} showLineNumbers={19}>{getLines(singleClientCounterBuggySrc, 19, 20)}</CodeBlock>
 
 The `cross_singleton` method pairs each element in the stream with the singleton value, creating tuples like `((), 5)`. Then you use `map` to extract just the count from the tuple with `map(q!(|(_, count)| count))`, converting `((), 5)` to just `5`.
 
