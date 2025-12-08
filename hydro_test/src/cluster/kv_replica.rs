@@ -64,10 +64,8 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
     let (r_processable_payloads, r_next_slot_complete_cycle) =
         sequence_payloads::sequence_payloads(&replica_tick, p_to_replicas);
 
-    let r_kv_store = r_processable_payloads
-        .clone()
-        .all_ticks_atomic()
-        .fold(
+    let r_kv_store = r_processable_payloads.clone().across_ticks(|s| {
+        s.fold(
             q!(|| (HashMap::new(), 0)),
             q!(|(kv_store, next_slot), payload| {
                 if let Some(kv) = payload.kv {
@@ -76,7 +74,7 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
                 *next_slot = payload.seq + 1;
             }),
         )
-        .snapshot_atomic(nondet!(/** always up to date with batch being processed */));
+    });
     // Update the highest seq for the next tick
     let r_next_slot = r_kv_store.map(q!(|(_kv_store, next_slot)| next_slot));
     r_next_slot_complete_cycle.complete_next_tick(r_next_slot.clone());
@@ -86,9 +84,7 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
         replica_tick.cycle::<Optional<usize, _, _>>();
     let r_max_checkpointed_seq = r_checkpointed_seqs
         .into_stream()
-        .all_ticks_atomic()
-        .max()
-        .snapshot_atomic(nondet!(/** always up to date with batch being processed */))
+        .across_ticks(|s| s.max())
         .into_singleton();
     let r_checkpoint_seq_new = r_max_checkpointed_seq
         .zip(

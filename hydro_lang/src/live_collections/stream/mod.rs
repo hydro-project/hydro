@@ -21,6 +21,7 @@ use crate::compile::ir::{
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
+use crate::live_collections::batch_atomic::BatchAtomic;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick, NoAtomic};
@@ -2836,6 +2837,48 @@ where
                     .new_node_metadata(Stream::<T, Atomic<L>, Unbounded, O, R>::collection_kind()),
             },
         )
+    }
+
+    /// Transforms the stream using the given closure in "stateful" mode, where stateful operators
+    /// such as `fold` retrain their memory across ticks rather than resetting across batches of
+    /// input.
+    ///
+    /// This API is particularly useful for stateful computation on batches of data, such as
+    /// maintaining an accumulated state that is up to date with the current batch.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![1, 2, 3, 4]))
+    /// #  .batch(&tick, nondet!(/** test */));
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![5, 6, 7]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick(); // appears on the second tick
+    /// let input = // [1, 2, 3, 4 (first batch), 5, 6, 7 (second batch)]
+    /// # batch_first_tick.chain(batch_second_tick).all_ticks();
+    ///
+    /// input.batch(&tick, nondet!(/** test */))
+    ///     .across_ticks(|s| s.count()).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [4, 7]
+    /// assert_eq!(stream.next().await.unwrap(), 4);
+    /// assert_eq!(stream.next().await.unwrap(), 7);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn across_ticks<Out: BatchAtomic>(
+        self,
+        thunk: impl FnOnce(Stream<T, Atomic<L>, Unbounded, O, R>) -> Out,
+    ) -> Out::Batched {
+        thunk(self.all_ticks_atomic()).batched_atomic()
     }
 
     /// Shifts the elements in `self` to the **next tick**, so that the returned stream at tick `T`
