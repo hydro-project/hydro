@@ -1,0 +1,32 @@
+---
+source: dfir_rs/tests/surface_scan.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) source_stream(items_recv)", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) tee()", shape=house, fillcolor="#ffff88"]
+    n3v1 [label="(n3v1) for_each(|_| {})", shape=house, fillcolor="#ffff88"]
+    n4v1 [label="(n4v1) scan::<\l    'tick,\l>(\l    || 0,\l    |acc: &mut u32, x: u32| {\l        *acc += x;\l        Some(*acc)\l    },\l)\l", shape=house, fillcolor="#ffff88"]
+    n5v1 [label="(n5v1) for_each(|v| result_send.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
+    n1v1 -> n2v1
+    n2v1 -> n3v1
+    n4v1 -> n5v1
+    n2v1 -> n4v1
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        n3v1
+        n4v1
+        n5v1
+        subgraph sg_1v1_var_teed {
+            cluster=true
+            label="var teed"
+            n1v1
+            n2v1
+        }
+    }
+}

@@ -118,7 +118,6 @@ pub fn test_basic_inspect_no_null() {
 // Mainly checking subgraph partitioning pull-push handling.
 #[multiplatform_test]
 pub fn test_large_diamond() {
-    #[expect(clippy::map_identity, reason = "testing topology")]
     let mut df: Dfir = dfir_syntax! {
         t = source_iter([1]) -> tee();
         j = union() -> for_each(|x| println!("{}", x));

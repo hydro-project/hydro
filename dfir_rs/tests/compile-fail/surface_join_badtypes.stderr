@@ -1,4 +1,4 @@
-error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `({integer}, _)`, but it yields `{integer}`
+error[E0271]: type mismatch resolving `<impl Stream<Item = {integer}> as Stream>::Item == ({integer}, _)`
  --> tests/compile-fail/surface_join_badtypes.rs:7:9
   |
 5 |         j = join() -> for_each(std::mem::drop);
@@ -15,7 +15,7 @@ note: required by a bound in `check_inputs`
 5 |         j = join() -> for_each(std::mem::drop);
   |             ^^^^^^ required by this bound in `check_inputs`
 
-error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `({integer}, _)`, but it yields `{integer}`
+error[E0271]: type mismatch resolving `<impl Stream<Item = {integer}> as Stream>::Item == ({integer}, _)`
  --> tests/compile-fail/surface_join_badtypes.rs:5:13
   |
 5 |         j = join() -> for_each(std::mem::drop);
@@ -29,7 +29,7 @@ note: required by a bound in `check_inputs`
 5 |         j = join() -> for_each(std::mem::drop);
   |             ^^^^^^ required by this bound in `check_inputs`
 
-error[E0271]: expected `impl Iterator<Item = {integer}>` to be an iterator that yields `({integer}, _)`, but it yields `{integer}`
+error[E0271]: type mismatch resolving `<impl Stream<Item = {integer}> as Stream>::Item == ({integer}, _)`
  --> tests/compile-fail/surface_join_badtypes.rs:5:13
   |
 5 |         j = join() -> for_each(std::mem::drop);

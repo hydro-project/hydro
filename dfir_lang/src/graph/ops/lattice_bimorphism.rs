@@ -2,8 +2,7 @@ use quote::quote_spanned;
 use syn::parse_quote;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 /// An operator representing a [lattice bimorphism](https://hydro.run/docs/dfir/lattices_crate/lattice_math#lattice-bimorphism).
@@ -80,20 +79,20 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             let #ident = {
                 #[inline(always)]
-                fn check_inputs<'a, Func, LhsIter, RhsIter, LhsState, RhsState, Output>(
-                    mut func: Func,
-                    mut lhs_iter: LhsIter,
-                    mut rhs_iter: RhsIter,
+                fn check_inputs<'a, Func, LhsStream, RhsStream, LhsState, RhsState, Output>(
+                    lhs_stream: LhsStream,
+                    rhs_stream: RhsStream,
+                    func: Func,
                     lhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<LhsState>>,
                     rhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<RhsState>>,
                     context: &'a #root::scheduled::context::Context,
-                ) -> Option<Output>
+                ) -> impl #root::futures::stream::Stream<Item = Output>
                 where
                     Func: 'a
-                        + #root::lattices::LatticeBimorphism<LhsState, RhsIter::Item, Output = Output>
-                        + #root::lattices::LatticeBimorphism<LhsIter::Item, RhsState, Output = Output>,
-                    LhsIter: 'a + ::std::iter::Iterator,
-                    RhsIter: 'a + ::std::iter::Iterator,
+                        + #root::lattices::LatticeBimorphism<LhsState, RhsStream::Item, Output = Output>
+                        + #root::lattices::LatticeBimorphism<LhsStream::Item, RhsState, Output = Output>,
+                    LhsStream: 'a + #root::futures::stream::Stream,
+                    RhsStream: 'a + #root::futures::stream::Stream,
                     LhsState: 'static + ::std::clone::Clone,
                     RhsState: 'static + ::std::clone::Clone,
                     Output: #root::lattices::Merge<Output>,
@@ -106,25 +105,22 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                         )
                     };
 
-                    let iter = ::std::iter::from_fn(move || {
-                        // Use `from_fn` instead of `chain` to dodge multiple ownership of `func`.
-                        if let Some(lhs_item) = lhs_iter.next() {
-                            Some(func.call(lhs_item, (*rhs_state.borrow()).clone()))
-                        } else {
-                            let rhs_item = rhs_iter.next()?;
-                            Some(func.call((*lhs_state.borrow()).clone(), rhs_item))
-                        }
-                    });
-                    iter.reduce(|a, b| #root::lattices::Merge::merge_owned(a, b))
+                    #root::compiled::pull::LatticeBimorphismStream::new(
+                        #root::futures::stream::StreamExt::fuse(lhs_stream),
+                        #root::futures::stream::StreamExt::fuse(rhs_stream),
+                        func,
+                        lhs_state,
+                        rhs_state,
+                    )
                 }
                 check_inputs(
-                    #func,
                     #lhs_items,
                     #rhs_items,
+                    #func,
                     #lhs_state_handle,
                     #rhs_state_handle,
                     &#context,
-                ).into_iter()
+                )
             };
         };
 

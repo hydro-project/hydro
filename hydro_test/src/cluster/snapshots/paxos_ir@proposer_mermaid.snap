@@ -90,13 +90,13 @@ linkStyle default stroke:#aaa
 80v1["<div style=text-align:center>(80v1)</div> <code><br>filter({<br>    let f__free = {<br>        let max__free = 3usize;<br>        move |(success, error)| (success + error) &gt;= max__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
 81v1["<div style=text-align:center>(81v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
 82v1["<div style=text-align:center>(82v1)</div> <code><br>tee()</code>"]:::otherClass
-83v1["<div style=text-align:center>(83v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-84v1["<div style=text-align:center>(84v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+83v1["<div style=text-align:center>(83v1)</div> <code><br>difference::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+84v1["<div style=text-align:center>(84v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 85v1["<div style=text-align:center>(85v1)</div> <code><br>filter({<br>    let f__free = {<br>        let min__free = 2usize;<br>        move |(success, _error)| success &lt; &amp;min__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
 86v1["<div style=text-align:center>(86v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-87v1["<div style=text-align:center>(87v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+87v1["<div style=text-align:center>(87v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 88v1["<div style=text-align:center>(88v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-89v1["<div style=text-align:center>(89v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+89v1["<div style=text-align:center>(89v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 90v1["<div style=text-align:center>(90v1)</div> <code><br>filter_map({<br>    move |(key, res)| match res {<br>        Ok(v) =&gt; Some((key, v)),<br>        Err(_) =&gt; None,<br>    }<br>})</code>"]:::otherClass
 91v1["<div style=text-align:center>(91v1)</div> <code><br>scan::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || HashMap::new()<br>    },<br>    {<br>        let f__free = {<br>            let f__free = {<br>                let quorum_size__free = 2usize;<br>                move |logs, log| {<br>                    logs.push(log);<br>                    logs.len() &gt;= quorum_size__free<br>                }<br>            };<br>            move |key_state, v| {<br>                if let Some(key_state_value) = key_state.as_mut() {<br>                    if f__free(key_state_value, v) {<br>                        Generate::Return(key_state.take().unwrap())<br>                    } else {<br>                        Generate::Continue<br>                    }<br>                } else {<br>                    unreachable!()<br>                }<br>            }<br>        };<br>        let init__free = {<br>            let init__free = {<br>                || vec![]<br>            };<br>            move || Some(init__free())<br>        };<br>        move |acc: &amp;mut HashMap&lt;_, _&gt;, (k, v)| {<br>            let existing_state = acc<br>                .entry(Clone::clone(&amp;k))<br>                .or_insert_with(|| Some(init__free()));<br>            if let Some(existing_state_value) = existing_state {<br>                match f__free(existing_state_value, v) {<br>                    Generate::Yield(out) =&gt; Some(Some((k, out))),<br>                    Generate::Return(out) =&gt; {<br>                        let _ = existing_state.take();<br>                        Some(Some((k, out)))<br>                    }<br>                    Generate::Break =&gt; {<br>                        let _ = existing_state.take();<br>                        Some(None)<br>                    }<br>                    Generate::Continue =&gt; Some(None),<br>                }<br>            } else {<br>                Some(None)<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
 92v1["<div style=text-align:center>(92v1)</div> <code><br>flat_map({<br>    |d| d<br>})</code>"]:::otherClass
@@ -186,7 +186,7 @@ linkStyle default stroke:#aaa
 179v1["<div style=text-align:center>(179v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 180v1["<div style=text-align:center>(180v1)</div> <code><br>flat_map({<br>    |(max_slot, checkpoint)| {<br>        if let Some(checkpoint) = checkpoint {<br>            (checkpoint + 1)..max_slot<br>        } else {<br>            0..max_slot<br>        }<br>    }<br>})</code>"]:::otherClass
 181v1["<div style=text-align:center>(181v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-182v1["<div style=text-align:center>(182v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+182v1["<div style=text-align:center>(182v1)</div> <code><br>difference::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 183v1["<div style=text-align:center>(183v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 184v1["<div style=text-align:center>(184v1)</div> <code><br>map({<br>    move |(slot, ballot)| ((slot, ballot), None)<br>})</code>"]:::otherClass
 185v1["<div style=text-align:center>(185v1)</div> <code><br>chain()</code>"]:::otherClass
@@ -212,17 +212,17 @@ linkStyle default stroke:#aaa
 205v1["<div style=text-align:center>(205v1)</div> <code><br>filter({<br>    let f__free = {<br>        let max__free = 3usize;<br>        move |(success, error)| (success + error) &gt;= max__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
 206v1["<div style=text-align:center>(206v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
 207v1["<div style=text-align:center>(207v1)</div> <code><br>tee()</code>"]:::otherClass
-208v1["<div style=text-align:center>(208v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-209v1["<div style=text-align:center>(209v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+208v1["<div style=text-align:center>(208v1)</div> <code><br>difference::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+209v1["<div style=text-align:center>(209v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 210v1["<div style=text-align:center>(210v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
 211v1["<div style=text-align:center>(211v1)</div> <code><br>chain()</code>"]:::otherClass
 212v1["<div style=text-align:center>(212v1)</div> <code><br>tee()</code>"]:::otherClass
 213v1["<div style=text-align:center>(213v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-214v1["<div style=text-align:center>(214v1)</div> <code><br>difference_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+214v1["<div style=text-align:center>(214v1)</div> <code><br>difference::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 215v1["<div style=text-align:center>(215v1)</div> <code><br>map({<br>    |k| (k, ())<br>})</code>"]:::otherClass
 216v1["<div style=text-align:center>(216v1)</div> <code><br>tee()</code>"]:::otherClass
 217v1["<div style=text-align:center>(217v1)</div> <code><br>map({<br>    |(key, _)| key<br>})</code>"]:::otherClass
-218v1["<div style=text-align:center>(218v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+218v1["<div style=text-align:center>(218v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 219v1["<div style=text-align:center>(219v1)</div> <code><br>filter_map({<br>    move |(key, res)| match res {<br>        Ok(_) =&gt; None,<br>        Err(e) =&gt; Some((key, e)),<br>    }<br>})</code>"]:::otherClass
 220v1["<div style=text-align:center>(220v1)</div> <code><br>map({<br>    |(_, ballot)| ballot<br>})</code>"]:::otherClass
 221v1["<div style=text-align:center>(221v1)</div> <code><br>source_stream({<br>    let cluster_ids__free = __hydro_lang_cluster_ids_4;<br>    Box::new(<br>        futures::stream::iter(<br>            cluster_ids__free<br>                .iter()<br>                .cloned()<br>                .map(|member_id| (member_id, MembershipEvent::Joined)),<br>        ),<br>    ) as Box&lt;dyn futures::Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin&gt;<br>})</code>"]:::otherClass

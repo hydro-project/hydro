@@ -1,13 +1,28 @@
-//! Pull-based operator helpers, i.e. [`Iterator`] helpers.
+//! Pull-based operator helpers, i.e. [`futures::Stream`] helpers.
 
-mod symmetric_hash_join;
-pub use symmetric_hash_join::*;
+mod accumulate_all;
+pub use accumulate_all::accumulate_all;
+
+mod cross_singleton;
+pub use cross_singleton::CrossSingleton;
+
+mod flatten;
+pub use flatten::Flatten;
+
+mod for_each;
+pub use for_each::ForEach;
 
 mod half_join_state;
 pub use half_join_state::*;
 
-mod anti_join;
-pub use anti_join::*;
+mod into_next;
+pub use into_next::IntoNext;
 
-mod join_fused;
-pub use join_fused::*;
+mod symmetric_hash_join;
+pub use symmetric_hash_join::*;
+
+mod lattice_bimorphism;
+pub use lattice_bimorphism::LatticeBimorphismStream;
+
+mod zip_longest;
+pub use zip_longest::ZipLongest;

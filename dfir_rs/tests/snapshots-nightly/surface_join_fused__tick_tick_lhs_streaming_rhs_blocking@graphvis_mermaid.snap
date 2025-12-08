@@ -17,7 +17,7 @@ linkStyle default stroke:#aaa
 7v1[\"(7v1) <code>defer_tick()</code>"/]:::pullClass
 8v1[\"(8v1) <code>defer_tick()</code>"/]:::pullClass
 9v1[\"(9v1) <code>union()</code>"/]:::pullClass
-10v1[\"(10v1) <code>join_fused_rhs(Fold(SetUnionHashSet::default, Merge::merge))</code>"/]:::pullClass
+10v1[\"<div style=text-align:center>(10v1)</div> <code>join_fused_rhs(<br>    Fold::new(<br>        SetUnionHashSet::default,<br>        |state, delta| {<br>            Merge::merge(state, delta);<br>        },<br>    ),<br>)</code>"/]:::pullClass
 11v1[/"<div style=text-align:center>(11v1)</div> <code>for_each(|x| {<br>    results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x)<br>})</code>"\]:::pushClass
 12v1["(12v1) <code>handoff</code>"]:::otherClass
 13v1["(13v1) <code>handoff</code>"]:::otherClass
