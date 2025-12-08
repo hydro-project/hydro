@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["SparseVec"]};
+window.SIDEBAR_ITEMS = {"struct":["SparseVec","SparseVecIter"]};

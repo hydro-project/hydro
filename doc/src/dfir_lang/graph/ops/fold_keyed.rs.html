@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_lang/src/graph/ops/fold_keyed.rs`."><title>fold_keyed.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="dfir_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (b33119ffd 2025-12-04)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-a410ff4d.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">dfir_lang/graph/ops/</div>fold_keyed.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>quote::{ToTokens, quote_spanned};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_lang/src/graph/ops/fold_keyed.rs`."><title>fold_keyed.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="dfir_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (ba2142a19 2025-12-07)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-a410ff4d.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">dfir_lang/graph/ops/</div>fold_keyed.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use super</span>::{
 <a href=#4 id=4 data-nosnippet>4</a>    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
@@ -85,11 +85,11 @@
 <a href=#85 id=85 data-nosnippet>85</a>                   df_ident,
 <a href=#86 id=86 data-nosnippet>86</a>                   context,
 <a href=#87 id=87 data-nosnippet>87</a>                   op_span,
-<a href=#88 id=88 data-nosnippet>88</a>                   ident,
-<a href=#89 id=89 data-nosnippet>89</a>                   inputs,
-<a href=#90 id=90 data-nosnippet>90</a>                   singleton_output_ident,
-<a href=#91 id=91 data-nosnippet>91</a>                   is_pull,
-<a href=#92 id=92 data-nosnippet>92</a>                   work_fn,
+<a href=#88 id=88 data-nosnippet>88</a>                   work_fn_async,
+<a href=#89 id=89 data-nosnippet>89</a>                   ident,
+<a href=#90 id=90 data-nosnippet>90</a>                   inputs,
+<a href=#91 id=91 data-nosnippet>91</a>                   singleton_output_ident,
+<a href=#92 id=92 data-nosnippet>92</a>                   is_pull,
 <a href=#93 id=93 data-nosnippet>93</a>                   root,
 <a href=#94 id=94 data-nosnippet>94</a>                   op_name,
 <a href=#95 id=95 data-nosnippet>95</a>                   op_inst:
@@ -152,123 +152,126 @@
 <a href=#152 id=152 data-nosnippet>152</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#153 id=153 data-nosnippet>153</a>                #assign_hashtable_ident
 <a href=#154 id=154 data-nosnippet>154</a>
-<a href=#155 id=155 data-nosnippet>155</a>                #work_fn(|| {
+<a href=#155 id=155 data-nosnippet>155</a>                {
 <a href=#156 id=156 data-nosnippet>156</a>                    <span class="attr">#[inline(always)]
-<a href=#157 id=157 data-nosnippet>157</a>                    </span><span class="kw">fn </span>check_input&lt;Iter, K, V&gt;(iter: Iter) -&gt; <span class="kw">impl </span>::std::iter::Iterator&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;&gt;
+<a href=#157 id=157 data-nosnippet>157</a>                    </span><span class="kw">fn </span>check_input&lt;St, K, V&gt;(st: St) -&gt; <span class="kw">impl </span>#root::futures::stream::Stream&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;&gt;
 <a href=#158 id=158 data-nosnippet>158</a>                    <span class="kw">where
-<a href=#159 id=159 data-nosnippet>159</a>                        </span>Iter: ::std::iter::Iterator&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;&gt;,
+<a href=#159 id=159 data-nosnippet>159</a>                        </span>St: #root::futures::stream::Stream&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;&gt;,
 <a href=#160 id=160 data-nosnippet>160</a>                        K: ::std::clone::Clone,
 <a href=#161 id=161 data-nosnippet>161</a>                        V: ::std::clone::Clone,
 <a href=#162 id=162 data-nosnippet>162</a>                    {
-<a href=#163 id=163 data-nosnippet>163</a>                        iter
+<a href=#163 id=163 data-nosnippet>163</a>                        st
 <a href=#164 id=164 data-nosnippet>164</a>                    }
 <a href=#165 id=165 data-nosnippet>165</a>
 <a href=#166 id=166 data-nosnippet>166</a>                    <span class="doccomment">/// A: accumulator type
 <a href=#167 id=167 data-nosnippet>167</a>                    /// T: iterator item type
-<a href=#168 id=168 data-nosnippet>168</a>                    /// O: output type
-<a href=#169 id=169 data-nosnippet>169</a>                    </span><span class="attr">#[inline(always)]
-<a href=#170 id=170 data-nosnippet>170</a>                    </span><span class="kw">fn </span>call_comb_type&lt;A, T, O&gt;(a: <span class="kw-2">&amp;mut </span>A, t: T, f: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;mut </span>A, T) -&gt; O) -&gt; O {
-<a href=#171 id=171 data-nosnippet>171</a>                        (f)(a, t)
-<a href=#172 id=172 data-nosnippet>172</a>                    }
-<a href=#173 id=173 data-nosnippet>173</a>
-<a href=#174 id=174 data-nosnippet>174</a>                    <span class="kw">for </span>item <span class="kw">in </span>check_input(#input) {
-<a href=#175 id=175 data-nosnippet>175</a>                        <span class="kw">match </span>item {
-<a href=#176 id=176 data-nosnippet>176</a>                            Persist(k, v) =&gt; {
-<a href=#177 id=177 data-nosnippet>177</a>                                <span class="kw">let </span>entry = #hashtable_ident.entry(k).or_insert_with(#initfn);
-<a href=#178 id=178 data-nosnippet>178</a>                                call_comb_type(entry, v, #aggfn);
-<a href=#179 id=179 data-nosnippet>179</a>                            },
-<a href=#180 id=180 data-nosnippet>180</a>                            Delete(k) =&gt; {
-<a href=#181 id=181 data-nosnippet>181</a>                                #hashtable_ident.remove(<span class="kw-2">&amp;</span>k);
-<a href=#182 id=182 data-nosnippet>182</a>                            },
-<a href=#183 id=183 data-nosnippet>183</a>                        }
-<a href=#184 id=184 data-nosnippet>184</a>                    }
-<a href=#185 id=185 data-nosnippet>185</a>                });
+<a href=#168 id=168 data-nosnippet>168</a>                    </span><span class="attr">#[inline(always)]
+<a href=#169 id=169 data-nosnippet>169</a>                    </span><span class="kw">fn </span>call_comb_type&lt;A, T&gt;(a: <span class="kw-2">&amp;mut </span>A, t: T, f: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;mut </span>A, T)) {
+<a href=#170 id=170 data-nosnippet>170</a>                        <span class="kw">let </span>() = (f)(a, t);
+<a href=#171 id=171 data-nosnippet>171</a>                    }
+<a href=#172 id=172 data-nosnippet>172</a>
+<a href=#173 id=173 data-nosnippet>173</a>                    <span class="kw">let </span>fut = #root::compiled::pull::ForEach::new(check_input(#input), |item| {
+<a href=#174 id=174 data-nosnippet>174</a>                        <span class="kw">match </span>item {
+<a href=#175 id=175 data-nosnippet>175</a>                            #root::util::PersistenceKeyed::Persist(k, v) =&gt; {
+<a href=#176 id=176 data-nosnippet>176</a>                                <span class="kw">let </span>entry = #hashtable_ident.entry(k).or_insert_with(#initfn);
+<a href=#177 id=177 data-nosnippet>177</a>                                call_comb_type(entry, v, #aggfn);
+<a href=#178 id=178 data-nosnippet>178</a>                            },
+<a href=#179 id=179 data-nosnippet>179</a>                            #root::util::PersistenceKeyed::Delete(k) =&gt; {
+<a href=#180 id=180 data-nosnippet>180</a>                                #hashtable_ident.remove(<span class="kw-2">&amp;</span>k);
+<a href=#181 id=181 data-nosnippet>181</a>                            },
+<a href=#182 id=182 data-nosnippet>182</a>                        }
+<a href=#183 id=183 data-nosnippet>183</a>                    });
+<a href=#184 id=184 data-nosnippet>184</a>                    <span class="kw">let </span>() = #work_fn_async(fut).<span class="kw">await</span>;
+<a href=#185 id=185 data-nosnippet>185</a>                }
 <a href=#186 id=186 data-nosnippet>186</a>
 <a href=#187 id=187 data-nosnippet>187</a>                <span class="kw">let </span>#ident = #hashtable_ident
 <a href=#188 id=188 data-nosnippet>188</a>                    .iter()
 <a href=#189 id=189 data-nosnippet>189</a>                    .map(<span class="attr">#[allow(suspicious_double_ref_op, clippy::clone_on_copy)] </span>|(k, v)| (k.clone(), v.clone()));
-<a href=#190 id=190 data-nosnippet>190</a>            }
-<a href=#191 id=191 data-nosnippet>191</a>        } <span class="kw">else </span>{
-<a href=#192 id=192 data-nosnippet>192</a>            <span class="kw">let </span>iter_expr = <span class="kw">match </span>persistence {
-<a href=#193 id=193 data-nosnippet>193</a>                Persistence::None | Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#194 id=194 data-nosnippet>194</a>                    #hashtable_ident.drain()
-<a href=#195 id=195 data-nosnippet>195</a>                },
-<a href=#196 id=196 data-nosnippet>196</a>                Persistence::Loop =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#197 id=197 data-nosnippet>197</a>                    #hashtable_ident.iter().map(
-<a href=#198 id=198 data-nosnippet>198</a>                        <span class="attr">#[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-<a href=#199 id=199 data-nosnippet>199</a>                        </span>|(k, v)| (
-<a href=#200 id=200 data-nosnippet>200</a>                            ::std::clone::Clone::clone(k),
-<a href=#201 id=201 data-nosnippet>201</a>                            ::std::clone::Clone::clone(v),
-<a href=#202 id=202 data-nosnippet>202</a>                        )
-<a href=#203 id=203 data-nosnippet>203</a>                    )
-<a href=#204 id=204 data-nosnippet>204</a>                },
-<a href=#205 id=205 data-nosnippet>205</a>                Persistence::Static =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#206 id=206 data-nosnippet>206</a>                    <span class="comment">// Play everything but only on the first run of this tick/stratum.
-<a href=#207 id=207 data-nosnippet>207</a>                    // (We know we won't have any more inputs, so it is fine to only play once.
-<a href=#208 id=208 data-nosnippet>208</a>                    // Because of the `DelayType::Stratum` or `DelayType::MonotoneAccum`).
-<a href=#209 id=209 data-nosnippet>209</a>                    </span>#context.is_first_run_this_tick()
-<a href=#210 id=210 data-nosnippet>210</a>                        .then_some(#hashtable_ident.iter())
-<a href=#211 id=211 data-nosnippet>211</a>                        .into_iter()
-<a href=#212 id=212 data-nosnippet>212</a>                        .flatten()
-<a href=#213 id=213 data-nosnippet>213</a>                        .map(
-<a href=#214 id=214 data-nosnippet>214</a>                            <span class="attr">#[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-<a href=#215 id=215 data-nosnippet>215</a>                            </span>|(k, v)| (
-<a href=#216 id=216 data-nosnippet>216</a>                                ::std::clone::Clone::clone(k),
-<a href=#217 id=217 data-nosnippet>217</a>                                ::std::clone::Clone::clone(v),
-<a href=#218 id=218 data-nosnippet>218</a>                            )
-<a href=#219 id=219 data-nosnippet>219</a>                        )
-<a href=#220 id=220 data-nosnippet>220</a>                },
-<a href=#221 id=221 data-nosnippet>221</a>                Persistence::Mutable =&gt; <span class="macro">unreachable!</span>(),
-<a href=#222 id=222 data-nosnippet>222</a>            };
-<a href=#223 id=223 data-nosnippet>223</a>
-<a href=#224 id=224 data-nosnippet>224</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#225 id=225 data-nosnippet>225</a>                #assign_hashtable_ident
-<a href=#226 id=226 data-nosnippet>226</a>
-<a href=#227 id=227 data-nosnippet>227</a>                #work_fn(|| {
-<a href=#228 id=228 data-nosnippet>228</a>                    <span class="attr">#[inline(always)]
-<a href=#229 id=229 data-nosnippet>229</a>                    </span><span class="kw">fn </span>check_input&lt;Iter, K, V&gt;(iter: Iter) -&gt; <span class="kw">impl </span>::std::iter::Iterator&lt;Item = (K, V)&gt;
-<a href=#230 id=230 data-nosnippet>230</a>                    <span class="kw">where
-<a href=#231 id=231 data-nosnippet>231</a>                        </span>Iter: std::iter::Iterator&lt;Item = (K, V)&gt;,
-<a href=#232 id=232 data-nosnippet>232</a>                        K: ::std::clone::Clone,
-<a href=#233 id=233 data-nosnippet>233</a>                        V: ::std::clone::Clone
-<a href=#234 id=234 data-nosnippet>234</a>                    {
-<a href=#235 id=235 data-nosnippet>235</a>                        iter
-<a href=#236 id=236 data-nosnippet>236</a>                    }
-<a href=#237 id=237 data-nosnippet>237</a>
-<a href=#238 id=238 data-nosnippet>238</a>                    <span class="doccomment">/// A: accumulator type
-<a href=#239 id=239 data-nosnippet>239</a>                    /// T: iterator item type
-<a href=#240 id=240 data-nosnippet>240</a>                    /// O: output type
+<a href=#190 id=190 data-nosnippet>190</a>                <span class="kw">let </span>#ident = #root::futures::stream::iter(#ident);
+<a href=#191 id=191 data-nosnippet>191</a>            }
+<a href=#192 id=192 data-nosnippet>192</a>        } <span class="kw">else </span>{
+<a href=#193 id=193 data-nosnippet>193</a>            <span class="kw">let </span>iter_expr = <span class="kw">match </span>persistence {
+<a href=#194 id=194 data-nosnippet>194</a>                Persistence::None | Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#195 id=195 data-nosnippet>195</a>                    #hashtable_ident.drain()
+<a href=#196 id=196 data-nosnippet>196</a>                },
+<a href=#197 id=197 data-nosnippet>197</a>                Persistence::Loop =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#198 id=198 data-nosnippet>198</a>                    #hashtable_ident.iter().map(
+<a href=#199 id=199 data-nosnippet>199</a>                        <span class="attr">#[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+<a href=#200 id=200 data-nosnippet>200</a>                        </span>|(k, v)| (
+<a href=#201 id=201 data-nosnippet>201</a>                            ::std::clone::Clone::clone(k),
+<a href=#202 id=202 data-nosnippet>202</a>                            ::std::clone::Clone::clone(v),
+<a href=#203 id=203 data-nosnippet>203</a>                        )
+<a href=#204 id=204 data-nosnippet>204</a>                    )
+<a href=#205 id=205 data-nosnippet>205</a>                },
+<a href=#206 id=206 data-nosnippet>206</a>                Persistence::Static =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#207 id=207 data-nosnippet>207</a>                    <span class="comment">// Play everything but only on the first run of this tick/stratum.
+<a href=#208 id=208 data-nosnippet>208</a>                    // (We know we won't have any more inputs, so it is fine to only play once.
+<a href=#209 id=209 data-nosnippet>209</a>                    // Because of the `DelayType::Stratum` or `DelayType::MonotoneAccum`).
+<a href=#210 id=210 data-nosnippet>210</a>                    </span>#context.is_first_run_this_tick()
+<a href=#211 id=211 data-nosnippet>211</a>                        .then_some(#hashtable_ident.iter())
+<a href=#212 id=212 data-nosnippet>212</a>                        .into_iter()
+<a href=#213 id=213 data-nosnippet>213</a>                        .flatten()
+<a href=#214 id=214 data-nosnippet>214</a>                        .map(
+<a href=#215 id=215 data-nosnippet>215</a>                            <span class="attr">#[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+<a href=#216 id=216 data-nosnippet>216</a>                            </span>|(k, v)| (
+<a href=#217 id=217 data-nosnippet>217</a>                                ::std::clone::Clone::clone(k),
+<a href=#218 id=218 data-nosnippet>218</a>                                ::std::clone::Clone::clone(v),
+<a href=#219 id=219 data-nosnippet>219</a>                            )
+<a href=#220 id=220 data-nosnippet>220</a>                        )
+<a href=#221 id=221 data-nosnippet>221</a>                },
+<a href=#222 id=222 data-nosnippet>222</a>                Persistence::Mutable =&gt; <span class="macro">unreachable!</span>(),
+<a href=#223 id=223 data-nosnippet>223</a>            };
+<a href=#224 id=224 data-nosnippet>224</a>
+<a href=#225 id=225 data-nosnippet>225</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#226 id=226 data-nosnippet>226</a>                #assign_hashtable_ident
+<a href=#227 id=227 data-nosnippet>227</a>
+<a href=#228 id=228 data-nosnippet>228</a>                {
+<a href=#229 id=229 data-nosnippet>229</a>                    <span class="attr">#[inline(always)]
+<a href=#230 id=230 data-nosnippet>230</a>                    </span><span class="kw">fn </span>check_input&lt;St, K, V&gt;(st: St) -&gt; <span class="kw">impl </span>#root::futures::stream::Stream&lt;Item = (K, V)&gt;
+<a href=#231 id=231 data-nosnippet>231</a>                    <span class="kw">where
+<a href=#232 id=232 data-nosnippet>232</a>                        </span>St: #root::futures::stream::Stream&lt;Item = (K, V)&gt;,
+<a href=#233 id=233 data-nosnippet>233</a>                        K: ::std::clone::Clone,
+<a href=#234 id=234 data-nosnippet>234</a>                        V: ::std::clone::Clone
+<a href=#235 id=235 data-nosnippet>235</a>                    {
+<a href=#236 id=236 data-nosnippet>236</a>                        st
+<a href=#237 id=237 data-nosnippet>237</a>                    }
+<a href=#238 id=238 data-nosnippet>238</a>
+<a href=#239 id=239 data-nosnippet>239</a>                    <span class="doccomment">/// A: accumulator type
+<a href=#240 id=240 data-nosnippet>240</a>                    /// T: iterator item type
 <a href=#241 id=241 data-nosnippet>241</a>                    </span><span class="attr">#[inline(always)]
-<a href=#242 id=242 data-nosnippet>242</a>                    </span><span class="kw">fn </span>call_comb_type&lt;A, T, O&gt;(a: <span class="kw-2">&amp;mut </span>A, t: T, f: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;mut </span>A, T) -&gt; O) -&gt; O {
-<a href=#243 id=243 data-nosnippet>243</a>                        (f)(a, t)
+<a href=#242 id=242 data-nosnippet>242</a>                    </span><span class="kw">fn </span>call_comb_type&lt;A, T&gt;(a: <span class="kw-2">&amp;mut </span>A, t: T, f: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;mut </span>A, T)) {
+<a href=#243 id=243 data-nosnippet>243</a>                        <span class="kw">let </span>() = (f)(a, t);
 <a href=#244 id=244 data-nosnippet>244</a>                    }
 <a href=#245 id=245 data-nosnippet>245</a>
-<a href=#246 id=246 data-nosnippet>246</a>                    <span class="kw">for </span>kv <span class="kw">in </span>check_input(#input) {
-<a href=#247 id=247 data-nosnippet>247</a>                        <span class="comment">// TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
-<a href=#248 id=248 data-nosnippet>248</a>                        </span><span class="attr">#[allow(unknown_lints, clippy::unwrap_or_default)]
-<a href=#249 id=249 data-nosnippet>249</a>                        </span><span class="kw">let </span>entry = #hashtable_ident.entry(kv.<span class="number">0</span>).or_insert_with(#initfn);
-<a href=#250 id=250 data-nosnippet>250</a>                        call_comb_type(entry, kv.<span class="number">1</span>, #aggfn);
-<a href=#251 id=251 data-nosnippet>251</a>                    }
-<a href=#252 id=252 data-nosnippet>252</a>                });
-<a href=#253 id=253 data-nosnippet>253</a>
-<a href=#254 id=254 data-nosnippet>254</a>                <span class="kw">let </span>#ident = #iter_expr;
-<a href=#255 id=255 data-nosnippet>255</a>            }
-<a href=#256 id=256 data-nosnippet>256</a>        };
-<a href=#257 id=257 data-nosnippet>257</a>
-<a href=#258 id=258 data-nosnippet>258</a>        <span class="kw">let </span>write_iterator_after = <span class="kw">match </span>persistence {
-<a href=#259 id=259 data-nosnippet>259</a>            Persistence::None | Persistence::Tick | Persistence::Loop =&gt; Default::default(),
-<a href=#260 id=260 data-nosnippet>260</a>            Persistence::Static | Persistence::Mutable =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#261 id=261 data-nosnippet>261</a>                <span class="comment">// Reschedule the subgraph lazily to ensure replay on later ticks.
-<a href=#262 id=262 data-nosnippet>262</a>                </span>#context.schedule_subgraph(#context.current_subgraph(), <span class="bool-val">false</span>);
-<a href=#263 id=263 data-nosnippet>263</a>            },
-<a href=#264 id=264 data-nosnippet>264</a>        };
-<a href=#265 id=265 data-nosnippet>265</a>
-<a href=#266 id=266 data-nosnippet>266</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#267 id=267 data-nosnippet>267</a>            write_prologue,
-<a href=#268 id=268 data-nosnippet>268</a>            write_prologue_after,
-<a href=#269 id=269 data-nosnippet>269</a>            write_iterator,
-<a href=#270 id=270 data-nosnippet>270</a>            write_iterator_after,
-<a href=#271 id=271 data-nosnippet>271</a>        })
-<a href=#272 id=272 data-nosnippet>272</a>    },
-<a href=#273 id=273 data-nosnippet>273</a>};
+<a href=#246 id=246 data-nosnippet>246</a>
+<a href=#247 id=247 data-nosnippet>247</a>                    <span class="kw">let </span>fut = #root::compiled::pull::ForEach::new(check_input(#input), |kv| {
+<a href=#248 id=248 data-nosnippet>248</a>                        <span class="comment">// TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
+<a href=#249 id=249 data-nosnippet>249</a>                        </span><span class="attr">#[allow(unknown_lints, clippy::unwrap_or_default)]
+<a href=#250 id=250 data-nosnippet>250</a>                        </span><span class="kw">let </span>entry = #hashtable_ident.entry(kv.<span class="number">0</span>).or_insert_with(#initfn);
+<a href=#251 id=251 data-nosnippet>251</a>                        call_comb_type(entry, kv.<span class="number">1</span>, #aggfn);
+<a href=#252 id=252 data-nosnippet>252</a>                    });
+<a href=#253 id=253 data-nosnippet>253</a>                    <span class="kw">let </span>() = #work_fn_async(fut).<span class="kw">await</span>;
+<a href=#254 id=254 data-nosnippet>254</a>                }
+<a href=#255 id=255 data-nosnippet>255</a>
+<a href=#256 id=256 data-nosnippet>256</a>                <span class="kw">let </span>#ident = #iter_expr;
+<a href=#257 id=257 data-nosnippet>257</a>                <span class="kw">let </span>#ident = #root::futures::stream::iter(#ident);
+<a href=#258 id=258 data-nosnippet>258</a>            }
+<a href=#259 id=259 data-nosnippet>259</a>        };
+<a href=#260 id=260 data-nosnippet>260</a>
+<a href=#261 id=261 data-nosnippet>261</a>        <span class="kw">let </span>write_iterator_after = <span class="kw">match </span>persistence {
+<a href=#262 id=262 data-nosnippet>262</a>            Persistence::None | Persistence::Tick | Persistence::Loop =&gt; Default::default(),
+<a href=#263 id=263 data-nosnippet>263</a>            Persistence::Static | Persistence::Mutable =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#264 id=264 data-nosnippet>264</a>                <span class="comment">// Reschedule the subgraph lazily to ensure replay on later ticks.
+<a href=#265 id=265 data-nosnippet>265</a>                </span>#context.schedule_subgraph(#context.current_subgraph(), <span class="bool-val">false</span>);
+<a href=#266 id=266 data-nosnippet>266</a>            },
+<a href=#267 id=267 data-nosnippet>267</a>        };
+<a href=#268 id=268 data-nosnippet>268</a>
+<a href=#269 id=269 data-nosnippet>269</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#270 id=270 data-nosnippet>270</a>            write_prologue,
+<a href=#271 id=271 data-nosnippet>271</a>            write_prologue_after,
+<a href=#272 id=272 data-nosnippet>272</a>            write_iterator,
+<a href=#273 id=273 data-nosnippet>273</a>            write_iterator_after,
+<a href=#274 id=274 data-nosnippet>274</a>        })
+<a href=#275 id=275 data-nosnippet>275</a>    },
+<a href=#276 id=276 data-nosnippet>276</a>};
 </code></pre></div></section></main></body></html>
