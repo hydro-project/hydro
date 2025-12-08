@@ -99,14 +99,14 @@ fn test() {
     complete_next_slot.complete_next_tick(
         sequenced
             .clone()
-            .all_ticks_atomic()
-            .fold(
-                q!(|| None),
-                q!(|next_slot, payload: SequencedKv| {
-                    *next_slot = Some(payload.seq);
-                }),
-            )
-            .snapshot_atomic(nondet!(/** always up to date with the batch to sequence */))
+            .across_ticks(|s| {
+                s.fold(
+                    q!(|| None),
+                    q!(|next_slot, payload: SequencedKv| {
+                        *next_slot = Some(payload.seq);
+                    }),
+                )
+            })
             .filter_map(q!(|v| v)),
     );
 
@@ -145,14 +145,14 @@ fn trace_snapshot() {
     complete_next_slot.complete_next_tick(
         sequenced
             .clone()
-            .all_ticks_atomic()
-            .fold(
-                q!(|| None),
-                q!(|next_slot, payload: SequencedKv| {
-                    *next_slot = Some(payload.seq);
-                }),
-            )
-            .snapshot_atomic(nondet!(/** always up to date with the batch to sequence */))
+            .across_ticks(|s| {
+                s.fold(
+                    q!(|| None),
+                    q!(|next_slot, payload: SequencedKv| {
+                        *next_slot = Some(payload.seq);
+                    }),
+                )
+            })
             .filter_map(q!(|v| v)),
     );
 

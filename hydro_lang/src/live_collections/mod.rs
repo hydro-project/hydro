@@ -37,3 +37,6 @@ pub mod stream;
 pub use stream::Stream;
 
 pub mod sliced;
+
+#[doc(hidden)]
+pub mod batch_atomic;
