@@ -151,8 +151,7 @@ impl Context {
             }
 
             fn wake_by_ref(self: &Arc<Self>) {
-                let _recv_closed_error =
-                    self.event_queue_send.send((self.subgraph_id, true));
+                let _recv_closed_error = self.event_queue_send.send((self.subgraph_id, true));
             }
         }
 
