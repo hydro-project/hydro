@@ -34,7 +34,7 @@ impl Reactor {
         }
         impl Wake for ReactorWaker {
             fn wake(self: Arc<Self>) {
-                self.reactor.trigger(self.sg_id).unwrap(/* TODO(mingwei) */);
+                self.wake_by_ref();
             }
 
             fn wake_by_ref(self: &Arc<Self>) {
