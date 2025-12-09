@@ -147,8 +147,7 @@ impl Context {
         }
         impl Wake for ContextWaker {
             fn wake(self: Arc<Self>) {
-                let _recv_closed_error =
-                    self.wake_by_ref();
+                self.wake_by_ref();
             }
 
             fn wake_by_ref(self: &Arc<Self>) {

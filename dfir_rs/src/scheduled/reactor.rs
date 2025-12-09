@@ -38,7 +38,7 @@ impl Reactor {
             }
 
             fn wake_by_ref(self: &Arc<Self>) {
-                self.reactor.trigger(self.sg_id).unwrap(/* TODO(mingwei) */);
+                let _recv_closed_error = self.reactor.trigger(self.sg_id);
             }
         }
 
