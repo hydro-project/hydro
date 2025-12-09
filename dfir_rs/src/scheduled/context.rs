@@ -139,15 +139,21 @@ impl Context {
     /// Waker events are considered to be extenral.
     pub fn waker(&self) -> std::task::Waker {
         use std::sync::Arc;
+        use std::task::Wake;
 
         struct ContextWaker {
             subgraph_id: SubgraphId,
             event_queue_send: UnboundedSender<(SubgraphId, bool)>,
         }
-        impl futures::task::ArcWake for ContextWaker {
-            fn wake_by_ref(arc_self: &Arc<Self>) {
+        impl Wake for ContextWaker {
+            fn wake(self: Arc<Self>) {
                 let _recv_closed_error =
-                    arc_self.event_queue_send.send((arc_self.subgraph_id, true));
+                    self.event_queue_send.send((self.subgraph_id, true));
+            }
+
+            fn wake_by_ref(self: &Arc<Self>) {
+                let _recv_closed_error =
+                    self.event_queue_send.send((self.subgraph_id, true));
             }
         }
 
@@ -155,7 +161,7 @@ impl Context {
             subgraph_id: self.subgraph_id,
             event_queue_send: self.event_queue_send.clone(),
         };
-        futures::task::waker(Arc::new(context_waker))
+        std::task::Waker::from(Arc::new(context_waker))
     }
 
     /// Returns a shared reference to the state.

@@ -26,16 +26,19 @@ impl Reactor {
     /// Convert this `Reactor` into a [`std::task::Waker`] for use with async runtimes.
     pub fn into_waker(self, sg_id: SubgraphId) -> std::task::Waker {
         use std::sync::Arc;
-
-        use futures::task::ArcWake;
+        use std::task::Wake;
 
         struct ReactorWaker {
             reactor: Reactor,
             sg_id: SubgraphId,
         }
-        impl ArcWake for ReactorWaker {
-            fn wake_by_ref(arc_self: &Arc<Self>) {
-                arc_self.reactor.trigger(arc_self.sg_id).unwrap(/* TODO(mingwei) */);
+        impl Wake for ReactorWaker {
+            fn wake(self: Arc<Self>) {
+                self.reactor.trigger(self.sg_id).unwrap(/* TODO(mingwei) */);
+            }
+
+            fn wake_by_ref(self: &Arc<Self>) {
+                self.reactor.trigger(self.sg_id).unwrap(/* TODO(mingwei) */);
             }
         }
 
@@ -43,6 +46,6 @@ impl Reactor {
             reactor: self,
             sg_id,
         };
-        futures::task::waker(Arc::new(reactor_waker))
+        std::task::Waker::from(Arc::new(reactor_waker))
     }
 }
