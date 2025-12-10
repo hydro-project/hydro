@@ -1,6 +1,7 @@
 //! Utilities for transforming live collections via slicing.
 
 use super::boundedness::{Bounded, Unbounded};
+use crate::live_collections::boundedness::Boundedness;
 use crate::live_collections::keyed_singleton::BoundedValue;
 use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::{Location, NoTick, Tick};
@@ -385,8 +386,8 @@ impl_slicable_for_tuple!(
     S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3, S5, S5_bt, 4
 ); // 5 slices ought to be enough for anyone
 
-impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Slicable<'a, L>
-    for super::Stream<T, L, Unbounded, O, R>
+impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
+    for super::Stream<T, L, B, O, R>
 {
     type Slice = super::Stream<T, Tick<L>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
@@ -416,7 +417,7 @@ impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Unslicable
     }
 }
 
-impl<'a, T, L: Location<'a>> Slicable<'a, L> for super::Singleton<T, L, Unbounded> {
+impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L> for super::Singleton<T, L, B> {
     type Slice = super::Singleton<T, Tick<L>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
