@@ -1,18 +1,14 @@
 use hydro_lang::prelude::*;
 
 pub fn count_elems<'a, T: 'a>(
-    process: &Process<'a>,
+    _process: &Process<'a>,
     input_stream: Stream<T, Process<'a>, Unbounded>,
 ) -> Stream<u32, Process<'a>, Unbounded> {
-    let tick = process.tick();
+    sliced! {
+        let batch = use(input_stream.map(q!(|_| 1)), nondet!(/** test */));
 
-    let count = input_stream
-        .map(q!(|_| 1))
-        .batch(&tick, nondet!(/** test */))
-        .fold(q!(|| 0), q!(|a, b| *a += b))
-        .all_ticks();
-
-    count
+        batch.fold(q!(|| 0), q!(|a, b| *a += b)).into_stream()
+    }
 }
 
 #[cfg(test)]
