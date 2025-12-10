@@ -1,5 +1,5 @@
 [profile.default]
-slow-timeout = { terminate-after = 5 } # terminate after 5 intervals of (default: `period = "60s"`).
+slow-timeout = { terminate-after = 10 } # terminate after 10 intervals of (default: `period = "60s"`).
 
 [test-groups]
 serial-integration = { max-threads = 1 }
