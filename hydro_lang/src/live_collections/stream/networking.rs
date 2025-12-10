@@ -12,6 +12,7 @@ use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRo
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::KeyedSingleton;
 use crate::live_collections::keyed_stream::KeyedStream;
+use crate::live_collections::sliced::sliced;
 use crate::live_collections::stream::Retries;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
@@ -189,15 +190,14 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         T: Clone + Serialize + DeserializeOwned,
     {
         let ids = track_membership(self.location.source_cluster_members(other));
-        let join_tick = self.location.tick();
-        let current_members = ids
-            .snapshot(&join_tick, nondet_membership)
-            .filter(q!(|b| *b));
+        sliced! {
+            let members_snapshot = use(ids, nondet_membership);
+            let elements = use(self, nondet_membership);
 
-        self.batch(&join_tick, nondet_membership)
-            .repeat_with_keys(current_members)
-            .all_ticks()
-            .demux_bincode(other)
+            let current_members = members_snapshot.filter(q!(|b| *b));
+            elements.repeat_with_keys(current_members)
+        }
+        .demux_bincode(other)
     }
 
     /// Sends the elements of this stream to an external (non-Hydro) process, using [`bincode`]
@@ -386,23 +386,24 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
         T: Serialize + DeserializeOwned,
     {
         let ids = track_membership(self.location.source_cluster_members(other));
-        let join_tick = self.location.tick();
-        let current_members = ids
-            .snapshot(&join_tick, nondet_membership)
-            .filter(q!(|b| *b))
-            .keys()
-            .assume_ordering(nondet_membership)
-            .collect_vec();
+        sliced! {
+            let members_snapshot = use(ids, nondet_membership);
+            let elements = use(self.enumerate(), nondet_membership);
 
-        self.enumerate()
-            .batch(&join_tick, nondet_membership)
-            .cross_singleton(current_members)
-            .map(q!(|(data, members)| (
-                members[data.0 % members.len()].clone(),
-                data.1
-            )))
-            .all_ticks()
-            .demux_bincode(other)
+            let current_members = members_snapshot
+                .filter(q!(|b| *b))
+                .keys()
+                .assume_ordering(nondet_membership)
+                .collect_vec();
+
+            elements
+                .cross_singleton(current_members)
+                .map(q!(|(data, members)| (
+                    members[data.0 % members.len()].clone(),
+                    data.1
+                )))
+        }
+        .demux_bincode(other)
     }
 }
 
@@ -464,23 +465,24 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
         T: Serialize + DeserializeOwned,
     {
         let ids = track_membership(self.location.source_cluster_members(other));
-        let join_tick = self.location.tick();
-        let current_members = ids
-            .snapshot(&join_tick, nondet_membership)
-            .filter(q!(|b| *b))
-            .keys()
-            .assume_ordering(nondet_membership)
-            .collect_vec();
+        sliced! {
+            let members_snapshot = use(ids, nondet_membership);
+            let elements = use(self.enumerate(), nondet_membership);
 
-        self.enumerate()
-            .batch(&join_tick, nondet_membership)
-            .cross_singleton(current_members)
-            .map(q!(|(data, members)| (
-                members[data.0 % members.len()].clone(),
-                data.1
-            )))
-            .all_ticks()
-            .demux_bincode(other)
+            let current_members = members_snapshot
+                .filter(q!(|b| *b))
+                .keys()
+                .assume_ordering(nondet_membership)
+                .collect_vec();
+
+            elements
+                .cross_singleton(current_members)
+                .map(q!(|(data, members)| (
+                    members[data.0 % members.len()].clone(),
+                    data.1
+                )))
+        }
+        .demux_bincode(other)
     }
 }
 
@@ -625,15 +627,14 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
         T: Clone + Serialize + DeserializeOwned,
     {
         let ids = track_membership(self.location.source_cluster_members(other));
-        let join_tick = self.location.tick();
-        let current_members = ids
-            .snapshot(&join_tick, nondet_membership)
-            .filter(q!(|b| *b));
+        sliced! {
+            let members_snapshot = use(ids, nondet_membership);
+            let elements = use(self, nondet_membership);
 
-        self.batch(&join_tick, nondet_membership)
-            .repeat_with_keys(current_members)
-            .all_ticks()
-            .demux_bincode(other)
+            let current_members = members_snapshot.filter(q!(|b| *b));
+            elements.repeat_with_keys(current_members)
+        }
+        .demux_bincode(other)
     }
 }
 
