@@ -63,7 +63,7 @@ impl Deployment {
         external_ports: Vec<u16>,
     ) -> Arc<RwLock<CustomService>> {
         self.add_service(
-            |id| CustomService::new(id, on.clone(), external_ports),
+            |id, on| CustomService::new(id, on, external_ports),
             on.clone(),
         )
     }
