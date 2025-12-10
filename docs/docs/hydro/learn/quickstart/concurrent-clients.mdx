@@ -15,9 +15,9 @@ In the previous section, you built a counter service for a single client. Now yo
 You'll learn how to use `KeyedStream` to handle concurrent clients while maintaining a single global counter:
 
 :::learn
-- How `KeyedStream` enables handling multiple concurrent clients
-- How `.values()` combines streams from all clients into a single global stream
-- How to test scenarios with multiple clients incrementing and reading the counter
+- How to use `KeyedStream` to handle requests from concurrent clients
+- How to reason about non-deterministic order with strong correctness guarantees
+- How to write simulation tests that involve several concurrent clients
 :::
 
 ## From Single Client to Multiple Clients
