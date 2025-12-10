@@ -62,10 +62,7 @@ impl Deployment {
         on: Arc<dyn Host>,
         external_ports: Vec<u16>,
     ) -> Arc<RwLock<CustomService>> {
-        self.add_service(
-            |id, on| CustomService::new(id, on, external_ports),
-            on.clone(),
-        )
+        self.add_service(|id, on| CustomService::new(id, on, external_ports), on)
     }
 
     /// Runs `deploy()`, and `start()`, waits for the trigger future, then runs `stop()`.
