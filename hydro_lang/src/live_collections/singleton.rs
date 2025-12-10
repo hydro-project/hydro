@@ -9,6 +9,7 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::optional::Optional;
+use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 #[cfg(stageleft_runtime)]
@@ -799,8 +800,11 @@ where
     where
         L: NoTick,
     {
-        let tick = self.location.tick();
-        self.snapshot(&tick, nondet).all_ticks().weakest_retries()
+        sliced! {
+            let snapshot = use(self, nondet);
+            snapshot.into_stream()
+        }
+        .weakest_retries()
     }
 
     /// Given a time interval, returns a stream corresponding to snapshots of the singleton
@@ -821,12 +825,13 @@ where
         L: NoTick + NoAtomic,
     {
         let samples = self.location.source_interval(interval, nondet);
-        let tick = self.location.tick();
+        sliced! {
+            let snapshot = use(self, nondet);
+            let sample_batch = use(samples, nondet);
 
-        self.snapshot(&tick, nondet)
-            .filter_if_some(samples.batch(&tick, nondet).first())
-            .all_ticks()
-            .weakest_retries()
+            snapshot.filter_if_some(sample_batch.first()).into_stream()
+        }
+        .weakest_retries()
     }
 }
 

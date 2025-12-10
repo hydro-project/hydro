@@ -53,7 +53,6 @@ pub fn paxos_bench<'a>(
             kv_replica(replicas, sequenced_to_replicas, checkpoint_frequency);
 
         // Get the latest checkpoint sequence per replica
-        let checkpoint_tick = acceptors.tick();
         let a_checkpoint = {
             let a_checkpoint_largest_seqs = replica_checkpoint
                 .broadcast_bincode(&acceptors, nondet!(/** TODO */))
@@ -61,31 +60,30 @@ pub fn paxos_bench<'a>(
                     if seq > *curr_seq {
                         *curr_seq = seq;
                     }
-                }))
-                .snapshot(
-                    &checkpoint_tick,
-                    nondet!(
-                        /// even though we batch the checkpoint messages, because we reduce over the entire history,
-                        /// the final min checkpoint is deterministic
-                    ),
-                );
-
-            let a_checkpoints_quorum_reached = a_checkpoint_largest_seqs
-                .clone()
-                .key_count()
-                .filter_map(q!(move |num_received| if num_received == f + 1 {
-                    Some(true)
-                } else {
-                    None
                 }));
 
-            // Find the smallest checkpoint seq that everyone agrees to
-            a_checkpoint_largest_seqs
-                .entries()
-                .filter_if_some(a_checkpoints_quorum_reached)
-                .map(q!(|(_sender, seq)| seq))
-                .min()
-                .latest()
+            sliced! {
+                let snapshot = use(a_checkpoint_largest_seqs, nondet!(
+                    /// even though we batch the checkpoint messages, because we reduce over the entire history,
+                    /// the final min checkpoint is deterministic
+                ));
+
+                let a_checkpoints_quorum_reached = snapshot
+                    .clone()
+                    .key_count()
+                    .filter_map(q!(move |num_received| if num_received == f + 1 {
+                        Some(true)
+                    } else {
+                        None
+                    }));
+
+                // Find the smallest checkpoint seq that everyone agrees to
+                snapshot
+                    .entries()
+                    .filter_if_some(a_checkpoints_quorum_reached)
+                    .map(q!(|(_sender, seq)| seq))
+                    .min()
+            }
         };
 
         acceptor_checkpoint_complete.complete(a_checkpoint);
