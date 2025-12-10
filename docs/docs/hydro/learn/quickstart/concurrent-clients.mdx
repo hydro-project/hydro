@@ -16,7 +16,7 @@ You'll learn how to use `KeyedStream` to handle concurrent clients while maintai
 
 :::learn
 - How `KeyedStream` enables handling multiple concurrent clients
-- How `.values()` combines streams from all clients into a single global stream
+- How to reason about unordered streams with strong correctness guarantees
 - How to test scenarios with multiple clients incrementing and reading the counter
 :::
 
@@ -30,25 +30,25 @@ Create a new file `src/concurrent_clients.rs` and add `mod concurrent_clients;` 
 
 :::
 
-Hydro provides [`KeyedStream`](../../reference/live-collections/keyed-streams.mdx) for exactly this purpose. A `KeyedStream<K, V>` is like a `Stream<V>`, but each element is associated with a key of type `K`. The key maintains independent ordering per key while allowing different keys to interleave. The key will be the client ID (type `u32`):
+Hydro provides [`KeyedStream`](../../reference/live-collections/keyed-streams.mdx) for exactly this purpose. A `KeyedStream&lt;K, V&gt;` is like a `Stream&lt;V&gt;`, but each element is associated with a key of type `K`. The key maintains independent ordering per key while allowing different keys to interleave. The key will be the client ID (type `u32`):
 
-<CodeBlock language="rust" title={
-  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={6}>{getLines(concurrentClientsSrc, 6, 12)}</CodeBlock>
+&lt;CodeBlock language="rust" title={
+  &lt;Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs"&gt;src/concurrent_clients.rs&lt;/Link&gt;
+} showLineNumbers={6}&gt;{getLines(concurrentClientsSrc, 6, 12)}&lt;/CodeBlock&gt;
 
-The service now takes `KeyedStream<u32, ()>` instead of `Stream<()>`. Each request is tagged with a client ID, so when client 1 sends an increment request, it appears as a keyed stream element with key `1` and value `()`.
+The service now takes `KeyedStream&lt;u32, ()&gt;` instead of `Stream&lt;()&gt;`. Each request is tagged with a client ID, so when client 1 sends an increment request, it appears as a keyed stream element with key `1` and value `()`.
 
 ## Aggregating Across All Clients
 
 The counter still maintains a single global count across all clients. Since the client ID doesn't matter for counting, you need to discard it:
 
-<CodeBlock language="rust" title={
-  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={13}>{getLines(concurrentClientsSrc, 13, 15)}</CodeBlock>
+&lt;CodeBlock language="rust" title={
+  &lt;Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs"&gt;src/concurrent_clients.rs&lt;/Link&gt;
+} showLineNumbers={13}&gt;{getLines(concurrentClientsSrc, 13, 15)}&lt;/CodeBlock&gt;
 
-The `.values()` method extracts just the values from the keyed stream, discarding the client IDs since they're irrelevant for computing the global count. This produces a regular `Stream<()>` containing all increment requests from all clients. 
+The `.values()` method extracts just the values from the keyed stream, discarding the client IDs since they're irrelevant for computing the global count. This produces a regular `Stream&lt;()&gt;` containing all increment requests from all clients.
 
-The `count()` method then aggregates these requests into a `Singleton<usize>` that tracks the running total. This is convenient shorthand for computing the current counter value. For custom stateful logic, you would use `reduce()` or `fold()` to maintain arbitrary state across the stream.
+The `count()` method then aggregates these requests into a `Singleton&lt;usize&gt;` that tracks the running total. This is convenient shorthand for computing the current counter value. For custom stateful logic, you would use `reduce()` or `fold()` to maintain arbitrary state across the stream.
 
 :::tip
 
@@ -58,23 +58,23 @@ When you call `.values()` on a `KeyedStream`, the resulting stream is **unordere
 
 The rest of the implementation follows the same pattern as the single client counter. Acknowledgements are routed back to the correct client because the keyed structure is preserved:
 
-<CodeBlock language="rust" title={
-  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={16}>{getLines(concurrentClientsSrc, 16, 16)}</CodeBlock>
+&lt;CodeBlock language="rust" title={
+  &lt;Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs"&gt;src/concurrent_clients.rs&lt;/Link&gt;
+} showLineNumbers={16}&gt;{getLines(concurrentClientsSrc, 16, 16)}&lt;/CodeBlock&gt;
 
 And get responses use `cross_singleton` which pairs the count with each client's request while preserving the client ID key:
 
-<CodeBlock language="rust" title={
-  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={18}>{getLines(concurrentClientsSrc, 18, 23)}</CodeBlock>
+&lt;CodeBlock language="rust" title={
+  &lt;Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs"&gt;src/concurrent_clients.rs&lt;/Link&gt;
+} showLineNumbers={18}&gt;{getLines(concurrentClientsSrc, 18, 23)}&lt;/CodeBlock&gt;
 
 ## Testing Multiple Concurrent Clients
 
 Let's write a test where two different clients increment the counter and both read the result:
 
-<CodeBlock language="rust" title={
-  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={34}>{getLines(concurrentClientsSrc, 34, 67)}</CodeBlock>
+&lt;CodeBlock language="rust" title={
+  &lt;Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs"&gt;src/concurrent_clients.rs&lt;/Link&gt;
+} showLineNumbers={34}&gt;{getLines(concurrentClientsSrc, 34, 67)}&lt;/CodeBlock&gt;
 
 The test uses `.into_keyed()` to convert regular streams into keyed streams for input, and `.entries()` to convert keyed streams back to regular streams of `(key, value)` tuples for output. This is necessary because the simulator currently only supports `Stream` as inputs and outputs.
 
