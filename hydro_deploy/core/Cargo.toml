@@ -13,7 +13,7 @@ workspace = true
 
 [dependencies]
 anyhow = { version = "1.0.82", features = ["backtrace"] }
-async-ssh2-russh = { version = "0.1.0", features = [ "sftp" ] }
+async-ssh2-russh = { version = "0.2.0", features = [ "sftp" ] }
 async-process = "2.0.0"
 async-recursion = "1.0.0"
 async-trait = "0.1.54"

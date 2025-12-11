@@ -84,22 +84,18 @@ impl LaunchedBinary for LaunchedSshBinary {
             .ok()
     }
 
-    async fn wait(&mut self) -> Result<i32> {
-        self.channel.wait_close().await;
-        Ok(self
-            .channel
-            .recv_exit_status()
-            .try_get()
-            .map(|&ec| ec as _)?)
+    async fn wait(&self) -> Result<i32> {
+        let _ = self.channel.closed().wait().await;
+        Ok(*self.channel.recv_exit_status().try_get()? as _)
     }
 
-    async fn stop(&mut self) -> Result<()> {
-        if !self.channel.is_closed() {
+    async fn stop(&self) -> Result<()> {
+        if !self.channel.closed().is_done() {
             ProgressTracker::leaf("force stopping", async {
                 // self.channel.signal(russh::Sig::INT).await?; // `^C`
                 self.channel.eof().await?; // Send EOF.
                 self.channel.close().await?; // Close the channel.
-                self.channel.wait_close().await;
+                self.channel.closed().wait().await;
                 Result::<_>::Ok(())
             })
             .await?;

@@ -296,9 +296,9 @@ dependencies = [
 
 [[package]]
 name = "async-promise"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89ec425ee5fc50a9920787f4b3f221d41c68bacb4fb9257a078b89c81cac5e1e"
+checksum = "b681c58ec6001e5385fb80647299e8a5f796d17ab33ffe81a17408899f008208"
 dependencies = [
  "thiserror 2.0.16",
 ]
@@ -334,9 +334,9 @@ dependencies = [
 
 [[package]]
 name = "async-ssh2-russh"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7b31fb71a813ca189ad1145e2603e2729e652cfe12622dc4427fb577ad417dd"
+checksum = "72b9a4b26c003caa9827163f79a0d29e58103fc3a5c762d15633cc90ed780b27"
 dependencies = [
  "async-promise",
  "russh",

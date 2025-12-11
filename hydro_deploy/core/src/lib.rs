@@ -99,9 +99,9 @@ pub trait LaunchedBinary: Send + Sync {
     fn exit_code(&self) -> Option<i32>;
 
     /// Wait for the process to stop on its own. Returns the exit code.
-    async fn wait(&mut self) -> Result<i32>;
+    async fn wait(&self) -> Result<i32>;
     /// If the process is still running, force stop it. Then run post-run tasks.
-    async fn stop(&mut self) -> Result<()>;
+    async fn stop(&self) -> Result<()>;
 }
 
 #[async_trait]

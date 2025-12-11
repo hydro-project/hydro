@@ -138,11 +138,11 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
             .map(exit_code)
     }
 
-    async fn wait(&mut self) -> Result<i32> {
+    async fn wait(&self) -> Result<i32> {
         Ok(exit_code(self.child.get_mut().unwrap().status().await?))
     }
 
-    async fn stop(&mut self) -> Result<()> {
+    async fn stop(&self) -> Result<()> {
         if let Err(err) = self.child.get_mut().unwrap().kill()
             && !matches!(err.kind(), std::io::ErrorKind::InvalidInput)
         {
