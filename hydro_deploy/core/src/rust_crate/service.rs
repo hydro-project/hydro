@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use futures::Future;
 use hydro_deploy_integration::{InitConfig, ServerPort};
 use serde::Serialize;
-use tokio::sync::{OnceCell, RwLock, mpsc};
+use tokio::sync::{Mutex, OnceCell, RwLock, mpsc};
 
 use super::build::{BuildError, BuildOutput, BuildParams, build_crate_memoized};
 use super::ports::{self, RustCratePortConfig};
@@ -30,10 +30,10 @@ pub struct RustCrateService {
     meta: Option<String>,
 
     /// Configuration for the ports this service will connect to as a client.
-    pub(super) port_to_server: HashMap<String, ports::ServerConfig>,
+    pub(super) port_to_server: Mutex<HashMap<String, ports::ServerConfig>>,
 
     /// Configuration for the ports that this service will listen on a port for.
-    pub(super) port_to_bind: HashMap<String, ServerStrategy>,
+    pub(super) port_to_bind: Mutex<HashMap<String, ServerStrategy>>,
 
     launched_host: OnceCell<Arc<dyn LaunchedHost>>,
 
@@ -65,8 +65,8 @@ impl RustCrateService {
             display_id,
             external_ports,
             meta: None,
-            port_to_server: HashMap::new(),
-            port_to_bind: HashMap::new(),
+            port_to_server: Mutex::new(HashMap::new()),
+            port_to_bind: Mutex::new(HashMap::new()),
             launched_host: OnceCell::new(),
             server_defns: Arc::new(RwLock::new(HashMap::new())),
             launched_binary: OnceCell::new(),
@@ -82,11 +82,7 @@ impl RustCrateService {
         self.meta = Some(serde_json::to_string(&meta).unwrap());
     }
 
-    pub fn get_port(
-        &self,
-        name: String,
-        self_arc: &Arc<RustCrateService>,
-    ) -> RustCratePortConfig {
+    pub fn get_port(&self, name: String, self_arc: &Arc<RustCrateService>) -> RustCratePortConfig {
         RustCratePortConfig {
             service: Arc::downgrade(self_arc),
             service_host: self.on.clone(),
@@ -157,8 +153,11 @@ impl Service for RustCrateService {
         let host = &self.on;
 
         host.request_custom_binary();
-        for (_, bind_type) in self.port_to_bind.iter() {
-            host.request_port(bind_type);
+        {
+            let port_to_bind = self.port_to_bind.blocking_lock();
+            for bind_type in port_to_bind.values() {
+                host.request_port(bind_type);
+            }
         }
 
         for port in self.external_ports.iter() {
@@ -214,11 +213,15 @@ impl Service for RustCrateService {
                             )
                             .await?;
 
-                        let mut bind_config = HashMap::new();
-                        for (port_name, bind_type) in self.port_to_bind.iter() {
-                            bind_config
-                                .insert(port_name.clone(), launched_host.server_config(bind_type));
-                        }
+                        let bind_config = {
+                            let port_to_bind = self.port_to_bind.lock().await;
+                            port_to_bind
+                                .iter()
+                                .map(|(port_name, bind_type)| {
+                                    (port_name.clone(), launched_host.server_config(bind_type))
+                                })
+                                .collect::<HashMap<_, _>>()
+                        };
 
                         let formatted_bind_config =
                             serde_json::to_string::<InitConfig>(&(bind_config, self.meta.clone()))
@@ -254,8 +257,12 @@ impl Service for RustCrateService {
         self.started
             .get_or_try_init(|| async {
                 let mut sink_ports = HashMap::new();
-                for (port_name, outgoing) in self.port_to_server.iter() {
-                    sink_ports.insert(port_name.clone(), outgoing.load_instantiated(&|p| p).await);
+                {
+                    let port_to_server = self.port_to_server.lock().await;
+                    for (port_name, outgoing) in port_to_server.iter() {
+                        sink_ports
+                            .insert(port_name.clone(), outgoing.load_instantiated(&|p| p).await);
+                    }
                 }
 
                 let formatted_defns = serde_json::to_string(&sink_ports).unwrap();

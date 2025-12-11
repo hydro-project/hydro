@@ -116,22 +116,18 @@ pub trait LaunchedHost: Send + Sync {
             ServerStrategy::Many(b) => {
                 ServerBindConfig::MultiConnection(Box::new(self.base_server_config(b)))
             }
-            ServerStrategy::Demux(demux) => {
-                let mut config_map = HashMap::new();
-                for (key, underlying) in demux {
-                    config_map.insert(*key, self.server_config(underlying));
-                }
-
-                ServerBindConfig::Demux(config_map)
-            }
-            ServerStrategy::Merge(merge) => {
-                let mut configs = vec![];
-                for underlying in merge {
-                    configs.push(self.server_config(underlying));
-                }
-
-                ServerBindConfig::Merge(configs)
-            }
+            ServerStrategy::Demux(demux) => ServerBindConfig::Demux(
+                demux
+                    .iter()
+                    .map(|(key, underlying)| (*key, self.server_config(underlying)))
+                    .collect::<HashMap<_, _>>(),
+            ),
+            ServerStrategy::Merge(merge) => ServerBindConfig::Merge(
+                merge
+                    .into_iter()
+                    .map(|underlying| self.server_config(underlying))
+                    .collect(),
+            ),
             ServerStrategy::Tagged(underlying, id) => {
                 ServerBindConfig::Tagged(Box::new(self.server_config(underlying)), *id)
             }

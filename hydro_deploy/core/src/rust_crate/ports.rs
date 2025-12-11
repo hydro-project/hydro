@@ -142,7 +142,7 @@ impl RustCrateSink for DemuxSink {
         Ok(Box::new(move || {
             let instantiated_map = thunk_map
                 .into_iter()
-                .map(|(key, thunk)| (key, thunk()))
+                .map(|(key, thunk)| (key, (thunk)()))
                 .collect();
 
             ServerConfig::Demux(instantiated_map)
@@ -227,20 +227,22 @@ impl RustCrateSource for RustCratePortConfig {
 
     fn record_server_config(&self, config: ServerConfig) {
         let from = self.service.upgrade().unwrap();
+        let mut port_to_server = from.port_to_server.lock();
 
         // TODO(shadaj): if already in this map, we want to broadcast
         assert!(
-            !from.port_to_server.contains_key(&self.port),
+            !port_to_server.contains_key(&self.port),
             "The port configuration is incorrect, for example, are you using a ConnectedDirect instead of a ConnectedDemux?"
         );
-        from.port_to_server.insert(self.port.clone(), config);
+        port_to_server.insert(self.port.clone(), config);
     }
 
     fn record_server_strategy(&self, config: ServerStrategy) {
         let from = self.service.upgrade().unwrap();
+        let mut port_to_bind = from.port_to_bind.lock();
 
-        assert!(!from.port_to_bind.contains_key(&self.port));
-        from.port_to_bind.insert(self.port.clone(), config);
+        assert!(!port_to_bind.contains_key(&self.port));
+        port_to_bind.insert(self.port.clone(), config);
     }
 }
 
@@ -324,23 +326,20 @@ impl RustCrateSink for RustCratePortConfig {
         let port = self.port.clone();
         Ok(Box::new(move || {
             let bind_type = (bind_type)(&*server.on);
+            let mut port_to_bind = server.port_to_bind.lock();
 
             if merge {
-                let merge_config = server
-                    .port_to_bind
-                    .entry(port.clone())
-                    .or_insert(ServerStrategy::Merge(vec![]));
-                let merge_index = if let ServerStrategy::Merge(merge) = merge_config {
-                    merge.push(bind_type);
-                    merge.len() - 1
-                } else {
+                let merge_config = port_to_bind
+                    .entry(port)
+                    .or_insert_with(|| ServerStrategy::Merge(Vec::with_capacity(1)));
+                let ServerStrategy::Merge(merge) = merge_config else {
                     panic!("Expected a merge connection definition")
                 };
-
-                ServerConfig::MergeSelect(Box::new(base_config), merge_index)
+                merge.push(bind_type);
+                ServerConfig::MergeSelect(Box::new(base_config), merge.len() - 1)
             } else {
-                assert!(!server.port_to_bind.contains_key(&port));
-                server.port_to_bind.insert(port.clone(), bind_type);
+                assert!(!port_to_bind.contains_key(&port));
+                port_to_bind.insert(port.clone(), bind_type);
                 base_config
             }
         }))
@@ -368,20 +367,18 @@ impl RustCrateSink for RustCratePortConfig {
         let merge = self.merge;
         let port = self.port.clone();
         Ok(Box::new(move |_| {
+            let mut port_to_server = client.port_to_server.lock();
             if merge {
-                let merge_config = client
-                    .port_to_server
-                    .entry(port.clone())
-                    .or_insert(ServerConfig::Merge(vec![]));
-
-                if let ServerConfig::Merge(merge) = merge_config {
-                    merge.push(client_port);
-                } else {
+                let merge_config = port_to_server
+                    .entry(port)
+                    .or_insert_with(|| ServerConfig::Merge(Vec::with_capacity(1)));
+                let ServerConfig::Merge(merge) = merge_config else {
                     panic!()
                 };
+                merge.push(client_port);
             } else {
-                assert!(!client.port_to_server.contains_key(&port));
-                client.port_to_server.insert(port.clone(), client_port);
+                assert!(!port_to_server.contains_key(&port));
+                port_to_server.insert(port.clone(), client_port);
             };
 
             ServerStrategy::Direct((bind_type)(&*client.on))
