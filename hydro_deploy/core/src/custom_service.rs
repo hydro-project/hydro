@@ -24,7 +24,7 @@ pub struct CustomService {
     /// The ports that the service wishes to expose to the public internet.
     external_ports: Vec<u16>,
 
-    launched_host: Option<Arc<dyn LaunchedHost>>,
+    launched_host: OnceLock<Arc<dyn LaunchedHost>>,
 }
 
 impl CustomService {
@@ -33,7 +33,7 @@ impl CustomService {
             _id: id,
             on,
             external_ports,
-            launched_host: None,
+            launched_host: OnceLock::new(),
         }
     }
 
@@ -49,7 +49,7 @@ impl CustomService {
 #[async_trait]
 impl Service for CustomService {
     fn collect_resources(&self, _resource_batch: &mut ResourceBatch) {
-        if self.launched_host.is_some() {
+        if self.launched_host.get().is_some() {
             return;
         }
 
@@ -60,26 +60,25 @@ impl Service for CustomService {
         }
     }
 
-    async fn deploy(&mut self, resource_result: &Arc<ResourceResult>) -> Result<()> {
-        if self.launched_host.is_some() {
-            return Ok(());
-        }
+    async fn deploy(&self, resource_result: &Arc<ResourceResult>) -> Result<()> {
+        self.launched_host.get_or_init(|| {
+            let host = &self.on;
+            let launched = host.provision(resource_result);
+            launched
+        });
 
-        let host = &self.on;
-        let launched = host.provision(resource_result);
-        self.launched_host = Some(launched);
         Ok(())
     }
 
-    async fn ready(&mut self) -> Result<()> {
+    async fn ready(&self) -> Result<()> {
         Ok(())
     }
 
-    async fn start(&mut self) -> Result<()> {
+    async fn start(&self) -> Result<()> {
         Ok(())
     }
 
-    async fn stop(&mut self) -> Result<()> {
+    async fn stop(&self) -> Result<()> {
         Ok(())
     }
 }

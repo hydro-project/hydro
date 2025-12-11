@@ -274,17 +274,17 @@ pub trait Service: Send + Sync {
     fn collect_resources(&self, resource_batch: &mut ResourceBatch);
 
     /// Connects to the acquired resources and prepares the service to be launched.
-    async fn deploy(&mut self, resource_result: &Arc<ResourceResult>) -> Result<()>;
+    async fn deploy(&self, resource_result: &Arc<ResourceResult>) -> Result<()>;
 
     /// Launches the service, which should start listening for incoming network
     /// connections. The service should not start computing at this point.
-    async fn ready(&mut self) -> Result<()>;
+    async fn ready(&self) -> Result<()>;
 
     /// Starts the service by having it connect to other services and start computations.
-    async fn start(&mut self) -> Result<()>;
+    async fn start(&self) -> Result<()>;
 
     /// Stops the service by having it disconnect from other services and stop computations.
-    async fn stop(&mut self) -> Result<()>;
+    async fn stop(&self) -> Result<()>;
 }
 
 pub trait ServiceBuilder {
