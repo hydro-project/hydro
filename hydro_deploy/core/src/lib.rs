@@ -292,9 +292,9 @@ pub trait ServiceBuilder {
     fn build(self, id: usize, on: Arc<dyn Host>) -> Self::Service;
 }
 
-impl<S: Service + 'static, T: FnOnce(usize) -> S> ServiceBuilder for T {
+impl<S: Service + 'static, This: FnOnce(usize, Arc<dyn Host>) -> S> ServiceBuilder for This {
     type Service = S;
-    fn build(self, id: usize, _on: Arc<dyn Host>) -> Self::Service {
-        self(id)
+    fn build(self, id: usize, on: Arc<dyn Host>) -> Self::Service {
+        (self)(id, on)
     }
 }
