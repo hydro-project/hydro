@@ -1105,11 +1105,21 @@ impl HydroRoot {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        let elem_type: syn::Type = match &input.metadata().collection_kind {
+                            CollectionKind::KeyedSingleton { key_type, value_type, .. } |
+                            CollectionKind::KeyedStream { key_type, value_type, .. } => {
+                                parse_quote!((#key_type, #value_type))
+                            }
+                            CollectionKind::Stream { element_type, .. } |
+                            CollectionKind::Singleton { element_type, .. } |
+                            CollectionKind::Optional { element_type, .. } => parse_quote!(#element_type),
+                        };
+
                         graph_builders
                             .get_dfir_mut(&input.metadata().location_kind)
                             .add_dfir(
                                 parse_quote! {
-                                    #ident = #input_ident;
+                                    #ident = #input_ident -> identity::<#elem_type>();
                                 },
                                 None,
                                 None,
