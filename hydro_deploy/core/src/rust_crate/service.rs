@@ -85,7 +85,7 @@ impl RustCrateService {
     pub fn get_port(
         &self,
         name: String,
-        self_arc: &Arc<RwLock<RustCrateService>>,
+        self_arc: &Arc<RustCrateService>,
     ) -> RustCratePortConfig {
         RustCratePortConfig {
             service: Arc::downgrade(self_arc),
@@ -101,7 +101,7 @@ impl RustCrateService {
         &self,
         name: String,
         network_hint: PortNetworkHint,
-        self_arc: &Arc<RwLock<RustCrateService>>,
+        self_arc: &Arc<RustCrateService>,
     ) -> RustCratePortConfig {
         RustCratePortConfig {
             service: Arc::downgrade(self_arc),

@@ -386,14 +386,11 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying
-                .try_read()
-                .unwrap()
-                .declare_many_client(self_underlying);
+            let source_port = self_underlying.declare_many_client(self_underlying);
 
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
-            let recipient_port = other_underlying.try_read().unwrap().get_port_with_hint(
+            let recipient_port = other_underlying.get_port_with_hint(
                 p2_port.clone(),
                 match server_hint {
                     NetworkHint::Auto => hydro_deploy::PortNetworkHint::Auto,
@@ -444,37 +441,37 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
 #[expect(missing_docs, reason = "TODO")]
 pub trait DeployCrateWrapper {
-    fn underlying(&self) -> Arc<RwLock<RustCrateService>>;
+    fn underlying(&self) -> Arc<RustCrateService>;
 
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn stdout(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
-        self.underlying().read().await.stdout()
+    fn stdout(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+        self.underlying().stdout()
     }
 
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn stderr(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
-        self.underlying().read().await.stderr()
+    fn stderr(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+        self.underlying().stderr()
     }
 
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn stdout_filter(
+    fn stdout_filter(
         &self,
         prefix: impl Into<String>,
     ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
-        self.underlying().read().await.stdout_filter(prefix.into())
+        self.underlying().stdout_filter(prefix.into())
     }
 
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn stderr_filter(
+    fn stderr_filter(
         &self,
         prefix: impl Into<String>,
     ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
-        self.underlying().read().await.stderr_filter(prefix.into())
+        self.underlying().stderr_filter(prefix.into())
     }
 
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn tracing_results(&self) -> Option<TracingResults> {
-        self.underlying().read().await.tracing_results().cloned()
+    fn tracing_results(&self) -> Option<TracingResults> {
+        self.underlying().tracing_results().cloned()
     }
 }
 
@@ -638,7 +635,7 @@ impl<H: Host + 'static> IntoProcessSpec<'_, HydroDeploy> for Arc<H> {
 pub struct DeployExternal {
     next_port: Rc<RefCell<usize>>,
     host: Arc<dyn Host>,
-    underlying: Rc<RefCell<Option<Arc<RwLock<CustomService>>>>>,
+    underlying: Rc<RefCell<Option<Arc<CustomService>>>>,
     client_ports: Rc<RefCell<HashMap<String, CustomClientPort>>>,
     allocated_ports: Rc<RefCell<HashMap<usize, String>>>,
 }
@@ -793,12 +790,12 @@ pub struct DeployNode {
     id: usize,
     next_port: Rc<RefCell<usize>>,
     service_spec: Rc<RefCell<Option<CrateOrTrybuild>>>,
-    underlying: Rc<RefCell<Option<Arc<RwLock<RustCrateService>>>>>,
+    underlying: Rc<RefCell<Option<Arc<RustCrateService>>>>,
 }
 
 impl DeployCrateWrapper for DeployNode {
-    fn underlying(&self) -> Arc<RwLock<RustCrateService>> {
-        self.underlying.borrow().as_ref().unwrap().clone()
+    fn underlying(&self) -> Arc<RustCrateService> {
+        Arc::clone(self.underlying.borrow().as_ref().unwrap())
     }
 }
 
@@ -857,11 +854,11 @@ impl Node for DeployNode {
 #[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
 pub struct DeployClusterNode {
-    underlying: Arc<RwLock<RustCrateService>>,
+    underlying: Arc<RustCrateService>,
 }
 
 impl DeployCrateWrapper for DeployClusterNode {
-    fn underlying(&self) -> Arc<RwLock<RustCrateService>> {
+    fn underlying(&self) -> Arc<RustCrateService> {
         self.underlying.clone()
     }
 }

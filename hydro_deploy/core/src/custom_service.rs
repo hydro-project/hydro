@@ -6,7 +6,6 @@ use anyhow::{Result, bail};
 use async_trait::async_trait;
 use hydro_deploy_integration::ConnectedDirect;
 pub use hydro_deploy_integration::ServerPort;
-use tokio::sync::RwLock;
 
 use crate::rust_crate::ports::{
     ReverseSinkInstantiator, RustCrateServer, RustCrateSink, RustCrateSource, ServerConfig,
@@ -37,11 +36,11 @@ impl CustomService {
         }
     }
 
-    pub fn declare_client(&self, self_arc: &Arc<RwLock<Self>>) -> CustomClientPort {
+    pub fn declare_client(&self, self_arc: &Arc<Self>) -> CustomClientPort {
         CustomClientPort::new(Arc::downgrade(self_arc), false)
     }
 
-    pub fn declare_many_client(&self, self_arc: &Arc<RwLock<Self>>) -> CustomClientPort {
+    pub fn declare_many_client(&self, self_arc: &Arc<Self>) -> CustomClientPort {
         CustomClientPort::new(Arc::downgrade(self_arc), true)
     }
 }
@@ -85,13 +84,13 @@ impl Service for CustomService {
 
 #[derive(Clone)]
 pub struct CustomClientPort {
-    pub on: Weak<RwLock<CustomService>>,
+    pub on: Weak<CustomService>,
     many: bool,
     client_port: OnceLock<ServerConfig>,
 }
 
 impl CustomClientPort {
-    fn new(on: Weak<RwLock<CustomService>>, many: bool) -> Self {
+    fn new(on: Weak<CustomService>, many: bool) -> Self {
         Self {
             on,
             many,
@@ -122,9 +121,9 @@ impl CustomClientPort {
 impl RustCrateSource for CustomClientPort {
     fn source_path(&self) -> SourcePath {
         if self.many {
-            SourcePath::Many(self.on.upgrade().unwrap().try_read().unwrap().on.clone())
+            SourcePath::Many(self.on.upgrade().unwrap().on.clone())
         } else {
-            SourcePath::Direct(self.on.upgrade().unwrap().try_read().unwrap().on.clone())
+            SourcePath::Direct(self.on.upgrade().unwrap().on.clone())
         }
     }
 
@@ -160,12 +159,11 @@ impl RustCrateSink for CustomClientPort {
         wrap_client_port: &dyn Fn(ServerConfig) -> ServerConfig,
     ) -> Result<ReverseSinkInstantiator> {
         let client = self.on.upgrade().unwrap();
-        let client_read = client.try_read().unwrap();
 
         let server_host = server_host.clone();
 
         let (conn_type, bind_type) =
-            server_host.strategy_as_server(client_read.on.deref(), crate::PortNetworkHint::Auto)?;
+            server_host.strategy_as_server(client.on.deref(), crate::PortNetworkHint::Auto)?;
 
         let client_port = wrap_client_port(ServerConfig::from_strategy(&conn_type, server_sink));
 
