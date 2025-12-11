@@ -44,7 +44,6 @@ impl LocalhostHost {
     }
 }
 
-#[async_trait]
 impl Host for LocalhostHost {
     fn target_type(&self) -> HostTargetType {
         HostTargetType::Local

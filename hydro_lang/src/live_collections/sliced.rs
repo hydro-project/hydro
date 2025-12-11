@@ -20,18 +20,61 @@ pub fn __sliced_wrap_invoke<A, B, O: Unslicable>(
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __sliced_parse_uses__ {
+    // Parse immutable use statements: let name = use(expr, nondet);
     (
         @uses [$($uses:tt)*]
+        @states [$($states:tt)*]
         let $name:ident = use $(::$style:ident)?($expr:expr, $nondet:expr); $($rest:tt)*
     ) => {
         $crate::__sliced_parse_uses__!(
             @uses [$($uses)* { $name, ($($style)?), $expr, $nondet }]
+            @states [$($states)*]
             $($rest)*
         )
     };
 
+    // Parse mutable state statements: let mut name = use::state(initial);
+    (
+        @uses [$($uses:tt)*]
+        @states [$($states:tt)*]
+        let mut $name:ident = use::state($initial:expr); $($rest:tt)*
+    ) => {
+        $crate::__sliced_parse_uses__!(
+            @uses [$($uses)*]
+            @states [$($states)* { $name, state, $initial }]
+            $($rest)*
+        )
+    };
+
+    // Parse mutable state_null statements: let mut name = use::state_null::<Type>();
+    (
+        @uses [$($uses:tt)*]
+        @states [$($states:tt)*]
+        let mut $name:ident = use::state_null::<$ty:ty>(); $($rest:tt)*
+    ) => {
+        $crate::__sliced_parse_uses__!(
+            @uses [$($uses)*]
+            @states [$($states)* { $name, state_null, (std::marker::PhantomData::<$ty>) }]
+            $($rest)*
+        )
+    };
+
+    // Terminal case: no uses, only states
+    (
+        @uses []
+        @states [$({ $state_name:ident, $state_style:ident, $state_arg:tt })+]
+        $($body:tt)*
+    ) => {
+        {
+            // We need at least one use to get a tick, so panic if there are none
+            compile_error!("sliced! requires at least one `let name = use(...)` statement to determine the tick")
+        }
+    };
+
+    // Terminal case: uses with no states
     (
         @uses [{ $first_name:ident, ($($first_style:ident)?), $first:expr, $nondet_first:expr } $({ $rest_name:ident, ($($rest_style:ident)?), $rest:expr, $nondet_expl:expr })*]
+        @states []
         $($body:tt)*
     ) => {
         {
@@ -66,6 +109,68 @@ macro_rules! __sliced_parse_uses__ {
             })
         }
     };
+
+    // Terminal case: uses with states
+    (
+        @uses [{ $first_name:ident, ($($first_style:ident)?), $first:expr, $nondet_first:expr } $({ $rest_name:ident, ($($rest_style:ident)?), $rest:expr, $nondet_expl:expr })*]
+        @states [{ $first_state:ident, $first_state_style:ident, $first_state_arg:tt } $({ $rest_state:ident, $rest_state_style:ident, $rest_state_arg:tt })*]
+        $($body:tt)*
+    ) => {
+        {
+            let _ = $nondet_first;
+            $(let _ = $nondet_expl;)*
+
+            let __styled = (
+                $($crate::live_collections::sliced::style::$first_style)?($first),
+                $($($crate::live_collections::sliced::style::$rest_style)?($rest),)*
+            );
+
+            let __tick = $crate::live_collections::sliced::Slicable::preferred_tick(&__styled).unwrap_or_else(|| $crate::live_collections::sliced::Slicable::get_location(&__styled.0).tick());
+            let __backtraces = {
+                use $crate::compile::ir::backtrace::__macro_get_backtrace;
+                (
+                    $crate::macro_support::copy_span::copy_span!($first, {
+                        __macro_get_backtrace(1)
+                    }),
+                    $($crate::macro_support::copy_span::copy_span!($rest, {
+                        __macro_get_backtrace(1)
+                    }),)*
+                )
+            };
+            let __sliced = $crate::live_collections::sliced::Slicable::slice(__styled, &__tick, __backtraces, $nondet_first);
+            let (
+                $first_name,
+                $($rest_name,)*
+            ) = __sliced;
+
+            // Create all cycles and pack handles/values into tuples
+            let (__handles, __states) = $crate::live_collections::sliced::unzip_cycles((
+                $crate::live_collections::sliced::style::$first_state_style(&__tick, $first_state_arg),
+                $($crate::live_collections::sliced::style::$rest_state_style(&__tick, $rest_state_arg),)*
+            ));
+
+            // Unpack mutable state values
+            let (
+                mut $first_state,
+                $(mut $rest_state,)*
+            ) = __states;
+
+            // Execute the body
+            let __body_result = {
+                $($body)*
+            };
+
+            // Re-pack the final state values and complete cycles
+            let __final_states = (
+                $first_state,
+                $($rest_state,)*
+            );
+            $crate::live_collections::sliced::complete_cycles(__handles, __final_states);
+
+            // Unslice the result
+            $crate::live_collections::sliced::Unslicable::unslice(__body_result)
+        }
+    };
 }
 
 #[macro_export]
@@ -90,33 +195,34 @@ macro_rules! __sliced_parse_uses__ {
 /// };
 /// ```
 ///
-/// # Example with two collections
-/// ```rust
-/// # #[cfg(feature = "deploy")] {
-/// # use hydro_lang::prelude::*;
-/// # use futures::StreamExt;
-/// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-/// let singleton = process.singleton(q!(5));
-/// let stream = process.source_iter(q!(vec![1, 2, 3]));
-/// let out: Stream<(i32, i32), _> = sliced! {
-///     let batch_of_req = use(stream, nondet!(/** test */));
-///     let latest_singleton = use(singleton, nondet!(/** test */));
+/// # Stateful Computations
+/// The `sliced!` macro also supports stateful computations across iterations using `let mut` bindings
+/// with `use::state` or `use::state_null`. These create cycles that persist values between iterations.
 ///
-///     let mapped = batch_of_req.map(q!(|x| x * 2));
-///     mapped.cross_singleton(latest_singleton)
+/// - `use::state(|l| initial)`: Creates a cycle with an initial value. The closure receives
+///   the slice location and returns the initial state for the first iteration.
+/// - `use::state_null::<Type>()`: Creates a cycle that starts as null/empty on the first iteration.
+///
+/// The mutable binding can be reassigned in the body, and the final value will be passed to the
+/// next iteration.
+///
+/// ```rust,ignore
+/// let counter_stream = sliced! {
+///     let batch = use(input_stream, nondet!(/** explanation */));
+///     let mut counter = use::state(|l| l.singleton(q!(0)));
+///
+///     // Increment counter by the number of items in this batch
+///     let new_count = counter.clone().zip(batch.count())
+///         .map(q!(|(old, add)| old + add));
+///     counter = new_count.clone();
+///     new_count.into_stream()
 /// };
-/// # out
-/// # }, |mut stream| async move {
-/// # assert_eq!(stream.next().await.unwrap(), (2, 5));
-/// # assert_eq!(stream.next().await.unwrap(), (4, 5));
-/// # assert_eq!(stream.next().await.unwrap(), (6, 5));
-/// # }));
-/// # }
 /// ```
 macro_rules! __sliced__ {
     ($($tt:tt)*) => {
         $crate::__sliced_parse_uses__!(
             @uses []
+            @states []
             $($tt)*
         )
     };
@@ -127,9 +233,13 @@ pub use crate::__sliced__ as sliced;
 /// Styles for use with the `sliced!` macro.
 pub mod style {
     use super::Slicable;
+    #[cfg(stageleft_runtime)]
+    use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
+    use crate::forward_handle::{TickCycle, TickCycleHandle};
     use crate::live_collections::boundedness::{Bounded, Unbounded};
     use crate::live_collections::keyed_singleton::BoundedValue;
     use crate::live_collections::stream::{Ordering, Retries, Stream};
+    use crate::location::tick::DeferTick;
     use crate::location::{Location, NoTick, Tick};
     use crate::nondet::NonDet;
 
@@ -139,6 +249,48 @@ pub mod style {
     /// Wraps a live collection to be treated atomically during slicing.
     pub fn atomic<T>(t: T) -> Atomic<T> {
         Atomic(t)
+    }
+
+    /// Creates a stateful cycle with an initial value for use in `sliced!`.
+    ///
+    /// The initial value is computed from a closure that receives the location
+    /// for the body of the slice.
+    ///
+    /// The initial value is used on the first iteration, and subsequent iterations receive
+    /// the value assigned to the mutable binding at the end of the previous iteration.
+    #[cfg(stageleft_runtime)]
+    #[expect(
+        private_bounds,
+        reason = "only Hydro collections can implement CycleCollectionWithInitial"
+    )]
+    pub fn state<'a, S, L, F>(tick: &Tick<L>, initial_fn: F) -> (TickCycleHandle<'a, S>, S)
+    where
+        L: Location<'a> + NoTick,
+        S: CycleCollectionWithInitial<'a, TickCycle, Location = Tick<L>>,
+        F: FnOnce(&Tick<L>) -> S,
+    {
+        let initial = initial_fn(tick);
+        tick.cycle_with_initial(initial)
+    }
+
+    /// Creates a stateful cycle without an initial value for use in `sliced!`.
+    ///
+    /// On the first iteration, the state will be null/empty. Subsequent iterations receive
+    /// the value assigned to the mutable binding at the end of the previous iteration.
+    #[cfg(stageleft_runtime)]
+    #[expect(
+        private_bounds,
+        reason = "only Hydro collections can implement CycleCollection"
+    )]
+    pub fn state_null<'a, S, L>(
+        tick: &Tick<L>,
+        _phantom: std::marker::PhantomData<S>,
+    ) -> (TickCycleHandle<'a, S>, S)
+    where
+        L: Location<'a> + NoTick,
+        S: CycleCollection<'a, TickCycle, Location = Tick<L>> + DeferTick,
+    {
+        tick.cycle::<S>()
     }
 
     impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L>
@@ -313,6 +465,37 @@ pub trait Unslicable {
     fn unslice(self) -> Self::Unsliced;
 }
 
+/// A trait for unzipping a tuple of (handle, state) pairs into separate tuples.
+#[doc(hidden)]
+pub trait UnzipCycles {
+    /// The tuple of cycle handles.
+    type Handles;
+    /// The tuple of state values.
+    type States;
+
+    /// Unzips the cycles into handles and states.
+    fn unzip(self) -> (Self::Handles, Self::States);
+}
+
+/// Unzips a tuple of cycles into handles and states.
+#[doc(hidden)]
+pub fn unzip_cycles<T: UnzipCycles>(cycles: T) -> (T::Handles, T::States) {
+    cycles.unzip()
+}
+
+/// A trait for completing a tuple of cycle handles with their final state values.
+#[doc(hidden)]
+pub trait CompleteCycles<States> {
+    /// Completes all cycles with the provided state values.
+    fn complete(self, states: States);
+}
+
+/// Completes a tuple of cycle handles with their final state values.
+#[doc(hidden)]
+pub fn complete_cycles<H: CompleteCycles<S>, S>(handles: H, states: S) {
+    handles.complete(states);
+}
+
 impl<'a, L: Location<'a>> Slicable<'a, L> for () {
     type Slice = ();
     type Backtrace = ();
@@ -385,6 +568,44 @@ impl_slicable_for_tuple!(S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3)
 impl_slicable_for_tuple!(
     S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3, S5, S5_bt, 4
 ); // 5 slices ought to be enough for anyone
+
+macro_rules! impl_cycles_for_tuple {
+    ($($H:ident, $S:ident, $idx:tt),*) => {
+        impl<$($H, $S),*> UnzipCycles for ($(($H, $S),)*) {
+            type Handles = ($($H,)*);
+            type States = ($($S,)*);
+
+            #[expect(non_snake_case, reason = "macro codegen")]
+            fn unzip(self) -> (Self::Handles, Self::States) {
+                let ($($H,)*) = self;
+                (
+                    ($($H.0,)*),
+                    ($($H.1,)*),
+                )
+            }
+        }
+
+        impl<$($H: crate::forward_handle::CompleteCycle<$S>, $S),*> CompleteCycles<($($S,)*)> for ($($H,)*) {
+            #[expect(non_snake_case, reason = "macro codegen")]
+            fn complete(self, states: ($($S,)*)) {
+                let ($($H,)*) = self;
+                let ($($S,)*) = states;
+                $($H.complete_next_tick($S);)*
+            }
+        }
+    };
+}
+
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(H1, S1, 0);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(H1, S1, 0, H2, S2, 1);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(H1, S1, 0, H2, S2, 1, H3, S3, 2);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3, H5, S5, 4);
 
 impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
     for super::Stream<T, L, B, O, R>
@@ -539,5 +760,89 @@ impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
         let out = self.batch(tick, nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
+    }
+}
+
+#[cfg(feature = "sim")]
+#[cfg(test)]
+mod tests {
+    use stageleft::q;
+
+    use super::sliced;
+    use crate::location::Location;
+    use crate::nondet::nondet;
+    use crate::prelude::FlowBuilder;
+
+    /// Test a counter using `use::state` with an initial singleton value.
+    /// Each input increments the counter, and we verify the output after each tick.
+
+    #[test]
+    fn sim_state_counter() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_send, input) = node.sim_input::<i32, _, _>();
+
+        let out_recv = sliced! {
+            let batch = use(input, nondet!(/** test */));
+            let mut counter = use::state(|l| l.singleton(q!(0)));
+
+            let new_count = counter.clone().zip(batch.count())
+                .map(q!(|(old, add)| old + add));
+            counter = new_count.clone();
+            new_count.into_stream()
+        }
+        .sim_output();
+
+        flow.sim().exhaustive(async || {
+            input_send.send(1);
+            assert_eq!(out_recv.next().await.unwrap(), 1);
+
+            input_send.send(1);
+            assert_eq!(out_recv.next().await.unwrap(), 2);
+
+            input_send.send(1);
+            assert_eq!(out_recv.next().await.unwrap(), 3);
+        });
+    }
+
+    /// Test `use::state_null` with an Optional that starts as None.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_state_null_optional() {
+        use crate::live_collections::Optional;
+        use crate::live_collections::boundedness::Bounded;
+        use crate::location::{Location, Tick};
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_send, input) = node.sim_input::<i32, _, _>();
+
+        let out_recv = sliced! {
+            let batch = use(input, nondet!(/** test */));
+            let mut prev = use::state_null::<Optional<i32, Tick<_>, Bounded>>();
+
+            // Output the previous value (or -1 if none)
+            let output = prev.clone().unwrap_or(prev.location().singleton(q!(-1)));
+            // Store the current batch's first value for next tick
+            prev = batch.first();
+            output.into_stream()
+        }
+        .sim_output();
+
+        flow.sim().exhaustive(async || {
+            input_send.send(10);
+            // First tick: prev is None, so output is -1
+            assert_eq!(out_recv.next().await.unwrap(), -1);
+
+            input_send.send(20);
+            // Second tick: prev is Some(10), so output is 10
+            assert_eq!(out_recv.next().await.unwrap(), 10);
+
+            input_send.send(30);
+            // Third tick: prev is Some(20), so output is 20
+            assert_eq!(out_recv.next().await.unwrap(), 20);
+        });
     }
 }

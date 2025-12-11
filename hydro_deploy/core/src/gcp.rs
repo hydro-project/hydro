@@ -4,7 +4,6 @@ use std::fmt::Debug;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use anyhow::Result;
-use async_trait::async_trait;
 use nanoid::nanoid;
 use serde_json::json;
 use tokio::sync::RwLock;
@@ -221,7 +220,6 @@ impl GcpComputeEngineHost {
     }
 }
 
-#[async_trait]
 impl Host for GcpComputeEngineHost {
     fn target_type(&self) -> HostTargetType {
         self.target_type
