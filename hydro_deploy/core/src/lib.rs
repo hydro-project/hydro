@@ -74,7 +74,7 @@ pub struct ResourceResult {
     _last_result: Option<Arc<ResourceResult>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TracingResults {
     pub folded_data: Vec<u8>,
 }

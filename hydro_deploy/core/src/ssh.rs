@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use anyhow::{Context as _, Result};
@@ -42,7 +42,7 @@ struct LaunchedSshBinary {
     stdout_broadcast: PriorityBroadcast,
     stderr_broadcast: PriorityBroadcast,
     tracing: Option<TracingOptions>,
-    tracing_results: Option<TracingResults>,
+    tracing_results: OnceLock<TracingResults>,
 }
 
 #[async_trait]
@@ -72,7 +72,7 @@ impl LaunchedBinary for LaunchedSshBinary {
     }
 
     fn tracing_results(&self) -> Option<&TracingResults> {
-        self.tracing_results.as_ref()
+        self.tracing_results.get()
     }
 
     fn exit_code(&self) -> Option<i32> {
@@ -172,9 +172,11 @@ impl LaunchedBinary for LaunchedSshBinary {
             })
             .await?;
 
-            self.tracing_results = Some(TracingResults {
-                folded_data: fold_data.clone(),
-            });
+            self.tracing_results
+                .set(TracingResults {
+                    folded_data: fold_data.clone(),
+                })
+                .expect("``tracing_results` already set! This is a bug.");
 
             handle_fold_data(tracing, fold_data).await?;
         };
@@ -379,7 +381,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             ProgressTracker::leaf("install perf", async {
                 // Run setup command
                 if let Some(setup_command) = setup_command {
-                    let mut setup_channel = create_channel(&session).await?;
+                    let setup_channel = create_channel(&session).await?;
                     let (setup_stdout, setup_stderr) =
                         (setup_channel.stdout(), setup_channel.stderr());
                     setup_channel.exec(false, &*setup_command).await?;
@@ -395,9 +397,9 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
                         ));
                     }
 
-                    let exit_code = setup_channel.recv_exit_status().wait().await.copied();
-                    setup_channel.wait_close().await;
-                    if Some(0) != exit_code {
+                    setup_channel.closed().wait().await;
+                    let exit_code = setup_channel.recv_exit_status().try_get();
+                    if Ok(&0) != exit_code {
                         anyhow::bail!("Failed to install perf on remote host");
                     }
                 }
@@ -452,7 +454,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             stdout_broadcast,
             stderr_broadcast,
             tracing,
-            tracing_results: None,
+            tracing_results: OnceLock::new(),
         }))
     }
 
