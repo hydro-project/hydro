@@ -26,6 +26,10 @@ pub enum CrateTarget {
 
 /// Specifies a crate that uses `hydro_deploy_integration` to be
 /// deployed as a service.
+///
+/// A [crate](https://doc.rust-lang.org/cargo/appendix/glossary.html#crate) is a particular
+/// [target](https://doc.rust-lang.org/cargo/appendix/glossary.html#target) within a
+/// [package](https://doc.rust-lang.org/cargo/appendix/glossary.html#package).
 #[derive(Clone)]
 pub struct RustCrate {
     src: PathBuf,
@@ -43,9 +47,9 @@ pub struct RustCrate {
 }
 
 impl RustCrate {
-    /// Creates a new `RustCrate` that will be deployed on the given host.
-    /// The `src` argument is the path to the crate's directory, and the `on`
-    /// argument is the host that the crate will be deployed on.
+    /// Creates a new `RustCrate`.
+    ///
+    /// The `src` argument is the path to the package's directory.
     pub fn new(src: impl Into<PathBuf>) -> Self {
         Self {
             src: src.into(),
