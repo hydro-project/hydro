@@ -21,7 +21,7 @@ use crate::{AwsEc2Host, AzureHost, HostTargetType, ServiceBuilder};
 
 pub struct Deployment {
     pub hosts: Vec<Weak<dyn Host>>,
-    pub services: Vec<Weak<RwLock<dyn Service>>>,
+    pub services: Vec<Weak<dyn Service>>,
     pub resource_pool: ResourcePool,
     localhost_host: Option<Arc<LocalhostHost>>,
     last_resource_result: Option<Arc<ResourceResult>>,
@@ -61,7 +61,7 @@ impl Deployment {
         &mut self,
         on: Arc<dyn Host>,
         external_ports: Vec<u16>,
-    ) -> Arc<RwLock<CustomService>> {
+    ) -> Arc<CustomService> {
         self.add_service(|id, on| CustomService::new(id, on, external_ports), on)
     }
 
@@ -105,7 +105,7 @@ impl Deployment {
             let mut resource_batch = super::ResourceBatch::new();
 
             for service in self.services.iter().filter_map(Weak::upgrade) {
-                service.read().await.collect_resources(&mut resource_batch);
+                service.collect_resources(&mut resource_batch);
             }
 
             for host in self.hosts.iter().filter_map(Weak::upgrade) {
@@ -135,9 +135,9 @@ impl Deployment {
             progress::ProgressTracker::with_group("prepare", Some(upgraded_services.len()), || {
                 let services_future = upgraded_services
                     .iter()
-                    .map(|service: &Arc<RwLock<dyn Service>>| {
+                    .map(|service: &Arc<dyn Service>| {
                         let resource_result = &resource_result;
-                        async move { service.write().await.deploy(resource_result).await }
+                        async move { service.deploy(resource_result).await }
                     })
                     .collect::<Vec<_>>();
 
@@ -151,8 +151,8 @@ impl Deployment {
                 let all_services_ready =
                     upgraded_services
                         .iter()
-                        .map(|service: &Arc<RwLock<dyn Service>>| async move {
-                            service.write().await.ready().await?;
+                        .map(|service: &Arc<dyn Service>| async move {
+                            service.ready().await?;
                             Ok(()) as Result<()>
                         });
 
@@ -170,8 +170,8 @@ impl Deployment {
 
         progress::ProgressTracker::with_group("start", None, || {
             let all_services_start = self.services.iter().filter_map(Weak::upgrade).map(
-                |service: Arc<RwLock<dyn Service>>| async move {
-                    service.write().await.start().await?;
+                |service: Arc<dyn Service>| async move {
+                    service.start().await?;
                     Ok(()) as Result<()>
                 },
             );
@@ -187,8 +187,8 @@ impl Deployment {
 
         progress::ProgressTracker::with_group("stop", None, || {
             let all_services_stop = self.services.iter().filter_map(Weak::upgrade).map(
-                |service: Arc<RwLock<dyn Service>>| async move {
-                    service.write().await.stop().await?;
+                |service: Arc<dyn Service>| async move {
+                    service.stop().await?;
                     Ok(()) as Result<()>
                 },
             );
@@ -213,12 +213,12 @@ impl Deployment {
         &mut self,
         service: impl ServiceBuilder<Service = T>,
         on: Arc<dyn Host>,
-    ) -> Arc<RwLock<T>> {
-        let arc = Arc::new(RwLock::new(service.build(self.next_service_id, on)));
+    ) -> Arc<T> {
+        let arc = Arc::new(service.build(self.next_service_id, on));
         self.next_service_id += 1;
 
         self.services
-            .push(Arc::downgrade(&arc) as Weak<RwLock<dyn Service>>);
+            .push(Arc::downgrade(&arc) as Weak<dyn Service>);
         arc
     }
 }

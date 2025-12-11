@@ -105,15 +105,13 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut node_stdout = nodes.get_process(&node).stdout().await;
-        let cluster_stdouts = futures::future::join_all(
-            nodes
-                .get_cluster(&cluster)
-                .members()
-                .iter()
-                .map(|node| node.stdout()),
-        )
-        .await;
+        let mut node_stdout = nodes.get_process(&node).stdout();
+        let cluster_stdouts = nodes
+            .get_cluster(&cluster)
+            .members()
+            .iter()
+            .map(|node| node.stdout())
+            .collect::<Vec<_>>();
 
         deployment.start().await.unwrap();
 
@@ -162,7 +160,7 @@ mod tests {
             .deploy(&mut deployment);
 
         deployment.deploy().await.unwrap();
-        let mut process2_stdout = nodes.get_process(&process2).stdout().await;
+        let mut process2_stdout = nodes.get_process(&process2).stdout();
         deployment.start().await.unwrap();
         for i in 0..3 {
             let expected_message = format!("I received message is {}", i);
@@ -185,14 +183,12 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let cluster2_stdouts = futures::future::join_all(
-            nodes
-                .get_cluster(&cluster2)
-                .members()
-                .iter()
-                .map(|node| node.stdout()),
-        )
-        .await;
+        let cluster2_stdouts = nodes
+            .get_cluster(&cluster2)
+            .members()
+            .iter()
+            .map(|node| node.stdout())
+            .collect::<Vec<_>>();
 
         deployment.start().await.unwrap();
 
@@ -234,14 +230,12 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let cluster2_stdouts = futures::future::join_all(
-            nodes
-                .get_cluster(&cluster2)
-                .members()
-                .iter()
-                .map(|node| node.stdout()),
-        )
-        .await;
+        let cluster2_stdouts = nodes
+            .get_cluster(&cluster2)
+            .members()
+            .iter()
+            .map(|node| node.stdout())
+            .collect::<Vec<_>>();
 
         deployment.start().await.unwrap();
 
