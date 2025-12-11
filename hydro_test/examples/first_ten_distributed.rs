@@ -1,8 +1,8 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use clap::{ArgAction, Parser};
 use futures::SinkExt;
-use hydro_deploy::aws::AwsNetwork;
+use hydro_deploy::aws::{AwsCloudwatchLogGroup, AwsEc2IamInstanceProfile, AwsNetwork};
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
@@ -14,20 +14,25 @@ use tracing_subscriber::util::SubscriberInitExt;
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 #[derive(Parser, Debug)]
+#[command(group(
+    clap::ArgGroup::new("cloud")
+        .args(&["gcp", "aws"])
+        .multiple(false)
+))]
 struct Args {
     /// Use GCP instead of localhost (requires project name)
     #[clap(long)]
     gcp: Option<String>,
 
     /// use AWS, make sure credentials are set up
-    #[arg(short, long, action = ArgAction::SetTrue)]
+    #[arg(long, action = ArgAction::SetTrue)]
     aws: bool,
 
     #[clap(flatten)]
     graph: GraphConfig,
 }
 
-// run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP, with `--aws=true` for AWS.
+// run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP, with `--aws` for AWS.
 #[tokio::main]
 async fn main() {
     let subscriber = tracing_subscriber::fmt::layer().with_target(false);
@@ -60,16 +65,23 @@ async fn main() {
             "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off",
         )
     } else if args.aws {
-        let network = Arc::new(RwLock::new(AwsNetwork::new("us-east-1", None)));
+        let region = "us-east-1";
+        let network = Arc::new(Mutex::new(AwsNetwork::new(region, None)));
+        let iam_instance_profile = Arc::new(Mutex::new(
+            AwsEc2IamInstanceProfile::new(region, None).add_cloudwatch_agent_server_policy_arn(),
+        ));
+        let cloudwatch_log_group = Arc::new(Mutex::new(AwsCloudwatchLogGroup::new(region, None)));
 
         (
             Box::new(move |deployment| -> Arc<dyn Host> {
                 deployment
                     .AwsEc2Host()
-                    .region("us-east-1")
+                    .region(region)
                     .instance_type("t3.micro")
                     .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
                     .network(network.clone())
+                    .iam_instance_profile(iam_instance_profile.clone())
+                    .cloudwatch_log_group(cloudwatch_log_group.clone())
                     .add()
             }),
             "-C opt-level=3 -C codegen-units=1 -C strip=debuginfo -C debuginfo=0 -C lto=off",

@@ -3,11 +3,13 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::time::SystemTime;
 
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 pub use hydro_deploy_integration::*;
 use serde::de::DeserializeOwned;
+use serde_json::json;
 
 use crate::scheduled::graph::Dfir;
 
@@ -26,25 +28,175 @@ macro_rules! launch {
 }
 
 pub use crate::launch;
+use crate::scheduled::metrics::DfirMetrics;
 
-pub async fn launch_flow(mut flow: Dfir<'_>) {
-    let stop = tokio::sync::oneshot::channel();
-    tokio::task::spawn_blocking(|| {
-        let mut line = String::new();
-        std::io::stdin().read_line(&mut line).unwrap();
-        if line.starts_with("stop") {
-            stop.0.send(()).unwrap();
-        } else {
-            eprintln!("Unexpected stdin input: {:?}", line);
+pub async fn launch_flow(flow: Dfir<'_>) {
+    let read_stop = async {
+        use tokio::io::AsyncBufReadExt;
+
+        let stdin = tokio::io::BufReader::new(tokio::io::stdin());
+        let mut lines = stdin.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            if line.starts_with("stop") {
+                return;
+            } else {
+                eprintln!("Unexpected stdin input: {:?}", line);
+            }
+        }
+        // Yield forever.
+        let _ = std::future::pending::<std::convert::Infallible>().await;
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+    let flow = local_set.run_until(async move {
+        use tokio::fs::OpenOptions;
+        use tokio::io::{AsyncWriteExt, BufWriter};
+
+        let mut flow = flow;
+        let mut metrics = flow.metrics();
+
+        // TODO!!! MAKE THIS GENERIC.
+
+        for i in 0.. {
+            let _work_done = flow.run_tick().await;
+
+            // Metrics
+            if 0 == i % 100 {
+                let () = do_metrics(&flow, &mut metrics).await;
+            }
+
+            while !flow.can_start_tick() {
+                let _ = flow.recv_events_async().await;
+            }
+        }
+
+        async fn do_metrics(flow: &Dfir<'_>, metrics: &mut DfirMetrics) {
+            // Create an output file write to `/var/log/hydro.log`
+            let file_result = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(false)
+                .append(true)
+                .open("/var/log/hydro/metrics.log")
+                .await;
+            let file = match file_result {
+                Ok(file) => file,
+                Err(e) => {
+                    eprintln!("Failed to create metrics file: {}", e);
+                    return;
+                }
+            };
+            let mut writer = BufWriter::new(file);
+
+            // Get updated metrics.
+            // Emit metrics.
+            // TODO(mingwei)!!! MAKE THIS GENERIC.
+            let ts = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis();
+
+            // Handoffs
+            for handoff_id in metrics.handoff_ids() {
+                let handoff_metrics = metrics.handoff_metrics(handoff_id);
+                let emf = json!({
+                    "_aws": {
+                        "Timestamp": ts,
+                        "CloudWatchMetrics": [
+                            {
+                                "Namespace": "Hydro/HandoffMetrics",
+                                "Dimensions": [[], ["HandoffId"]],
+                                "Metrics": [
+                                    {"Name": "CurrItemsCount", "Unit": "Count"},
+                                    {"Name": "TotalItemsCount", "Unit": "Count"},
+                                ]
+                            }
+                        ]
+                    },
+                    "HandoffId": handoff_id.to_string(),
+                    "CurrItemsCount": handoff_metrics.curr_items_count(),
+                    "TotalItemsCount": handoff_metrics.total_items_count(),
+                })
+                .to_string();
+                writer.write_all(emf.as_bytes()).await.unwrap();
+                writer.write_u8(b'\n').await.unwrap();
+            }
+
+            // Subgraphs
+            for sg_id in metrics.subgraph_ids() {
+                let sg_metrics = metrics.subgraph_metrics(sg_id);
+                let emf = json!({
+                    "_aws": {
+                        "Timestamp": ts,
+                        "CloudWatchMetrics": [
+                            {
+                                "Namespace": "Hydro/SubgraphMetrics",
+                                "Dimensions": [[], ["SubgraphId"]],
+                                "Metrics": [
+                                    {"Name": "TotalRunCount", "Unit": "Count"},
+                                    {"Name": "TotalPollDuration", "Unit": "Microseconds"},
+                                    {"Name": "TotalPollCount", "Unit": "Count"},
+                                    {"Name": "TotalIdleDuration", "Unit": "Microseconds"},
+                                    {"Name": "TotalIdleCount", "Unit": "Count"},
+                                ]
+                            }
+                        ]
+                    },
+                    "SubgraphId": sg_id.to_string(),
+                    "TotalRunCount": sg_metrics.total_run_count(),
+                    "TotalPollDuration": sg_metrics.total_poll_duration().as_micros(),
+                    "TotalPollCount": sg_metrics.total_poll_count(),
+                    "TotalIdleDuration": sg_metrics.total_idle_duration().as_micros(),
+                    "TotalIdleCount": sg_metrics.total_idle_count(),
+                })
+                .to_string();
+                writer.write_all(emf.as_bytes()).await.unwrap();
+                writer.write_u8(b'\n').await.unwrap();
+
+                writer.flush().await.unwrap();
+            }
+            // Reset metrics.
+            metrics.reset();
+
+            // Tokio RuntimeMetrics
+            {
+                let rt_metrics = tokio::runtime::Handle::current().metrics();
+                let emf = json!({
+                    "_aws": {
+                        "Timestamp": ts,
+                        "CloudWatchMetrics": [
+                            {
+                                "Namespace": "Hydro/TokioRuntimeMetrics",
+                                "Dimensions": [[]],
+                                "Metrics": [
+                                    // TODO(mingwei): for example for now
+                                    {"Name": "NumAliveTasks", "Unit": "Count"},
+                                    {"Name": "GlobalQueueDepth", "Unit": "Count"},
+                                ]
+                            }
+                        ]
+                    },
+                    "NumAliveTasks": rt_metrics.num_alive_tasks(),
+                    "GlobalQueueDepth": rt_metrics.global_queue_depth(),
+                })
+                .to_string();
+                writer.write_all(emf.as_bytes()).await.unwrap();
+                writer.write_u8(b'\n').await.unwrap();
+            }
+
+            writer.flush().await.unwrap();
+            writer.shutdown().await.unwrap();
         }
     });
 
-    let local_set = tokio::task::LocalSet::new();
-    let flow = local_set.run_until(flow.run());
-
     tokio::select! {
-        _ = stop.1 => {},
-        _ = flow => {}
+        _ = flow => {
+              // Should be unreachable.
+        },
+        () = read_stop => {
+            // Exit triggered.
+            return;
+        },
     }
 }
 
