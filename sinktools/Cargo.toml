@@ -15,7 +15,7 @@ all-features = true
 
 [features]
 default = ["std", "variadics"]
-std = ["futures-util/std", "variadics?/std"]
+std = ["futures-util/std", "variadics?/std", "dep:tokio", "tokio/sync", "tokio/macros", "tokio/rt"]
 variadics = ["dep:variadics"]
 
 [dependencies]
@@ -24,6 +24,7 @@ futures-util = { version = "0.3", default-features = false, features = [
 ] }
 pin-project-lite = "0.2"
 sealed = "0.6"
+tokio = { version = "1.29.0", default-features = false, optional = true }
 variadics = { optional = true, path = "../variadics", default-features = false, version = "^0.0.10" }
 
 [dev-dependencies]
