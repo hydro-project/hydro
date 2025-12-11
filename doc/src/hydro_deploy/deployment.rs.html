@@ -62,248 +62,245 @@
 <a href=#62 id=62 data-nosnippet>62</a>        on: Arc&lt;<span class="kw">dyn </span>Host&gt;,
 <a href=#63 id=63 data-nosnippet>63</a>        external_ports: Vec&lt;u16&gt;,
 <a href=#64 id=64 data-nosnippet>64</a>    ) -&gt; Arc&lt;RwLock&lt;CustomService&gt;&gt; {
-<a href=#65 id=65 data-nosnippet>65</a>        <span class="self">self</span>.add_service(
-<a href=#66 id=66 data-nosnippet>66</a>            |id| CustomService::new(id, on.clone(), external_ports),
-<a href=#67 id=67 data-nosnippet>67</a>            on.clone(),
-<a href=#68 id=68 data-nosnippet>68</a>        )
-<a href=#69 id=69 data-nosnippet>69</a>    }
-<a href=#70 id=70 data-nosnippet>70</a>
-<a href=#71 id=71 data-nosnippet>71</a>    <span class="doccomment">/// Runs `deploy()`, and `start()`, waits for the trigger future, then runs `stop()`.
-<a href=#72 id=72 data-nosnippet>72</a>    </span><span class="kw">pub async fn </span>run_until(<span class="kw-2">&amp;mut </span><span class="self">self</span>, trigger: <span class="kw">impl </span>Future&lt;Output = ()&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#73 id=73 data-nosnippet>73</a>        <span class="comment">// TODO(mingwei): should `trigger` interrupt `deploy()` and `start()`? If so make sure shutdown works as expected.
-<a href=#74 id=74 data-nosnippet>74</a>        </span><span class="self">self</span>.deploy().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#75 id=75 data-nosnippet>75</a>        <span class="self">self</span>.start().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#76 id=76 data-nosnippet>76</a>        trigger.<span class="kw">await</span>;
-<a href=#77 id=77 data-nosnippet>77</a>        <span class="self">self</span>.stop().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#78 id=78 data-nosnippet>78</a>        <span class="prelude-val">Ok</span>(())
-<a href=#79 id=79 data-nosnippet>79</a>    }
-<a href=#80 id=80 data-nosnippet>80</a>
-<a href=#81 id=81 data-nosnippet>81</a>    <span class="doccomment">/// Runs `start()`, waits for the trigger future, then runs `stop()`.
-<a href=#82 id=82 data-nosnippet>82</a>    /// This is useful if you need to initiate external network connections between
-<a href=#83 id=83 data-nosnippet>83</a>    /// `deploy()` and `start()`.
-<a href=#84 id=84 data-nosnippet>84</a>    </span><span class="kw">pub async fn </span>start_until(<span class="kw-2">&amp;mut </span><span class="self">self</span>, trigger: <span class="kw">impl </span>Future&lt;Output = ()&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#85 id=85 data-nosnippet>85</a>        <span class="comment">// TODO(mingwei): should `trigger` interrupt `deploy()` and `start()`? If so make sure shutdown works as expected.
-<a href=#86 id=86 data-nosnippet>86</a>        </span><span class="self">self</span>.start().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#87 id=87 data-nosnippet>87</a>        trigger.<span class="kw">await</span>;
-<a href=#88 id=88 data-nosnippet>88</a>        <span class="self">self</span>.stop().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#89 id=89 data-nosnippet>89</a>        <span class="prelude-val">Ok</span>(())
-<a href=#90 id=90 data-nosnippet>90</a>    }
-<a href=#91 id=91 data-nosnippet>91</a>
-<a href=#92 id=92 data-nosnippet>92</a>    <span class="doccomment">/// Runs `deploy()`, and `start()`, waits for CTRL+C, then runs `stop()`.
-<a href=#93 id=93 data-nosnippet>93</a>    </span><span class="kw">pub async fn </span>run_ctrl_c(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#94 id=94 data-nosnippet>94</a>        <span class="self">self</span>.run_until(tokio::signal::ctrl_c().map(|<span class="kw">_</span>| ())).<span class="kw">await
-<a href=#95 id=95 data-nosnippet>95</a>    </span>}
-<a href=#96 id=96 data-nosnippet>96</a>
-<a href=#97 id=97 data-nosnippet>97</a>    <span class="doccomment">/// Runs `start()`, waits for CTRL+C, then runs `stop()`.
-<a href=#98 id=98 data-nosnippet>98</a>    /// This is useful if you need to initiate external network connections between
-<a href=#99 id=99 data-nosnippet>99</a>    /// `deploy()` and `start()`.
-<a href=#100 id=100 data-nosnippet>100</a>    </span><span class="kw">pub async fn </span>start_ctrl_c(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#101 id=101 data-nosnippet>101</a>        <span class="self">self</span>.start_until(tokio::signal::ctrl_c().map(|<span class="kw">_</span>| ())).<span class="kw">await
-<a href=#102 id=102 data-nosnippet>102</a>    </span>}
+<a href=#65 id=65 data-nosnippet>65</a>        <span class="self">self</span>.add_service(|id, on| CustomService::new(id, on, external_ports), on)
+<a href=#66 id=66 data-nosnippet>66</a>    }
+<a href=#67 id=67 data-nosnippet>67</a>
+<a href=#68 id=68 data-nosnippet>68</a>    <span class="doccomment">/// Runs `deploy()`, and `start()`, waits for the trigger future, then runs `stop()`.
+<a href=#69 id=69 data-nosnippet>69</a>    </span><span class="kw">pub async fn </span>run_until(<span class="kw-2">&amp;mut </span><span class="self">self</span>, trigger: <span class="kw">impl </span>Future&lt;Output = ()&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#70 id=70 data-nosnippet>70</a>        <span class="comment">// TODO(mingwei): should `trigger` interrupt `deploy()` and `start()`? If so make sure shutdown works as expected.
+<a href=#71 id=71 data-nosnippet>71</a>        </span><span class="self">self</span>.deploy().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#72 id=72 data-nosnippet>72</a>        <span class="self">self</span>.start().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#73 id=73 data-nosnippet>73</a>        trigger.<span class="kw">await</span>;
+<a href=#74 id=74 data-nosnippet>74</a>        <span class="self">self</span>.stop().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#75 id=75 data-nosnippet>75</a>        <span class="prelude-val">Ok</span>(())
+<a href=#76 id=76 data-nosnippet>76</a>    }
+<a href=#77 id=77 data-nosnippet>77</a>
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="doccomment">/// Runs `start()`, waits for the trigger future, then runs `stop()`.
+<a href=#79 id=79 data-nosnippet>79</a>    /// This is useful if you need to initiate external network connections between
+<a href=#80 id=80 data-nosnippet>80</a>    /// `deploy()` and `start()`.
+<a href=#81 id=81 data-nosnippet>81</a>    </span><span class="kw">pub async fn </span>start_until(<span class="kw-2">&amp;mut </span><span class="self">self</span>, trigger: <span class="kw">impl </span>Future&lt;Output = ()&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#82 id=82 data-nosnippet>82</a>        <span class="comment">// TODO(mingwei): should `trigger` interrupt `deploy()` and `start()`? If so make sure shutdown works as expected.
+<a href=#83 id=83 data-nosnippet>83</a>        </span><span class="self">self</span>.start().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#84 id=84 data-nosnippet>84</a>        trigger.<span class="kw">await</span>;
+<a href=#85 id=85 data-nosnippet>85</a>        <span class="self">self</span>.stop().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#86 id=86 data-nosnippet>86</a>        <span class="prelude-val">Ok</span>(())
+<a href=#87 id=87 data-nosnippet>87</a>    }
+<a href=#88 id=88 data-nosnippet>88</a>
+<a href=#89 id=89 data-nosnippet>89</a>    <span class="doccomment">/// Runs `deploy()`, and `start()`, waits for CTRL+C, then runs `stop()`.
+<a href=#90 id=90 data-nosnippet>90</a>    </span><span class="kw">pub async fn </span>run_ctrl_c(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#91 id=91 data-nosnippet>91</a>        <span class="self">self</span>.run_until(tokio::signal::ctrl_c().map(|<span class="kw">_</span>| ())).<span class="kw">await
+<a href=#92 id=92 data-nosnippet>92</a>    </span>}
+<a href=#93 id=93 data-nosnippet>93</a>
+<a href=#94 id=94 data-nosnippet>94</a>    <span class="doccomment">/// Runs `start()`, waits for CTRL+C, then runs `stop()`.
+<a href=#95 id=95 data-nosnippet>95</a>    /// This is useful if you need to initiate external network connections between
+<a href=#96 id=96 data-nosnippet>96</a>    /// `deploy()` and `start()`.
+<a href=#97 id=97 data-nosnippet>97</a>    </span><span class="kw">pub async fn </span>start_ctrl_c(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="self">self</span>.start_until(tokio::signal::ctrl_c().map(|<span class="kw">_</span>| ())).<span class="kw">await
+<a href=#99 id=99 data-nosnippet>99</a>    </span>}
+<a href=#100 id=100 data-nosnippet>100</a>
+<a href=#101 id=101 data-nosnippet>101</a>    <span class="kw">pub async fn </span>deploy(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#102 id=102 data-nosnippet>102</a>        <span class="self">self</span>.services.retain(|weak| weak.strong_count() &gt; <span class="number">0</span>);
 <a href=#103 id=103 data-nosnippet>103</a>
-<a href=#104 id=104 data-nosnippet>104</a>    <span class="kw">pub async fn </span>deploy(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#105 id=105 data-nosnippet>105</a>        <span class="self">self</span>.services.retain(|weak| weak.strong_count() &gt; <span class="number">0</span>);
+<a href=#104 id=104 data-nosnippet>104</a>        progress::ProgressTracker::with_group(<span class="string">"deploy"</span>, <span class="prelude-val">Some</span>(<span class="number">3</span>), || <span class="kw">async </span>{
+<a href=#105 id=105 data-nosnippet>105</a>            <span class="kw">let </span><span class="kw-2">mut </span>resource_batch = <span class="kw">super</span>::ResourceBatch::new();
 <a href=#106 id=106 data-nosnippet>106</a>
-<a href=#107 id=107 data-nosnippet>107</a>        progress::ProgressTracker::with_group(<span class="string">"deploy"</span>, <span class="prelude-val">Some</span>(<span class="number">3</span>), || <span class="kw">async </span>{
-<a href=#108 id=108 data-nosnippet>108</a>            <span class="kw">let </span><span class="kw-2">mut </span>resource_batch = <span class="kw">super</span>::ResourceBatch::new();
-<a href=#109 id=109 data-nosnippet>109</a>
-<a href=#110 id=110 data-nosnippet>110</a>            <span class="kw">for </span>service <span class="kw">in </span><span class="self">self</span>.services.iter().filter_map(Weak::upgrade) {
-<a href=#111 id=111 data-nosnippet>111</a>                service.read().<span class="kw">await</span>.collect_resources(<span class="kw-2">&amp;mut </span>resource_batch);
-<a href=#112 id=112 data-nosnippet>112</a>            }
-<a href=#113 id=113 data-nosnippet>113</a>
-<a href=#114 id=114 data-nosnippet>114</a>            <span class="kw">for </span>host <span class="kw">in </span><span class="self">self</span>.hosts.iter().filter_map(Weak::upgrade) {
-<a href=#115 id=115 data-nosnippet>115</a>                host.collect_resources(<span class="kw-2">&amp;mut </span>resource_batch);
-<a href=#116 id=116 data-nosnippet>116</a>            }
-<a href=#117 id=117 data-nosnippet>117</a>
-<a href=#118 id=118 data-nosnippet>118</a>            <span class="kw">let </span>resource_result = Arc::new(
-<a href=#119 id=119 data-nosnippet>119</a>                progress::ProgressTracker::with_group(<span class="string">"provision"</span>, <span class="prelude-val">Some</span>(<span class="number">1</span>), || <span class="kw">async </span>{
-<a href=#120 id=120 data-nosnippet>120</a>                    resource_batch
-<a href=#121 id=121 data-nosnippet>121</a>                        .provision(<span class="kw-2">&amp;mut </span><span class="self">self</span>.resource_pool, <span class="self">self</span>.last_resource_result.clone())
-<a href=#122 id=122 data-nosnippet>122</a>                        .<span class="kw">await
-<a href=#123 id=123 data-nosnippet>123</a>                </span>})
-<a href=#124 id=124 data-nosnippet>124</a>                .<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#125 id=125 data-nosnippet>125</a>            );
-<a href=#126 id=126 data-nosnippet>126</a>            <span class="self">self</span>.last_resource_result = <span class="prelude-val">Some</span>(resource_result.clone());
-<a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a>            <span class="kw">for </span>host <span class="kw">in </span><span class="self">self</span>.hosts.iter().filter_map(Weak::upgrade) {
-<a href=#129 id=129 data-nosnippet>129</a>                host.provision(<span class="kw-2">&amp;</span>resource_result);
-<a href=#130 id=130 data-nosnippet>130</a>            }
-<a href=#131 id=131 data-nosnippet>131</a>
-<a href=#132 id=132 data-nosnippet>132</a>            <span class="kw">let </span>upgraded_services = <span class="self">self
-<a href=#133 id=133 data-nosnippet>133</a>                </span>.services
-<a href=#134 id=134 data-nosnippet>134</a>                .iter()
-<a href=#135 id=135 data-nosnippet>135</a>                .filter_map(Weak::upgrade)
-<a href=#136 id=136 data-nosnippet>136</a>                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#137 id=137 data-nosnippet>137</a>
-<a href=#138 id=138 data-nosnippet>138</a>            progress::ProgressTracker::with_group(<span class="string">"prepare"</span>, <span class="prelude-val">Some</span>(upgraded_services.len()), || {
-<a href=#139 id=139 data-nosnippet>139</a>                <span class="kw">let </span>services_future = upgraded_services
-<a href=#140 id=140 data-nosnippet>140</a>                    .iter()
-<a href=#141 id=141 data-nosnippet>141</a>                    .map(|service: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| {
-<a href=#142 id=142 data-nosnippet>142</a>                        <span class="kw">let </span>resource_result = <span class="kw-2">&amp;</span>resource_result;
-<a href=#143 id=143 data-nosnippet>143</a>                        <span class="kw">async move </span>{ service.write().<span class="kw">await</span>.deploy(resource_result).<span class="kw">await </span>}
-<a href=#144 id=144 data-nosnippet>144</a>                    })
-<a href=#145 id=145 data-nosnippet>145</a>                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#146 id=146 data-nosnippet>146</a>
-<a href=#147 id=147 data-nosnippet>147</a>                futures::stream::iter(services_future)
-<a href=#148 id=148 data-nosnippet>148</a>                    .buffer_unordered(<span class="number">16</span>)
-<a href=#149 id=149 data-nosnippet>149</a>                    .try_fold((), |<span class="kw">_</span>, <span class="kw">_</span>| <span class="kw">async </span>{ <span class="prelude-val">Ok</span>(()) })
-<a href=#150 id=150 data-nosnippet>150</a>            })
-<a href=#151 id=151 data-nosnippet>151</a>            .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#152 id=152 data-nosnippet>152</a>
-<a href=#153 id=153 data-nosnippet>153</a>            progress::ProgressTracker::with_group(<span class="string">"ready"</span>, <span class="prelude-val">Some</span>(upgraded_services.len()), || {
-<a href=#154 id=154 data-nosnippet>154</a>                <span class="kw">let </span>all_services_ready =
-<a href=#155 id=155 data-nosnippet>155</a>                    upgraded_services
-<a href=#156 id=156 data-nosnippet>156</a>                        .iter()
-<a href=#157 id=157 data-nosnippet>157</a>                        .map(|service: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| <span class="kw">async move </span>{
-<a href=#158 id=158 data-nosnippet>158</a>                            service.write().<span class="kw">await</span>.ready().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#159 id=159 data-nosnippet>159</a>                            <span class="prelude-val">Ok</span>(()) <span class="kw">as </span><span class="prelude-ty">Result</span>&lt;()&gt;
-<a href=#160 id=160 data-nosnippet>160</a>                        });
-<a href=#161 id=161 data-nosnippet>161</a>
-<a href=#162 id=162 data-nosnippet>162</a>                futures::future::try_join_all(all_services_ready)
-<a href=#163 id=163 data-nosnippet>163</a>            })
-<a href=#164 id=164 data-nosnippet>164</a>            .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#165 id=165 data-nosnippet>165</a>
-<a href=#166 id=166 data-nosnippet>166</a>            <span class="prelude-val">Ok</span>(())
-<a href=#167 id=167 data-nosnippet>167</a>        })
-<a href=#168 id=168 data-nosnippet>168</a>        .<span class="kw">await
-<a href=#169 id=169 data-nosnippet>169</a>    </span>}
+<a href=#107 id=107 data-nosnippet>107</a>            <span class="kw">for </span>service <span class="kw">in </span><span class="self">self</span>.services.iter().filter_map(Weak::upgrade) {
+<a href=#108 id=108 data-nosnippet>108</a>                service.read().<span class="kw">await</span>.collect_resources(<span class="kw-2">&amp;mut </span>resource_batch);
+<a href=#109 id=109 data-nosnippet>109</a>            }
+<a href=#110 id=110 data-nosnippet>110</a>
+<a href=#111 id=111 data-nosnippet>111</a>            <span class="kw">for </span>host <span class="kw">in </span><span class="self">self</span>.hosts.iter().filter_map(Weak::upgrade) {
+<a href=#112 id=112 data-nosnippet>112</a>                host.collect_resources(<span class="kw-2">&amp;mut </span>resource_batch);
+<a href=#113 id=113 data-nosnippet>113</a>            }
+<a href=#114 id=114 data-nosnippet>114</a>
+<a href=#115 id=115 data-nosnippet>115</a>            <span class="kw">let </span>resource_result = Arc::new(
+<a href=#116 id=116 data-nosnippet>116</a>                progress::ProgressTracker::with_group(<span class="string">"provision"</span>, <span class="prelude-val">Some</span>(<span class="number">1</span>), || <span class="kw">async </span>{
+<a href=#117 id=117 data-nosnippet>117</a>                    resource_batch
+<a href=#118 id=118 data-nosnippet>118</a>                        .provision(<span class="kw-2">&amp;mut </span><span class="self">self</span>.resource_pool, <span class="self">self</span>.last_resource_result.clone())
+<a href=#119 id=119 data-nosnippet>119</a>                        .<span class="kw">await
+<a href=#120 id=120 data-nosnippet>120</a>                </span>})
+<a href=#121 id=121 data-nosnippet>121</a>                .<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#122 id=122 data-nosnippet>122</a>            );
+<a href=#123 id=123 data-nosnippet>123</a>            <span class="self">self</span>.last_resource_result = <span class="prelude-val">Some</span>(resource_result.clone());
+<a href=#124 id=124 data-nosnippet>124</a>
+<a href=#125 id=125 data-nosnippet>125</a>            <span class="kw">for </span>host <span class="kw">in </span><span class="self">self</span>.hosts.iter().filter_map(Weak::upgrade) {
+<a href=#126 id=126 data-nosnippet>126</a>                host.provision(<span class="kw-2">&amp;</span>resource_result);
+<a href=#127 id=127 data-nosnippet>127</a>            }
+<a href=#128 id=128 data-nosnippet>128</a>
+<a href=#129 id=129 data-nosnippet>129</a>            <span class="kw">let </span>upgraded_services = <span class="self">self
+<a href=#130 id=130 data-nosnippet>130</a>                </span>.services
+<a href=#131 id=131 data-nosnippet>131</a>                .iter()
+<a href=#132 id=132 data-nosnippet>132</a>                .filter_map(Weak::upgrade)
+<a href=#133 id=133 data-nosnippet>133</a>                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#134 id=134 data-nosnippet>134</a>
+<a href=#135 id=135 data-nosnippet>135</a>            progress::ProgressTracker::with_group(<span class="string">"prepare"</span>, <span class="prelude-val">Some</span>(upgraded_services.len()), || {
+<a href=#136 id=136 data-nosnippet>136</a>                <span class="kw">let </span>services_future = upgraded_services
+<a href=#137 id=137 data-nosnippet>137</a>                    .iter()
+<a href=#138 id=138 data-nosnippet>138</a>                    .map(|service: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| {
+<a href=#139 id=139 data-nosnippet>139</a>                        <span class="kw">let </span>resource_result = <span class="kw-2">&amp;</span>resource_result;
+<a href=#140 id=140 data-nosnippet>140</a>                        <span class="kw">async move </span>{ service.write().<span class="kw">await</span>.deploy(resource_result).<span class="kw">await </span>}
+<a href=#141 id=141 data-nosnippet>141</a>                    })
+<a href=#142 id=142 data-nosnippet>142</a>                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#143 id=143 data-nosnippet>143</a>
+<a href=#144 id=144 data-nosnippet>144</a>                futures::stream::iter(services_future)
+<a href=#145 id=145 data-nosnippet>145</a>                    .buffer_unordered(<span class="number">16</span>)
+<a href=#146 id=146 data-nosnippet>146</a>                    .try_fold((), |<span class="kw">_</span>, <span class="kw">_</span>| <span class="kw">async </span>{ <span class="prelude-val">Ok</span>(()) })
+<a href=#147 id=147 data-nosnippet>147</a>            })
+<a href=#148 id=148 data-nosnippet>148</a>            .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#149 id=149 data-nosnippet>149</a>
+<a href=#150 id=150 data-nosnippet>150</a>            progress::ProgressTracker::with_group(<span class="string">"ready"</span>, <span class="prelude-val">Some</span>(upgraded_services.len()), || {
+<a href=#151 id=151 data-nosnippet>151</a>                <span class="kw">let </span>all_services_ready =
+<a href=#152 id=152 data-nosnippet>152</a>                    upgraded_services
+<a href=#153 id=153 data-nosnippet>153</a>                        .iter()
+<a href=#154 id=154 data-nosnippet>154</a>                        .map(|service: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| <span class="kw">async move </span>{
+<a href=#155 id=155 data-nosnippet>155</a>                            service.write().<span class="kw">await</span>.ready().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#156 id=156 data-nosnippet>156</a>                            <span class="prelude-val">Ok</span>(()) <span class="kw">as </span><span class="prelude-ty">Result</span>&lt;()&gt;
+<a href=#157 id=157 data-nosnippet>157</a>                        });
+<a href=#158 id=158 data-nosnippet>158</a>
+<a href=#159 id=159 data-nosnippet>159</a>                futures::future::try_join_all(all_services_ready)
+<a href=#160 id=160 data-nosnippet>160</a>            })
+<a href=#161 id=161 data-nosnippet>161</a>            .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#162 id=162 data-nosnippet>162</a>
+<a href=#163 id=163 data-nosnippet>163</a>            <span class="prelude-val">Ok</span>(())
+<a href=#164 id=164 data-nosnippet>164</a>        })
+<a href=#165 id=165 data-nosnippet>165</a>        .<span class="kw">await
+<a href=#166 id=166 data-nosnippet>166</a>    </span>}
+<a href=#167 id=167 data-nosnippet>167</a>
+<a href=#168 id=168 data-nosnippet>168</a>    <span class="kw">pub async fn </span>start(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#169 id=169 data-nosnippet>169</a>        <span class="self">self</span>.services.retain(|weak| weak.strong_count() &gt; <span class="number">0</span>);
 <a href=#170 id=170 data-nosnippet>170</a>
-<a href=#171 id=171 data-nosnippet>171</a>    <span class="kw">pub async fn </span>start(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#172 id=172 data-nosnippet>172</a>        <span class="self">self</span>.services.retain(|weak| weak.strong_count() &gt; <span class="number">0</span>);
-<a href=#173 id=173 data-nosnippet>173</a>
-<a href=#174 id=174 data-nosnippet>174</a>        progress::ProgressTracker::with_group(<span class="string">"start"</span>, <span class="prelude-val">None</span>, || {
-<a href=#175 id=175 data-nosnippet>175</a>            <span class="kw">let </span>all_services_start = <span class="self">self</span>.services.iter().filter_map(Weak::upgrade).map(
-<a href=#176 id=176 data-nosnippet>176</a>                |service: Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| <span class="kw">async move </span>{
-<a href=#177 id=177 data-nosnippet>177</a>                    service.write().<span class="kw">await</span>.start().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#178 id=178 data-nosnippet>178</a>                    <span class="prelude-val">Ok</span>(()) <span class="kw">as </span><span class="prelude-ty">Result</span>&lt;()&gt;
-<a href=#179 id=179 data-nosnippet>179</a>                },
-<a href=#180 id=180 data-nosnippet>180</a>            );
-<a href=#181 id=181 data-nosnippet>181</a>
-<a href=#182 id=182 data-nosnippet>182</a>            futures::future::try_join_all(all_services_start)
-<a href=#183 id=183 data-nosnippet>183</a>        })
-<a href=#184 id=184 data-nosnippet>184</a>        .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#185 id=185 data-nosnippet>185</a>        <span class="prelude-val">Ok</span>(())
-<a href=#186 id=186 data-nosnippet>186</a>    }
+<a href=#171 id=171 data-nosnippet>171</a>        progress::ProgressTracker::with_group(<span class="string">"start"</span>, <span class="prelude-val">None</span>, || {
+<a href=#172 id=172 data-nosnippet>172</a>            <span class="kw">let </span>all_services_start = <span class="self">self</span>.services.iter().filter_map(Weak::upgrade).map(
+<a href=#173 id=173 data-nosnippet>173</a>                |service: Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| <span class="kw">async move </span>{
+<a href=#174 id=174 data-nosnippet>174</a>                    service.write().<span class="kw">await</span>.start().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#175 id=175 data-nosnippet>175</a>                    <span class="prelude-val">Ok</span>(()) <span class="kw">as </span><span class="prelude-ty">Result</span>&lt;()&gt;
+<a href=#176 id=176 data-nosnippet>176</a>                },
+<a href=#177 id=177 data-nosnippet>177</a>            );
+<a href=#178 id=178 data-nosnippet>178</a>
+<a href=#179 id=179 data-nosnippet>179</a>            futures::future::try_join_all(all_services_start)
+<a href=#180 id=180 data-nosnippet>180</a>        })
+<a href=#181 id=181 data-nosnippet>181</a>        .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#182 id=182 data-nosnippet>182</a>        <span class="prelude-val">Ok</span>(())
+<a href=#183 id=183 data-nosnippet>183</a>    }
+<a href=#184 id=184 data-nosnippet>184</a>
+<a href=#185 id=185 data-nosnippet>185</a>    <span class="kw">pub async fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="self">self</span>.services.retain(|weak| weak.strong_count() &gt; <span class="number">0</span>);
 <a href=#187 id=187 data-nosnippet>187</a>
-<a href=#188 id=188 data-nosnippet>188</a>    <span class="kw">pub async fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#189 id=189 data-nosnippet>189</a>        <span class="self">self</span>.services.retain(|weak| weak.strong_count() &gt; <span class="number">0</span>);
-<a href=#190 id=190 data-nosnippet>190</a>
-<a href=#191 id=191 data-nosnippet>191</a>        progress::ProgressTracker::with_group(<span class="string">"stop"</span>, <span class="prelude-val">None</span>, || {
-<a href=#192 id=192 data-nosnippet>192</a>            <span class="kw">let </span>all_services_stop = <span class="self">self</span>.services.iter().filter_map(Weak::upgrade).map(
-<a href=#193 id=193 data-nosnippet>193</a>                |service: Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| <span class="kw">async move </span>{
-<a href=#194 id=194 data-nosnippet>194</a>                    service.write().<span class="kw">await</span>.stop().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#195 id=195 data-nosnippet>195</a>                    <span class="prelude-val">Ok</span>(()) <span class="kw">as </span><span class="prelude-ty">Result</span>&lt;()&gt;
-<a href=#196 id=196 data-nosnippet>196</a>                },
-<a href=#197 id=197 data-nosnippet>197</a>            );
-<a href=#198 id=198 data-nosnippet>198</a>
-<a href=#199 id=199 data-nosnippet>199</a>            futures::future::try_join_all(all_services_stop)
-<a href=#200 id=200 data-nosnippet>200</a>        })
-<a href=#201 id=201 data-nosnippet>201</a>        .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#202 id=202 data-nosnippet>202</a>        <span class="prelude-val">Ok</span>(())
-<a href=#203 id=203 data-nosnippet>203</a>    }
-<a href=#204 id=204 data-nosnippet>204</a>}
-<a href=#205 id=205 data-nosnippet>205</a>
-<a href=#206 id=206 data-nosnippet>206</a><span class="kw">impl </span>Deployment {
-<a href=#207 id=207 data-nosnippet>207</a>    <span class="kw">pub fn </span>add_host&lt;T: Host + <span class="lifetime">'static</span>, F: FnOnce(usize) -&gt; T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, host: F) -&gt; Arc&lt;T&gt; {
-<a href=#208 id=208 data-nosnippet>208</a>        <span class="kw">let </span>arc = Arc::new(host(<span class="self">self</span>.next_host_id));
-<a href=#209 id=209 data-nosnippet>209</a>        <span class="self">self</span>.next_host_id += <span class="number">1</span>;
-<a href=#210 id=210 data-nosnippet>210</a>
-<a href=#211 id=211 data-nosnippet>211</a>        <span class="self">self</span>.hosts.push(Arc::downgrade(<span class="kw-2">&amp;</span>arc) <span class="kw">as </span>Weak&lt;<span class="kw">dyn </span>Host&gt;);
-<a href=#212 id=212 data-nosnippet>212</a>        arc
-<a href=#213 id=213 data-nosnippet>213</a>    }
-<a href=#214 id=214 data-nosnippet>214</a>
-<a href=#215 id=215 data-nosnippet>215</a>    <span class="kw">pub fn </span>add_service&lt;T: Service + <span class="lifetime">'static</span>&gt;(
-<a href=#216 id=216 data-nosnippet>216</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#217 id=217 data-nosnippet>217</a>        service: <span class="kw">impl </span>ServiceBuilder&lt;Service = T&gt;,
-<a href=#218 id=218 data-nosnippet>218</a>        on: Arc&lt;<span class="kw">dyn </span>Host&gt;,
-<a href=#219 id=219 data-nosnippet>219</a>    ) -&gt; Arc&lt;RwLock&lt;T&gt;&gt; {
-<a href=#220 id=220 data-nosnippet>220</a>        <span class="kw">let </span>arc = Arc::new(RwLock::new(service.build(<span class="self">self</span>.next_service_id, on)));
-<a href=#221 id=221 data-nosnippet>221</a>        <span class="self">self</span>.next_service_id += <span class="number">1</span>;
-<a href=#222 id=222 data-nosnippet>222</a>
-<a href=#223 id=223 data-nosnippet>223</a>        <span class="self">self</span>.services
-<a href=#224 id=224 data-nosnippet>224</a>            .push(Arc::downgrade(<span class="kw-2">&amp;</span>arc) <span class="kw">as </span>Weak&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;);
-<a href=#225 id=225 data-nosnippet>225</a>        arc
-<a href=#226 id=226 data-nosnippet>226</a>    }
-<a href=#227 id=227 data-nosnippet>227</a>}
-<a href=#228 id=228 data-nosnippet>228</a>
-<a href=#229 id=229 data-nosnippet>229</a><span class="doccomment">/// Buildstructor methods.
-<a href=#230 id=230 data-nosnippet>230</a></span><span class="attr">#[buildstructor::buildstructor]
-<a href=#231 id=231 data-nosnippet>231</a></span><span class="kw">impl </span>Deployment {
-<a href=#232 id=232 data-nosnippet>232</a>    <span class="attr">#[builder(entry = <span class="string">"GcpComputeEngineHost"</span>, exit = <span class="string">"add"</span>)]
-<a href=#233 id=233 data-nosnippet>233</a>    </span><span class="kw">pub fn </span>add_gcp_compute_engine_host(
-<a href=#234 id=234 data-nosnippet>234</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#235 id=235 data-nosnippet>235</a>        project: String,
-<a href=#236 id=236 data-nosnippet>236</a>        machine_type: String,
-<a href=#237 id=237 data-nosnippet>237</a>        image: String,
-<a href=#238 id=238 data-nosnippet>238</a>        target_type: <span class="prelude-ty">Option</span>&lt;HostTargetType&gt;,
-<a href=#239 id=239 data-nosnippet>239</a>        region: String,
-<a href=#240 id=240 data-nosnippet>240</a>        network: Arc&lt;RwLock&lt;GcpNetwork&gt;&gt;,
-<a href=#241 id=241 data-nosnippet>241</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#242 id=242 data-nosnippet>242</a>        display_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#243 id=243 data-nosnippet>243</a>    ) -&gt; Arc&lt;GcpComputeEngineHost&gt; {
-<a href=#244 id=244 data-nosnippet>244</a>        <span class="self">self</span>.add_host(|id| {
-<a href=#245 id=245 data-nosnippet>245</a>            GcpComputeEngineHost::new(
-<a href=#246 id=246 data-nosnippet>246</a>                id,
-<a href=#247 id=247 data-nosnippet>247</a>                project,
-<a href=#248 id=248 data-nosnippet>248</a>                machine_type,
-<a href=#249 id=249 data-nosnippet>249</a>                image,
-<a href=#250 id=250 data-nosnippet>250</a>                target_type.unwrap_or(HostTargetType::Linux(<span class="kw">crate</span>::LinuxCompileType::Musl)),
-<a href=#251 id=251 data-nosnippet>251</a>                region,
-<a href=#252 id=252 data-nosnippet>252</a>                network,
-<a href=#253 id=253 data-nosnippet>253</a>                user,
-<a href=#254 id=254 data-nosnippet>254</a>                display_name,
-<a href=#255 id=255 data-nosnippet>255</a>            )
-<a href=#256 id=256 data-nosnippet>256</a>        })
-<a href=#257 id=257 data-nosnippet>257</a>    }
-<a href=#258 id=258 data-nosnippet>258</a>
-<a href=#259 id=259 data-nosnippet>259</a>    <span class="attr">#[builder(entry = <span class="string">"AzureHost"</span>, exit = <span class="string">"add"</span>)]
-<a href=#260 id=260 data-nosnippet>260</a>    </span><span class="kw">pub fn </span>add_azure_host(
-<a href=#261 id=261 data-nosnippet>261</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#262 id=262 data-nosnippet>262</a>        project: String,
-<a href=#263 id=263 data-nosnippet>263</a>        os_type: String, <span class="comment">// linux or windows
-<a href=#264 id=264 data-nosnippet>264</a>        </span>machine_size: String,
-<a href=#265 id=265 data-nosnippet>265</a>        image: <span class="prelude-ty">Option</span>&lt;HashMap&lt;String, String&gt;&gt;,
-<a href=#266 id=266 data-nosnippet>266</a>        target_type: <span class="prelude-ty">Option</span>&lt;HostTargetType&gt;,
-<a href=#267 id=267 data-nosnippet>267</a>        region: String,
-<a href=#268 id=268 data-nosnippet>268</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#269 id=269 data-nosnippet>269</a>    ) -&gt; Arc&lt;AzureHost&gt; {
-<a href=#270 id=270 data-nosnippet>270</a>        <span class="self">self</span>.add_host(|id| {
-<a href=#271 id=271 data-nosnippet>271</a>            AzureHost::new(
-<a href=#272 id=272 data-nosnippet>272</a>                id,
-<a href=#273 id=273 data-nosnippet>273</a>                project,
-<a href=#274 id=274 data-nosnippet>274</a>                os_type,
-<a href=#275 id=275 data-nosnippet>275</a>                machine_size,
-<a href=#276 id=276 data-nosnippet>276</a>                image,
-<a href=#277 id=277 data-nosnippet>277</a>                target_type.unwrap_or(HostTargetType::Linux(<span class="kw">crate</span>::LinuxCompileType::Musl)),
-<a href=#278 id=278 data-nosnippet>278</a>                region,
-<a href=#279 id=279 data-nosnippet>279</a>                user,
-<a href=#280 id=280 data-nosnippet>280</a>            )
-<a href=#281 id=281 data-nosnippet>281</a>        })
-<a href=#282 id=282 data-nosnippet>282</a>    }
-<a href=#283 id=283 data-nosnippet>283</a>
-<a href=#284 id=284 data-nosnippet>284</a>    <span class="attr">#[builder(entry = <span class="string">"AwsEc2Host"</span>, exit = <span class="string">"add"</span>)]
-<a href=#285 id=285 data-nosnippet>285</a>    </span><span class="kw">pub fn </span>add_aws_ec2_host(
-<a href=#286 id=286 data-nosnippet>286</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#287 id=287 data-nosnippet>287</a>        region: String,
-<a href=#288 id=288 data-nosnippet>288</a>        instance_type: String,
-<a href=#289 id=289 data-nosnippet>289</a>        target_type: <span class="prelude-ty">Option</span>&lt;HostTargetType&gt;,
-<a href=#290 id=290 data-nosnippet>290</a>        ami: String,
-<a href=#291 id=291 data-nosnippet>291</a>        network: Arc&lt;RwLock&lt;AwsNetwork&gt;&gt;,
-<a href=#292 id=292 data-nosnippet>292</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#293 id=293 data-nosnippet>293</a>        display_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#294 id=294 data-nosnippet>294</a>    ) -&gt; Arc&lt;AwsEc2Host&gt; {
-<a href=#295 id=295 data-nosnippet>295</a>        <span class="self">self</span>.add_host(|id| {
-<a href=#296 id=296 data-nosnippet>296</a>            AwsEc2Host::new(
-<a href=#297 id=297 data-nosnippet>297</a>                id,
-<a href=#298 id=298 data-nosnippet>298</a>                region,
-<a href=#299 id=299 data-nosnippet>299</a>                instance_type,
-<a href=#300 id=300 data-nosnippet>300</a>                target_type.unwrap_or(HostTargetType::Linux(<span class="kw">crate</span>::LinuxCompileType::Musl)),
-<a href=#301 id=301 data-nosnippet>301</a>                ami,
-<a href=#302 id=302 data-nosnippet>302</a>                network,
-<a href=#303 id=303 data-nosnippet>303</a>                user,
-<a href=#304 id=304 data-nosnippet>304</a>                display_name,
-<a href=#305 id=305 data-nosnippet>305</a>            )
-<a href=#306 id=306 data-nosnippet>306</a>        })
-<a href=#307 id=307 data-nosnippet>307</a>    }
-<a href=#308 id=308 data-nosnippet>308</a>}
+<a href=#188 id=188 data-nosnippet>188</a>        progress::ProgressTracker::with_group(<span class="string">"stop"</span>, <span class="prelude-val">None</span>, || {
+<a href=#189 id=189 data-nosnippet>189</a>            <span class="kw">let </span>all_services_stop = <span class="self">self</span>.services.iter().filter_map(Weak::upgrade).map(
+<a href=#190 id=190 data-nosnippet>190</a>                |service: Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| <span class="kw">async move </span>{
+<a href=#191 id=191 data-nosnippet>191</a>                    service.write().<span class="kw">await</span>.stop().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#192 id=192 data-nosnippet>192</a>                    <span class="prelude-val">Ok</span>(()) <span class="kw">as </span><span class="prelude-ty">Result</span>&lt;()&gt;
+<a href=#193 id=193 data-nosnippet>193</a>                },
+<a href=#194 id=194 data-nosnippet>194</a>            );
+<a href=#195 id=195 data-nosnippet>195</a>
+<a href=#196 id=196 data-nosnippet>196</a>            futures::future::try_join_all(all_services_stop)
+<a href=#197 id=197 data-nosnippet>197</a>        })
+<a href=#198 id=198 data-nosnippet>198</a>        .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#199 id=199 data-nosnippet>199</a>        <span class="prelude-val">Ok</span>(())
+<a href=#200 id=200 data-nosnippet>200</a>    }
+<a href=#201 id=201 data-nosnippet>201</a>}
+<a href=#202 id=202 data-nosnippet>202</a>
+<a href=#203 id=203 data-nosnippet>203</a><span class="kw">impl </span>Deployment {
+<a href=#204 id=204 data-nosnippet>204</a>    <span class="kw">pub fn </span>add_host&lt;T: Host + <span class="lifetime">'static</span>, F: FnOnce(usize) -&gt; T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, host: F) -&gt; Arc&lt;T&gt; {
+<a href=#205 id=205 data-nosnippet>205</a>        <span class="kw">let </span>arc = Arc::new(host(<span class="self">self</span>.next_host_id));
+<a href=#206 id=206 data-nosnippet>206</a>        <span class="self">self</span>.next_host_id += <span class="number">1</span>;
+<a href=#207 id=207 data-nosnippet>207</a>
+<a href=#208 id=208 data-nosnippet>208</a>        <span class="self">self</span>.hosts.push(Arc::downgrade(<span class="kw-2">&amp;</span>arc) <span class="kw">as </span>Weak&lt;<span class="kw">dyn </span>Host&gt;);
+<a href=#209 id=209 data-nosnippet>209</a>        arc
+<a href=#210 id=210 data-nosnippet>210</a>    }
+<a href=#211 id=211 data-nosnippet>211</a>
+<a href=#212 id=212 data-nosnippet>212</a>    <span class="kw">pub fn </span>add_service&lt;T: Service + <span class="lifetime">'static</span>&gt;(
+<a href=#213 id=213 data-nosnippet>213</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#214 id=214 data-nosnippet>214</a>        service: <span class="kw">impl </span>ServiceBuilder&lt;Service = T&gt;,
+<a href=#215 id=215 data-nosnippet>215</a>        on: Arc&lt;<span class="kw">dyn </span>Host&gt;,
+<a href=#216 id=216 data-nosnippet>216</a>    ) -&gt; Arc&lt;RwLock&lt;T&gt;&gt; {
+<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">let </span>arc = Arc::new(RwLock::new(service.build(<span class="self">self</span>.next_service_id, on)));
+<a href=#218 id=218 data-nosnippet>218</a>        <span class="self">self</span>.next_service_id += <span class="number">1</span>;
+<a href=#219 id=219 data-nosnippet>219</a>
+<a href=#220 id=220 data-nosnippet>220</a>        <span class="self">self</span>.services
+<a href=#221 id=221 data-nosnippet>221</a>            .push(Arc::downgrade(<span class="kw-2">&amp;</span>arc) <span class="kw">as </span>Weak&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;);
+<a href=#222 id=222 data-nosnippet>222</a>        arc
+<a href=#223 id=223 data-nosnippet>223</a>    }
+<a href=#224 id=224 data-nosnippet>224</a>}
+<a href=#225 id=225 data-nosnippet>225</a>
+<a href=#226 id=226 data-nosnippet>226</a><span class="doccomment">/// Buildstructor methods.
+<a href=#227 id=227 data-nosnippet>227</a></span><span class="attr">#[buildstructor::buildstructor]
+<a href=#228 id=228 data-nosnippet>228</a></span><span class="kw">impl </span>Deployment {
+<a href=#229 id=229 data-nosnippet>229</a>    <span class="attr">#[builder(entry = <span class="string">"GcpComputeEngineHost"</span>, exit = <span class="string">"add"</span>)]
+<a href=#230 id=230 data-nosnippet>230</a>    </span><span class="kw">pub fn </span>add_gcp_compute_engine_host(
+<a href=#231 id=231 data-nosnippet>231</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#232 id=232 data-nosnippet>232</a>        project: String,
+<a href=#233 id=233 data-nosnippet>233</a>        machine_type: String,
+<a href=#234 id=234 data-nosnippet>234</a>        image: String,
+<a href=#235 id=235 data-nosnippet>235</a>        target_type: <span class="prelude-ty">Option</span>&lt;HostTargetType&gt;,
+<a href=#236 id=236 data-nosnippet>236</a>        region: String,
+<a href=#237 id=237 data-nosnippet>237</a>        network: Arc&lt;RwLock&lt;GcpNetwork&gt;&gt;,
+<a href=#238 id=238 data-nosnippet>238</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#239 id=239 data-nosnippet>239</a>        display_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#240 id=240 data-nosnippet>240</a>    ) -&gt; Arc&lt;GcpComputeEngineHost&gt; {
+<a href=#241 id=241 data-nosnippet>241</a>        <span class="self">self</span>.add_host(|id| {
+<a href=#242 id=242 data-nosnippet>242</a>            GcpComputeEngineHost::new(
+<a href=#243 id=243 data-nosnippet>243</a>                id,
+<a href=#244 id=244 data-nosnippet>244</a>                project,
+<a href=#245 id=245 data-nosnippet>245</a>                machine_type,
+<a href=#246 id=246 data-nosnippet>246</a>                image,
+<a href=#247 id=247 data-nosnippet>247</a>                target_type.unwrap_or(HostTargetType::Linux(<span class="kw">crate</span>::LinuxCompileType::Musl)),
+<a href=#248 id=248 data-nosnippet>248</a>                region,
+<a href=#249 id=249 data-nosnippet>249</a>                network,
+<a href=#250 id=250 data-nosnippet>250</a>                user,
+<a href=#251 id=251 data-nosnippet>251</a>                display_name,
+<a href=#252 id=252 data-nosnippet>252</a>            )
+<a href=#253 id=253 data-nosnippet>253</a>        })
+<a href=#254 id=254 data-nosnippet>254</a>    }
+<a href=#255 id=255 data-nosnippet>255</a>
+<a href=#256 id=256 data-nosnippet>256</a>    <span class="attr">#[builder(entry = <span class="string">"AzureHost"</span>, exit = <span class="string">"add"</span>)]
+<a href=#257 id=257 data-nosnippet>257</a>    </span><span class="kw">pub fn </span>add_azure_host(
+<a href=#258 id=258 data-nosnippet>258</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#259 id=259 data-nosnippet>259</a>        project: String,
+<a href=#260 id=260 data-nosnippet>260</a>        os_type: String, <span class="comment">// linux or windows
+<a href=#261 id=261 data-nosnippet>261</a>        </span>machine_size: String,
+<a href=#262 id=262 data-nosnippet>262</a>        image: <span class="prelude-ty">Option</span>&lt;HashMap&lt;String, String&gt;&gt;,
+<a href=#263 id=263 data-nosnippet>263</a>        target_type: <span class="prelude-ty">Option</span>&lt;HostTargetType&gt;,
+<a href=#264 id=264 data-nosnippet>264</a>        region: String,
+<a href=#265 id=265 data-nosnippet>265</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#266 id=266 data-nosnippet>266</a>    ) -&gt; Arc&lt;AzureHost&gt; {
+<a href=#267 id=267 data-nosnippet>267</a>        <span class="self">self</span>.add_host(|id| {
+<a href=#268 id=268 data-nosnippet>268</a>            AzureHost::new(
+<a href=#269 id=269 data-nosnippet>269</a>                id,
+<a href=#270 id=270 data-nosnippet>270</a>                project,
+<a href=#271 id=271 data-nosnippet>271</a>                os_type,
+<a href=#272 id=272 data-nosnippet>272</a>                machine_size,
+<a href=#273 id=273 data-nosnippet>273</a>                image,
+<a href=#274 id=274 data-nosnippet>274</a>                target_type.unwrap_or(HostTargetType::Linux(<span class="kw">crate</span>::LinuxCompileType::Musl)),
+<a href=#275 id=275 data-nosnippet>275</a>                region,
+<a href=#276 id=276 data-nosnippet>276</a>                user,
+<a href=#277 id=277 data-nosnippet>277</a>            )
+<a href=#278 id=278 data-nosnippet>278</a>        })
+<a href=#279 id=279 data-nosnippet>279</a>    }
+<a href=#280 id=280 data-nosnippet>280</a>
+<a href=#281 id=281 data-nosnippet>281</a>    <span class="attr">#[builder(entry = <span class="string">"AwsEc2Host"</span>, exit = <span class="string">"add"</span>)]
+<a href=#282 id=282 data-nosnippet>282</a>    </span><span class="kw">pub fn </span>add_aws_ec2_host(
+<a href=#283 id=283 data-nosnippet>283</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#284 id=284 data-nosnippet>284</a>        region: String,
+<a href=#285 id=285 data-nosnippet>285</a>        instance_type: String,
+<a href=#286 id=286 data-nosnippet>286</a>        target_type: <span class="prelude-ty">Option</span>&lt;HostTargetType&gt;,
+<a href=#287 id=287 data-nosnippet>287</a>        ami: String,
+<a href=#288 id=288 data-nosnippet>288</a>        network: Arc&lt;RwLock&lt;AwsNetwork&gt;&gt;,
+<a href=#289 id=289 data-nosnippet>289</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#290 id=290 data-nosnippet>290</a>        display_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#291 id=291 data-nosnippet>291</a>    ) -&gt; Arc&lt;AwsEc2Host&gt; {
+<a href=#292 id=292 data-nosnippet>292</a>        <span class="self">self</span>.add_host(|id| {
+<a href=#293 id=293 data-nosnippet>293</a>            AwsEc2Host::new(
+<a href=#294 id=294 data-nosnippet>294</a>                id,
+<a href=#295 id=295 data-nosnippet>295</a>                region,
+<a href=#296 id=296 data-nosnippet>296</a>                instance_type,
+<a href=#297 id=297 data-nosnippet>297</a>                target_type.unwrap_or(HostTargetType::Linux(<span class="kw">crate</span>::LinuxCompileType::Musl)),
+<a href=#298 id=298 data-nosnippet>298</a>                ami,
+<a href=#299 id=299 data-nosnippet>299</a>                network,
+<a href=#300 id=300 data-nosnippet>300</a>                user,
+<a href=#301 id=301 data-nosnippet>301</a>                display_name,
+<a href=#302 id=302 data-nosnippet>302</a>            )
+<a href=#303 id=303 data-nosnippet>303</a>        })
+<a href=#304 id=304 data-nosnippet>304</a>    }
+<a href=#305 id=305 data-nosnippet>305</a>}
 </code></pre></div></section></main></body></html>
