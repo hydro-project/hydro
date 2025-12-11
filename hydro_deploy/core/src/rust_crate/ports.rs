@@ -6,7 +6,6 @@ use std::sync::{Arc, Weak};
 
 use anyhow::{Result, bail};
 use async_recursion::async_recursion;
-use async_trait::async_trait;
 use dyn_clone::DynClone;
 use hydro_deploy_integration::ServerPort;
 use tokio::sync::RwLock;
@@ -256,7 +255,6 @@ impl RustCrateSource for RustCratePortConfig {
     }
 }
 
-#[async_trait]
 impl RustCrateServer for RustCratePortConfig {
     fn get_port(&self) -> ServerPort {
         // we are in `deployment.start()`, so no one should be writing

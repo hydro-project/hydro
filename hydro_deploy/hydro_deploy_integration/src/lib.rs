@@ -8,7 +8,6 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use async_recursion::async_recursion;
-use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
 use futures::sink::Buffer;
 use futures::stream::{FuturesUnordered, SplitSink, SplitStream};
@@ -577,7 +576,6 @@ where
     sink: Option<BufferedDrain<T::Sink, T::Input>>,
 }
 
-#[async_trait]
 impl<T: Connected + ConnectedSink> Connected for ConnectedDemux<T>
 where
     <T as ConnectedSink>::Input: 'static + Sync,
@@ -749,7 +747,6 @@ where
     source: MergedMux<T>,
 }
 
-#[async_trait]
 impl<T: Connected + ConnectedSource> Connected for ConnectedTagged<T>
 where
     <T as ConnectedSource>::Output: 'static + Sync + Unpin,
