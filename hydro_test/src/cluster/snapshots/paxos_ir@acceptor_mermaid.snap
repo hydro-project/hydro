@@ -47,17 +47,19 @@ linkStyle default stroke:#aaa
 37v1["<div style=text-align:center>(37v1)</div> <code><br>flat_map(|(map, _curr_watermark)| map)</code>"]:::otherClass
 38v1["<div style=text-align:center>(38v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        || HashMap::new()<br>    },<br>    {<br>        |map, (slot, entry)| {<br>            map.insert(slot, entry);<br>        }<br>    },<br>)</code>"]:::otherClass
 39v1["<div style=text-align:center>(39v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-40v1["<div style=text-align:center>(40v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
-41v1["<div style=text-align:center>(41v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::kv_replica::Replica,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;usize&gt;(&amp;b).unwrap(),<br>    )<br>})</code>"]:::otherClass
-42v1["<div style=text-align:center>(42v1)</div> <code><br>reduce_keyed::&lt;<br>    'static,<br>&gt;({<br>    |curr_seq, seq| {<br>        if seq &gt; *curr_seq {<br>            *curr_seq = seq;<br>        }<br>    }<br>})</code>"]:::otherClass
-43v1["<div style=text-align:center>(43v1)</div> <code><br>tee()</code>"]:::otherClass
-44v1["<div style=text-align:center>(44v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        || 0usize<br>    },<br>    {<br>        |count, _| *count += 1<br>    },<br>)</code>"]:::otherClass
-45v1["<div style=text-align:center>(45v1)</div> <code><br>filter_map({<br>    let f__free = 1usize;<br>    move |num_received| if num_received == f__free + 1 { Some(true) } else { None }<br>})</code>"]:::otherClass
-46v1["<div style=text-align:center>(46v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
-47v1["<div style=text-align:center>(47v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
-48v1["<div style=text-align:center>(48v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
-49v1["<div style=text-align:center>(49v1)</div> <code><br>map({<br>    |(_sender, seq)| seq<br>})</code>"]:::otherClass
-50v1["<div style=text-align:center>(50v1)</div> <code><br>reduce::&lt;<br>    'tick,<br>&gt;({<br>    |curr, new| {<br>        if new &lt; *curr {<br>            *curr = new;<br>        }<br>    }<br>})</code>"]:::otherClass
+40v1["<div style=text-align:center>(40v1)</div> <code><br>identity::&lt;<br>    (<br>        core::option::Option&lt;usize&gt;,<br>        std::collections::hash_map::HashMap&lt;<br>            usize,<br>            hydro_test::__staged::cluster::paxos::LogValue&lt;<br>                hydro_test::__staged::cluster::kv_replica::KvPayload&lt;<br>                    u32,<br>                    (<br>                        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                            hydro_test::__staged::cluster::paxos_bench::Client,<br>                        &gt;,<br>                        u32,<br>                    ),<br>                &gt;,<br>            &gt;,<br>        &gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
+41v1["<div style=text-align:center>(41v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
+42v1["<div style=text-align:center>(42v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::kv_replica::Replica,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;usize&gt;(&amp;b).unwrap(),<br>    )<br>})</code>"]:::otherClass
+43v1["<div style=text-align:center>(43v1)</div> <code><br>reduce_keyed::&lt;<br>    'static,<br>&gt;({<br>    |curr_seq, seq| {<br>        if seq &gt; *curr_seq {<br>            *curr_seq = seq;<br>        }<br>    }<br>})</code>"]:::otherClass
+44v1["<div style=text-align:center>(44v1)</div> <code><br>tee()</code>"]:::otherClass
+45v1["<div style=text-align:center>(45v1)</div> <code><br>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        || 0usize<br>    },<br>    {<br>        |count, _| *count += 1<br>    },<br>)</code>"]:::otherClass
+46v1["<div style=text-align:center>(46v1)</div> <code><br>filter_map({<br>    let f__free = 1usize;<br>    move |num_received| if num_received == f__free + 1 { Some(true) } else { None }<br>})</code>"]:::otherClass
+47v1["<div style=text-align:center>(47v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
+48v1["<div style=text-align:center>(48v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+49v1["<div style=text-align:center>(49v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
+50v1["<div style=text-align:center>(50v1)</div> <code><br>map({<br>    |(_sender, seq)| seq<br>})</code>"]:::otherClass
+51v1["<div style=text-align:center>(51v1)</div> <code><br>reduce::&lt;<br>    'tick,<br>&gt;({<br>    |curr, new| {<br>        if new &lt; *curr {<br>            *curr = new;<br>        }<br>    }<br>})</code>"]:::otherClass
+52v1["<div style=text-align:center>(52v1)</div> <code><br>identity::&lt;usize&gt;()</code>"]:::otherClass
 1v1-->2v1
 3v1-->4v1
 4v1-->5v1
@@ -71,7 +73,7 @@ linkStyle default stroke:#aaa
 6v1-->|input|13v1
 12v1--x|single|13v1; linkStyle 11 stroke:red
 13v1-->|input|14v1
-39v1--x|single|14v1; linkStyle 13 stroke:red
+40v1--x|single|14v1; linkStyle 13 stroke:red
 14v1-->15v1
 16v1-->17v1
 15v1-->16v1
@@ -83,7 +85,7 @@ linkStyle default stroke:#aaa
 22v1-->23v1
 24v1-->25v1
 23v1-->24v1
-50v1-->26v1
+52v1-->26v1
 26v1-->27v1
 28v1-->29v1
 27v1--x|0|30v1; linkStyle 28 stroke:red
@@ -100,17 +102,19 @@ linkStyle default stroke:#aaa
 37v1--x38v1; linkStyle 39 stroke:red
 30v1-->|input|39v1
 38v1--x|single|39v1; linkStyle 41 stroke:red
-40v1-->41v1
-41v1--x42v1; linkStyle 43 stroke:red
-42v1-->43v1
-43v1--x44v1; linkStyle 45 stroke:red
-44v1-->45v1
+39v1-->40v1
+41v1-->42v1
+42v1--x43v1; linkStyle 44 stroke:red
+43v1-->44v1
+44v1--x45v1; linkStyle 46 stroke:red
 45v1-->46v1
-43v1-->|input|47v1
-46v1--x|single|47v1; linkStyle 49 stroke:red
-47v1-->48v1
+46v1-->47v1
+44v1-->|input|48v1
+47v1--x|single|48v1; linkStyle 50 stroke:red
 48v1-->49v1
-49v1--x50v1; linkStyle 52 stroke:red
+49v1-->50v1
+50v1--x51v1; linkStyle 53 stroke:red
+51v1-->52v1
 2v1
 16v1
 17v1
@@ -118,6 +122,14 @@ linkStyle default stroke:#aaa
 25v1
 35v1
 34v1
+subgraph var_cycle_2 ["var <tt>cycle_2</tt>"]
+    style var_cycle_2 fill:transparent
+    52v1
+end
+subgraph var_cycle_4 ["var <tt>cycle_4</tt>"]
+    style var_cycle_4 fill:transparent
+    40v1
+end
 subgraph var_reduce_keyed_watermark_chain_469 ["var <tt>reduce_keyed_watermark_chain_469</tt>"]
     style var_reduce_keyed_watermark_chain_469 fill:transparent
     33v1
@@ -229,44 +241,44 @@ subgraph var_stream_475 ["var <tt>stream_475</tt>"]
 end
 subgraph var_stream_580 ["var <tt>stream_580</tt>"]
     style var_stream_580 fill:transparent
-    40v1
     41v1
+    42v1
 end
 subgraph var_stream_582 ["var <tt>stream_582</tt>"]
     style var_stream_582 fill:transparent
-    42v1
+    43v1
 end
 subgraph var_stream_584 ["var <tt>stream_584</tt>"]
     style var_stream_584 fill:transparent
-    43v1
+    44v1
 end
 subgraph var_stream_591 ["var <tt>stream_591</tt>"]
     style var_stream_591 fill:transparent
-    44v1
+    45v1
 end
 subgraph var_stream_592 ["var <tt>stream_592</tt>"]
     style var_stream_592 fill:transparent
-    45v1
+    46v1
 end
 subgraph var_stream_593 ["var <tt>stream_593</tt>"]
     style var_stream_593 fill:transparent
-    46v1
+    47v1
 end
 subgraph var_stream_594 ["var <tt>stream_594</tt>"]
     style var_stream_594 fill:transparent
-    47v1
+    48v1
 end
 subgraph var_stream_595 ["var <tt>stream_595</tt>"]
     style var_stream_595 fill:transparent
-    48v1
+    49v1
 end
 subgraph var_stream_596 ["var <tt>stream_596</tt>"]
     style var_stream_596 fill:transparent
-    49v1
+    50v1
 end
 subgraph var_stream_598 ["var <tt>stream_598</tt>"]
     style var_stream_598 fill:transparent
-    50v1
+    51v1
 end
 subgraph var_stream_9 ["var <tt>stream_9</tt>"]
     style var_stream_9 fill:transparent
