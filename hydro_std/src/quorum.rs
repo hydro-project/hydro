@@ -20,69 +20,66 @@ pub fn collect_quorum_with_response<
     Stream<(K, V), L, Unbounded, Order>,
     Stream<(K, E), L, Unbounded, Order>,
 ) {
-    let tick = responses.location().tick();
-    let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
-
-    let current_responses = not_all.chain(responses.clone().batch(
-        &tick,
-        nondet!(
+    let quorums = sliced! {
+        let new_inputs = use(responses.clone(), nondet!(
             /// We always persist values that have not reached quorum, so even
             /// with arbitrary batching we always produce deterministic quorum results.
-        ),
-    ));
+        ));
 
-    let count_per_key = current_responses.clone().into_keyed().fold_commutative(
-        q!(move || (0, 0)),
-        q!(move |accum, value| {
-            if value.is_ok() {
-                accum.0 += 1;
-            } else {
-                accum.1 += 1;
-            }
-        }),
-    );
+        let mut not_all = use::state_null::<Stream<_, _, Bounded, Order>>();
+        let mut min_but_not_max = use::state_null::<Stream<K, _, Bounded, NoOrder>>();
 
-    let not_reached_min_count = count_per_key
-        .clone()
-        .filter(q!(move |(success, _error)| success < &min))
-        .keys();
+        let current_responses = not_all.chain(new_inputs);
 
-    let reached_min_count = count_per_key
-        .clone()
-        .filter(q!(move |(success, _error)| success >= &min))
-        .keys();
+        let count_per_key = current_responses.clone().into_keyed().fold_commutative(
+            q!(move || (0, 0)),
+            q!(move |accum, value| {
+                if value.is_ok() {
+                    accum.0 += 1;
+                } else {
+                    accum.1 += 1;
+                }
+            }),
+        );
 
-    let just_reached_quorum = if max == min {
-        not_all_complete_cycle
-            .complete_next_tick(current_responses.clone().anti_join(reached_min_count));
-
-        current_responses.anti_join(not_reached_min_count)
-    } else {
-        let (min_but_not_max_complete_cycle, min_but_not_max) =
-            tick.cycle::<Stream<K, _, Bounded, NoOrder>>();
-
-        let received_from_all = count_per_key
-            .filter(q!(move |(success, error)| (success + error) >= max))
+         let not_reached_min_count = count_per_key
+            .clone()
+            .filter(q!(move |(success, _error)| success < &min))
             .keys();
 
-        min_but_not_max_complete_cycle
-            .complete_next_tick(reached_min_count.filter_not_in(received_from_all.clone()));
+        let reached_min_count = count_per_key
+            .clone()
+            .filter(q!(move |(success, _error)| success >= &min))
+            .keys();
 
-        not_all_complete_cycle
-            .complete_next_tick(current_responses.clone().anti_join(received_from_all));
+        let just_reached_quorum = if max == min {
+            not_all = current_responses.clone().anti_join(reached_min_count);
 
-        current_responses
-            .anti_join(not_reached_min_count)
-            .anti_join(min_but_not_max)
+            current_responses.anti_join(not_reached_min_count)
+        } else {
+            let received_from_all = count_per_key
+                .filter(q!(move |(success, error)| (success + error) >= max))
+                .keys();
+
+            not_all = current_responses.clone().anti_join(received_from_all.clone());
+
+            let out = current_responses
+                .anti_join(not_reached_min_count)
+                .anti_join(min_but_not_max);
+
+            min_but_not_max = reached_min_count.filter_not_in(received_from_all);
+
+            out
+        };
+
+        just_reached_quorum.filter_map(q!(move |(key, res)| match res {
+            Ok(v) => Some((key, v)),
+            Err(_) => None,
+        }))
     };
 
     (
-        just_reached_quorum
-            .filter_map(q!(move |(key, res)| match res {
-                Ok(v) => Some((key, v)),
-                Err(_) => None,
-            }))
-            .all_ticks(),
+        quorums,
         responses.filter_map(q!(move |(key, res)| match res {
             Ok(_) => None,
             Err(e) => Some((key, e)),

@@ -132,3 +132,17 @@ impl<'a, C: ReceiverComplete<'a, TickCycle>> TickCycleHandle<'a, C> {
         C::complete(stream.into(), ident, self.expected_location.clone())
     }
 }
+
+/// A trait for completing a cycle handle with a state value.
+/// Used internally by the `sliced!` macro for state management.
+#[doc(hidden)]
+pub trait CompleteCycle<S> {
+    /// Completes the cycle with the given state value.
+    fn complete_next_tick(self, state: S);
+}
+
+impl<'a, C: ReceiverComplete<'a, TickCycle>> CompleteCycle<C> for TickCycleHandle<'a, C> {
+    fn complete_next_tick(self, state: C) {
+        TickCycleHandle::complete_next_tick(self, state)
+    }
+}
