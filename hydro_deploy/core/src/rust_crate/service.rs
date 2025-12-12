@@ -83,9 +83,9 @@ impl RustCrateService {
             .expect("Cannot set meta twice.");
     }
 
-    pub fn get_port(&self, name: String, self_arc: &Arc<RustCrateService>) -> RustCratePortConfig {
+    pub fn get_port(self: &Arc<Self>, name: String) -> RustCratePortConfig {
         RustCratePortConfig {
-            service: Arc::downgrade(self_arc),
+            service: Arc::downgrade(self),
             service_host: self.on.clone(),
             service_server_defns: self.server_defns.clone(),
             network_hint: PortNetworkHint::Auto,
@@ -95,13 +95,12 @@ impl RustCrateService {
     }
 
     pub fn get_port_with_hint(
-        &self,
+        self: &Arc<Self>,
         name: String,
         network_hint: PortNetworkHint,
-        self_arc: &Arc<RustCrateService>,
     ) -> RustCratePortConfig {
         RustCratePortConfig {
-            service: Arc::downgrade(self_arc),
+            service: Arc::downgrade(self),
             service_host: self.on.clone(),
             service_server_defns: self.server_defns.clone(),
             network_hint,
