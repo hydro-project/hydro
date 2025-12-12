@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::time::Duration;
 
+use hydro_lang::live_collections::sliced::yield_atomic;
 use hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder, TotalOrder};
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::location::{Atomic, Location, MemberId};
@@ -275,17 +276,14 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
             proposer_id: MemberId::from_raw_id(0)
         })));
 
-    let (p_ballot, p_has_largest_ballot) = p_ballot_calc(
+    let (p_ballot, p_has_largest_ballot) = p_ballot_calc(p_received_max_ballot.snapshot(
         proposer_tick,
-        p_received_max_ballot.snapshot(
-            proposer_tick,
-            nondet!(
-                /// A stale max ballot might result in us failing to become the leader, but which proposer
-                /// becomes the leader is non-deterministic anyway.
-                nondet_leader
-            ),
+        nondet!(
+            /// A stale max ballot might result in us failing to become the leader, but which proposer
+            /// becomes the leader is non-deterministic anyway.
+            nondet_leader
         ),
-    );
+    ));
 
     let (p_to_proposers_i_am_leader, p_trigger_election) = p_leader_heartbeat(
         proposers,
@@ -341,47 +339,89 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
 // Proposer logic to calculate the next ballot number. Expects p_received_max_ballot, the largest ballot received so far. Outputs streams: ballot_num, and has_largest_ballot, which only contains a value if we have the largest ballot.
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
 fn p_ballot_calc<'a>(
-    proposer_tick: &Tick<Cluster<'a, Proposer>>,
     p_received_max_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) -> (
     Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
     Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
 ) {
-    let (p_ballot_num_complete_cycle, p_ballot_num) =
-        proposer_tick.cycle_with_initial(proposer_tick.singleton(q!(0)));
+    let max_ballot_atomic = p_received_max_ballot.latest_atomic();
 
-    let p_new_ballot_num = p_received_max_ballot
-        .clone()
-        .zip(p_ballot_num.clone())
-        .map(q!(move |(received_max_ballot, ballot_num)| {
-            if received_max_ballot
-                > (Ballot {
-                    num: ballot_num,
-                    proposer_id: CLUSTER_SELF_ID.clone(),
-                })
-            {
-                received_max_ballot.num + 1
-            } else {
-                ballot_num
-            }
+    let (p_ballot, p_has_largest_ballot) = sliced! {
+        let p_received_max_ballot = use::atomic(max_ballot_atomic, nondet!(/** TODO */));
+        let mut p_ballot_num = use::state(|l| l.singleton(q!(0)));
+
+        p_ballot_num = p_received_max_ballot
+            .clone()
+            .zip(p_ballot_num)
+            .map(q!(move |(received_max_ballot, ballot_num)| {
+                if received_max_ballot
+                    > (Ballot {
+                        num: ballot_num,
+                        proposer_id: CLUSTER_SELF_ID.clone(),
+                    })
+                {
+                    received_max_ballot.num + 1
+                } else {
+                    ballot_num
+                }
+            }));
+
+        let p_ballot = p_ballot_num.clone().map(q!(move |num| Ballot {
+            num,
+            proposer_id: CLUSTER_SELF_ID.clone()
         }));
-    p_ballot_num_complete_cycle.complete_next_tick(p_new_ballot_num);
 
-    let p_ballot = p_ballot_num.map(q!(move |num| Ballot {
-        num,
-        proposer_id: CLUSTER_SELF_ID.clone()
-    }));
+        let p_has_largest_ballot = p_received_max_ballot
+            .zip(p_ballot.clone())
+            .filter(q!(
+                |(received_max_ballot, cur_ballot)| *received_max_ballot <= *cur_ballot
+            ))
+            .map(q!(|_| ()));
 
-    let p_has_largest_ballot = p_received_max_ballot
-        .clone()
-        .zip(p_ballot.clone())
-        .filter(q!(
-            |(received_max_ballot, cur_ballot)| *received_max_ballot <= *cur_ballot
-        ))
-        .map(q!(|_| ()));
+        (yield_atomic(p_ballot), yield_atomic(p_has_largest_ballot))
+    };
 
-    // End stable leader election
-    (p_ballot, p_has_largest_ballot)
+    (
+        p_ballot.snapshot_atomic(nondet!(/** always up to date with received ballots */)),
+        p_has_largest_ballot
+            .snapshot_atomic(nondet!(/** always up to date with received ballots */)),
+    )
+
+    // let (p_ballot_num_complete_cycle, p_ballot_num) =
+    //     proposer_tick.cycle_with_initial(proposer_tick.singleton(q!(0)));
+
+    // let p_new_ballot_num = p_received_max_ballot
+    //     .clone()
+    //     .zip(p_ballot_num.clone())
+    //     .map(q!(move |(received_max_ballot, ballot_num)| {
+    //         if received_max_ballot
+    //             > (Ballot {
+    //                 num: ballot_num,
+    //                 proposer_id: CLUSTER_SELF_ID.clone(),
+    //             })
+    //         {
+    //             received_max_ballot.num + 1
+    //         } else {
+    //             ballot_num
+    //         }
+    //     }));
+    // p_ballot_num_complete_cycle.complete_next_tick(p_new_ballot_num);
+
+    // let p_ballot = p_ballot_num.map(q!(move |num| Ballot {
+    //     num,
+    //     proposer_id: CLUSTER_SELF_ID.clone()
+    // }));
+
+    // let p_has_largest_ballot = p_received_max_ballot
+    //     .clone()
+    //     .zip(p_ballot.clone())
+    //     .filter(q!(
+    //         |(received_max_ballot, cur_ballot)| *received_max_ballot <= *cur_ballot
+    //     ))
+    //     .map(q!(|_| ()));
+
+    // // End stable leader election
+    // (p_ballot, p_has_largest_ballot)
 }
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
