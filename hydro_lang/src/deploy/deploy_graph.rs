@@ -23,7 +23,6 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::{QuotedWithContext, RuntimeData};
 use syn::parse_quote;
-use tokio::sync::RwLock;
 
 use super::deploy_runtime::*;
 use crate::compile::deploy_provider::{
@@ -92,17 +91,11 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying
-                .try_read()
-                .unwrap()
-                .get_port(p1_port.clone(), self_underlying);
+            let source_port = self_underlying.get_port(p1_port.clone(), self_underlying);
 
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
-            let recipient_port = other_underlying
-                .try_read()
-                .unwrap()
-                .get_port(p2_port.clone(), other_underlying);
+            let recipient_port = other_underlying.get_port(p2_port.clone(), other_underlying);
 
             source_port.send_to(&recipient_port)
         })
@@ -137,10 +130,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying
-                .try_read()
-                .unwrap()
-                .get_port(p1_port.clone(), self_underlying);
+            let source_port = self_underlying.get_port(p1_port.clone(), self_underlying);
 
             let recipient_port = DemuxSink {
                 demux: c2
@@ -149,10 +139,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
                     .iter()
                     .enumerate()
                     .map(|(id, c)| {
-                        let n = c.underlying.try_read().unwrap();
                         (
                             id as u32,
-                            Arc::new(n.get_port(c2_port.clone(), &c.underlying))
+                            Arc::new(c.underlying.get_port(c2_port.clone(), &c.underlying))
                                 as Arc<dyn RustCrateSink + 'static>,
                         )
                     })
@@ -193,17 +182,11 @@ impl<'a> Deploy<'a> for HydroDeploy {
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
             let recipient_port = other_underlying
-                .try_read()
-                .unwrap()
                 .get_port(p2_port.clone(), other_underlying)
                 .merge();
 
             for (i, node) in c1.members.borrow().iter().enumerate() {
-                let source_port = node
-                    .underlying
-                    .try_read()
-                    .unwrap()
-                    .get_port(c1_port.clone(), &node.underlying);
+                let source_port = node.underlying.get_port(c1_port.clone(), &node.underlying);
 
                 TaggedSource {
                     source: Arc::new(source_port),
@@ -244,8 +227,6 @@ impl<'a> Deploy<'a> for HydroDeploy {
             for (i, sender) in c1.members.borrow().iter().enumerate() {
                 let source_port = sender
                     .underlying
-                    .try_read()
-                    .unwrap()
                     .get_port(c1_port.clone(), &sender.underlying);
 
                 let recipient_port = DemuxSink {
@@ -255,10 +236,13 @@ impl<'a> Deploy<'a> for HydroDeploy {
                         .iter()
                         .enumerate()
                         .map(|(id, c)| {
-                            let n = c.underlying.try_read().unwrap();
                             (
                                 id as u32,
-                                Arc::new(n.get_port(c2_port.clone(), &c.underlying).merge())
+                                Arc::new(
+                                    c.underlying
+                                        .get_port(c2_port.clone(), &c.underlying)
+                                        .merge(),
+                                )
                                     as Arc<dyn RustCrateSink + 'static>,
                             )
                         })
@@ -443,17 +427,14 @@ impl<'a> Deploy<'a> for HydroDeploy {
 pub trait DeployCrateWrapper {
     fn underlying(&self) -> Arc<RustCrateService>;
 
-    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
     fn stdout(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
         self.underlying().stdout()
     }
 
-    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
     fn stderr(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
         self.underlying().stderr()
     }
 
-    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
     fn stdout_filter(
         &self,
         prefix: impl Into<String>,
@@ -461,7 +442,6 @@ pub trait DeployCrateWrapper {
         self.underlying().stdout_filter(prefix.into())
     }
 
-    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
     fn stderr_filter(
         &self,
         prefix: impl Into<String>,
@@ -469,7 +449,6 @@ pub trait DeployCrateWrapper {
         self.underlying().stderr_filter(prefix.into())
     }
 
-    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
     fn tracing_results(&self) -> Option<TracingResults> {
         self.underlying().tracing_results().cloned()
     }
@@ -752,7 +731,7 @@ impl Node for DeployExternal {
         *self.underlying.borrow_mut() = Some(service);
     }
 
-    fn update_meta(&mut self, _meta: &Self::Meta) {}
+    fn update_meta(&self, _meta: &Self::Meta) {}
 }
 
 impl ExternalSpec<'_, HydroDeploy> for Arc<dyn Host> {
@@ -811,10 +790,9 @@ impl Node for DeployNode {
         format!("port_{}", next_port)
     }
 
-    fn update_meta(&mut self, meta: &Self::Meta) {
+    fn update_meta(&self, meta: &Self::Meta) {
         let underlying_node = self.underlying.borrow();
-        let mut n = underlying_node.as_ref().unwrap().try_write().unwrap();
-        n.update_meta(HydroMeta {
+        underlying_node.as_ref().unwrap().update_meta(HydroMeta {
             clusters: meta.clone(),
             cluster_id: None,
             subgraph_id: self.id,
@@ -952,10 +930,9 @@ impl Node for DeployCluster {
             .collect();
     }
 
-    fn update_meta(&mut self, meta: &Self::Meta) {
+    fn update_meta(&self, meta: &Self::Meta) {
         for (cluster_id, node) in self.members.borrow().iter().enumerate() {
-            let mut n = node.underlying.try_write().unwrap();
-            n.update_meta(HydroMeta {
+            node.underlying.update_meta(HydroMeta {
                 clusters: meta.clone(),
                 cluster_id: Some(TaglessMemberId::from_raw_id(cluster_id as u32)),
                 subgraph_id: self.id,

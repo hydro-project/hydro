@@ -1,13 +1,14 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use futures::Future;
 use hydro_deploy_integration::{InitConfig, ServerPort};
+use memo_map::MemoMap;
 use serde::Serialize;
-use tokio::sync::{Mutex, OnceCell, RwLock, mpsc};
+use tokio::sync::{OnceCell, RwLock, mpsc};
 
 use super::build::{BuildError, BuildOutput, BuildParams, build_crate_memoized};
 use super::ports::{self, RustCratePortConfig};
@@ -27,13 +28,12 @@ pub struct RustCrateService {
     display_id: Option<String>,
     external_ports: Vec<u16>,
 
-    meta: Option<String>,
+    meta: OnceLock<String>,
 
     /// Configuration for the ports this service will connect to as a client.
-    pub(super) port_to_server: Mutex<HashMap<String, ports::ServerConfig>>,
-
+    pub(super) port_to_server: MemoMap<String, ports::ServerConfig>,
     /// Configuration for the ports that this service will listen on a port for.
-    pub(super) port_to_bind: Mutex<HashMap<String, ServerStrategy>>,
+    pub(super) port_to_bind: MemoMap<String, ServerStrategy>,
 
     launched_host: OnceCell<Arc<dyn LaunchedHost>>,
 
@@ -64,9 +64,9 @@ impl RustCrateService {
             args,
             display_id,
             external_ports,
-            meta: None,
-            port_to_server: Mutex::new(HashMap::new()),
-            port_to_bind: Mutex::new(HashMap::new()),
+            meta: OnceLock::new(),
+            port_to_server: MemoMap::new(),
+            port_to_bind: MemoMap::new(),
             launched_host: OnceCell::new(),
             server_defns: Arc::new(RwLock::new(HashMap::new())),
             launched_binary: OnceCell::new(),
@@ -74,12 +74,13 @@ impl RustCrateService {
         }
     }
 
-    pub fn update_meta<T: Serialize>(&mut self, meta: T) {
+    pub fn update_meta<T: Serialize>(&self, meta: T) {
         if self.launched_binary.get().is_some() {
             panic!("Cannot update meta after binary has been launched")
         }
-
-        self.meta = Some(serde_json::to_string(&meta).unwrap());
+        self.meta
+            .set(serde_json::to_string(&meta).unwrap())
+            .expect("Cannot set meta twice.");
     }
 
     pub fn get_port(&self, name: String, self_arc: &Arc<RustCrateService>) -> RustCratePortConfig {
@@ -153,11 +154,8 @@ impl Service for RustCrateService {
         let host = &self.on;
 
         host.request_custom_binary();
-        {
-            let port_to_bind = self.port_to_bind.blocking_lock();
-            for bind_type in port_to_bind.values() {
-                host.request_port(bind_type);
-            }
+        for (_, bind_type) in self.port_to_bind.iter() {
+            host.request_port(bind_type);
         }
 
         for port in self.external_ports.iter() {
@@ -213,19 +211,19 @@ impl Service for RustCrateService {
                             )
                             .await?;
 
-                        let bind_config = {
-                            let port_to_bind = self.port_to_bind.lock().await;
-                            port_to_bind
-                                .iter()
-                                .map(|(port_name, bind_type)| {
-                                    (port_name.clone(), launched_host.server_config(bind_type))
-                                })
-                                .collect::<HashMap<_, _>>()
-                        };
+                        let bind_config = self
+                            .port_to_bind
+                            .iter()
+                            .map(|(port_name, bind_type)| {
+                                (port_name.clone(), launched_host.server_config(bind_type))
+                            })
+                            .collect::<HashMap<_, _>>();
 
-                        let formatted_bind_config =
-                            serde_json::to_string::<InitConfig>(&(bind_config, self.meta.clone()))
-                                .unwrap();
+                        let formatted_bind_config = serde_json::to_string::<InitConfig>(&(
+                            bind_config,
+                            self.meta.get().map(|s| s.as_str().into()),
+                        ))
+                        .unwrap();
 
                         // request stdout before sending config so we don't miss the "ready" response
                         let stdout_receiver = binary.deploy_stdout();
@@ -256,14 +254,16 @@ impl Service for RustCrateService {
     async fn start(&self) -> Result<()> {
         self.started
             .get_or_try_init(|| async {
-                let mut sink_ports = HashMap::new();
-                {
-                    let port_to_server = self.port_to_server.lock().await;
-                    for (port_name, outgoing) in port_to_server.iter() {
-                        sink_ports
-                            .insert(port_name.clone(), outgoing.load_instantiated(&|p| p).await);
-                    }
-                }
+                let sink_ports_futures =
+                    self.port_to_server
+                        .iter()
+                        .map(|(port_name, outgoing)| async {
+                            (&**port_name, outgoing.load_instantiated(&|p| p).await)
+                        });
+                let sink_ports = futures::future::join_all(sink_ports_futures)
+                    .await
+                    .into_iter()
+                    .collect::<HashMap<_, _>>();
 
                 let formatted_defns = serde_json::to_string(&sink_ports).unwrap();
 

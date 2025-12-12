@@ -5,6 +5,7 @@ use std::ops::Deref;
 use std::sync::{Arc, Weak};
 
 use anyhow::{Result, bail};
+use append_only_vec::AppendOnlyVec;
 use async_recursion::async_recursion;
 use dyn_clone::DynClone;
 use hydro_deploy_integration::ServerPort;
@@ -227,22 +228,19 @@ impl RustCrateSource for RustCratePortConfig {
 
     fn record_server_config(&self, config: ServerConfig) {
         let from = self.service.upgrade().unwrap();
-        let mut port_to_server = from.port_to_server.lock();
-
         // TODO(shadaj): if already in this map, we want to broadcast
         assert!(
-            !port_to_server.contains_key(&self.port),
+            from.port_to_server.insert(self.port.clone(), config),
             "The port configuration is incorrect, for example, are you using a ConnectedDirect instead of a ConnectedDemux?"
         );
-        port_to_server.insert(self.port.clone(), config);
     }
 
     fn record_server_strategy(&self, config: ServerStrategy) {
         let from = self.service.upgrade().unwrap();
-        let mut port_to_bind = from.port_to_bind.lock();
-
-        assert!(!port_to_bind.contains_key(&self.port));
-        port_to_bind.insert(self.port.clone(), config);
+        assert!(
+            from.port_to_bind.insert(self.port.clone(), config),
+            "port already set!"
+        );
     }
 }
 
@@ -326,20 +324,21 @@ impl RustCrateSink for RustCratePortConfig {
         let port = self.port.clone();
         Ok(Box::new(move || {
             let bind_type = (bind_type)(&*server.on);
-            let mut port_to_bind = server.port_to_bind.lock();
 
             if merge {
-                let merge_config = port_to_bind
-                    .entry(port)
-                    .or_insert_with(|| ServerStrategy::Merge(Vec::with_capacity(1)));
+                let merge_config = server
+                    .port_to_bind
+                    .get_or_insert_owned(port, || ServerStrategy::Merge(Default::default()));
                 let ServerStrategy::Merge(merge) = merge_config else {
                     panic!("Expected a merge connection definition")
                 };
                 merge.push(bind_type);
                 ServerConfig::MergeSelect(Box::new(base_config), merge.len() - 1)
             } else {
-                assert!(!port_to_bind.contains_key(&port));
-                port_to_bind.insert(port.clone(), bind_type);
+                assert!(
+                    server.port_to_bind.insert(port.clone(), bind_type),
+                    "port already set!"
+                );
                 base_config
             }
         }))
@@ -367,18 +366,19 @@ impl RustCrateSink for RustCratePortConfig {
         let merge = self.merge;
         let port = self.port.clone();
         Ok(Box::new(move |_| {
-            let mut port_to_server = client.port_to_server.lock();
             if merge {
-                let merge_config = port_to_server
-                    .entry(port)
-                    .or_insert_with(|| ServerConfig::Merge(Vec::with_capacity(1)));
+                let merge_config = client
+                    .port_to_server
+                    .get_or_insert_owned(port, || ServerConfig::Merge(Default::default()));
                 let ServerConfig::Merge(merge) = merge_config else {
                     panic!()
                 };
                 merge.push(client_port);
             } else {
-                assert!(!port_to_server.contains_key(&port));
-                port_to_server.insert(port.clone(), client_port);
+                assert!(
+                    client.port_to_server.insert(port.clone(), client_port),
+                    "port already set!"
+                );
             };
 
             ServerStrategy::Direct((bind_type)(&*client.on))
@@ -395,7 +395,7 @@ pub enum ServerConfig {
     /// The other side of a demux, with a port to extract the appropriate connection.
     DemuxSelect(Box<ServerConfig>, u32),
     /// A merge that will be used at runtime to combine many connections.
-    Merge(Vec<ServerConfig>),
+    Merge(Box<AppendOnlyVec<ServerConfig>>),
     /// The other side of a merge, with a port to extract the appropriate connection.
     MergeSelect(Box<ServerConfig>, usize),
     Tagged(Box<ServerConfig>, u32),
@@ -482,7 +482,7 @@ impl ServerConfig {
 
             ServerConfig::Merge(merge) => {
                 let mut merge_vec = Vec::new();
-                for conn in merge {
+                for conn in merge.iter() {
                     merge_vec.push(conn.load_instantiated(select).await);
                 }
                 ServerPort::Merge(merge_vec)

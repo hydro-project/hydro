@@ -5,6 +5,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::Result;
+use append_only_vec::AppendOnlyVec;
 use async_trait::async_trait;
 use hydro_deploy_integration::ServerBindConfig;
 use rust_crate::build::BuildOutput;
@@ -124,7 +125,7 @@ pub trait LaunchedHost: Send + Sync {
             ),
             ServerStrategy::Merge(merge) => ServerBindConfig::Merge(
                 merge
-                    .into_iter()
+                    .iter()
                     .map(|underlying| self.server_config(underlying))
                     .collect(),
             ),
@@ -162,7 +163,7 @@ pub enum ServerStrategy {
     Direct(BaseServerStrategy),
     Many(BaseServerStrategy),
     Demux(HashMap<u32, ServerStrategy>),
-    Merge(Vec<ServerStrategy>),
+    Merge(Box<AppendOnlyVec<ServerStrategy>>),
     Tagged(Box<ServerStrategy>, u32),
     Null,
 }
@@ -218,7 +219,7 @@ pub trait Host: Any + Send + Sync + Debug {
                 }
             }
             ServerStrategy::Merge(merge) => {
-                for bind_type in merge {
+                for bind_type in merge.iter() {
                     self.request_port(bind_type);
                 }
             }
