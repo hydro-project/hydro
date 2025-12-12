@@ -3,9 +3,10 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::time::Duration;
 
+use hydro_lang::live_collections::sliced::yield_atomic;
 use hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder, TotalOrder};
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
-use hydro_lang::location::{Atomic, Location, MemberId};
+use hydro_lang::location::{Atomic, Location, MemberId, NoTick};
 use hydro_lang::prelude::*;
 use hydro_std::quorum::{collect_quorum, collect_quorum_with_response};
 use hydro_std::request_response::join_responses;
@@ -275,17 +276,14 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
             proposer_id: MemberId::from_raw_id(0)
         })));
 
-    let (p_ballot, p_has_largest_ballot) = p_ballot_calc(
+    let (p_ballot, p_has_largest_ballot) = p_ballot_calc(p_received_max_ballot.snapshot(
         proposer_tick,
-        p_received_max_ballot.snapshot(
-            proposer_tick,
-            nondet!(
-                /// A stale max ballot might result in us failing to become the leader, but which proposer
-                /// becomes the leader is non-deterministic anyway.
-                nondet_leader
-            ),
+        nondet!(
+            /// A stale max ballot might result in us failing to become the leader, but which proposer
+            /// becomes the leader is non-deterministic anyway.
+            nondet_leader
         ),
-    );
+    ));
 
     let (p_to_proposers_i_am_leader, p_trigger_election) = p_leader_heartbeat(
         proposers,
@@ -341,47 +339,51 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
 // Proposer logic to calculate the next ballot number. Expects p_received_max_ballot, the largest ballot received so far. Outputs streams: ballot_num, and has_largest_ballot, which only contains a value if we have the largest ballot.
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
 fn p_ballot_calc<'a>(
-    proposer_tick: &Tick<Cluster<'a, Proposer>>,
     p_received_max_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) -> (
     Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
     Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
 ) {
-    let (p_ballot_num_complete_cycle, p_ballot_num) =
-        proposer_tick.cycle_with_initial(proposer_tick.singleton(q!(0)));
+    let (p_ballot, p_has_largest_ballot) = sliced! {
+        let p_received_max_ballot = use::atomic(p_received_max_ballot.latest_atomic(), nondet!(/** up to date with tick input */));
+        let mut p_ballot_num = use::state(|l| l.singleton(q!(0)));
 
-    let p_new_ballot_num = p_received_max_ballot
-        .clone()
-        .zip(p_ballot_num.clone())
-        .map(q!(move |(received_max_ballot, ballot_num)| {
-            if received_max_ballot
-                > (Ballot {
-                    num: ballot_num,
-                    proposer_id: CLUSTER_SELF_ID.clone(),
-                })
-            {
-                received_max_ballot.num + 1
-            } else {
-                ballot_num
-            }
+        p_ballot_num = p_received_max_ballot
+            .clone()
+            .zip(p_ballot_num)
+            .map(q!(move |(received_max_ballot, ballot_num)| {
+                if received_max_ballot
+                    > (Ballot {
+                        num: ballot_num,
+                        proposer_id: CLUSTER_SELF_ID.clone(),
+                    })
+                {
+                    received_max_ballot.num + 1
+                } else {
+                    ballot_num
+                }
+            }));
+
+        let p_ballot = p_ballot_num.clone().map(q!(move |num| Ballot {
+            num,
+            proposer_id: CLUSTER_SELF_ID.clone()
         }));
-    p_ballot_num_complete_cycle.complete_next_tick(p_new_ballot_num);
 
-    let p_ballot = p_ballot_num.map(q!(move |num| Ballot {
-        num,
-        proposer_id: CLUSTER_SELF_ID.clone()
-    }));
+        let p_has_largest_ballot = p_received_max_ballot
+            .zip(p_ballot.clone())
+            .filter(q!(
+                |(received_max_ballot, cur_ballot)| *received_max_ballot <= *cur_ballot
+            ))
+            .map(q!(|_| ()));
 
-    let p_has_largest_ballot = p_received_max_ballot
-        .clone()
-        .zip(p_ballot.clone())
-        .filter(q!(
-            |(received_max_ballot, cur_ballot)| *received_max_ballot <= *cur_ballot
-        ))
-        .map(q!(|_| ()));
+        (yield_atomic(p_ballot), yield_atomic(p_has_largest_ballot))
+    };
 
-    // End stable leader election
-    (p_ballot, p_has_largest_ballot)
+    (
+        p_ballot.snapshot_atomic(nondet!(/** always up to date with received ballots */)),
+        p_has_largest_ballot
+            .snapshot_atomic(nondet!(/** always up to date with received ballots */)),
+    )
 }
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
@@ -683,7 +685,6 @@ fn sequence_payload<'a, P: PaxosPayload>(
         recommit_after_leader_election(p_relevant_p1bs, p_ballot.clone(), f);
 
     let indexed_payloads = index_payloads(
-        proposer_tick,
         p_max_slot,
         c_to_proposers
             .batch(
@@ -748,34 +749,34 @@ fn sequence_payload<'a, P: PaxosPayload>(
 }
 
 // Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
-pub fn index_payloads<'a, L: Location<'a>, P: PaxosPayload>(
-    proposer_tick: &Tick<L>,
+pub fn index_payloads<'a, L: Location<'a> + NoTick, P: PaxosPayload>(
     p_max_slot: Optional<usize, Tick<L>, Bounded>,
     c_to_proposers: Stream<P, Tick<L>, Bounded>,
 ) -> Stream<(usize, P), Tick<L>, Bounded> {
-    let (p_next_slot_complete_cycle, p_next_slot) =
-        proposer_tick.cycle_with_initial::<Singleton<usize, _, _>>(proposer_tick.singleton(q!(0)));
-    let p_next_slot_after_reconciling_p1bs = p_max_slot.map(q!(|max_slot| max_slot + 1));
+    sliced! {
+        let mut next_slot = use::state(|l| l.singleton(q!(0)));
+        let updated_max_slot = use::atomic(p_max_slot.latest_atomic(), nondet!(/** up to date with tick input */));
+        let payload_batch = use::atomic(c_to_proposers.all_ticks_atomic(), nondet!(/** up to date with tick input */));
 
-    let base_slot = p_next_slot_after_reconciling_p1bs.unwrap_or(p_next_slot);
+        let next_slot_after_reconciling_p1bs = updated_max_slot.map(q!(|s| s + 1));
+        let base_slot = next_slot_after_reconciling_p1bs.unwrap_or(next_slot);
 
-    let p_indexed_payloads = c_to_proposers
-        .enumerate()
-        .cross_singleton(base_slot.clone())
-        .map(q!(|((index, payload), base_slot)| (
-            base_slot + index,
-            payload
-        )));
+        let indexed_payloads = payload_batch
+            .enumerate()
+            .cross_singleton(base_slot.clone())
+            .map(q!(|((index, payload), base_slot)| (
+                base_slot + index,
+                payload
+            )));
 
-    let p_num_payloads = p_indexed_payloads.clone().count();
-    let p_next_slot_after_sending_payloads =
-        p_num_payloads
+        let num_payloads = indexed_payloads.clone().count();
+        next_slot = num_payloads
             .clone()
             .zip(base_slot)
             .map(q!(|(num_payloads, base_slot)| base_slot + num_payloads));
 
-    p_next_slot_complete_cycle.complete_next_tick(p_next_slot_after_sending_payloads);
-    p_indexed_payloads
+        yield_atomic(indexed_payloads)
+    }.batch_atomic(nondet!(/** up to date with tick input */))
 }
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
@@ -886,7 +887,6 @@ mod tests {
 
         let (in_send, input_payloads) = node.sim_input();
         let indexed = index_payloads(
-            &tick,
             tick.none(),
             input_payloads.batch(&tick, nondet!(/** test */)),
         );
@@ -917,7 +917,6 @@ mod tests {
             .batch(&tick, nondet!(/** test */))
             .first();
         let indexed = index_payloads(
-            &tick,
             release_new_base,
             input_payloads.batch(&tick, nondet!(/** test */)),
         );
