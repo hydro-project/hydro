@@ -464,10 +464,10 @@ impl Unslicable for () {
 }
 
 macro_rules! impl_slicable_for_tuple {
-    ($($T:ident, $T_bt:ident, $idx:tt),*) => {
-        impl<'a, L: Location<'a>, $($T: Slicable<'a, L>),*> Slicable<'a, L> for ($($T,)*) {
-            type Slice = ($($T::Slice,)*);
-            type Backtrace = ($($T::Backtrace,)*);
+    ($($T:ident, $T_bt:ident, $idx:tt),+) => {
+        impl<'a, L: Location<'a>, $($T: Slicable<'a, L>),+> Slicable<'a, L> for ($($T,)+) {
+            type Slice = ($($T::Slice,)+);
+            type Backtrace = ($($T::Backtrace,)+);
 
             fn get_location(&self) -> &L {
                 self.0.get_location()
@@ -488,15 +488,25 @@ macro_rules! impl_slicable_for_tuple {
                             None => tick,
                         });
                     }
-                )*
+                )+
                 preferred
             }
 
             #[expect(non_snake_case, reason = "macro codegen")]
             fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-                let ($($T,)*) = self;
-                let ($($T_bt,)*) = backtrace;
-                ($($T.slice(tick, $T_bt, nondet),)*)
+                let ($($T,)+) = self;
+                let ($($T_bt,)+) = backtrace;
+                ($($T.slice(tick, $T_bt, nondet),)+)
+            }
+        }
+
+        impl<$($T: Unslicable),+> Unslicable for ($($T,)+) {
+            type Unsliced = ($($T::Unsliced,)+);
+
+            #[allow(non_snake_case)]
+            fn unslice(self) -> Self::Unsliced {
+                let ($($T,)+) = self;
+                ($($T.unslice(),)+)
             }
         }
     };
