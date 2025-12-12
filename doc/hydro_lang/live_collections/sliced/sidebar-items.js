@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["sliced"],"mod":["style"],"trait":["Slicable","Unslicable"]};
+window.SIDEBAR_ITEMS = {"fn":["yield_atomic"],"macro":["sliced"],"mod":["style"],"trait":["Slicable","Unslicable"]};
