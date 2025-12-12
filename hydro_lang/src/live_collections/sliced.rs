@@ -175,6 +175,13 @@ macro_rules! __sliced__ {
 
 pub use crate::__sliced__ as sliced;
 
+/// Marks this live collection as atomically-yielded, which means that the output outside
+/// `sliced` will be at an atomic location that is synchronous with respect to the body
+/// of the slice.
+pub fn yield_atomic<T>(t: T) -> style::Atomic<T> {
+    style::Atomic(t)
+}
+
 /// Styles for use with the `sliced!` macro.
 pub mod style {
     use super::Slicable;
@@ -183,6 +190,7 @@ pub mod style {
     use crate::forward_handle::{TickCycle, TickCycleHandle};
     use crate::live_collections::boundedness::{Bounded, Unbounded};
     use crate::live_collections::keyed_singleton::BoundedValue;
+    use crate::live_collections::sliced::Unslicable;
     use crate::live_collections::stream::{Ordering, Retries, Stream};
     use crate::location::tick::DeferTick;
     use crate::location::{Location, NoTick, Tick};
@@ -266,6 +274,16 @@ pub mod style {
         }
     }
 
+    impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Unslicable
+        for Atomic<Stream<T, Tick<L>, Bounded, O, R>>
+    {
+        type Unsliced = Stream<T, crate::location::Atomic<L>, Unbounded, O, R>;
+
+        fn unslice(self) -> Self::Unsliced {
+            self.0.all_ticks_atomic()
+        }
+    }
+
     impl<'a, T, L: Location<'a> + NoTick> Slicable<'a, L>
         for Atomic<crate::live_collections::Singleton<T, crate::location::Atomic<L>, Unbounded>>
     {
@@ -293,6 +311,17 @@ pub mod style {
         }
     }
 
+    impl<'a, T, L: Location<'a> + NoTick> Unslicable
+        for Atomic<crate::live_collections::Singleton<T, Tick<L>, Bounded>>
+    {
+        type Unsliced =
+            crate::live_collections::Singleton<T, crate::location::Atomic<L>, Unbounded>;
+
+        fn unslice(self) -> Self::Unsliced {
+            self.0.latest_atomic()
+        }
+    }
+
     impl<'a, T, L: Location<'a> + NoTick> Slicable<'a, L>
         for Atomic<crate::live_collections::Optional<T, crate::location::Atomic<L>, Unbounded>>
     {
@@ -317,6 +346,16 @@ pub mod style {
             let out = self.0.snapshot_atomic(nondet);
             out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
             out
+        }
+    }
+
+    impl<'a, T, L: Location<'a> + NoTick> Unslicable
+        for Atomic<crate::live_collections::Optional<T, Tick<L>, Bounded>>
+    {
+        type Unsliced = crate::live_collections::Optional<T, crate::location::Atomic<L>, Unbounded>;
+
+        fn unslice(self) -> Self::Unsliced {
+            self.0.latest_atomic()
         }
     }
 
