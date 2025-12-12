@@ -254,7 +254,7 @@ pub mod style {
         type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
         fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick().as_regular_tick())
+            Some(self.0.location().tick.clone())
         }
 
         fn get_location(&self) -> &L {
@@ -263,7 +263,7 @@ pub mod style {
 
         fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
             assert_eq!(
-                self.0.location().tick().as_regular_tick().id(),
+                self.0.location().tick.id(),
                 tick.id(),
                 "Mismatched tick for atomic slicing"
             );
@@ -291,7 +291,7 @@ pub mod style {
         type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
         fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick().as_regular_tick())
+            Some(self.0.location().tick.clone())
         }
 
         fn get_location(&self) -> &L {
@@ -300,7 +300,7 @@ pub mod style {
 
         fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
             assert_eq!(
-                self.0.location().tick().as_regular_tick().id(),
+                self.0.location().tick.id(),
                 tick.id(),
                 "Mismatched tick for atomic slicing"
             );
@@ -329,7 +329,7 @@ pub mod style {
         type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
         fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick().as_regular_tick())
+            Some(self.0.location().tick.clone())
         }
 
         fn get_location(&self) -> &L {
@@ -338,7 +338,7 @@ pub mod style {
 
         fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
             assert_eq!(
-                self.0.location().tick().as_regular_tick().id(),
+                self.0.location().tick.id(),
                 tick.id(),
                 "Mismatched tick for atomic slicing"
             );
@@ -368,7 +368,7 @@ pub mod style {
         type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
         fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick().as_regular_tick())
+            Some(self.0.location().tick.clone())
         }
 
         fn get_location(&self) -> &L {
@@ -377,7 +377,7 @@ pub mod style {
 
         fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
             assert_eq!(
-                self.0.location().tick().as_regular_tick().id(),
+                self.0.location().tick.id(),
                 tick.id(),
                 "Mismatched tick for atomic slicing"
             );
@@ -397,7 +397,7 @@ pub mod style {
         type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
         fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick().as_regular_tick())
+            Some(self.0.location().tick.clone())
         }
 
         fn get_location(&self) -> &L {
@@ -406,7 +406,7 @@ pub mod style {
 
         fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
             assert_eq!(
-                self.0.location().tick().as_regular_tick().id(),
+                self.0.location().tick.id(),
                 tick.id(),
                 "Mismatched tick for atomic slicing"
             );
