@@ -180,9 +180,9 @@
 <a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
 <a href=#181 id=181 data-nosnippet>181</a>        <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#182 id=182 data-nosnippet>182</a>            <span class="kw">let </span>#ident = {
-<a href=#183 id=183 data-nosnippet>183</a>                <span class="kw">fn </span>check_output&lt;Si, Item&gt;(sink: Si) -&gt; <span class="kw">impl </span>#root::futures::sink::Sink&lt;Item&gt;
+<a href=#183 id=183 data-nosnippet>183</a>                <span class="kw">fn </span>check_output&lt;Si, Item&gt;(sink: Si) -&gt; <span class="kw">impl </span>#root::futures::sink::Sink&lt;Item, Error = #root::Never&gt;
 <a href=#184 id=184 data-nosnippet>184</a>                <span class="kw">where
-<a href=#185 id=185 data-nosnippet>185</a>                    </span>Si: #root::futures::sink::Sink&lt;Item&gt;,
+<a href=#185 id=185 data-nosnippet>185</a>                    </span>Si: #root::futures::sink::Sink&lt;Item, Error = #root::Never&gt;,
 <a href=#186 id=186 data-nosnippet>186</a>                {
 <a href=#187 id=187 data-nosnippet>187</a>                    sink
 <a href=#188 id=188 data-nosnippet>188</a>                }

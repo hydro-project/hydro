@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["atomic"],"struct":["Atomic"]};
+window.SIDEBAR_ITEMS = {"fn":["atomic","state","state_null"],"struct":["Atomic"]};
