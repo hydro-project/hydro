@@ -68,31 +68,24 @@ pub trait PaxosLike<'a>: Sized {
                         .max(),
                 );
 
-                let payloads_at_proposer = {
-                    let client_tick = clients.tick();
-                    let payload_batch = payloads.batch(&client_tick, nondet!(/** see below */));
+                let payloads_at_proposer = sliced! {
+                    let mut unsent_payloads = use::state_null::<Stream<_, _, _, TotalOrder>>();
 
-                    let latest_leader = cur_leader_id.snapshot(
-                        &client_tick,
+                    let payload_batch = use(payloads, nondet!(/** see below */));
+                    let latest_leader = use(cur_leader_id,
                         nondet!(
                             /// the risk here is that we send a batch of requests
                             /// with a stale leader ID, but because the leader ID comes from the
                             /// network there is no way to guarantee that it is up to date. This
                             /// is documented non-determinism.
                             nondet_commit
-                        ),
+                        )
                     );
-
-                    let (unsent_payloads_complete, unsent_payloads) =
-                        client_tick.cycle::<Stream<_, _, _, TotalOrder>>();
 
                     let all_payloads = unsent_payloads.chain(payload_batch);
 
-                    unsent_payloads_complete.complete_next_tick(
-                        all_payloads.clone().filter_if_none(latest_leader.clone()),
-                    );
-
-                    all_payloads.cross_singleton(latest_leader).all_ticks()
+                    unsent_payloads = all_payloads.clone().filter_if_none(latest_leader.clone());
+                    all_payloads.cross_singleton(latest_leader)
                 }
                 .map(q!(move |(payload, leader_id)| (leader_id, payload)))
                 .demux_bincode(&leaders)

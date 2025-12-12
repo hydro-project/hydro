@@ -180,9 +180,9 @@ pub fn identity_write_iterator_fn(
         let output = &outputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_output<Si, Item>(sink: Si) -> impl #root::futures::sink::Sink<Item>
+                fn check_output<Si, Item>(sink: Si) -> impl #root::futures::sink::Sink<Item, Error = #root::Never>
                 where
-                    Si: #root::futures::sink::Sink<Item>,
+                    Si: #root::futures::sink::Sink<Item, Error = #root::Never>,
                 {
                     sink
                 }
