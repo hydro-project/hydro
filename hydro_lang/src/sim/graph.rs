@@ -38,7 +38,7 @@ impl Node for SimNode {
         todo!()
     }
 
-    fn update_meta(&mut self, _meta: &Self::Meta) {}
+    fn update_meta(&self, _meta: &Self::Meta) {}
 
     fn instantiate(
         &self,
@@ -65,7 +65,7 @@ impl Node for SimExternal {
         todo!()
     }
 
-    fn update_meta(&mut self, _meta: &Self::Meta) {
+    fn update_meta(&self, _meta: &Self::Meta) {
         todo!()
     }
 

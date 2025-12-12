@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -24,7 +25,7 @@ use tokio_util::codec::{Framed, LengthDelimitedCodec};
 pub mod multi_connection;
 pub mod single_connection;
 
-pub type InitConfig = (HashMap<String, ServerBindConfig>, Option<String>);
+pub type InitConfig<'a> = (HashMap<String, ServerBindConfig>, Option<Cow<'a, str>>);
 
 /// Contains runtime information passed by Hydro Deploy to a program,
 /// describing how to connect to other services and metadata about them.

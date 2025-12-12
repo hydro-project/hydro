@@ -40,14 +40,12 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let cluster_stdouts = futures::future::join_all(
-            nodes
-                .get_cluster(&cluster)
-                .members()
-                .iter()
-                .map(|node| node.stdout()),
-        )
-        .await;
+        let cluster_stdouts = nodes
+            .get_cluster(&cluster)
+            .members()
+            .iter()
+            .map(|node| node.stdout())
+            .collect::<Vec<_>>();
 
         deployment.start().await.unwrap();
 
