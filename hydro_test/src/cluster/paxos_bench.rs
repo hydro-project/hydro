@@ -130,7 +130,7 @@ pub fn inc_u32_workload_generator<'a, Client>(
 mod tests {
     use dfir_lang::graph::WriteConfig;
     use hydro_deploy::Deployment;
-    use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy, TrybuildHost};
+    use hydro_lang::deploy::{HydroDeploy, TrybuildHost};
 
     use crate::cluster::paxos::{CorePaxos, PaxosConfig};
 

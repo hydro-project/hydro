@@ -83,9 +83,9 @@ impl RustCrateService {
             .expect("Cannot set meta twice.");
     }
 
-    pub fn get_port(&self, name: String, self_arc: &Arc<RustCrateService>) -> RustCratePortConfig {
+    pub fn get_port(self: &Arc<Self>, name: String) -> RustCratePortConfig {
         RustCratePortConfig {
-            service: Arc::downgrade(self_arc),
+            service: Arc::downgrade(self),
             service_host: self.on.clone(),
             service_server_defns: self.server_defns.clone(),
             network_hint: PortNetworkHint::Auto,
@@ -118,12 +118,18 @@ impl RustCrateService {
         self.launched_binary.get().unwrap().stderr()
     }
 
-    pub fn stdout_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
-        self.launched_binary.get().unwrap().stdout_filter(prefix)
+    pub fn stdout_filter(&self, prefix: impl Into<String>) -> mpsc::UnboundedReceiver<String> {
+        self.launched_binary
+            .get()
+            .unwrap()
+            .stdout_filter(prefix.into())
     }
 
-    pub fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
-        self.launched_binary.get().unwrap().stderr_filter(prefix)
+    pub fn stderr_filter(&self, prefix: impl Into<String>) -> mpsc::UnboundedReceiver<String> {
+        self.launched_binary
+            .get()
+            .unwrap()
+            .stderr_filter(prefix.into())
     }
 
     pub fn tracing_results(&self) -> Option<&TracingResults> {

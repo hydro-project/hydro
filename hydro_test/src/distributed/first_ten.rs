@@ -31,7 +31,6 @@ pub fn first_ten_distributed<'a>(
 mod tests {
     use futures::SinkExt;
     use hydro_deploy::Deployment;
-    use hydro_lang::deploy::DeployCrateWrapper;
 
     #[test]
     fn first_ten_distributed_ir() {

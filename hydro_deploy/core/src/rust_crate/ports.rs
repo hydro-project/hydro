@@ -130,7 +130,7 @@ impl RustCrateSink for NullSourceSink {
 }
 
 pub struct DemuxSink {
-    pub demux: HashMap<u32, Arc<dyn RustCrateSink>>,
+    pub demux: HashMap<u32, Box<dyn RustCrateSink>>,
 }
 
 impl RustCrateSink for DemuxSink {

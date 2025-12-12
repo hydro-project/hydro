@@ -77,7 +77,6 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
 #[cfg(test)]
 mod tests {
     use hydro_deploy::Deployment;
-    use hydro_lang::deploy::DeployCrateWrapper;
     use hydro_lang::location::MemberId;
     use stageleft::q;
 

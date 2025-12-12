@@ -40,7 +40,7 @@ pub fn two_pc_bench<'a>(
 mod tests {
     use dfir_lang::graph::WriteConfig;
     use hydro_deploy::Deployment;
-    use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy, TrybuildHost};
+    use hydro_lang::deploy::{HydroDeploy, TrybuildHost};
     #[cfg(stageleft_runtime)]
     use hydro_lang::location::{Cluster, Process};
 

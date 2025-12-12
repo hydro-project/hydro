@@ -15,7 +15,6 @@ pub fn many_to_many<'a>(flow: &FlowBuilder<'a>) -> Cluster<'a, ()> {
 #[cfg(test)]
 mod tests {
     use hydro_deploy::Deployment;
-    use hydro_lang::deploy::DeployCrateWrapper;
 
     #[test]
     fn many_to_many_ir() {
