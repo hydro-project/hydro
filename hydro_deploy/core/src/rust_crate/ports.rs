@@ -192,15 +192,9 @@ pub struct RustCratePortConfig {
 }
 
 impl RustCratePortConfig {
-    pub fn merge(&self) -> Self {
-        Self {
-            service: self.service.clone(),
-            service_host: self.service_host.clone(),
-            service_server_defns: self.service_server_defns.clone(),
-            network_hint: self.network_hint,
-            port: self.port.clone(),
-            merge: true,
-        }
+    pub fn merge(mut self) -> Self {
+        self.merge = true;
+        self
     }
 }
 
