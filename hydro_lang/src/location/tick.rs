@@ -103,15 +103,6 @@ where
     }
 }
 
-impl<'a, L> Tick<Atomic<L>>
-where
-    L: Location<'a>,
-{
-    pub fn as_regular_tick(&self) -> Tick<L> {
-        self.l.tick.clone()
-    }
-}
-
 impl<'a, L> Tick<L>
 where
     L: Location<'a>,

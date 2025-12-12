@@ -385,7 +385,9 @@ impl DfirBuilder for SimBuilder {
         out_location: &LocationId,
     ) {
         match in_kind {
-            CollectionKind::Stream { .. } | CollectionKind::KeyedStream { .. } => {
+            CollectionKind::Stream { .. }
+            | CollectionKind::KeyedStream { .. }
+            | CollectionKind::Singleton { .. } => {
                 debug_assert!(out_location.is_top_level());
                 if let LocationId::Atomic(t) = out_location {
                     if t.as_ref() == in_location {
@@ -429,7 +431,25 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
             }
-            _ => todo!(),
+            CollectionKind::Optional { .. } => {
+                debug_assert!(out_location.is_top_level());
+                if let LocationId::Atomic(t) = out_location {
+                    if t.as_ref() == in_location {
+                        self.get_dfir_mut(out_location).add_dfir(
+                            parse_quote! {
+                                #out_ident = #in_ident;
+                            },
+                            None,
+                            None,
+                        );
+                    } else {
+                        todo!("atomic yield to a different tick is not yet supported");
+                    }
+                } else {
+                    todo!("Non-atomic yield of an Optional is not yet supported");
+                }
+            }
+            o => todo!("Not yet supported, yield collection type {:?}", o),
         }
     }
 

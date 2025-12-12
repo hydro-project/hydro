@@ -249,7 +249,6 @@ fn sequence_payload<'a, P: PaxosPayload>(
         recommit_after_leader_election(p_relevant_p1bs, p_ballot.clone(), config.paxos_config.f);
 
     let p_indexed_payloads = index_payloads(
-        proposer_tick,
         p_max_slot,
         c_to_proposers
             .batch(
