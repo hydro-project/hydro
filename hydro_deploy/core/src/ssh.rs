@@ -103,6 +103,11 @@ impl LaunchedBinary for LaunchedSshBinary {
 
         // Run perf post-processing and download perf output.
         if let Some(tracing) = self.tracing.as_ref() {
+            assert!(
+                self.tracing_results.get().is_none(),
+                "`tracing_results` already set! Was `stop()` called twice? This is a bug."
+            );
+
             let session = self.session.as_ref().unwrap();
             if let Some(local_raw_perf) = tracing.perf_raw_outfile.as_ref() {
                 ProgressTracker::progress_leaf("downloading perf data", |progress, _| async move {
@@ -176,7 +181,7 @@ impl LaunchedBinary for LaunchedSshBinary {
                 .set(TracingResults {
                     folded_data: fold_data.clone(),
                 })
-                .expect("``tracing_results` already set! This is a bug.");
+                .expect("`tracing_results` already set! This is a bug.");
 
             handle_fold_data(tracing, fold_data).await?;
         };
