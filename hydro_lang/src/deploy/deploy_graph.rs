@@ -91,11 +91,11 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying.get_port(p1_port.clone(), self_underlying);
+            let source_port = self_underlying.get_port(p1_port.clone());
 
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
-            let recipient_port = other_underlying.get_port(p2_port.clone(), other_underlying);
+            let recipient_port = other_underlying.get_port(p2_port.clone());
 
             source_port.send_to(&recipient_port)
         })
@@ -130,7 +130,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying.get_port(p1_port.clone(), self_underlying);
+            let source_port = self_underlying.get_port(p1_port.clone());
 
             let recipient_port = DemuxSink {
                 demux: c2
@@ -141,7 +141,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
                     .map(|(id, c)| {
                         (
                             id as u32,
-                            Arc::new(c.underlying.get_port(c2_port.clone(), &c.underlying))
+                            Arc::new(c.underlying.get_port(c2_port.clone()))
                                 as Arc<dyn RustCrateSink + 'static>,
                         )
                     })
@@ -181,12 +181,10 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
-            let recipient_port = other_underlying
-                .get_port(p2_port.clone(), other_underlying)
-                .merge();
+            let recipient_port = other_underlying.get_port(p2_port.clone()).merge();
 
             for (i, node) in c1.members.borrow().iter().enumerate() {
-                let source_port = node.underlying.get_port(c1_port.clone(), &node.underlying);
+                let source_port = node.underlying.get_port(c1_port.clone());
 
                 TaggedSource {
                     source: Arc::new(source_port),
@@ -225,9 +223,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
         Box::new(move || {
             for (i, sender) in c1.members.borrow().iter().enumerate() {
-                let source_port = sender
-                    .underlying
-                    .get_port(c1_port.clone(), &sender.underlying);
+                let source_port = sender.underlying.get_port(c1_port.clone());
 
                 let recipient_port = DemuxSink {
                     demux: c2
@@ -238,11 +234,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
                         .map(|(id, c)| {
                             (
                                 id as u32,
-                                Arc::new(
-                                    c.underlying
-                                        .get_port(c2_port.clone(), &c.underlying)
-                                        .merge(),
-                                )
+                                Arc::new(c.underlying.get_port(c2_port.clone()).merge())
                                     as Arc<dyn RustCrateSink + 'static>,
                             )
                         })
@@ -370,7 +362,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying.declare_many_client(self_underlying);
+            let source_port = self_underlying.declare_many_client();
 
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
@@ -380,7 +372,6 @@ impl<'a> Deploy<'a> for HydroDeploy {
                     NetworkHint::Auto => hydro_deploy::PortNetworkHint::Auto,
                     NetworkHint::TcpPort(p) => hydro_deploy::PortNetworkHint::TcpPort(p),
                 },
-                other_underlying,
             );
 
             source_port.send_to(&recipient_port);

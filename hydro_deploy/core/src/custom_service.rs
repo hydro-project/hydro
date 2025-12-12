@@ -36,12 +36,12 @@ impl CustomService {
         }
     }
 
-    pub fn declare_client(&self, self_arc: &Arc<Self>) -> CustomClientPort {
-        CustomClientPort::new(Arc::downgrade(self_arc), false)
+    pub fn declare_client(self: &Arc<Self>) -> CustomClientPort {
+        CustomClientPort::new(Arc::downgrade(self), false)
     }
 
-    pub fn declare_many_client(&self, self_arc: &Arc<Self>) -> CustomClientPort {
-        CustomClientPort::new(Arc::downgrade(self_arc), true)
+    pub fn declare_many_client(self: &Arc<Self>) -> CustomClientPort {
+        CustomClientPort::new(Arc::downgrade(self), true)
     }
 }
 
