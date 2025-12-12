@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use stageleft::{IntoQuotedMut, QuotedWithContext, q};
+use stageleft::{IntoQuotedMut, QuotedWithContext, q, quote_type};
 use tokio::time::Instant;
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
@@ -362,7 +362,7 @@ where
             bound: B::BOUND_KIND,
             order: O::ORDERING_KIND,
             retry: R::RETRIES_KIND,
-            element_type: stageleft::quote_type::<T>().into(),
+            element_type: quote_type::<T>().into(),
         }
     }
 
