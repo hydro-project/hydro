@@ -127,3 +127,51 @@ let response = sliced! {
     requests.cross_singleton(state)
 };
 ```
+
+## State Management
+
+Sometimes you need to maintain state across slice iterations—for example, accumulating a running count or buffering elements until a condition is met. The `sliced!` macro supports stateful computations using `let mut` bindings with `use::state` or `use::state_null`.
+
+Use `use::state` when you need state that starts with a known initial value. The closure receives the slice location and should return the initial state for the first iteration:
+
+```rust,ignore
+let running_count = sliced! {
+    let batch = use(input_stream, nondet!(/** batch boundaries don't affect final count */));
+    let mut counter = use::state(|l| l.singleton(q!(0)));
+
+    // Increment counter by the number of items in this batch
+    let new_count = counter.clone().zip(batch.count())
+        .map(q!(|(old, add)| old + add));
+    counter = new_count.clone();
+    new_count.into_stream()
+};
+```
+
+The mutable binding can be reassigned in the body, and the final value is automatically passed to the next iteration.
+
+If you want to start from an empty state, `use::state_null` and the initial state will be null/empty on the first iteration. You must specify the type explicitly since there's no initial value to infer from. A common pattern is buffering elements until some condition is met. For example, holding unsent payloads until a leader is elected:
+
+```rust,ignore
+let payloads_with_leader = sliced! {
+    let mut unsent_payloads = use::state_null::<Stream<_, _, _, TotalOrder>>();
+
+    let payload_batch = use(payloads, nondet!(/** ... */));
+    let latest_leader = use(leader_id, nondet!(/** ... */));
+
+    // Combine buffered and new payloads
+    let all_payloads = unsent_payloads.chain(payload_batch);
+
+    // If no leader, buffer everything; otherwise clear the buffer
+    unsent_payloads = all_payloads.clone().filter_if_none(latest_leader.clone());
+    all_payloads.cross_singleton(latest_leader)
+};
+```
+
+### State vs. External Singletons
+
+State variables (`use::state`) differ from sliced singletons (`use(singleton, nondet!(...))`) in an important way:
+
+- **Sliced singletons** observe external state that changes independently of the slice
+- **State variables** are internal to the slice and persist values you compute between iterations
+
+Just like slices in general, state variables should be used sparingly; they require careful human review due to the presence of non-deterministic inputs. Sliced singletons, on the other hand, can be created using strictly deterministic APIs and benefit from stronger type-system guarantees.
