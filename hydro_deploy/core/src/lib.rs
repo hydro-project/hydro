@@ -163,6 +163,7 @@ pub enum ServerStrategy {
     Direct(BaseServerStrategy),
     Many(BaseServerStrategy),
     Demux(HashMap<u32, ServerStrategy>),
+    /// AppendOnlyVec has a quite large inline array, so we box it.
     Merge(Box<AppendOnlyVec<ServerStrategy>>),
     Tagged(Box<ServerStrategy>, u32),
     Null,
