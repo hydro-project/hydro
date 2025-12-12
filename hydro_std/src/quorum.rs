@@ -102,30 +102,29 @@ pub fn collect_quorum<
     Stream<K, L, Unbounded, NoOrder>,
     Stream<(K, E), L, Unbounded, Order>,
 ) {
-    let tick = responses.location().tick();
-    let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
-
-    let current_responses = not_all.chain(responses.clone().batch(
-        &tick,
-        nondet!(
+    let just_reached_quorum = sliced! {
+        let new_inputs = use(responses.clone(), nondet!(
             /// We always persist values that have not reached quorum, so even
             /// with arbitrary batching we always produce deterministic quorum results.
-        ),
-    ));
+        ));
 
-    let count_per_key = current_responses.clone().into_keyed().fold_commutative(
-        q!(move || (0, 0)),
-        q!(move |accum, value| {
-            if value.is_ok() {
-                accum.0 += 1;
-            } else {
-                accum.1 += 1;
-            }
-        }),
-    );
+        let mut not_all = use::state_null::<Stream<_, _, Bounded, Order>>();
+        let mut min_but_not_max = use::state_null::<Stream<K, _, Bounded, NoOrder>>();
 
-    let reached_min_count =
-        count_per_key
+        let current_responses = not_all.chain(new_inputs);
+
+        let count_per_key = current_responses.clone().into_keyed().fold_commutative(
+            q!(move || (0, 0)),
+            q!(move |accum, value| {
+                if value.is_ok() {
+                    accum.0 += 1;
+                } else {
+                    accum.1 += 1;
+                }
+            }),
+        );
+
+        let reached_min_count = count_per_key
             .clone()
             .entries()
             .filter_map(q!(move |(key, (success, _error))| if success >= min {
@@ -134,34 +133,29 @@ pub fn collect_quorum<
                 None
             }));
 
-    let just_reached_quorum = if max == min {
-        not_all_complete_cycle.complete_next_tick(
-            current_responses
-                .clone()
-                .anti_join(reached_min_count.clone()),
-        );
+        let just_reached_quorum = if max == min {
+            not_all = current_responses.clone().anti_join(reached_min_count.clone());
 
-        reached_min_count
-    } else {
-        let (min_but_not_max_complete_cycle, min_but_not_max) = tick.cycle();
-
-        let received_from_all = count_per_key
-            .filter(q!(move |(success, error)| (success + error) >= max))
-            .keys();
-
-        min_but_not_max_complete_cycle.complete_next_tick(
             reached_min_count
-                .clone()
-                .filter_not_in(received_from_all.clone()),
-        );
+        } else {
+            let received_from_all = count_per_key
+                .filter(q!(move |(success, error)| (success + error) >= max))
+                .keys();
 
-        not_all_complete_cycle.complete_next_tick(current_responses.anti_join(received_from_all));
+            not_all = current_responses.anti_join(received_from_all.clone());
 
-        reached_min_count.filter_not_in(min_but_not_max)
+            let out = reached_min_count.clone().filter_not_in(min_but_not_max);
+
+            min_but_not_max = reached_min_count.filter_not_in(received_from_all);
+
+            out
+        };
+
+        just_reached_quorum
     };
 
     (
-        just_reached_quorum.all_ticks(),
+        just_reached_quorum,
         responses.filter_map(q!(move |(key, res)| match res {
             Ok(_) => None,
             Err(e) => Some((key, e)),
