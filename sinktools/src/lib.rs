@@ -12,6 +12,8 @@ pub use futures_util::sink::Sink;
 #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
 pub use variadics;
 
+#[cfg(feature = "std")]
+pub mod buffered_lazy_sink_source;
 pub mod filter;
 pub mod filter_map;
 pub mod flat_map;
