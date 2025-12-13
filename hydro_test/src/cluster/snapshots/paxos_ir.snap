@@ -6933,8 +6933,42 @@ expression: built.ir()
                         },
                     },
                     second: Batch {
-                        inner: Tee {
-                            inner: <tee 30>,
+                        inner: YieldConcat {
+                            inner: Batch {
+                                inner: Tee {
+                                    inner: <tee 30>,
+                                    metadata: HydroIrMetadata {
+                                        location_kind: Atomic(
+                                            Tick(
+                                                1,
+                                                Cluster(
+                                                    0,
+                                                ),
+                                            ),
+                                        ),
+                                        collection_kind: Stream {
+                                            bound: Unbounded,
+                                            order: NoOrder,
+                                            retry: ExactlyOnce,
+                                            element_type: ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >),
+                                        },
+                                    },
+                                },
+                                metadata: HydroIrMetadata {
+                                    location_kind: Tick(
+                                        1,
+                                        Cluster(
+                                            0,
+                                        ),
+                                    ),
+                                    collection_kind: Stream {
+                                        bound: Bounded,
+                                        order: NoOrder,
+                                        retry: ExactlyOnce,
+                                        element_type: ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >),
+                                    },
+                                },
+                            },
                             metadata: HydroIrMetadata {
                                 location_kind: Atomic(
                                     Tick(
