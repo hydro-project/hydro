@@ -15,7 +15,7 @@ Working down from the top:
 - *Hydrolysis* is a compiler that translates a global Hydro spec to multiple single-threaded DFIR programs, which collectively implement the global spec.
 This compilation phase is currently a part of the Hydro codebase, but will evolve into a standalone optimizing compiler inspired by database query optimizers and [e-graphs](https://en.wikipedia.org/wiki/E-graph).
 
-- [DFIR and its compiler/runtime](https://github.com/hydro-project/hydro/tree/main/dfir_rs) are the subject of this book.
+- [DFIR and its compiler/runtime](https://github.com/hydro-project/hydro/tree/main/dfir_rs) are the subject of the DFIR docs.
 Where Hydro is a *global* framework for programming a fleet of processes, DFIR is a *local* language for programming a single process that participates in a distributed system. More specifically, DFIR is an internal representation (IR) language and runtime library that generates the low-level Rust code for an individual process. As a low-level IR, DFIR is not intended for the general-purpose programmer. For most users it is intended as a readable compiler target from Hydro; advanced developers can also use it to manually program individual processes.
 
 - Hydro also supports *Deterministic Simulation Testing* to aid in debugging distributed programs. Documentation on this feature is forthcoming.
