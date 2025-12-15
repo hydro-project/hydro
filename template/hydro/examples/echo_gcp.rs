@@ -3,7 +3,6 @@ use std::sync::Arc;
 use hydro_deploy::Deployment;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_lang::location::{Location, NetworkHint};
-use tokio::sync::RwLock;
 use tokio_util::codec::LinesCodec;
 
 #[tokio::main]
@@ -13,7 +12,7 @@ async fn main() {
         .expect("Expected GCP project as first argument");
 
     let mut deployment = Deployment::new();
-    let vpc = Arc::new(RwLock::new(GcpNetwork::new(&gcp_project, None)));
+    let vpc = Arc::new(GcpNetwork::new(&gcp_project, None));
 
     let flow = hydro_lang::compile::builder::FlowBuilder::new();
     let process = flow.process();

@@ -7,7 +7,6 @@ use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::prelude::*;
 use hydro_lang::viz::config::GraphConfig;
-use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
@@ -37,7 +36,7 @@ async fn main() {
     let mut deployment = Deployment::new();
 
     let create_host: HostCreator = if let Some(project) = &args.gcp {
-        let network = Arc::new(RwLock::new(GcpNetwork::new(project, None)));
+        let network = Arc::new(GcpNetwork::new(project, None));
         let project = project.clone();
 
         Box::new(move |deployment| -> Arc<dyn Host> {

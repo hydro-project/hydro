@@ -7,7 +7,6 @@ use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::viz::config::GraphConfig;
-use tokio::sync::RwLock;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -44,7 +43,7 @@ async fn main() {
     let mut deployment = Deployment::new();
 
     let (create_host, rustflags): (HostCreator, &'static str) = if let Some(project) = args.gcp {
-        let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
+        let network = Arc::new(GcpNetwork::new(&project, None));
 
         (
             Box::new(move |deployment| -> Arc<dyn Host> {
@@ -60,7 +59,7 @@ async fn main() {
             "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off",
         )
     } else if args.aws {
-        let network = Arc::new(RwLock::new(AwsNetwork::new("us-east-1", None)));
+        let network = Arc::new(AwsNetwork::new("us-east-1", None));
 
         (
             Box::new(move |deployment| -> Arc<dyn Host> {

@@ -6,7 +6,6 @@ use std::sync::{Arc, Mutex, OnceLock};
 use anyhow::Result;
 use nanoid::nanoid;
 use serde_json::json;
-use tokio::sync::RwLock;
 
 use super::terraform::{TERRAFORM_ALPHABET, TerraformOutput, TerraformProvider};
 use super::{ClientStrategy, Host, HostTargetType, LaunchedHost, ResourceBatch, ResourceResult};
@@ -45,7 +44,7 @@ impl LaunchedSshHost for LaunchedComputeEngine {
 #[derive(Debug)]
 pub struct GcpNetwork {
     pub project: String,
-    pub existing_vpc: Option<String>,
+    pub existing_vpc: OnceLock<String>,
     id: String,
 }
 
@@ -53,12 +52,12 @@ impl GcpNetwork {
     pub fn new(project: impl Into<String>, existing_vpc: Option<String>) -> Self {
         Self {
             project: project.into(),
-            existing_vpc,
+            existing_vpc: existing_vpc.map(From::from).unwrap_or_default(),
             id: nanoid!(8, &TERRAFORM_ALPHABET),
         }
     }
 
-    fn collect_resources(&mut self, resource_batch: &mut ResourceBatch) -> String {
+    fn collect_resources(&self, resource_batch: &mut ResourceBatch) -> String {
         resource_batch
             .terraform
             .terraform
@@ -73,7 +72,7 @@ impl GcpNetwork {
 
         let vpc_network = format!("hydro-vpc-network-{}", self.id);
 
-        if let Some(existing) = self.existing_vpc.as_ref() {
+        if let Some(existing) = self.existing_vpc.get() {
             if resource_batch
                 .terraform
                 .resource
@@ -159,9 +158,9 @@ impl GcpNetwork {
                 }),
             );
 
-            self.existing_vpc = Some(vpc_network.clone());
-
-            format!("google_compute_network.{vpc_network}")
+            let out = format!("google_compute_network.{vpc_network}");
+            self.existing_vpc.set(vpc_network).unwrap();
+            out
         }
     }
 }
@@ -175,7 +174,7 @@ pub struct GcpComputeEngineHost {
     image: String,
     target_type: HostTargetType,
     region: String,
-    network: Arc<RwLock<GcpNetwork>>,
+    network: Arc<GcpNetwork>,
     user: Option<String>,
     display_name: Option<String>,
     pub launched: OnceLock<Arc<LaunchedComputeEngine>>, // TODO(mingwei): fix pub
@@ -200,7 +199,7 @@ impl GcpComputeEngineHost {
         image: impl Into<String>,
         target_type: HostTargetType,
         region: impl Into<String>,
-        network: Arc<RwLock<GcpNetwork>>,
+        network: Arc<GcpNetwork>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Self {
@@ -254,11 +253,7 @@ impl Host for GcpComputeEngineHost {
             return;
         }
 
-        let vpc_path = self
-            .network
-            .try_write()
-            .unwrap()
-            .collect_resources(resource_batch);
+        let vpc_path = self.network.collect_resources(resource_batch);
 
         let project = self.project.as_str();
 
