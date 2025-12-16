@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["deploy_graph"]};
+window.SIDEBAR_ITEMS = {"mod":["deploy_graph","deploy_graph_containerized","deploy_runtime_containerized"]};

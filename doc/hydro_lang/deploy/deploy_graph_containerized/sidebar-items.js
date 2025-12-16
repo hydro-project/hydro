@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["DockerDeploy","DockerDeployCluster","DockerDeployClusterSpec","DockerDeployExternal","DockerDeployExternalSpec","DockerDeployProcess","DockerDeployProcessSpec","DockerNetwork"]};
