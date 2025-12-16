@@ -93,8 +93,10 @@ pub(crate) fn check_matching_location<'a, L: Location<'a>>(l1: &L, l2: &L) {
 )]
 pub trait Location<'a>: dynamic::DynLocation {
     type Root: Location<'a>;
-
     fn root(&self) -> Self::Root;
+
+    /// A human-readable name used for debugging and telemetry.
+    fn name() -> String;
 
     fn try_tick(&self) -> Option<Tick<Self>> {
         if Self::is_top_level() {
@@ -822,7 +824,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     }
 }
 
-/// A free variable representing the location's root ID. When spliced in
+/// A free variable representing the root location's ID. When spliced in
 /// a quoted snippet that will run on a cluster, this turns into a [`LocationId`].
 pub static LOCATION_SELF_ID: LocationSelfId = LocationSelfId { _private: &() };
 
@@ -854,6 +856,35 @@ where
         QuoteTokens {
             prelude: None,
             expr: Some(quote! { #root::location::dynamic::LocationId::#variant }),
+        }
+    }
+}
+
+/// A free variable representing the root location's human-readable name. When spliced in
+/// a quoted snippet that will run on a cluster, this turns into a [`&'static str`].
+pub static LOCATION_SELF_NAME: LocationSelfName = LocationSelfName { _private: &() };
+
+/// See [`LOCATION_SELF_NAME`].
+#[derive(Clone, Copy)]
+pub struct LocationSelfName<'a> {
+    _private: &'a (),
+}
+
+impl<'a, L> FreeVariableWithContext<L> for LocationSelfName<'a>
+where
+    L: Location<'a>,
+{
+    type O = LocationId;
+
+    fn to_tokens(self, _ctx: &L) -> QuoteTokens
+    where
+        Self: Sized,
+    {
+        let location_name = <L::Root as Location>::name();
+
+        QuoteTokens {
+            prelude: None,
+            expr: Some(quote! { #location_name }),
         }
     }
 }

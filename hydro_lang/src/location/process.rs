@@ -54,4 +54,8 @@ impl<'a, P> Location<'a> for Process<'a, P> {
     fn root(&self) -> Self::Root {
         self.clone()
     }
+
+    fn name() -> String {
+        format!("Process<{}>", std::any::type_name::<P>())
+    }
 }
