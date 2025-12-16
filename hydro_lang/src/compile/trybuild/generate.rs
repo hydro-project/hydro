@@ -290,6 +290,9 @@ pub fn compile_graph_trybuild(
                 let #dfir_ident = __hydro_runtime(&ports);
                 println!("ack start");
 
+                // TODO(mingwei): initialize `tracing` at this point in execution.
+                // After "ack start" is when we can print whatever we want.
+
                 let local_set = #root::runtime_support::tokio::task::LocalSet::new();
                 #(
                     let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident

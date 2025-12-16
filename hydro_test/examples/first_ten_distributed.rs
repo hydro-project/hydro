@@ -1,9 +1,10 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use clap::{ArgAction, Parser};
 use futures::SinkExt;
+use hydro_deploy::aws::{AwsCloudwatchLogGroup, AwsEc2IamInstanceProfile, AwsNetwork};
 use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::{AwsNetwork, Deployment, Host};
+use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::viz::config::GraphConfig;
 use tracing_subscriber::layer::SubscriberExt;
@@ -30,7 +31,7 @@ struct Args {
     graph: GraphConfig,
 }
 
-// run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP, with `--aws` for AWS
+// Run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP, with `--aws` for AWS.
 #[tokio::main]
 async fn main() {
     let subscriber = tracing_subscriber::fmt::layer().with_target(false);
@@ -63,6 +64,10 @@ async fn main() {
     } else if args.aws {
         let region = "us-east-1";
         let network = AwsNetwork::new(region, None);
+        let iam_instance_profile = Arc::new(Mutex::new(
+            AwsEc2IamInstanceProfile::new(region, None).add_cloudwatch_agent_server_policy_arn(),
+        ));
+        let cloudwatch_log_group = Arc::new(Mutex::new(AwsCloudwatchLogGroup::new(region, None)));
 
         Box::new(move |deployment| -> Arc<dyn Host> {
             deployment
@@ -71,6 +76,8 @@ async fn main() {
                 .instance_type("t3.micro")
                 .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
                 .network(network.clone())
+                .iam_instance_profile(iam_instance_profile.clone())
+                .cloudwatch_log_group(cloudwatch_log_group.clone())
                 .add()
         })
     } else {

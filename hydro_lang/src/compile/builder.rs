@@ -57,6 +57,7 @@ impl FlowStateInner {
 }
 
 pub struct FlowBuilder<'a> {
+    /// Hydro IR and associated counters
     flow_state: FlowState,
 
     /// Locations and their type.
@@ -94,11 +95,12 @@ impl Drop for FlowBuilder<'_> {
 
 #[expect(missing_docs, reason = "TODO")]
 impl<'a> FlowBuilder<'a> {
+    /// Creates a new `FlowBuilder` to construct a Hydro program, using the Cargo package name as the program name.
     #[expect(
         clippy::new_without_default,
         reason = "call `new` explicitly, not `default`"
     )]
-    pub fn new() -> FlowBuilder<'a> {
+    pub fn new() -> Self {
         let mut name = std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "unknown".to_owned());
         if let Ok(bin_path) = std::env::current_exe()
             && let Some(bin_name) = bin_path.file_stem()
@@ -108,8 +110,9 @@ impl<'a> FlowBuilder<'a> {
         Self::with_name(name)
     }
 
+    /// Creates a new `FlowBuilder` to construct a Hydro program, with the given program name.
     pub fn with_name(name: impl Into<String>) -> Self {
-        FlowBuilder {
+        Self {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: Some(vec![]),
                 next_external_port: ExternalPortId(0),
