@@ -101,7 +101,7 @@ impl Node for DockerDeployProcess {
         extra_stmts: Vec<syn::Stmt>,
     ) {
         let (bin_name, config) =
-            create_graph_trybuild(graph, extra_stmts.clone(), &Some(self.name.clone()), true);
+            create_graph_trybuild(graph, extra_stmts, &Some(self.name.clone()), true);
 
         let mut ret = RustCrate::new(config.project_dir)
             .target_dir(config.target_dir)
@@ -169,7 +169,7 @@ impl Node for DockerDeployCluster {
         extra_stmts: Vec<syn::Stmt>,
     ) {
         let (bin_name, config) =
-            create_graph_trybuild(graph, extra_stmts.clone(), &Some(self.name.clone()), true);
+            create_graph_trybuild(graph, extra_stmts, &Some(self.name.clone()), true);
 
         let mut ret = RustCrate::new(config.project_dir)
             .target_dir(config.target_dir)
