@@ -20,8 +20,10 @@ use std::time::Duration;
 use bytes::{Bytes, BytesMut};
 use futures::stream::Stream as FuturesStream;
 use proc_macro2::Span;
+use quote::quote;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
 use stageleft::{QuotedWithContext, q, quote_type};
 use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
@@ -817,6 +819,42 @@ pub trait Location<'a>: dynamic::DynLocation {
             },
             S::create_source(ident, self.clone()),
         )
+    }
+}
+
+/// A free variable representing the location's root ID. When spliced in
+/// a quoted snippet that will run on a cluster, this turns into a [`LocationId`].
+pub static LOCATION_SELF_ID: LocationSelfId = LocationSelfId { _private: &() };
+
+/// See [`LOCATION_SELF_ID`].
+#[derive(Clone, Copy)]
+pub struct LocationSelfId<'a> {
+    _private: &'a (),
+}
+
+impl<'a, L> FreeVariableWithContext<L> for LocationSelfId<'a>
+where
+    L: Location<'a>,
+{
+    type O = LocationId;
+
+    fn to_tokens(self, ctx: &L) -> QuoteTokens
+    where
+        Self: Sized,
+    {
+        let root = get_this_crate();
+        let location_id = ctx.root().id();
+
+        let variant = match location_id {
+            LocationId::Process(id) => quote! { Process(#id) },
+            LocationId::Cluster(id) => quote! { Cluster(#id) },
+            _other => unreachable!(),
+        };
+
+        QuoteTokens {
+            prelude: None,
+            expr: Some(quote! { #root::location::dynamic::LocationId::#variant }),
+        }
     }
 }
 
