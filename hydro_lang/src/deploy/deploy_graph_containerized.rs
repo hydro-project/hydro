@@ -93,7 +93,7 @@ impl Node for DockerDeployProcess {
     #[instrument(level = "trace", skip_all, fields(key = %self.key, name = self.name))]
     fn update_meta(&self, _meta: &Self::Meta) {}
 
-    #[instrument(level = "trace", skip_all, fields(key = %self.key, name = self.name, ?meta, extra_stmts = extra_stmts.len()))]
+    #[instrument(level = "trace", skip_all, fields(key = %self.key, name = self.name, ?meta, extra_stmts = extra_stmts.len(), sidecars = sidecars.len()))]
     fn instantiate(
         &self,
         _env: &mut Self::InstantiateEnv,
