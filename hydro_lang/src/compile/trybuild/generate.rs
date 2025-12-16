@@ -217,7 +217,11 @@ pub fn compile_graph_trybuild(
             pub use #trybuild_crate_name_ident::__staged;
 
             #[allow(unused)]
-            fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::__staged::deploy::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+            fn __hydro_runtime<'a>(
+                __hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::__staged::deploy::deploy_runtime::HydroMeta>
+            )
+                -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a>
+            {
                 #(#extra_stmts)*
                 #dfir_expr
             }
