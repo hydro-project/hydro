@@ -48,6 +48,11 @@ pub async fn launch_flow(mut flow: Dfir<'_>) {
     }
 }
 
+pub async fn launch_flow_containerized(mut flow: Dfir<'_>) {
+    let local_set = tokio::task::LocalSet::new();
+    local_set.run_until(flow.run()).await;
+}
+
 pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T> {
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();

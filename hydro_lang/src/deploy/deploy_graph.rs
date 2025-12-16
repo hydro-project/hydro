@@ -835,7 +835,7 @@ impl Node for DeployNode {
             CrateOrTrybuild::Crate(c, host) => (c, host),
             CrateOrTrybuild::Trybuild(trybuild) => {
                 let (bin_name, config) =
-                    create_graph_trybuild(graph, extra_stmts, &trybuild.name_hint);
+                    create_graph_trybuild(graph, extra_stmts, &trybuild.name_hint, false);
                 let host = trybuild.host.clone();
                 (
                     create_trybuild_service(
@@ -910,7 +910,12 @@ impl Node for DeployCluster {
             .any(|spec| matches!(spec, CrateOrTrybuild::Trybuild { .. }));
 
         let maybe_trybuild = if has_trybuild {
-            Some(create_graph_trybuild(graph, extra_stmts, &self.name_hint))
+            Some(create_graph_trybuild(
+                graph,
+                extra_stmts,
+                &self.name_hint,
+                false,
+            ))
         } else {
             None
         };
