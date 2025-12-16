@@ -101,7 +101,7 @@
 <a href=#101 id=101 data-nosnippet>101</a>        extra_stmts: Vec&lt;syn::Stmt&gt;,
 <a href=#102 id=102 data-nosnippet>102</a>    ) {
 <a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">let </span>(bin_name, config) =
-<a href=#104 id=104 data-nosnippet>104</a>            create_graph_trybuild(graph, extra_stmts.clone(), <span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(<span class="self">self</span>.name.clone()), <span class="bool-val">true</span>);
+<a href=#104 id=104 data-nosnippet>104</a>            create_graph_trybuild(graph, extra_stmts, <span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(<span class="self">self</span>.name.clone()), <span class="bool-val">true</span>);
 <a href=#105 id=105 data-nosnippet>105</a>
 <a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span><span class="kw-2">mut </span>ret = RustCrate::new(config.project_dir)
 <a href=#107 id=107 data-nosnippet>107</a>            .target_dir(config.target_dir)
@@ -169,7 +169,7 @@
 <a href=#169 id=169 data-nosnippet>169</a>        extra_stmts: Vec&lt;syn::Stmt&gt;,
 <a href=#170 id=170 data-nosnippet>170</a>    ) {
 <a href=#171 id=171 data-nosnippet>171</a>        <span class="kw">let </span>(bin_name, config) =
-<a href=#172 id=172 data-nosnippet>172</a>            create_graph_trybuild(graph, extra_stmts.clone(), <span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(<span class="self">self</span>.name.clone()), <span class="bool-val">true</span>);
+<a href=#172 id=172 data-nosnippet>172</a>            create_graph_trybuild(graph, extra_stmts, <span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(<span class="self">self</span>.name.clone()), <span class="bool-val">true</span>);
 <a href=#173 id=173 data-nosnippet>173</a>
 <a href=#174 id=174 data-nosnippet>174</a>        <span class="kw">let </span><span class="kw-2">mut </span>ret = RustCrate::new(config.project_dir)
 <a href=#175 id=175 data-nosnippet>175</a>            .target_dir(config.target_dir)
