@@ -215,15 +215,15 @@ linkStyle default stroke:#aaa
 208v1["<div style=text-align:center>(208v1)</div> <code><br>tee()</code>"]:::otherClass
 209v1["<div style=text-align:center>(209v1)</div> <code><br>fold_keyed::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        move || (0, 0)<br>    },<br>    {<br>        move |accum, value| {<br>            if value.is_ok() {<br>                accum.0 += 1;<br>            } else {<br>                accum.1 += 1;<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
 210v1["<div style=text-align:center>(210v1)</div> <code><br>tee()</code>"]:::otherClass
-211v1["<div style=text-align:center>(211v1)</div> <code><br>filter_map({<br>    let min__free = 2usize;<br>    move |(key, (success, _error))| {<br>        if success &gt;= min__free { Some(key) } else { None }<br>    }<br>})</code>"]:::otherClass
-212v1["<div style=text-align:center>(212v1)</div> <code><br>tee()</code>"]:::otherClass
-213v1["<div style=text-align:center>(213v1)</div> <code><br>filter({<br>    let f__free = {<br>        let max__free = 3usize;<br>        move |(success, error)| (success + error) &gt;= max__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
-214v1["<div style=text-align:center>(214v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-215v1["<div style=text-align:center>(215v1)</div> <code><br>tee()</code>"]:::otherClass
-216v1["<div style=text-align:center>(216v1)</div> <code><br>difference::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-217v1["<div style=text-align:center>(217v1)</div> <code><br>identity::&lt;(usize, hydro_test::__staged::cluster::paxos::Ballot)&gt;()</code>"]:::otherClass
-218v1["<div style=text-align:center>(218v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-219v1["<div style=text-align:center>(219v1)</div> <code><br>identity::&lt;<br>    (<br>        (usize, hydro_test::__staged::cluster::paxos::Ballot),<br>        core::result::Result&lt;(), hydro_test::__staged::cluster::paxos::Ballot&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
+211v1["<div style=text-align:center>(211v1)</div> <code><br>filter({<br>    let f__free = {<br>        let max__free = 3usize;<br>        move |(success, error)| (success + error) &gt;= max__free<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
+212v1["<div style=text-align:center>(212v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
+213v1["<div style=text-align:center>(213v1)</div> <code><br>tee()</code>"]:::otherClass
+214v1["<div style=text-align:center>(214v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+215v1["<div style=text-align:center>(215v1)</div> <code><br>identity::&lt;<br>    (<br>        (usize, hydro_test::__staged::cluster::paxos::Ballot),<br>        core::result::Result&lt;(), hydro_test::__staged::cluster::paxos::Ballot&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
+216v1["<div style=text-align:center>(216v1)</div> <code><br>filter_map({<br>    let min__free = 2usize;<br>    move |(key, (success, _error))| {<br>        if success &gt;= min__free { Some(key) } else { None }<br>    }<br>})</code>"]:::otherClass
+217v1["<div style=text-align:center>(217v1)</div> <code><br>tee()</code>"]:::otherClass
+218v1["<div style=text-align:center>(218v1)</div> <code><br>difference::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+219v1["<div style=text-align:center>(219v1)</div> <code><br>identity::&lt;(usize, hydro_test::__staged::cluster::paxos::Ballot)&gt;()</code>"]:::otherClass
 220v1["<div style=text-align:center>(220v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
 221v1["<div style=text-align:center>(221v1)</div> <code><br>chain()</code>"]:::otherClass
 222v1["<div style=text-align:center>(222v1)</div> <code><br>tee()</code>"]:::otherClass
@@ -437,7 +437,7 @@ linkStyle default stroke:#aaa
 160v1--x|single|166v1; linkStyle 178 stroke:red
 166v1-->167v1
 167v1-->168v1
-219v1-->348v1
+215v1-->348v1
 170v1-->171v1
 171v1--x172v1; linkStyle 183 stroke:red
 172v1-->173v1
@@ -490,21 +490,21 @@ linkStyle default stroke:#aaa
 209v1-->210v1
 210v1-->211v1
 211v1-->212v1
-210v1-->213v1
-213v1-->214v1
+212v1-->213v1
+208v1-->|pos|214v1
+213v1--x|neg|214v1; linkStyle 236 stroke:red
 214v1-->215v1
-212v1-->|pos|216v1
-215v1--x|neg|216v1; linkStyle 238 stroke:red
+210v1-->216v1
 216v1-->217v1
-208v1-->|pos|218v1
-215v1--x|neg|218v1; linkStyle 241 stroke:red
+217v1-->|pos|218v1
+213v1--x|neg|218v1; linkStyle 241 stroke:red
 218v1-->219v1
 229v1-->350v1
 220v1--x|0|221v1; linkStyle 244 stroke:red
 198v1-->|1|221v1
 221v1-->222v1
-217v1-->352v1
-212v1-->|pos|224v1
+219v1-->352v1
+217v1-->|pos|224v1
 223v1--x|neg|224v1; linkStyle 249 stroke:red
 224v1-->225v1
 225v1-->226v1
@@ -564,11 +564,11 @@ subgraph var_cycle_12 ["var <tt>cycle_12</tt>"]
 end
 subgraph var_cycle_13 ["var <tt>cycle_13</tt>"]
     style var_cycle_13 fill:transparent
-    219v1
+    215v1
 end
 subgraph var_cycle_14 ["var <tt>cycle_14</tt>"]
     style var_cycle_14 fill:transparent
-    217v1
+    219v1
 end
 subgraph var_cycle_15 ["var <tt>cycle_15</tt>"]
     style var_cycle_15 fill:transparent
@@ -1219,37 +1219,37 @@ subgraph var_stream_430 ["var <tt>stream_430</tt>"]
     style var_stream_430 fill:transparent
     208v1
 end
-subgraph var_stream_433 ["var <tt>stream_433</tt>"]
-    style var_stream_433 fill:transparent
-    209v1
-end
 subgraph var_stream_434 ["var <tt>stream_434</tt>"]
     style var_stream_434 fill:transparent
+    209v1
+end
+subgraph var_stream_435 ["var <tt>stream_435</tt>"]
+    style var_stream_435 fill:transparent
     210v1
 end
-subgraph var_stream_437 ["var <tt>stream_437</tt>"]
-    style var_stream_437 fill:transparent
+subgraph var_stream_436 ["var <tt>stream_436</tt>"]
+    style var_stream_436 fill:transparent
     211v1
 end
-subgraph var_stream_438 ["var <tt>stream_438</tt>"]
-    style var_stream_438 fill:transparent
+subgraph var_stream_439 ["var <tt>stream_439</tt>"]
+    style var_stream_439 fill:transparent
     212v1
 end
 subgraph var_stream_440 ["var <tt>stream_440</tt>"]
     style var_stream_440 fill:transparent
     213v1
 end
-subgraph var_stream_443 ["var <tt>stream_443</tt>"]
-    style var_stream_443 fill:transparent
+subgraph var_stream_441 ["var <tt>stream_441</tt>"]
+    style var_stream_441 fill:transparent
     214v1
-end
-subgraph var_stream_444 ["var <tt>stream_444</tt>"]
-    style var_stream_444 fill:transparent
-    215v1
 end
 subgraph var_stream_445 ["var <tt>stream_445</tt>"]
     style var_stream_445 fill:transparent
     216v1
+end
+subgraph var_stream_446 ["var <tt>stream_446</tt>"]
+    style var_stream_446 fill:transparent
+    217v1
 end
 subgraph var_stream_448 ["var <tt>stream_448</tt>"]
     style var_stream_448 fill:transparent
