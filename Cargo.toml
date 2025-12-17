@@ -9,7 +9,6 @@ members = [
     "dfir_rs",
     "example_test",
     "hydro_deploy/core",
-    "hydro_deploy/hydro_deploy_examples",
     "hydro_deploy/hydro_deploy_integration",
     "hydro_lang",
     "hydro_std",
