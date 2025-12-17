@@ -27,13 +27,6 @@ pub use tcp::*;
 
 #[cfg(unix)]
 mod socket;
-#[cfg(unix)]
-pub use socket::*;
-
-#[cfg(feature = "deploy_integration")]
-#[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
-pub mod deploy;
-
 use std::net::SocketAddr;
 use std::num::NonZeroUsize;
 use std::task::{Context, Poll};
@@ -41,6 +34,8 @@ use std::task::{Context, Poll};
 use futures::Stream;
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
+#[cfg(unix)]
+pub use socket::*;
 
 /// Persit or delete tuples
 pub enum Persistence<T> {

@@ -20,7 +20,7 @@ stageleft::stageleft_no_entry_crate!();
 pub mod runtime_support {
     #[cfg(feature = "sim")]
     pub use colored;
-    pub use {bincode, dfir_rs, stageleft, tokio};
+    pub use {bincode, dfir_rs, hydro_deploy_integration, stageleft, tokio};
     pub mod resource_measurement;
 }
 

@@ -217,14 +217,14 @@ pub fn compile_graph_trybuild(
             pub use #trybuild_crate_name_ident::__staged;
 
             #[allow(unused)]
-            fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::__staged::deploy::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+            fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::hydro_deploy_integration::DeployPorts<hydro_lang::__staged::deploy::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
                 #(#extra_stmts)*
                 #dfir_expr
             }
 
             #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio", flavor = "current_thread")]
             async fn main() {
-                let ports = hydro_lang::runtime_support::dfir_rs::util::deploy::init_no_ack_start().await;
+                let ports = hydro_lang::runtime_support::resource_measurement::init_no_ack_start().await;
                 let flow = __hydro_runtime(&ports);
                 println!("ack start");
 
