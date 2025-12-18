@@ -191,7 +191,7 @@ pub trait Node {
 
     fn next_port(&self) -> Self::Port;
 
-    fn update_meta(&mut self, meta: &Self::Meta);
+    fn update_meta(&self, meta: &Self::Meta);
 
     fn instantiate(
         &self,
