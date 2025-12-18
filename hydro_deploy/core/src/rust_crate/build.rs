@@ -58,7 +58,12 @@ impl BuildParams {
         // Rust codegen pattern on windows. To help mitigate this happening in third party crates, we
         // instead use `dunce::canonicalize` which is the same as `fs::canonicalize` but avoids the
         // `\\?\` prefix when possible.
-        let src = dunce::canonicalize(src).expect("Failed to canonicalize path for build.");
+        let src = dunce::canonicalize(src.as_ref()).unwrap_or_else(|e| {
+            panic!(
+                "Failed to canonicalize path `{}` for build: {e}.",
+                src.as_ref().display(),
+            )
+        });
 
         BuildParams {
             src,

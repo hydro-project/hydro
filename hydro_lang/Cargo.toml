@@ -64,7 +64,7 @@ deploy_integration = ["dep:hydro_deploy_integration"]
 build = ["dep:dfir_lang", "dep:backtrace", "dep:ctor"]
 trybuild = ["build", "dep:toml", "dep:prettyplease", "dep:stageleft_tool", "dep:trybuild-internals-api", "dep:sha2"]
 runtime_measure = ["dep:chrono", "dep:procfs"]
-runtime_support = ["dep:dfir_rs", "dfir_rs/deploy_integration"]
+runtime_support = ["dep:dfir_rs", "dep:serde_json"]
 dfir_context = ["dep:dfir_rs"]
 
 [package.metadata.docs.rs]
