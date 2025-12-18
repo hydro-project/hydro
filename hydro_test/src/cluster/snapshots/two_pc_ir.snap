@@ -762,13 +762,54 @@ expression: built.ir()
         ident: Ident {
             sym: cycle_3,
         },
+        input: DeferTick {
+            input: CycleSource {
+                ident: Ident {
+                    sym: cycle_3,
+                },
+                metadata: HydroIrMetadata {
+                    location_kind: Tick(
+                        2,
+                        Process(
+                            0,
+                        ),
+                    ),
+                    collection_kind: Stream {
+                        bound: Bounded,
+                        order: NoOrder,
+                        retry: ExactlyOnce,
+                        element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                    },
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_kind: Tick(
+                    2,
+                    Process(
+                        0,
+                    ),
+                ),
+                collection_kind: Stream {
+                    bound: Bounded,
+                    order: NoOrder,
+                    retry: ExactlyOnce,
+                    element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    CycleSink {
+        ident: Ident {
+            sym: cycle_4,
+        },
         input: AntiJoin {
             pos: Tee {
                 inner: <tee 5>: Chain {
                     first: DeferTick {
                         input: CycleSource {
                             ident: Ident {
-                                sym: cycle_3,
+                                sym: cycle_4,
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
@@ -1374,6 +1415,47 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
+            sym: cycle_5,
+        },
+        input: DeferTick {
+            input: CycleSource {
+                ident: Ident {
+                    sym: cycle_5,
+                },
+                metadata: HydroIrMetadata {
+                    location_kind: Tick(
+                        4,
+                        Process(
+                            0,
+                        ),
+                    ),
+                    collection_kind: Stream {
+                        bound: Bounded,
+                        order: NoOrder,
+                        retry: ExactlyOnce,
+                        element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                    },
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_kind: Tick(
+                    4,
+                    Process(
+                        0,
+                    ),
+                ),
+                collection_kind: Stream {
+                    bound: Bounded,
+                    order: NoOrder,
+                    retry: ExactlyOnce,
+                    element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    CycleSink {
+        ident: Ident {
             sym: cycle_1,
         },
         input: ObserveNonDet {
@@ -1614,7 +1696,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_4,
+            sym: cycle_6,
         },
         input: Cast {
             inner: Cast {
@@ -1628,7 +1710,7 @@ expression: built.ir()
                                         inner: <tee 11>: DeferTick {
                                             input: CycleSource {
                                                 ident: Ident {
-                                                    sym: cycle_4,
+                                                    sym: cycle_6,
                                                 },
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Tick(
