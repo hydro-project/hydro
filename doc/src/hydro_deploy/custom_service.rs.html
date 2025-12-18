@@ -36,12 +36,12 @@
 <a href=#36 id=36 data-nosnippet>36</a>        }
 <a href=#37 id=37 data-nosnippet>37</a>    }
 <a href=#38 id=38 data-nosnippet>38</a>
-<a href=#39 id=39 data-nosnippet>39</a>    <span class="kw">pub fn </span>declare_client(<span class="kw-2">&amp;</span><span class="self">self</span>, self_arc: <span class="kw-2">&amp;</span>Arc&lt;<span class="self">Self</span>&gt;) -&gt; CustomClientPort {
-<a href=#40 id=40 data-nosnippet>40</a>        CustomClientPort::new(Arc::downgrade(self_arc), <span class="bool-val">false</span>)
+<a href=#39 id=39 data-nosnippet>39</a>    <span class="kw">pub fn </span>declare_client(<span class="self">self</span>: <span class="kw-2">&amp;</span>Arc&lt;<span class="self">Self</span>&gt;) -&gt; CustomClientPort {
+<a href=#40 id=40 data-nosnippet>40</a>        CustomClientPort::new(Arc::downgrade(<span class="self">self</span>), <span class="bool-val">false</span>)
 <a href=#41 id=41 data-nosnippet>41</a>    }
 <a href=#42 id=42 data-nosnippet>42</a>
-<a href=#43 id=43 data-nosnippet>43</a>    <span class="kw">pub fn </span>declare_many_client(<span class="kw-2">&amp;</span><span class="self">self</span>, self_arc: <span class="kw-2">&amp;</span>Arc&lt;<span class="self">Self</span>&gt;) -&gt; CustomClientPort {
-<a href=#44 id=44 data-nosnippet>44</a>        CustomClientPort::new(Arc::downgrade(self_arc), <span class="bool-val">true</span>)
+<a href=#43 id=43 data-nosnippet>43</a>    <span class="kw">pub fn </span>declare_many_client(<span class="self">self</span>: <span class="kw-2">&amp;</span>Arc&lt;<span class="self">Self</span>&gt;) -&gt; CustomClientPort {
+<a href=#44 id=44 data-nosnippet>44</a>        CustomClientPort::new(Arc::downgrade(<span class="self">self</span>), <span class="bool-val">true</span>)
 <a href=#45 id=45 data-nosnippet>45</a>    }
 <a href=#46 id=46 data-nosnippet>46</a>}
 <a href=#47 id=47 data-nosnippet>47</a>
