@@ -21,7 +21,7 @@
 <a href=#21 id=21 data-nosnippet>21</a>
 <a href=#22 id=22 data-nosnippet>22</a><span class="kw">pub struct </span>Deployment {
 <a href=#23 id=23 data-nosnippet>23</a>    <span class="kw">pub </span>hosts: Vec&lt;Weak&lt;<span class="kw">dyn </span>Host&gt;&gt;,
-<a href=#24 id=24 data-nosnippet>24</a>    <span class="kw">pub </span>services: Vec&lt;Weak&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;&gt;,
+<a href=#24 id=24 data-nosnippet>24</a>    <span class="kw">pub </span>services: Vec&lt;Weak&lt;<span class="kw">dyn </span>Service&gt;&gt;,
 <a href=#25 id=25 data-nosnippet>25</a>    <span class="kw">pub </span>resource_pool: ResourcePool,
 <a href=#26 id=26 data-nosnippet>26</a>    localhost_host: <span class="prelude-ty">Option</span>&lt;Arc&lt;LocalhostHost&gt;&gt;,
 <a href=#27 id=27 data-nosnippet>27</a>    last_resource_result: <span class="prelude-ty">Option</span>&lt;Arc&lt;ResourceResult&gt;&gt;,
@@ -61,7 +61,7 @@
 <a href=#61 id=61 data-nosnippet>61</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#62 id=62 data-nosnippet>62</a>        on: Arc&lt;<span class="kw">dyn </span>Host&gt;,
 <a href=#63 id=63 data-nosnippet>63</a>        external_ports: Vec&lt;u16&gt;,
-<a href=#64 id=64 data-nosnippet>64</a>    ) -&gt; Arc&lt;RwLock&lt;CustomService&gt;&gt; {
+<a href=#64 id=64 data-nosnippet>64</a>    ) -&gt; Arc&lt;CustomService&gt; {
 <a href=#65 id=65 data-nosnippet>65</a>        <span class="self">self</span>.add_service(|id, on| CustomService::new(id, on, external_ports), on)
 <a href=#66 id=66 data-nosnippet>66</a>    }
 <a href=#67 id=67 data-nosnippet>67</a>
@@ -105,7 +105,7 @@
 <a href=#105 id=105 data-nosnippet>105</a>            <span class="kw">let </span><span class="kw-2">mut </span>resource_batch = <span class="kw">super</span>::ResourceBatch::new();
 <a href=#106 id=106 data-nosnippet>106</a>
 <a href=#107 id=107 data-nosnippet>107</a>            <span class="kw">for </span>service <span class="kw">in </span><span class="self">self</span>.services.iter().filter_map(Weak::upgrade) {
-<a href=#108 id=108 data-nosnippet>108</a>                service.read().<span class="kw">await</span>.collect_resources(<span class="kw-2">&amp;mut </span>resource_batch);
+<a href=#108 id=108 data-nosnippet>108</a>                service.collect_resources(<span class="kw-2">&amp;mut </span>resource_batch);
 <a href=#109 id=109 data-nosnippet>109</a>            }
 <a href=#110 id=110 data-nosnippet>110</a>
 <a href=#111 id=111 data-nosnippet>111</a>            <span class="kw">for </span>host <span class="kw">in </span><span class="self">self</span>.hosts.iter().filter_map(Weak::upgrade) {
@@ -135,9 +135,9 @@
 <a href=#135 id=135 data-nosnippet>135</a>            progress::ProgressTracker::with_group(<span class="string">"prepare"</span>, <span class="prelude-val">Some</span>(upgraded_services.len()), || {
 <a href=#136 id=136 data-nosnippet>136</a>                <span class="kw">let </span>services_future = upgraded_services
 <a href=#137 id=137 data-nosnippet>137</a>                    .iter()
-<a href=#138 id=138 data-nosnippet>138</a>                    .map(|service: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| {
+<a href=#138 id=138 data-nosnippet>138</a>                    .map(|service: <span class="kw-2">&amp;</span>Arc&lt;<span class="kw">dyn </span>Service&gt;| {
 <a href=#139 id=139 data-nosnippet>139</a>                        <span class="kw">let </span>resource_result = <span class="kw-2">&amp;</span>resource_result;
-<a href=#140 id=140 data-nosnippet>140</a>                        <span class="kw">async move </span>{ service.write().<span class="kw">await</span>.deploy(resource_result).<span class="kw">await </span>}
+<a href=#140 id=140 data-nosnippet>140</a>                        <span class="kw">async move </span>{ service.deploy(resource_result).<span class="kw">await </span>}
 <a href=#141 id=141 data-nosnippet>141</a>                    })
 <a href=#142 id=142 data-nosnippet>142</a>                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 <a href=#143 id=143 data-nosnippet>143</a>
@@ -151,8 +151,8 @@
 <a href=#151 id=151 data-nosnippet>151</a>                <span class="kw">let </span>all_services_ready =
 <a href=#152 id=152 data-nosnippet>152</a>                    upgraded_services
 <a href=#153 id=153 data-nosnippet>153</a>                        .iter()
-<a href=#154 id=154 data-nosnippet>154</a>                        .map(|service: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| <span class="kw">async move </span>{
-<a href=#155 id=155 data-nosnippet>155</a>                            service.write().<span class="kw">await</span>.ready().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#154 id=154 data-nosnippet>154</a>                        .map(|service: <span class="kw-2">&amp;</span>Arc&lt;<span class="kw">dyn </span>Service&gt;| <span class="kw">async move </span>{
+<a href=#155 id=155 data-nosnippet>155</a>                            service.ready().<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#156 id=156 data-nosnippet>156</a>                            <span class="prelude-val">Ok</span>(()) <span class="kw">as </span><span class="prelude-ty">Result</span>&lt;()&gt;
 <a href=#157 id=157 data-nosnippet>157</a>                        });
 <a href=#158 id=158 data-nosnippet>158</a>
@@ -170,8 +170,8 @@
 <a href=#170 id=170 data-nosnippet>170</a>
 <a href=#171 id=171 data-nosnippet>171</a>        progress::ProgressTracker::with_group(<span class="string">"start"</span>, <span class="prelude-val">None</span>, || {
 <a href=#172 id=172 data-nosnippet>172</a>            <span class="kw">let </span>all_services_start = <span class="self">self</span>.services.iter().filter_map(Weak::upgrade).map(
-<a href=#173 id=173 data-nosnippet>173</a>                |service: Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| <span class="kw">async move </span>{
-<a href=#174 id=174 data-nosnippet>174</a>                    service.write().<span class="kw">await</span>.start().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#173 id=173 data-nosnippet>173</a>                |service: Arc&lt;<span class="kw">dyn </span>Service&gt;| <span class="kw">async move </span>{
+<a href=#174 id=174 data-nosnippet>174</a>                    service.start().<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#175 id=175 data-nosnippet>175</a>                    <span class="prelude-val">Ok</span>(()) <span class="kw">as </span><span class="prelude-ty">Result</span>&lt;()&gt;
 <a href=#176 id=176 data-nosnippet>176</a>                },
 <a href=#177 id=177 data-nosnippet>177</a>            );
@@ -187,8 +187,8 @@
 <a href=#187 id=187 data-nosnippet>187</a>
 <a href=#188 id=188 data-nosnippet>188</a>        progress::ProgressTracker::with_group(<span class="string">"stop"</span>, <span class="prelude-val">None</span>, || {
 <a href=#189 id=189 data-nosnippet>189</a>            <span class="kw">let </span>all_services_stop = <span class="self">self</span>.services.iter().filter_map(Weak::upgrade).map(
-<a href=#190 id=190 data-nosnippet>190</a>                |service: Arc&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;| <span class="kw">async move </span>{
-<a href=#191 id=191 data-nosnippet>191</a>                    service.write().<span class="kw">await</span>.stop().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#190 id=190 data-nosnippet>190</a>                |service: Arc&lt;<span class="kw">dyn </span>Service&gt;| <span class="kw">async move </span>{
+<a href=#191 id=191 data-nosnippet>191</a>                    service.stop().<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#192 id=192 data-nosnippet>192</a>                    <span class="prelude-val">Ok</span>(()) <span class="kw">as </span><span class="prelude-ty">Result</span>&lt;()&gt;
 <a href=#193 id=193 data-nosnippet>193</a>                },
 <a href=#194 id=194 data-nosnippet>194</a>            );
@@ -213,12 +213,12 @@
 <a href=#213 id=213 data-nosnippet>213</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#214 id=214 data-nosnippet>214</a>        service: <span class="kw">impl </span>ServiceBuilder&lt;Service = T&gt;,
 <a href=#215 id=215 data-nosnippet>215</a>        on: Arc&lt;<span class="kw">dyn </span>Host&gt;,
-<a href=#216 id=216 data-nosnippet>216</a>    ) -&gt; Arc&lt;RwLock&lt;T&gt;&gt; {
-<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">let </span>arc = Arc::new(RwLock::new(service.build(<span class="self">self</span>.next_service_id, on)));
+<a href=#216 id=216 data-nosnippet>216</a>    ) -&gt; Arc&lt;T&gt; {
+<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">let </span>arc = Arc::new(service.build(<span class="self">self</span>.next_service_id, on));
 <a href=#218 id=218 data-nosnippet>218</a>        <span class="self">self</span>.next_service_id += <span class="number">1</span>;
 <a href=#219 id=219 data-nosnippet>219</a>
 <a href=#220 id=220 data-nosnippet>220</a>        <span class="self">self</span>.services
-<a href=#221 id=221 data-nosnippet>221</a>            .push(Arc::downgrade(<span class="kw-2">&amp;</span>arc) <span class="kw">as </span>Weak&lt;RwLock&lt;<span class="kw">dyn </span>Service&gt;&gt;);
+<a href=#221 id=221 data-nosnippet>221</a>            .push(Arc::downgrade(<span class="kw-2">&amp;</span>arc) <span class="kw">as </span>Weak&lt;<span class="kw">dyn </span>Service&gt;);
 <a href=#222 id=222 data-nosnippet>222</a>        arc
 <a href=#223 id=223 data-nosnippet>223</a>    }
 <a href=#224 id=224 data-nosnippet>224</a>}
