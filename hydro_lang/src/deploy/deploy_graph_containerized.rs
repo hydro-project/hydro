@@ -90,7 +90,7 @@ impl Node for DockerDeployProcess {
     }
 
     #[instrument(level = "trace", skip_all, fields(id = self.id, name = self.name))]
-    fn update_meta(&mut self, _meta: &Self::Meta) {}
+    fn update_meta(&self, _meta: &Self::Meta) {}
 
     #[instrument(level = "trace", skip_all, fields(id = self.id, name = self.name, ?meta, extra_stmts = extra_stmts.len()))]
     fn instantiate(
@@ -158,7 +158,7 @@ impl Node for DockerDeployCluster {
     }
 
     #[instrument(level = "trace", skip_all, fields(id = self.id, name = self.name))]
-    fn update_meta(&mut self, _meta: &Self::Meta) {}
+    fn update_meta(&self, _meta: &Self::Meta) {}
 
     #[instrument(level = "trace", skip_all, fields(id = self.id, name = self.name, extra_stmts = extra_stmts.len()))]
     fn instantiate(
@@ -221,7 +221,7 @@ impl Node for DockerDeployExternal {
     }
 
     #[instrument(level = "trace", skip_all, fields(name = self.name))]
-    fn update_meta(&mut self, _meta: &Self::Meta) {}
+    fn update_meta(&self, _meta: &Self::Meta) {}
 
     #[instrument(level = "trace", skip_all, fields(name = self.name, ?meta, extra_stmts = extra_stmts.len()))]
     fn instantiate(

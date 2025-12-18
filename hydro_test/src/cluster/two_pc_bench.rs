@@ -142,7 +142,7 @@ mod tests {
         deployment.deploy().await.unwrap();
 
         let client_node = &nodes.get_process(&client_aggregator);
-        let client_out = client_node.stdout_filter("Throughput:").await;
+        let client_out = client_node.stdout_filter("Throughput:");
 
         deployment.start().await.unwrap();
 

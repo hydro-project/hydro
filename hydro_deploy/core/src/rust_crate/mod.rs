@@ -229,7 +229,7 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut stdout = service.try_read().unwrap().stdout();
+        let mut stdout = service.stdout();
 
         deployment.start().await.unwrap();
 
