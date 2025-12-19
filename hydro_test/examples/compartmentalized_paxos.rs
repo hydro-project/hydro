@@ -20,7 +20,6 @@ use hydro_test::cluster::compartmentalized_paxos::{
     CompartmentalizedPaxosConfig, CoreCompartmentalizedPaxos,
 };
 use hydro_test::cluster::paxos::PaxosConfig;
-use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
@@ -30,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut deployment = Deployment::new();
 
     let create_host: HostCreator = if let Some(project) = &args.gcp {
-        let network = Arc::new(RwLock::new(GcpNetwork::new(project, None)));
+        let network = GcpNetwork::new(project, None);
         let project = project.clone();
 
         Box::new(move |deployment| -> Arc<dyn Host> {
