@@ -67,108 +67,104 @@ pub fn bench_client<'a, Client, Payload>(
 where
     Payload: Clone,
 {
-    let client_tick = clients.tick();
-
-    // Set up an initial set of payloads on the first tick
-    let initial_virtual_client = client_tick.optional_first_tick(q!(0u32));
-    let (next_virtual_client_complete_cycle, next_virtual_client) = client_tick.cycle();
-    let new_virtual_client = initial_virtual_client.or(next_virtual_client);
-    next_virtual_client_complete_cycle.complete_next_tick(new_virtual_client.clone().filter_map(
-        q!(move |virtual_id| {
-            if virtual_id < num_clients_per_node as u32 {
-                Some(virtual_id + 1)
-            } else {
-                None
-            }
-        }),
-    ));
-
-    let new_virtual_client_stream = new_virtual_client.into_stream();
-
-    let c_new_payloads_on_start = new_virtual_client_stream
-        .clone()
-        .map(q!(|virtual_id| (virtual_id, None)));
-
     let (c_to_proposers_complete_cycle, c_to_proposers) =
         clients.forward_ref::<Stream<_, _, _, TotalOrder>>();
 
-    // Whenever all replicas confirm that a payload was committed, send another payload
-    let c_received_quorum_payloads = transaction_cycle(c_to_proposers)
-        .batch(
-            &client_tick,
-            nondet!(
-                /// because the transaction processor is required to handle arbitrary reordering
-                /// across *different* keys, we are safe because delaying a transaction result for a key
-                /// will only affect when the next request for that key is emitted with respect to other keys
-            ),
-        )
-        .map(q!(|(virtual_id, payload)| (virtual_id, Some(payload))));
+    let (c_latencies, c_throughput_batches, c_new_payloads) = sliced! {
+        let mut next_virtual_client = use::state(|l| Optional::from(l.singleton(q!(0u32))));
+        let mut timers = use::state_null::<KeyedSingleton<u32, Instant, _, _>>();
 
-    let c_new_payloads = workload_generator(
-        clients,
-        c_new_payloads_on_start
-            .chain(c_received_quorum_payloads.clone())
-            .all_ticks(),
-    );
+        let transaction_results = use(transaction_cycle(c_to_proposers).into_keyed(), nondet!(
+            /// because the transaction processor is required to handle arbitrary reordering
+            /// across *different* keys, we are safe because delaying a transaction result for a key
+            /// will only affect when the next request for that key is emitted with respect to other keys
+        ));
+
+        // Set up virtual clients - spawn new ones each tick until we reach the limit
+        let new_virtual_client = next_virtual_client.clone();
+        next_virtual_client = new_virtual_client.clone().filter_map(
+            q!(move |virtual_id| {
+                if virtual_id < num_clients_per_node as u32 {
+                    Some(virtual_id + 1)
+                } else {
+                    None
+                }
+            }),
+        );
+
+        let new_virtual_client_stream = new_virtual_client.into_stream();
+
+        let c_new_payloads_on_start = new_virtual_client_stream
+            .clone()
+            .map(q!(|virtual_id| (virtual_id, None)))
+            .into_keyed();
+
+        let c_received_quorum_payloads = transaction_results
+            .map(q!(|payload| Some(payload)));
+
+        // Track statistics - timers for latency measurement
+        let c_new_timers_when_leader_elected =
+            new_virtual_client_stream.map(q!(|virtual_id| (virtual_id, Instant::now()))).into_keyed();
+        let c_updated_timers = c_received_quorum_payloads
+            .clone()
+            .map(q!(|_payload| Instant::now()));
+
+        let c_latencies = timers
+            .clone()
+            .get_many_if_present(c_updated_timers.clone())
+            .values()
+            .map(q!(
+                |(prev_time, curr_time)| curr_time.duration_since(prev_time)
+            ));
+
+        timers = timers // Update timers in tick+1 so we can record differences during this tick (to track latency)
+            .into_keyed_stream()
+            .chain(c_new_timers_when_leader_elected)
+            .chain(c_updated_timers)
+            .reduce_commutative(q!(|curr_time, new_time| {
+                if new_time > *curr_time {
+                    *curr_time = new_time;
+                }
+            }));
+
+        // Throughput tracking
+        let c_throughput_new_batch = c_received_quorum_payloads
+            .clone()
+            .values()
+            .count();
+
+        let c_new_payloads = c_new_payloads_on_start.chain(c_received_quorum_payloads);
+
+        (c_latencies, c_throughput_new_batch.into_stream(), c_new_payloads)
+    };
+
+    let c_new_payloads = workload_generator(clients, c_new_payloads.entries());
     c_to_proposers_complete_cycle.complete(c_new_payloads.assume_ordering::<TotalOrder>(nondet!(
         /// We don't send a new write for the same key until the previous one is committed,
         /// so this contains only a single write per key, and we don't care about order
         /// across keys.
     )));
 
-    // Track statistics
-    let (c_timers_complete_cycle, c_timers) =
-        client_tick.cycle::<Stream<(u32, Instant), _, _, NoOrder>>();
-    let c_new_timers_when_leader_elected =
-        new_virtual_client_stream.map(q!(|virtual_id| (virtual_id, Instant::now())));
-    let c_updated_timers = c_received_quorum_payloads
-        .clone()
-        .map(q!(|(key, _payload)| (key, Instant::now())));
-    let c_new_timers = c_timers
-        .clone() // Update c_timers in tick+1 so we can record differences during this tick (to track latency)
-        .chain(c_new_timers_when_leader_elected)
-        .chain(c_updated_timers.clone())
-        .into_keyed()
-        .reduce_commutative(q!(|curr_time, new_time| {
-            if new_time > *curr_time {
-                *curr_time = new_time;
-            }
-        }))
-        .entries();
-    c_timers_complete_cycle.complete_next_tick(c_new_timers);
+    let c_latencies = c_latencies.fold_commutative(
+        q!(move || Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap()))),
+        q!(move |latencies, latency| {
+            latencies
+                .borrow_mut()
+                .record(latency.as_nanos() as u64)
+                .unwrap();
+        }),
+    );
 
-    let c_latencies = c_timers
-        .join(c_updated_timers)
-        .map(q!(
-            |(_virtual_id, (prev_time, curr_time))| curr_time.duration_since(prev_time)
-        ))
-        .all_ticks()
-        .fold_commutative(
-            q!(move || Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap()))),
-            q!(move |latencies, latency| {
-                latencies
-                    .borrow_mut()
-                    .record(latency.as_nanos() as u64)
-                    .unwrap();
-            }),
+    let throughput_with_timers = c_throughput_batches
+        .map(q!(|batch_size| (batch_size, false)))
+        .merge_ordered(
+            clients
+                .source_interval(q!(Duration::from_secs(1)), nondet_throughput_window)
+                .map(q!(|_| (0, true))),
+            nondet_throughput_window,
         );
 
-    let c_stats_output_timer = clients
-        .source_interval(q!(Duration::from_secs(1)), nondet_throughput_window)
-        .batch(&client_tick, nondet_throughput_window)
-        .first();
-
-    let c_throughput_new_batch = c_received_quorum_payloads
-        .count()
-        .filter_if_none(c_stats_output_timer.clone())
-        .map(q!(|batch_size| (batch_size, false)));
-
-    let c_throughput_reset = c_stats_output_timer.map(q!(|_| (0, true))).defer_tick();
-
-    let c_throughput = c_throughput_new_batch
-        .into_stream()
-        .chain(c_throughput_reset.into_stream())
-        .all_ticks()
+    let c_throughput = throughput_with_timers
         .fold(
             q!(|| (0, { RollingAverage::new() })),
             q!(|(total, stats), (batch_size, reset)| {
@@ -183,7 +179,7 @@ where
                 }
             }),
         )
-        .map(q!(|(_, stats)| { stats }));
+        .map(q!(|(_, stats)| stats));
 
     BenchResult {
         latency_histogram: c_latencies,
