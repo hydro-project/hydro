@@ -13,7 +13,7 @@ use super::singleton::Singleton;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 #[cfg(stageleft_runtime)]
-use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
@@ -64,6 +64,29 @@ where
                 metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
+    }
+}
+
+impl<'a, T, L> CycleCollectionWithInitial<'a, TickCycle> for Optional<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
+{
+    type Location = Tick<L>;
+
+    fn create_source_with_initial(ident: syn::Ident, initial: Self, location: Tick<L>) -> Self {
+        let from_previous_tick: Optional<T, Tick<L>, Bounded> = Optional::new(
+            location.clone(),
+            HydroNode::DeferTick {
+                input: Box::new(HydroNode::CycleSource {
+                    ident,
+                    metadata: location.new_node_metadata(Self::collection_kind()),
+                }),
+                metadata: location
+                    .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),
+            },
+        );
+
+        from_previous_tick.or(initial.filter_if_some(location.optional_first_tick(q!(()))))
     }
 }
 
