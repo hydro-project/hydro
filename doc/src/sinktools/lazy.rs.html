@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `sinktools/src/lazy.rs`."><title>lazy.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-80aa586b.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sinktools" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (f794a0873 2025-12-17)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-3e30299d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sinktools/</div>lazy.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! [`LazySink`], [`LazySource`], and related items.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `sinktools/src/lazy.rs`."><title>lazy.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-80aa586b.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sinktools" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (fcf67da03 2025-12-18)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-3e30299d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sinktools/</div>lazy.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! [`LazySink`], [`LazySource`], and related items.
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>core::future::Future;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>core::marker::PhantomData;
@@ -216,7 +216,7 @@
 <a href=#216 id=216 data-nosnippet>216</a>
 <a href=#217 id=217 data-nosnippet>217</a>    <span class="kw">use </span>futures_util::{Sink, SinkExt, StreamExt};
 <a href=#218 id=218 data-nosnippet>218</a>
-<a href=#219 id=219 data-nosnippet>219</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+<a href=#219 id=219 data-nosnippet>219</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
 <a href=#220 id=220 data-nosnippet>220</a>    <span class="kw">use </span><span class="kw">crate</span>::for_each::ForEach;
 <a href=#221 id=221 data-nosnippet>221</a>
 <a href=#222 id=222 data-nosnippet>222</a>    <span class="attr">#[tokio::test]
@@ -226,7 +226,7 @@
 <a href=#226 id=226 data-nosnippet>226</a>
 <a href=#227 id=227 data-nosnippet>227</a>        <span class="kw">let </span><span class="kw-2">mut </span>lazy_sink = LazySink::new(|| {
 <a href=#228 id=228 data-nosnippet>228</a>            Box::pin(<span class="kw">async </span>{
-<a href=#229 id=229 data-nosnippet>229</a>                <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, Infallible&gt;::Ok(ForEach::new(|item| {
+<a href=#229 id=229 data-nosnippet>229</a>                Result::&lt;<span class="kw">_</span>, Infallible&gt;::Ok(ForEach::new(|item| {
 <a href=#230 id=230 data-nosnippet>230</a>                    output.borrow_mut().extend_from_slice(item);
 <a href=#231 id=231 data-nosnippet>231</a>                }))
 <a href=#232 id=232 data-nosnippet>232</a>            })
@@ -277,7 +277,7 @@
 <a href=#277 id=277 data-nosnippet>277</a>        }
 <a href=#278 id=278 data-nosnippet>278</a>
 <a href=#279 id=279 data-nosnippet>279</a>        <span class="kw">let </span><span class="kw-2">mut </span>lazy_sink = <span class="macro">pin!</span>(LazySink::new(|| <span class="kw">async </span>{
-<a href=#280 id=280 data-nosnippet>280</a>            <span class="prelude-ty">Result</span>::&lt;DummySink, <span class="kw">_</span>&gt;::Err(<span class="string">"Fail!"</span>)
+<a href=#280 id=280 data-nosnippet>280</a>            Result::&lt;DummySink, <span class="kw">_</span>&gt;::Err(<span class="string">"Fail!"</span>)
 <a href=#281 id=281 data-nosnippet>281</a>        }));
 <a href=#282 id=282 data-nosnippet>282</a>
 <a href=#283 id=283 data-nosnippet>283</a>        <span class="kw">let </span>cx = <span class="kw-2">&amp;mut </span>Context::from_waker(futures_task::noop_waker_ref());
@@ -313,7 +313,7 @@
 <a href=#313 id=313 data-nosnippet>313</a>        <span class="kw">let </span>test_data = <span class="string">b"test"</span>;
 <a href=#314 id=314 data-nosnippet>314</a>
 <a href=#315 id=315 data-nosnippet>315</a>        <span class="kw">let </span><span class="kw-2">mut </span>lazy_sink = <span class="macro">pin!</span>(LazySink::new(|| <span class="kw">async </span>{
-<a href=#316 id=316 data-nosnippet>316</a>            <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, ()&gt;::Ok(futures_util::sink::unfold((), |(), item| <span class="kw">async move </span>{
+<a href=#316 id=316 data-nosnippet>316</a>            Result::&lt;<span class="kw">_</span>, ()&gt;::Ok(futures_util::sink::unfold((), |(), item| <span class="kw">async move </span>{
 <a href=#317 id=317 data-nosnippet>317</a>                <span class="macro">assert_eq!</span>(item, test_data);
 <a href=#318 id=318 data-nosnippet>318</a>                <span class="prelude-val">Ok</span>(())
 <a href=#319 id=319 data-nosnippet>319</a>            }))
@@ -335,7 +335,7 @@
 <a href=#335 id=335 data-nosnippet>335</a>
 <a href=#336 id=336 data-nosnippet>336</a>        <span class="kw">let </span><span class="kw-2">mut </span>lazy_source = LazySource::new(|| {
 <a href=#337 id=337 data-nosnippet>337</a>            Box::pin(<span class="kw">async </span>{
-<a href=#338 id=338 data-nosnippet>338</a>                <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, Infallible&gt;::Ok(futures_util::stream::iter(<span class="macro">vec!</span>[test_data.as_slice()]))
+<a href=#338 id=338 data-nosnippet>338</a>                Result::&lt;<span class="kw">_</span>, Infallible&gt;::Ok(futures_util::stream::iter(<span class="macro">vec!</span>[test_data.as_slice()]))
 <a href=#339 id=339 data-nosnippet>339</a>            })
 <a href=#340 id=340 data-nosnippet>340</a>        });
 <a href=#341 id=341 data-nosnippet>341</a>
@@ -345,7 +345,7 @@
 <a href=#345 id=345 data-nosnippet>345</a>    <span class="attr">#[test]
 <a href=#346 id=346 data-nosnippet>346</a>    </span><span class="kw">fn </span>test_lazy_source_err() {
 <a href=#347 id=347 data-nosnippet>347</a>        <span class="kw">let </span><span class="kw-2">mut </span>lazy_source = <span class="macro">pin!</span>(LazySource::new(|| <span class="kw">async </span>{
-<a href=#348 id=348 data-nosnippet>348</a>            <span class="prelude-ty">Result</span>::&lt;futures_util::stream::Empty&lt;()&gt;, <span class="kw">_</span>&gt;::Err(<span class="string">"Fail!"</span>)
+<a href=#348 id=348 data-nosnippet>348</a>            Result::&lt;futures_util::stream::Empty&lt;()&gt;, <span class="kw">_</span>&gt;::Err(<span class="string">"Fail!"</span>)
 <a href=#349 id=349 data-nosnippet>349</a>        }));
 <a href=#350 id=350 data-nosnippet>350</a>
 <a href=#351 id=351 data-nosnippet>351</a>        <span class="kw">let </span>cx = <span class="kw-2">&amp;mut </span>Context::from_waker(futures_task::noop_waker_ref());
@@ -358,7 +358,7 @@
 <a href=#358 id=358 data-nosnippet>358</a>        <span class="kw">let </span>test_data = <span class="string">b"test"</span>;
 <a href=#359 id=359 data-nosnippet>359</a>
 <a href=#360 id=360 data-nosnippet>360</a>        <span class="kw">let </span><span class="kw-2">mut </span>lazy_source = <span class="macro">pin!</span>(LazySource::new(|| <span class="kw">async </span>{
-<a href=#361 id=361 data-nosnippet>361</a>            <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, Infallible&gt;::Ok(futures_util::stream::iter(test_data))
+<a href=#361 id=361 data-nosnippet>361</a>            Result::&lt;<span class="kw">_</span>, Infallible&gt;::Ok(futures_util::stream::iter(test_data))
 <a href=#362 id=362 data-nosnippet>362</a>        }));
 <a href=#363 id=363 data-nosnippet>363</a>
 <a href=#364 id=364 data-nosnippet>364</a>        <span class="kw">let </span>cx = <span class="kw-2">&amp;mut </span>Context::from_waker(futures_task::noop_waker_ref());

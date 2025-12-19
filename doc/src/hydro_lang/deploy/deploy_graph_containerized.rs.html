@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/deploy/deploy_graph_containerized.rs`."><title>deploy_graph_containerized.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-80aa586b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (f794a0873 2025-12-17)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-3e30299d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/deploy/</div>deploy_graph_containerized.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Deployment backend for Hydro that uses Docker to provision and launch services.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/deploy/deploy_graph_containerized.rs`."><title>deploy_graph_containerized.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-80aa586b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (fcf67da03 2025-12-18)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-3e30299d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/deploy/</div>deploy_graph_containerized.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Deployment backend for Hydro that uses Docker to provision and launch services.
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>std::cell::RefCell;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>std::collections::HashMap;
@@ -307,7 +307,7 @@
 <a href=#307 id=307 data-nosnippet>307</a>
 <a href=#308 id=308 data-nosnippet>308</a>                        <span class="macro">trace!</span>(name: <span class="string">"as_bincode_sink_connected"</span>, to = %remote_ip_address, to_port = %local_port);
 <a href=#309 id=309 data-nosnippet>309</a>
-<a href=#310 id=310 data-nosnippet>310</a>                        <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(FramedWrite::new(
+<a href=#310 id=310 data-nosnippet>310</a>                        Result::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(FramedWrite::new(
 <a href=#311 id=311 data-nosnippet>311</a>                            stream,
 <a href=#312 id=312 data-nosnippet>312</a>                            LengthDelimitedCodec::new(),
 <a href=#313 id=313 data-nosnippet>313</a>                        ))
@@ -370,7 +370,7 @@
 <a href=#370 id=370 data-nosnippet>370</a>    <span class="kw">let </span>docker = Docker::connect_with_local_defaults().unwrap();
 <a href=#371 id=371 data-nosnippet>371</a>
 <a href=#372 id=372 data-nosnippet>372</a>    <span class="kw">let </span>container_info = docker
-<a href=#373 id=373 data-nosnippet>373</a>        .inspect_container(docker_container_name, <span class="prelude-val">None</span>::&lt;InspectContainerOptions&gt;)
+<a href=#373 id=373 data-nosnippet>373</a>        .inspect_container(docker_container_name, None::&lt;InspectContainerOptions&gt;)
 <a href=#374 id=374 data-nosnippet>374</a>        .<span class="kw">await
 <a href=#375 id=375 data-nosnippet>375</a>        </span>.unwrap();
 <a href=#376 id=376 data-nosnippet>376</a>
@@ -452,7 +452,7 @@
 <a href=#452 id=452 data-nosnippet>452</a>    <span class="macro">tracing::error!</span>(<span class="string">"Config: {}"</span>, serde_json::to_string_pretty(<span class="kw-2">&amp;</span>config).unwrap());
 <a href=#453 id=453 data-nosnippet>453</a>    docker.create_container(<span class="prelude-val">Some</span>(options), config).<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#454 id=454 data-nosnippet>454</a>    docker
-<a href=#455 id=455 data-nosnippet>455</a>        .start_container(container_name, <span class="prelude-val">None</span>::&lt;StartContainerOptions&gt;)
+<a href=#455 id=455 data-nosnippet>455</a>        .start_container(container_name, None::&lt;StartContainerOptions&gt;)
 <a href=#456 id=456 data-nosnippet>456</a>        .<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#457 id=457 data-nosnippet>457</a>
 <a href=#458 id=458 data-nosnippet>458</a>    <span class="prelude-val">Ok</span>(())
@@ -747,7 +747,7 @@
 <a href=#747 id=747 data-nosnippet>747</a>            <span class="kw">let </span>docker_container_name: String = get_docker_container_name(<span class="kw-2">&amp;</span>process.name, <span class="prelude-val">None</span>);
 <a href=#748 id=748 data-nosnippet>748</a>
 <a href=#749 id=749 data-nosnippet>749</a>            docker
-<a href=#750 id=750 data-nosnippet>750</a>                .kill_container(<span class="kw-2">&amp;</span>docker_container_name, <span class="prelude-val">None</span>::&lt;KillContainerOptions&gt;)
+<a href=#750 id=750 data-nosnippet>750</a>                .kill_container(<span class="kw-2">&amp;</span>docker_container_name, None::&lt;KillContainerOptions&gt;)
 <a href=#751 id=751 data-nosnippet>751</a>                .<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#752 id=752 data-nosnippet>752</a>        }
 <a href=#753 id=753 data-nosnippet>753</a>
@@ -756,7 +756,7 @@
 <a href=#756 id=756 data-nosnippet>756</a>                <span class="kw">let </span>docker_container_name = get_docker_container_name(<span class="kw-2">&amp;</span>cluster.name, <span class="prelude-val">Some</span>(num));
 <a href=#757 id=757 data-nosnippet>757</a>
 <a href=#758 id=758 data-nosnippet>758</a>                docker
-<a href=#759 id=759 data-nosnippet>759</a>                    .kill_container(<span class="kw-2">&amp;</span>docker_container_name, <span class="prelude-val">None</span>::&lt;KillContainerOptions&gt;)
+<a href=#759 id=759 data-nosnippet>759</a>                    .kill_container(<span class="kw-2">&amp;</span>docker_container_name, None::&lt;KillContainerOptions&gt;)
 <a href=#760 id=760 data-nosnippet>760</a>                    .<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#761 id=761 data-nosnippet>761</a>            }
 <a href=#762 id=762 data-nosnippet>762</a>        }
@@ -773,7 +773,7 @@
 <a href=#773 id=773 data-nosnippet>773</a>            <span class="kw">let </span>docker_container_name: String = get_docker_container_name(<span class="kw-2">&amp;</span>process.name, <span class="prelude-val">None</span>);
 <a href=#774 id=774 data-nosnippet>774</a>
 <a href=#775 id=775 data-nosnippet>775</a>            docker
-<a href=#776 id=776 data-nosnippet>776</a>                .remove_container(<span class="kw-2">&amp;</span>docker_container_name, <span class="prelude-val">None</span>::&lt;RemoveContainerOptions&gt;)
+<a href=#776 id=776 data-nosnippet>776</a>                .remove_container(<span class="kw-2">&amp;</span>docker_container_name, None::&lt;RemoveContainerOptions&gt;)
 <a href=#777 id=777 data-nosnippet>777</a>                .<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#778 id=778 data-nosnippet>778</a>        }
 <a href=#779 id=779 data-nosnippet>779</a>
@@ -782,7 +782,7 @@
 <a href=#782 id=782 data-nosnippet>782</a>                <span class="kw">let </span>docker_container_name = get_docker_container_name(<span class="kw-2">&amp;</span>cluster.name, <span class="prelude-val">Some</span>(num));
 <a href=#783 id=783 data-nosnippet>783</a>
 <a href=#784 id=784 data-nosnippet>784</a>                docker
-<a href=#785 id=785 data-nosnippet>785</a>                    .remove_container(<span class="kw-2">&amp;</span>docker_container_name, <span class="prelude-val">None</span>::&lt;RemoveContainerOptions&gt;)
+<a href=#785 id=785 data-nosnippet>785</a>                    .remove_container(<span class="kw-2">&amp;</span>docker_container_name, None::&lt;RemoveContainerOptions&gt;)
 <a href=#786 id=786 data-nosnippet>786</a>                    .<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#787 id=787 data-nosnippet>787</a>            }
 <a href=#788 id=788 data-nosnippet>788</a>        }
@@ -796,13 +796,13 @@
 <a href=#796 id=796 data-nosnippet>796</a>
 <a href=#797 id=797 data-nosnippet>797</a>        <span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, process) <span class="kw">in </span>nodes.get_all_processes() {
 <a href=#798 id=798 data-nosnippet>798</a>            docker
-<a href=#799 id=799 data-nosnippet>799</a>                .remove_image(<span class="kw-2">&amp;</span>process.name, <span class="prelude-val">None</span>::&lt;RemoveImageOptions&gt;, <span class="prelude-val">None</span>)
+<a href=#799 id=799 data-nosnippet>799</a>                .remove_image(<span class="kw-2">&amp;</span>process.name, None::&lt;RemoveImageOptions&gt;, <span class="prelude-val">None</span>)
 <a href=#800 id=800 data-nosnippet>800</a>                .<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#801 id=801 data-nosnippet>801</a>        }
 <a href=#802 id=802 data-nosnippet>802</a>
 <a href=#803 id=803 data-nosnippet>803</a>        <span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, cluster) <span class="kw">in </span>nodes.get_all_clusters() {
 <a href=#804 id=804 data-nosnippet>804</a>            docker
-<a href=#805 id=805 data-nosnippet>805</a>                .remove_image(<span class="kw-2">&amp;</span>cluster.name, <span class="prelude-val">None</span>::&lt;RemoveImageOptions&gt;, <span class="prelude-val">None</span>)
+<a href=#805 id=805 data-nosnippet>805</a>                .remove_image(<span class="kw-2">&amp;</span>cluster.name, None::&lt;RemoveImageOptions&gt;, <span class="prelude-val">None</span>)
 <a href=#806 id=806 data-nosnippet>806</a>                .<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#807 id=807 data-nosnippet>807</a>        }
 <a href=#808 id=808 data-nosnippet>808</a>

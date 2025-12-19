@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_std/src/quorum.rs`."><title>quorum.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-80aa586b.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydro_std" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (f794a0873 2025-12-17)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-3e30299d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_std/</div>quorum.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::hash::Hash;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_std/src/quorum.rs`."><title>quorum.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-80aa586b.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydro_std" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (fcf67da03 2025-12-18)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-3e30299d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">hydro_std/</div>quorum.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::hash::Hash;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::live_collections::stream::{NoOrder, Ordering};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>hydro_lang::location::{Location, NoTick};
@@ -168,7 +168,7 @@
 <a href=#168 id=168 data-nosnippet>168</a>    <span class="kw">use </span>hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
 <a href=#169 id=169 data-nosnippet>169</a>    <span class="kw">use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
 <a href=#170 id=170 data-nosnippet>170</a>
-<a href=#171 id=171 data-nosnippet>171</a>    <span class="kw">use super</span>::{collect_quorum, collect_quorum_with_response};
+<a href=#171 id=171 data-nosnippet>171</a>    <span class="kw">use </span>super::{collect_quorum, collect_quorum_with_response};
 <a href=#172 id=172 data-nosnippet>172</a>
 <a href=#173 id=173 data-nosnippet>173</a>    <span class="attr">#[test]
 <a href=#174 id=174 data-nosnippet>174</a>    </span><span class="kw">fn </span>collect_quorum_with_response_preserves_order() {
@@ -179,7 +179,7 @@
 <a href=#179 id=179 data-nosnippet>179</a>        <span class="kw">let </span>out_recv = collect_quorum_with_response(input, <span class="number">3</span>, <span class="number">3</span>).<span class="number">0</span>.sim_output();
 <a href=#180 id=180 data-nosnippet>180</a>
 <a href=#181 id=181 data-nosnippet>181</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#182 id=182 data-nosnippet>182</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#182 id=182 data-nosnippet>182</a>            in_send.send((<span class="number">1</span>, Ok::&lt;(), ()&gt;(())));
 <a href=#183 id=183 data-nosnippet>183</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#184 id=184 data-nosnippet>184</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#185 id=185 data-nosnippet>185</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(())));
@@ -205,7 +205,7 @@
 <a href=#205 id=205 data-nosnippet>205</a>
 <a href=#206 id=206 data-nosnippet>206</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
 <a href=#207 id=207 data-nosnippet>207</a>            in_send.send_many_unordered([
-<a href=#208 id=208 data-nosnippet>208</a>                (<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())),
+<a href=#208 id=208 data-nosnippet>208</a>                (<span class="number">1</span>, Ok::&lt;(), ()&gt;(())),
 <a href=#209 id=209 data-nosnippet>209</a>                (<span class="number">1</span>, <span class="prelude-val">Ok</span>(())),
 <a href=#210 id=210 data-nosnippet>210</a>                (<span class="number">2</span>, <span class="prelude-val">Ok</span>(())),
 <a href=#211 id=211 data-nosnippet>211</a>                (<span class="number">3</span>, <span class="prelude-val">Ok</span>(())),
@@ -233,7 +233,7 @@
 <a href=#233 id=233 data-nosnippet>233</a>
 <a href=#234 id=234 data-nosnippet>234</a>        <span class="comment">// Test case 1: Key reaches exact minimum quorum (2/3)
 <a href=#235 id=235 data-nosnippet>235</a>        </span>compiled_sim.exhaustive(<span class="kw">async </span>|| {
-<a href=#236 id=236 data-nosnippet>236</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#236 id=236 data-nosnippet>236</a>            in_send.send((<span class="number">1</span>, Ok::&lt;(), ()&gt;(())));
 <a href=#237 id=237 data-nosnippet>237</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#238 id=238 data-nosnippet>238</a>
 <a href=#239 id=239 data-nosnippet>239</a>            success_recv.assert_yields_only_unordered([<span class="number">1</span>]).<span class="kw">await</span>;
@@ -242,7 +242,7 @@
 <a href=#242 id=242 data-nosnippet>242</a>
 <a href=#243 id=243 data-nosnippet>243</a>        <span class="comment">// Test case 2: Key reaches maximum responses with mixed results (2 success, 1 error)
 <a href=#244 id=244 data-nosnippet>244</a>        </span>compiled_sim.exhaustive(<span class="kw">async </span>|| {
-<a href=#245 id=245 data-nosnippet>245</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#245 id=245 data-nosnippet>245</a>            in_send.send((<span class="number">2</span>, Ok::&lt;(), ()&gt;(())));
 <a href=#246 id=246 data-nosnippet>246</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#247 id=247 data-nosnippet>247</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(())));
 <a href=#248 id=248 data-nosnippet>248</a>
@@ -252,7 +252,7 @@
 <a href=#252 id=252 data-nosnippet>252</a>
 <a href=#253 id=253 data-nosnippet>253</a>        <span class="comment">// Test case 3: Key doesn't reach quorum (1 success, 2 errors)
 <a href=#254 id=254 data-nosnippet>254</a>        </span>compiled_sim.exhaustive(<span class="kw">async </span>|| {
-<a href=#255 id=255 data-nosnippet>255</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#255 id=255 data-nosnippet>255</a>            in_send.send((<span class="number">3</span>, Ok::&lt;(), ()&gt;(())));
 <a href=#256 id=256 data-nosnippet>256</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Err</span>(())));
 <a href=#257 id=257 data-nosnippet>257</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Err</span>(())));
 <a href=#258 id=258 data-nosnippet>258</a>
@@ -262,7 +262,7 @@
 <a href=#262 id=262 data-nosnippet>262</a>
 <a href=#263 id=263 data-nosnippet>263</a>        <span class="comment">// Test case 4: Key reaches quorum with extra responses
 <a href=#264 id=264 data-nosnippet>264</a>        </span>compiled_sim.exhaustive(<span class="kw">async </span>|| {
-<a href=#265 id=265 data-nosnippet>265</a>            in_send.send((<span class="number">4</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#265 id=265 data-nosnippet>265</a>            in_send.send((<span class="number">4</span>, Ok::&lt;(), ()&gt;(())));
 <a href=#266 id=266 data-nosnippet>266</a>            in_send.send((<span class="number">4</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#267 id=267 data-nosnippet>267</a>            in_send.send((<span class="number">4</span>, <span class="prelude-val">Ok</span>(()))); <span class="comment">// This should be ignored after quorum
 <a href=#268 id=268 data-nosnippet>268</a>
@@ -272,7 +272,7 @@
 <a href=#272 id=272 data-nosnippet>272</a>
 <a href=#273 id=273 data-nosnippet>273</a>        <span class="comment">// Test case 5: Key with only errors (no quorum)
 <a href=#274 id=274 data-nosnippet>274</a>        </span>compiled_sim.exhaustive(<span class="kw">async </span>|| {
-<a href=#275 id=275 data-nosnippet>275</a>            in_send.send((<span class="number">5</span>, <span class="prelude-val">Err</span>::&lt;(), ()&gt;(())));
+<a href=#275 id=275 data-nosnippet>275</a>            in_send.send((<span class="number">5</span>, Err::&lt;(), ()&gt;(())));
 <a href=#276 id=276 data-nosnippet>276</a>            in_send.send((<span class="number">5</span>, <span class="prelude-val">Err</span>(())));
 <a href=#277 id=277 data-nosnippet>277</a>            in_send.send((<span class="number">5</span>, <span class="prelude-val">Err</span>(())));
 <a href=#278 id=278 data-nosnippet>278</a>
@@ -284,7 +284,7 @@
 <a href=#284 id=284 data-nosnippet>284</a>
 <a href=#285 id=285 data-nosnippet>285</a>        <span class="comment">// Test case 6: Key that reaches quorum exactly at max (2 success, 1 error)
 <a href=#286 id=286 data-nosnippet>286</a>        </span>compiled_sim.exhaustive(<span class="kw">async </span>|| {
-<a href=#287 id=287 data-nosnippet>287</a>            in_send.send((<span class="number">6</span>, <span class="prelude-val">Err</span>::&lt;(), ()&gt;(())));
+<a href=#287 id=287 data-nosnippet>287</a>            in_send.send((<span class="number">6</span>, Err::&lt;(), ()&gt;(())));
 <a href=#288 id=288 data-nosnippet>288</a>            in_send.send((<span class="number">6</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#289 id=289 data-nosnippet>289</a>            in_send.send((<span class="number">6</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#290 id=290 data-nosnippet>290</a>
@@ -303,7 +303,7 @@
 <a href=#303 id=303 data-nosnippet>303</a>
 <a href=#304 id=304 data-nosnippet>304</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
 <a href=#305 id=305 data-nosnippet>305</a>            <span class="comment">// When min == max, we need exactly that many responses
-<a href=#306 id=306 data-nosnippet>306</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#306 id=306 data-nosnippet>306</a>            </span>in_send.send((<span class="number">1</span>, Ok::&lt;(), ()&gt;(())));
 <a href=#307 id=307 data-nosnippet>307</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#308 id=308 data-nosnippet>308</a>
 <a href=#309 id=309 data-nosnippet>309</a>            <span class="comment">// This key gets exactly 2 responses (1 success, 1 error) - should not reach quorum
@@ -329,7 +329,7 @@
 <a href=#329 id=329 data-nosnippet>329</a>
 <a href=#330 id=330 data-nosnippet>330</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
 <a href=#331 id=331 data-nosnippet>331</a>            <span class="comment">// With min=max=1, any single success should immediately reach quorum
-<a href=#332 id=332 data-nosnippet>332</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#332 id=332 data-nosnippet>332</a>            </span>in_send.send((<span class="number">1</span>, Ok::&lt;(), ()&gt;(())));
 <a href=#333 id=333 data-nosnippet>333</a>            in_send.send((<span class="number">2</span>, <span class="prelude-val">Err</span>(())));
 <a href=#334 id=334 data-nosnippet>334</a>            in_send.send((<span class="number">3</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#335 id=335 data-nosnippet>335</a>
@@ -365,7 +365,7 @@
 <a href=#365 id=365 data-nosnippet>365</a>
 <a href=#366 id=366 data-nosnippet>366</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
 <a href=#367 id=367 data-nosnippet>367</a>            <span class="comment">// Key 1: First reaches quorum with 2 successes
-<a href=#368 id=368 data-nosnippet>368</a>            </span>in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())));
+<a href=#368 id=368 data-nosnippet>368</a>            </span>in_send.send((<span class="number">1</span>, Ok::&lt;(), ()&gt;(())));
 <a href=#369 id=369 data-nosnippet>369</a>            in_send.send((<span class="number">1</span>, <span class="prelude-val">Ok</span>(())));
 <a href=#370 id=370 data-nosnippet>370</a>
 <a href=#371 id=371 data-nosnippet>371</a>            <span class="comment">// Key 1: Additional responses after quorum - should not trigger quorum again
