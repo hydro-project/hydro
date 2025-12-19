@@ -1810,6 +1810,60 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbo
     }
 }
 
+impl<'a, T, L: Location<'a> + NoTick, R: Retries> Stream<T, L, Unbounded, TotalOrder, R> {
+    /// Produces a new stream that combines the elements of the two input streams,
+    /// preserving the relative order of elements within each input.
+    ///
+    /// Currently, both input streams must be [`Unbounded`]. When the streams are
+    /// [`Bounded`], you can use [`Stream::chain`] instead.
+    ///
+    /// # Non-Determinism
+    /// The order in which elements *across* the two streams will be interleaved is
+    /// non-deterministic, so the order of elements will vary across runs. If the output order
+    /// is irrelevant, use [`Stream::interleave`] instead, which is deterministic but emits an
+    /// unordered stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let numbers = process.source_iter(q!(vec![1, 3]));
+    /// numbers.clone().merge_ordered(numbers.map(q!(|x| x + 1)), nondet!(/** example */))
+    /// # }, |mut stream| async move {
+    /// // 1, 3 and 2, 4 in some order, preserving the original local order
+    /// # for w in vec![1, 3, 2, 4] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn merge_ordered<R2: Retries>(
+        self,
+        other: Stream<T, L, Unbounded, TotalOrder, R2>,
+        _nondet: NonDet,
+    ) -> Stream<T, L, Unbounded, TotalOrder, <R as MinRetries<R2>>::Min>
+    where
+        R: MinRetries<R2>,
+    {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Chain {
+                first: Box::new(self.ir_node.into_inner()),
+                second: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    L,
+                    Unbounded,
+                    TotalOrder,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
+            },
+        )
+    }
+}
+
 impl<'a, T, L, O: Ordering, R: Retries> Stream<T, L, Bounded, O, R>
 where
     L: Location<'a>,
