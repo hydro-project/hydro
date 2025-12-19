@@ -23,7 +23,6 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::{QuotedWithContext, RuntimeData};
 use syn::parse_quote;
-use tokio::sync::RwLock;
 
 use super::deploy_runtime::*;
 use crate::compile::deploy_provider::{
@@ -92,17 +91,11 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying
-                .try_read()
-                .unwrap()
-                .get_port(p1_port.clone(), self_underlying);
+            let source_port = self_underlying.get_port(p1_port.clone());
 
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
-            let recipient_port = other_underlying
-                .try_read()
-                .unwrap()
-                .get_port(p2_port.clone(), other_underlying);
+            let recipient_port = other_underlying.get_port(p2_port.clone());
 
             source_port.send_to(&recipient_port)
         })
@@ -137,10 +130,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying
-                .try_read()
-                .unwrap()
-                .get_port(p1_port.clone(), self_underlying);
+            let source_port = self_underlying.get_port(p1_port.clone());
 
             let recipient_port = DemuxSink {
                 demux: c2
@@ -149,10 +139,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
                     .iter()
                     .enumerate()
                     .map(|(id, c)| {
-                        let n = c.underlying.try_read().unwrap();
                         (
                             id as u32,
-                            Arc::new(n.get_port(c2_port.clone(), &c.underlying))
+                            Arc::new(c.underlying.get_port(c2_port.clone()))
                                 as Arc<dyn RustCrateSink + 'static>,
                         )
                     })
@@ -192,18 +181,10 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
-            let recipient_port = other_underlying
-                .try_read()
-                .unwrap()
-                .get_port(p2_port.clone(), other_underlying)
-                .merge();
+            let recipient_port = other_underlying.get_port(p2_port.clone()).merge();
 
             for (i, node) in c1.members.borrow().iter().enumerate() {
-                let source_port = node
-                    .underlying
-                    .try_read()
-                    .unwrap()
-                    .get_port(c1_port.clone(), &node.underlying);
+                let source_port = node.underlying.get_port(c1_port.clone());
 
                 TaggedSource {
                     source: Arc::new(source_port),
@@ -242,11 +223,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
         Box::new(move || {
             for (i, sender) in c1.members.borrow().iter().enumerate() {
-                let source_port = sender
-                    .underlying
-                    .try_read()
-                    .unwrap()
-                    .get_port(c1_port.clone(), &sender.underlying);
+                let source_port = sender.underlying.get_port(c1_port.clone());
 
                 let recipient_port = DemuxSink {
                     demux: c2
@@ -255,10 +232,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
                         .iter()
                         .enumerate()
                         .map(|(id, c)| {
-                            let n = c.underlying.try_read().unwrap();
                             (
                                 id as u32,
-                                Arc::new(n.get_port(c2_port.clone(), &c.underlying).merge())
+                                Arc::new(c.underlying.get_port(c2_port.clone()).merge())
                                     as Arc<dyn RustCrateSink + 'static>,
                             )
                         })
@@ -386,20 +362,16 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying
-                .try_read()
-                .unwrap()
-                .declare_many_client(self_underlying);
+            let source_port = self_underlying.declare_many_client();
 
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
-            let recipient_port = other_underlying.try_read().unwrap().get_port_with_hint(
+            let recipient_port = other_underlying.get_port_with_hint(
                 p2_port.clone(),
                 match server_hint {
                     NetworkHint::Auto => hydro_deploy::PortNetworkHint::Auto,
                     NetworkHint::TcpPort(p) => hydro_deploy::PortNetworkHint::TcpPort(p),
                 },
-                other_underlying,
             );
 
             source_port.send_to(&recipient_port);
@@ -444,37 +416,32 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
 #[expect(missing_docs, reason = "TODO")]
 pub trait DeployCrateWrapper {
-    fn underlying(&self) -> Arc<RwLock<RustCrateService>>;
+    fn underlying(&self) -> Arc<RustCrateService>;
 
-    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn stdout(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
-        self.underlying().read().await.stdout()
+    fn stdout(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+        self.underlying().stdout()
     }
 
-    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn stderr(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
-        self.underlying().read().await.stderr()
+    fn stderr(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+        self.underlying().stderr()
     }
 
-    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn stdout_filter(
+    fn stdout_filter(
         &self,
         prefix: impl Into<String>,
     ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
-        self.underlying().read().await.stdout_filter(prefix.into())
+        self.underlying().stdout_filter(prefix.into())
     }
 
-    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn stderr_filter(
+    fn stderr_filter(
         &self,
         prefix: impl Into<String>,
     ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
-        self.underlying().read().await.stderr_filter(prefix.into())
+        self.underlying().stderr_filter(prefix.into())
     }
 
-    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn tracing_results(&self) -> Option<TracingResults> {
-        self.underlying().read().await.tracing_results().cloned()
+    fn tracing_results(&self) -> Option<TracingResults> {
+        self.underlying().tracing_results().cloned()
     }
 }
 
@@ -638,7 +605,7 @@ impl<H: Host + 'static> IntoProcessSpec<'_, HydroDeploy> for Arc<H> {
 pub struct DeployExternal {
     next_port: Rc<RefCell<usize>>,
     host: Arc<dyn Host>,
-    underlying: Rc<RefCell<Option<Arc<RwLock<CustomService>>>>>,
+    underlying: Rc<RefCell<Option<Arc<CustomService>>>>,
     client_ports: Rc<RefCell<HashMap<String, CustomClientPort>>>,
     allocated_ports: Rc<RefCell<HashMap<usize, String>>>,
 }
@@ -755,7 +722,7 @@ impl Node for DeployExternal {
         *self.underlying.borrow_mut() = Some(service);
     }
 
-    fn update_meta(&mut self, _meta: &Self::Meta) {}
+    fn update_meta(&self, _meta: &Self::Meta) {}
 }
 
 impl ExternalSpec<'_, HydroDeploy> for Arc<dyn Host> {
@@ -793,12 +760,12 @@ pub struct DeployNode {
     id: usize,
     next_port: Rc<RefCell<usize>>,
     service_spec: Rc<RefCell<Option<CrateOrTrybuild>>>,
-    underlying: Rc<RefCell<Option<Arc<RwLock<RustCrateService>>>>>,
+    underlying: Rc<RefCell<Option<Arc<RustCrateService>>>>,
 }
 
 impl DeployCrateWrapper for DeployNode {
-    fn underlying(&self) -> Arc<RwLock<RustCrateService>> {
-        self.underlying.borrow().as_ref().unwrap().clone()
+    fn underlying(&self) -> Arc<RustCrateService> {
+        Arc::clone(self.underlying.borrow().as_ref().unwrap())
     }
 }
 
@@ -814,10 +781,9 @@ impl Node for DeployNode {
         format!("port_{}", next_port)
     }
 
-    fn update_meta(&mut self, meta: &Self::Meta) {
+    fn update_meta(&self, meta: &Self::Meta) {
         let underlying_node = self.underlying.borrow();
-        let mut n = underlying_node.as_ref().unwrap().try_write().unwrap();
-        n.update_meta(HydroMeta {
+        underlying_node.as_ref().unwrap().update_meta(HydroMeta {
             clusters: meta.clone(),
             cluster_id: None,
             subgraph_id: self.id,
@@ -857,11 +823,11 @@ impl Node for DeployNode {
 #[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
 pub struct DeployClusterNode {
-    underlying: Arc<RwLock<RustCrateService>>,
+    underlying: Arc<RustCrateService>,
 }
 
 impl DeployCrateWrapper for DeployClusterNode {
-    fn underlying(&self) -> Arc<RwLock<RustCrateService>> {
+    fn underlying(&self) -> Arc<RustCrateService> {
         self.underlying.clone()
     }
 }
@@ -960,10 +926,9 @@ impl Node for DeployCluster {
             .collect();
     }
 
-    fn update_meta(&mut self, meta: &Self::Meta) {
+    fn update_meta(&self, meta: &Self::Meta) {
         for (cluster_id, node) in self.members.borrow().iter().enumerate() {
-            let mut n = node.underlying.try_write().unwrap();
-            n.update_meta(HydroMeta {
+            node.underlying.update_meta(HydroMeta {
                 clusters: meta.clone(),
                 cluster_id: Some(TaglessMemberId::from_raw_id(cluster_id as u32)),
                 subgraph_id: self.id,

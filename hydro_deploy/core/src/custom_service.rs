@@ -6,7 +6,6 @@ use anyhow::{Result, bail};
 use async_trait::async_trait;
 use hydro_deploy_integration::ConnectedDirect;
 pub use hydro_deploy_integration::ServerPort;
-use tokio::sync::RwLock;
 
 use crate::rust_crate::ports::{
     ReverseSinkInstantiator, RustCrateServer, RustCrateSink, RustCrateSource, ServerConfig,
@@ -24,7 +23,7 @@ pub struct CustomService {
     /// The ports that the service wishes to expose to the public internet.
     external_ports: Vec<u16>,
 
-    launched_host: Option<Arc<dyn LaunchedHost>>,
+    launched_host: OnceLock<Arc<dyn LaunchedHost>>,
 }
 
 impl CustomService {
@@ -33,23 +32,23 @@ impl CustomService {
             _id: id,
             on,
             external_ports,
-            launched_host: None,
+            launched_host: OnceLock::new(),
         }
     }
 
-    pub fn declare_client(&self, self_arc: &Arc<RwLock<Self>>) -> CustomClientPort {
-        CustomClientPort::new(Arc::downgrade(self_arc), false)
+    pub fn declare_client(self: &Arc<Self>) -> CustomClientPort {
+        CustomClientPort::new(Arc::downgrade(self), false)
     }
 
-    pub fn declare_many_client(&self, self_arc: &Arc<RwLock<Self>>) -> CustomClientPort {
-        CustomClientPort::new(Arc::downgrade(self_arc), true)
+    pub fn declare_many_client(self: &Arc<Self>) -> CustomClientPort {
+        CustomClientPort::new(Arc::downgrade(self), true)
     }
 }
 
 #[async_trait]
 impl Service for CustomService {
     fn collect_resources(&self, _resource_batch: &mut ResourceBatch) {
-        if self.launched_host.is_some() {
+        if self.launched_host.get().is_some() {
             return;
         }
 
@@ -60,39 +59,38 @@ impl Service for CustomService {
         }
     }
 
-    async fn deploy(&mut self, resource_result: &Arc<ResourceResult>) -> Result<()> {
-        if self.launched_host.is_some() {
-            return Ok(());
-        }
+    async fn deploy(&self, resource_result: &Arc<ResourceResult>) -> Result<()> {
+        self.launched_host.get_or_init(|| {
+            let host = &self.on;
+            let launched = host.provision(resource_result);
+            launched
+        });
 
-        let host = &self.on;
-        let launched = host.provision(resource_result);
-        self.launched_host = Some(launched);
         Ok(())
     }
 
-    async fn ready(&mut self) -> Result<()> {
+    async fn ready(&self) -> Result<()> {
         Ok(())
     }
 
-    async fn start(&mut self) -> Result<()> {
+    async fn start(&self) -> Result<()> {
         Ok(())
     }
 
-    async fn stop(&mut self) -> Result<()> {
+    async fn stop(&self) -> Result<()> {
         Ok(())
     }
 }
 
 #[derive(Clone)]
 pub struct CustomClientPort {
-    pub on: Weak<RwLock<CustomService>>,
+    pub on: Weak<CustomService>,
     many: bool,
     client_port: OnceLock<ServerConfig>,
 }
 
 impl CustomClientPort {
-    fn new(on: Weak<RwLock<CustomService>>, many: bool) -> Self {
+    fn new(on: Weak<CustomService>, many: bool) -> Self {
         Self {
             on,
             many,
@@ -123,9 +121,9 @@ impl CustomClientPort {
 impl RustCrateSource for CustomClientPort {
     fn source_path(&self) -> SourcePath {
         if self.many {
-            SourcePath::Many(self.on.upgrade().unwrap().try_read().unwrap().on.clone())
+            SourcePath::Many(self.on.upgrade().unwrap().on.clone())
         } else {
-            SourcePath::Direct(self.on.upgrade().unwrap().try_read().unwrap().on.clone())
+            SourcePath::Direct(self.on.upgrade().unwrap().on.clone())
         }
     }
 
@@ -161,12 +159,11 @@ impl RustCrateSink for CustomClientPort {
         wrap_client_port: &dyn Fn(ServerConfig) -> ServerConfig,
     ) -> Result<ReverseSinkInstantiator> {
         let client = self.on.upgrade().unwrap();
-        let client_read = client.try_read().unwrap();
 
         let server_host = server_host.clone();
 
         let (conn_type, bind_type) =
-            server_host.strategy_as_server(client_read.on.deref(), crate::PortNetworkHint::Auto)?;
+            server_host.strategy_as_server(client.on.deref(), crate::PortNetworkHint::Auto)?;
 
         let client_port = wrap_client_port(ServerConfig::from_strategy(&conn_type, server_sink));
 

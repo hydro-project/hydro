@@ -5,6 +5,7 @@ use std::ops::Deref;
 use std::sync::{Arc, Weak};
 
 use anyhow::{Result, bail};
+use append_only_vec::AppendOnlyVec;
 use async_recursion::async_recursion;
 use dyn_clone::DynClone;
 use hydro_deploy_integration::ServerPort;
@@ -142,7 +143,7 @@ impl RustCrateSink for DemuxSink {
         Ok(Box::new(move || {
             let instantiated_map = thunk_map
                 .into_iter()
-                .map(|(key, thunk)| (key, thunk()))
+                .map(|(key, thunk)| (key, (thunk)()))
                 .collect();
 
             ServerConfig::Demux(instantiated_map)
@@ -182,7 +183,7 @@ impl RustCrateSink for DemuxSink {
 
 #[derive(Clone, Debug)]
 pub struct RustCratePortConfig {
-    pub service: Weak<RwLock<RustCrateService>>,
+    pub service: Weak<RustCrateService>,
     pub service_host: Arc<dyn Host>,
     pub service_server_defns: Arc<RwLock<HashMap<String, ServerPort>>>,
     pub network_hint: PortNetworkHint,
@@ -191,29 +192,15 @@ pub struct RustCratePortConfig {
 }
 
 impl RustCratePortConfig {
-    pub fn merge(&self) -> Self {
-        Self {
-            service: self.service.clone(),
-            service_host: self.service_host.clone(),
-            service_server_defns: self.service_server_defns.clone(),
-            network_hint: self.network_hint,
-            port: self.port.clone(),
-            merge: true,
-        }
+    pub fn merge(mut self) -> Self {
+        self.merge = true;
+        self
     }
 }
 
 impl RustCrateSource for RustCratePortConfig {
     fn source_path(&self) -> SourcePath {
-        SourcePath::Direct(
-            self.service
-                .upgrade()
-                .unwrap()
-                .try_read()
-                .unwrap()
-                .on
-                .clone(),
-        )
+        SourcePath::Direct(self.service.upgrade().unwrap().on.clone())
     }
 
     fn host(&self) -> Arc<dyn Host> {
@@ -222,12 +209,11 @@ impl RustCrateSource for RustCratePortConfig {
 
     fn server(&self) -> Arc<dyn RustCrateServer> {
         let from = self.service.upgrade().unwrap();
-        let from_read = from.try_read().unwrap();
 
         Arc::new(RustCratePortConfig {
             service: Arc::downgrade(&from),
-            service_host: from_read.on.clone(),
-            service_server_defns: from_read.server_defns.clone(),
+            service_host: from.on.clone(),
+            service_server_defns: from.server_defns.clone(),
             network_hint: self.network_hint,
             port: self.port.clone(),
             merge: false,
@@ -236,22 +222,19 @@ impl RustCrateSource for RustCratePortConfig {
 
     fn record_server_config(&self, config: ServerConfig) {
         let from = self.service.upgrade().unwrap();
-        let mut from_write = from.try_write().unwrap();
-
         // TODO(shadaj): if already in this map, we want to broadcast
         assert!(
-            !from_write.port_to_server.contains_key(&self.port),
+            from.port_to_server.insert(self.port.clone(), config),
             "The port configuration is incorrect, for example, are you using a ConnectedDirect instead of a ConnectedDemux?"
         );
-        from_write.port_to_server.insert(self.port.clone(), config);
     }
 
     fn record_server_strategy(&self, config: ServerStrategy) {
         let from = self.service.upgrade().unwrap();
-        let mut from_write = from.try_write().unwrap();
-
-        assert!(!from_write.port_to_bind.contains_key(&self.port));
-        from_write.port_to_bind.insert(self.port.clone(), config);
+        assert!(
+            from.port_to_bind.insert(self.port.clone(), config),
+            "port already set!"
+        );
     }
 }
 
@@ -324,9 +307,8 @@ impl SourcePath {
 impl RustCrateSink for RustCratePortConfig {
     fn instantiate(&self, client_path: &SourcePath) -> Result<Box<dyn FnOnce() -> ServerConfig>> {
         let server = self.service.upgrade().unwrap();
-        let server_read = server.try_read().unwrap();
 
-        let server_host = server_read.on.clone();
+        let server_host = server.on.clone();
 
         let (bind_type, base_config) =
             client_path.plan(self, server_host.deref(), self.network_hint)?;
@@ -335,25 +317,22 @@ impl RustCrateSink for RustCratePortConfig {
         let merge = self.merge;
         let port = self.port.clone();
         Ok(Box::new(move || {
-            let mut server_write = server.try_write().unwrap();
-            let bind_type = (bind_type)(&*server_write.on);
+            let bind_type = (bind_type)(&*server.on);
 
             if merge {
-                let merge_config = server_write
+                let merge_config = server
                     .port_to_bind
-                    .entry(port.clone())
-                    .or_insert(ServerStrategy::Merge(vec![]));
-                let merge_index = if let ServerStrategy::Merge(merge) = merge_config {
-                    merge.push(bind_type);
-                    merge.len() - 1
-                } else {
+                    .get_or_insert_owned(port, || ServerStrategy::Merge(Default::default()));
+                let ServerStrategy::Merge(merge) = merge_config else {
                     panic!("Expected a merge connection definition")
                 };
-
-                ServerConfig::MergeSelect(Box::new(base_config), merge_index)
+                merge.push(bind_type);
+                ServerConfig::MergeSelect(Box::new(base_config), merge.len() - 1)
             } else {
-                assert!(!server_write.port_to_bind.contains_key(&port));
-                server_write.port_to_bind.insert(port.clone(), bind_type);
+                assert!(
+                    server.port_to_bind.insert(port.clone(), bind_type),
+                    "port already set!"
+                );
                 base_config
             }
         }))
@@ -370,39 +349,33 @@ impl RustCrateSink for RustCratePortConfig {
         }
 
         let client = self.service.upgrade().unwrap();
-        let client_read = client.try_read().unwrap();
 
         let server_host = server_host.clone();
 
         let (conn_type, bind_type) =
-            server_host.strategy_as_server(client_read.on.deref(), PortNetworkHint::Auto)?;
+            server_host.strategy_as_server(&*client.on, PortNetworkHint::Auto)?;
         let client_port = wrap_client_port(ServerConfig::from_strategy(&conn_type, server_sink));
 
         let client = client.clone();
         let merge = self.merge;
         let port = self.port.clone();
         Ok(Box::new(move |_| {
-            let mut client_write = client.try_write().unwrap();
-
             if merge {
-                let merge_config = client_write
+                let merge_config = client
                     .port_to_server
-                    .entry(port.clone())
-                    .or_insert(ServerConfig::Merge(vec![]));
-
-                if let ServerConfig::Merge(merge) = merge_config {
-                    merge.push(client_port);
-                } else {
+                    .get_or_insert_owned(port, || ServerConfig::Merge(Default::default()));
+                let ServerConfig::Merge(merge) = merge_config else {
                     panic!()
                 };
+                merge.push(client_port);
             } else {
-                assert!(!client_write.port_to_server.contains_key(&port));
-                client_write
-                    .port_to_server
-                    .insert(port.clone(), client_port);
+                assert!(
+                    client.port_to_server.insert(port.clone(), client_port),
+                    "port already set!"
+                );
             };
 
-            ServerStrategy::Direct((bind_type)(&*client_write.on))
+            ServerStrategy::Direct((bind_type)(&*client.on))
         }))
     }
 }
@@ -416,7 +389,8 @@ pub enum ServerConfig {
     /// The other side of a demux, with a port to extract the appropriate connection.
     DemuxSelect(Box<ServerConfig>, u32),
     /// A merge that will be used at runtime to combine many connections.
-    Merge(Vec<ServerConfig>),
+    /// AppendOnlyVec has a quite large inline array, so we box it.
+    Merge(Box<AppendOnlyVec<ServerConfig>>),
     /// The other side of a merge, with a port to extract the appropriate connection.
     MergeSelect(Box<ServerConfig>, usize),
     Tagged(Box<ServerConfig>, u32),
@@ -503,7 +477,7 @@ impl ServerConfig {
 
             ServerConfig::Merge(merge) => {
                 let mut merge_vec = Vec::new();
-                for conn in merge {
+                for conn in merge.iter() {
                     merge_vec.push(conn.load_instantiated(select).await);
                 }
                 ServerPort::Merge(merge_vec)
