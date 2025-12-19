@@ -12,7 +12,7 @@ async fn main() {
         .expect("Expected GCP project as first argument");
 
     let mut deployment = Deployment::new();
-    let vpc = Arc::new(GcpNetwork::new(&gcp_project, None));
+    let vpc = GcpNetwork::new(&gcp_project, None);
 
     let flow = hydro_lang::compile::builder::FlowBuilder::new();
     let process = flow.process();
