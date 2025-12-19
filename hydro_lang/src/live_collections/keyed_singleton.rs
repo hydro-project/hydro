@@ -17,12 +17,13 @@ use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, TeeNode,
 };
-use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::stream::{Ordering, Retries};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
+use crate::location::tick::DeferTick;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
@@ -172,10 +173,57 @@ where
     }
 }
 
+impl<'a, K, V, L> CycleCollection<'a, TickCycle> for KeyedSingleton<K, V, Tick<L>, Bounded>
+where
+    L: Location<'a>,
+{
+    type Location = Tick<L>;
+
+    fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
+        KeyedSingleton::new(
+            location.clone(),
+            HydroNode::CycleSource {
+                ident,
+                metadata: location.new_node_metadata(Self::collection_kind()),
+            },
+        )
+    }
+}
+
+impl<'a, K, V, L> DeferTick for KeyedSingleton<K, V, Tick<L>, Bounded>
+where
+    L: Location<'a>,
+{
+    fn defer_tick(self) -> Self {
+        KeyedSingleton::defer_tick(self)
+    }
+}
+
 impl<'a, K, V, L, B: KeyedSingletonBound> ReceiverComplete<'a, ForwardRef>
     for KeyedSingleton<K, V, L, B>
 where
     L: Location<'a> + NoTick,
+{
+    fn complete(self, ident: syn::Ident, expected_location: LocationId) {
+        assert_eq!(
+            Location::id(&self.location),
+            expected_location,
+            "locations do not match"
+        );
+        self.location
+            .flow_state()
+            .borrow_mut()
+            .push_root(HydroRoot::CycleSink {
+                ident,
+                input: Box::new(self.ir_node.into_inner()),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
+    }
+}
+
+impl<'a, K, V, L> ReceiverComplete<'a, TickCycle> for KeyedSingleton<K, V, Tick<L>, Bounded>
+where
+    L: Location<'a>,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
