@@ -20,7 +20,7 @@ impl<Item, StreamItem, Error> BufferedLazySinkSource<Item, StreamItem, Error>
 where
     Item: Send + 'static,
     StreamItem: Send + 'static,
-    Error: Send + core::error::Error + 'static,
+    Error: Send + 'static,
 {
     /// Creates a new `BufferedLazySinkSource` with the given initialization future.
     /// Immediately spawns a task to run the future.
@@ -29,7 +29,6 @@ where
         Fut: Future<Output = Result<(St, Si), Error>> + Send + 'static,
         St: Stream<Item = StreamItem> + Send + Unpin + 'static,
         Si: Sink<Item> + Send + Unpin + 'static,
-        Si::Error: core::error::Error,
     {
         let (sink_tx, mut sink_rx) = mpsc::unbounded_channel::<Item>();
         let (stream_tx, stream_rx) = mpsc::unbounded_channel::<StreamItem>();
@@ -39,20 +38,28 @@ where
                 Ok((mut stream, mut sink)) => loop {
                     tokio::select! {
                         item = sink_rx.recv() => {
-                            if let Some(item) = item {
-                                sink.send(item).await.unwrap();
+                            match item {
+                                Some(item) => {
+                                    if sink.send(item).await.is_err() {
+                                        break;
+                                    }
+                                }
+                                None => break,
                             }
                         }
                         item = stream.next() => {
-                            if let Some(item) = item {
-                                stream_tx.send(item).unwrap();
+                            match item {
+                                Some(item) => {
+                                    if stream_tx.send(item).is_err() {
+                                        break;
+                                    }
+                                }
+                                None => break,
                             }
                         }
                     }
                 },
-                Err(err) => {
-                    panic!("Failed to initialize BufferedLazySinkSource: {err}");
-                }
+                Err(_) => {}
             }
         });
 
@@ -102,7 +109,7 @@ impl<Item, Error> Sink<Item> for BufferedLazySinkHalf<Item, Error> {
     }
 
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
-        self.tx.send(item).unwrap();
+        let _ = self.tx.send(item);
         Ok(())
     }
 
@@ -118,8 +125,8 @@ impl<Item, Error> Sink<Item> for BufferedLazySinkHalf<Item, Error> {
 impl<StreamItem, Error: Unpin> Stream for BufferedLazySourceHalf<StreamItem, Error> {
     type Item = StreamItem;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.rx.poll_recv(cx)
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Pin::into_inner(self).rx.poll_recv(cx)
     }
 }
 

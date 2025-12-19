@@ -249,6 +249,7 @@ pub fn deploy_containerized_external_sink_source_ident(socket_ident: syn::Ident)
         FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
         FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
         bytes::Bytes,
+        // Result<bytes::BytesMut, std::io::Error>,
         std::io::Error,
     >::new(async move {
         let (stream, peer) = socket_ident.accept().await?;

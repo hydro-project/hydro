@@ -8,6 +8,8 @@ use tokio::sync::RwLock;
 
 #[cfg(stageleft_runtime)]
 use crate::deploy::{DockerDeploy, DockerNetwork};
+#[cfg(stageleft_runtime)]
+use crate::deploy::{DockerDeployEcs, DockerNetworkEcs};
 use crate::live_collections::stream::NoOrder;
 use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
 use crate::location::{MemberId, MembershipEvent};
@@ -64,11 +66,13 @@ fn distributed_echo<'a>(
     (tx, rx, ems_c2, ems_c3)
 }
 
-const CLUSTER_SIZE: usize = 3;
+const CLUSTER_SIZE: usize = 2;
 
 #[tokio::test]
 async fn docker() {
-    telemetry::initialize_tracing_with_directive("trace");
+    telemetry::initialize_tracing_with_filter(
+        tracing_subscriber::EnvFilter::try_new("trace,hyper=off").unwrap(),
+    );
 
     let network = DockerNetwork::new("distributed_echo_test".to_string());
 
@@ -105,6 +109,102 @@ async fn docker() {
     deployment.start(&nodes).await.unwrap();
 
     let mut external_sink = nodes.connect(external_sink).await;
+    let mut external_stream = nodes.connect(external_stream).await;
+
+    let mut ems_c2_stream = nodes.connect(ems_c2).await;
+    let mut ems_c3_stream = nodes.connect(ems_c3).await;
+
+    println!("waiting for c2 events");
+    {
+        let mut events = Vec::new();
+        events.push(ems_c2_stream.next().await.unwrap());
+        println!("got 1 c2 events");
+        events.push(ems_c2_stream.next().await.unwrap());
+        println!("got 2 c2 events");
+    }
+
+    println!("waiting for c3 events");
+    {
+        let mut events = Vec::new();
+        events.push(ems_c3_stream.next().await.unwrap());
+        println!("got 1 c3 events");
+        events.push(ems_c3_stream.next().await.unwrap());
+        println!("got 2 c3 events");
+    }
+
+    println!("sending 0");
+    external_sink.send(0).await.unwrap();
+    assert_eq!(external_stream.next().await.unwrap(), 5);
+
+    println!("sending 1");
+
+    external_sink.send(1).await.unwrap();
+    assert_eq!(external_stream.next().await.unwrap(), 6);
+
+    external_sink.send(2).await.unwrap();
+    assert_eq!(external_stream.next().await.unwrap(), 7);
+
+    external_sink.send(3).await.unwrap();
+    assert_eq!(external_stream.next().await.unwrap(), 8);
+
+    deployment.stop(&nodes).await.unwrap();
+
+    deployment.cleanup(&nodes).await.unwrap();
+
+    println!("success");
+}
+
+#[tokio::test]
+async fn docker_ecs() {
+    telemetry::initialize_tracing_with_filter(tracing_subscriber::EnvFilter::try_new(
+        "trace,hyper=warn,aws_smithy_runtime=info,aws_sdk_ecs=info,aws_sigv4=info,aws_config=info,aws_runtime=info,aws_smithy_http_client=info,aws_sdk_ec2=info,aws_sdk_ecr=info,h2=warn,aws_sdk_iam=info,aws_sdk_servicediscovery=info",
+    ).unwrap());
+
+    let network = DockerNetworkEcs::new("distributed_echo_test".to_string());
+
+    let mut deployment = DockerDeployEcs::new(network);
+
+    let builder = FlowBuilder::new();
+    let external = builder.external();
+    let p1 = builder.process();
+    let c2 = builder.cluster();
+    let c3 = builder.cluster();
+    let p4 = builder.process();
+    let p5 = builder.process();
+    let (external_sink, external_stream, ems_c2, ems_c3) =
+        distributed_echo(&external, &p1, &c2, &c3, &p4, &p5);
+
+    let config = vec![
+        // r#"profile.dev.lto="fat""#.to_string(),
+        r#"profile.dev.strip="symbols""#.to_string(),
+        // r#"profile.dev.opt-level=3"#.to_string(),
+        // r#"profile.dev.panic="abort""#.to_string(),
+        // r#"profile.dev.codegen-units=1"#.to_string(),
+    ];
+
+    let nodes = builder
+        .with_process(&p1, deployment.add_localhost_docker(None, config.clone()))
+        .with_cluster(
+            &c2,
+            deployment.add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE),
+        )
+        .with_cluster(
+            &c3,
+            deployment.add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE),
+        )
+        .with_process(&p4, deployment.add_localhost_docker(None, config.clone()))
+        .with_process(&p5, deployment.add_localhost_docker(None, config.clone()))
+        .with_external(&external, deployment.add_external("external".to_string()))
+        .deploy(&mut deployment);
+
+    deployment.provision(&nodes).await.unwrap();
+    deployment.start(&nodes).await.unwrap();
+
+    tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+
+    tracing::warn!("connecting 1");
+    let mut external_sink = nodes.connect(external_sink).await;
+    tracing::warn!("connecting 2");
     let mut external_stream = nodes.connect(external_stream).await;
 
     let mut ems_c2_stream = nodes.connect(ems_c2).await;
