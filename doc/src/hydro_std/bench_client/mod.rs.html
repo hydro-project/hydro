@@ -67,255 +67,251 @@
 <a href=#67 id=67 data-nosnippet>67</a><span class="kw">where
 <a href=#68 id=68 data-nosnippet>68</a>    </span>Payload: Clone,
 <a href=#69 id=69 data-nosnippet>69</a>{
-<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">let </span>client_tick = clients.tick();
-<a href=#71 id=71 data-nosnippet>71</a>
-<a href=#72 id=72 data-nosnippet>72</a>    <span class="comment">// Set up an initial set of payloads on the first tick
-<a href=#73 id=73 data-nosnippet>73</a>    </span><span class="kw">let </span>initial_virtual_client = client_tick.optional_first_tick(<span class="macro">q!</span>(<span class="number">0u32</span>));
-<a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">let </span>(next_virtual_client_complete_cycle, next_virtual_client) = client_tick.cycle();
-<a href=#75 id=75 data-nosnippet>75</a>    <span class="kw">let </span>new_virtual_client = initial_virtual_client.or(next_virtual_client);
-<a href=#76 id=76 data-nosnippet>76</a>    next_virtual_client_complete_cycle.complete_next_tick(new_virtual_client.clone().filter_map(
-<a href=#77 id=77 data-nosnippet>77</a>        <span class="macro">q!</span>(<span class="kw">move </span>|virtual_id| {
-<a href=#78 id=78 data-nosnippet>78</a>            <span class="kw">if </span>virtual_id &lt; num_clients_per_node <span class="kw">as </span>u32 {
-<a href=#79 id=79 data-nosnippet>79</a>                <span class="prelude-val">Some</span>(virtual_id + <span class="number">1</span>)
-<a href=#80 id=80 data-nosnippet>80</a>            } <span class="kw">else </span>{
-<a href=#81 id=81 data-nosnippet>81</a>                <span class="prelude-val">None
-<a href=#82 id=82 data-nosnippet>82</a>            </span>}
-<a href=#83 id=83 data-nosnippet>83</a>        }),
-<a href=#84 id=84 data-nosnippet>84</a>    ));
-<a href=#85 id=85 data-nosnippet>85</a>
-<a href=#86 id=86 data-nosnippet>86</a>    <span class="kw">let </span>new_virtual_client_stream = new_virtual_client.into_stream();
-<a href=#87 id=87 data-nosnippet>87</a>
-<a href=#88 id=88 data-nosnippet>88</a>    <span class="kw">let </span>c_new_payloads_on_start = new_virtual_client_stream
-<a href=#89 id=89 data-nosnippet>89</a>        .clone()
-<a href=#90 id=90 data-nosnippet>90</a>        .map(<span class="macro">q!</span>(|virtual_id| (virtual_id, <span class="prelude-val">None</span>)));
-<a href=#91 id=91 data-nosnippet>91</a>
-<a href=#92 id=92 data-nosnippet>92</a>    <span class="kw">let </span>(c_to_proposers_complete_cycle, c_to_proposers) =
-<a href=#93 id=93 data-nosnippet>93</a>        clients.forward_ref::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TotalOrder&gt;&gt;();
+<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">let </span>(c_to_proposers_complete_cycle, c_to_proposers) =
+<a href=#71 id=71 data-nosnippet>71</a>        clients.forward_ref::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TotalOrder&gt;&gt;();
+<a href=#72 id=72 data-nosnippet>72</a>
+<a href=#73 id=73 data-nosnippet>73</a>    <span class="kw">let </span>(c_latencies, c_throughput_batches, c_new_payloads) = <span class="macro">sliced!</span> {
+<a href=#74 id=74 data-nosnippet>74</a>        <span class="kw">let </span><span class="kw-2">mut </span>next_virtual_client = <span class="kw">use</span>::state(|l| Optional::from(l.singleton(<span class="macro">q!</span>(<span class="number">0u32</span>))));
+<a href=#75 id=75 data-nosnippet>75</a>        <span class="kw">let </span><span class="kw-2">mut </span>timers = <span class="kw">use</span>::state_null::&lt;KeyedSingleton&lt;u32, Instant, <span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
+<a href=#76 id=76 data-nosnippet>76</a>
+<a href=#77 id=77 data-nosnippet>77</a>        <span class="kw">let </span>transaction_results = <span class="kw">use</span>(transaction_cycle(c_to_proposers).into_keyed(), <span class="macro">nondet!</span>(
+<a href=#78 id=78 data-nosnippet>78</a>            <span class="doccomment">/// because the transaction processor is required to handle arbitrary reordering
+<a href=#79 id=79 data-nosnippet>79</a>            /// across *different* keys, we are safe because delaying a transaction result for a key
+<a href=#80 id=80 data-nosnippet>80</a>            /// will only affect when the next request for that key is emitted with respect to other keys
+<a href=#81 id=81 data-nosnippet>81</a>        </span>));
+<a href=#82 id=82 data-nosnippet>82</a>
+<a href=#83 id=83 data-nosnippet>83</a>        <span class="comment">// Set up virtual clients - spawn new ones each tick until we reach the limit
+<a href=#84 id=84 data-nosnippet>84</a>        </span><span class="kw">let </span>new_virtual_client = next_virtual_client.clone();
+<a href=#85 id=85 data-nosnippet>85</a>        next_virtual_client = new_virtual_client.clone().filter_map(
+<a href=#86 id=86 data-nosnippet>86</a>            <span class="macro">q!</span>(<span class="kw">move </span>|virtual_id| {
+<a href=#87 id=87 data-nosnippet>87</a>                <span class="kw">if </span>virtual_id &lt; num_clients_per_node <span class="kw">as </span>u32 {
+<a href=#88 id=88 data-nosnippet>88</a>                    <span class="prelude-val">Some</span>(virtual_id + <span class="number">1</span>)
+<a href=#89 id=89 data-nosnippet>89</a>                } <span class="kw">else </span>{
+<a href=#90 id=90 data-nosnippet>90</a>                    <span class="prelude-val">None
+<a href=#91 id=91 data-nosnippet>91</a>                </span>}
+<a href=#92 id=92 data-nosnippet>92</a>            }),
+<a href=#93 id=93 data-nosnippet>93</a>        );
 <a href=#94 id=94 data-nosnippet>94</a>
-<a href=#95 id=95 data-nosnippet>95</a>    <span class="comment">// Whenever all replicas confirm that a payload was committed, send another payload
-<a href=#96 id=96 data-nosnippet>96</a>    </span><span class="kw">let </span>c_received_quorum_payloads = transaction_cycle(c_to_proposers)
-<a href=#97 id=97 data-nosnippet>97</a>        .batch(
-<a href=#98 id=98 data-nosnippet>98</a>            <span class="kw-2">&amp;</span>client_tick,
-<a href=#99 id=99 data-nosnippet>99</a>            <span class="macro">nondet!</span>(
-<a href=#100 id=100 data-nosnippet>100</a>                <span class="doccomment">/// because the transaction processor is required to handle arbitrary reordering
-<a href=#101 id=101 data-nosnippet>101</a>                /// across *different* keys, we are safe because delaying a transaction result for a key
-<a href=#102 id=102 data-nosnippet>102</a>                /// will only affect when the next request for that key is emitted with respect to other keys
-<a href=#103 id=103 data-nosnippet>103</a>            </span>),
-<a href=#104 id=104 data-nosnippet>104</a>        )
-<a href=#105 id=105 data-nosnippet>105</a>        .map(<span class="macro">q!</span>(|(virtual_id, payload)| (virtual_id, <span class="prelude-val">Some</span>(payload))));
-<a href=#106 id=106 data-nosnippet>106</a>
-<a href=#107 id=107 data-nosnippet>107</a>    <span class="kw">let </span>c_new_payloads = workload_generator(
-<a href=#108 id=108 data-nosnippet>108</a>        clients,
-<a href=#109 id=109 data-nosnippet>109</a>        c_new_payloads_on_start
-<a href=#110 id=110 data-nosnippet>110</a>            .chain(c_received_quorum_payloads.clone())
-<a href=#111 id=111 data-nosnippet>111</a>            .all_ticks(),
-<a href=#112 id=112 data-nosnippet>112</a>    );
-<a href=#113 id=113 data-nosnippet>113</a>    c_to_proposers_complete_cycle.complete(c_new_payloads.assume_ordering::&lt;TotalOrder&gt;(<span class="macro">nondet!</span>(
-<a href=#114 id=114 data-nosnippet>114</a>        <span class="doccomment">/// We don't send a new write for the same key until the previous one is committed,
-<a href=#115 id=115 data-nosnippet>115</a>        /// so this contains only a single write per key, and we don't care about order
-<a href=#116 id=116 data-nosnippet>116</a>        /// across keys.
-<a href=#117 id=117 data-nosnippet>117</a>    </span>)));
-<a href=#118 id=118 data-nosnippet>118</a>
-<a href=#119 id=119 data-nosnippet>119</a>    <span class="comment">// Track statistics
-<a href=#120 id=120 data-nosnippet>120</a>    </span><span class="kw">let </span>(c_timers_complete_cycle, c_timers) =
-<a href=#121 id=121 data-nosnippet>121</a>        client_tick.cycle::&lt;Stream&lt;(u32, Instant), <span class="kw">_</span>, <span class="kw">_</span>, NoOrder&gt;&gt;();
-<a href=#122 id=122 data-nosnippet>122</a>    <span class="kw">let </span>c_new_timers_when_leader_elected =
-<a href=#123 id=123 data-nosnippet>123</a>        new_virtual_client_stream.map(<span class="macro">q!</span>(|virtual_id| (virtual_id, Instant::now())));
-<a href=#124 id=124 data-nosnippet>124</a>    <span class="kw">let </span>c_updated_timers = c_received_quorum_payloads
-<a href=#125 id=125 data-nosnippet>125</a>        .clone()
-<a href=#126 id=126 data-nosnippet>126</a>        .map(<span class="macro">q!</span>(|(key, _payload)| (key, Instant::now())));
-<a href=#127 id=127 data-nosnippet>127</a>    <span class="kw">let </span>c_new_timers = c_timers
-<a href=#128 id=128 data-nosnippet>128</a>        .clone() <span class="comment">// Update c_timers in tick+1 so we can record differences during this tick (to track latency)
-<a href=#129 id=129 data-nosnippet>129</a>        </span>.chain(c_new_timers_when_leader_elected)
-<a href=#130 id=130 data-nosnippet>130</a>        .chain(c_updated_timers.clone())
-<a href=#131 id=131 data-nosnippet>131</a>        .into_keyed()
-<a href=#132 id=132 data-nosnippet>132</a>        .reduce_commutative(<span class="macro">q!</span>(|curr_time, new_time| {
-<a href=#133 id=133 data-nosnippet>133</a>            <span class="kw">if </span>new_time &gt; <span class="kw-2">*</span>curr_time {
-<a href=#134 id=134 data-nosnippet>134</a>                <span class="kw-2">*</span>curr_time = new_time;
-<a href=#135 id=135 data-nosnippet>135</a>            }
-<a href=#136 id=136 data-nosnippet>136</a>        }))
-<a href=#137 id=137 data-nosnippet>137</a>        .entries();
-<a href=#138 id=138 data-nosnippet>138</a>    c_timers_complete_cycle.complete_next_tick(c_new_timers);
-<a href=#139 id=139 data-nosnippet>139</a>
-<a href=#140 id=140 data-nosnippet>140</a>    <span class="kw">let </span>c_latencies = c_timers
-<a href=#141 id=141 data-nosnippet>141</a>        .join(c_updated_timers)
-<a href=#142 id=142 data-nosnippet>142</a>        .map(<span class="macro">q!</span>(
-<a href=#143 id=143 data-nosnippet>143</a>            |(_virtual_id, (prev_time, curr_time))| curr_time.duration_since(prev_time)
-<a href=#144 id=144 data-nosnippet>144</a>        ))
-<a href=#145 id=145 data-nosnippet>145</a>        .all_ticks()
-<a href=#146 id=146 data-nosnippet>146</a>        .fold_commutative(
-<a href=#147 id=147 data-nosnippet>147</a>            <span class="macro">q!</span>(<span class="kw">move </span>|| Rc::new(RefCell::new(Histogram::&lt;u64&gt;::new(<span class="number">3</span>).unwrap()))),
-<a href=#148 id=148 data-nosnippet>148</a>            <span class="macro">q!</span>(<span class="kw">move </span>|latencies, latency| {
-<a href=#149 id=149 data-nosnippet>149</a>                latencies
-<a href=#150 id=150 data-nosnippet>150</a>                    .borrow_mut()
-<a href=#151 id=151 data-nosnippet>151</a>                    .record(latency.as_nanos() <span class="kw">as </span>u64)
-<a href=#152 id=152 data-nosnippet>152</a>                    .unwrap();
-<a href=#153 id=153 data-nosnippet>153</a>            }),
-<a href=#154 id=154 data-nosnippet>154</a>        );
-<a href=#155 id=155 data-nosnippet>155</a>
-<a href=#156 id=156 data-nosnippet>156</a>    <span class="kw">let </span>c_stats_output_timer = clients
-<a href=#157 id=157 data-nosnippet>157</a>        .source_interval(<span class="macro">q!</span>(Duration::from_secs(<span class="number">1</span>)), nondet_throughput_window)
-<a href=#158 id=158 data-nosnippet>158</a>        .batch(<span class="kw-2">&amp;</span>client_tick, nondet_throughput_window)
-<a href=#159 id=159 data-nosnippet>159</a>        .first();
-<a href=#160 id=160 data-nosnippet>160</a>
-<a href=#161 id=161 data-nosnippet>161</a>    <span class="kw">let </span>c_throughput_new_batch = c_received_quorum_payloads
-<a href=#162 id=162 data-nosnippet>162</a>        .count()
-<a href=#163 id=163 data-nosnippet>163</a>        .filter_if_none(c_stats_output_timer.clone())
-<a href=#164 id=164 data-nosnippet>164</a>        .map(<span class="macro">q!</span>(|batch_size| (batch_size, <span class="bool-val">false</span>)));
-<a href=#165 id=165 data-nosnippet>165</a>
-<a href=#166 id=166 data-nosnippet>166</a>    <span class="kw">let </span>c_throughput_reset = c_stats_output_timer.map(<span class="macro">q!</span>(|<span class="kw">_</span>| (<span class="number">0</span>, <span class="bool-val">true</span>))).defer_tick();
-<a href=#167 id=167 data-nosnippet>167</a>
-<a href=#168 id=168 data-nosnippet>168</a>    <span class="kw">let </span>c_throughput = c_throughput_new_batch
-<a href=#169 id=169 data-nosnippet>169</a>        .into_stream()
-<a href=#170 id=170 data-nosnippet>170</a>        .chain(c_throughput_reset.into_stream())
-<a href=#171 id=171 data-nosnippet>171</a>        .all_ticks()
-<a href=#172 id=172 data-nosnippet>172</a>        .fold(
-<a href=#173 id=173 data-nosnippet>173</a>            <span class="macro">q!</span>(|| (<span class="number">0</span>, { RollingAverage::new() })),
-<a href=#174 id=174 data-nosnippet>174</a>            <span class="macro">q!</span>(|(total, stats), (batch_size, reset)| {
-<a href=#175 id=175 data-nosnippet>175</a>                <span class="kw">if </span>reset {
-<a href=#176 id=176 data-nosnippet>176</a>                    <span class="kw">if </span><span class="kw-2">*</span>total &gt; <span class="number">0 </span>{
-<a href=#177 id=177 data-nosnippet>177</a>                        stats.add_sample(<span class="kw-2">*</span>total <span class="kw">as </span>f64);
-<a href=#178 id=178 data-nosnippet>178</a>                    }
-<a href=#179 id=179 data-nosnippet>179</a>
-<a href=#180 id=180 data-nosnippet>180</a>                    <span class="kw-2">*</span>total = <span class="number">0</span>;
-<a href=#181 id=181 data-nosnippet>181</a>                } <span class="kw">else </span>{
-<a href=#182 id=182 data-nosnippet>182</a>                    <span class="kw-2">*</span>total += batch_size;
-<a href=#183 id=183 data-nosnippet>183</a>                }
-<a href=#184 id=184 data-nosnippet>184</a>            }),
-<a href=#185 id=185 data-nosnippet>185</a>        )
-<a href=#186 id=186 data-nosnippet>186</a>        .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, stats)| { stats }));
-<a href=#187 id=187 data-nosnippet>187</a>
-<a href=#188 id=188 data-nosnippet>188</a>    BenchResult {
-<a href=#189 id=189 data-nosnippet>189</a>        latency_histogram: c_latencies,
-<a href=#190 id=190 data-nosnippet>190</a>        throughput: c_throughput,
-<a href=#191 id=191 data-nosnippet>191</a>    }
-<a href=#192 id=192 data-nosnippet>192</a>}
-<a href=#193 id=193 data-nosnippet>193</a>
-<a href=#194 id=194 data-nosnippet>194</a><span class="doccomment">/// Prints transaction latency and throughput results to stdout,
-<a href=#195 id=195 data-nosnippet>195</a>/// with percentiles for latency and a confidence interval for throughput.
-<a href=#196 id=196 data-nosnippet>196</a></span><span class="kw">pub fn </span>print_bench_results&lt;<span class="lifetime">'a</span>, Client: <span class="lifetime">'a</span>, Aggregator&gt;(
-<a href=#197 id=197 data-nosnippet>197</a>    results: BenchResult&lt;<span class="lifetime">'a</span>, Client&gt;,
-<a href=#198 id=198 data-nosnippet>198</a>    aggregator: <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>, Aggregator&gt;,
-<a href=#199 id=199 data-nosnippet>199</a>    clients: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Client&gt;,
-<a href=#200 id=200 data-nosnippet>200</a>) {
-<a href=#201 id=201 data-nosnippet>201</a>    <span class="kw">let </span>nondet_client_count = <span class="macro">nondet!</span>(<span class="doccomment">/** client count is stable in bench */</span>);
-<a href=#202 id=202 data-nosnippet>202</a>    <span class="kw">let </span>nondet_sampling = <span class="macro">nondet!</span>(<span class="doccomment">/** non-deterministic samping only affects logging */</span>);
-<a href=#203 id=203 data-nosnippet>203</a>    <span class="kw">let </span>print_tick = aggregator.tick();
-<a href=#204 id=204 data-nosnippet>204</a>    <span class="kw">let </span>client_members = aggregator.source_cluster_members(clients);
-<a href=#205 id=205 data-nosnippet>205</a>    <span class="kw">let </span>client_count = track_membership(client_members)
-<a href=#206 id=206 data-nosnippet>206</a>        .snapshot(<span class="kw-2">&amp;</span>print_tick, nondet_client_count)
-<a href=#207 id=207 data-nosnippet>207</a>        .filter(<span class="macro">q!</span>(|b| <span class="kw-2">*</span>b))
-<a href=#208 id=208 data-nosnippet>208</a>        .key_count();
-<a href=#209 id=209 data-nosnippet>209</a>
-<a href=#210 id=210 data-nosnippet>210</a>    <span class="kw">let </span>keyed_throughputs = results
-<a href=#211 id=211 data-nosnippet>211</a>        .throughput
-<a href=#212 id=212 data-nosnippet>212</a>        .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)), nondet_sampling)
-<a href=#213 id=213 data-nosnippet>213</a>        .send_bincode(aggregator);
+<a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>new_virtual_client_stream = new_virtual_client.into_stream();
+<a href=#96 id=96 data-nosnippet>96</a>
+<a href=#97 id=97 data-nosnippet>97</a>        <span class="kw">let </span>c_new_payloads_on_start = new_virtual_client_stream
+<a href=#98 id=98 data-nosnippet>98</a>            .clone()
+<a href=#99 id=99 data-nosnippet>99</a>            .map(<span class="macro">q!</span>(|virtual_id| (virtual_id, <span class="prelude-val">None</span>)))
+<a href=#100 id=100 data-nosnippet>100</a>            .into_keyed();
+<a href=#101 id=101 data-nosnippet>101</a>
+<a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">let </span>c_received_quorum_payloads = transaction_results
+<a href=#103 id=103 data-nosnippet>103</a>            .map(<span class="macro">q!</span>(|payload| <span class="prelude-val">Some</span>(payload)));
+<a href=#104 id=104 data-nosnippet>104</a>
+<a href=#105 id=105 data-nosnippet>105</a>        <span class="comment">// Track statistics - timers for latency measurement
+<a href=#106 id=106 data-nosnippet>106</a>        </span><span class="kw">let </span>c_new_timers_when_leader_elected =
+<a href=#107 id=107 data-nosnippet>107</a>            new_virtual_client_stream.map(<span class="macro">q!</span>(|virtual_id| (virtual_id, Instant::now()))).into_keyed();
+<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span>c_updated_timers = c_received_quorum_payloads
+<a href=#109 id=109 data-nosnippet>109</a>            .clone()
+<a href=#110 id=110 data-nosnippet>110</a>            .map(<span class="macro">q!</span>(|_payload| Instant::now()));
+<a href=#111 id=111 data-nosnippet>111</a>
+<a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span>c_latencies = timers
+<a href=#113 id=113 data-nosnippet>113</a>            .clone()
+<a href=#114 id=114 data-nosnippet>114</a>            .get_many_if_present(c_updated_timers.clone())
+<a href=#115 id=115 data-nosnippet>115</a>            .values()
+<a href=#116 id=116 data-nosnippet>116</a>            .map(<span class="macro">q!</span>(
+<a href=#117 id=117 data-nosnippet>117</a>                |(prev_time, curr_time)| curr_time.duration_since(prev_time)
+<a href=#118 id=118 data-nosnippet>118</a>            ));
+<a href=#119 id=119 data-nosnippet>119</a>
+<a href=#120 id=120 data-nosnippet>120</a>        timers = timers <span class="comment">// Update timers in tick+1 so we can record differences during this tick (to track latency)
+<a href=#121 id=121 data-nosnippet>121</a>            </span>.into_keyed_stream()
+<a href=#122 id=122 data-nosnippet>122</a>            .chain(c_new_timers_when_leader_elected)
+<a href=#123 id=123 data-nosnippet>123</a>            .chain(c_updated_timers)
+<a href=#124 id=124 data-nosnippet>124</a>            .reduce_commutative(<span class="macro">q!</span>(|curr_time, new_time| {
+<a href=#125 id=125 data-nosnippet>125</a>                <span class="kw">if </span>new_time &gt; <span class="kw-2">*</span>curr_time {
+<a href=#126 id=126 data-nosnippet>126</a>                    <span class="kw-2">*</span>curr_time = new_time;
+<a href=#127 id=127 data-nosnippet>127</a>                }
+<a href=#128 id=128 data-nosnippet>128</a>            }));
+<a href=#129 id=129 data-nosnippet>129</a>
+<a href=#130 id=130 data-nosnippet>130</a>        <span class="comment">// Throughput tracking
+<a href=#131 id=131 data-nosnippet>131</a>        </span><span class="kw">let </span>c_throughput_new_batch = c_received_quorum_payloads
+<a href=#132 id=132 data-nosnippet>132</a>            .clone()
+<a href=#133 id=133 data-nosnippet>133</a>            .values()
+<a href=#134 id=134 data-nosnippet>134</a>            .count();
+<a href=#135 id=135 data-nosnippet>135</a>
+<a href=#136 id=136 data-nosnippet>136</a>        <span class="kw">let </span>c_new_payloads = c_new_payloads_on_start.chain(c_received_quorum_payloads);
+<a href=#137 id=137 data-nosnippet>137</a>
+<a href=#138 id=138 data-nosnippet>138</a>        (c_latencies, c_throughput_new_batch.into_stream(), c_new_payloads)
+<a href=#139 id=139 data-nosnippet>139</a>    };
+<a href=#140 id=140 data-nosnippet>140</a>
+<a href=#141 id=141 data-nosnippet>141</a>    <span class="kw">let </span>c_new_payloads = workload_generator(clients, c_new_payloads.entries());
+<a href=#142 id=142 data-nosnippet>142</a>    c_to_proposers_complete_cycle.complete(c_new_payloads.assume_ordering::&lt;TotalOrder&gt;(<span class="macro">nondet!</span>(
+<a href=#143 id=143 data-nosnippet>143</a>        <span class="doccomment">/// We don't send a new write for the same key until the previous one is committed,
+<a href=#144 id=144 data-nosnippet>144</a>        /// so this contains only a single write per key, and we don't care about order
+<a href=#145 id=145 data-nosnippet>145</a>        /// across keys.
+<a href=#146 id=146 data-nosnippet>146</a>    </span>)));
+<a href=#147 id=147 data-nosnippet>147</a>
+<a href=#148 id=148 data-nosnippet>148</a>    <span class="kw">let </span>c_latencies = c_latencies.fold_commutative(
+<a href=#149 id=149 data-nosnippet>149</a>        <span class="macro">q!</span>(<span class="kw">move </span>|| Rc::new(RefCell::new(Histogram::&lt;u64&gt;::new(<span class="number">3</span>).unwrap()))),
+<a href=#150 id=150 data-nosnippet>150</a>        <span class="macro">q!</span>(<span class="kw">move </span>|latencies, latency| {
+<a href=#151 id=151 data-nosnippet>151</a>            latencies
+<a href=#152 id=152 data-nosnippet>152</a>                .borrow_mut()
+<a href=#153 id=153 data-nosnippet>153</a>                .record(latency.as_nanos() <span class="kw">as </span>u64)
+<a href=#154 id=154 data-nosnippet>154</a>                .unwrap();
+<a href=#155 id=155 data-nosnippet>155</a>        }),
+<a href=#156 id=156 data-nosnippet>156</a>    );
+<a href=#157 id=157 data-nosnippet>157</a>
+<a href=#158 id=158 data-nosnippet>158</a>    <span class="kw">let </span>throughput_with_timers = c_throughput_batches
+<a href=#159 id=159 data-nosnippet>159</a>        .map(<span class="macro">q!</span>(|batch_size| (batch_size, <span class="bool-val">false</span>)))
+<a href=#160 id=160 data-nosnippet>160</a>        .merge_ordered(
+<a href=#161 id=161 data-nosnippet>161</a>            clients
+<a href=#162 id=162 data-nosnippet>162</a>                .source_interval(<span class="macro">q!</span>(Duration::from_secs(<span class="number">1</span>)), nondet_throughput_window)
+<a href=#163 id=163 data-nosnippet>163</a>                .map(<span class="macro">q!</span>(|<span class="kw">_</span>| (<span class="number">0</span>, <span class="bool-val">true</span>))),
+<a href=#164 id=164 data-nosnippet>164</a>            nondet_throughput_window,
+<a href=#165 id=165 data-nosnippet>165</a>        );
+<a href=#166 id=166 data-nosnippet>166</a>
+<a href=#167 id=167 data-nosnippet>167</a>    <span class="kw">let </span>c_throughput = throughput_with_timers
+<a href=#168 id=168 data-nosnippet>168</a>        .fold(
+<a href=#169 id=169 data-nosnippet>169</a>            <span class="macro">q!</span>(|| (<span class="number">0</span>, { RollingAverage::new() })),
+<a href=#170 id=170 data-nosnippet>170</a>            <span class="macro">q!</span>(|(total, stats), (batch_size, reset)| {
+<a href=#171 id=171 data-nosnippet>171</a>                <span class="kw">if </span>reset {
+<a href=#172 id=172 data-nosnippet>172</a>                    <span class="kw">if </span><span class="kw-2">*</span>total &gt; <span class="number">0 </span>{
+<a href=#173 id=173 data-nosnippet>173</a>                        stats.add_sample(<span class="kw-2">*</span>total <span class="kw">as </span>f64);
+<a href=#174 id=174 data-nosnippet>174</a>                    }
+<a href=#175 id=175 data-nosnippet>175</a>
+<a href=#176 id=176 data-nosnippet>176</a>                    <span class="kw-2">*</span>total = <span class="number">0</span>;
+<a href=#177 id=177 data-nosnippet>177</a>                } <span class="kw">else </span>{
+<a href=#178 id=178 data-nosnippet>178</a>                    <span class="kw-2">*</span>total += batch_size;
+<a href=#179 id=179 data-nosnippet>179</a>                }
+<a href=#180 id=180 data-nosnippet>180</a>            }),
+<a href=#181 id=181 data-nosnippet>181</a>        )
+<a href=#182 id=182 data-nosnippet>182</a>        .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, stats)| stats));
+<a href=#183 id=183 data-nosnippet>183</a>
+<a href=#184 id=184 data-nosnippet>184</a>    BenchResult {
+<a href=#185 id=185 data-nosnippet>185</a>        latency_histogram: c_latencies,
+<a href=#186 id=186 data-nosnippet>186</a>        throughput: c_throughput,
+<a href=#187 id=187 data-nosnippet>187</a>    }
+<a href=#188 id=188 data-nosnippet>188</a>}
+<a href=#189 id=189 data-nosnippet>189</a>
+<a href=#190 id=190 data-nosnippet>190</a><span class="doccomment">/// Prints transaction latency and throughput results to stdout,
+<a href=#191 id=191 data-nosnippet>191</a>/// with percentiles for latency and a confidence interval for throughput.
+<a href=#192 id=192 data-nosnippet>192</a></span><span class="kw">pub fn </span>print_bench_results&lt;<span class="lifetime">'a</span>, Client: <span class="lifetime">'a</span>, Aggregator&gt;(
+<a href=#193 id=193 data-nosnippet>193</a>    results: BenchResult&lt;<span class="lifetime">'a</span>, Client&gt;,
+<a href=#194 id=194 data-nosnippet>194</a>    aggregator: <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>, Aggregator&gt;,
+<a href=#195 id=195 data-nosnippet>195</a>    clients: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Client&gt;,
+<a href=#196 id=196 data-nosnippet>196</a>) {
+<a href=#197 id=197 data-nosnippet>197</a>    <span class="kw">let </span>nondet_client_count = <span class="macro">nondet!</span>(<span class="doccomment">/** client count is stable in bench */</span>);
+<a href=#198 id=198 data-nosnippet>198</a>    <span class="kw">let </span>nondet_sampling = <span class="macro">nondet!</span>(<span class="doccomment">/** non-deterministic samping only affects logging */</span>);
+<a href=#199 id=199 data-nosnippet>199</a>    <span class="kw">let </span>print_tick = aggregator.tick();
+<a href=#200 id=200 data-nosnippet>200</a>    <span class="kw">let </span>client_members = aggregator.source_cluster_members(clients);
+<a href=#201 id=201 data-nosnippet>201</a>    <span class="kw">let </span>client_count = track_membership(client_members)
+<a href=#202 id=202 data-nosnippet>202</a>        .snapshot(<span class="kw-2">&amp;</span>print_tick, nondet_client_count)
+<a href=#203 id=203 data-nosnippet>203</a>        .filter(<span class="macro">q!</span>(|b| <span class="kw-2">*</span>b))
+<a href=#204 id=204 data-nosnippet>204</a>        .key_count();
+<a href=#205 id=205 data-nosnippet>205</a>
+<a href=#206 id=206 data-nosnippet>206</a>    <span class="kw">let </span>keyed_throughputs = results
+<a href=#207 id=207 data-nosnippet>207</a>        .throughput
+<a href=#208 id=208 data-nosnippet>208</a>        .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)), nondet_sampling)
+<a href=#209 id=209 data-nosnippet>209</a>        .send_bincode(aggregator);
+<a href=#210 id=210 data-nosnippet>210</a>
+<a href=#211 id=211 data-nosnippet>211</a>    <span class="kw">let </span>latest_throughputs = keyed_throughputs.reduce_idempotent(<span class="macro">q!</span>(|combined, new| {
+<a href=#212 id=212 data-nosnippet>212</a>        <span class="kw-2">*</span>combined = new;
+<a href=#213 id=213 data-nosnippet>213</a>    }));
 <a href=#214 id=214 data-nosnippet>214</a>
-<a href=#215 id=215 data-nosnippet>215</a>    <span class="kw">let </span>latest_throughputs = keyed_throughputs.reduce_idempotent(<span class="macro">q!</span>(|combined, new| {
-<a href=#216 id=216 data-nosnippet>216</a>        <span class="kw-2">*</span>combined = new;
-<a href=#217 id=217 data-nosnippet>217</a>    }));
-<a href=#218 id=218 data-nosnippet>218</a>
-<a href=#219 id=219 data-nosnippet>219</a>    <span class="kw">let </span>clients_with_throughputs_count = latest_throughputs
-<a href=#220 id=220 data-nosnippet>220</a>        .clone()
-<a href=#221 id=221 data-nosnippet>221</a>        .snapshot(<span class="kw-2">&amp;</span>print_tick, nondet_client_count)
-<a href=#222 id=222 data-nosnippet>222</a>        <span class="comment">// Remove throughputs from clients that have yet to actually record process
-<a href=#223 id=223 data-nosnippet>223</a>        </span>.filter(<span class="macro">q!</span>(|throughputs| throughputs.sample_mean() &gt; <span class="number">0.0</span>))
-<a href=#224 id=224 data-nosnippet>224</a>        .key_count();
-<a href=#225 id=225 data-nosnippet>225</a>
-<a href=#226 id=226 data-nosnippet>226</a>    <span class="kw">let </span>waiting_for_clients = client_count
-<a href=#227 id=227 data-nosnippet>227</a>        .clone()
-<a href=#228 id=228 data-nosnippet>228</a>        .zip(clients_with_throughputs_count)
-<a href=#229 id=229 data-nosnippet>229</a>        .filter_map(<span class="macro">q!</span>(|(num_clients, num_clients_with_throughput)| {
-<a href=#230 id=230 data-nosnippet>230</a>            <span class="kw">if </span>num_clients &gt; num_clients_with_throughput {
-<a href=#231 id=231 data-nosnippet>231</a>                <span class="prelude-val">Some</span>(num_clients - num_clients_with_throughput)
-<a href=#232 id=232 data-nosnippet>232</a>            } <span class="kw">else </span>{
-<a href=#233 id=233 data-nosnippet>233</a>                <span class="prelude-val">None
-<a href=#234 id=234 data-nosnippet>234</a>            </span>}
-<a href=#235 id=235 data-nosnippet>235</a>        }));
-<a href=#236 id=236 data-nosnippet>236</a>
-<a href=#237 id=237 data-nosnippet>237</a>    waiting_for_clients
-<a href=#238 id=238 data-nosnippet>238</a>        .clone()
-<a href=#239 id=239 data-nosnippet>239</a>        .all_ticks()
-<a href=#240 id=240 data-nosnippet>240</a>        .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)), nondet_sampling)
-<a href=#241 id=241 data-nosnippet>241</a>        .assume_retries(<span class="macro">nondet!</span>(<span class="doccomment">/** extra logs due to duplicate samples are okay */</span>))
-<a href=#242 id=242 data-nosnippet>242</a>        .for_each(<span class="macro">q!</span>(|num_clients_not_responded| <span class="macro">println!</span>(
-<a href=#243 id=243 data-nosnippet>243</a>            <span class="string">"Awaiting {} clients"</span>,
-<a href=#244 id=244 data-nosnippet>244</a>            num_clients_not_responded
-<a href=#245 id=245 data-nosnippet>245</a>        )));
-<a href=#246 id=246 data-nosnippet>246</a>
-<a href=#247 id=247 data-nosnippet>247</a>    <span class="kw">let </span>combined_throughputs = <span class="macro">sliced!</span> {
-<a href=#248 id=248 data-nosnippet>248</a>        <span class="kw">let </span>latest_throughput_snapshot = <span class="kw">use</span>(latest_throughputs, nondet_sampling);
-<a href=#249 id=249 data-nosnippet>249</a>        latest_throughput_snapshot
-<a href=#250 id=250 data-nosnippet>250</a>            .values()
-<a href=#251 id=251 data-nosnippet>251</a>            .reduce_commutative(<span class="macro">q!</span>(|combined, new| {
-<a href=#252 id=252 data-nosnippet>252</a>                combined.add(new);
-<a href=#253 id=253 data-nosnippet>253</a>            }))
-<a href=#254 id=254 data-nosnippet>254</a>    };
-<a href=#255 id=255 data-nosnippet>255</a>
-<a href=#256 id=256 data-nosnippet>256</a>    combined_throughputs
-<a href=#257 id=257 data-nosnippet>257</a>        .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)), nondet_sampling)
-<a href=#258 id=258 data-nosnippet>258</a>        .batch(<span class="kw-2">&amp;</span>print_tick, nondet_client_count)
-<a href=#259 id=259 data-nosnippet>259</a>        .cross_singleton(client_count.clone())
-<a href=#260 id=260 data-nosnippet>260</a>        .filter_if_none(waiting_for_clients.clone())
-<a href=#261 id=261 data-nosnippet>261</a>        .all_ticks()
-<a href=#262 id=262 data-nosnippet>262</a>        .assume_retries(<span class="macro">nondet!</span>(<span class="doccomment">/** extra logs due to duplicate samples are okay */</span>))
-<a href=#263 id=263 data-nosnippet>263</a>        .for_each(<span class="macro">q!</span>(<span class="kw">move </span>|(throughputs, num_client_machines)| {
-<a href=#264 id=264 data-nosnippet>264</a>            <span class="kw">if </span>throughputs.sample_count() &gt;= <span class="number">2 </span>{
-<a href=#265 id=265 data-nosnippet>265</a>                <span class="kw">let </span>mean = throughputs.sample_mean() * num_client_machines <span class="kw">as </span>f64;
-<a href=#266 id=266 data-nosnippet>266</a>
-<a href=#267 id=267 data-nosnippet>267</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>((lower, upper)) = throughputs.confidence_interval_99() {
-<a href=#268 id=268 data-nosnippet>268</a>                    <span class="macro">println!</span>(
-<a href=#269 id=269 data-nosnippet>269</a>                        <span class="string">"Throughput: {:.2} - {:.2} - {:.2} requests/s"</span>,
-<a href=#270 id=270 data-nosnippet>270</a>                        lower * num_client_machines <span class="kw">as </span>f64,
-<a href=#271 id=271 data-nosnippet>271</a>                        mean,
-<a href=#272 id=272 data-nosnippet>272</a>                        upper * num_client_machines <span class="kw">as </span>f64
-<a href=#273 id=273 data-nosnippet>273</a>                    );
-<a href=#274 id=274 data-nosnippet>274</a>                }
-<a href=#275 id=275 data-nosnippet>275</a>            }
-<a href=#276 id=276 data-nosnippet>276</a>        }));
-<a href=#277 id=277 data-nosnippet>277</a>
-<a href=#278 id=278 data-nosnippet>278</a>    <span class="kw">let </span>keyed_latencies = results
-<a href=#279 id=279 data-nosnippet>279</a>        .latency_histogram
-<a href=#280 id=280 data-nosnippet>280</a>        .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)), nondet_sampling)
-<a href=#281 id=281 data-nosnippet>281</a>        .map(<span class="macro">q!</span>(|latencies| {
-<a href=#282 id=282 data-nosnippet>282</a>            SerializableHistogramWrapper {
-<a href=#283 id=283 data-nosnippet>283</a>                histogram: latencies,
-<a href=#284 id=284 data-nosnippet>284</a>            }
-<a href=#285 id=285 data-nosnippet>285</a>        }))
-<a href=#286 id=286 data-nosnippet>286</a>        .send_bincode(aggregator);
-<a href=#287 id=287 data-nosnippet>287</a>
-<a href=#288 id=288 data-nosnippet>288</a>    <span class="kw">let </span>most_recent_histograms = keyed_latencies
-<a href=#289 id=289 data-nosnippet>289</a>        .map(<span class="macro">q!</span>(|histogram| histogram.histogram.borrow().clone()))
-<a href=#290 id=290 data-nosnippet>290</a>        .reduce_idempotent(<span class="macro">q!</span>(|combined, new| {
-<a href=#291 id=291 data-nosnippet>291</a>            <span class="comment">// get the most recent histogram for each client
-<a href=#292 id=292 data-nosnippet>292</a>            </span><span class="kw-2">*</span>combined = new;
-<a href=#293 id=293 data-nosnippet>293</a>        }));
-<a href=#294 id=294 data-nosnippet>294</a>
-<a href=#295 id=295 data-nosnippet>295</a>    <span class="kw">let </span>combined_latencies = <span class="macro">sliced!</span> {
-<a href=#296 id=296 data-nosnippet>296</a>        <span class="kw">let </span>latencies = <span class="kw">use</span>(most_recent_histograms, nondet_sampling);
-<a href=#297 id=297 data-nosnippet>297</a>        latencies
-<a href=#298 id=298 data-nosnippet>298</a>            .values()
-<a href=#299 id=299 data-nosnippet>299</a>            .reduce_commutative(<span class="macro">q!</span>(|combined, new| {
-<a href=#300 id=300 data-nosnippet>300</a>                combined.add(new).unwrap();
-<a href=#301 id=301 data-nosnippet>301</a>            }))
-<a href=#302 id=302 data-nosnippet>302</a>    };
-<a href=#303 id=303 data-nosnippet>303</a>
-<a href=#304 id=304 data-nosnippet>304</a>    combined_latencies
-<a href=#305 id=305 data-nosnippet>305</a>        .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)), nondet_sampling)
-<a href=#306 id=306 data-nosnippet>306</a>        .batch(<span class="kw-2">&amp;</span>print_tick, nondet_client_count)
-<a href=#307 id=307 data-nosnippet>307</a>        .filter_if_none(waiting_for_clients)
-<a href=#308 id=308 data-nosnippet>308</a>        .all_ticks()
-<a href=#309 id=309 data-nosnippet>309</a>        .assume_retries(<span class="macro">nondet!</span>(<span class="doccomment">/** extra logs due to duplicate samples are okay */</span>))
-<a href=#310 id=310 data-nosnippet>310</a>        .for_each(<span class="macro">q!</span>(<span class="kw">move </span>|latencies| {
-<a href=#311 id=311 data-nosnippet>311</a>            <span class="macro">println!</span>(
-<a href=#312 id=312 data-nosnippet>312</a>                <span class="string">"Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)"</span>,
-<a href=#313 id=313 data-nosnippet>313</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.5</span>)).as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0</span>,
-<a href=#314 id=314 data-nosnippet>314</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.99</span>)).as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0</span>,
-<a href=#315 id=315 data-nosnippet>315</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.999</span>)).as_micros() <span class="kw">as </span>f64
-<a href=#316 id=316 data-nosnippet>316</a>                    / <span class="number">1000.0</span>,
-<a href=#317 id=317 data-nosnippet>317</a>                latencies.len()
-<a href=#318 id=318 data-nosnippet>318</a>            );
-<a href=#319 id=319 data-nosnippet>319</a>        }));
-<a href=#320 id=320 data-nosnippet>320</a>}
+<a href=#215 id=215 data-nosnippet>215</a>    <span class="kw">let </span>clients_with_throughputs_count = latest_throughputs
+<a href=#216 id=216 data-nosnippet>216</a>        .clone()
+<a href=#217 id=217 data-nosnippet>217</a>        .snapshot(<span class="kw-2">&amp;</span>print_tick, nondet_client_count)
+<a href=#218 id=218 data-nosnippet>218</a>        <span class="comment">// Remove throughputs from clients that have yet to actually record process
+<a href=#219 id=219 data-nosnippet>219</a>        </span>.filter(<span class="macro">q!</span>(|throughputs| throughputs.sample_mean() &gt; <span class="number">0.0</span>))
+<a href=#220 id=220 data-nosnippet>220</a>        .key_count();
+<a href=#221 id=221 data-nosnippet>221</a>
+<a href=#222 id=222 data-nosnippet>222</a>    <span class="kw">let </span>waiting_for_clients = client_count
+<a href=#223 id=223 data-nosnippet>223</a>        .clone()
+<a href=#224 id=224 data-nosnippet>224</a>        .zip(clients_with_throughputs_count)
+<a href=#225 id=225 data-nosnippet>225</a>        .filter_map(<span class="macro">q!</span>(|(num_clients, num_clients_with_throughput)| {
+<a href=#226 id=226 data-nosnippet>226</a>            <span class="kw">if </span>num_clients &gt; num_clients_with_throughput {
+<a href=#227 id=227 data-nosnippet>227</a>                <span class="prelude-val">Some</span>(num_clients - num_clients_with_throughput)
+<a href=#228 id=228 data-nosnippet>228</a>            } <span class="kw">else </span>{
+<a href=#229 id=229 data-nosnippet>229</a>                <span class="prelude-val">None
+<a href=#230 id=230 data-nosnippet>230</a>            </span>}
+<a href=#231 id=231 data-nosnippet>231</a>        }));
+<a href=#232 id=232 data-nosnippet>232</a>
+<a href=#233 id=233 data-nosnippet>233</a>    waiting_for_clients
+<a href=#234 id=234 data-nosnippet>234</a>        .clone()
+<a href=#235 id=235 data-nosnippet>235</a>        .all_ticks()
+<a href=#236 id=236 data-nosnippet>236</a>        .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)), nondet_sampling)
+<a href=#237 id=237 data-nosnippet>237</a>        .assume_retries(<span class="macro">nondet!</span>(<span class="doccomment">/** extra logs due to duplicate samples are okay */</span>))
+<a href=#238 id=238 data-nosnippet>238</a>        .for_each(<span class="macro">q!</span>(|num_clients_not_responded| <span class="macro">println!</span>(
+<a href=#239 id=239 data-nosnippet>239</a>            <span class="string">"Awaiting {} clients"</span>,
+<a href=#240 id=240 data-nosnippet>240</a>            num_clients_not_responded
+<a href=#241 id=241 data-nosnippet>241</a>        )));
+<a href=#242 id=242 data-nosnippet>242</a>
+<a href=#243 id=243 data-nosnippet>243</a>    <span class="kw">let </span>combined_throughputs = <span class="macro">sliced!</span> {
+<a href=#244 id=244 data-nosnippet>244</a>        <span class="kw">let </span>latest_throughput_snapshot = <span class="kw">use</span>(latest_throughputs, nondet_sampling);
+<a href=#245 id=245 data-nosnippet>245</a>        latest_throughput_snapshot
+<a href=#246 id=246 data-nosnippet>246</a>            .values()
+<a href=#247 id=247 data-nosnippet>247</a>            .reduce_commutative(<span class="macro">q!</span>(|combined, new| {
+<a href=#248 id=248 data-nosnippet>248</a>                combined.add(new);
+<a href=#249 id=249 data-nosnippet>249</a>            }))
+<a href=#250 id=250 data-nosnippet>250</a>    };
+<a href=#251 id=251 data-nosnippet>251</a>
+<a href=#252 id=252 data-nosnippet>252</a>    combined_throughputs
+<a href=#253 id=253 data-nosnippet>253</a>        .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)), nondet_sampling)
+<a href=#254 id=254 data-nosnippet>254</a>        .batch(<span class="kw-2">&amp;</span>print_tick, nondet_client_count)
+<a href=#255 id=255 data-nosnippet>255</a>        .cross_singleton(client_count.clone())
+<a href=#256 id=256 data-nosnippet>256</a>        .filter_if_none(waiting_for_clients.clone())
+<a href=#257 id=257 data-nosnippet>257</a>        .all_ticks()
+<a href=#258 id=258 data-nosnippet>258</a>        .assume_retries(<span class="macro">nondet!</span>(<span class="doccomment">/** extra logs due to duplicate samples are okay */</span>))
+<a href=#259 id=259 data-nosnippet>259</a>        .for_each(<span class="macro">q!</span>(<span class="kw">move </span>|(throughputs, num_client_machines)| {
+<a href=#260 id=260 data-nosnippet>260</a>            <span class="kw">if </span>throughputs.sample_count() &gt;= <span class="number">2 </span>{
+<a href=#261 id=261 data-nosnippet>261</a>                <span class="kw">let </span>mean = throughputs.sample_mean() * num_client_machines <span class="kw">as </span>f64;
+<a href=#262 id=262 data-nosnippet>262</a>
+<a href=#263 id=263 data-nosnippet>263</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>((lower, upper)) = throughputs.confidence_interval_99() {
+<a href=#264 id=264 data-nosnippet>264</a>                    <span class="macro">println!</span>(
+<a href=#265 id=265 data-nosnippet>265</a>                        <span class="string">"Throughput: {:.2} - {:.2} - {:.2} requests/s"</span>,
+<a href=#266 id=266 data-nosnippet>266</a>                        lower * num_client_machines <span class="kw">as </span>f64,
+<a href=#267 id=267 data-nosnippet>267</a>                        mean,
+<a href=#268 id=268 data-nosnippet>268</a>                        upper * num_client_machines <span class="kw">as </span>f64
+<a href=#269 id=269 data-nosnippet>269</a>                    );
+<a href=#270 id=270 data-nosnippet>270</a>                }
+<a href=#271 id=271 data-nosnippet>271</a>            }
+<a href=#272 id=272 data-nosnippet>272</a>        }));
+<a href=#273 id=273 data-nosnippet>273</a>
+<a href=#274 id=274 data-nosnippet>274</a>    <span class="kw">let </span>keyed_latencies = results
+<a href=#275 id=275 data-nosnippet>275</a>        .latency_histogram
+<a href=#276 id=276 data-nosnippet>276</a>        .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)), nondet_sampling)
+<a href=#277 id=277 data-nosnippet>277</a>        .map(<span class="macro">q!</span>(|latencies| {
+<a href=#278 id=278 data-nosnippet>278</a>            SerializableHistogramWrapper {
+<a href=#279 id=279 data-nosnippet>279</a>                histogram: latencies,
+<a href=#280 id=280 data-nosnippet>280</a>            }
+<a href=#281 id=281 data-nosnippet>281</a>        }))
+<a href=#282 id=282 data-nosnippet>282</a>        .send_bincode(aggregator);
+<a href=#283 id=283 data-nosnippet>283</a>
+<a href=#284 id=284 data-nosnippet>284</a>    <span class="kw">let </span>most_recent_histograms = keyed_latencies
+<a href=#285 id=285 data-nosnippet>285</a>        .map(<span class="macro">q!</span>(|histogram| histogram.histogram.borrow().clone()))
+<a href=#286 id=286 data-nosnippet>286</a>        .reduce_idempotent(<span class="macro">q!</span>(|combined, new| {
+<a href=#287 id=287 data-nosnippet>287</a>            <span class="comment">// get the most recent histogram for each client
+<a href=#288 id=288 data-nosnippet>288</a>            </span><span class="kw-2">*</span>combined = new;
+<a href=#289 id=289 data-nosnippet>289</a>        }));
+<a href=#290 id=290 data-nosnippet>290</a>
+<a href=#291 id=291 data-nosnippet>291</a>    <span class="kw">let </span>combined_latencies = <span class="macro">sliced!</span> {
+<a href=#292 id=292 data-nosnippet>292</a>        <span class="kw">let </span>latencies = <span class="kw">use</span>(most_recent_histograms, nondet_sampling);
+<a href=#293 id=293 data-nosnippet>293</a>        latencies
+<a href=#294 id=294 data-nosnippet>294</a>            .values()
+<a href=#295 id=295 data-nosnippet>295</a>            .reduce_commutative(<span class="macro">q!</span>(|combined, new| {
+<a href=#296 id=296 data-nosnippet>296</a>                combined.add(new).unwrap();
+<a href=#297 id=297 data-nosnippet>297</a>            }))
+<a href=#298 id=298 data-nosnippet>298</a>    };
+<a href=#299 id=299 data-nosnippet>299</a>
+<a href=#300 id=300 data-nosnippet>300</a>    combined_latencies
+<a href=#301 id=301 data-nosnippet>301</a>        .sample_every(<span class="macro">q!</span>(Duration::from_millis(<span class="number">1000</span>)), nondet_sampling)
+<a href=#302 id=302 data-nosnippet>302</a>        .batch(<span class="kw-2">&amp;</span>print_tick, nondet_client_count)
+<a href=#303 id=303 data-nosnippet>303</a>        .filter_if_none(waiting_for_clients)
+<a href=#304 id=304 data-nosnippet>304</a>        .all_ticks()
+<a href=#305 id=305 data-nosnippet>305</a>        .assume_retries(<span class="macro">nondet!</span>(<span class="doccomment">/** extra logs due to duplicate samples are okay */</span>))
+<a href=#306 id=306 data-nosnippet>306</a>        .for_each(<span class="macro">q!</span>(<span class="kw">move </span>|latencies| {
+<a href=#307 id=307 data-nosnippet>307</a>            <span class="macro">println!</span>(
+<a href=#308 id=308 data-nosnippet>308</a>                <span class="string">"Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)"</span>,
+<a href=#309 id=309 data-nosnippet>309</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.5</span>)).as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0</span>,
+<a href=#310 id=310 data-nosnippet>310</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.99</span>)).as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0</span>,
+<a href=#311 id=311 data-nosnippet>311</a>                Duration::from_nanos(latencies.value_at_quantile(<span class="number">0.999</span>)).as_micros() <span class="kw">as </span>f64
+<a href=#312 id=312 data-nosnippet>312</a>                    / <span class="number">1000.0</span>,
+<a href=#313 id=313 data-nosnippet>313</a>                latencies.len()
+<a href=#314 id=314 data-nosnippet>314</a>            );
+<a href=#315 id=315 data-nosnippet>315</a>        }));
+<a href=#316 id=316 data-nosnippet>316</a>}
 </code></pre></div></section></main></body></html>
