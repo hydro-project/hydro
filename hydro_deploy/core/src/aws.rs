@@ -6,7 +6,6 @@ use std::sync::{Arc, Mutex, OnceLock};
 use anyhow::Result;
 use nanoid::nanoid;
 use serde_json::json;
-use tokio::sync::RwLock;
 
 use super::terraform::{TERRAFORM_ALPHABET, TerraformOutput, TerraformProvider};
 use super::{ClientStrategy, Host, HostTargetType, LaunchedHost, ResourceBatch, ResourceResult};
@@ -45,20 +44,20 @@ impl LaunchedSshHost for LaunchedEc2Instance {
 #[derive(Debug)]
 pub struct AwsNetwork {
     pub region: String,
-    pub existing_vpc: Option<String>,
+    pub existing_vpc: OnceLock<String>,
     id: String,
 }
 
 impl AwsNetwork {
-    pub fn new(region: impl Into<String>, existing_vpc: Option<String>) -> Self {
-        Self {
+    pub fn new(region: impl Into<String>, existing_vpc: Option<String>) -> Arc<Self> {
+        Arc::new(Self {
             region: region.into(),
-            existing_vpc,
+            existing_vpc: existing_vpc.map(From::from).unwrap_or_default(),
             id: nanoid!(8, &TERRAFORM_ALPHABET),
-        }
+        })
     }
 
-    fn collect_resources(&mut self, resource_batch: &mut ResourceBatch) -> String {
+    fn collect_resources(&self, resource_batch: &mut ResourceBatch) -> String {
         resource_batch
             .terraform
             .terraform
@@ -80,7 +79,7 @@ impl AwsNetwork {
 
         let vpc_network = format!("hydro-vpc-network-{}", self.id);
 
-        if let Some(existing) = self.existing_vpc.as_ref() {
+        if let Some(existing) = self.existing_vpc.get() {
             if resource_batch
                 .terraform
                 .resource
@@ -268,9 +267,9 @@ impl AwsNetwork {
                     }),
                 );
 
-            self.existing_vpc = Some(vpc_network.clone());
-
-            format!("aws_vpc.{vpc_network}")
+            let out = format!("aws_vpc.{vpc_network}");
+            self.existing_vpc.set(vpc_network).unwrap();
+            out
         }
     }
 }
@@ -283,7 +282,7 @@ pub struct AwsEc2Host {
     instance_type: String,
     target_type: HostTargetType,
     ami: String,
-    network: Arc<RwLock<AwsNetwork>>,
+    network: Arc<AwsNetwork>,
     user: Option<String>,
     display_name: Option<String>,
     pub launched: OnceLock<Arc<LaunchedEc2Instance>>,
@@ -307,7 +306,7 @@ impl AwsEc2Host {
         instance_type: impl Into<String>,
         target_type: HostTargetType,
         ami: impl Into<String>,
-        network: Arc<RwLock<AwsNetwork>>,
+        network: Arc<AwsNetwork>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Self {
@@ -360,11 +359,7 @@ impl Host for AwsEc2Host {
             return;
         }
 
-        let vpc_path = self
-            .network
-            .try_write()
-            .unwrap()
-            .collect_resources(resource_batch);
+        let vpc_path = self.network.collect_resources(resource_batch);
 
         // Add additional providers
         resource_batch
@@ -447,7 +442,7 @@ impl Host for AwsEc2Host {
             instance_name.push_str(&display_name);
         }
 
-        let network_id = self.network.try_read().unwrap().id.clone();
+        let network_id = self.network.id.clone();
         let vpc_ref = format!("${{{}.id}}", vpc_path);
         let subnet_ref = format!("${{aws_subnet.hydro-vpc-network-{}-subnet.id}}", network_id);
         let default_sg_ref = format!(

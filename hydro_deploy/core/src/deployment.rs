@@ -9,7 +9,6 @@ use std::sync::{Arc, Weak};
 
 use anyhow::Result;
 use futures::{FutureExt, StreamExt, TryStreamExt};
-use tokio::sync::RwLock;
 
 use super::aws::AwsNetwork;
 use super::gcp::GcpNetwork;
@@ -234,7 +233,7 @@ impl Deployment {
         image: String,
         target_type: Option<HostTargetType>,
         region: String,
-        network: Arc<RwLock<GcpNetwork>>,
+        network: Arc<GcpNetwork>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Arc<GcpComputeEngineHost> {
@@ -285,7 +284,7 @@ impl Deployment {
         instance_type: String,
         target_type: Option<HostTargetType>,
         ami: String,
-        network: Arc<RwLock<AwsNetwork>>,
+        network: Arc<AwsNetwork>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Arc<AwsEc2Host> {
