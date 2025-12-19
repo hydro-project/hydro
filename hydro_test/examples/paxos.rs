@@ -26,7 +26,7 @@ async fn main() {
     let mut deployment = Deployment::new();
 
     let create_host: HostCreator = if let Some(project) = &args.gcp {
-        let network = Arc::new(GcpNetwork::new(project, None));
+        let network = GcpNetwork::new(project, None);
         let project = project.clone();
 
         Box::new(move |deployment| -> Arc<dyn Host> {

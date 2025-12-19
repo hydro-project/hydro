@@ -1,7 +1,5 @@
 //! hydro_lang/deploy integration tests
 
-use std::sync::Arc;
-
 use futures::{SinkExt, StreamExt};
 use hydro_deploy::{AwsNetwork, Deployment};
 
@@ -234,7 +232,7 @@ async fn distributed_echo_aws() {
     let (external_sink, external_stream, ems_c2, ems_c3) =
         distributed_echo(&external, &p1, &c2, &c3, &p4, &p5);
 
-    let network = Arc::new(AwsNetwork::new("us-east-1", None));
+    let network = AwsNetwork::new("us-east-1", None);
 
     let nodes = builder
         .with_process(

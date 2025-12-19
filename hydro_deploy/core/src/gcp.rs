@@ -49,12 +49,12 @@ pub struct GcpNetwork {
 }
 
 impl GcpNetwork {
-    pub fn new(project: impl Into<String>, existing_vpc: Option<String>) -> Self {
-        Self {
+    pub fn new(project: impl Into<String>, existing_vpc: Option<String>) -> Arc<Self> {
+        Arc::new(Self {
             project: project.into(),
             existing_vpc: existing_vpc.map(From::from).unwrap_or_default(),
             id: nanoid!(8, &TERRAFORM_ALPHABET),
-        }
+        })
     }
 
     fn collect_resources(&self, resource_batch: &mut ResourceBatch) -> String {
