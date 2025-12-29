@@ -61,6 +61,10 @@ impl<'a, C> Location<'a> for Cluster<'a, C> {
     fn root(&self) -> Self::Root {
         self.clone()
     }
+
+    fn name() -> String {
+        format!("Cluster<{}>", std::any::type_name::<C>())
+    }
 }
 
 pub struct ClusterIds<'a> {
