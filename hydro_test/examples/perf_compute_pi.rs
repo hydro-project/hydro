@@ -24,7 +24,7 @@ struct PerfComputePiArgs {
     #[arg(long)]
     gcp: Option<String>,
 
-    /// use AWS, make sure credentials are set up
+    /// Use AWS, make sure credentials are set up
     #[arg(long, action = ArgAction::SetTrue)]
     aws: bool,
 }
@@ -71,12 +71,12 @@ async fn main() {
         (
             Box::new(move |deployment| -> Arc<dyn Host> {
                 deployment
-                .AwsEc2Host()
-                .region(region)
-                .instance_type("t3.micro")
-                .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
-                .network(network.clone())
-                .add()
+                    .AwsEc2Host()
+                    .region(region)
+                    .instance_type("t3.micro")
+                    .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
+                    .network(network.clone())
+                    .add()
             }),
             hydro_deploy::rust_crate::tracing_options::AL2_PERF_SETUP_COMMAND,
         )
