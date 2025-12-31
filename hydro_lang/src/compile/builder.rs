@@ -362,3 +362,42 @@ impl<'a> RewriteIrFlowBuilder<'a> {
         self.builder
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compile::ir::{HydroNode, HydroRoot};
+
+    #[test]
+    #[should_panic(expected = "Synchronous cycle detected")]
+    fn rejects_synchronous_cycle_in_forward_ref() {
+        let mut flow = FlowStateInner {
+            roots: Some(vec![]),
+            next_external_out: 0,
+            cycle_counts: 0,
+            next_clock_id: 0,
+        };
+        let cycle_id = 0;
+
+        let source = HydroNode::CycleSource {
+            ident: cycle_id,
+            location: None,
+        };
+
+        // Synchronous dependency on the cycle source.
+        let mapped = HydroNode::Map {
+            input: Box::new(source),
+            f: "identity".into(),
+        };
+
+        // Complete the cycle synchronously.
+        let root = HydroRoot::CycleSink {
+            ident: cycle_id,
+            input: Box::new(mapped),
+            location: None,
+        };
+
+        // Expected failure.
+        flow.push_root(root);
+    }
+}
